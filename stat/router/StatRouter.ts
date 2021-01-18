@@ -1,0 +1,48 @@
+import {StatApp} from "../StatApp";
+import * as Koa from 'koa'
+import { Context } from 'koa'
+import * as helmet from 'koa-helmet'
+import * as Router from 'koa-router'
+
+function addRoute(router: Router<any, {}>, statApp: StatApp) {
+    router.get('/server-info', async (ctx: Context) => {
+        ctx.body = {
+            code: 0, message: 'Conflux-Stat 2021.01.15'
+        }
+    })
+    // miner topN
+    router.get('/top-by-type', async (ctx)=>{
+        const blockService = statApp.blockService;
+        const { span, type, rows } = ctx.request.query;
+        const list = await blockService.topByType(span, type, rows);
+        const timeRange = blockService.calculateTimeRange(list);
+        const seconds = blockService.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
+        ctx.body = {
+            list,
+            ...timeRange,
+            seconds,
+            total: list.length,
+        };
+    })
+    // tx topN
+    router.get('/tx/top-by-type', async function (ctx) {
+        const dataPorter = statApp.dataPorter;
+        const { span, type, rows, action } = ctx.request.query;
+        // action: cfxSend/Receive; txnSend/Receive
+        const top = await dataPorter.txTopBy(span, type, rows, action);
+        ctx.body =  {
+            ...top,
+        };
+    });
+}
+
+export function register(app:Koa, statApp: StatApp) {
+    const router = new Router({ })
+
+    addRoute(router, statApp);
+
+    app.use(helmet())
+    let middleware = router.routes();
+    app.use(middleware)
+    console.log('router registered.')
+}

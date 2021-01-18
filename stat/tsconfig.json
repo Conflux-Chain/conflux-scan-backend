@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "module": "commonjs", // ensure using `require` instead of `import`
+    "incremental": true,
+    "skipLibCheck": true,
+    "target": "es6" // <=
+    // ...
+  }
+}
