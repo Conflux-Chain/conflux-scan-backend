@@ -3,6 +3,7 @@ import * as Koa from 'koa'
 import { Context } from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
+import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -32,6 +33,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const top = await dataPorter.txTopBy(span, type, rows, action);
         ctx.body =  {
             ...top,
+        };
+    });
+    // sync info
+    router.get('/sync-info', async (ctx)=>{
+        const tx = await KV.getNumber(KEY_TX_EPOCH);
+        const miner = await KV.getNumber(KEY_MINER_EPOCH);
+        ctx.body = {
+            txEpoch: tx,
+            minerEpoch: miner,
+            chainEpoch: await statApp.blockService.cfx.getEpochNumber()
         };
     });
 }

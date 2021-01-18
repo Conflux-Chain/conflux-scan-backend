@@ -71,12 +71,12 @@ export class DataPorter {
         repeat().then()
     }
 
-    async run() {
+    async run() :Promise<{ txOk: string, txCount: number }> {
         const preEpoch = await KV.getNumber(KEY_TX_EPOCH) || 0
-        await this.copyEpoch(preEpoch)
+        return await this.copyEpoch(preEpoch)
     }
 
-    async copyEpoch(epoch: number) {
+    async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number }>{
         const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch)
         let id = 0;
         const blockList: any[] = await this.cfx.provider.batch(blockHashes.map(hash=>{
@@ -118,7 +118,7 @@ export class DataPorter {
             })
             txOk = 'ok'
         }).then(()=>{
-            if (epoch % 100 === 0 || txCount > 10 ) {
+            if (epoch % 10 === 0 || txCount > 1 ) {
                 console.log(`${fmtDtUTC(new Date())} insert ${txCount} txn at epoch ${epoch}`)
             }
         }).catch(err=>{

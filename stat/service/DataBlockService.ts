@@ -6,6 +6,7 @@ import {KEY_MINER_EPOCH, KV} from "../model/KV";
 import {addUTCMinutes, calculateBeginTime, fmtDtUTC} from "../model/Utils";
 import {Conflux, ConfluxOption} from "js-conflux-sdk";
 import { getSumFunction } from "./DBProvider";
+
 const BigFixed = require('bigfixed');
 
 export class DataBlockService {
@@ -13,20 +14,22 @@ export class DataBlockService {
     savedTx = []
     // public currentEpoch: number;
     private sequelize: Sequelize;
-    private cfx: Conflux;
+    public cfx: Conflux;
 
     constructor(sequelize: Sequelize, cfx:ConfluxOption) {
         this.sequelize = sequelize;
         this.cfx = new Conflux(cfx)
     }
+
     public async schedule(rpc) {
         const that = this;
         async function repeat() {
             await that.syncBlockByEpoch(rpc)
-            setTimeout(repeat, 300)
+            setTimeout(repeat, 30)
         }
         repeat().then()
     }
+
     public async checkPosition() {
         let pos = await KV.getNumber(KEY_MINER_EPOCH);
         if (pos !== null && !isNaN(pos)) {
@@ -38,6 +41,7 @@ export class DataBlockService {
         await KV.create({key: KEY_MINER_EPOCH, value: number.toString()})
         console.log(`${fmtDtUTC(new Date())} init position at ${number}, remote epoch is ${number}`)
     }
+
     public calculateTimeRange(list:IMinerBlock[]) {
         return {beginTime: list.map(blk=>blk.beginTime).sort()[0],
             endTime: list.map(blk=>blk.endTime).sort().reverse()[0]}
@@ -56,6 +60,7 @@ export class DataBlockService {
         })
         return seconds
     }
+
     async topByType(n: number, type: string, limit: number): Promise<IMinerBlock[]>{
         console.log(`top by type : ${n} ${type} limit ${limit}`)
         if (n <= 0) {
@@ -93,6 +98,7 @@ export class DataBlockService {
         })
         return Promise.resolve(list)
     }
+
     skip1hTimes = 0
     async rollupStatPerHour(timePoint: Date = undefined) {
         if (this.skip1hTimes > 0) {
@@ -189,6 +195,7 @@ export class DataBlockService {
         await DataBlockService.checkTableSize(MinerBlock, 10_0000, {timeWindow: '1m'})
         await DataBlockService.checkTableSize(Hex64Map, 10_0000, {})
     }
+
     static async checkTableSize(table: any, maxSize: number, where){
         const count = await table.count({})
         const deleteCount = count - maxSize
@@ -201,6 +208,7 @@ export class DataBlockService {
             console.log(`table size is ok, ${table.getTableName()} ${count} < ${maxSize}`)
         }
     }
+
     skip1mTimes = 0
     async rollup() {
         const n = 1 // 1 minute
@@ -279,35 +287,28 @@ export class DataBlockService {
         }
     }
 
-    public async syncBlockByEpoch(sync, epoch: number = undefined) {
-        // const rpcRet = await sync.rpcMethod('countAndListBlock')({
-        const epochCountPerRequest = 10;
-        let minEpochNumber = undefined;
-        if (epoch === undefined || isNaN(epoch)) {
-            const preEpoch = await KV.getNumber(KEY_MINER_EPOCH)
-            if (preEpoch == null || isNaN(preEpoch)) {
-            } else {
-                minEpochNumber = preEpoch + 1;
-                epoch = minEpochNumber + epochCountPerRequest
-            }
+    public async syncBlockByEpoch(epoch: number = undefined) {
+        let minEpochNumber = 0;
+        const preEpoch = await KV.getNumber(KEY_MINER_EPOCH)
+        if (preEpoch == null || isNaN(preEpoch)) {
+            console.log('epoch not configured.')
         } else {
-            minEpochNumber = epoch
+            minEpochNumber = preEpoch + 1;
         }
         // console.log(`=====`, minEpochNumber, epoch)
-        let estimateBlockCount = 10*epochCountPerRequest;
-        let requestParam = {
-            limit: estimateBlockCount, reverse: true
-        };
-        if (minEpochNumber !== undefined) requestParam['minEpochNumber'] = minEpochNumber
-        if (epoch !== undefined) requestParam['maxEpochNumber'] = epoch
-        const rpcRet = await sync.call('countAndListBlock', requestParam)
-            .catch(err=>{
-                console.log(`fetch block fail: ${err}`)
-            });
-        if (rpcRet === undefined) {
-            return 0;
+        let hashes: string[];
+        try {
+            hashes = await this.cfx.getBlocksByEpochNumber(minEpochNumber);
+        } catch (e) {
+            console.log(`fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, e)
+            return;
         }
-        let blockList: any[] = rpcRet.list;
+        let blockList: any[] = await Promise.all(
+            hashes.map(hash=>{
+                return this.cfx.getBlockByHash(hash, true)
+            })
+        )
+        let rewardList: any[] = await this.cfx.getBlockRewardInfo(minEpochNumber);
         blockList = blockList.filter(block=>{
             const ret = this.savedTx.indexOf(block.hash) < 0
             if(!ret)console.debug(`hit cache ${block.hash}`)
@@ -318,16 +319,7 @@ export class DataBlockService {
                 code: 0, message: "ok", blockCount: 0, minEpoch: epoch
             }
         }
-        if (blockList.find(block=>block.totalReward === undefined) !== undefined) {
-            console.info(`${fmtDtUTC(new Date())} some block doesn't have reward, wait. ${
-                minEpochNumber} - ${epoch}`)
-            await new Promise(resolve => {setTimeout(resolve, 3000)})
-            return 0;
-        }
-        if (estimateBlockCount < rpcRet.total) {
-            console.log(`------- request size too small, ${estimateBlockCount} < ${rpcRet.total}`)
-        }
-        blockList = blockList.reverse(); // turn to asc order.
+        // blockList = blockList.reverse(); // turn to asc order.
         let ok = true;
         let message = "ok";
         await this.sequelize.transaction(async (dbTx) => {
@@ -335,26 +327,26 @@ export class DataBlockService {
             await Promise.all(
                 blockList.map(async (block) => {
                     maxEpoch = Math.max(maxEpoch, block.epochNumber)
+                    const reward = rewardList.find(r=>r.blockHash === block.hash)
                     const addrBean = await makeId(block.miner, dbTx)
-                    const hashBean = await makeId(block.hash, dbTx)
+                    // const hashBean = await makeId(block.hash, dbTx)
                     // console.info(`debug timestamp ${new Date(block.timestamp)}`)
                     return await Block.findOrCreate({
-                        where: {hashId: hashBean.id},
+                        where: {hash: block.hash},
                         defaults: {
-                            syncId: block.id,
                             epoch: block.epochNumber,
                             createAt: new Date(block.timestamp*1000),
                             minerId: addrBean.id,
-                            hashId: hashBean.id,
-                            difficulty: parseInt(block.difficulty),
-                            totalReward: BigInt(block.totalReward),
-                            txFee: BigInt(block.txFee),
+                            hash: block.hash,
+                            difficulty: block.difficulty,
+                            totalReward: reward.totalReward,
+                            txFee: reward.txFee,
                         },
                         transaction: dbTx
                     })
                 })
             )
-            const updateConfig = await KV.update({value: maxEpoch.toString()},
+            const updateConfig = await KV.update({value: minEpochNumber.toString()},
                 {where: {key: KEY_MINER_EPOCH,}, transaction: dbTx})
             if (updateConfig[0] === 0) {
                 await KV.create({key: KEY_MINER_EPOCH, value: maxEpoch.toString()}
@@ -363,7 +355,7 @@ export class DataBlockService {
         }).then(async ()=>{
             // console.log(`====`, blockList[0])
             console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
-                blockList[0].epochNumber} - ${blockList[blockList.length-1].epochNumber
+                blockList[0].epochNumber
             }, max block time ${new Date(blockList[blockList.length-1].timestamp*1000).toISOString()}`)
             // adjust cache size.
             blockList.forEach(block=>{this.savedTx.push(block.hash)})
