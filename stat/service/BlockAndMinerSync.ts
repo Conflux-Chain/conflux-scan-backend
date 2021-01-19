@@ -21,11 +21,11 @@ export class BlockAndMinerSync {
         this.cfx = new Conflux(cfx)
     }
 
-    public async schedule() {
+    public async schedule(delay:number = 100) {
         const that = this;
         async function repeat() {
             await that.syncBlockByEpoch()
-            setTimeout(repeat, 30)
+            setTimeout(repeat, delay)
         }
         repeat().then()
     }

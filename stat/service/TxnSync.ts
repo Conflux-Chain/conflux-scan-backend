@@ -62,11 +62,11 @@ export class TxnSync {
         })
     }
 
-    public async schedule() {
+    public async schedule(delay:number = 100) {
         const that = this;
         async function repeat() {
             await that.run();
-            setTimeout(repeat, 300)
+            setTimeout(repeat, delay)
         }
         repeat().then()
     }

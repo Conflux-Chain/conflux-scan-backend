@@ -26,7 +26,7 @@ export async function init() {
     const statApp = new StatApp(config);
     await statApp.init();
     register(app, statApp)
-    app.listen(8087);
+    app.listen(config.port || 8087);
 }
 
 init().then()

@@ -10,6 +10,8 @@ export interface Database{
     blockTableRowsLimit: number;
 }
 export interface StatConfig{
+    syncBlockDelay: number;
+    syncTxnDelay: number;
     port: number;
     conflux: ConfluxOption; // chain rpc node
     database: Database
@@ -28,6 +30,7 @@ export function loadConfig(specified:string = undefined): StatConfig {
     // console.log(`template is 0 `, templateConf.default)
     // console.log(`specific is `, specific)
     const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
-    console.log(`conf is `, conf)
+    console.log(`conf is host ${conf.database.host}, user ${conf.database.user} DB ${conf.database.database
+    }, blockTableRowsLimit [${conf.blockTableRowsLimit}]. web port [${conf.port}].`)
     return conf;
 }
