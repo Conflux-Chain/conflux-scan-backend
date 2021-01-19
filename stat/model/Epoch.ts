@@ -28,7 +28,7 @@ export class Epoch extends Model<EpochAttributes> implements EpochAttributes {
             parentHash: {type: DataTypes.BIGINT, allowNull: false},
             pivotHash: {type: DataTypes.BIGINT, allowNull: false},
         }, {
-            tableName: 'Epoch',
+            tableName: 'epoch',
             sequelize,
             timestamps: false,
             indexes: [

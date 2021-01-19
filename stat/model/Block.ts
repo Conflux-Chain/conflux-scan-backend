@@ -27,7 +27,6 @@ export class Block extends Model<IBlockAttributes> implements IBlockAttributes {
     minerId: number;
     hashId?: number;
     hash?: string;
-    syncId: number;
     totalReward: bigint;
     txFee: bigint;
 
