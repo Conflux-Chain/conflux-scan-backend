@@ -2,15 +2,15 @@ import {StatConfig} from "./config/StatConfig";
 import {createDB, initModel} from "./service/DBProvider";
 import {Sequelize} from "sequelize";
 import * as pino from 'pino'
-import {DataPorter} from "./service/DataPorter";
-import {DataBlockService} from "./service/DataBlockService";
+import {TxnSync} from "./service/TxnSync";
+import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {Provider, providerFactory} from "js-conflux-sdk";
 
 export class StatApp{
     private config: StatConfig;
     private sequelize: Sequelize;
-    public blockService: DataBlockService;
-    public dataPorter: DataPorter;
+    public blockService: BlockAndMinerSync;
+    public dataPorter: TxnSync;
     private scanApi: Provider;
     constructor(config: StatConfig) {
         this.config = config;
@@ -23,8 +23,8 @@ export class StatApp{
         logger.info('sequelize is ' + sequelize)
         await initModel(sequelize);
         await sequelize.sync({});
-        this.dataPorter = new DataPorter(this.sequelize, this.config.conflux);
-        this.blockService = new DataBlockService(sequelize, this.config.conflux);
+        this.dataPorter = new TxnSync(this.sequelize, this.config.conflux);
+        this.blockService = new BlockAndMinerSync(sequelize, this.config.conflux);
         this.scanApi = providerFactory({ url: this.config.scanApiUrl });
         //
         await this.blockService.checkPosition(); // miner block

@@ -9,7 +9,7 @@ import { getSumFunction } from "./DBProvider";
 
 const BigFixed = require('bigfixed');
 
-export class DataBlockService {
+export class BlockAndMinerSync {
     static cacheSavedTxLength = 100;
     savedTx = []
     // public currentEpoch: number;
@@ -182,7 +182,7 @@ export class DataBlockService {
             // logging: console.log
         }).then(()=>{
             console.log(`rollup hourly insert count ${minerBlocks.length}`)
-            setTimeout(DataBlockService.checkDBSize, 10)
+            setTimeout(BlockAndMinerSync.checkDBSize, 10)
         }).catch(err=>{
             console.error(`rollup by hour fail : ${err}`)
         })
@@ -191,9 +191,9 @@ export class DataBlockService {
     static async checkDBSize() {
         const table = Block
         let maxSize = 10_0000;
-        await DataBlockService.checkTableSize(table, maxSize, {})
-        await DataBlockService.checkTableSize(MinerBlock, 10_0000, {timeWindow: '1m'})
-        await DataBlockService.checkTableSize(Hex64Map, 10_0000, {})
+        await BlockAndMinerSync.checkTableSize(table, maxSize, {})
+        await BlockAndMinerSync.checkTableSize(MinerBlock, 10_0000, {timeWindow: '1m'})
+        await BlockAndMinerSync.checkTableSize(Hex64Map, 10_0000, {})
     }
 
     static async checkTableSize(table: any, maxSize: number, where){
@@ -359,7 +359,7 @@ export class DataBlockService {
             }, max block time ${new Date(blockList[blockList.length-1].timestamp*1000).toISOString()}`)
             // adjust cache size.
             blockList.forEach(block=>{this.savedTx.push(block.hash)})
-            while (this.savedTx.length > DataBlockService.cacheSavedTxLength) {
+            while (this.savedTx.length > BlockAndMinerSync.cacheSavedTxLength) {
                 this.savedTx.shift()
             }
             await this.rollup()

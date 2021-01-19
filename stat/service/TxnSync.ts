@@ -9,7 +9,7 @@ const BigFixed = require('bigfixed');
 /**
  * sync tx
  */
-export class DataPorter {
+export class TxnSync {
     sequelize: Sequelize
     static staticSequelize: Sequelize
     private cfx: Conflux;
@@ -17,7 +17,7 @@ export class DataPorter {
         this.sequelize = sequelize;
         this.cfx = new Conflux(cfx)
         console.log(`conflux rpc url ${cfx.url}`)
-        DataPorter.staticSequelize = sequelize;
+        TxnSync.staticSequelize = sequelize;
     }
 
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend') {
@@ -97,7 +97,7 @@ export class DataPorter {
         }).forEach(tx=>allTx.push(tx)))
         let txOk = 'not executed';
         const txCount = allTx.length;
-        await DataPorter.staticSequelize.transaction(async (dbTx) => {
+        await TxnSync.staticSequelize.transaction(async (dbTx) => {
             await Promise.all(
                 allTx.map(async (tx) => {
                     tx['data'] = ''
