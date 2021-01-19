@@ -7,10 +7,10 @@ export interface Database{
     user: string;
     pwd: string;
     database: string;
+    blockTableRowsLimit: number;
 }
 export interface StatConfig{
     port: number;
-    scanApiUrl: string,
     conflux: ConfluxOption; // chain rpc node
     database: Database
 }

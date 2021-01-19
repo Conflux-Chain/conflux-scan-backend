@@ -6,13 +6,14 @@ import {Block} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV} from "../model/KV";
 import {TestTimezone} from "../model/TestTimezone";
+import {Database} from "../config/StatConfig";
 let conf
 export function createDB(config) {
     conf = config
     if (isMySQL()) {
         return createMySql(config)
     }
-    let storage = config.sqlitePath || './data/database2.sqlite';
+    let storage = config.sqlitePath || './data/database.sqlite';
     const sequelize = new Sequelize({
         dialect: 'sqlite',
         storage: storage,
@@ -20,6 +21,10 @@ export function createDB(config) {
     });
     console.info(`create sqlite: ${storage}`)
     return sequelize
+}
+
+export function getDBConf() : Database{
+    return conf;
 }
 
 /**

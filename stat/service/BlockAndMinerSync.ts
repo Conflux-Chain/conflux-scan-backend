@@ -1,11 +1,11 @@
 import {Sequelize, QueryTypes, Op} from "sequelize";
-import {Hex64Map, makeId} from "../model/HexMap";
+import {makeId} from "../model/HexMap";
 import {Block} from "../model/Block";
 import {IMinerBlock, MinerBlock} from "../model/MinerBlock";
 import {KEY_MINER_EPOCH, KV} from "../model/KV";
 import {addUTCMinutes, calculateBeginTime, fmtDtUTC} from "../model/Utils";
 import {Conflux, ConfluxOption} from "js-conflux-sdk";
-import { getSumFunction } from "./DBProvider";
+import {getDBConf, getSumFunction} from "./DBProvider";
 
 const BigFixed = require('bigfixed');
 
@@ -21,10 +21,10 @@ export class BlockAndMinerSync {
         this.cfx = new Conflux(cfx)
     }
 
-    public async schedule(rpc) {
+    public async schedule() {
         const that = this;
         async function repeat() {
-            await that.syncBlockByEpoch(rpc)
+            await that.syncBlockByEpoch()
             setTimeout(repeat, 30)
         }
         repeat().then()
@@ -189,15 +189,16 @@ export class BlockAndMinerSync {
     }
 
     static async checkDBSize() {
-        const table = Block
-        let maxSize = 10_0000;
-        await BlockAndMinerSync.checkTableSize(table, maxSize, {})
+        let blockTableRowsLimit = getDBConf().blockTableRowsLimit || 10_0000;
+        await BlockAndMinerSync.checkTableSize(Block, blockTableRowsLimit, {})
         await BlockAndMinerSync.checkTableSize(MinerBlock, 10_0000, {timeWindow: '1m'})
-        await BlockAndMinerSync.checkTableSize(Hex64Map, 10_0000, {})
     }
 
     static async checkTableSize(table: any, maxSize: number, where){
-        const count = await table.count({})
+        if (maxSize <= 0) {
+            return;
+        }
+        const count = await table.count({});
         const deleteCount = count - maxSize
         if (count > maxSize) {
             const separator = await table.findOne({where, offset: deleteCount, limit: 1, order: [["id", "ASC"]]})
@@ -287,11 +288,11 @@ export class BlockAndMinerSync {
         }
     }
 
-    public async syncBlockByEpoch(epoch: number = undefined) {
-        let minEpochNumber = 0;
+    public async syncBlockByEpoch(specifiedEpoch: number = undefined) {
+        let minEpochNumber = specifiedEpoch || 0;
         const preEpoch = await KV.getNumber(KEY_MINER_EPOCH)
         if (preEpoch == null || isNaN(preEpoch)) {
-            console.log('epoch not configured.')
+            console.log(`epoch not configured, use ${minEpochNumber}`)
         } else {
             minEpochNumber = preEpoch + 1;
         }
@@ -316,7 +317,7 @@ export class BlockAndMinerSync {
         })
         if (blockList.length === 0) {
             return {
-                code: 0, message: "ok", blockCount: 0, minEpoch: epoch
+                code: 0, message: "ok", blockCount: 0, epoch: minEpochNumber
             }
         }
         // blockList = blockList.reverse(); // turn to asc order.
@@ -366,7 +367,7 @@ export class BlockAndMinerSync {
         }).catch(err => {
             ok = false;
             message = `${err}`
-            console.error(`sync blocks fail, min epoch ${epoch}`, err)
+            console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
         });
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length

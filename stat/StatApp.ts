@@ -4,14 +4,12 @@ import {Sequelize} from "sequelize";
 import * as pino from 'pino'
 import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
-import {Provider, providerFactory} from "js-conflux-sdk";
 
 export class StatApp{
     private config: StatConfig;
     private sequelize: Sequelize;
     public blockAndMinerSync: BlockAndMinerSync;
     public txnSync: TxnSync;
-    private scanApi: Provider;
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -25,11 +23,10 @@ export class StatApp{
         await sequelize.sync({});
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);
-        this.scanApi = providerFactory({ url: this.config.scanApiUrl });
         //
         await this.blockAndMinerSync.checkPosition(); // miner block
         await this.txnSync.schedule(); // txn
-        await this.blockAndMinerSync.schedule(this.scanApi)
+        await this.blockAndMinerSync.schedule()
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
     }
