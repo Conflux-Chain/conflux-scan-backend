@@ -13,7 +13,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     // miner topN
     router.get('/top-by-type', async (ctx)=>{
-        const blockService = statApp.blockService;
+        const blockService = statApp.blockAndMinerSync;
         const { span, type, rows } = ctx.request.query;
         const list = await blockService.topByType(span, type, rows);
         const timeRange = blockService.calculateTimeRange(list);
@@ -27,10 +27,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     // tx topN
     router.get('/tx/top-by-type', async function (ctx) {
-        const dataPorter = statApp.dataPorter;
+        const txnSync = statApp.txnSync;
         const { span, type, rows, action } = ctx.request.query;
         // action: cfxSend/Receive; txnSend/Receive
-        const top = await dataPorter.txTopBy(span, type, rows, action);
+        const top = await txnSync.txTopBy(span, type, rows, action);
         ctx.body =  {
             ...top,
         };
@@ -42,7 +42,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {
             txEpoch: tx,
             minerEpoch: miner,
-            chainEpoch: await statApp.blockService.cfx.getEpochNumber()
+            chainEpoch: await statApp.blockAndMinerSync.cfx.getEpochNumber()
         };
     });
 }

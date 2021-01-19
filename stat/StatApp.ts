@@ -9,8 +9,8 @@ import {Provider, providerFactory} from "js-conflux-sdk";
 export class StatApp{
     private config: StatConfig;
     private sequelize: Sequelize;
-    public blockService: BlockAndMinerSync;
-    public dataPorter: TxnSync;
+    public blockAndMinerSync: BlockAndMinerSync;
+    public txnSync: TxnSync;
     private scanApi: Provider;
     constructor(config: StatConfig) {
         this.config = config;
@@ -23,13 +23,13 @@ export class StatApp{
         logger.info('sequelize is ' + sequelize)
         await initModel(sequelize);
         await sequelize.sync({});
-        this.dataPorter = new TxnSync(this.sequelize, this.config.conflux);
-        this.blockService = new BlockAndMinerSync(sequelize, this.config.conflux);
+        this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
+        this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);
         this.scanApi = providerFactory({ url: this.config.scanApiUrl });
         //
-        await this.blockService.checkPosition(); // miner block
-        await this.dataPorter.schedule(); // txn
-        await this.blockService.schedule(this.scanApi)
+        await this.blockAndMinerSync.checkPosition(); // miner block
+        await this.txnSync.schedule(); // txn
+        await this.blockAndMinerSync.schedule(this.scanApi)
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
     }
