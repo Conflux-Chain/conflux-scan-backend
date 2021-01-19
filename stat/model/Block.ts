@@ -56,7 +56,7 @@ export class Block extends Model<IBlockAttributes> implements IBlockAttributes {
                     name: 'block_time_idx', // index name must be unique globally under sqlite.
                     fields: [{name: 'createAt', order: 'DESC'}]
                 },{
-                    name: 'bock_hash',
+                    name: 'block_hash',
                     fields:[{name:'hash', length:10}]
                 }
             ],
