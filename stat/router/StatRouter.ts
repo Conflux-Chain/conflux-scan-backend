@@ -4,6 +4,7 @@ import { Context } from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
+import {TxnQuery} from "../service/TxnQuery";
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -45,6 +46,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             chainEpoch: await statApp.blockAndMinerSync.cfx.getEpochNumber()
         };
     });
+    //
+    router.get('/txn/list', async function (ctx) {
+        const {from, skip, limit} = ctx.request.query
+        const page = await new TxnQuery().listTxn({from}, skip, parseInt(limit))
+        ctx.body = {code: 0, data: page};
+    })
 }
 
 export function register(app:Koa, statApp: StatApp) {

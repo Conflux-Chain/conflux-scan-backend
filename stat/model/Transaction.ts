@@ -2,16 +2,16 @@ import {DataTypes, Model} from "sequelize";
 import {makeId as makeAddrId} from "./HexMap";
 
 export interface Transaction{
-    id: number,
-    epochHeight: number,
-    nonce: number,
-    hash: string, //64
-    from: string, // 40
-    to: string, // 40
-    value: number,
-    gas: number,
-    txIndex: number,
-    blockTime: Date,
+    id?: number,
+    epochHeight?: number,
+    nonce?: number,
+    hash?: string, //64
+    from?: string, // 40
+    to?: string, // 40
+    value?: number,
+    gas?: number,
+    txIndex?: number,
+    blockTime?: Date,
 }
 export interface ITransactionDB {
     id: number,
@@ -24,6 +24,8 @@ export interface ITransactionDB {
     gas: number,
     txIndex: number,
     blockTime: Date,
+    fromHex?: string
+    toHex?: string
 }
 
 export class TransactionDB extends Model<ITransactionDB> implements ITransactionDB{
@@ -37,6 +39,8 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
     gas: number;
     txIndex: number;
     blockTime: Date;
+    fromHex?: string;
+    toHex?: string;
     static register(sequelize) {
         TransactionDB.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
@@ -49,6 +53,8 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
             gas: {type: DataTypes.INTEGER, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             blockTime: {type: DataTypes.DATE, allowNull: false},
+            fromHex: {type: DataTypes.VIRTUAL},
+            toHex: {type: DataTypes.VIRTUAL},
         },{
             sequelize: sequelize,
             tableName: 'tx',
