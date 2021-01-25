@@ -4,12 +4,14 @@ import {Block} from "../model/Block";
 import {IMinerBlock, MinerBlock} from "../model/MinerBlock";
 import {KEY_MINER_EPOCH, KV} from "../model/KV";
 import {addUTCMinutes, calculateBeginTime, fmtDtUTC} from "../model/Utils";
-import {Conflux, ConfluxOption} from "js-conflux-sdk";
+// @ts-ignore
+import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {getDBConf, getSumFunction} from "./DBProvider";
 
 const BigFixed = require('bigfixed');
 
 export class BlockAndMinerSync {
+    static CODE_REWARD_NOT_READY = 125;
     static cacheSavedTxLength = 100;
     savedTx = []
     // public currentEpoch: number;
@@ -23,9 +25,14 @@ export class BlockAndMinerSync {
 
     public async schedule(delay:number = 100) {
         const that = this;
+        // @ts-ignore
+        this.cfx.updateChainId();
         async function repeat() {
-            await that.syncBlockByEpoch()
-            setTimeout(repeat, delay)
+            const {code} = {...await that.syncBlockByEpoch()}
+            if (code === BlockAndMinerSync.CODE_REWARD_NOT_READY) {
+                await new Promise(resolve => setTimeout(resolve, 5000))
+            }
+            setTimeout(repeat, delay);
         }
         repeat().then()
     }
@@ -310,11 +317,14 @@ export class BlockAndMinerSync {
             })
         )
         let rewardList: any[] = await this.cfx.getBlockRewardInfo(minEpochNumber);
+        if (rewardList.length < blockList.length) {
+            return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward not ready.', epoch: minEpochNumber};
+        }
         blockList = blockList.filter(block=>{
             const ret = this.savedTx.indexOf(block.hash) < 0
             if(!ret)console.debug(`hit cache ${block.hash}`)
             return ret;
-        })
+        });
         if (blockList.length === 0) {
             return {
                 code: 0, message: "ok", blockCount: 0, epoch: minEpochNumber
@@ -329,7 +339,9 @@ export class BlockAndMinerSync {
                 blockList.map(async (block) => {
                     maxEpoch = Math.max(maxEpoch, block.epochNumber)
                     const reward = rewardList.find(r=>r.blockHash === block.hash)
-                    const addrBean = await makeId(block.miner, dbTx)
+                    let minerBase32 = block.miner;
+                    let minerHex = format.hexAddress(minerBase32)
+                    const addrBean = await makeId(minerHex, dbTx)
                     // const hashBean = await makeId(block.hash, dbTx)
                     // console.info(`debug timestamp ${new Date(block.timestamp)}`)
                     return await Block.findOrCreate({

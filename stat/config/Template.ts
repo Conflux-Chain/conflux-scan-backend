@@ -10,9 +10,9 @@ export default {
         host: '',
         // zero stand for unlimited
         blockTableRowsLimit: 10_0000,
-        // delay ms.
-        syncBlockDelay: 100,
-        // delay ms.
-        syncTxnDelay: 100,
     },
+    // delay ms.
+    syncBlockDelay: 100,
+    // delay ms.
+    syncTxnDelay: 100,
 };

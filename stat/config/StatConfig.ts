@@ -21,10 +21,10 @@ export interface StatConfig{
  *  Priority from low to high: template.js -> local.js -> specified.js
  */
 export function loadConfig(specified:string = undefined): StatConfig {
-    let path = `${__dirname}/local.js`;
+    let path = `${__dirname}/Local.js`;
     let defaultConf = {default:{}}
     if (fs.existsSync(path)){
-        defaultConf = require('./local')
+        defaultConf = require('./Local')
     }
     let specific = specified === undefined ? {default:{}} : require(`./${specified}`)
     // console.log(`template is 0 `, templateConf.default)

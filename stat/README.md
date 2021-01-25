@@ -11,5 +11,12 @@ Under the root folder of this repository, run
 
 # MySQL in Docker if needed
 docker pull mysql:5.7.32
-docker run -p 3306:3306 --name scan-mysql -e MYSQL_ROOT_PASSWORD=Scan@9527# -d mysql:5.7.32
+docker run -p 3306:3306 --name scan-mysql -e MYSQL_ROOT_PASSWORD=*** -d mysql:5.7.32
 docker exec -it scan-mysql bash
+
+## add user
+`create user 'name'@'%' identified by 'pwd';`
+
+`grant all privileges on scan.* to ''@''`
+
+`flush privileges;`

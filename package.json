@@ -15,7 +15,7 @@
     "koa-router": "^10.0.0",
     "mysql2": "^2.2.5",
     "sequelize": "^6.3.5",
-    "js-conflux-sdk": "1.1.6",
+    "js-conflux-sdk": "1.5.3",
     "bigfixed": "0.0.2"
   },
   "devDependencies": {

@@ -1,7 +1,8 @@
 import {Op, Sequelize, QueryTypes} from "sequelize";
 import {TransactionDB} from "../model/Transaction";
 import {KEY_TX_EPOCH, KV} from "../model/KV";
-import {Conflux, ConfluxOption} from "js-conflux-sdk";
+// @ts-ignore
+import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC} from "../model/Utils";
 import {getSumFunction} from "./DBProvider";
 const BigFixed = require('bigfixed');
@@ -63,6 +64,10 @@ export class TxnSync {
     }
 
     public async schedule(delay:number = 100) {
+        // @ts-ignore
+        await this.cfx.updateChainId();
+        // @ts-ignore
+        console.log(`${fmtDtUTC(new Date())} chain id ${this.cfx.chainId}`)
         const that = this;
         async function repeat() {
             await that.run();
@@ -76,7 +81,7 @@ export class TxnSync {
         return await this.copyEpoch(preEpoch)
     }
 
-    async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number }>{
+    async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number, epoch:number }>{
         const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch)
         let id = 0;
         const blockList: any[] = await this.cfx.provider.batch(blockHashes.map(hash=>{
@@ -94,7 +99,15 @@ export class TxnSync {
                 // console.log(`tx status is null, epoch ${epoch} ${tx.hash}`)
             }
             return tx.status === '0x0' || epoch === 0;
-        }).forEach(tx=>allTx.push(tx)))
+        }).forEach(tx=>{
+            tx.from = format.hexAddress(tx.from) //base32 address to hex
+            if (tx.to) {
+                tx.to = format.hexAddress(tx.to)
+            } else {
+                tx.to = '0x0'
+            }
+            allTx.push(tx)
+        }))
         let txOk = 'not executed';
         const txCount = allTx.length;
         await TxnSync.staticSequelize.transaction(async (dbTx) => {
@@ -102,7 +115,6 @@ export class TxnSync {
                 allTx.map(async (tx) => {
                     tx['data'] = ''
                     // console.log(`tx is ${JSON.stringify(tx, null , 4)}`)
-                    tx.to = tx.to || '0x0'
                     tx.epochHeight = epoch;
                     tx.gas = parseInt(tx.gas, 16)
                     tx.value = parseInt(tx.value, 16)
@@ -125,6 +137,6 @@ export class TxnSync {
             console.error(`tx fail, epoch ${epoch}:`, err)
             process.exit(500)
         })
-        return {txOk, txCount};
+        return {txOk, txCount, epoch};
     }
 }
