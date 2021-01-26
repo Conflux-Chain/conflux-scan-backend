@@ -1,6 +1,7 @@
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import { Context } from 'koa'
+const cors = require('@koa/cors');
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
@@ -60,6 +61,7 @@ export function register(app:Koa, statApp: StatApp) {
     addRoute(router, statApp);
 
     app.use(helmet())
+    app.use(cors())
     let middleware = router.routes();
     app.use(middleware)
     console.log('router registered.')

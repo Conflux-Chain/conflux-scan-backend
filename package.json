@@ -9,14 +9,15 @@
     "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/index.js'"
   },
   "dependencies": {
-    "pino": "^6.10.0",
+    "@koa/cors": "^3.1.0",
+    "bigfixed": "0.0.2",
+    "js-conflux-sdk": "1.5.3",
     "koa": "^2.13.1",
     "koa-helmet": "^6.0.0",
     "koa-router": "^10.0.0",
     "mysql2": "^2.2.5",
-    "sequelize": "^6.3.5",
-    "js-conflux-sdk": "1.5.3",
-    "bigfixed": "0.0.2"
+    "pino": "^6.10.0",
+    "sequelize": "^6.3.5"
   },
   "devDependencies": {
     "typescript": "^4.1.3",
