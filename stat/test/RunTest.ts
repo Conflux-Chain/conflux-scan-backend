@@ -11,6 +11,7 @@ import {QueryTypes} from "sequelize";
 import {fmtDtUTC} from "../model/Utils";
 import {loadConfig} from "../config/StatConfig";
 import {KV} from "../model/KV";
+import {TestRank} from "./TestRank";
 
 const {makeId} = require("../model/HexMap");
 
@@ -83,19 +84,21 @@ async function run(){
     await sequelize.authenticate();
     await initModel(sequelize)
 
-    console.log('sync model being.')
+    console.log('sync model begin.')
     await sequelize.sync({alter: true})
     console.log('---------------init models done------------')
 
     let blockAndMinerSync = new BlockAndMinerSync(sequelize, config.conflux);
     // await blockAndMinerSync.checkPosition();
-    await blockAndMinerSync.syncBlockByEpoch()
+    // await blockAndMinerSync.syncBlockByEpoch()
     // await new DataBlockService(sequelize).rollup();
     // await new DataBlockService(sequelize).rollupStatPerHour().then(()=>{
     //     console.info(`rollup per hour done. `)
     // });
     // await testTopMinerBlock();
-    await testTxSync()
+    // await testTxSync()
+    await new TestRank().buildTestData(sequelize)
+    await new TestRank().testTop(sequelize)
     // const porter = new DataPorter(sequelize, config.conflux)
     // await porter.copyEpoch(5882304);
     // await testIdAndModel();

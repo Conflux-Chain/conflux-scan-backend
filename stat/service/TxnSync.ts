@@ -82,7 +82,14 @@ export class TxnSync {
     }
 
     async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number, epoch:number }>{
-        const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch)
+        const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch).catch(err=>{
+            console.log(`error for epoch ${epoch}`, err)
+            return null
+        })
+        if (blockHashes === null) {
+            await new Promise(resolve => setTimeout(resolve, 5000))
+            return;
+        }
         let id = 0;
         const blockList: any[] = await this.cfx.provider.batch(blockHashes.map(hash=>{
             return {

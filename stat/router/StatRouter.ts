@@ -50,7 +50,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     //
     router.get('/txn/list', async function (ctx) {
         const {from, skip, limit} = ctx.request.query
-        const page = await new TxnQuery().listTxn({from}, skip, parseInt(limit))
+        const page = await new TxnQuery().listTxn({from}, parseInt(skip), parseInt(limit))
         ctx.body = {code: 0, data: page};
     })
 }

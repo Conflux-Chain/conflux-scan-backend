@@ -7,6 +7,7 @@ import {MinerBlock} from "../model/MinerBlock";
 import {KV} from "../model/KV";
 import {TestTimezone} from "../model/TestTimezone";
 import {Database} from "../config/StatConfig";
+import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 let conf
 export function createDB(config) {
     conf = config
@@ -50,6 +51,8 @@ export async function initModel(sequelize) {
     Block.register(sequelize);
     MinerBlock.register(sequelize);
     KV.register(sequelize);
+    TopBatchIndex.register(sequelize)
+    TopRecord.register(sequelize);
     TestTimezone.register(sequelize);
 }
 
