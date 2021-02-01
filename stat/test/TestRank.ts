@@ -1,7 +1,7 @@
 import {Sequelize} from "sequelize";
 import {RankService} from "../service/RankService";
-import {STATE_INIT, STATE_OK, TOP_CFX_HOLD, TopBatchIndex, TopRecord} from "../model/TopRecord";
-import {Hex40Map, makeId} from "../model/HexMap";
+import {STATE_INIT, TOP_CFX_HOLD, TopBatchIndex, TopRecord} from "../model/TopRecord";
+import {makeId} from "../model/HexMap";
 import {hex} from "./GenData";
 
 export class TestRank{

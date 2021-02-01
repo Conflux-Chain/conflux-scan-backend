@@ -1,4 +1,4 @@
-import {T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex} from "../model/TopRecord";
+import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex} from "../model/TopRecord";
 import {Sequelize, QueryTypes} from "sequelize";
 
 export class RankService{
@@ -8,7 +8,8 @@ export class RankService{
     }
     async top(type: string, limit: number = 10) : Promise<any[]> {
         const newLine = ''
-        const maxBatchId:number = await TopBatchIndex.max('id', {where: {type: type}})
+        const maxBatchId:number = await TopBatchIndex.max('id',
+            {where: {type: type, state: STATE_OK}})
         if (isNaN(maxBatchId)) {
             console.log(`max batch id not found. type ${type}`)
             return Promise.resolve([])
