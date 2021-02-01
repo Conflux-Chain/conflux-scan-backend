@@ -1,5 +1,6 @@
 import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex} from "../model/TopRecord";
 import {Sequelize, QueryTypes} from "sequelize";
+import {pickNumber} from "../model/Utils";
 
 export class RankService{
     private sequelize: Sequelize;
@@ -7,6 +8,7 @@ export class RankService{
         this.sequelize = seq;
     }
     async top(type: string, limit: number = 10) : Promise<any[]> {
+        limit = pickNumber(limit, 10)
         const newLine = ''
         const maxBatchId:number = await TopBatchIndex.max('id',
             {where: {type: type, state: STATE_OK}})

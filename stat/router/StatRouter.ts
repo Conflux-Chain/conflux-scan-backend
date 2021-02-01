@@ -6,12 +6,20 @@ import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
+import Application = require("koa");
+import {koaSwagger} from "koa2-swagger-ui";
+import ApiDef from "./ApiDef";
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = {
             code: 0, message: 'Conflux-Stat 2021.01.15'
         }
+    })
+    router.get('/stat/top-cfx-holder', async (ctx)=>{
+        const rank = statApp.rankService
+        const {type, limit} = ctx.request.query || 10;
+        ctx.body = await rank.top(type, parseInt(limit))
     })
     // miner topN
     router.get('/top-by-type', async (ctx)=>{
@@ -55,14 +63,47 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 }
 
+function addSwagger(app: Application, router: Router<any, {}>) {
+    const docPath = '/api-doc-stat'
+    let apiDef = docPath + '/swagger.json';
+    app.use(
+        koaSwagger({
+            routePrefix: docPath,
+            oauthOptions: {},
+            swaggerOptions: {
+                url: apiDef, // example path to json
+                title: 'statistic-api-doc'
+            },
+        }),
+    );
+    router.get(apiDef, async (ctx)=>{
+        ctx.body = ApiDef
+    })
+    // router.use((ctx,next)=>{
+        // ctx.set("script-src 'self'", 'sha256-bLIba9y02h2X9/32+3oS/4EmGe/+1HjpiNUBsaTTIGY=')
+    // })
+}
+
 export function register(app:Koa, statApp: StatApp) {
     const router = new Router({ })
 
     addRoute(router, statApp);
 
-    app.use(helmet())
+    const trusted = [
+        "'self'",
+    ];
+    app.use(helmet({contentSecurityPolicy: {directives:{
+                defaultSrc: trusted,
+                scriptSrc: ['https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.38.0/swagger-ui-bundle.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.38.0/swagger-ui-standalone-preset.js', 'unsafe-inline', "'unsafe-inline'"],
+                styleSrc: ['https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.38.0/swagger-ui.min.css', "'unsafe-inline'",
+                    'https://fonts.googleapis.com/css'],
+                fontSrc: [ 'https:', "'unsafe-inline'", 'https://fonts.gstatic.com/s/opensans/v18/mem8YaGs126MiZpBA-UFWJ0bf8pkAp6a.woff2'],
+                imgSrc: ['data:', 'https:', 'localhost', 'http://localhost:8086/favicon.png']
+            }}}))
     app.use(cors())
     let middleware = router.routes();
     app.use(middleware)
+    addSwagger(app, router)
     console.log('router registered.')
 }

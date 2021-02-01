@@ -4,11 +4,13 @@ import {Sequelize} from "sequelize";
 import * as pino from 'pino'
 import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
+import {RankService} from "./service/RankService";
 
 export class StatApp{
     private config: StatConfig;
     private sequelize: Sequelize;
     public blockAndMinerSync: BlockAndMinerSync;
+    public rankService: RankService;
     public txnSync: TxnSync;
     constructor(config: StatConfig) {
         this.config = config;
@@ -21,6 +23,7 @@ export class StatApp{
         logger.info('sequelize is ' + sequelize)
         await initModel(sequelize);
         await sequelize.sync({});
+        this.rankService = new RankService(this.sequelize)
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);
         //
