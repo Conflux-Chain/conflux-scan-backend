@@ -33,7 +33,8 @@ export class RankService{
         })
         list.forEach(r=>{
             r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null
-            r.base32address = format.address(`0x${r.hex}`, )
+            r.hex = `0x${r.hex}`
+            r.base32address = format.address(r.hex, networkId)
         })
         return list;
     }

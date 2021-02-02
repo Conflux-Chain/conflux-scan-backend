@@ -1,7 +1,7 @@
 import {StatConfig} from "./config/StatConfig";
 import {createDB, initModel} from "./service/DBProvider";
 import {Sequelize} from "sequelize";
-import * as pino from 'pino'
+// import * as pino from 'pino'
 import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";

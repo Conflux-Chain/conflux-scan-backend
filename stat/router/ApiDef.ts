@@ -38,10 +38,11 @@ export default {
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        type: Object, properties: {
+                                        type: "object", properties: {
                                             hex: {type: "string"},
                                             valueN: {type: "string"},
-                                            rank: {type: "integer"},
+                                            rank: {type: "integer", example: 1},
+                                            base32address: {type: "string"},
                                         }
                                     }
                                 }
@@ -51,7 +52,7 @@ export default {
                 }
             }
         },
-        "/server-info": {
+        "/stat/server-info": {
             "get": {
                 tags: ['developers'],
                 parameters: [],

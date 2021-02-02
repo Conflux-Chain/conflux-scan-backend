@@ -10,14 +10,14 @@ import Application = require("koa");
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
 import {addDevopsRouter} from "./DevopsRouter";
-
+export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = {
             code: 0, message: 'Conflux-Stat 2021.01.15'
         }
     })
-    router.get('/stat/top-cfx-holder', async (ctx)=>{
+    router.get('/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService
         const {type, limit} = ctx.request.query || 10;
         // @ts-ignore
@@ -67,14 +67,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {
-    const docPath = '/api-doc-stat'
-    let apiDef = docPath + '/swagger.json';
+    const docPath = `${ROUTER_PREFIX}/api-doc-stat`
+    let apiDef = '/swagger.json';
     app.use(
         koaSwagger({
             routePrefix: docPath,
             oauthOptions: {},
             swaggerOptions: {
-                url: apiDef, // example path to json
+                url: `${ROUTER_PREFIX}${apiDef}`,
                 title: 'statistic-api-doc'
             },
         }),
@@ -88,7 +88,7 @@ function addSwagger(app: Application, router: Router<any, {}>) {
 }
 
 export function register(app:Koa, statApp: StatApp) {
-    const router = new Router({ })
+    const router = new Router({ prefix: '/stat' })
     router.use(async (ctx, next)=>{
         try {
             await next();
