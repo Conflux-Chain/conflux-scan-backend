@@ -1,7 +1,7 @@
 // Place a Local.ts if you want change these configuration.
 export default {
     port: 8087,
-    conflux: { url: '' },
+    conflux: { url: 'http://main.confluxrpc.org/v2' },
     database: {
         // sqlitePath: './data/database.sqlite',
         database: '',
@@ -15,4 +15,6 @@ export default {
     syncBlockDelay: 100,
     // delay ms.
     syncTxnDelay: 100,
+    syncBlock: false,
+    syncTxn: false,
 };

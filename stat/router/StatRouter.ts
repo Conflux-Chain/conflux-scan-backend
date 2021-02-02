@@ -20,7 +20,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/stat/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService
         const {type, limit} = ctx.request.query || 10;
-        ctx.body = await rank.top(type, parseInt(limit))
+        // @ts-ignore
+        let networkId = statApp.cfx.networkId;
+        ctx.body = await rank.top(type, parseInt(limit), networkId)
     })
     // miner topN
     router.get('/top-by-type', async (ctx)=>{

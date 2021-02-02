@@ -14,7 +14,9 @@ export interface StatConfig{
     syncTxnDelay: number;
     port: number;
     conflux: ConfluxOption; // chain rpc node
-    database: Database
+    database: Database;
+    syncBlock: boolean,
+    syncTxn: boolean,
 }
 
 /**

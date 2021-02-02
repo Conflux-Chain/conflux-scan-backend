@@ -2,13 +2,15 @@ import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex} from "../model
 import {Sequelize, QueryTypes} from "sequelize";
 import {pickNumber} from "../model/Utils";
 import {ADDR_INFO_STATE_OK, T_ADDRESS_INFO} from "../model/HexMap";
+// @ts-ignore
+import {format} from 'js-conflux-sdk'
 
 export class RankService{
     private sequelize: Sequelize;
     constructor(seq) {
         this.sequelize = seq;
     }
-    async top(type: string, limit: number = 10) : Promise<any[]> {
+    async top(type: string, limit: number = 10, networkId: number = 1029) : Promise<any[]> {
         limit = pickNumber(limit, 10)
         const newLine = ''
         const maxBatchId:number = await TopBatchIndex.max('id',
@@ -29,7 +31,10 @@ export class RankService{
             type: QueryTypes.SELECT,
             benchmark: true, logging: console.log
         })
-        list.forEach(r=>r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null)
+        list.forEach(r=>{
+            r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null
+            r.base32address = format.address(`0x${r.hex}`, )
+        })
         return list;
     }
 }
