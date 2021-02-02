@@ -31,6 +31,8 @@ export class StatApp{
         // @ts-ignore
         await this.cfx.updateNetworkId();
         // @ts-ignore
+        this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
+        // @ts-ignore
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${this.cfx.networkId}`)
         //
         if (this.config.syncBlock) {

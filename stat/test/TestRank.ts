@@ -16,8 +16,8 @@ export class TestRank{
     }
     async testTop(seq: Sequelize) {
         const svc = new RankService(seq)
-        const list = await svc.top(TOP_CFX_HOLD, 10)
-        console.log(`test top done, list size ${list.length}`)
+        const {list, count} = await svc.top(TOP_CFX_HOLD, 10)
+        console.log(`test top done, list size ${list.length}, total ${count}`)
         list.forEach(r=>{
             console.log(`${r.hex}, ${r.valueN}, ${r.rank}`)
         })

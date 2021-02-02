@@ -1,4 +1,4 @@
-import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex} from "../model/TopRecord";
+import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {Sequelize, QueryTypes} from "sequelize";
 import {pickNumber} from "../model/Utils";
 import {ADDR_INFO_STATE_OK, T_ADDRESS_INFO} from "../model/HexMap";
@@ -10,7 +10,7 @@ export class RankService{
     constructor(seq) {
         this.sequelize = seq;
     }
-    async top(type: string, limit: number = 10, networkId: number = 1029) : Promise<any[]> {
+    async top(type: string, limit: number = 10, networkId: number = 1029) : Promise<any> {
         limit = pickNumber(limit, 10)
         const newLine = ''
         const maxBatchId:number = await TopBatchIndex.max('id',
@@ -36,6 +36,7 @@ export class RankService{
             r.hex = `0x${r.hex}`
             r.base32address = format.address(r.hex, networkId)
         })
-        return list;
+        const count = await TopRecord.count({where: {batchId: maxBatchId}})
+        return {code: 0, count, list};
     }
 }

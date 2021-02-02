@@ -6,7 +6,7 @@
   "scripts": {
     "test": "test",
     "compile": "npx tsc -p ./stat",
-    "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/index.js'"
+    "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'"
   },
   "dependencies": {
     "@koa/cors": "^3.1.0",

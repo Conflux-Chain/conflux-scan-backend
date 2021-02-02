@@ -5,8 +5,8 @@ export default {
     "info": {
         "title": "statistics api",
         "description": "statistics api",
-        "contact": {        },
-        "license": {        },
+        "contact": {},
+        "license": {},
         "version": "1.0.0"
     },
     "servers": [
@@ -19,7 +19,7 @@ export default {
         {
             "name": "Top N",
             "description": "Top N"
-        },{
+        }, {
             name: "developers"
         }
     ],
@@ -30,19 +30,30 @@ export default {
                 parameters: [
                     {name: 'type', in: 'query', required: true, schema: {type: String, enum: [TOP_CFX_HOLD]}},
                     {name: 'limit', in: 'query', required: false, schema: {type: "integer"}},
-                    ],
+                ],
                 responses: {
                     200: {
                         content: {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        type: "object", properties: {
-                                            hex: {type: "string"},
-                                            valueN: {type: "string"},
-                                            rank: {type: "integer", example: 1},
-                                            base32address: {type: "string"},
+                                    type: "object",
+                                    properties: {
+                                        list: {
+                                            "type": "array",
+                                            "items": {
+                                                type: "object", properties: {
+                                                    hex: {type: "string"},
+                                                    valueN: {type: "string"},
+                                                    rank: {type: "integer", example: 1},
+                                                    base32address: {type: "string"},
+                                                }
+                                            },
+                                        },
+                                        code: {
+                                            type: Number,
+                                        },
+                                        count: {
+                                            type: Number, description: 'total record in this rank'
                                         }
                                     }
                                 }
