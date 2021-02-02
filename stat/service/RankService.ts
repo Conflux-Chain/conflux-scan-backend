@@ -1,6 +1,7 @@
 import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex} from "../model/TopRecord";
 import {Sequelize, QueryTypes} from "sequelize";
 import {pickNumber} from "../model/Utils";
+import {ADDR_INFO_STATE_OK, T_ADDRESS_INFO} from "../model/HexMap";
 
 export class RankService{
     private sequelize: Sequelize;
@@ -16,15 +17,19 @@ export class RankService{
             console.log(`max batch id not found. type ${type}`)
             return Promise.resolve([])
         }
-        const sql = `select hex, valueN, \`rank\`, begin_time, end_time from ${T_TOP_RECORD} JOIN ${T_TOP_BATCH_INDEX
-        } ON batchId=\`${T_TOP_BATCH_INDEX}\`.id join hex40 on hex40.id = addressId ${
-        newLine} where batchId=? order by \`rank\` limit ?`;
+        const sql = `select hex, valueN, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
+        } begin_time, end_time from ${T_TOP_RECORD
+        } JOIN ${T_TOP_BATCH_INDEX
+        } ON batchId=\`${T_TOP_BATCH_INDEX}\`.id left join hex40 on hex40.id = addressId ${
+        newLine} left join ${T_ADDRESS_INFO} on hex40.id = ${T_ADDRESS_INFO}.id ${newLine
+        } where batchId=? order by \`rank\` limit ?`;
         console.log(`sql is : ${sql}`)
-        const list = await this.sequelize.query(sql, {
+        const list:any[] = await this.sequelize.query(sql, {
             replacements: [maxBatchId, limit],
             type: QueryTypes.SELECT,
             benchmark: true, logging: console.log
         })
+        list.forEach(r=>r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null)
         return list;
     }
 }

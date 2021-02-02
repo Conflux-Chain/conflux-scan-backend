@@ -9,6 +9,7 @@ import {TxnQuery} from "../service/TxnQuery";
 import Application = require("koa");
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
+import {addDevopsRouter} from "./DevopsRouter";
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -86,7 +87,14 @@ function addSwagger(app: Application, router: Router<any, {}>) {
 
 export function register(app:Koa, statApp: StatApp) {
     const router = new Router({ })
-
+    router.use(async (ctx, next)=>{
+        try {
+            await next();
+        } catch (e) {
+            console.log(`error occur:`, e)
+            ctx.body = {code: 500, message: `Error: ${e}`}
+        }
+    })
     addRoute(router, statApp);
 
     const trusted = [
@@ -105,5 +113,6 @@ export function register(app:Koa, statApp: StatApp) {
     let middleware = router.routes();
     app.use(middleware)
     addSwagger(app, router)
+    addDevopsRouter(router, statApp)
     console.log('router registered.')
 }

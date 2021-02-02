@@ -1,4 +1,4 @@
-import {DataTypes, Model, Transaction} from "sequelize";
+import {Sequelize, DataTypes, Model, Transaction} from "sequelize";
 
 /**
  * mapping a hex64 to a number in DB, to decrease data length and make effective index.
@@ -73,3 +73,37 @@ function hexMapInit0(sequelize, clz, length) {
 
 }
 
+
+export const ADDR_INFO_STATE_OK = 'ok'
+export const ADDR_INFO_STATE_DELETED = 'deleted'
+export interface IAddressInfo {
+    id?: number; // refer to hex40 id
+    name: string;
+    createAt: Date;
+    updateAt: Date;
+    remark: string;
+    state: string; // ok, deleted
+}
+export const T_ADDRESS_INFO = 'address_info'
+export class AddressInfo extends Model<IAddressInfo> implements IAddressInfo {
+    id?: number; // refer to hex40 id
+    name: string;
+    createAt: Date;
+    updateAt: Date;
+    remark: string;
+    state: string;
+    static register(seq: Sequelize) {
+        AddressInfo.init({
+            id:       {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
+            name:     {type: DataTypes.CHAR(32), allowNull: false, unique: true},
+            createAt: {type: DataTypes.DATE, allowNull: false},
+            updateAt: {type: DataTypes.DATE, allowNull: false},
+            remark:   {type: DataTypes.CHAR(128), allowNull: false, defaultValue: ''},
+            state:   {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ADDR_INFO_STATE_OK},
+        },{
+            tableName: T_ADDRESS_INFO,
+            sequelize: seq,
+            timestamps: false
+        })
+    }
+}
