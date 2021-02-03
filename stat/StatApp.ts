@@ -8,7 +8,7 @@ import {RankService} from "./service/RankService";
 import {Conflux} from "js-conflux-sdk";
 
 export class StatApp{
-    private config: StatConfig;
+    public config: StatConfig;
     private sequelize: Sequelize;
     public blockAndMinerSync: BlockAndMinerSync;
     public rankService: RankService;
@@ -23,7 +23,11 @@ export class StatApp{
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
         await initModel(sequelize);
-        await sequelize.sync({});
+        if (this.config.database.syncSchema) {
+            await sequelize.sync({});
+        } else {
+            console.log(`skip sync db schema.`)
+        }
         this.rankService = new RankService(this.sequelize)
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);

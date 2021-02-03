@@ -10,6 +10,7 @@ export default {
         host: '',
         // zero stand for unlimited
         blockTableRowsLimit: 10_0000,
+        syncSchema: false,
     },
     // delay ms.
     syncBlockDelay: 100,
@@ -17,4 +18,5 @@ export default {
     syncTxnDelay: 100,
     syncBlock: false,
     syncTxn: false,
+    serverTag: 'scan-stat-1',
 };

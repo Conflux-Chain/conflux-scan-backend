@@ -8,6 +8,7 @@ export interface Database{
     pwd: string;
     database: string;
     blockTableRowsLimit: number;
+    syncSchema: boolean;
 }
 export interface StatConfig{
     syncBlockDelay: number;
@@ -17,6 +18,7 @@ export interface StatConfig{
     database: Database;
     syncBlock: boolean,
     syncTxn: boolean,
+    serverTag: string,
 }
 
 /**

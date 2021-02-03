@@ -68,7 +68,7 @@ export class BlockAndMinerSync {
         return seconds
     }
 
-    async topByType(n: number, type: string, limit: number): Promise<IMinerBlock[]>{
+    async topByType(n: number, type: string, limit: number = 10): Promise<IMinerBlock[]>{
         console.log(`top by type : ${n} ${type} limit ${limit}`)
         if (n <= 0) {
             return Promise.reject(`invalid span ${n}`)

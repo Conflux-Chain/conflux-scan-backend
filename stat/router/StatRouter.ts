@@ -14,7 +14,7 @@ export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = {
-            code: 0, message: 'Conflux-Stat 2021.01.15'
+            code: 0, message: `Conflux-Stat 2021.01.15 ${statApp.config.serverTag}`
         }
     })
     router.get('/top-cfx-holder', async (ctx)=>{
@@ -25,10 +25,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = await rank.top(type, parseInt(limit), networkId)
     })
     // miner topN
-    router.get('/top-by-type', async (ctx)=>{
+    router.get('/miner/top-by-type', async (ctx)=>{
         const blockService = statApp.blockAndMinerSync;
         const { span, type, rows } = ctx.request.query;
-        const list = await blockService.topByType(span, type, rows);
+        const list = await blockService.topByType(span, type, parseInt(rows || 10));
         const timeRange = blockService.calculateTimeRange(list);
         const seconds = blockService.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {

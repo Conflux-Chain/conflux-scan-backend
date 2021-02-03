@@ -9,8 +9,10 @@ export class TestRank{
         const dt = new Date();
         const type = TOP_CFX_HOLD
         const batch = await TopBatchIndex.create({state: STATE_INIT, beginTime: dt, endTime: dt, type})
-        await TopRecord.create({batchId: batch.id, rank: 1, valueN: 111, addressId: (await makeId(hex(40))).id})
-        await TopRecord.create({batchId: batch.id, rank: 2, valueN: 110, addressId: (await makeId(hex(40))).id})
+        for (let i=0; i<101; i++) {
+            await TopRecord.create({batchId: batch.id, rank: 1, valueN: 111, addressId: (await makeId(hex(40))).id})
+            await TopRecord.create({batchId: batch.id, rank: 2, valueN: 110, addressId: (await makeId(hex(40))).id})
+        }
         batch.state = STATE_OK
         await batch.save()
     }

@@ -25,7 +25,7 @@ export class RankService{
         } ON batchId=\`${T_TOP_BATCH_INDEX}\`.id left join hex40 on hex40.id = addressId ${
         newLine} left join ${T_ADDRESS_INFO} on hex40.id = ${T_ADDRESS_INFO}.id ${newLine
         } where batchId=? order by \`rank\` limit ?`;
-        console.log(`sql is : ${sql}`)
+        // console.log(`sql is : ${sql}`)
         const list:any[] = await this.sequelize.query(sql, {
             replacements: [maxBatchId, limit],
             type: QueryTypes.SELECT,
@@ -37,6 +37,6 @@ export class RankService{
             r.base32address = format.address(r.hex, networkId)
         })
         const count = await TopRecord.count({where: {batchId: maxBatchId}})
-        return {code: 0, count, list};
+        return {code: 0, total: count, list};
     }
 }

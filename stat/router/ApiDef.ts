@@ -24,6 +24,90 @@ export default {
         }
     ],
     "paths": {
+        '/stat/tx/top-by-type': {
+            'get': {
+                description: 'cfx and tx send/receive top N',
+                tags: ['Top N'],
+                parameters: [
+                    {name: 'span', in: 'query', required: true, schema: {type: String, enum: ['24','3', '7']}, },
+                    {name: 'type', in: 'query', required: true, schema: {type: String, enum: ['h','d']}},
+                    {name: 'action', in: 'query', required: true, schema: {type: String,
+                            enum: ['cfxSend', 'cfxReceived', 'txnSend', 'txnReceived']}},
+                    {name: 'rows', in: 'query', required: false, schema: {type: "integer"}},
+                ],
+                responses: {
+                    200: {
+                        content: {
+                            "application/json": {
+                                "schema": {
+                                    type: "object",
+                                    properties: {
+                                        list: {
+                                            "type": "array",
+                                            "items": {
+                                                type: "object", properties: {
+                                                    hex: {type: "string"},
+                                                    valueN: {type: "string"},
+                                                    rank: {type: "integer", example: 1},
+                                                    base32address: {type: "string"},
+                                                }
+                                            },
+                                        },
+                                        code: {
+                                            type: Number,
+                                        },
+                                        count: {
+                                            type: Number, description: 'total record in this rank'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/stat/miner/top-by-type': {
+            'get': {
+                description: 'miner top N',
+                tags: ['Top N'],
+                parameters: [
+                    {name: 'span', in: 'query', required: true, schema: {type: String, enum: ['24','3', '7']}, },
+                    {name: 'type', in: 'query', required: true, schema: {type: String, enum: ['h','d']}},
+                    {name: 'rows', in: 'query', required: false, schema: {type: "integer"}},
+                ],
+                responses: {
+                    200: {
+                        content: {
+                            "application/json": {
+                                "schema": {
+                                    type: "object",
+                                    properties: {
+                                        list: {
+                                            "type": "array",
+                                            "items": {
+                                                type: "object", properties: {
+                                                    hex: {type: "string"},
+                                                    valueN: {type: "string"},
+                                                    rank: {type: "integer", example: 1},
+                                                    base32address: {type: "string"},
+                                                }
+                                            },
+                                        },
+                                        code: {
+                                            type: Number,
+                                        },
+                                        count: {
+                                            type: Number, description: 'total record in this rank'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         '/stat/top-cfx-holder': {
             'get': {
                 tags: ['Top N'],
