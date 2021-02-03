@@ -24,6 +24,7 @@ export class StatApp{
         const {sequelize} = this;
         await initModel(sequelize);
         if (this.config.database.syncSchema) {
+            console.log(`sync model begin.`)
             await sequelize.sync({});
         } else {
             console.log(`skip sync db schema.`)
