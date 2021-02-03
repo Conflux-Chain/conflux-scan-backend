@@ -84,8 +84,10 @@ async function run(){
     await sequelize.authenticate();
     await initModel(sequelize)
 
-    console.log('sync model begin.')
-    await sequelize.sync({alter: true})
+    if (config.database.syncSchema) {
+        console.log('sync model begin.')
+        await sequelize.sync({alter: true})
+    }
     console.log('---------------init models done------------')
 
     let blockAndMinerSync = new BlockAndMinerSync(sequelize, config.conflux);

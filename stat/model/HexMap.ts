@@ -37,12 +37,12 @@ export async function makeId(hex: string, dbTx: Transaction = undefined) {
     // console.info(`created ${created}`)
     return bean;
 }
-
+export const T_ADDRESS = 'address'
 export function hexMapInit(sequelize) {
-    hexMapInit0(sequelize, Hex40Map, 40)
-    hexMapInit0(sequelize, Hex64Map, 64)
+    hexMapInit0(sequelize, Hex40Map, 40, T_ADDRESS)
+    hexMapInit0(sequelize, Hex64Map, 64, 'hex64')
 }
-function hexMapInit0(sequelize, clz, length) {
+function hexMapInit0(sequelize, clz, length, tableName:string) {
     clz.init(
         {
             id: {
@@ -50,10 +50,10 @@ function hexMapInit0(sequelize, clz, length) {
             },
             hex: {
                 type: DataTypes.CHAR(length), allowNull: false
-            }
+            },
         },
         {
-            tableName: `hex${length}`,
+            tableName: tableName,
             sequelize: sequelize,
             timestamps: false, // prevent default columns: createdAt, updatedAt
             indexes: [

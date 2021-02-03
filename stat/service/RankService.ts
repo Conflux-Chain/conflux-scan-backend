@@ -1,7 +1,7 @@
 import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {Sequelize, QueryTypes} from "sequelize";
 import {pickNumber} from "../model/Utils";
-import {ADDR_INFO_STATE_OK, T_ADDRESS_INFO} from "../model/HexMap";
+import {ADDR_INFO_STATE_OK, T_ADDRESS, T_ADDRESS_INFO} from "../model/HexMap";
 // @ts-ignore
 import {format} from 'js-conflux-sdk'
 
@@ -19,12 +19,13 @@ export class RankService{
             console.log(`max batch id not found. type ${type}`)
             return Promise.resolve([])
         }
-        const sql = `select hex, valueN, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
+        const t_addr = T_ADDRESS
+        const sql = `select hex, \`value\` as valueN, value2, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
         } begin_time, end_time from ${T_TOP_RECORD
         } JOIN ${T_TOP_BATCH_INDEX
-        } ON batchId=\`${T_TOP_BATCH_INDEX}\`.id left join hex40 on hex40.id = addressId ${
-        newLine} left join ${T_ADDRESS_INFO} on hex40.id = ${T_ADDRESS_INFO}.id ${newLine
-        } where batchId=? order by \`rank\` limit ?`;
+        } ON batch_id=\`${T_TOP_BATCH_INDEX}\`.id left join ${t_addr} on ${t_addr}.id = address_id ${
+        newLine} left join ${T_ADDRESS_INFO} on ${t_addr}.id = ${T_ADDRESS_INFO}.id ${newLine
+        } where batch_id=? order by \`rank\` limit ?`;
         // console.log(`sql is : ${sql}`)
         const list:any[] = await this.sequelize.query(sql, {
             replacements: [maxBatchId, limit],
