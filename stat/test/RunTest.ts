@@ -89,6 +89,8 @@ async function run(){
         await sequelize.sync({alter: true}).catch(err=>{
             console.log(`sync fail: `, err)
         })
+    } else {
+        console.log(`skip sync schema.`)
     }
     console.log('---------------init models done------------')
 

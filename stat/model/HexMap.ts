@@ -19,6 +19,7 @@ export class Address extends Model<IAddress> implements IAddress{
             base32: {type: DataTypes.CHAR(128), allowNull: false,},
         },{
             sequelize: seq,
+            timestamps: false,
             tableName: T_ADDRESS,
             indexes: [
                 {
