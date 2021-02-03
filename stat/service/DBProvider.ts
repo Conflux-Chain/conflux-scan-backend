@@ -1,5 +1,5 @@
 import {Sequelize} from "sequelize";
-import {AddressInfo, hexMapInit} from "../model/HexMap";
+import {Address, AddressInfo, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {TransactionDB} from "../model/Transaction";
 import {Block} from "../model/Block";
@@ -53,6 +53,7 @@ export async function initModel(sequelize) {
     KV.register(sequelize);
     TopBatchIndex.register(sequelize)
     TopRecord.register(sequelize);
+    Address.register(sequelize)
     AddressInfo.register(sequelize);
     TestTimezone.register(sequelize);
 }

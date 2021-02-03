@@ -3,6 +3,33 @@ import {Sequelize, DataTypes, Model, Transaction} from "sequelize";
 /**
  * mapping a hex64 to a number in DB, to decrease data length and make effective index.
  */
+export interface IAddress{
+    id: number;
+    hex40: string;
+    base32: string;
+}
+export class Address extends Model<IAddress> implements IAddress{
+    id: number;
+    hex40: string;
+    base32: string;
+    static register(seq: Sequelize) {
+        Address.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+            hex40: {type: DataTypes.CHAR(40), allowNull: false,},
+            base32: {type: DataTypes.CHAR(128), allowNull: false,},
+        },{
+            sequelize: seq,
+            tableName: T_ADDRESS,
+            indexes: [
+                {
+                    name: 'addr_hex_40_u',
+                    fields: ['hex40'],
+                    unique: true,
+                }
+            ]
+        })
+    }
+}
 export interface HexMapAttributes {
     id: number;
     hex: string
@@ -39,7 +66,7 @@ export async function makeId(hex: string, dbTx: Transaction = undefined) {
 }
 export const T_ADDRESS = 'address'
 export function hexMapInit(sequelize) {
-    hexMapInit0(sequelize, Hex40Map, 40, T_ADDRESS)
+    hexMapInit0(sequelize, Hex40Map, 40, 'hex40')
     hexMapInit0(sequelize, Hex64Map, 64, 'hex64')
 }
 function hexMapInit0(sequelize, clz, length, tableName:string) {
@@ -49,7 +76,7 @@ function hexMapInit0(sequelize, clz, length, tableName:string) {
                 type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true
             },
             hex: {
-                type: DataTypes.CHAR(length), allowNull: false
+                type: DataTypes.CHAR(length), allowNull: false,
             },
         },
         {

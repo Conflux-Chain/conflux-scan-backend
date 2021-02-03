@@ -86,7 +86,9 @@ async function run(){
 
     if (config.database.syncSchema) {
         console.log('sync model begin.')
-        await sequelize.sync({alter: true})
+        await sequelize.sync({alter: true}).catch(err=>{
+            console.log(`sync fail: `, err)
+        })
     }
     console.log('---------------init models done------------')
 
@@ -99,7 +101,9 @@ async function run(){
     // });
     // await testTopMinerBlock();
     // await testTxSync()
-    await new TestRank().buildTestData(sequelize)
+    await new TestRank().buildTestData(sequelize).catch(err=>{
+        console.log(`build test data fail`, err)
+    })
     await new TestRank().testTop(sequelize)
     // const porter = new DataPorter(sequelize, config.conflux)
     // await porter.copyEpoch(5882304);
