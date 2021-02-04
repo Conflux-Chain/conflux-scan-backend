@@ -43,7 +43,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const txnSync = statApp.txnSync;
         const { span, type, rows, action } = ctx.request.query;
         // action: cfxSend/Receive; txnSend/Receive
-        const top = await txnSync.txTopBy(span, type, rows, action);
+        // @ts-ignore
+        let networkId = statApp.cfx.networkId;
+        const top = await txnSync.txTopBy(span, type, rows, action, networkId);
         ctx.body =  {
             ...top,
         };
@@ -61,7 +63,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     //
     router.get('/txn/list', async function (ctx) {
         const {from, skip, limit} = ctx.request.query
-        const page = await new TxnQuery().listTxn({from}, parseInt(skip), parseInt(limit))
+        // @ts-ignore
+        let networkId = statApp.cfx.networkId;
+        const page = await new TxnQuery().listTxn({from},
+            parseInt(skip), parseInt(limit), networkId)
         ctx.body = {code: 0, data: page};
     })
 }

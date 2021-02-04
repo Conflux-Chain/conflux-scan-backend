@@ -21,7 +21,8 @@ export class TxnSync {
         TxnSync.staticSequelize = sequelize;
     }
 
-    public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend') {
+    public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
+                         networkId: number = 1029) {
         const maxTime:Date = await TransactionDB.max('blockTime')
         if (maxTime == null) {
             return Promise.resolve({
@@ -57,10 +58,20 @@ export class TxnSync {
         list.forEach(tx=>{
             tx.percent = BigFixed(tx.value).div(BigFixed(sum)).mul(100)
             tx.rank = rank++
+            tx.hex = `0x${tx.hex}`
+            tx.base32 = this.base32(tx.hex, networkId)
         })
         return Promise.resolve({
             code: 0, message: 'ok', list, sum, beginTime, endTime
         })
+    }
+
+
+    base32(hex, networkId) {
+        if (hex === null || hex === undefined || hex === '' || hex === '0x') {
+            return ''
+        }
+        return format.address(hex, networkId)
     }
 
     public async schedule(delay:number = 100) {

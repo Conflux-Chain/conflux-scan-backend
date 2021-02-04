@@ -1,9 +1,11 @@
 import {TransactionDB, Transaction} from "../model/Transaction";
 import {Hex40Map} from "../model/HexMap";
 import {Op} from 'sequelize'
+// @ts-ignore
+import {format} from 'js-conflux-sdk'
 
 export class TxnQuery{
-    async listTxn(condition: Transaction, skip: number = 0, limit: number = 10) {
+    async listTxn(condition: Transaction, skip: number = 0, limit: number = 10, networkId: number = 1029) {
         const query: {from?: number} = {}
         if (condition.from) {
             const fromBean = await Hex40Map.findOne({where: {hex: condition.from.substr(2)}})
@@ -30,8 +32,17 @@ export class TxnQuery{
         })
         page.rows.forEach(r=>{
             r['fromHex'] = hexIdMap.get(r.from) || ''
-            r.toHex = hexIdMap.get(r.to) || ''
+            r['fromBase32'] = this.base32(r['fromHex'], networkId)
+            r.toHex = '0x'+(hexIdMap.get(r.to) || '')
+            r['toBase32'] = this.base32(r.toHex, networkId)
         })
         return page;
+    }
+
+    base32(hex, networkId) {
+        if (hex === null || hex === undefined || hex === '') {
+            return ''
+        }
+        return format.address(hex, networkId)
     }
 }
