@@ -19,8 +19,9 @@ export class RankService{
             console.log(`max batch id not found. type ${type}`)
             return Promise.resolve({code: 501, list:[], total: 0, message:'no data'})
         }
+        const batchDesc = await TopBatchIndex.findByPk(maxBatchId);
         const t_addr = T_ADDRESS
-        const sql = `select hex40 as hex, \`value\` as valueN, value2, \`percent\`, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
+        const sql = `select hex40 as hex, \`value\` as valueN, value2, value3, value4, \`percent\`, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
         } begin_time, end_time from ${T_TOP_RECORD
         } JOIN ${T_TOP_BATCH_INDEX
         } ON batch_id=\`${T_TOP_BATCH_INDEX}\`.id left join ${t_addr} on ${t_addr}.id = address_id ${
@@ -38,6 +39,6 @@ export class RankService{
             r.base32address = format.address(r.hex, networkId)
         })
         const count = await TopRecord.count({where: {batchId: maxBatchId}})
-        return {code: 0, total: count, list};
+        return {code: 0, total: count, list, batchDesc};
     }
 }
