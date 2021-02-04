@@ -52,6 +52,7 @@ export interface ITopBatchIndex{
     endTime: Date;
     state: string;
     // top cfx holder has a column 'txn count'
+    valueDesc?: string;
     value2desc?: string;
     value3desc?: string;
     value4desc?: string;
@@ -63,6 +64,7 @@ export class TopBatchIndex extends Model<ITopBatchIndex> implements ITopBatchInd
     beginTime: Date;
     endTime: Date;
     state: string;
+    valueDesc?: string;
     value2desc?: string;
     value3desc?: string;
     value4desc?: string;
@@ -73,6 +75,7 @@ export class TopBatchIndex extends Model<ITopBatchIndex> implements ITopBatchInd
             beginTime: {type: DataTypes.DATE, allowNull: false, field: 'begin_time'},
             endTime: {type: DataTypes.DATE, allowNull: false, field: 'end_time'},
             state: {type: DataTypes.CHAR(64), allowNull: false},
+            valueDesc: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             value2desc: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             value3desc: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             value4desc: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},

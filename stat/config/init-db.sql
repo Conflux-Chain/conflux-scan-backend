@@ -13,6 +13,7 @@ CREATE TABLE `batch_index` (
                                `begin_time` DATETIME,
                                `end_time` DATETIME,
                                `state` VARCHAR(16),
+                               `valueDesc` VARCHAR(16),
                                `value2desc` VARCHAR(16),
                                `value3desc` VARCHAR(16),
                                `value4desc` VARCHAR(16),
