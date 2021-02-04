@@ -2,10 +2,12 @@ import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {Context} from "koa";
 import {setAddressInfo} from "../service/ConfigService";
+import {TopBatchIndex} from "../model/TopRecord";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
-    if (ip === '127.0.0.1' || ip.startsWith('172.31.124') || ip === '::ffff:127.0.0.1') {
+    if (ip === '127.0.0.1' || ip === '::1'
+        || ip.startsWith('172.31.124') || ip === '::ffff:127.0.0.1') {
         await next()
     } else {
         ctx.body = {code: 401, message: `local address only. ${ip}`}
@@ -16,5 +18,11 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/set-address-name',
         checkLocal,
         async (ctx)=> await setAddressInfo(ctx))
+    router.get('/devops/list-rank',
+        checkLocal,
+        async (ctx)=>{
+            ctx.body = await TopBatchIndex.findAll({limit: 30, order: [['id','desc']]})
+        }
+        )
     console.log('devops router registered.')
 }

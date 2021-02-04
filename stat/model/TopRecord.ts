@@ -53,6 +53,8 @@ export interface ITopBatchIndex{
     state: string;
     // top cfx holder has a column 'txn count'
     value2desc?: string;
+    value3desc?: string;
+    value4desc?: string;
 }
 export const T_TOP_BATCH_INDEX = "batch_index"
 export class TopBatchIndex extends Model<ITopBatchIndex> implements ITopBatchIndex{
@@ -62,14 +64,18 @@ export class TopBatchIndex extends Model<ITopBatchIndex> implements ITopBatchInd
     endTime: Date;
     state: string;
     value2desc?: string;
+    value3desc?: string;
+    value4desc?: string;
     static register(sequelize) {
         TopBatchIndex.init({
             id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true, autoIncrement: true},
             type: {type: DataTypes.CHAR(32), allowNull: false},
             beginTime: {type: DataTypes.DATE, allowNull: false, field: 'begin_time'},
             endTime: {type: DataTypes.DATE, allowNull: false, field: 'end_time'},
-            state: {type: DataTypes.CHAR(16), allowNull: false},
+            state: {type: DataTypes.CHAR(64), allowNull: false},
             value2desc: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
+            value3desc: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
+            value4desc: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
         },{
             timestamps: false,
             sequelize: sequelize,

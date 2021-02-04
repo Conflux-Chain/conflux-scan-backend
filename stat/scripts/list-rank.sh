@@ -1,0 +1,1 @@
+curl localhost:8087/stat/devops/list-rank|jq

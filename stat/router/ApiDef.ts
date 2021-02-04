@@ -112,7 +112,10 @@ export default {
             'get': {
                 tags: ['Top N'],
                 parameters: [
-                    {name: 'type', in: 'query', required: true, schema: {type: String, enum: [TOP_CFX_HOLD]}},
+                    {name: 'type', in: 'query', required: true,
+                        schema: {type: String,
+                            enum: [TOP_CFX_HOLD, 'rank_by_total_cfx','rank_by_cfx','rank_by_staking']}
+                            },
                     {name: 'limit', in: 'query', required: false, schema: {type: "integer"}},
                 ],
                 responses: {

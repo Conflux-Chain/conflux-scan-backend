@@ -9,7 +9,7 @@ CREATE TABLE `address` (
 
 CREATE TABLE `batch_index` (
                                `id` BIGINT AUTO_INCREMENT,
-                               `type` VARCHAR(32),
+                               `type` VARCHAR(64),
                                `begin_time` DATETIME,
                                `end_time` DATETIME,
                                `state` VARCHAR(16),
@@ -32,7 +32,8 @@ CREATE TABLE `top_record` (
                               `value4` DECIMAL(36, 18),
                               PRIMARY KEY (`id`),
                               FOREIGN KEY (batch_id) REFERENCES batch_index(id),
-                              FOREIGN KEY (address_id) REFERENCES address(id)
+                              FOREIGN KEY (address_id) REFERENCES address(id),
+                              unique key (batch_id, address_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 alter table top_record add index idx_batch_id (batch_id desc , `rank` asc);

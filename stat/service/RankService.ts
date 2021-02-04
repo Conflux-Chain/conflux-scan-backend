@@ -39,6 +39,6 @@ export class RankService{
             r.base32address = format.address(r.hex, networkId)
         })
         const count = await TopRecord.count({where: {batchId: maxBatchId}})
-        return {code: 0, total: count, list, batchDesc};
+        return {code: 0, total: count, batchDesc, list};
     }
 }
