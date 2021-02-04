@@ -68,7 +68,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
 function addSwagger(app: Application, router: Router<any, {}>) {
     const docPath = `${ROUTER_PREFIX}/api-doc-stat`
-    let apiDef = '/swagger.json';
+    let apiDef = '/swagger.json.conf'; // .conf avoid frontend nginx interceptor.
     app.use(
         koaSwagger({
             routePrefix: docPath,
