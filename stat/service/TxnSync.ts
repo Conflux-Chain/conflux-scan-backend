@@ -76,9 +76,12 @@ export class TxnSync {
 
     public async schedule(delay:number = 100) {
         // @ts-ignore
-        await this.cfx.updateChainId();
+        await this.cfx.updateNetworkId();
+        const st = await this.cfx.getStatus()
         // @ts-ignore
-        console.log(`${fmtDtUTC(new Date())} chain id ${this.cfx.chainId}`)
+        this.cfx.networkId = st.chainId;
+        // @ts-ignore
+        console.log(`${fmtDtUTC(new Date())} networkId id ${this.cfx.networkId} , status `, st)
         const that = this;
         async function repeat() {
             await that.run();

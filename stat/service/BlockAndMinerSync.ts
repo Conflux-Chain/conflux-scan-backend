@@ -26,7 +26,7 @@ export class BlockAndMinerSync {
     public async schedule(delay:number = 100) {
         const that = this;
         // @ts-ignore
-        this.cfx.updateChainId();
+        this.cfx.updateNetworkId();
         async function repeat() {
             const {code} = {...await that.syncBlockByEpoch()}
             if (code === BlockAndMinerSync.CODE_REWARD_NOT_READY) {
