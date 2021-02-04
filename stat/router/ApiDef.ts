@@ -115,7 +115,7 @@ export default {
                     {name: 'type', in: 'query', required: true,
                         schema: {type: String,
                             enum: [TOP_CFX_HOLD, 'rank_address_by_staking','rank_address_by_cfx',
-                                'rank_by_staking']}
+                                'rank_address_by_total_cfx']}
                             },
                     {name: 'limit', in: 'query', required: false, schema: {type: "integer"}},
                 ],
