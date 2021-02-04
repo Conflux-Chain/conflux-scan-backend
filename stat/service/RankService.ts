@@ -21,7 +21,8 @@ export class RankService{
         }
         const batchDesc = await TopBatchIndex.findByPk(maxBatchId);
         const t_addr = T_ADDRESS
-        const sql = `select hex40 as hex, \`value\` as valueN, valueDesc, value2, value3, value4, \`percent\`, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
+        const sql = `select hex40 as hex, \`value\` as valueN, valueDesc, ${newLine
+        }value2, value2desc, value3, value3desc, value4, value4desc \`percent\`, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
         } begin_time, end_time from ${T_TOP_RECORD
         } JOIN ${T_TOP_BATCH_INDEX
         } ON batch_id=\`${T_TOP_BATCH_INDEX}\`.id left join ${t_addr} on ${t_addr}.id = address_id ${
