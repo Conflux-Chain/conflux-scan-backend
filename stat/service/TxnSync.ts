@@ -5,6 +5,7 @@ import {KEY_TX_EPOCH, KV} from "../model/KV";
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC} from "../model/Utils";
 import {getSumFunction} from "./DBProvider";
+import {Stopwatch} from "./Stopwatch";
 const BigFixed = require('bigfixed');
 
 /**
@@ -82,9 +83,12 @@ export class TxnSync {
         this.cfx.networkId = st.chainId;
         // @ts-ignore
         console.log(`${fmtDtUTC(new Date())} networkId id ${this.cfx.networkId} , status `, st)
+        console.log(`sync tx with delay ${delay}`)
         const that = this;
         async function repeat() {
-            await that.run();
+            await that.run().catch(err=>{
+                console.log(`sync tx fail: `, err)
+            });
             setTimeout(repeat, delay)
         }
         repeat().then()
@@ -96,6 +100,8 @@ export class TxnSync {
     }
 
     async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number, epoch:number }>{
+        const stopwatch = new Stopwatch()
+        stopwatch.start('getBlocksByEpochNumber')
         const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch).catch(err=>{
             console.log(`error for epoch ${epoch}`, err)
             return null
@@ -104,6 +110,7 @@ export class TxnSync {
             await new Promise(resolve => setTimeout(resolve, 5000))
             return;
         }
+        stopwatch.start('getBlockByHash')
         let id = 0;
         const blockList: any[] = await this.cfx.provider.batch(blockHashes.map(hash=>{
             return {
@@ -129,9 +136,11 @@ export class TxnSync {
             }
             allTx.push(tx)
         }))
+        stopwatch.start('db transaction phase 0')
         let txOk = 'not executed';
         const txCount = allTx.length;
         await TxnSync.staticSequelize.transaction(async (dbTx) => {
+            stopwatch.start('db transaction phase 1')
             await Promise.all(
                 allTx.map(async (tx) => {
                     tx['data'] = ''
@@ -145,6 +154,7 @@ export class TxnSync {
                     await TransactionDB.add(tx, dbTx)
                 })
             ).then(async ()=>{
+                stopwatch.start('db transaction phase 2')
                 return KV.upsert({key: KEY_TX_EPOCH, value: (epoch + 1).toString()}, {
                     transaction:dbTx
                 })
@@ -152,6 +162,7 @@ export class TxnSync {
             txOk = 'ok'
         }).then(()=>{
             if (epoch % 10 === 0 || txCount > 1 ) {
+                stopwatch.dump('time costs:')
                 console.log(`${fmtDtUTC(new Date())} insert ${txCount} txn at epoch ${epoch}`)
             }
         }).catch(err=>{
