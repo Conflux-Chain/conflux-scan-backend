@@ -45,7 +45,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         // action: cfxSend/Receive; txnSend/Receive
         // @ts-ignore
         let networkId = statApp.cfx.networkId;
-        const top = await txnSync.txTopBy(span, type, rows, action, networkId);
+        const top = await txnSync.txTopBy(span, type, parseInt(rows), action, networkId);
         ctx.body =  {
             ...top,
         };
