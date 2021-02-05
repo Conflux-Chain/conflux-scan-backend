@@ -57,9 +57,9 @@ export class TxnSync {
         const sum =  action.startsWith("txn") ? await TransactionDB.count(sumOption)
           : await TransactionDB.sum('value', sumOption)
         let rank = 1
-        const drip2cfx = 1e+18
+        // const drip2cfx = 1e+18
         list.forEach(tx=>{
-            tx.value = BigFixed(tx.value).div(BigFixed(drip2cfx))
+            // tx.value = BigFixed(tx.value).div(BigFixed(drip2cfx))
             tx.percent = BigFixed(tx.value).div(BigFixed(sum)).mul(100)
             tx.rank = rank++
             tx.hex = `0x${tx.hex}`
