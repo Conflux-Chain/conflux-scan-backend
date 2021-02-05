@@ -18,9 +18,8 @@ export class Stopwatch {
 
     public dump(title: string) {
         this.last !== null && this.stop()
-        const content = this.entries.map(e=>`${e.name} costs ${e.elapse}`).join('\n')
-        console.log('stopwatch dump:', title)
-        console.log(content)
+        const content = this.entries.map(e=>`${e.name} costs ${e.elapse}`).join(';')
+        console.log('stopwatch dump:', title, content)
     }
 }
 export class Entry {
