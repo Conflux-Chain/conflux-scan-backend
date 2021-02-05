@@ -44,7 +44,7 @@ export class TxnSync {
         const sql = `select ${aggregate} as value, ${group}, hex from tx join hex40 on tx.${group} = hex40.id 
              where blockTime between ? and ?
              group by ${group} order by value desc limit 10`;
-        console.log('sql is: ', sql)
+        // console.log('sql is: ', sql)
         const list:any[] = await this.sequelize.query(sql, {
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
             type: QueryTypes.SELECT,
