@@ -3,7 +3,7 @@ import {TransactionDB} from "../model/Transaction";
 import {KEY_TX_EPOCH, KV} from "../model/KV";
 // @ts-ignore
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
-import {calculateBeginTime, fmtDtUTC} from "../model/Utils";
+import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
 import {getSumFunction} from "./DBProvider";
 import {Stopwatch} from "./Stopwatch";
 const BigFixed = require('bigfixed');
@@ -24,6 +24,7 @@ export class TxnSync {
 
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
                          networkId: number = 1029) {
+        limit = pickNumber(limit, 10)
         const maxTime:Date = await TransactionDB.max('blockTime')
         if (maxTime == null) {
             return Promise.resolve({
@@ -41,12 +42,12 @@ export class TxnSync {
         }
         let aggregate = action.startsWith("txn") ? "COUNT(*)" : `${getSumFunction()}(value)`;
         let group = action.endsWith('Send') ? '`from`' : '`to`'
-        const sql = `select ${aggregate} as value, ${group}, hex from tx join hex40 on tx.${group} = hex40.id 
-             where blockTime between ? and ?
-             group by ${group} order by value desc limit 10`;
+        const sql = `select t.*, hex from (select ${aggregate} as value, ${group} from tx
+                where blockTime between ? and ? group by ${group} order by value desc limit ?) t 
+                join hex40 on t.${group} = hex40.id `;
         // console.log('sql is: ', sql)
         const list:any[] = await this.sequelize.query(sql, {
-            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime), limit],
             type: QueryTypes.SELECT,
             benchmark: true, logging: console.log
         })
