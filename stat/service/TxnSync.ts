@@ -58,7 +58,7 @@ export class TxnSync {
         const list:any[] = await this.sequelize.query(sql, {
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime), limit],
             type: QueryTypes.SELECT,
-            benchmark: true, logging: console.log
+            // benchmark: true, logging: console.log
         })
         let sumOption = {where:{
                 blockTime: {[Op.between]: [beginTime, endTime]}

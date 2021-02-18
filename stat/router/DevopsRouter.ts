@@ -3,6 +3,7 @@ import {StatApp} from "../StatApp";
 import {Context} from "koa";
 import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
+import {Hex40Map} from "../model/HexMap";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -17,12 +18,22 @@ async function checkLocal(ctx: Context, next) {
 export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/set-address-name',
         checkLocal,
-        async (ctx)=> await setAddressInfo(ctx))
+        async (ctx) => await setAddressInfo(ctx))
+
     router.get('/devops/list-rank',
         checkLocal,
-        async (ctx)=>{
-            ctx.body = await TopBatchIndex.findAll({limit: 30, order: [['id','desc']]})
+        async (ctx) => {
+            ctx.body = await TopBatchIndex.findAll({limit: 30, order: [['id', 'desc']]})
         }
-        )
+    )
+    router.get('/devops/table-size',
+        checkLocal,
+        async (ctx) => {
+            ctx.body = {
+                code: 0,
+                addressCount: await Hex40Map.count({})
+            }
+        }
+    )
     console.log('devops router registered.')
 }

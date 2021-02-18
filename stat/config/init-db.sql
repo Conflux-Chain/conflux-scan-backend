@@ -74,3 +74,97 @@ create index block_time_idx
 
 create index miner_idx
     on block (minerId);
+
+
+create table config
+(
+    `key` char(30) not null
+        primary key,
+    value char(128) null
+);
+
+create table epoch
+(
+    id bigint not null
+        primary key,
+    timestamp datetime not null,
+    parentHash bigint not null,
+    pivotHash bigint not null
+);
+
+create index time_idx
+    on epoch (timestamp);
+
+
+create table epoch
+(
+    id bigint not null
+        primary key,
+    timestamp datetime not null,
+    parentHash bigint not null,
+    pivotHash bigint not null
+);
+
+create index time_idx
+    on epoch (timestamp);
+
+create table hex40
+(
+    id  bigint auto_increment
+        primary key,
+    hex char(40) not null
+);
+
+create index hex40_index
+    on hex40 (hex);
+
+create table hex64
+(
+    id  bigint auto_increment
+        primary key,
+    hex char(64) not null,
+    constraint hex64_index
+        unique (hex)
+);
+
+create table minerBlock
+(
+    id            bigint auto_increment
+        primary key,
+    minerId       bigint                null,
+    blockCount    bigint                null,
+    difficultySum bigint                null,
+    beginTime     datetime              null,
+    endTime       datetime              null,
+    timeWindow    char(8)               null,
+    totalReward   decimal(36) default 0 not null,
+    txFee         decimal(36) default 0 not null
+);
+
+create index mine_dt_idx
+    on minerBlock (beginTime);
+
+
+create table tx
+(
+    id          bigint auto_increment
+        primary key,
+    epochHeight bigint      not null,
+    hash        char(66)    not null,
+    nonce       bigint      not null,
+    `from`      bigint      not null,
+    `to`        bigint      not null,
+    value       decimal(36) not null,
+    gas         int         not null,
+    txIndex     int         not null,
+    blockTime   datetime    not null
+);
+
+create index blockTime
+    on tx (blockTime);
+
+create index from_idx
+    on tx (`from`);
+
+create index to_idx
+    on tx (`to`);

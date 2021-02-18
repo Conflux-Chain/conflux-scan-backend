@@ -6,6 +6,7 @@ import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";
 import {Conflux} from "js-conflux-sdk";
+import {Erc20Watcher} from "./service/watcher/BalanceWatcher";
 
 export class StatApp{
     public config: StatConfig;
@@ -33,6 +34,10 @@ export class StatApp{
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);
         this.cfx = new Conflux(this.config.conflux)
+        this.config.erc20watchList.forEach(erc20=>{
+            const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx)
+            watcher.schedule(erc20.watchDelay)
+        })
         // @ts-ignore
         await this.cfx.updateNetworkId();
         // @ts-ignore

@@ -19,6 +19,13 @@ export interface StatConfig{
     syncBlock: boolean,
     syncTxn: boolean,
     serverTag: string,
+    erc20watchList:Erc20WatchList[]
+}
+
+export interface Erc20WatchList{
+    address:string
+    name:string
+    watchDelay:number
 }
 
 /**

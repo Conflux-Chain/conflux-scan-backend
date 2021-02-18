@@ -12,6 +12,7 @@ import {fmtDtUTC} from "../model/Utils";
 import {loadConfig} from "../config/StatConfig";
 import {KV} from "../model/KV";
 import {TestRank} from "./TestRank";
+import {queryBalance} from "./TestBalanceWatcher";
 
 const {makeId} = require("../model/HexMap");
 
@@ -86,7 +87,7 @@ async function run(){
 
     if (config.database.syncSchema) {
         console.log('sync model begin.')
-        await sequelize.sync({alter: true}).catch(err=>{
+        await sequelize.sync({alter: false}).catch(err=>{
             console.log(`sync fail: `, err)
         })
     } else {
@@ -103,6 +104,7 @@ async function run(){
     // });
     // await testTopMinerBlock();
     // await testTxSync()
+    await queryBalance()
     await new TestRank().buildTestData(sequelize).catch(err=>{
         console.log(`build test data fail`, err)
     })

@@ -8,6 +8,7 @@ import {KV} from "../model/KV";
 import {TestTimezone} from "../model/TestTimezone";
 import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
+import {DexCfxBalance} from "../model/Balance";
 let conf
 export function createDB(config) {
     conf = config
@@ -55,6 +56,7 @@ export async function initModel(sequelize) {
     TopRecord.register(sequelize);
     Address.register(sequelize)
     AddressInfo.register(sequelize);
+    DexCfxBalance.register(sequelize)
     TestTimezone.register(sequelize);
 }
 

@@ -12,6 +12,7 @@ export default {
         blockTableRowsLimit: 10_0000,
         syncSchema: false,
     },
+
     // delay ms.
     syncBlockDelay: 100,
     // delay ms.
@@ -19,4 +20,5 @@ export default {
     syncBlock: false,
     syncTxn: false,
     serverTag: 'scan-stat-1',
+    erc20watchList:[],
 };
