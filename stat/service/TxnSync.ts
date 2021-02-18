@@ -15,9 +15,11 @@ export class TxnSync {
     sequelize: Sequelize
     static staticSequelize: Sequelize
     private cfx: Conflux;
+    private rankCache: Map<string, Object>
     constructor(sequelize, cfx:ConfluxOption) {
         this.sequelize = sequelize;
         this.cfx = new Conflux(cfx)
+        this.rankCache = new Map<string, Object>()
         console.log(`conflux rpc url ${cfx.url}`)
         TxnSync.staticSequelize = sequelize;
     }
@@ -25,7 +27,14 @@ export class TxnSync {
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
                          networkId: number = 1029) {
         limit = pickNumber(limit, 10)
-        const maxTime:Date = await TransactionDB.max('blockTime')
+        // cache
+        const cacheKey = `${n}${type}${limit}${action}`
+        const cacheV = this.rankCache.get(cacheKey);
+        if (cacheV !== undefined) {
+            return Promise.resolve(cacheV);
+        }
+        // cache end
+        const maxTime:Date = await TransactionDB.max('blockTime');
         if (maxTime == null) {
             return Promise.resolve({
                 code: 500, message: 'Empty Data.'
@@ -65,9 +74,11 @@ export class TxnSync {
             tx.hex = `0x${tx.hex}`
             tx.base32 = this.base32(tx.hex, networkId)
         })
-        return Promise.resolve({
+        let finalRet = {
             code: 0, message: 'ok', list, sum, beginTime, endTime
-        })
+        };
+        this.rankCache.set(cacheKey, finalRet)
+        return Promise.resolve(finalRet)
     }
 
 
@@ -76,6 +87,30 @@ export class TxnSync {
             return ''
         }
         return format.address(hex, networkId)
+    }
+
+    public scheduleCache(delay:number = 60_000) {
+        const that = this
+
+        async function refreshAction(action: string) {
+            await that.txTopBy(24, 'h', 10, action)
+            await new Promise(resolve => setTimeout(resolve, 5_000))
+            await that.txTopBy(3, 'd', 10, action)
+            await new Promise(resolve => setTimeout(resolve, 5_000))
+            await that.txTopBy(7, 'd', 10, action)
+            await new Promise(resolve => setTimeout(resolve, 5_000))
+        }
+
+        async function refreshCache(){
+            console.log(`${fmtDtUTC(new Date())} refresh cache`)
+            let action = 'cfxSend';
+            await refreshAction(action);
+            await refreshAction('cfxReceived');
+            await refreshAction('txnSend');
+            await refreshAction('txnReceived');
+            setTimeout(refreshCache, delay)
+        }
+        refreshCache().then()
     }
 
     public async schedule(delay:number = 100) {
@@ -95,6 +130,7 @@ export class TxnSync {
             setTimeout(repeat, delay)
         }
         repeat().then()
+        this.scheduleCache()
     }
 
     async run() :Promise<{ txOk: string, txCount: number }> {
