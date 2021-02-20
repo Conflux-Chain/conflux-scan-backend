@@ -26,3 +26,21 @@ export class DexCfxBalance extends Balance{
         Balance.register(seq, DexCfxBalance, T_DEX_CFX_BALANCE)
     }
 }
+export const T_WCFX_BALANCE = 'wcfx_balance'
+export class WCfxBalance extends Balance{
+    static register(seq){
+        Balance.register(seq, DexCfxBalance, T_WCFX_BALANCE)
+    }
+}
+export const T_USDT_BALANCE = 'usdt_balance'
+export class USDTBalance extends Balance{
+    static register(seq){
+        Balance.register(seq, DexCfxBalance, T_USDT_BALANCE)
+    }
+}
+export const T_DEX_USDT_BALANCE = 'dex_usdt_balance'
+export class DexUSDTBalance extends Balance{
+    static register(seq){
+        Balance.register(seq, DexCfxBalance, T_DEX_USDT_BALANCE)
+    }
+}

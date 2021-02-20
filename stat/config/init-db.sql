@@ -168,3 +168,39 @@ create index from_idx
 
 create index to_idx
     on tx (`to`);
+
+create table wcfx_balance
+(
+    addressId bigint auto_increment
+        primary key,
+    balance   decimal(36, 18) default 0.000000000000000000 not null,
+    createdAt datetime                                     not null,
+    updatedAt datetime                                     not null
+);
+
+create table dex_cfx_balance
+(
+    addressId bigint auto_increment
+        primary key,
+    balance   decimal(36, 18) default 0.000000000000000000 not null,
+    createdAt datetime                                     not null,
+    updatedAt datetime                                     not null
+);
+
+create table usdt_balance
+(
+    addressId bigint auto_increment
+        primary key,
+    balance   decimal(36, 18) default 0.000000000000000000 not null,
+    createdAt datetime                                     not null,
+    updatedAt datetime                                     not null
+);
+
+create table dex_usdt_balance
+(
+    addressId bigint auto_increment
+        primary key,
+    balance   decimal(36, 18) default 0.000000000000000000 not null,
+    createdAt datetime                                     not null,
+    updatedAt datetime                                     not null
+);

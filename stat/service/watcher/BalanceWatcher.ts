@@ -1,7 +1,7 @@
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
 import {Model} from "sequelize";
-import {DexCfxBalance} from "../../model/Balance";
+import {Balance, DexCfxBalance, DexUSDTBalance, USDTBalance, WCfxBalance} from "../../model/Balance";
 import {KEY_BALANCE_POS_PREFIX, KV} from "../../model/KV";
 import {Hex40Map} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
@@ -11,6 +11,7 @@ export class BalanceWatcher{
     private cfx: Conflux;
     protected fraction = 1e+18
     protected addressPos = -1;
+    protected model: typeof Balance
     protected name:string
     // save address position in DB, in order to `scan` balance of all addresses.
     protected addressPosKey:string
@@ -20,6 +21,14 @@ export class BalanceWatcher{
         this.cfx = cfx;
         const { abi, bytecode } = require('./contract/miniERC20.json');
         this.miniERC20 = cfx.Contract({ abi, bytecode , address: contractAddr});
+        switch (name) {
+            case 'wcfx':        this.model = WCfxBalance;       break;
+            case 'dex-cfx':     this.model = DexCfxBalance;     break;
+            case 'usdt':        this.model = USDTBalance;       break;
+            case 'dex-usdt':    this.model = DexUSDTBalance;    break;
+            default:
+                throw new Error('unknown balance type, please fix the mapping code.')
+        }
     }
 
     async schedule(delay:number = 100) {
@@ -84,9 +93,9 @@ export class Erc20Watcher extends BalanceWatcher{
 
     protected async save(addrId: number, ban: any) {
         if (ban < 1) {
-            // return Promise.resolve();
+            return Promise.resolve();
         }
         ban = ban / BigInt(this.fraction)
-        await DexCfxBalance.upsert({addressId:addrId, balance: ban}, {});
+        await this.model.upsert({addressId:addrId, balance: ban}, {});
     }
 }
