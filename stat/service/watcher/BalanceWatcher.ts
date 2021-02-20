@@ -93,6 +93,7 @@ export class Erc20Watcher extends BalanceWatcher{
 
     protected async save(addrId: number, ban: any) {
         if (ban < 1) {
+            await this.model.destroy({where: {addressId: addrId}})
             return Promise.resolve();
         }
         ban = ban / BigInt(this.fraction)
