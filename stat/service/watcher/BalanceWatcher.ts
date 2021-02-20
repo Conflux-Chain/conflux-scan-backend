@@ -108,7 +108,8 @@ export class CfxWatcher extends BalanceWatcher{
             // @ts-ignore
             const accountInfo:any = await this.cfx.getAccount(format.address(hex, this.cfx.networkId))
             if (accountInfo.balance < 1 && accountInfo.stakingBalance < 1) {
-                return;
+                await this.model.destroy({where: {addressId: addrId}})
+                return Promise.resolve();
             }
             const cfx:any = this.drip2cfx(accountInfo.balance)
             const staking:any = this.drip2cfx(accountInfo.stakingBalance)
