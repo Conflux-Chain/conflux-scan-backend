@@ -21,4 +21,5 @@ export default {
     syncTxn: false,
     serverTag: 'scan-stat-1',
     erc20watchList:[],
+    cfxWatcherDelay: 100,
 };
