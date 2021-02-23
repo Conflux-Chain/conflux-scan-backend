@@ -119,12 +119,14 @@ export class BlockTraceSync{
                 let to = t.action.to === undefined ? "" : format.hexAddress(t.action.to)
                 let toId = to === "" ? 0 : (await makeId(to)).id
                 let value = t.action.value
-                await Trace.create({
-                    epochHeight: txInfo.epochHeight, txId: tx.id,
-                    from: fromId,
-                    to: toId,
-                    value: value, blockTime: tx.blockTime
-                })
+                if (value > 0) {
+                    await Trace.create({
+                        epochHeight: txInfo.epochHeight, txId: tx.id,
+                        from: fromId,
+                        to: toId,
+                        value: value, blockTime: tx.blockTime
+                    })
+                }
                 traceCount ++
             }
         }
