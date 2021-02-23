@@ -15,6 +15,7 @@ export class BlockTraceSync{
     }
 
     async schedule(delay: number = 100) {
+        console.log(`schedule trace sync with delay: ${delay}`)
         await this.init();
         //
         const that = this
