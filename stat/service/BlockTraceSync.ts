@@ -84,7 +84,7 @@ export class BlockTraceSync{
         if (tx == null) {
             const maxTxId = await TransactionDB.max("id");
             console.log(`tx not found, id ${txId}, max tx id ${maxTxId} `)
-            return tx < maxTxId;
+            return txId < maxTxId;
 
         }
         const txInfo = await this.cfx.getTransactionByHash(tx.hash)
