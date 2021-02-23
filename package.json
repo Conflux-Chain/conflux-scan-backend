@@ -13,9 +13,10 @@
   "dependencies": {
     "@koa/cors": "^3.1.0",
     "bigfixed": "0.0.2",
-    "js-conflux-sdk": "1.5.10",
+    "superagent": "^5.1.0",
+    "js-conflux-sdk": "1.5.11",
     "koa": "^2.13.1",
-    "koa-helmet": "^6.0.0",
+    "koa-helmet": "6.0.0",
     "koa-router": "^10.0.0",
     "koa2-swagger-ui": "^5.0.5",
     "mysql2": "^2.2.5",
