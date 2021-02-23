@@ -108,7 +108,7 @@ export class BlockTraceSync{
         this.blockHashInEpoch.add(txInfo.blockHash)
         const traces:any[] = await this.cfx.traceBlock(txInfo.blockHash);
         if (traces == null) {
-            console.log(`null traces at epoch ${txInfo.epochHeight} block:`, txInfo.blockHash)
+            console.log(`null traces at tx id ${tx.id} epoch ${txInfo.epochHeight} block:`, txInfo.blockHash)
             return true;
         }
         let traceCount = 0
