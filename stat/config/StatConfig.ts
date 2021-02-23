@@ -13,13 +13,16 @@ export interface Database{
 export interface StatConfig{
     syncBlockDelay: number;
     syncTxnDelay: number;
+    syncTraceDelay: number;
     port: number;
     conflux: ConfluxOption; // chain rpc node
     database: Database;
     syncBlock: boolean,
+    syncTrace: boolean,
     syncTxn: boolean,
     serverTag: string,
     erc20watchList:Erc20WatchList[],
+    watchCfxBalance: boolean,
     cfxWatcherDelay:number,
 }
 

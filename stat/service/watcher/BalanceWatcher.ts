@@ -65,7 +65,7 @@ export class BalanceWatcher{
         if (hex !== null) {
             await this.queryBalance('0x'+hex.hex, hex.id)
         } else if (curId > (await Hex40Map.max("id"))){
-            console.log(`reach max, id: ${curId}`)
+            console.log(`${fmtDtUTC(new Date())} ${this.addressPosKey} reach max, id: ${curId}`)
             curId = 0
         }
         await KV.update({value: curId.toString()}, {where:{key: this.addressPosKey}})

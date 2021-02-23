@@ -95,19 +95,6 @@ create table epoch
 create index time_idx
     on epoch (timestamp);
 
-
-create table epoch
-(
-    id bigint not null
-        primary key,
-    timestamp datetime not null,
-    parentHash bigint not null,
-    pivotHash bigint not null
-);
-
-create index time_idx
-    on epoch (timestamp);
-
 create table hex40
 (
     id  bigint auto_increment
@@ -203,4 +190,15 @@ create table dex_usdt_balance
     balance   decimal(36, 18) default 0.000000000000000000 not null,
     createdAt datetime                                     not null,
     updatedAt datetime                                     not null
+);
+
+create table cfx_balance
+(
+    addressId      bigint auto_increment
+        primary key,
+    balance        decimal(36, 18) default 0.000000000000000000 not null,
+    stakingBalance decimal(36, 18) default 0.000000000000000000 not null,
+    total          decimal(36, 18) default 0.000000000000000000 not null,
+    createdAt      datetime                                     not null,
+    updatedAt      datetime                                     not null
 );

@@ -17,9 +17,12 @@ export default {
     syncBlockDelay: 100,
     // delay ms.
     syncTxnDelay: 100,
+    syncTraceDelay: 100,
     syncBlock: false,
     syncTxn: false,
+    syncTrace: true,
     serverTag: 'scan-stat-1',
     erc20watchList:[],
+    watchCfxBalance: false,
     cfxWatcherDelay: 100,
 };

@@ -9,6 +9,7 @@ import {TestTimezone} from "../model/TestTimezone";
 import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {CfxBalance, DexCfxBalance, DexUSDTBalance, USDTBalance, WCfxBalance} from "../model/Balance";
+import {Trace} from "../model/Trace";
 let conf
 export function createDB(config) {
     conf = config
@@ -61,6 +62,7 @@ export async function initModel(sequelize) {
     USDTBalance.register(sequelize)
     DexUSDTBalance.register(sequelize)
     CfxBalance.register(sequelize)
+    Trace.register(sequelize)
     TestTimezone.register(sequelize);
 }
 

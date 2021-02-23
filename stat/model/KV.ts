@@ -7,6 +7,7 @@ export interface IKV {
 
 export const KEY_MINER_EPOCH = "KEY_MINER_EPOCH"
 export const KEY_TX_EPOCH = "KEY_TX_EPOCH"
+export const KEY_BLOCK_TRACE_TX_ID = "KEY_BLOCK_TRACE_TX_ID"
 export const KEY_BALANCE_POS_PREFIX = "BALANCE_POS_"
 
 export class KV extends Model<IKV> implements IKV {

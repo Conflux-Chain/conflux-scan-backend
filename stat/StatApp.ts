@@ -7,6 +7,7 @@ import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";
 import {Conflux} from "js-conflux-sdk";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
+import {BlockTraceSync} from "./service/BlockTraceSync";
 
 export class StatApp{
     public config: StatConfig;
@@ -14,6 +15,7 @@ export class StatApp{
     public blockAndMinerSync: BlockAndMinerSync;
     public rankService: RankService;
     public txnSync: TxnSync;
+    public traceSync: BlockTraceSync
     public cfx: Conflux;
     constructor(config: StatConfig) {
         this.config = config;
@@ -34,11 +36,14 @@ export class StatApp{
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);
         this.cfx = new Conflux(this.config.conflux)
+        this.traceSync = new BlockTraceSync(this.cfx)
         this.config.erc20watchList.forEach(erc20=>{
             const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx)
             watcher.schedule(erc20.watchDelay)
         })
-        new CfxWatcher('cfx', this.cfx).schedule(this.config.cfxWatcherDelay).then()
+        if (this.config.watchCfxBalance) {
+            new CfxWatcher('cfx', this.cfx).schedule(this.config.cfxWatcherDelay).then()
+        }
         // @ts-ignore
         await this.cfx.updateNetworkId();
         // @ts-ignore
@@ -49,6 +54,9 @@ export class StatApp{
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
             await this.blockAndMinerSync.schedule(this.config.syncBlockDelay)
+        }
+        if (this.config.syncTrace) {
+            await this.traceSync.schedule(this.config.syncTraceDelay); // trace
         }
         if (this.config.syncTxn) {
             await this.txnSync.schedule(this.config.syncTxnDelay); // txn
