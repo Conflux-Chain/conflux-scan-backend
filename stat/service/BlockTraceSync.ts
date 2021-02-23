@@ -57,6 +57,7 @@ export class BlockTraceSync{
             await Trace.destroy({where: {id: maxOne.id}})
         }
         if (maxOne !== null) {
+            this.previousEpoch = maxOne.epochHeight
             await KV.update({value: maxOne.txId.toString()},
                 {where: {key: KEY_BLOCK_TRACE_TX_ID}})
         }
@@ -106,7 +107,7 @@ export class BlockTraceSync{
         this.blockHashInEpoch.add(txInfo.blockHash)
         const traces:any[] = await this.cfx.traceBlock(txInfo.blockHash);
         if (traces == null) {
-            console.log(`null traces at block:`, txInfo.blockHash)
+            console.log(`null traces at epoch ${txInfo.epochHeight} block:`, txInfo.blockHash)
             return true;
         }
         let traceCount = 0
