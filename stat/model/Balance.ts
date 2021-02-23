@@ -72,3 +72,119 @@ export class CfxBalance extends Model<ICfxBalance> implements ICfxBalance{
         })
     }
 }
+//
+export class Balance_CRCL_BTC_symbol extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_CRCL_BTC_symbol, 'balance_CRCL_BTC_symbol')
+    }
+}
+export class Balance_cMOON extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cMOON, 'balance_cMOON')
+    }
+}
+export class Balance_cUSDT extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cUSDT, 'balance_cUSDT')
+    }
+}
+export class Balance_cETH extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cETH, 'balance_cETH')
+    }
+}
+export class Balance_FC extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_FC, 'balance_FC')
+    }
+}
+export class Balance_WCFX extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_WCFX, 'balance_WCFX')
+    }
+}
+export class Balance_cDAI extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cDAI, 'balance_cDAI')
+    }
+}
+export class Balance_cUSDC extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cUSDC, 'balance_cUSDC')
+    }
+}
+export class Balance_cLEND extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cLEND, 'balance_cLEND')
+    }
+}
+export class Balance_cFOR extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cFOR, 'balance_cFOR')
+    }
+}
+export class Balance_cLINK extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cLINK, 'balance_cLINK')
+    }
+}
+export class Balance_cCOMP extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cCOMP, 'balance_cCOMP')
+    }
+}
+export class Balance_cBAND extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cBAND, 'balance_cBAND')
+    }
+}
+export class Balance_cBTC extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cBTC, 'balance_cBTC')
+    }
+}
+export class Balance_cYFI extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cYFI, 'balance_cYFI')
+    }
+}
+export class Balance_cDF extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cDF, 'balance_cDF')
+    }
+}
+export class Balance_cYFII extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cYFII, 'balance_cYFII')
+    }
+}
+export class Balance_cSWRV extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cSWRV, 'balance_cSWRV')
+    }
+}
+export class Balance_cKP3R extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cKP3R, 'balance_cKP3R')
+    }
+}
+export class Balance_cUMA extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cUMA, 'balance_cUMA')
+    }
+}
+export class Balance_cKNC extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cKNC, 'balance_cKNC')
+    }
+}
+export class Balance_cSNX extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cSNX, 'balance_cSNX')
+    }
+}
+export class Balance_csUSD extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_csUSD, 'balance_csUSD')
+    }
+}

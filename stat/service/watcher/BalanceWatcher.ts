@@ -1,7 +1,25 @@
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
 import {Model} from "sequelize";
-import {Balance, CfxBalance, DexCfxBalance, DexUSDTBalance, USDTBalance, WCfxBalance} from "../../model/Balance";
+import {
+    Balance,
+    Balance_cBAND, Balance_cBTC,
+    Balance_cCOMP,
+    Balance_cDAI, Balance_cDF,
+    Balance_cETH,
+    Balance_cFOR, Balance_cKNC, Balance_cKP3R,
+    Balance_cLEND,
+    Balance_cLINK,
+    Balance_cMOON,
+    Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_cUMA,
+    Balance_cUSDC, Balance_cYFI, Balance_cYFII,
+    Balance_FC,
+    CfxBalance,
+    DexCfxBalance,
+    DexUSDTBalance,
+    USDTBalance,
+    WCfxBalance
+} from "../../model/Balance";
 import {KEY_BALANCE_POS_PREFIX, KV} from "../../model/KV";
 import {Hex40Map} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
@@ -26,6 +44,31 @@ export class BalanceWatcher{
             case 'usdt':        this.model = USDTBalance;       break;
             case 'dex-usdt':    this.model = DexUSDTBalance;    break;
             case 'cfx':         this.model = CfxBalance;    break;
+
+            case 'CRCL_BTC_symbol':         this.model = Balance_CRCL_BTC_symbol;    break;
+            case 'cMOON':         this.model = Balance_cMOON;    break;
+            // case 'cUSDT':         this.model = BalancecUSDT;    break;
+            case 'cETH':         this.model = Balance_cETH;    break;
+            case 'FC':         this.model = Balance_FC;    break;
+            // case 'WCFX':         this.model = BalanceWCFX;    break;
+            case 'cDAI':         this.model = Balance_cDAI;    break;
+            case 'cUSDC':         this.model = Balance_cUSDC;    break;
+            case 'cLEND':         this.model = Balance_cLEND;    break;
+            case 'cFOR':         this.model = Balance_cFOR;    break;
+            case 'cLINK':         this.model = Balance_cLINK;    break;
+            case 'cCOMP':         this.model = Balance_cCOMP;    break;
+            case 'cBAND':         this.model = Balance_cBAND;    break;
+            case 'cBTC':         this.model = Balance_cBTC;    break;
+            case 'cYFI':         this.model = Balance_cYFI;    break;
+            case 'cDF':         this.model = Balance_cDF;    break;
+            case 'cYFII':         this.model = Balance_cYFII;    break;
+            case 'cSWRV':         this.model = Balance_cSWRV;    break;
+            case 'cKP3R':         this.model = Balance_cKP3R;    break;
+            case 'cUMA':         this.model = Balance_cUMA;    break;
+            case 'cKNC':         this.model = Balance_cKNC;    break;
+            case 'cSNX':         this.model = Balance_cSNX;    break;
+            case 'csUSD':         this.model = Balance_csUSD;    break;
+
             default:
                 throw new Error('unknown balance type, please fix the mapping code. name:'+name)
         }
