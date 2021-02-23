@@ -19,7 +19,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService
-        const {type, limit} = ctx.request.query || 10;
+        const {type, limit} = ctx.request.query || {type: 'cfxSend', limit: 10};
         // @ts-ignore
         let networkId = statApp.cfx.networkId;
         ctx.body = await rank.top(type, parseInt(limit), networkId)
@@ -28,7 +28,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/miner/top-by-type', async (ctx)=>{
         const blockService = statApp.blockAndMinerSync;
         const { span, type, rows } = ctx.request.query;
-        const list = await blockService.topByType(span, type, parseInt(rows || 10));
+        const list = await blockService.topByType(parseInt(span), type, parseInt(rows || 10));
         const timeRange = blockService.calculateTimeRange(list);
         const seconds = blockService.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {
