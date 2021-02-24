@@ -35,6 +35,7 @@ import {
     WCfxBalance
 } from "../model/Balance";
 import {Trace} from "../model/Trace";
+import {Token} from "../model/Token";
 let conf
 export function createDB(config) {
     conf = config
@@ -113,7 +114,7 @@ export async function initModel(sequelize) {
     Balance_cSNX.register(sequelize);
     Balance_csUSD.register(sequelize);
 
-
+    Token.register(sequelize);
     Trace.register(sequelize)
     TestTimezone.register(sequelize);
 }

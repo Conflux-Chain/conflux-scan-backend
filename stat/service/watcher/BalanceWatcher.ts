@@ -38,44 +38,50 @@ export class BalanceWatcher{
     constructor(name:string, contractAddr: string, cfx:Conflux) {
         this.name = name
         this.cfx = cfx;
-        switch (name) {
-            case 'wcfx':        this.model = WCfxBalance;       break;
-            case 'dex-cfx':     this.model = DexCfxBalance;     break;
-            case 'usdt':        this.model = USDTBalance;       break;
-            case 'dex-usdt':    this.model = DexUSDTBalance;    break;
-            case 'cfx':         this.model = CfxBalance;    break;
-
-            case 'CRCL_BTC_symbol':         this.model = Balance_CRCL_BTC_symbol;    break;
-            case 'cMOON':         this.model = Balance_cMOON;    break;
-            // case 'cUSDT':         this.model = BalancecUSDT;    break;
-            case 'cETH':         this.model = Balance_cETH;    break;
-            case 'FC':         this.model = Balance_FC;    break;
-            // case 'WCFX':         this.model = BalanceWCFX;    break;
-            case 'cDAI':         this.model = Balance_cDAI;    break;
-            case 'cUSDC':         this.model = Balance_cUSDC;    break;
-            case 'cLEND':         this.model = Balance_cLEND;    break;
-            case 'cFOR':         this.model = Balance_cFOR;    break;
-            case 'cLINK':         this.model = Balance_cLINK;    break;
-            case 'cCOMP':         this.model = Balance_cCOMP;    break;
-            case 'cBAND':         this.model = Balance_cBAND;    break;
-            case 'cBTC':         this.model = Balance_cBTC;    break;
-            case 'cYFI':         this.model = Balance_cYFI;    break;
-            case 'cDF':         this.model = Balance_cDF;    break;
-            case 'cYFII':         this.model = Balance_cYFII;    break;
-            case 'cSWRV':         this.model = Balance_cSWRV;    break;
-            case 'cKP3R':         this.model = Balance_cKP3R;    break;
-            case 'cUMA':         this.model = Balance_cUMA;    break;
-            case 'cKNC':         this.model = Balance_cKNC;    break;
-            case 'cSNX':         this.model = Balance_cSNX;    break;
-            case 'csUSD':         this.model = Balance_csUSD;    break;
-
-            default:
-                throw new Error('unknown balance type, please fix the mapping code. name:'+name)
-        }
+        this.model = BalanceWatcher.mapModel(name)
         if (contractAddr) {
             const {abi, bytecode} = require('./contract/miniERC20.json');
             this.miniERC20 = cfx.Contract({abi, bytecode, address: contractAddr});
         }
+    }
+
+    static mapModel(name:string): typeof Balance{
+        let ret;
+        switch (name) {
+            case 'wcfx':        ret = WCfxBalance;       break;
+            case 'dex-cfx':     ret = DexCfxBalance;     break;
+            case 'usdt':        ret = USDTBalance;       break;
+            case 'dex-usdt':    ret = DexUSDTBalance;    break;
+            case 'cfx':         ret = CfxBalance;    break;
+
+            case 'CRCL_BTC_symbol':         ret = Balance_CRCL_BTC_symbol;    break;
+            case 'cMOON':         ret = Balance_cMOON;    break;
+            // case 'cUSDT':         ret = BalancecUSDT;    break;
+            case 'cETH':         ret = Balance_cETH;    break;
+            case 'FC':         ret = Balance_FC;    break;
+            // case 'WCFX':         ret = BalanceWCFX;    break;
+            case 'cDAI':         ret = Balance_cDAI;    break;
+            case 'cUSDC':         ret = Balance_cUSDC;    break;
+            case 'cLEND':         ret = Balance_cLEND;    break;
+            case 'cFOR':         ret = Balance_cFOR;    break;
+            case 'cLINK':         ret = Balance_cLINK;    break;
+            case 'cCOMP':         ret = Balance_cCOMP;    break;
+            case 'cBAND':         ret = Balance_cBAND;    break;
+            case 'cBTC':         ret = Balance_cBTC;    break;
+            case 'cYFI':         ret = Balance_cYFI;    break;
+            case 'cDF':         ret = Balance_cDF;    break;
+            case 'cYFII':         ret = Balance_cYFII;    break;
+            case 'cSWRV':         ret = Balance_cSWRV;    break;
+            case 'cKP3R':         ret = Balance_cKP3R;    break;
+            case 'cUMA':         ret = Balance_cUMA;    break;
+            case 'cKNC':         ret = Balance_cKNC;    break;
+            case 'cSNX':         ret = Balance_cSNX;    break;
+            case 'csUSD':         ret = Balance_csUSD;    break;
+
+            default:
+                throw new Error('unknown balance type, please fix the mapping code. name:'+name)
+        }
+        return ret;
     }
 
     async schedule(delay:number = 100) {

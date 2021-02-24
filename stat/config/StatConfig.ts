@@ -27,7 +27,9 @@ export interface StatConfig{
 }
 
 export interface Erc20WatchList{
+    // hex address
     address:string
+    // it's the symbol of the token. why not use real name : real name contains space.
     name:string
     watchDelay:number
 }

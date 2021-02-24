@@ -8,11 +8,13 @@ import {RankService} from "./service/RankService";
 import {Conflux} from "js-conflux-sdk";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
 import {BlockTraceSync} from "./service/BlockTraceSync";
+import {BalanceService} from "./service/watcher/BalanceService";
 
 export class StatApp{
     public config: StatConfig;
     private sequelize: Sequelize;
     public blockAndMinerSync: BlockAndMinerSync;
+    public balanceService: BalanceService;
     public rankService: RankService;
     public txnSync: TxnSync;
     public traceSync: BlockTraceSync
@@ -36,18 +38,21 @@ export class StatApp{
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);
         this.cfx = new Conflux(this.config.conflux)
+        // @ts-ignore
+        await this.cfx.updateNetworkId();
+        // @ts-ignore
+        this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
         this.traceSync = new BlockTraceSync(this.cfx)
         this.config.erc20watchList.forEach(erc20=>{
             const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx)
             watcher.schedule(erc20.watchDelay)
         })
+        // @ts-ignore
+        this.balanceService = new BalanceService(this.config.erc20watchList, this.cfx.networkId)
+        this.balanceService.schedule(3000)
         if (this.config.watchCfxBalance) {
             new CfxWatcher('cfx', this.cfx).schedule(this.config.cfxWatcherDelay).then()
         }
-        // @ts-ignore
-        await this.cfx.updateNetworkId();
-        // @ts-ignore
-        this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
         // @ts-ignore
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${this.cfx.networkId}`)
         //
