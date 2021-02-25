@@ -15,6 +15,11 @@ export class BalanceService {
         this.networkId = networkId;
     }
 
+    public async listToken() {
+        const list = await Token.findAll({})
+        return list;
+    }
+
     public schedule(delay: number = 60_000) {
         const that = this
         async function repeat() {

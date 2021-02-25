@@ -88,9 +88,12 @@ export class BlockTraceSync{
 
         }
         const txInfo = await this.cfx.getTransactionByHash(tx.hash)
-        if (tx.epochHeight < this.previousEpoch) {
+        if (tx.epochHeight === 0) {
+            // skip epoch 0
+            return true;
+        } else if (tx.epochHeight < this.previousEpoch) {
             console.log(`epoch should keep growing, previous ${this.previousEpoch
-            }, found ${tx.epochHeight}, tx id in db ${tx.id}`)
+            }, tx epoch height ${tx.epochHeight}, tx id in db ${tx.id}`)
             return false;
         } else if (tx.epochHeight === this.previousEpoch) {
             // it's ok

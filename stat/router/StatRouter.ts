@@ -17,6 +17,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             code: 0, message: `Conflux-Stat 2021.01.15 ${statApp.config.serverTag}`
         }
     })
+    router.post('/tokens/list', async (ctx)=>{
+        const list = await statApp.balanceService.listToken()
+        ctx.body = {
+            code: 0,
+            total: list.length,
+            list: list.map(t=>{return {base32: t.base32, holder: t.holder}})
+        }
+    })
     router.get('/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService
         const {type, limit} = ctx.request.query || {type: 'cfxSend', limit: 10};

@@ -24,6 +24,35 @@ export default {
         }
     ],
     "paths": {
+        '/stat/tokens/list': {
+            'post': {
+                description: 'list tokens with holder count.',
+                tags: ['tokens'],
+                parameters: [],
+                responses: {
+                    200: {
+                        content: {
+                            "application/json": {
+                                "schema": {
+                                    type: "object",
+                                    properties: {
+                                        list: {
+                                            "type": "array",
+                                            "items": {
+                                                type: "object", properties: {
+                                                    base32: {type: "string"},
+                                                    holder: {type: "number"},
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         '/stat/tx/top-by-type': {
             'get': {
                 description: 'cfx and tx send/receive top N',
