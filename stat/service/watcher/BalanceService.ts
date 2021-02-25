@@ -44,7 +44,7 @@ export class BalanceService {
         let tokenBean:Token = await Token.findOne({where: {hex40id: hexBean.id}});
         if (tokenBean == null) {
             tokenBean = await Token.create({
-                base32: format.address(token.address, this.networkId),
+                base32: format.address(token.address, this.networkId, true),
                 hex40id: hexBean.id, holder: 0,
                 symbol: token.name
             })

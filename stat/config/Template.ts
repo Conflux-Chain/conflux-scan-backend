@@ -12,7 +12,7 @@ export default {
         blockTableRowsLimit: 10_0000,
         syncSchema: false,
     },
-
+    scanApiUrl: 'https://testnet-scantest.confluxnetwork.org',
     // delay ms.
     syncBlockDelay: 100,
     // delay ms.

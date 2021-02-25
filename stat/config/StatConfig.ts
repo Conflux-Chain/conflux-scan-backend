@@ -16,6 +16,7 @@ export interface StatConfig{
     syncTraceDelay: number;
     port: number;
     conflux: ConfluxOption; // chain rpc node
+    scanApiUrl: string
     database: Database;
     syncBlock: boolean,
     syncTrace: boolean,

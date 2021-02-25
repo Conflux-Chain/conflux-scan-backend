@@ -9,6 +9,7 @@ import {TxnQuery} from "../service/TxnQuery";
 import Application = require("koa");
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
+const superagent = require('superagent');
 import {addDevopsRouter} from "./DevopsRouter";
 export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
@@ -17,13 +18,31 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             code: 0, message: `Conflux-Stat 2021.01.15 ${statApp.config.serverTag}`
         }
     })
-    router.post('/tokens/list', async (ctx)=>{
-        const list = await statApp.balanceService.listToken()
-        ctx.body = {
-            code: 0,
-            total: list.length,
-            list: list.map(t=>{return {base32: t.base32, holder: t.holder}})
-        }
+    router.get('/tokens/list', async (ctx)=>{
+        await new Promise(r=>{
+
+            superagent.get(`${statApp.config.scanApiUrl}/v1/token`)
+                .query(ctx.request.querystring).end(async (err, base)=>{
+                if (base.status !== 200) {
+                    ctx.body = base
+                    ctx.status = base.status;
+                    r('fail')
+                    return;
+                }
+                base =  JSON.parse(base.text)
+                console.log(`base data:`, JSON.stringify(base))
+                const list = await statApp.balanceService.listToken();
+                const map = new Map()
+                list.forEach(t=>map.set(t.base32, t))
+                base.list.forEach(t=>{
+                    t.holderCount = '-'
+                    const info = map.get(t.address)
+                    info && (t.holderCount = t.holder)
+                })
+                ctx.body = base
+                r('ok')
+            })
+        })
     })
     router.get('/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService

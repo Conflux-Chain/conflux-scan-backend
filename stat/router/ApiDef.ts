@@ -25,23 +25,171 @@ export default {
     ],
     "paths": {
         '/stat/tokens/list': {
-            'post': {
+            'get': {
                 description: 'list tokens with holder count.',
                 tags: ['tokens'],
-                parameters: [],
-                responses: {
-                    200: {
-                        content: {
+                "parameters": [
+                    {
+                        "name": "transferType",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "addressArray",
+                        "in": "query",
+                        "description": "use alone",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "name": "accountAddress",
+                        "in": "query",
+                        "description": "use alone",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "regex",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "orderBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "transferCount"
+                        }
+                    },
+                    {
+                        "name": "reverse",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    },
+                    {
+                        "name": "skip",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 0,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "fields",
+                        "in": "query",
+                        "schema": {
+                            "type": "array",
+                            "default": [
+                                "price"
+                            ],
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "icon",
+                                    "price"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
                             "application/json": {
                                 "schema": {
-                                    type: "object",
-                                    properties: {
-                                        list: {
+                                    "type": "object",
+                                    "properties": {
+                                        "total": {
+                                            "type": "integer"
+                                        },
+                                        "listLimit": {
+                                            "type": "integer",
+                                            "description": "if exist, require skip+limit <= listLimit"
+                                        },
+                                        "list": {
                                             "type": "array",
                                             "items": {
-                                                type: "object", properties: {
-                                                    base32: {type: "string"},
-                                                    holder: {type: "number"},
+                                                "type": "object",
+                                                "properties": {
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "symbol": {
+                                                        "type": "string"
+                                                    },
+                                                    "decimals": {
+                                                        "type": "integer"
+                                                    },
+                                                    "granularity": {
+                                                        "type": "integer"
+                                                    },
+                                                    "totalSupply": {
+                                                        "type": "string"
+                                                    },
+                                                    "holderCount": {
+                                                        "type": "integer"
+                                                    },
+                                                    "transferCount": {
+                                                        "type": "integer"
+                                                    },
+                                                    "transferType": {
+                                                        "type": "string"
+                                                    },
+                                                    "icon": {
+                                                        "type": "string"
+                                                    },
+                                                    "accountAddress": {
+                                                        "type": "string",
+                                                        "description": "show with accountAddress"
+                                                    },
+                                                    "balance": {
+                                                        "type": "string",
+                                                        "description": "show with accountAddress"
+                                                    },
+                                                    "marketCapId": {
+                                                        "type": "number"
+                                                    },
+                                                    "quoteUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "moonDexSymbol": {
+                                                        "type": "string"
+                                                    },
+                                                    "price": {
+                                                        "type": "number",
+                                                        "nullable": true
+                                                    },
+                                                    "totalPrice": {
+                                                        "type": "number"
+                                                    }
                                                 }
                                             }
                                         }
@@ -49,8 +197,26 @@ export default {
                                 }
                             }
                         }
+                    },
+                    "600": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
+                },
             }
         },
         '/stat/tx/top-by-type': {
