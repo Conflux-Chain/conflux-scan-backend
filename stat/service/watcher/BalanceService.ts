@@ -5,6 +5,7 @@ import {Hex40Map} from "../../model/HexMap";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
+import {Op} from "sequelize";
 
 export class BalanceService {
     private tokens: Erc20WatchList[];
@@ -59,5 +60,31 @@ export class BalanceService {
         }
         let holder = await table.count({})
         await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
+    }
+
+    async rankHolder(base32: any, skip: any, limit: any) {
+        const token = await Token.findOne({where: {base32: base32.toUpperCase()}})
+        let table = BalanceWatcher.mapModel(token.symbol);
+        if (table == null) {
+            return {total: 0, list:[], message: 'token not found '+base32, code: 404}
+        }
+        const total = await table.count({where:{}})
+        if (total == 0) {
+            return {total: 0, list:[], code: 0, table: table.getTableName()}
+        }
+        const list = await table.findAll({order:[["balance","desc"]], offset: skip, limit})
+        const hexList = await Hex40Map.findAll({where: {id: {[Op.in]:list.map(h=>h.addressId)}}})
+        const map = new Map()
+        hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
+        const retList = list.map(holder=>{
+            const addr = map.get(holder.addressId)
+            return {
+                balance: holder.balance,
+                accountAddress: addr ? format.address(addr, this.networkId, true): holder.addressId,
+                hexId: holder.addressId,
+                // addr,
+            }
+        })
+        return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
     }
 }

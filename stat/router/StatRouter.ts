@@ -11,6 +11,7 @@ import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
 const superagent = require('superagent');
 import {addDevopsRouter} from "./DevopsRouter";
+import {pickNumber} from "../model/Utils";
 export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -18,9 +19,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             code: 0, message: `Conflux-Stat 2021.01.15 ${statApp.config.serverTag}`
         }
     })
+    router.get('/tokens/holder-rank', async (ctx)=>{
+        const base32 = ctx.request.query.address
+        const limit = pickNumber(parseInt(ctx.request.query.limit), 10)
+        const skip = pickNumber(parseInt(ctx.request.query.skip), 0)
+        ctx.body = {
+            ...(await statApp.balanceService.rankHolder(base32, skip, limit))
+        }
+    })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(r=>{
-
             superagent.get(`${statApp.config.scanApiUrl}/v1/token`)
                 .query(ctx.request.querystring).end(async (err, base)=>{
                 if (base.status !== 200) {

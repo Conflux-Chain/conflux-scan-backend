@@ -24,6 +24,131 @@ export default {
         }
     ],
     "paths": {
+        '/stat/tokens/holder-rank': {
+            description: 'rank holder by balance',
+            "get": {
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 0,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "skip",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "reverse",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "epochNumber": {
+                                            "type": "integer"
+                                        },
+                                        "timestamp": {
+                                            "type": "integer"
+                                        },
+                                        "totalSupply": {
+                                            "type": "string"
+                                        },
+                                        "balanceCount": {
+                                            "type": "string"
+                                        },
+                                        "proportion": {
+                                            "type": "number"
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        },
+                                        "list": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "account": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "address": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "balance": {
+                                                        "type": "string"
+                                                    },
+                                                    "proportion": {
+                                                        "type": "number"
+                                                    },
+                                                    "epochNumber": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "600": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": [
+                    "tokens"
+                ]
+            }
+        },
         '/stat/tokens/list': {
             'get': {
                 description: 'list tokens with holder count.',
