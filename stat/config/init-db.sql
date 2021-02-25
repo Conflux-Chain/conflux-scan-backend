@@ -396,3 +396,19 @@ create table balance_csUSD
     createdAt datetime                                     not null,
     updatedAt datetime                                     not null
 );
+
+create table token
+(
+    id bigint auto_increment
+        primary key,
+    name char(128) default '' not null,
+    symbol char(64) not null,
+    holder bigint not null,
+    base32 char(64) not null,
+    hex40id bigint not null,
+    createdAt datetime not null,
+    updatedAt datetime not null,
+    constraint base32
+        unique (base32)
+);
+

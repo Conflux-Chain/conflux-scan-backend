@@ -19,6 +19,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             code: 0, message: `Conflux-Stat 2021.01.15 ${statApp.config.serverTag}`
         }
     })
+    router.get('/contract/all', async (ctx)=>{
+        ctx.body = {
+            list: [...statApp.contractService.map.values()]
+        }
+    })
     router.get('/tokens/holder-rank', async (ctx)=>{
         const base32 = ctx.request.query.address
         const limit = pickNumber(parseInt(ctx.request.query.limit), 10)

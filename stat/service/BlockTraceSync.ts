@@ -94,7 +94,7 @@ export class BlockTraceSync{
         } else if (tx.epochHeight < this.previousEpoch) {
             console.log(`epoch should keep growing, previous ${this.previousEpoch
             }, tx epoch height ${tx.epochHeight}, tx id in db ${tx.id}`)
-            return false;
+            return true;
         } else if (tx.epochHeight === this.previousEpoch) {
             // it's ok
             if (this.blockHashInEpoch.has(txInfo.blockHash)) {

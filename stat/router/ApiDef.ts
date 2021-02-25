@@ -24,6 +24,14 @@ export default {
         }
     ],
     "paths": {
+        '/stat/contract/all': {
+            "get": {
+                "parameters": [],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
         '/stat/tokens/holder-rank': {
             description: 'rank holder by balance',
             "get": {

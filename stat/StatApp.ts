@@ -9,6 +9,7 @@ import {Conflux} from "js-conflux-sdk";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
 import {BlockTraceSync} from "./service/BlockTraceSync";
 import {BalanceService} from "./service/watcher/BalanceService";
+import {ContractService} from "./service/contract/ContractService";
 
 export class StatApp{
     public config: StatConfig;
@@ -19,6 +20,7 @@ export class StatApp{
     public txnSync: TxnSync;
     public traceSync: BlockTraceSync
     public cfx: Conflux;
+    public contractService: ContractService;
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -42,6 +44,8 @@ export class StatApp{
         await this.cfx.updateNetworkId();
         // @ts-ignore
         this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
+        // @ts-ignore
+        const networkId = this.cfx.networkId
         this.traceSync = new BlockTraceSync(this.cfx)
         this.config.erc20watchList.forEach(erc20=>{
             const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx)
@@ -50,6 +54,9 @@ export class StatApp{
         // @ts-ignore
         this.balanceService = new BalanceService(this.config.erc20watchList, this.cfx.networkId)
         this.balanceService.schedule(3000)
+        //
+        this.contractService = new ContractService(this.config.scanApiUrl, networkId)
+        this.contractService.schedule()
         if (this.config.watchCfxBalance) {
             new CfxWatcher('cfx', this.cfx).schedule(this.config.cfxWatcherDelay).then()
         }

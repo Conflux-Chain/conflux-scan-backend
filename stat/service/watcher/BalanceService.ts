@@ -6,6 +6,7 @@ import {Hex40Map} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
 import {Op} from "sequelize";
+import {ContractService} from "../contract/ContractService";
 
 export class BalanceService {
     private tokens: Erc20WatchList[];
@@ -81,9 +82,13 @@ export class BalanceService {
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
+            const address = addr ? format.address(addr, this.networkId, true): holder.addressId
             return {
                 balance: holder.balance,
-                accountAddress: addr ? format.address(addr, this.networkId, true): holder.addressId,
+                account: {
+                    address,
+                    name: addr ? ContractService.instance.getName(address) : undefined,
+                },
                 hexId: holder.addressId,
                 // addr,
             }
