@@ -45,7 +45,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 base.list.forEach(baseToken=>{
                     baseToken.holderCount = '-'
                     const info = map.get(baseToken.address)
-                    if (info != null){
+                    if (info){
                         baseToken.holderCount = baseToken.holder
                         baseToken.testProp = 1
                     }
