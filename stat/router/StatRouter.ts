@@ -45,8 +45,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 base.list.forEach(baseToken=>{
                     baseToken.holderCount = '-'
                     const info = map.get(baseToken.address)
-                    info && (baseToken.holderCount = baseToken.holder)
-                    baseToken['info'] = info
+                    if (info != null){
+                        baseToken.holderCount = baseToken.holder
+                        baseToken.testProp = 1
+                    }
                 })
                 ctx.body = base
                 r('ok')
