@@ -64,9 +64,12 @@ export class BalanceService {
 
     async rankHolder(base32: any, skip: any, limit: any) {
         const token = await Token.findOne({where: {base32: base32.toUpperCase()}})
+        if (token == null) {
+            return {total: 0, list:[], message: 'token not found '+base32, code: 404}
+        }
         let table = BalanceWatcher.mapModel(token.symbol);
         if (table == null) {
-            return {total: 0, list:[], message: 'token not found '+base32, code: 404}
+            return {total: 0, list:[], message: 'token not found '+base32, code: 6404}
         }
         const total = await table.count({where:{}})
         if (total == 0) {
