@@ -46,10 +46,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 // console.log(`base data:`, JSON.stringify(base))
                 const localTokenList = await statApp.balanceService.listToken();
                 const map = new Map()
-                localTokenList.forEach(t=>map.set(t.base32, t))
+                localTokenList.forEach(t=>map.set(t.base32.substr(t.base32.lastIndexOf(':')).toLowerCase(), t))
                 base.list.forEach(baseToken=>{
                     baseToken.holderCount = '-'
-                    const info = map.get(baseToken.address)
+                    const info = map.get(baseToken.address.substr(baseToken.address.lastIndexOf(':').toLowerCase()))
                     info && (baseToken.holderCount = info.holder)
                 })
                 ctx.body = base
