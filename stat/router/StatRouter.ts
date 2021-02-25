@@ -38,14 +38,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                     return;
                 }
                 base =  JSON.parse(base.text)
-                console.log(`base data:`, JSON.stringify(base))
-                const list = await statApp.balanceService.listToken();
+                // console.log(`base data:`, JSON.stringify(base))
+                const localTokenList = await statApp.balanceService.listToken();
                 const map = new Map()
-                list.forEach(t=>map.set(t.base32, t))
-                base.list.forEach(t=>{
-                    t.holderCount = '-'
-                    const info = map.get(t.address)
-                    info && (t.holderCount = t.holder)
+                localTokenList.forEach(t=>map.set(t.base32, t))
+                base.list.forEach(baseToken=>{
+                    baseToken.holderCount = '-'
+                    const info = map.get(baseToken.address)
+                    info && (baseToken.holderCount = baseToken.holder)
+                    baseToken['info'] = info
                 })
                 ctx.body = base
                 r('ok')
