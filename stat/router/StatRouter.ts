@@ -49,7 +49,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 localTokenList.forEach(t=>map.set(t.base32.substr(t.base32.lastIndexOf(':')).toLowerCase(), t))
                 base.list.forEach(baseToken=>{
                     baseToken.holderCount = '-'
-                    const info = map.get(baseToken.address.substr(baseToken.address.lastIndexOf(':').toLowerCase()))
+                    const info = map.get(baseToken.address.substr(baseToken.address.lastIndexOf(':')).toLowerCase())
                     info && (baseToken.holderCount = info.holder)
                 })
                 ctx.body = base
