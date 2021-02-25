@@ -45,7 +45,7 @@ export class BalanceService {
         let tokenBean:Token = await Token.findOne({where: {hex40id: hexBean.id}});
         if (tokenBean == null) {
             tokenBean = await Token.create({
-                base32: format.address(token.address, this.networkId, true),
+                base32: format.address(token.address, this.networkId),
                 hex40id: hexBean.id, holder: 0,
                 symbol: token.name
             })
@@ -63,7 +63,7 @@ export class BalanceService {
     }
 
     async rankHolder(base32: any, skip: any, limit: any) {
-        const token = await Token.findOne({where: {base32: base32.toUpperCase()}})
+        const token = await Token.findOne({where: {base32: base32}})
         if (token == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 404}
         }
