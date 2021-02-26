@@ -95,4 +95,12 @@ export class BalanceService {
         })
         return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
     }
+
+    async getHolderCount(base32: string) : Promise<number> {
+        const token = await Token.findOne({where: {base32: base32}})
+        if (token == null) {
+            return null
+        }
+        return token.holder
+    }
 }

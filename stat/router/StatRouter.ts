@@ -32,6 +32,29 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             ...(await statApp.balanceService.rankHolder(base32, skip, limit))
         }
     })
+    router.get('/tokens/by-address', async (ctx)=>{
+        const res = await new Promise((resolve) => {
+            // front end use lower case and without type.contract
+            const tokenAddr = ctx.request.query.address
+            const addr = tokenAddr.toLowerCase()
+            superagent.get(`${statApp.config.scanApiUrl}/v1/token/${addr}`)
+                .query(ctx.request.querystring)
+                .end(async (err, res)=>{
+                    if (err) {
+                        console.log(`scan api fetch token fail:`, err)
+                        ctx.body = res.body
+                        ctx.status = 600
+                        resolve("fail")
+                        return
+                    }
+                    if (res.status === 200) {
+                      res.body.holderCount = (await statApp.balanceService.getHolderCount(addr)) || '-'
+                    }
+                    ctx.body = res.body
+                    resolve("ok")
+                })
+        })
+    })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(r=>{
             superagent.get(`${statApp.config.scanApiUrl}/v1/token`)
