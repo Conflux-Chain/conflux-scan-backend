@@ -28,7 +28,7 @@ const BigFixed = require('bigfixed');
 export class BalanceWatcher{
     private miniERC20: any;
     protected cfx: Conflux;
-    protected fraction = BigInt(1e+18)
+    protected fraction = BigInt(1e+18) // hard code, please search 1e+18 globally when fixing it.
     protected addressPos = -1;
     protected model: typeof Balance
     protected name:string

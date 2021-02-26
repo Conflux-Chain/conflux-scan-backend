@@ -7,6 +7,7 @@ import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
 import {Op} from "sequelize";
 import {ContractService} from "../contract/ContractService";
+const BigFixed = require('bigfixed');
 
 export class BalanceService {
     private tokens: Erc20WatchList[];
@@ -84,7 +85,7 @@ export class BalanceService {
             const addr = map.get(holder.addressId)
             const address = addr ? format.address(addr, this.networkId, true): holder.addressId
             return {
-                balance: holder.balance,
+                balance: this.decimal2drip(holder.balance, 18),
                 account: {
                     address,
                     name: addr ? ContractService.instance.getName(address) : undefined,
@@ -94,6 +95,18 @@ export class BalanceService {
             }
         })
         return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
+    }
+    zeros = '00000000000000000000000'
+    decimal2drip(d:any, fraction:number) {
+        const arr = d.toString().split('.')
+        if (arr.length === 1) {
+            return d
+        }
+        let ret = `${arr[0]}${arr[1]}${this.zeros.substr(0,fraction-arr[1].length)}`.replace(/^0*/, '')
+        if (ret.length === 0) {
+            return '0'
+        }
+        return ret;
     }
 
     async getHolderCount(base32: string) : Promise<number> {
