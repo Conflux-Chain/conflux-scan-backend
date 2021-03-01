@@ -13,7 +13,7 @@ import {
     Balance_cMOON,
     Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_cUMA,
     Balance_cUSDC, Balance_cYFI, Balance_cYFII,
-    Balance_FC,
+    Balance_FC, Balance_MNNFT,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -77,6 +77,7 @@ export class BalanceWatcher{
             case 'cKNC':         ret = Balance_cKNC;    break;
             case 'cSNX':         ret = Balance_cSNX;    break;
             case 'csUSD':         ret = Balance_csUSD;    break;
+            case 'MNNFT':         ret = Balance_MNNFT;    break;
 
             default:
                 throw new Error('unknown balance type, please fix the mapping code. name:'+name)

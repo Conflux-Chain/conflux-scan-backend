@@ -27,7 +27,7 @@ import {
     Balance_cUSDC,
     Balance_cYFI,
     Balance_cYFII,
-    Balance_FC,
+    Balance_FC, Balance_MNNFT,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -113,6 +113,7 @@ export async function initModel(sequelize) {
     Balance_cKNC.register(sequelize);
     Balance_cSNX.register(sequelize);
     Balance_csUSD.register(sequelize);
+    Balance_MNNFT.register(sequelize);
 
     Token.register(sequelize);
     Trace.register(sequelize)

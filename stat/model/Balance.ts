@@ -188,3 +188,8 @@ export class Balance_csUSD extends Balance{
         Balance.register(seq, Balance_csUSD, 'balance_csUSD')
     }
 }
+export class Balance_MNNFT extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_MNNFT, 'balance_MNNFT')
+    }
+}

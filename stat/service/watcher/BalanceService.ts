@@ -84,7 +84,9 @@ export class BalanceService {
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
             const address = addr ? format.address(addr, this.networkId, true): holder.addressId
+            // console.log(`balance type is : ${typeof  holder.balance}`)
             return {
+                // holder.balance is string
                 balance: this.decimal2drip(holder.balance, 18),
                 account: {
                     address,
