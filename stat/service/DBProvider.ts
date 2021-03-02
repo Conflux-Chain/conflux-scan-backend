@@ -14,12 +14,12 @@ import {
     Balance_cCOMP,
     Balance_cDAI,
     Balance_cDF,
-    Balance_cETH,
-    Balance_cFOR, Balance_cITF, Balance_cKNC,
+    Balance_cETH, Balance_CF,
+    Balance_cFOR, Balance_CG, Balance_cITF, Balance_cKNC,
     Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK,
-    Balance_cMOON,
+    Balance_cMOON, Balance_conDragon,
     Balance_CRCL_BTC_symbol,
     Balance_cSNX, Balance_csUSD,
     Balance_cSWRV,
@@ -115,6 +115,12 @@ export async function initModel(sequelize) {
     Balance_csUSD.register(sequelize);
     Balance_MNNFT.register(sequelize);
     Balance_cITF.register(sequelize);
+
+    // erc1155
+    Balance_conDragon.register(sequelize);
+    Balance_CF.register(sequelize);
+    Balance_CG.register(sequelize);
+
 
     Token.register(sequelize);
     NftId.register(sequelize)
