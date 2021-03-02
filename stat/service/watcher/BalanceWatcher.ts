@@ -116,7 +116,7 @@ export class BalanceWatcher{
             await KV.create({key: posKey, value: "0"})
             minTokenId = 0
         }
-        const limit = 6
+        const limit = 1000
         let jsonRpc = await superagent.post(`${this.config.scanJsonRpcUrl}`)
             .send({
                 "jsonrpc": "2.0",  "id": 1,
@@ -124,7 +124,7 @@ export class BalanceWatcher{
                 "params": [{
                     "address": this.contractAddress,
                     "limit": limit, reverse: false,
-                    minTokenId
+                    "minTokenId": minTokenId,
                 }]
             }).catch(err=>{
                 console.log(`${fmtDtUTC(new Date())} call scan api fail , ${this.config.scanJsonRpcUrl} :`, err)
