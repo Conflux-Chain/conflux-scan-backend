@@ -15,7 +15,7 @@ import {
     Balance_cDAI,
     Balance_cDF,
     Balance_cETH,
-    Balance_cFOR, Balance_cKNC,
+    Balance_cFOR, Balance_cITF, Balance_cKNC,
     Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK,
@@ -114,6 +114,7 @@ export async function initModel(sequelize) {
     Balance_cSNX.register(sequelize);
     Balance_csUSD.register(sequelize);
     Balance_MNNFT.register(sequelize);
+    Balance_cITF.register(sequelize);
 
     Token.register(sequelize);
     NftId.register(sequelize)

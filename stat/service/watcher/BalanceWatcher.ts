@@ -7,7 +7,7 @@ import {
     Balance_cCOMP,
     Balance_cDAI, Balance_cDF,
     Balance_cETH,
-    Balance_cFOR, Balance_cKNC, Balance_cKP3R,
+    Balance_cFOR, Balance_cITF, Balance_cKNC, Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK,
     Balance_cMOON,
@@ -97,7 +97,7 @@ export class BalanceWatcher{
             case 'cSNX':         ret = Balance_cSNX;    break;
             case 'csUSD':         ret = Balance_csUSD;    break;
             case 'MNNFT':         ret = Balance_MNNFT;    break;
-
+            case 'cITF':         ret = Balance_cITF;    break;
             default:
                 throw new Error('unknown balance type, please fix the mapping code. name:'+name)
         }

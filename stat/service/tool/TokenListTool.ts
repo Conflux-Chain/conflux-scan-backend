@@ -18,6 +18,7 @@ async function run() {
         console.log('err:', err)
         // res.body = JSON.parse(res.body)
         let list = res.body.list
+        list = list.filter(token=>token.symbol === 'cITF')
         console.log(`conf:`)
         list.forEach(token=>{
             let hexAddr = format.hexAddress(token.address)

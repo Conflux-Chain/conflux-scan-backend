@@ -193,3 +193,8 @@ export class Balance_MNNFT extends Balance{
         Balance.register(seq, Balance_MNNFT, 'balance_MNNFT')
     }
 }
+export class Balance_cITF extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cITF, 'balance_cITF')
+    }
+}
