@@ -41,6 +41,7 @@ export class BalanceWatcher{
     protected addressPos = -1;
     protected model: typeof Balance
     protected name:string
+    protected tokenType:string
     // save address position in DB, in order to `scan` balance of all addresses.
     protected addressPosKey:string
     private config: {scanJsonRpcUrl:string};
@@ -57,7 +58,7 @@ export class BalanceWatcher{
             const {abi, bytecode} = require('./contract/miniERC20.json');
             this.miniERC20 = cfx.Contract({abi, bytecode, address: contractAddr});
 
-            const {abi1155} = require('./contract/miniERC1155.json');
+            const {abi: abi1155} = require('./contract/miniERC1155.json');
             this.miniERC1155 = cfx.Contract({abi:abi1155, address: contractAddr});
 
         }
@@ -143,9 +144,9 @@ export class BalanceWatcher{
         console.log(`${fmtDtUTC(new Date())} fetch token id for ${this.contractAddress} hex id ${this.contractHex40id}, token id count ${resultArr.length}`)
     }
     async scheduleSyncTokeId() {
-        console.log(`schedule sync token id ${this.contractAddress}`)
         const hexBean = await makeId(this.contractAddress)
         this.contractHex40id = hexBean.id
+        console.log(`schedule sync token id ${this.contractAddress}, address hex id ${this.contractHex40id}`)
         let that = this;
         async function repeat() {
             await that.syncTokenIds()
@@ -154,7 +155,9 @@ export class BalanceWatcher{
         repeat().then()
     }
     async schedule(delay:number = 100, tokenType:string = '') {
-        if (tokenType === 'erc1155') {
+        this.tokenType = tokenType
+        let isNFT = tokenType === 'erc1155';
+        if (isNFT) {
             this.scheduleSyncTokeId().then()
         }
         this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
@@ -197,6 +200,28 @@ export class BalanceWatcher{
     }
 
     async queryBalance(hex: string, addrId: number) {
+        let isNFT = this.tokenType === 'erc1155';
+        if (isNFT) {
+            const tokenIdList = await NftId.findAll({where: {contractHexId: this.contractHex40id}})
+            if (tokenIdList.length === 0) {
+                return
+            }
+            const tokenIds = tokenIdList.map(tk=>tk.nftId)
+            const addrArr = tokenIdList.map(tk=>hex)
+            let baList = await this.miniERC1155.balanceOfBatch(addrArr, tokenIds).catch(err=>{
+                console.log(`balance of batch fail, ${this.name} ${this.contractAddress}:`, err)
+                return null;
+            });
+            if (baList === null) {
+                return
+            }
+            const currentAddressHasHowManyToken = baList.filter(n=>n > 0).length;
+            await this.save(addrId, currentAddressHasHowManyToken, false)
+        } else {
+            await this.queryBalanceErc20(hex, addrId)
+        }
+    }
+    async queryBalanceErc20(hex: string, addrId: number) {
         try {
             // @ts-ignore
             const ban = await this.miniERC20.balanceOf(format.address(hex, this.cfx.networkId));
@@ -211,12 +236,14 @@ export class BalanceWatcher{
 
     }
 
-    protected async save(addrId: number, ban: any) {
+    protected async save(addrId: number, ban: any, needScale = true) {
         if (ban < 1) {
             await this.model.destroy({where: {addressId: addrId}})
             return Promise.resolve();
         }
-        ban = this.drip2cfx(ban)
+        if (needScale) {
+            ban = this.drip2cfx(ban)
+        }
         await this.model.upsert({addressId:addrId, balance: ban}, {});
     }
 
