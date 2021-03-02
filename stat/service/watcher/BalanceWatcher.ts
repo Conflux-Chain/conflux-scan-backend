@@ -6,11 +6,11 @@ import {
     Balance_cBAND, Balance_cBTC,
     Balance_cCOMP,
     Balance_cDAI, Balance_cDF,
-    Balance_cETH,
-    Balance_cFOR, Balance_cITF, Balance_cKNC, Balance_cKP3R,
+    Balance_cETH, Balance_CF,
+    Balance_cFOR, Balance_CG, Balance_cITF, Balance_cKNC, Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK,
-    Balance_cMOON,
+    Balance_cMOON, Balance_conDragon,
     Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_cUMA,
     Balance_cUSDC, Balance_cYFI, Balance_cYFII,
     Balance_FC, Balance_MNNFT,
@@ -98,6 +98,10 @@ export class BalanceWatcher{
             case 'csUSD':         ret = Balance_csUSD;    break;
             case 'MNNFT':         ret = Balance_MNNFT;    break;
             case 'cITF':         ret = Balance_cITF;    break;
+            case 'conDragon':         ret = Balance_conDragon;    break;
+            case 'CF':         ret = Balance_CF;    break;
+            case 'CG':         ret = Balance_CG;    break;
+
             default:
                 throw new Error('unknown balance type, please fix the mapping code. name:'+name)
         }

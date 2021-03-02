@@ -8,25 +8,36 @@ async function run() {
     // const cfx = new Conflux({url})
     const scanUrl = 'https://confluxscan.io/v1'
     const client = superagent
+    const transferType = 'ERC1155'
+            // transferType: 'ERC20'
+    const is1155 = transferType === 'ERC1155'
     client.get(`${scanUrl}/token`)
         .query({
             fields: '',
             limit: 100,
             skip: 0,
-            transferType: 'ERC20'
+            transferType
         }).end((err, res) => {
         console.log('err:', err)
         // res.body = JSON.parse(res.body)
         let list = res.body.list
-        list = list.filter(token=>token.symbol === 'cITF')
+        // list = list.filter(token=>token.symbol === 'cITF')
         console.log(`conf:`)
         list.forEach(token=>{
             let hexAddr = format.hexAddress(token.address)
-            console.log(`${JSON.stringify({name: token.symbol, address: hexAddr, watchDelay: 100})},`)
+            console.log(`${JSON.stringify({name: token.symbol, address: hexAddr, watchDelay: 100, tokenType: transferType.toLowerCase()})},`)
+        })
+        console.log(`\n model:`)
+        list.forEach(token=>{
+            console.log(`export class Balance_${token.symbol} extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_${token.symbol}, 'balance_${token.symbol}')
+    }
+}`)
         })
         console.log(`\n watcher:`)
         list.forEach(token=>{
-            console.log(`case '${token.symbol}':         this.model = Balance_${token.symbol};    break;`)
+            console.log(`case '${token.symbol}':         ret = Balance_${token.symbol};    break;`)
         })
         console.log(`\n register:`)
         list.forEach(token=>{
@@ -42,14 +53,6 @@ async function run() {
     createdAt datetime                                     not null,
     updatedAt datetime                                     not null
 );`)
-        })
-        console.log(`\n model:`)
-        list.forEach(token=>{
-            console.log(`export class Balance_${token.symbol} extends Balance{
-    static register(seq){
-        Balance.register(seq, Balance_${token.symbol}, 'balance_${token.symbol}')
-    }
-}`)
         })
         // console.log('res:', res.body)
     });

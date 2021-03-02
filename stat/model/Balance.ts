@@ -198,3 +198,20 @@ export class Balance_cITF extends Balance{
         Balance.register(seq, Balance_cITF, 'balance_cITF')
     }
 }
+
+export class Balance_conDragon extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_conDragon, 'balance_conDragon')
+    }
+}
+export class Balance_CF extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_CF, 'balance_CF')
+    }
+}
+export class Balance_CG extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_CG, 'balance_CG')
+    }
+}
+
