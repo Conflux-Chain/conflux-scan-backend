@@ -112,7 +112,7 @@ export class BalanceWatcher{
     async syncTokenIds() {
         const posKey = `${KEY_NFT_TOKEN_ID_POS}${this.contractHex40id}`
         let minTokenId = await KV.getNumber(posKey);
-        if (minTokenId === null) {
+        if (isNaN(minTokenId)) {
             await KV.create({key: posKey, value: "0"})
             minTokenId = 0
         }
