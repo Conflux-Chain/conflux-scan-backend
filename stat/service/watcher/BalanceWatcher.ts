@@ -133,6 +133,10 @@ export class BalanceWatcher{
         if (jsonRpc === null) {
             return
         }
+        if (jsonRpc.body.error) {
+            console.log(`call token rpc result in error:`, jsonRpc.body.error)
+            return;
+        }
         let resultArr = jsonRpc.body.result;
         let max = 0
         for (let i = 0; i < resultArr.length; i++) {
