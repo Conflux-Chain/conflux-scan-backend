@@ -13,7 +13,7 @@ export async function queryBalance() {
     // @ts-ignore
     const accInfo = await cfx.getAccount(format.address(ctct, cfx.networkId))
     console.log(`account info:`, accInfo)
-    const w = new Erc20Watcher('wcfx', ctct, cfx)
+    const w = new Erc20Watcher('wcfx', ctct, cfx, {scanJsonRpcUrl:''})
     await w.schedule()
     // const hex = '0x144f812a17421871ce1abd5c35f6faaed33e8755' // unknown address from scan
     const hex = ''; // dex-cfx

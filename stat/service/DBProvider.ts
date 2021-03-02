@@ -35,7 +35,7 @@ import {
     WCfxBalance
 } from "../model/Balance";
 import {Trace} from "../model/Trace";
-import {Token} from "../model/Token";
+import {NftId, Token} from "../model/Token";
 let conf
 export function createDB(config) {
     conf = config
@@ -116,6 +116,7 @@ export async function initModel(sequelize) {
     Balance_MNNFT.register(sequelize);
 
     Token.register(sequelize);
+    NftId.register(sequelize)
     Trace.register(sequelize)
     TestTimezone.register(sequelize);
 }

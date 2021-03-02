@@ -27,3 +27,30 @@ export class Token extends Model<IToken> implements IToken{
         })
     }
 }
+// erc 1155 token id
+export interface INftId {
+    id?:number,
+    contractHexId:number,
+    nftId: number
+}
+export class NftId extends Model<INftId> implements INftId {
+    id?:number
+    contractHexId:number
+    nftId: number
+    static register(seq: Sequelize) {
+        NftId.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            nftId: {type: DataTypes.BIGINT, allowNull: false, },
+            contractHexId: {type: DataTypes.BIGINT, allowNull: false, },
+        },{
+            tableName: 'nft_id',
+            sequelize: seq,
+            indexes:[
+                {name: 'idx_hex_id_token_id', unique:true, fields:[
+                        {name: 'contractHexId'},
+                        {name: 'nftId', order: "DESC"},
+                    ]}
+            ]
+        })
+    }
+}

@@ -20,13 +20,22 @@ import {
     USDTBalance,
     WCfxBalance
 } from "../../model/Balance";
-import {KEY_BALANCE_POS_PREFIX, KV} from "../../model/KV";
-import {Hex40Map} from "../../model/HexMap";
+import {KEY_BALANCE_POS_PREFIX, KEY_NFT_TOKEN_ID_POS, KV} from "../../model/KV";
+import {Hex40Map, makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
+import {StatConfig} from "../../config/StatConfig";
+import {hex} from "../../test/GenData";
+import {NftId} from "../../model/Token";
 const BigFixed = require('bigfixed');
+const superagent = require("superagent")
 
+/**
+ * Scan all address's balance of configured contracts.
+ * For erc1155, we also need maintain all the token ids, by calling scan json rpc.
+ */
 export class BalanceWatcher{
     private miniERC20: any;
+    private miniERC1155: any;
     protected cfx: Conflux;
     protected fraction = BigInt(1e+18) // hard code, please search 1e+18 globally when fixing it.
     protected addressPos = -1;
@@ -34,14 +43,23 @@ export class BalanceWatcher{
     protected name:string
     // save address position in DB, in order to `scan` balance of all addresses.
     protected addressPosKey:string
+    private config: {scanJsonRpcUrl:string};
+    private readonly contractAddress: string;
+    private contractHex40id:number
 
-    constructor(name:string, contractAddr: string, cfx:Conflux) {
+    constructor(name:string, contractAddr: string, cfx:Conflux, config:{scanJsonRpcUrl:string}) {
+        this.config = config
         this.name = name
+        this.contractAddress = contractAddr
         this.cfx = cfx;
         this.model = BalanceWatcher.mapModel(name)
         if (contractAddr) {
             const {abi, bytecode} = require('./contract/miniERC20.json');
             this.miniERC20 = cfx.Contract({abi, bytecode, address: contractAddr});
+
+            const {abi1155} = require('./contract/miniERC1155.json');
+            this.miniERC1155 = cfx.Contract({abi:abi1155, address: contractAddr});
+
         }
     }
 
@@ -85,7 +103,60 @@ export class BalanceWatcher{
         return ret;
     }
 
-    async schedule(delay:number = 100) {
+    // curl -X POST '127.0.0.1:8888' -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":0,"method":"listERC1155TokenId","params":[{"address":"0x83928828f200b79b78404dce3058ba0c8c4076c3", "limit":100}]}'
+    async syncTokenIds() {
+        const posKey = `${KEY_NFT_TOKEN_ID_POS}${this.contractHex40id}`
+        let minTokenId = await KV.getNumber(posKey);
+        if (minTokenId === null) {
+            await KV.create({key: posKey, value: "0"})
+            minTokenId = 0
+        }
+        const limit = 6
+        let jsonRpc = await superagent.post(`${this.config.scanJsonRpcUrl}`)
+            .send({
+                "jsonrpc": "2.0",  "id": 1,
+                "method":"listERC1155TokenId",
+                "params": [{
+                    "address": this.contractAddress,
+                    "limit": limit, reverse: false,
+                    minTokenId
+                }]
+            }).catch(err=>{
+                console.log(`${fmtDtUTC(new Date())} call scan api fail , ${this.config.scanJsonRpcUrl} :`, err)
+                return null
+            });
+        if (jsonRpc === null) {
+            return
+        }
+        let resultArr = jsonRpc.body.result;
+        let max = 0
+        for (let i = 0; i < resultArr.length; i++) {
+            const obj = resultArr[i]
+            await NftId.upsert({contractHexId: this.contractHex40id, nftId: obj.tokenId})
+            max = Math.max(max, Number(obj.tokenId))
+        }
+        if (resultArr.length < limit) {
+            // reset to zero, scan again. token id may be not continuous.
+            max = 0
+        }
+        await KV.update({value: max.toString()}, {where: {key: posKey}})
+        console.log(`${fmtDtUTC(new Date())} fetch token id for ${this.contractAddress} hex id ${this.contractHex40id}, token id count ${resultArr.length}`)
+    }
+    async scheduleSyncTokeId() {
+        console.log(`schedule sync token id ${this.contractAddress}`)
+        const hexBean = await makeId(this.contractAddress)
+        this.contractHex40id = hexBean.id
+        let that = this;
+        async function repeat() {
+            await that.syncTokenIds()
+            setTimeout(repeat, 10_000)
+        }
+        repeat().then()
+    }
+    async schedule(delay:number = 100, tokenType:string = '') {
+        if (tokenType === 'erc1155') {
+            this.scheduleSyncTokeId().then()
+        }
         this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
         // @ts-ignore
         await this.cfx.updateNetworkId()
@@ -121,6 +192,10 @@ export class BalanceWatcher{
         await KV.update({value: curId.toString()}, {where:{key: this.addressPosKey}})
     }
 
+    async queryErc1155Balance() {
+        // const ban = await this.miniERC20.balanceOf(format.address(hex, this.cfx.networkId));
+    }
+
     async queryBalance(hex: string, addrId: number) {
         try {
             // @ts-ignore
@@ -150,8 +225,8 @@ export class BalanceWatcher{
     }
 }
 export class CfxWatcher extends BalanceWatcher{
-    constructor(name:string, cfx:Conflux) {
-        super(name, null, cfx);
+    constructor(name:string, cfx:Conflux, config:StatConfig) {
+        super(name, null, cfx, config);
     }
     async queryBalance(hex: string, addrId: number): Promise<void> {
         try {

@@ -13,6 +13,7 @@ export default {
         syncSchema: false,
     },
     scanApiUrl: 'https://testnet-scantest.confluxnetwork.org',
+    scanJsonRpcUrl: 'http://127.0.0.1:8895',
     // delay ms.
     syncBlockDelay: 100,
     // delay ms.

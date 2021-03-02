@@ -48,8 +48,8 @@ export class StatApp{
         const networkId = this.cfx.networkId
         this.traceSync = new BlockTraceSync(this.cfx)
         this.config.erc20watchList.forEach(erc20=>{
-            const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx)
-            watcher.schedule(erc20.watchDelay)
+            const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, this.config)
+            watcher.schedule(erc20.watchDelay, erc20.tokenType)
         })
         // @ts-ignore
         this.balanceService = new BalanceService(this.config.erc20watchList, this.cfx.networkId)
@@ -58,7 +58,7 @@ export class StatApp{
         this.contractService = new ContractService(this.config.scanApiUrl, networkId)
         this.contractService.schedule()
         if (this.config.watchCfxBalance) {
-            new CfxWatcher('cfx', this.cfx).schedule(this.config.cfxWatcherDelay).then()
+            new CfxWatcher('cfx', this.cfx, this.config).schedule(this.config.cfxWatcherDelay).then()
         }
         // @ts-ignore
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${this.cfx.networkId}`)

@@ -17,6 +17,7 @@ export interface StatConfig{
     port: number;
     conflux: ConfluxOption; // chain rpc node
     scanApiUrl: string
+    scanJsonRpcUrl: string
     database: Database;
     syncBlock: boolean,
     syncTrace: boolean,
@@ -33,6 +34,7 @@ export interface Erc20WatchList{
     // it's the symbol of the token. why not use real name : real name contains space.
     name:string
     watchDelay:number
+    tokenType:string // erc1155 needs a token type
 }
 
 /**
