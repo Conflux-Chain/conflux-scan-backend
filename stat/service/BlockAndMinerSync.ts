@@ -105,7 +105,7 @@ export class BlockAndMinerSync {
         })
         list.forEach(item=>{
             // @ts-ignore
-            item['base32'] = format.address(item['hex'], this.cfx.networkId)
+            item['base32'] = format.address(item.miner, this.cfx.networkId)
         })
         return Promise.resolve(list)
     }
