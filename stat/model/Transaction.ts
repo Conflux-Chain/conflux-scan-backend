@@ -57,7 +57,7 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
             to: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
             gas: {type: DataTypes.INTEGER, allowNull: false},
-            status: {type: DataTypes.INTEGER, allowNull: true},
+            status: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             gasPrice: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             blockTime: {type: DataTypes.DATE, allowNull: false},

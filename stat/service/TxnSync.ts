@@ -167,7 +167,9 @@ export class TxnSync {
             blk.transactions.forEach(tx=>tx.blockTime = blk.timestamp)
             return blk.transactions
         }).forEach(txList=>
-            txList.forEach(tx=>{
+            // 0 for success, 1 if an error occurred, null when the transaction is skipped or not packed.
+            txList.filter(tx=>tx.status !== null && tx.status !== '')
+                .forEach(tx=>{
                 tx.from = format.hexAddress(tx.from) //base32 address to hex
                 if (tx.to) {
                     tx.to = format.hexAddress(tx.to)
