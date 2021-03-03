@@ -66,11 +66,11 @@ async function testConfig() {
 }
 
 async function testTopMinerBlock() {
-    let dataBlockService = new BlockAndMinerSync(sequelize, config.conflux);
-    // await DataBlockService.checkDBSize()
-    await dataBlockService.topByType(30, 'd', 20).then(list => {
-        console.log('top miners', list)
-    })
+    // let dataBlockService = new BlockAndMinerSync(sequelize, config.conflux);
+    // // await DataBlockService.checkDBSize()
+    // await dataBlockService.topByType(30, 'd', 20).then(list => {
+    //     console.log('top miners', list)
+    // })
 }
 
 async function testTxSync(loop:boolean = false) {
@@ -95,7 +95,7 @@ async function run(){
     }
     console.log('---------------init models done------------')
 
-    let blockAndMinerSync = new BlockAndMinerSync(sequelize, config.conflux);
+    // let blockAndMinerSync = new BlockAndMinerSync(sequelize, config.conflux);
     // await blockAndMinerSync.checkPosition();
     // await blockAndMinerSync.syncBlockByEpoch()
     // await new DataBlockService(sequelize).rollup();

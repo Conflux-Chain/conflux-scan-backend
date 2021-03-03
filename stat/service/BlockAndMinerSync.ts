@@ -18,9 +18,9 @@ export class BlockAndMinerSync {
     private sequelize: Sequelize;
     public cfx: Conflux;
 
-    constructor(sequelize: Sequelize, cfx:ConfluxOption) {
+    constructor(sequelize: Sequelize, cfx:Conflux) {
         this.sequelize = sequelize;
-        this.cfx = new Conflux(cfx)
+        this.cfx = cfx
     }
 
     public async schedule(delay:number = 100) {
@@ -68,7 +68,7 @@ export class BlockAndMinerSync {
         return seconds
     }
 
-    async topByType(n: number, type: string, limit: number = 10): Promise<IMinerBlock[]>{
+    async topByType(n: number, type: string, limit: number = 10): Promise<{list:IMinerBlock[], allDifficulty:number}>{
         console.log(`top by type : ${n} ${type} limit ${limit}`)
         if (n <= 0) {
             return Promise.reject(`invalid span ${n}`)
@@ -88,7 +88,7 @@ export class BlockAndMinerSync {
         return this.topByTime(beginDt, endDt, timeWindow, limit)
     }
 
-    async topByTime(beginDt: Date, endDt: Date, timeWindow: string, limit: number): Promise<IMinerBlock[]> {
+    async topByTime(beginDt: Date, endDt: Date, timeWindow: string, limit: number): Promise<{list:IMinerBlock[], allDifficulty:number}> {
         const sumFn = getSumFunction();
         const list:IMinerBlock[] = await this.sequelize.query(
     `select minerId, hex as miner, sum(blockCount) as blockCount, 
@@ -107,7 +107,11 @@ export class BlockAndMinerSync {
             // @ts-ignore
             item['base32'] = format.address(`0x${item.miner}`, this.cfx.networkId)
         })
-        return Promise.resolve(list)
+        const allDifficulty = await MinerBlock.sum("difficultySum", {
+            where: {beginTime: {[Op.gte]:beginDt}, endTime:{[Op.lte]:endDt}, timeWindow: timeWindow},
+            benchmark: true, logging: console.log
+        })
+        return Promise.resolve({allDifficulty,list})
     }
 
     skip1hTimes = 0

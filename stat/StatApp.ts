@@ -27,6 +27,9 @@ export class StatApp{
     }
 
     public async init() {
+        this.cfx = new Conflux(this.config.conflux)
+        // @ts-ignore
+        await this.cfx.updateNetworkId();
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
@@ -39,10 +42,7 @@ export class StatApp{
         }
         this.rankService = new RankService(this.sequelize)
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
-        this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.config.conflux);
-        this.cfx = new Conflux(this.config.conflux)
-        // @ts-ignore
-        await this.cfx.updateNetworkId();
+        this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         // @ts-ignore
         this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
         // @ts-ignore

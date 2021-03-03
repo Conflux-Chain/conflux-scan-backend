@@ -91,12 +91,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/miner/top-by-type', async (ctx)=>{
         const blockService = statApp.blockAndMinerSync;
         const { span, type, rows } = ctx.request.query;
-        const list = await blockService.topByType(parseInt(span), type, parseInt(rows || 10));
+        const {list,allDifficulty} = await blockService.topByType(parseInt(span), type, parseInt(rows || 10));
         const timeRange = blockService.calculateTimeRange(list);
         const seconds = blockService.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {
             code: 0, message: 'ok',
             list,
+            allDifficulty,
             ...timeRange,
             seconds,
             total: list.length,
