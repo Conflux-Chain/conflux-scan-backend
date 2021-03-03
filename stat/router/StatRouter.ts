@@ -95,6 +95,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const timeRange = blockService.calculateTimeRange(list);
         const seconds = blockService.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {
+            code: 0, message: 'ok',
             list,
             ...timeRange,
             seconds,
