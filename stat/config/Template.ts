@@ -2,6 +2,7 @@
 export default {
     port: 8087,
     conflux: { url: 'http://main.confluxrpc.org/v2' },
+    cfxWsUrl: '',
     database: {
         // sqlitePath: './data/database.sqlite',
         database: '',

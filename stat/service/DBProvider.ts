@@ -2,7 +2,7 @@ import {Sequelize} from "sequelize";
 import {Address, AddressInfo, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {TransactionDB} from "../model/Transaction";
-import {Block} from "../model/Block";
+import {Block, PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV} from "../model/KV";
 import {TestTimezone} from "../model/TestTimezone";
@@ -125,6 +125,7 @@ export async function initModel(sequelize) {
     Token.register(sequelize);
     NftId.register(sequelize)
     Trace.register(sequelize)
+    PivotSwitch.register(sequelize)
     TestTimezone.register(sequelize);
 }
 

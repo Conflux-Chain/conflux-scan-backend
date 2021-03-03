@@ -10,6 +10,7 @@ import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
 import {BlockTraceSync} from "./service/BlockTraceSync";
 import {BalanceService} from "./service/watcher/BalanceService";
 import {ContractService} from "./service/contract/ContractService";
+import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 
 export class StatApp{
     public config: StatConfig;
@@ -54,6 +55,7 @@ export class StatApp{
         // @ts-ignore
         this.balanceService = new BalanceService(this.config.erc20watchList, this.cfx.networkId)
         this.balanceService.schedule(3000)
+        new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
         //
         this.contractService = new ContractService(this.config.scanApiUrl, networkId)
         this.contractService.schedule()

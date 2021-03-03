@@ -12,10 +12,15 @@ const BigFixed = require('bigfixed');
 export class BalanceService {
     private tokens: Erc20WatchList[];
     private readonly networkId: number;
+    private tokenMap:Map<string, Erc20WatchList>
 
     constructor(erc20watchList: Erc20WatchList[], networkId:number = 1029) {
         this.tokens = erc20watchList
         this.networkId = networkId;
+        this.tokenMap = new Map()
+        erc20watchList.forEach(t=>{
+            this.tokenMap.set(t.name, t)
+        })
     }
 
     public async listToken() {
@@ -81,13 +86,15 @@ export class BalanceService {
         const hexList = await Hex40Map.findAll({where: {id: {[Op.in]:list.map(h=>h.addressId)}}})
         const map = new Map()
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
+        const conf = this.tokenMap.get(token.symbol)
+        const is1155 = conf && conf.tokenType && conf.tokenType.includes('1155')
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
             const address = addr ? format.address(addr, this.networkId, true): holder.addressId
             // console.log(`balance type is : ${typeof  holder.balance}`)
             return {
                 // holder.balance is string
-                balance: this.decimal2drip(holder.balance, 18),
+                balance: is1155 ? holder.balance : this.decimal2drip(holder.balance, 18),
                 account: {
                     address,
                     name: addr ? ContractService.instance.getName(address) : undefined,
