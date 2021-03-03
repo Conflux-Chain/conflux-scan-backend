@@ -125,8 +125,11 @@ export class BlockTraceSync{
         // @ts-ignore
         for (const obj of traces.transactionTraces) {
             for (const t of obj.traces) {
-                // console.log(`trace ${t.action.from}`)
-                let from = format.hexAddress(t.action.from)
+                if (t.action.from === undefined) {
+                    console.log(`trace action.from miss, block hash ${txInfo.blockHash}`)
+                    continue
+                }
+                let from = format.hexAddress(t.action.from);
                 let fromId = (await makeId(from)).id
                 let to = t.action.to === undefined ? "" : format.hexAddress(t.action.to)
                 let toId = to === "" ? 0 : (await makeId(to)).id

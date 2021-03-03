@@ -213,7 +213,10 @@ export class BlockAndMinerSync {
         const deleteCount = count - maxSize
         if (count > maxSize) {
             const separator = await table.findOne({where, offset: deleteCount, limit: 1, order: [["id", "ASC"]]})
-            const deleted = await table.destroy({where:{...where, id: {[Op.lt]: separator.id}}})
+            if (separator === null) {
+                return;
+            }
+            const deleted = await table.destroy({where:{...where, id: {[Op.lt]: separator.id}}});
             // noinspection SqlResolve
             console.log(`Deleted from ${table.getTableName()}, at size ${count}, deleted ${deleted}`)
         } else {
