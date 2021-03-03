@@ -83,7 +83,11 @@ export class BlockTraceSync{
         const tx = await TransactionDB.findByPk(txId);
         if (tx == null) {
             const maxTxId = await TransactionDB.max("id");
-            console.log(`tx not found, id ${txId}, max tx id ${maxTxId} `)
+            if (txId > maxTxId) {
+                await new Promise(resolve => setTimeout(resolve, 5_000))
+            } else {
+                console.log(`tx not found, id ${txId}, max tx id ${maxTxId} `)
+            }
             return txId < maxTxId;
 
         }
