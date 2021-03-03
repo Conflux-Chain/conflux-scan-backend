@@ -166,24 +166,22 @@ export class TxnSync {
         blockList.map(blk=>{
             blk.transactions.forEach(tx=>tx.blockTime = blk.timestamp)
             return blk.transactions
-        }).forEach(txList=>txList.filter(tx=>{
-            if (tx.status === null && epoch > 0) {
-                // console.log(`tx status is null, epoch ${epoch} ${tx.hash}`)
-            }
-            return tx.status === '0x0' || epoch === 0;
-        }).forEach(tx=>{
-            tx.from = format.hexAddress(tx.from) //base32 address to hex
-            if (tx.to) {
-                tx.to = format.hexAddress(tx.to)
-            } else {
-                tx.to = '0x0'
-            }
-            allTx.push(tx)
-        }))
+        }).forEach(txList=>
+            txList.forEach(tx=>{
+                tx.from = format.hexAddress(tx.from) //base32 address to hex
+                if (tx.to) {
+                    tx.to = format.hexAddress(tx.to)
+                } else {
+                    tx.to = '0x0'
+                }
+                allTx.push(tx)
+            })
+        )
         stopwatch.start('db transaction phase 0')
         let txOk = 'not executed';
         const txCount = allTx.length;
         await TxnSync.staticSequelize.transaction(async (dbTx) => {
+            // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc#cfx_gettransactionbyhash
             stopwatch.start('db transaction phase 1')
             await Promise.all(
                 allTx.map(async (tx) => {
@@ -191,6 +189,8 @@ export class TxnSync {
                     // console.log(`tx is ${JSON.stringify(tx, null , 4)}`)
                     tx.epochHeight = epoch;
                     tx.gas = parseInt(tx.gas, 16)
+                    tx.gasPrice = parseInt(tx.gasPrice, 16)
+                    tx.status = (tx.status === null || tx.status === '') ? null : parseInt(tx.status, 16)
                     tx.value = parseInt(tx.value, 16)
                     tx.nonce = parseInt(tx.nonce, 16)
                     tx.txIndex = parseInt(tx.transactionIndex, 16) || 0
@@ -206,7 +206,7 @@ export class TxnSync {
             txOk = 'ok'
         }).then(()=>{
             if (epoch % 10 === 0 || txCount > 1 ) {
-                stopwatch.dump('time costs:')
+                // stopwatch.dump('time costs:')
                 console.log(`${fmtDtUTC(new Date())} insert ${txCount} txn at epoch ${epoch}`)
             }
         }).catch(err=>{
