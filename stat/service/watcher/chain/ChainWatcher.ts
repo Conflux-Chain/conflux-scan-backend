@@ -8,7 +8,10 @@ export class ChainWatcher{
     private latest_confirmed: number = 0;
     private latest_state: number = 0;
     async watchPivotSwitch({cfxWsUrl}) {
-        this.ws = new Conflux({url: cfxWsUrl})
+        if (cfxWsUrl === '') {
+            return;
+        }
+        this.ws = new Conflux({url: cfxWsUrl});
         const subscription = await this.ws.subscribeEpochs().catch(err=>{
             console.log(`subscribe epoch fail, from ${cfxWsUrl}:`, err)
             return null;

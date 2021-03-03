@@ -171,8 +171,6 @@ export class BalanceWatcher{
         this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
         // @ts-ignore
         await this.cfx.updateNetworkId()
-        // @ts-ignore
-        console.log(`network id ${this.cfx.networkId}`)
         //
         const position = await KV.findOne({where:{key: this.addressPosKey}})
         if (position == null) {

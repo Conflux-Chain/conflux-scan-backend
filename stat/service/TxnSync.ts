@@ -139,7 +139,12 @@ export class TxnSync {
     }
 
     async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number, epoch:number }>{
-        const stopwatch = new Stopwatch()
+        // @ts-ignore
+        const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
+        if (epoch > epochConfirmed) {
+            return ;
+        }
+        const stopwatch = new Stopwatch();
         stopwatch.start('getBlocksByEpochNumber')
         const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch).catch(err=>{
             console.log(`error for epoch ${epoch}`, err)
