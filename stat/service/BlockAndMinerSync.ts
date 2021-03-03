@@ -376,7 +376,7 @@ export class BlockAndMinerSync {
             }
         }).then(async ()=>{
             // console.log(`====`, blockList[0])
-            console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
+            ((minEpochNumber % 100) === 0) && console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
                 blockList[0].epochNumber
             }, max block time ${new Date(blockList[blockList.length-1].timestamp*1000).toISOString()}`)
             // adjust cache size.

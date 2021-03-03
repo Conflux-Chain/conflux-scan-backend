@@ -207,7 +207,7 @@ export class TxnSync {
             })
             txOk = 'ok'
         }).then(()=>{
-            if (epoch % 10 === 0 || txCount > 1 ) {
+            if (epoch % 100 === 0) {
                 // stopwatch.dump('time costs:')
                 console.log(`${fmtDtUTC(new Date())} insert ${txCount} txn at epoch ${epoch}`)
             }
