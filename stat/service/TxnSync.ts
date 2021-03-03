@@ -52,7 +52,7 @@ export class TxnSync {
         let aggregate = action.startsWith("txn") ? "COUNT(*)" : `${getSumFunction()}(value)`;
         let group = action.endsWith('Send') ? '`from`' : '`to`'
         const sql = `select t.*, hex from (select ${aggregate} as value, ${group} from tx
-                where blockTime between ? and ? group by ${group} order by value desc limit ?) t 
+                where blockTime between ? and ? and status = 0 group by ${group} order by value desc limit ?) t 
                 join hex40 on t.${group} = hex40.id `;
         // console.log('sql is: ', sql)
         const list:any[] = await this.sequelize.query(sql, {
