@@ -33,8 +33,8 @@ export class ChainWatcher{
                     revertDepth: this.latest_epoch - epoch
                 };
                 PivotSwitch.create(bean).then()
-                console.log(`${ fmtDtUTC(new Date()) } chain reorg of depth ${this.latest_epoch - epoch} (${this.latest_epoch} --> ${epoch})`);
-                this.sendNotify(bean)
+                bean.revertDepth > 1 && console.log(`${ fmtDtUTC(new Date()) } chain reorg of depth ${this.latest_epoch - epoch} (${this.latest_epoch} --> ${epoch})`);
+                bean.revertDepth > 3 && this.sendNotify(bean)
             }
             this.latest_epoch = epoch;
             this.latest_confirmed = await this.ws.getEpochNumber("latest_confirmed");
