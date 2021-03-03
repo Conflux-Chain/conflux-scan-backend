@@ -125,7 +125,7 @@ export class BlockTraceSync{
         // @ts-ignore
         for (const obj of traces.transactionTraces) {
             for (const t of obj.traces) {
-                if (t.action.type === 'call_result') {
+                if (t.type === 'call_result') {
                     continue
                 } else if (t.action.from === undefined) {
                     console.log(`trace action.from miss, block hash ${txInfo.blockHash}`);
