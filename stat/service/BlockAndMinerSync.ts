@@ -307,7 +307,11 @@ export class BlockAndMinerSync {
         } else {
             minEpochNumber = preEpoch + 1;
         }
-        // console.log(`=====`, minEpochNumber, epoch)
+        // @ts-ignore
+        const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
+        if (minEpochNumber > epochConfirmed) {
+            return;
+        }
         let hashes: string[];
         try {
             hashes = await this.cfx.getBlocksByEpochNumber(minEpochNumber);
@@ -366,6 +370,7 @@ export class BlockAndMinerSync {
             const updateConfig = await KV.update({value: minEpochNumber.toString()},
                 {where: {key: KEY_MINER_EPOCH,}, transaction: dbTx})
             if (updateConfig[0] === 0) {
+                console.log('update position return ', JSON.stringify(updateConfig), ' do creating.')
                 await KV.create({key: KEY_MINER_EPOCH, value: maxEpoch.toString()}
                 ,{transaction: dbTx})
             }
