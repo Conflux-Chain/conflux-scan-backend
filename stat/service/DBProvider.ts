@@ -9,11 +9,12 @@ import {TestTimezone} from "../model/TestTimezone";
 import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {
+    Balance_cAMP,
     Balance_cBAND,
     Balance_cBTC,
     Balance_cCOMP,
     Balance_cDAI,
-    Balance_cDF,
+    Balance_cDF, Balance_cDPI,
     Balance_cETH, Balance_CF,
     Balance_cFOR, Balance_CG, Balance_cITF, Balance_cKNC,
     Balance_cKP3R,
@@ -115,6 +116,9 @@ export async function initModel(sequelize) {
     Balance_csUSD.register(sequelize);
     Balance_MNNFT.register(sequelize);
     Balance_cITF.register(sequelize);
+    Balance_cAMP.register(sequelize);
+    Balance_cDPI.register(sequelize);
+
 
     // erc1155
     Balance_conDragon.register(sequelize);

@@ -8,8 +8,8 @@ async function run() {
     // const cfx = new Conflux({url})
     const scanUrl = 'https://confluxscan.io/v1'
     const client = superagent
-    const transferType = 'ERC1155'
-            // transferType: 'ERC20'
+    let transferType = 'ERC1155'
+    transferType = 'ERC20'
     const is1155 = transferType === 'ERC1155'
     client.get(`${scanUrl}/token`)
         .query({
@@ -21,7 +21,7 @@ async function run() {
         console.log('err:', err)
         // res.body = JSON.parse(res.body)
         let list = res.body.list
-        // list = list.filter(token=>token.symbol === 'cITF')
+        list = list.filter(token=>token.symbol === 'cAMP' || token.symbol === 'cDPI')
         console.log(`conf:`)
         list.forEach(token=>{
             let hexAddr = format.hexAddress(token.address)

@@ -2,10 +2,10 @@
 import {Conflux, format} from "js-conflux-sdk";
 import {Model} from "sequelize";
 import {
-    Balance,
+    Balance, Balance_cAMP,
     Balance_cBAND, Balance_cBTC,
     Balance_cCOMP,
-    Balance_cDAI, Balance_cDF,
+    Balance_cDAI, Balance_cDF, Balance_cDPI,
     Balance_cETH, Balance_CF,
     Balance_cFOR, Balance_CG, Balance_cITF, Balance_cKNC, Balance_cKP3R,
     Balance_cLEND,
@@ -101,6 +101,9 @@ export class BalanceWatcher{
             case 'conDragon':         ret = Balance_conDragon;    break;
             case 'CF':         ret = Balance_CF;    break;
             case 'CG':         ret = Balance_CG;    break;
+            case 'cAMP':         ret = Balance_cAMP;    break;
+            case 'cDPI':         ret = Balance_cDPI;    break;
+
 
             default:
                 throw new Error('unknown balance type, please fix the mapping code. name:'+name)

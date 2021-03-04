@@ -214,4 +214,14 @@ export class Balance_CG extends Balance{
         Balance.register(seq, Balance_CG, 'balance_CG')
     }
 }
+export class Balance_cAMP extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cAMP, 'balance_cAMP')
+    }
+}
+export class Balance_cDPI extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cDPI, 'balance_cDPI')
+    }
+}
 
