@@ -33,7 +33,7 @@ export class BalanceService {
         }
         const list1155 = await Token.findAll({where:{type:TOKEN_ERC_1155}})
         const banList = await Promise.all(list1155.map(token=>{
-            const ret = {symbol: token.symbol, base32: token.base32, name:''}
+            const ret = {name: token.name, symbol: token.symbol, base32: token.base32}
             try {
                 const watcher = BalanceWatcher.watcherMap.get(token.symbol)
                 if (watcher === null) {
@@ -50,10 +50,6 @@ export class BalanceService {
                 return {...ret, balance:NaN, message:`exception ${e}`}
             }
         }))
-        banList.forEach(token=>{
-            // fill token name
-            token.name = ContractService.instance.getName(base32toVerbose(token.base32))
-        })
         return {list:banList, code:0, message: 'ok', tokenCounted: list1155.length}
     }
     public async listToken() {

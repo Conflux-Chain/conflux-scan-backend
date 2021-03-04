@@ -3,6 +3,7 @@ import {Model,Sequelize,DataTypes} from "sequelize";
 export interface IToken{
     id?:number
     symbol:string
+    name?:string
     holder:number
     base32:string
     hex40id:number
@@ -12,6 +13,7 @@ export interface IToken{
 export const TOKEN_ERC_1155 = 'erc1155'
 export class Token extends Model<IToken> implements IToken{
     id?:number
+    name?:string
     symbol:string
     holder:number
     base32:string
@@ -21,6 +23,7 @@ export class Token extends Model<IToken> implements IToken{
         Token.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             symbol: {type: DataTypes.CHAR(64), allowNull: false, },
+            name: {type: DataTypes.CHAR(64), allowNull: false, defaultValue: ''},
             holder: {type: DataTypes.BIGINT, allowNull: false, },
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             hex40id: {type: DataTypes.BIGINT, allowNull: false, },

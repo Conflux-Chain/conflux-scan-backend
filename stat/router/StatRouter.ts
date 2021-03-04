@@ -12,7 +12,7 @@ import ApiDef from "./ApiDef";
 const superagent = require('superagent');
 import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
-import {NftId} from "../model/Token";
+import {NftId, Token} from "../model/Token";
 export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -85,6 +85,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                     baseToken.holderCount = '-'
                     const info = map.get(baseToken.address.substr(baseToken.address.lastIndexOf(':')).toLowerCase())
                     info && (baseToken.holderCount = info.holder)
+                    if (info !== null && info.name === '') {
+                        // it's really bad to do it here.
+                        Token.update({name: baseToken.name},{where: {id: info.id}})
+                            .catch()
+                    }
                 })
                 ctx.body = base
                 r('ok')
