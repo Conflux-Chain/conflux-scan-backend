@@ -12,6 +12,7 @@ import ApiDef from "./ApiDef";
 const superagent = require('superagent');
 import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
+import {NftId} from "../model/Token";
 export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -23,6 +24,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {
             list: [...statApp.contractService.map.values()]
         }
+    })
+    router.get('/tokens/nft-token-id-list', async (ctx)=>{
+        ctx.body = {
+            // list: await NftId.findAll({})
+        }
+    })
+    router.get('/tokens/erc1155/balance-of', async (ctx)=>{
+        const addr = ctx.request.query.address
+        const resp = await statApp.balanceService.getERC1155balance(addr)
+        ctx.body = resp
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
         const base32 = ctx.request.query.address

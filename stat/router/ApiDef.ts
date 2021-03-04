@@ -32,6 +32,16 @@ export default {
                 }
             }
         },
+        '/stat/tokens/erc1155/balance-of': {
+            "get": {
+                "parameters": [
+                    {name:"address", required: true, in: "query", schema:{type:"string"}}
+                ],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
         '/stat/tokens/by-address': {
             "get": {
                 "parameters": [

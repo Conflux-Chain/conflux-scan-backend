@@ -6,7 +6,7 @@ const superagent = require("superagent")
  */
 export class ContractService{
     private networkId: number;
-    private scanApiUrl: string;
+    private readonly scanApiUrl: string;
     private skip = 0
     public map: Map<string, any>
     static instance:ContractService

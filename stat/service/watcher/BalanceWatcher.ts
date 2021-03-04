@@ -34,6 +34,9 @@ const superagent = require("superagent")
  * For erc1155, we also need maintain all the token ids, by calling scan json rpc.
  */
 export class BalanceWatcher{
+    //
+    static watcherMap = new Map<string, BalanceWatcher>()
+    //
     private miniERC20: any;
     private miniERC1155: any;
     protected cfx: Conflux;
@@ -61,6 +64,7 @@ export class BalanceWatcher{
             const {abi: abi1155} = require('./contract/miniERC1155.json');
             this.miniERC1155 = cfx.Contract({abi:abi1155, address: contractAddr});
 
+            BalanceWatcher.watcherMap.set(name, this)
         }
     }
 
@@ -204,23 +208,23 @@ export class BalanceWatcher{
         await KV.update({value: curId.toString()}, {where:{key: this.addressPosKey}})
     }
 
-    async queryErc1155Balance() {
-        // const ban = await this.miniERC20.balanceOf(format.address(hex, this.cfx.networkId));
+    async queryBalanceErc1155(hex:string) {
+        const tokenIdList = await NftId.findAll({where: {contractHexId: this.contractHex40id}})
+        if (tokenIdList.length === 0) {
+            return null
+        }
+        const tokenIds = tokenIdList.map(tk=>tk.nftId)
+        const addrArr = tokenIdList.map(tk=>hex)
+        let baList = await this.miniERC1155.balanceOfBatch(addrArr, tokenIds).catch(err=>{
+            console.log(`balance of batch fail, ${this.name} ${this.contractAddress}:`, err)
+            return null;
+        });
+        return baList
     }
-
     async queryBalance(hex: string, addrId: number) {
         let isNFT = this.tokenType === 'erc1155';
         if (isNFT) {
-            const tokenIdList = await NftId.findAll({where: {contractHexId: this.contractHex40id}})
-            if (tokenIdList.length === 0) {
-                return
-            }
-            const tokenIds = tokenIdList.map(tk=>tk.nftId)
-            const addrArr = tokenIdList.map(tk=>hex)
-            let baList = await this.miniERC1155.balanceOfBatch(addrArr, tokenIds).catch(err=>{
-                console.log(`balance of batch fail, ${this.name} ${this.contractAddress}:`, err)
-                return null;
-            });
+            const baList = await this.queryBalanceErc1155(hex)
             if (baList === null) {
                 return
             }

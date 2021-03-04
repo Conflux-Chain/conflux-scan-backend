@@ -6,14 +6,17 @@ export interface IToken{
     holder:number
     base32:string
     hex40id:number
+    type?:string
 }
 
+export const TOKEN_ERC_1155 = 'erc1155'
 export class Token extends Model<IToken> implements IToken{
     id?:number
     symbol:string
     holder:number
     base32:string
     hex40id:number
+    type?:string
     static register(seq:Sequelize) {
         Token.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
@@ -21,6 +24,7 @@ export class Token extends Model<IToken> implements IToken{
             holder: {type: DataTypes.BIGINT, allowNull: false, },
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             hex40id: {type: DataTypes.BIGINT, allowNull: false, },
+            type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
         },{
             tableName: 'token',
             sequelize: seq,

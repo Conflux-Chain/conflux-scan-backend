@@ -1,5 +1,5 @@
 import {Balance} from "../../model/Balance";
-import {Token} from "../../model/Token";
+import {Token, TOKEN_ERC_1155} from "../../model/Token";
 import {Erc20WatchList} from "../../config/StatConfig";
 import {Hex40Map} from "../../model/HexMap";
 // @ts-ignore
@@ -7,6 +7,7 @@ import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
 import {Op} from "sequelize";
 import {ContractService} from "../contract/ContractService";
+import {base32toVerbose} from "../tool/AddressTool";
 const BigFixed = require('bigfixed');
 
 export class BalanceService {
@@ -23,6 +24,38 @@ export class BalanceService {
         })
     }
 
+    public async getERC1155balance(addr: string) {
+        let fullHex = format.hexAddress(addr);
+        const hex = fullHex.substr(2)
+        const hexBean = await Hex40Map.findOne({where: {hex}})
+        if (hexBean === null) {
+            return {code: 0, list:[], message: 'address not found'}
+        }
+        const list1155 = await Token.findAll({where:{type:TOKEN_ERC_1155}})
+        const banList = await Promise.all(list1155.map(token=>{
+            const ret = {symbol: token.symbol, base32: token.base32, name:''}
+            try {
+                const watcher = BalanceWatcher.watcherMap.get(token.symbol)
+                if (watcher === null) {
+                    return {...ret, balance:NaN, message:'conf not found.'}
+                }
+                return watcher.queryBalanceErc1155(fullHex).then(list=>{
+                    if (list === null) {
+                        return {...ret, balance:NaN, message:'call contract return null.'}
+                    }
+                    return {...ret, balance: list.filter(n => n > 0).length, message: 'ok'}
+                })
+            } catch (e) {
+                console.log(`fetch erc1155 balance fail:`,e)
+                return {...ret, balance:NaN, message:`exception ${e}`}
+            }
+        }))
+        banList.forEach(token=>{
+            // fill token name
+            token.name = ContractService.instance.getName(base32toVerbose(token.base32))
+        })
+        return {list:banList, code:0, message: 'ok', tokenCounted: list1155.length}
+    }
     public async listToken() {
         const list = await Token.findAll({})
         return list;
@@ -66,7 +99,7 @@ export class BalanceService {
             return;
         }
         let holder = await table.count({})
-        await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
+        await tokenBean.update({holder: holder, type: token.tokenType}, {where: {id: tokenBean.id}})
     }
 
     async rankHolder(base32: any, skip: any, limit: any) {
