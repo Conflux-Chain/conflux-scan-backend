@@ -26,7 +26,19 @@ export default {
     "paths": {
         '/stat/contract/all': {
             "get": {
+                tags: ['contract'],
                 "parameters": [],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
+        '/stat/tokens/nft-token-id-count': {
+            "get": {
+                tags: ['tokens'],
+                "parameters": [
+                    {name:"render", required: true, in: "query", schema:{type:"string"}}
+                ],
                 "responses": {
                     "200": {}
                 }
@@ -34,6 +46,7 @@ export default {
         },
         '/stat/tokens/erc1155/balance-of': {
             "get": {
+                tags: ['tokens'],
                 "parameters": [
                     {name:"address", required: true, in: "query", schema:{type:"string"}}
                 ],
@@ -43,7 +56,9 @@ export default {
             }
         },
         '/stat/tokens/by-address': {
+            tags: ['tokens'],
             "get": {
+                tags: ['tokens'],
                 "parameters": [
                     {name:"address", required: true, in: "query", schema:{type:"string"}}
                 ],

@@ -1,18 +1,22 @@
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
-import { Context } from 'koa'
-const cors = require('@koa/cors');
+import {Context} from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
-import Application = require("koa");
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
-const superagent = require('superagent');
 import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
 import {NftId, Token} from "../model/Token";
+
+const cors = require('@koa/cors');
+import Application = require("koa");
+import {QueryTypes} from "sequelize";
+
+const superagent = require('superagent');
+
 export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -25,9 +29,18 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             list: [...statApp.contractService.map.values()]
         }
     })
-    router.get('/tokens/nft-token-id-list', async (ctx)=>{
+    router.get('/tokens/nft-token-id-count', async (ctx)=>{
+        // const render  = ctx.request.query.render
+        const groupList = await NftId.sequelize.query(`select token.name, token.symbol, t.contractHexId, 
+ hex40.hex, token.type, t.cnt from (select count(*) as cnt, contractHexId from nft_id
+ group by contractHexId) t 
+ left join token on token.hex40id = t.contractHexId
+ left join hex40 on hex40.id=t.contractHexId`,{
+            type: QueryTypes.SELECT
+        })
+
         ctx.body = {
-            // list: await NftId.findAll({})
+            list: groupList
         }
     })
     router.get('/tokens/erc1155/balance-of', async (ctx)=>{
@@ -94,6 +107,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 ctx.body = base
                 r('ok')
             })
+        }).catch(err=>{
+            ctx.body = {
+                code: 500,
+                message: `${err}`
+            }
         })
     })
     router.get('/top-cfx-holder', async (ctx)=>{
