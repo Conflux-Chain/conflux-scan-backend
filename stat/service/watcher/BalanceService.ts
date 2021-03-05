@@ -33,7 +33,8 @@ export class BalanceService {
         }
         const list1155 = await Token.findAll({where:{type:TOKEN_ERC_1155}})
         const banList = await Promise.all(list1155.map(token=>{
-            const ret = {name: token.name, symbol: token.symbol, base32: token.base32}
+            const ret = {name: token.name, symbol: token.symbol, base32: token.base32, ms:0}
+            let startMS = new Date().getTime()
             try {
                 const watcher = BalanceWatcher.watcherMap.get(token.symbol)
                 if (watcher === null) {
@@ -43,7 +44,8 @@ export class BalanceService {
                     if (list === null) {
                         return {...ret, balance:NaN, message:'call contract return null.'}
                     }
-                    return {...ret, balance: list.filter(n => n > 0).length, message: 'ok'}
+                    return {...ret, balance: list.filter(n => n > 0).length, message: 'ok',
+                        ms: (new Date().getTime() - startMS)}
                 })
             } catch (e) {
                 console.log(`fetch erc1155 balance fail:`,e)
