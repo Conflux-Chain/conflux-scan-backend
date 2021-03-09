@@ -156,6 +156,7 @@ export class BlockTraceSync{
     }
 
     public async parseTxLog(hash: string) {
+        let hexCache = new Set<string>()
         const { epochNumber, logs = [] } = await this.cfx.getTransactionReceipt(hash) || {};
         if (logs.length === 0) {
             return;
@@ -171,9 +172,19 @@ export class BlockTraceSync{
             }
             let hexFrom = format.hexAddress(parsedLog[0]);
             let hexTo = format.hexAddress(parsedLog[1]);
-            console.log(`parsed log:`, hexFrom, hexTo);
-            await makeId(hexFrom)
-            await makeId(hexTo)
+            let hasFrom = hexCache.has(hexFrom)
+            if (!hasFrom) {
+                hexCache.add(hexFrom)
+                await makeId(hexFrom)
+            }
+            let hasTo = hexCache.has(hexTo);
+            if (!hasTo) {
+                hexCache.add(hexTo)
+                await makeId(hexTo)
+            }
+            if (!hasFrom || !hasTo) {
+                console.log(`parsed log:`, hexFrom, hexTo);
+            }
         })).catch(err=>{
             console.log(`parse log fail, hash ${hash}`, err)
         })
