@@ -169,9 +169,11 @@ export class BlockTraceSync{
             } catch (e) {
                 return
             }
-            console.log(`parsed log:`, parsedLog[0], parsedLog[1]);
-            await makeId(parsedLog[0])
-            await makeId(parsedLog[1])
+            let hexFrom = format.hexAddress(parsedLog[0]);
+            let hexTo = format.hexAddress(parsedLog[1]);
+            console.log(`parsed log:`, hexFrom, hexTo);
+            await makeId(hexFrom)
+            await makeId(hexTo)
         })).catch(err=>{
             console.log(`parse log fail, hash ${hash}`, err)
         })
