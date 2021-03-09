@@ -1,5 +1,5 @@
 // @ts-ignore
-import {Conflux, format} from "js-conflux-sdk";
+import {Conflux, Contract, format} from "js-conflux-sdk";
 import {KEY_BLOCK_TRACE_TX_ID, KV} from "../model/KV";
 import {TransactionDB} from "../model/Transaction";
 import {Trace} from "../model/Trace";
@@ -8,10 +8,13 @@ import {fmtDtUTC} from "../model/Utils";
 
 export class BlockTraceSync{
     protected cfx;
+    private miniERC20: Contract;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.blockHashInEpoch = new Set<string>()
         this.previousEpoch = -1
+        const {abi, bytecode} = require('./watcher/contract/miniERC20.json');
+        this.miniERC20 = <Contract>cfx.Contract({abi, bytecode});
     }
 
     async schedule(delay: number = 100) {
@@ -95,6 +98,7 @@ export class BlockTraceSync{
         if (txInfo === null) {
             return false;
         }
+        await this.parseTxLog(tx.hash)
         if (tx.epochHeight === 0) {
             // skip epoch 0
             return true;
@@ -149,5 +153,27 @@ export class BlockTraceSync{
         }
         console.log(`${fmtDtUTC(new Date())} trace count ${traceCount}, block ${txInfo.blockHash}`)
         return true;
+    }
+
+    public async parseTxLog(hash: string) {
+        const { epochNumber, logs = [] } = await this.cfx.getTransactionReceipt(hash) || {};
+        if (logs.length === 0) {
+            return;
+        }
+        await Promise.all(logs.map(async log=>{
+            // console.log(`raw log is:`, log)
+            let parsedLog = undefined
+            try {
+                // @ts-ignore
+                parsedLog = this.miniERC20.Transfer.decodeLog(log)
+            } catch (e) {
+                return
+            }
+            console.log(`parsed log:`, parsedLog[0], parsedLog[1]);
+            await makeId(parsedLog[0])
+            await makeId(parsedLog[1])
+        })).catch(err=>{
+            console.log(`parse log fail, hash ${hash}`, err)
+        })
     }
 }
