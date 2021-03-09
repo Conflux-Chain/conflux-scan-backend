@@ -6,12 +6,13 @@ const prefix = require( "superagent-prefix" )
 async function run() {
     const url = ''
     // const cfx = new Conflux({url})
-    const scanUrl = 'https://confluxscan.io/v1'
+    const scanUrl = 'https://confluxscan.io/stat/tokens/list'
     const client = superagent
     let transferType = 'ERC1155'
     transferType = 'ERC20'
+    transferType = 'ERC721'
     const is1155 = transferType === 'ERC1155'
-    client.get(`${scanUrl}/token`)
+    client.get(`${scanUrl}`)
         .query({
             fields: '',
             limit: 100,
@@ -21,7 +22,7 @@ async function run() {
         console.log('err:', err)
         // res.body = JSON.parse(res.body)
         let list = res.body.list
-        list = list.filter(token=>token.symbol === 'cAMP' || token.symbol === 'cDPI')
+        // list = list.filter(token=>token.symbol === 'cAMP' || token.symbol === 'cDPI')
         console.log(`conf:`)
         list.forEach(token=>{
             let hexAddr = format.hexAddress(token.address)

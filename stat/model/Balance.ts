@@ -224,4 +224,10 @@ export class Balance_cDPI extends Balance{
         Balance.register(seq, Balance_cDPI, 'balance_cDPI')
     }
 }
+export class Balance_TD extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_TD, 'balance_TD')
+    }
+}
+
 

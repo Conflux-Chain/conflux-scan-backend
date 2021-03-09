@@ -24,7 +24,9 @@ export class ChainWatcher{
             //
             let epoch = data.epochNumber
             // console.log(`epoch ${epoch} produced`)
-            if (epoch <= this.latest_epoch) {
+            if (epoch < this.latest_epoch) {
+                // note that event epoch == this.latest_epoch, it's still a reorg.
+                // using < to reduce trigger frequency.
                 let bean = {high: this.latest_epoch, low: epoch,
                     preExecuted: this.latest_state,
                     preConfirmed: this.latest_confirmed,
