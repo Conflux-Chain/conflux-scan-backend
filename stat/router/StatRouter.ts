@@ -98,7 +98,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                     baseToken.holderCount = '-'
                     const info = map.get(baseToken.address.substr(baseToken.address.lastIndexOf(':')).toLowerCase())
                     info && (baseToken.holderCount = info.holder)
-                    if (info !== null && info.name === '') {
+                    if (info && info.name === '') {
                         // it's really bad to do it here.
                         Token.update({name: baseToken.name},{where: {id: info.id}})
                             .catch()
