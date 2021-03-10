@@ -28,6 +28,7 @@ import {hex} from "../../test/GenData";
 import {NftId} from "../../model/Token";
 const BigFixed = require('bigfixed');
 const superagent = require("superagent")
+const NodeCache = require( "node-cache" );
 
 /**
  * Scan all address's balance of configured contracts.
@@ -50,8 +51,10 @@ export class BalanceWatcher{
     private config: {scanJsonRpcUrl:string};
     private readonly contractAddress: string;
     private contractHex40id:number
+    private tokenIdsCache
 
     constructor(name:string, contractAddr: string, cfx:Conflux, config:{scanJsonRpcUrl:string}) {
+        this.tokenIdsCache = new NodeCache()
         this.config = config
         this.name = name
         this.contractAddress = contractAddr
@@ -209,7 +212,14 @@ export class BalanceWatcher{
     }
 
     async queryBalanceErc1155(hex:string) {
-        const tokenIdList = await NftId.findAll({where: {contractHexId: this.contractHex40id}})
+        let tokenIdList = this.tokenIdsCache.get(this.contractHex40id)
+        if (tokenIdList === undefined) {
+            tokenIdList = await NftId.findAll({where: {contractHexId: this.contractHex40id}})
+            const ttl = 60 + Math.round(Math.random() * 60) //second
+            this.tokenIdsCache.set(this.contractHex40id, tokenIdList, ttl)
+            console.log(`build token id list cache ${this.contractHex40id}`)
+        }
+        // else console.log(`hit cache ${this.contractHex40id}`)
         if (tokenIdList.length === 0) {
             return null
         }

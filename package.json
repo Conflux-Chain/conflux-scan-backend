@@ -21,7 +21,8 @@
     "koa2-swagger-ui": "^5.0.5",
     "mysql2": "^2.2.5",
     "pino": "^6.10.0",
-    "sequelize": "^6.3.5"
+    "sequelize": "^6.3.5",
+    "node-cache": "5.1.2"
   },
   "devDependencies": {
     "typescript": "^4.1.3",
