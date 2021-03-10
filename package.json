@@ -6,25 +6,30 @@
   "scripts": {
     "test": "test",
     "compile": "npx tsc -p ./stat",
-    "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'"
+    "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/dist/service/watcher/contract/",
+    "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'",
+    "start:tools": "tsc-watch -p ./tools --onSuccess 'node ./tools/dist/Tools.js'"
   },
   "dependencies": {
     "@koa/cors": "^3.1.0",
     "bigfixed": "0.0.2",
-    "js-conflux-sdk": "1.5.10",
+    "superagent": "5.1.0",
+    "js-conflux-sdk": "1.5.11",
     "koa": "^2.13.1",
-    "koa-helmet": "^6.0.0",
+    "koa-helmet": "6.0.0",
     "koa-router": "^10.0.0",
     "koa2-swagger-ui": "^5.0.5",
     "mysql2": "^2.2.5",
     "pino": "^6.10.0",
-    "sequelize": "^6.3.5"
+    "sequelize": "^6.3.5",
+    "node-cache": "5.1.2"
   },
   "devDependencies": {
     "typescript": "^4.1.3",
     "tsc-watch": "^4.2.9",
-    "@types/koa-router": "^7.4.1",
-    "@types/koa-helmet": "^6.0.1"
+    "@types/koa-router": "7.4.1",
+    "@types/koa-helmet": "6.0.1",
+    "@types/koa": "2.11.6"
   },
   "repository": {
     "type": "git",

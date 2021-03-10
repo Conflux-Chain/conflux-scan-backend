@@ -15,9 +15,11 @@ export class TxnSync {
     sequelize: Sequelize
     static staticSequelize: Sequelize
     private cfx: Conflux;
+    private rankCache: Map<string, Object>
     constructor(sequelize, cfx:ConfluxOption) {
         this.sequelize = sequelize;
         this.cfx = new Conflux(cfx)
+        this.rankCache = new Map<string, Object>()
         console.log(`conflux rpc url ${cfx.url}`)
         TxnSync.staticSequelize = sequelize;
     }
@@ -25,7 +27,14 @@ export class TxnSync {
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
                          networkId: number = 1029) {
         limit = pickNumber(limit, 10)
-        const maxTime:Date = await TransactionDB.max('blockTime')
+        // cache
+        const cacheKey = `${n}${type}${limit}${action}`
+        const cacheV = this.rankCache.get(cacheKey);
+        if (cacheV !== undefined) {
+            return Promise.resolve(cacheV);
+        }
+        // cache end
+        const maxTime:Date = await TransactionDB.max('blockTime');
         if (maxTime == null) {
             return Promise.resolve({
                 code: 500, message: 'Empty Data.'
@@ -43,13 +52,13 @@ export class TxnSync {
         let aggregate = action.startsWith("txn") ? "COUNT(*)" : `${getSumFunction()}(value)`;
         let group = action.endsWith('Send') ? '`from`' : '`to`'
         const sql = `select t.*, hex from (select ${aggregate} as value, ${group} from tx
-                where blockTime between ? and ? group by ${group} order by value desc limit ?) t 
+                where blockTime between ? and ? and status = 0 group by ${group} order by value desc limit ?) t 
                 join hex40 on t.${group} = hex40.id `;
         // console.log('sql is: ', sql)
         const list:any[] = await this.sequelize.query(sql, {
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime), limit],
             type: QueryTypes.SELECT,
-            benchmark: true, logging: console.log
+            // benchmark: true, logging: console.log
         })
         let sumOption = {where:{
                 blockTime: {[Op.between]: [beginTime, endTime]}
@@ -65,9 +74,11 @@ export class TxnSync {
             tx.hex = `0x${tx.hex}`
             tx.base32 = this.base32(tx.hex, networkId)
         })
-        return Promise.resolve({
+        let finalRet = {
             code: 0, message: 'ok', list, sum, beginTime, endTime
-        })
+        };
+        this.rankCache.set(cacheKey, finalRet)
+        return Promise.resolve(finalRet)
     }
 
 
@@ -76,6 +87,30 @@ export class TxnSync {
             return ''
         }
         return format.address(hex, networkId)
+    }
+
+    public scheduleCache(delay:number = 60_000) {
+        const that = this
+
+        async function refreshAction(action: string) {
+            await that.txTopBy(24, 'h', 10, action)
+            await new Promise(resolve => setTimeout(resolve, 5_000))
+            await that.txTopBy(3, 'd', 10, action)
+            await new Promise(resolve => setTimeout(resolve, 5_000))
+            await that.txTopBy(7, 'd', 10, action)
+            await new Promise(resolve => setTimeout(resolve, 5_000))
+        }
+
+        async function refreshCache(){
+            console.log(`${fmtDtUTC(new Date())} refresh cache`)
+            let action = 'cfxSend';
+            await refreshAction(action);
+            await refreshAction('cfxReceived');
+            await refreshAction('txnSend');
+            await refreshAction('txnReceived');
+            setTimeout(refreshCache, delay)
+        }
+        refreshCache().then()
     }
 
     public async schedule(delay:number = 100) {
@@ -95,6 +130,7 @@ export class TxnSync {
             setTimeout(repeat, delay)
         }
         repeat().then()
+        this.scheduleCache()
     }
 
     async run() :Promise<{ txOk: string, txCount: number }> {
@@ -103,7 +139,12 @@ export class TxnSync {
     }
 
     async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number, epoch:number }>{
-        const stopwatch = new Stopwatch()
+        // @ts-ignore
+        const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
+        if (epoch > epochConfirmed) {
+            return ;
+        }
+        const stopwatch = new Stopwatch();
         stopwatch.start('getBlocksByEpochNumber')
         const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch).catch(err=>{
             console.log(`error for epoch ${epoch}`, err)
@@ -125,24 +166,24 @@ export class TxnSync {
         blockList.map(blk=>{
             blk.transactions.forEach(tx=>tx.blockTime = blk.timestamp)
             return blk.transactions
-        }).forEach(txList=>txList.filter(tx=>{
-            if (tx.status === null && epoch > 0) {
-                // console.log(`tx status is null, epoch ${epoch} ${tx.hash}`)
-            }
-            return tx.status === '0x0' || epoch === 0;
-        }).forEach(tx=>{
-            tx.from = format.hexAddress(tx.from) //base32 address to hex
-            if (tx.to) {
-                tx.to = format.hexAddress(tx.to)
-            } else {
-                tx.to = '0x0'
-            }
-            allTx.push(tx)
-        }))
+        }).forEach(txList=>
+            // 0 for success, 1 if an error occurred, null when the transaction is skipped or not packed.
+            txList.filter(tx=>tx.status !== null && tx.status !== '')
+                .forEach(tx=>{
+                tx.from = format.hexAddress(tx.from) //base32 address to hex
+                if (tx.to) {
+                    tx.to = format.hexAddress(tx.to)
+                } else {
+                    tx.to = '0x0'
+                }
+                allTx.push(tx)
+            })
+        )
         stopwatch.start('db transaction phase 0')
         let txOk = 'not executed';
         const txCount = allTx.length;
         await TxnSync.staticSequelize.transaction(async (dbTx) => {
+            // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc#cfx_gettransactionbyhash
             stopwatch.start('db transaction phase 1')
             await Promise.all(
                 allTx.map(async (tx) => {
@@ -150,6 +191,8 @@ export class TxnSync {
                     // console.log(`tx is ${JSON.stringify(tx, null , 4)}`)
                     tx.epochHeight = epoch;
                     tx.gas = parseInt(tx.gas, 16)
+                    tx.gasPrice = parseInt(tx.gasPrice, 16)
+                    tx.status = (tx.status === null || tx.status === '') ? null : parseInt(tx.status, 16)
                     tx.value = parseInt(tx.value, 16)
                     tx.nonce = parseInt(tx.nonce, 16)
                     tx.txIndex = parseInt(tx.transactionIndex, 16) || 0
@@ -164,8 +207,8 @@ export class TxnSync {
             })
             txOk = 'ok'
         }).then(()=>{
-            if (epoch % 10 === 0 || txCount > 1 ) {
-                stopwatch.dump('time costs:')
+            if (epoch % 100 === 0) {
+                // stopwatch.dump('time costs:')
                 console.log(`${fmtDtUTC(new Date())} insert ${txCount} txn at epoch ${epoch}`)
             }
         }).catch(err=>{

@@ -24,6 +24,369 @@ export default {
         }
     ],
     "paths": {
+        '/stat/contract/all': {
+            "get": {
+                tags: ['contract'],
+                "parameters": [],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
+        '/stat/tokens/nft-token-id-count': {
+            "get": {
+                tags: ['tokens'],
+                "parameters": [
+                    {name:"render", required: true, in: "query", schema:{type:"string"}}
+                ],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
+        '/stat/tokens/erc1155/balance-of': {
+            "get": {
+                tags: ['tokens'],
+                "parameters": [
+                    {name:"address", required: true, in: "query", schema:{type:"string"}}
+                ],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
+        '/stat/tokens/by-address': {
+            tags: ['tokens'],
+            "get": {
+                tags: ['tokens'],
+                "parameters": [
+                    {name:"address", required: true, in: "query", schema:{type:"string"}}
+                ],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
+        '/stat/tokens/holder-rank': {
+            description: 'rank holder by balance',
+            "get": {
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 0,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "skip",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "reverse",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "epochNumber": {
+                                            "type": "integer"
+                                        },
+                                        "timestamp": {
+                                            "type": "integer"
+                                        },
+                                        "totalSupply": {
+                                            "type": "string"
+                                        },
+                                        "balanceCount": {
+                                            "type": "string"
+                                        },
+                                        "proportion": {
+                                            "type": "number"
+                                        },
+                                        "total": {
+                                            "type": "integer"
+                                        },
+                                        "list": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "account": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "address": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "balance": {
+                                                        "type": "string"
+                                                    },
+                                                    "proportion": {
+                                                        "type": "number"
+                                                    },
+                                                    "epochNumber": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "600": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": [
+                    "tokens"
+                ]
+            }
+        },
+        '/stat/tokens/list': {
+            'get': {
+                description: 'list tokens with holder count.',
+                tags: ['tokens'],
+                "parameters": [
+                    {
+                        "name": "transferType",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "addressArray",
+                        "in": "query",
+                        "description": "use alone",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "name": "accountAddress",
+                        "in": "query",
+                        "description": "use alone",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "regex",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "orderBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "transferCount"
+                        }
+                    },
+                    {
+                        "name": "reverse",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    },
+                    {
+                        "name": "skip",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 0,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "fields",
+                        "in": "query",
+                        "schema": {
+                            "type": "array",
+                            "default": [
+                                "price"
+                            ],
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "icon",
+                                    "price"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total": {
+                                            "type": "integer"
+                                        },
+                                        "listLimit": {
+                                            "type": "integer",
+                                            "description": "if exist, require skip+limit <= listLimit"
+                                        },
+                                        "list": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "symbol": {
+                                                        "type": "string"
+                                                    },
+                                                    "decimals": {
+                                                        "type": "integer"
+                                                    },
+                                                    "granularity": {
+                                                        "type": "integer"
+                                                    },
+                                                    "totalSupply": {
+                                                        "type": "string"
+                                                    },
+                                                    "holderCount": {
+                                                        "type": "integer"
+                                                    },
+                                                    "transferCount": {
+                                                        "type": "integer"
+                                                    },
+                                                    "transferType": {
+                                                        "type": "string"
+                                                    },
+                                                    "icon": {
+                                                        "type": "string"
+                                                    },
+                                                    "accountAddress": {
+                                                        "type": "string",
+                                                        "description": "show with accountAddress"
+                                                    },
+                                                    "balance": {
+                                                        "type": "string",
+                                                        "description": "show with accountAddress"
+                                                    },
+                                                    "marketCapId": {
+                                                        "type": "number"
+                                                    },
+                                                    "quoteUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "moonDexSymbol": {
+                                                        "type": "string"
+                                                    },
+                                                    "price": {
+                                                        "type": "number",
+                                                        "nullable": true
+                                                    },
+                                                    "totalPrice": {
+                                                        "type": "number"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "600": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+            }
+        },
         '/stat/tx/top-by-type': {
             'get': {
                 description: 'cfx and tx send/receive top N',

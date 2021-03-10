@@ -13,12 +13,29 @@ export interface Database{
 export interface StatConfig{
     syncBlockDelay: number;
     syncTxnDelay: number;
+    syncTraceDelay: number;
     port: number;
     conflux: ConfluxOption; // chain rpc node
+    cfxWsUrl: string
+    scanApiUrl: string
+    scanJsonRpcUrl: string
     database: Database;
     syncBlock: boolean,
+    syncTrace: boolean,
     syncTxn: boolean,
     serverTag: string,
+    erc20watchList:Erc20WatchList[],
+    watchCfxBalance: boolean,
+    cfxWatcherDelay:number,
+}
+
+export interface Erc20WatchList{
+    // hex address
+    address:string
+    // it's the symbol of the token. why not use real name : real name contains space.
+    name:string
+    watchDelay:number
+    tokenType:string // erc1155 needs a token type
 }
 
 /**

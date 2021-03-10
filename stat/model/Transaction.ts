@@ -10,6 +10,8 @@ export interface Transaction{
     to?: string, // 40
     value?: number,
     gas?: number,
+    gasPrice?: number;
+    status?: number;
     txIndex?: number,
     blockTime?: Date,
 }
@@ -21,7 +23,9 @@ export interface ITransactionDB {
     from: number, // 40
     to: number, // 40
     value: number,
+    gasPrice: number;
     gas: number,
+    status?: number,
     txIndex: number,
     blockTime: Date,
     fromHex?: string
@@ -36,7 +40,9 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
     nonce: number;
     to: number;
     value: number;
+    status:number;
     gas: number;
+    gasPrice: number;
     txIndex: number;
     blockTime: Date;
     fromHex?: string;
@@ -51,6 +57,8 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
             to: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
             gas: {type: DataTypes.INTEGER, allowNull: false},
+            status: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
+            gasPrice: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             blockTime: {type: DataTypes.DATE, allowNull: false},
             fromHex: {type: DataTypes.VIRTUAL},
@@ -78,7 +86,8 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
             from: fromId.id,
             hash: tx.hash, nonce: tx.nonce, to: toId.id,
             id: tx.id, value: tx.value, gas: tx.gas, txIndex: tx.txIndex,
-            blockTime: tx.blockTime
+            blockTime: tx.blockTime,
+            gasPrice: tx.gasPrice, status: tx.status
         }, {transaction: dbTx })
     }
 }

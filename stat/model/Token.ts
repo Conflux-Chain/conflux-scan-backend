@@ -1,0 +1,63 @@
+import {Model,Sequelize,DataTypes} from "sequelize";
+
+export interface IToken{
+    id?:number
+    symbol:string
+    name?:string
+    holder:number
+    base32:string
+    hex40id:number
+    type?:string
+}
+
+export const TOKEN_ERC_1155 = 'erc1155'
+export class Token extends Model<IToken> implements IToken{
+    id?:number
+    name?:string
+    symbol:string
+    holder:number
+    base32:string
+    hex40id:number
+    type?:string
+    static register(seq:Sequelize) {
+        Token.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            symbol: {type: DataTypes.CHAR(64), allowNull: false, },
+            name: {type: DataTypes.CHAR(64), allowNull: false, defaultValue: ''},
+            holder: {type: DataTypes.BIGINT, allowNull: false, },
+            base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
+            hex40id: {type: DataTypes.BIGINT, allowNull: false, },
+            type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
+        },{
+            tableName: 'token',
+            sequelize: seq,
+        })
+    }
+}
+// erc 1155 token id
+export interface INftId {
+    id?:number,
+    contractHexId:number,
+    nftId: number
+}
+export class NftId extends Model<INftId> implements INftId {
+    id?:number
+    contractHexId:number
+    nftId: number
+    static register(seq: Sequelize) {
+        NftId.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            nftId: {type: DataTypes.BIGINT, allowNull: false, },
+            contractHexId: {type: DataTypes.BIGINT, allowNull: false, },
+        },{
+            tableName: 'nft_id',
+            sequelize: seq,
+            indexes:[
+                {name: 'idx_hex_id_token_id', unique:true, fields:[
+                        {name: 'contractHexId'},
+                        {name: 'nftId', order: "DESC"},
+                    ]}
+            ]
+        })
+    }
+}

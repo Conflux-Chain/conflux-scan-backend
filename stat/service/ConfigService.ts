@@ -1,5 +1,5 @@
 import {Context} from "koa";
-import {ADDR_INFO_STATE_OK, AddressInfo, Hex40Map} from "../model/HexMap";
+import {ADDR_INFO_STATE_OK, Address, AddressInfo, Hex40Map} from "../model/HexMap";
 
 export async function setAddressInfo(ctx: Context) {
     let hex: string = ctx.request.query.hex || ''
@@ -9,7 +9,7 @@ export async function setAddressInfo(ctx: Context) {
         ctx.body = {code: 404, message: 'missing param hex'}
         return;
     }
-    const hexBean = await Hex40Map.findOne({where: {hex: hex}})
+    const hexBean = await Address.findOne({where: {hex40: hex}})
     if (hexBean === null) {
         ctx.body = {code: 404, message: `hex not found: ${hex}`}
         return;

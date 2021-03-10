@@ -12,6 +12,7 @@ import {fmtDtUTC} from "../model/Utils";
 import {loadConfig} from "../config/StatConfig";
 import {KV} from "../model/KV";
 import {TestRank} from "./TestRank";
+import {queryBalance} from "./TestBalanceWatcher";
 
 const {makeId} = require("../model/HexMap");
 
@@ -65,11 +66,11 @@ async function testConfig() {
 }
 
 async function testTopMinerBlock() {
-    let dataBlockService = new BlockAndMinerSync(sequelize, config.conflux);
-    // await DataBlockService.checkDBSize()
-    await dataBlockService.topByType(30, 'd', 20).then(list => {
-        console.log('top miners', list)
-    })
+    // let dataBlockService = new BlockAndMinerSync(sequelize, config.conflux);
+    // // await DataBlockService.checkDBSize()
+    // await dataBlockService.topByType(30, 'd', 20).then(list => {
+    //     console.log('top miners', list)
+    // })
 }
 
 async function testTxSync(loop:boolean = false) {
@@ -86,7 +87,7 @@ async function run(){
 
     if (config.database.syncSchema) {
         console.log('sync model begin.')
-        await sequelize.sync({alter: true}).catch(err=>{
+        await sequelize.sync({alter: false}).catch(err=>{
             console.log(`sync fail: `, err)
         })
     } else {
@@ -94,7 +95,7 @@ async function run(){
     }
     console.log('---------------init models done------------')
 
-    let blockAndMinerSync = new BlockAndMinerSync(sequelize, config.conflux);
+    // let blockAndMinerSync = new BlockAndMinerSync(sequelize, config.conflux);
     // await blockAndMinerSync.checkPosition();
     // await blockAndMinerSync.syncBlockByEpoch()
     // await new DataBlockService(sequelize).rollup();
@@ -103,6 +104,7 @@ async function run(){
     // });
     // await testTopMinerBlock();
     // await testTxSync()
+    await queryBalance()
     await new TestRank().buildTestData(sequelize).catch(err=>{
         console.log(`build test data fail`, err)
     })

@@ -18,9 +18,9 @@ export class BlockAndMinerSync {
     private sequelize: Sequelize;
     public cfx: Conflux;
 
-    constructor(sequelize: Sequelize, cfx:ConfluxOption) {
+    constructor(sequelize: Sequelize, cfx:Conflux) {
         this.sequelize = sequelize;
-        this.cfx = new Conflux(cfx)
+        this.cfx = cfx
     }
 
     public async schedule(delay:number = 100) {
@@ -68,7 +68,7 @@ export class BlockAndMinerSync {
         return seconds
     }
 
-    async topByType(n: number, type: string, limit: number = 10): Promise<IMinerBlock[]>{
+    async topByType(n: number, type: string, limit: number = 10): Promise<{list:IMinerBlock[], allDifficulty:number}>{
         console.log(`top by type : ${n} ${type} limit ${limit}`)
         if (n <= 0) {
             return Promise.reject(`invalid span ${n}`)
@@ -88,7 +88,7 @@ export class BlockAndMinerSync {
         return this.topByTime(beginDt, endDt, timeWindow, limit)
     }
 
-    async topByTime(beginDt: Date, endDt: Date, timeWindow: string, limit: number): Promise<IMinerBlock[]> {
+    async topByTime(beginDt: Date, endDt: Date, timeWindow: string, limit: number): Promise<{list:IMinerBlock[], allDifficulty:number}> {
         const sumFn = getSumFunction();
         const list:IMinerBlock[] = await this.sequelize.query(
     `select minerId, hex as miner, sum(blockCount) as blockCount, 
@@ -103,7 +103,15 @@ export class BlockAndMinerSync {
             type: QueryTypes.SELECT,
                 benchmark: true, logging: console.log
         })
-        return Promise.resolve(list)
+        list.forEach(item=>{
+            // @ts-ignore
+            item['base32'] = format.address(`0x${item.miner}`, this.cfx.networkId)
+        })
+        const allDifficulty = await MinerBlock.sum("difficultySum", {
+            where: {beginTime: {[Op.gte]:beginDt}, endTime:{[Op.lte]:endDt}, timeWindow: timeWindow},
+            benchmark: true, logging: console.log
+        })
+        return Promise.resolve({allDifficulty,list})
     }
 
     skip1hTimes = 0
@@ -209,7 +217,10 @@ export class BlockAndMinerSync {
         const deleteCount = count - maxSize
         if (count > maxSize) {
             const separator = await table.findOne({where, offset: deleteCount, limit: 1, order: [["id", "ASC"]]})
-            const deleted = await table.destroy({where:{...where, id: {[Op.lt]: separator.id}}})
+            if (separator === null) {
+                return;
+            }
+            const deleted = await table.destroy({where:{...where, id: {[Op.lt]: separator.id}}});
             // noinspection SqlResolve
             console.log(`Deleted from ${table.getTableName()}, at size ${count}, deleted ${deleted}`)
         } else {
@@ -303,7 +314,11 @@ export class BlockAndMinerSync {
         } else {
             minEpochNumber = preEpoch + 1;
         }
-        // console.log(`=====`, minEpochNumber, epoch)
+        // @ts-ignore
+        const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
+        if (minEpochNumber > epochConfirmed) {
+            return;
+        }
         let hashes: string[];
         try {
             hashes = await this.cfx.getBlocksByEpochNumber(minEpochNumber);
@@ -362,12 +377,13 @@ export class BlockAndMinerSync {
             const updateConfig = await KV.update({value: minEpochNumber.toString()},
                 {where: {key: KEY_MINER_EPOCH,}, transaction: dbTx})
             if (updateConfig[0] === 0) {
+                console.log('update position return ', JSON.stringify(updateConfig), ' do creating.')
                 await KV.create({key: KEY_MINER_EPOCH, value: maxEpoch.toString()}
                 ,{transaction: dbTx})
             }
         }).then(async ()=>{
             // console.log(`====`, blockList[0])
-            console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
+            ((minEpochNumber % 100) === 0) && console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
                 blockList[0].epochNumber
             }, max block time ${new Date(blockList[blockList.length-1].timestamp*1000).toISOString()}`)
             // adjust cache size.

@@ -1,15 +1,22 @@
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
-import { Context } from 'koa'
-const cors = require('@koa/cors');
+import {Context} from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
-import Application = require("koa");
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
 import {addDevopsRouter} from "./DevopsRouter";
+import {pickNumber} from "../model/Utils";
+import {NftId, Token} from "../model/Token";
+
+const cors = require('@koa/cors');
+import Application = require("koa");
+import {QueryTypes} from "sequelize";
+
+const superagent = require('superagent');
+
 export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
@@ -17,9 +24,99 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             code: 0, message: `Conflux-Stat 2021.01.15 ${statApp.config.serverTag}`
         }
     })
+    router.get('/contract/all', async (ctx)=>{
+        ctx.body = {
+            list: [...statApp.contractService.map.values()]
+        }
+    })
+    router.get('/tokens/nft-token-id-count', async (ctx)=>{
+        // const render  = ctx.request.query.render
+        const groupList = await NftId.sequelize.query(`select token.name, token.symbol, t.contractHexId, 
+ hex40.hex, token.type, t.cnt from (select count(*) as cnt, contractHexId from nft_id
+ group by contractHexId) t 
+ left join token on token.hex40id = t.contractHexId
+ left join hex40 on hex40.id=t.contractHexId`,{
+            type: QueryTypes.SELECT
+        })
+
+        ctx.body = {
+            list: groupList
+        }
+    })
+    router.get('/tokens/erc1155/balance-of', async (ctx)=>{
+        const addr = ctx.request.query.address
+        const resp = await statApp.balanceService.getERC1155balance(addr)
+        ctx.body = resp
+    })
+    router.get('/tokens/holder-rank', async (ctx)=>{
+        const base32 = ctx.request.query.address
+        const limit = pickNumber(parseInt(ctx.request.query.limit), 10)
+        const skip = pickNumber(parseInt(ctx.request.query.skip), 0)
+        ctx.body = {
+            ...(await statApp.balanceService.rankHolder(base32, skip, limit))
+        }
+    })
+    router.get('/tokens/by-address', async (ctx)=>{
+        const res = await new Promise((resolve) => {
+            // front end use lower case and without type.contract
+            const tokenAddr = ctx.request.query.address
+            const addr = tokenAddr.toLowerCase()
+            superagent.get(`${statApp.config.scanApiUrl}/v1/token/${addr}`)
+                .query(ctx.request.querystring)
+                .end(async (err, res)=>{
+                    if (err) {
+                        console.log(`scan api fetch token fail:`, err)
+                        ctx.body = res.body
+                        ctx.status = 600
+                        resolve("fail")
+                        return
+                    }
+                    if (res.status === 200) {
+                      res.body.holderCount = (await statApp.balanceService.getHolderCount(addr)) || '-'
+                    }
+                    ctx.body = res.body
+                    resolve("ok")
+                })
+        })
+    })
+    router.get('/tokens/list', async (ctx)=>{
+        await new Promise(r=>{
+            superagent.get(`${statApp.config.scanApiUrl}/v1/token`)
+                .query(ctx.request.querystring).end(async (err, base)=>{
+                if (base.status !== 200) {
+                    ctx.body = base
+                    ctx.status = base.status;
+                    r('fail')
+                    return;
+                }
+                base =  JSON.parse(base.text)
+                // console.log(`base data:`, JSON.stringify(base))
+                const localTokenList = await statApp.balanceService.listToken();
+                const map = new Map()
+                localTokenList.forEach(t=>map.set(t.base32.substr(t.base32.lastIndexOf(':')).toLowerCase(), t))
+                base.list.forEach(baseToken=>{
+                    baseToken.holderCount = '-'
+                    const info = map.get(baseToken.address.substr(baseToken.address.lastIndexOf(':')).toLowerCase())
+                    info && (baseToken.holderCount = info.holder)
+                    if (info && info.name === '') {
+                        // it's really bad to do it here.
+                        Token.update({name: baseToken.name},{where: {id: info.id}})
+                            .catch()
+                    }
+                })
+                ctx.body = base
+                r('ok')
+            })
+        }).catch(err=>{
+            ctx.body = {
+                code: 500,
+                message: `${err}`
+            }
+        })
+    })
     router.get('/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService
-        const {type, limit} = ctx.request.query || 10;
+        const {type, limit} = ctx.request.query || {type: 'cfxSend', limit: 10};
         // @ts-ignore
         let networkId = statApp.cfx.networkId;
         ctx.body = await rank.top(type, parseInt(limit), networkId)
@@ -28,11 +125,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/miner/top-by-type', async (ctx)=>{
         const blockService = statApp.blockAndMinerSync;
         const { span, type, rows } = ctx.request.query;
-        const list = await blockService.topByType(span, type, parseInt(rows || 10));
+        const {list,allDifficulty} = await blockService.topByType(parseInt(span), type, parseInt(rows || 10));
         const timeRange = blockService.calculateTimeRange(list);
         const seconds = blockService.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {
+            code: 0, message: 'ok',
             list,
+            allDifficulty,
             ...timeRange,
             seconds,
             total: list.length,
