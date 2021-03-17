@@ -6,7 +6,7 @@ import {
     Balance_cBAND, Balance_cBTC,
     Balance_cCOMP,
     Balance_cDAI, Balance_cDF, Balance_cDPI,
-    Balance_cETH, Balance_CF,
+    Balance_cETH, Balance_CF, Balance_cFLUX,
     Balance_cFOR, Balance_CG, Balance_cITF, Balance_cKNC, Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK,
@@ -111,6 +111,7 @@ export class BalanceWatcher{
             case 'cAMP':         ret = Balance_cAMP;    break;
             case 'cDPI':         ret = Balance_cDPI;    break;
             case 'TD':         ret = Balance_TD;    break;
+            case 'cFLUX':         ret = Balance_cFLUX;    break;
 
             default:
                 throw new Error('unknown balance type, please fix the mapping code. name:'+name)
