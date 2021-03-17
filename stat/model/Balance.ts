@@ -229,5 +229,10 @@ export class Balance_TD extends Balance{
         Balance.register(seq, Balance_TD, 'balance_TD')
     }
 }
+export class Balance_cFLUX extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cFLUX, 'balance_cFLUX')
+    }
+}
 
 
