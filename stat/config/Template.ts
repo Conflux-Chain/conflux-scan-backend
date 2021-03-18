@@ -9,6 +9,7 @@ export default {
         user: '',
         pwd: '',
         host: '',
+        port: 3306,
         // zero stand for unlimited
         blockTableRowsLimit: 10_0000,
         syncSchema: false,
@@ -23,6 +24,9 @@ export default {
     syncBlock: false,
     syncTxn: false,
     syncTrace: true,
+    syncTxnCountDaily: false,
+    syncTxnCountHistory: false,
+    syncCfxHolderCountDaily: false,
     serverTag: 'scan-stat-1',
     erc20watchList:[],
     watchCfxBalance: false,

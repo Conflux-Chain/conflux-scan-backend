@@ -168,6 +168,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             parseInt(skip), parseInt(limit), networkId)
         ctx.body = {code: 0, data: page};
     })
+    // daily tx count
+    router.get('/txn/daily/list', async function (ctx) {
+        const page = await statApp.dailyTxnQuery.listTxnDaily();
+        ctx.body = {code: 0, data: page};
+    });
+    // daily cfx holder count
+    router.get('/cfx_holder/daily/list', async function (ctx) {
+        const page = await statApp.cfxHolderQuery.listCfxHolderDaily();
+        ctx.body = {code: 0, data: page};
+    });
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {
