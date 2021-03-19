@@ -5,6 +5,7 @@ import {TransactionDB} from "../model/Transaction";
 import {Trace} from "../model/Trace";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
+import {EventBus} from "./watcher/EventBus";
 
 export class BlockTraceSync{
     protected cfx;
@@ -136,9 +137,9 @@ export class BlockTraceSync{
                     continue;
                 }
                 let from = format.hexAddress(t.action.from);
-                let fromId = (await makeId(from)).id
+                let fromId = (await this.handleAddress(from)).id
                 let to = t.action.to === undefined ? "" : format.hexAddress(t.action.to)
-                let toId = to === "" ? 0 : (await makeId(to)).id
+                let toId = to === "" ? 0 : (await this.handleAddress(to)).id
                 let value = t.action.value
                 if (value > 0) {
                     await Trace.create({
@@ -175,12 +176,12 @@ export class BlockTraceSync{
             let hasFrom = hexCache.has(hexFrom)
             if (!hasFrom) {
                 hexCache.add(hexFrom)
-                await makeId(hexFrom)
+                await this.handleAddress(hexFrom)
             }
             let hasTo = hexCache.has(hexTo);
             if (!hasTo) {
                 hexCache.add(hexTo)
-                await makeId(hexTo)
+                await this.handleAddress(hexTo)
             }
             if (!hasFrom || !hasTo) {
                 console.log(`parsed log:`, hexFrom, hexTo);
@@ -188,5 +189,11 @@ export class BlockTraceSync{
         })).catch(err=>{
             console.log(`parse log fail, hash ${hash}`, err)
         })
+    }
+
+    async handleAddress(hex: string) {
+        let ret = await makeId(hex);
+        EventBus.processTxAddress(hex)
+        return ret
     }
 }
