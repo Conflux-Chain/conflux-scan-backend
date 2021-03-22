@@ -152,7 +152,7 @@ export class BlockTraceSync{
                 traceCount ++
             }
         }
-        console.log(`${fmtDtUTC(new Date())} trace count ${traceCount}, block ${txInfo.blockHash}`)
+        // console.log(`${fmtDtUTC(new Date())} trace count ${traceCount}, block ${txInfo.blockHash}`)
         return true;
     }
 
