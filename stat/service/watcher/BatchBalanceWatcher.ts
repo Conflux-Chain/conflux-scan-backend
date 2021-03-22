@@ -5,6 +5,7 @@ import {EventBus} from "./EventBus";
 import {Erc20WatchList} from "../../config/StatConfig";
 import {BalanceWatcher} from "./BalanceWatcher";
 import {makeId} from "../../model/HexMap";
+import {fmtDtUTC} from "../../model/Utils";
 
 const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 export class BatchBalanceWatcher {
@@ -29,7 +30,6 @@ export class BatchBalanceWatcher {
             await BalanceWatcher.saveModel(model, id, banList[i], true, this.fraction)
             i++
         }
-        console.log(`balance list is: ${banList}`)
     }
 
     public async schedule(delay = 10_000) {
@@ -54,5 +54,6 @@ export class BatchBalanceWatcher {
         for (const hex of txAddressSet) {
             await this.balanceOf(hex)
         }
+        console.log(`${fmtDtUTC(new Date())} batch process address count ${txAddressSet.size}`)
     }
 }
