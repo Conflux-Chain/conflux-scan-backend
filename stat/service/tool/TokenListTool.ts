@@ -10,7 +10,7 @@ async function run() {
     const client = superagent
     let transferType = 'ERC1155'
     transferType = 'ERC20'
-    transferType = 'ERC721'
+    // transferType = 'ERC721'
     const is1155 = transferType === 'ERC1155'
     client.get(`${scanUrl}`)
         .query({
@@ -22,7 +22,7 @@ async function run() {
         console.log('err:', err)
         // res.body = JSON.parse(res.body)
         let list = res.body.list
-        // list = list.filter(token=>token.symbol === 'cAMP' || token.symbol === 'cDPI')
+        list = list.filter(token=>token.symbol === 'cFLUX')
         console.log(`conf:`)
         list.forEach(token=>{
             let hexAddr = format.hexAddress(token.address)
