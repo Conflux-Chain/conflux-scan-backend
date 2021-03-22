@@ -184,7 +184,7 @@ export class BlockTraceSync{
                 await this.handleAddress(hexTo)
             }
             if (!hasFrom || !hasTo) {
-                console.log(`parsed log:`, hexFrom, hexTo);
+                // console.log(`parsed log:`, hexFrom, hexTo);
             }
         })).catch(err=>{
             console.log(`parse log fail, hash ${hash}`, err)
