@@ -142,7 +142,9 @@ create table tx
     `from`      bigint      not null,
     `to`        bigint      not null,
     value       decimal(36) not null,
+    gasPrice       bigint not null,
     gas         int         not null,
+    status         int         not null,
     txIndex     int         not null,
     blockTime   datetime    not null
 );

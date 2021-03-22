@@ -4,6 +4,7 @@ import {Context} from "koa";
 import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
+import {EventBus} from "../service/watcher/EventBus";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -16,6 +17,13 @@ async function checkLocal(ctx: Context, next) {
 }
 
 export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
+    router.get('/devops/test-processTxAddress',
+        checkLocal,
+        async (ctx) => {
+            EventBus.processTxAddress(ctx.request.query.hex)
+            ctx.body = {code: 0, message:"OK"}
+        }
+    )
     router.get('/devops/set-address-name',
         checkLocal,
         async (ctx) => await setAddressInfo(ctx))

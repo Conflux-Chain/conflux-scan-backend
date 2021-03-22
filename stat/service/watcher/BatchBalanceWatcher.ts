@@ -11,7 +11,7 @@ export class BatchBalanceWatcher {
     private cfx: Conflux;
     private contract: {balances};
     private readonly tokenList: string[];
-    private erc20list: Erc20WatchList[];
+    private readonly erc20list: Erc20WatchList[];
     fraction = BigInt(1e+18)
     constructor( cfx:Conflux, erc20List:Erc20WatchList[]) {
         this.cfx = cfx;

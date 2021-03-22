@@ -23,7 +23,7 @@ export class StatApp{
     public traceSync: BlockTraceSync
     public cfx: Conflux;
     public contractService: ContractService;
-    private batchBalanceWatcher: BatchBalanceWatcher;
+    public batchBalanceWatcher: BatchBalanceWatcher;
     constructor(config: StatConfig) {
         this.config = config;
     }
