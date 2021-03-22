@@ -180,36 +180,44 @@ export class BalanceWatcher{
             this.scheduleSyncTokeId().then()
         }
         this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
-        // @ts-ignore
-        await this.cfx.updateNetworkId()
         //
         const position = await KV.findOne({where:{key: this.addressPosKey}})
         if (position == null) {
             await KV.create({key: this.addressPosKey, value: "0"})
         }
+        if (position.value === '-1') {
+            console.log(`reach max ${this.addressPosKey}`)
+            return;
+        }
         //
         const that = this;
         async function repeat() {
-            await that.run()
-            setTimeout(repeat, delay)
+            let goOn = await that.run()
+            if (goOn) {
+                setTimeout(repeat, delay)
+            }
         }
         repeat().then()
         console.log(`schedule balance watcher : ${this.name}`)
     }
 
-    async run() {
+    async run() :Promise<boolean> {
         // console.log(`run balance watcher ${this.name}`)
         let lastId = await KV.getNumber(this.addressPosKey)
-        let curId = lastId + 1
+        if (lastId < 0) {
+            return false;
+        }
+        let curId = lastId + 1;
         this.addressPos = curId
         const hex = await Hex40Map.findByPk(curId)
         if (hex !== null) {
             await this.queryBalance('0x'+hex.hex, hex.id)
         } else if (curId > (await Hex40Map.max("id"))){
             console.log(`${fmtDtUTC(new Date())} ${this.addressPosKey} reach max, id: ${curId}`)
-            curId = 0
+            curId = -1
         }
         await KV.update({value: curId.toString()}, {where:{key: this.addressPosKey}})
+        return true
     }
 
     async queryBalanceErc1155(hex:string) {
@@ -261,18 +269,21 @@ export class BalanceWatcher{
     }
 
     protected async save(addrId: number, ban: any, needScale = true) {
+        await BalanceWatcher.saveModel(this.model, addrId, ban, needScale, this.fraction)
+    }
+    public static async saveModel(model, addrId: number, ban: any, needScale = true, fraction: any) {
         if (ban < 1) {
-            await this.model.destroy({where: {addressId: addrId}})
+            await model.destroy({where: {addressId: addrId}})
             return Promise.resolve();
         }
         if (needScale) {
-            ban = this.drip2cfx(ban)
+            ban = BalanceWatcher.drip2cfx(ban, fraction)
         }
-        await this.model.upsert({addressId:addrId, balance: ban}, {});
+        await model.upsert({addressId:addrId, balance: ban}, {});
     }
 
-    protected drip2cfx(drip) {
-        return BigFixed(drip).div(BigFixed(this.fraction))
+    public static drip2cfx(drip, fraction) {
+        return BigFixed(drip).div(BigFixed(fraction))
     }
 }
 export class CfxWatcher extends BalanceWatcher{
@@ -287,8 +298,8 @@ export class CfxWatcher extends BalanceWatcher{
                 await this.model.destroy({where: {addressId: addrId}})
                 return Promise.resolve();
             }
-            const cfx:any = this.drip2cfx(accountInfo.balance)
-            const staking:any = this.drip2cfx(accountInfo.stakingBalance)
+            const cfx:any = BalanceWatcher.drip2cfx(accountInfo.balance, this.fraction)
+            const staking:any = BalanceWatcher.drip2cfx(accountInfo.stakingBalance, this.fraction)
             const total = cfx.add(staking)
             await CfxBalance.upsert({addressId: addrId, balance:cfx, stakingBalance: staking,
                 total: total})

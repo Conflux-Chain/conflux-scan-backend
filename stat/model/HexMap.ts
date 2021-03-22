@@ -1,4 +1,5 @@
 import {Sequelize, DataTypes, Model, Transaction} from "sequelize";
+const NodeCache = require( "node-cache" );
 
 /**
  * mapping a hex64 to a number in DB, to decrease data length and make effective index.
@@ -43,6 +44,8 @@ class HexMap extends Model<HexMapAttributes> implements HexMapAttributes {
 
 export class Hex64Map extends HexMap{}
 export class Hex40Map extends HexMap{}
+const dbCache = new NodeCache()
+const cacheTtl = 60 * 10 // 10 minutes
 
 // https://sequelize.org/master/class/lib/model.js~Model.html#static-method-findOrCreate
 export async function makeId(hex: string, dbTx: Transaction = undefined) {
@@ -58,10 +61,16 @@ export async function makeId(hex: string, dbTx: Transaction = undefined) {
         case 40: map = Hex40Map; break;
         default: throw new Error(`Unsupported hex length ${hex.length}`)
     }
+    const cached = dbCache.get(hex)
+    if (cached !== undefined) {
+        dbCache.ttl(hex, cacheTtl)
+        return cached
+    }
     const [bean] = await map.findOrCreate({where: {hex: hex},
         defaults: {id: 0, hex},
         transaction: dbTx
     });
+    dbCache.set(hex, bean, cacheTtl)
     // console.info(`created ${created}`)
     return bean;
 }

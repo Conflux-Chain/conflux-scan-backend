@@ -11,6 +11,7 @@ import {BlockTraceSync} from "./service/BlockTraceSync";
 import {BalanceService} from "./service/watcher/BalanceService";
 import {ContractService} from "./service/contract/ContractService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
+import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 
 export class StatApp{
     public config: StatConfig;
@@ -22,6 +23,7 @@ export class StatApp{
     public traceSync: BlockTraceSync
     public cfx: Conflux;
     public contractService: ContractService;
+    public batchBalanceWatcher: BatchBalanceWatcher;
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -30,6 +32,10 @@ export class StatApp{
         this.cfx = new Conflux(this.config.conflux)
         // @ts-ignore
         await this.cfx.updateNetworkId();
+        // @ts-ignore
+        this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
+        // @ts-ignore
+        console.log(`network id ${this.cfx.networkId}`)
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
@@ -44,14 +50,14 @@ export class StatApp{
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         // @ts-ignore
-        this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
-        // @ts-ignore
         const networkId = this.cfx.networkId
         this.traceSync = new BlockTraceSync(this.cfx)
         this.config.erc20watchList.forEach(erc20=>{
             const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, this.config)
             watcher.schedule(erc20.watchDelay, erc20.tokenType)
         })
+        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList)
+        this.batchBalanceWatcher.schedule().then()
         // @ts-ignore
         this.balanceService = new BalanceService(this.config.erc20watchList, this.cfx.networkId)
         this.balanceService.schedule(3000)
