@@ -11,24 +11,13 @@ export class CfxHolderSync{
     }
 
     private async countDaily(day: Date): Promise<IDailyCfxHolder>{
-        const {endTime, statDay} = calBeginEndTime(day);
-        const record = await DailyCfxHolder.findOne({where: {statDay}})
+        const {endTime} = calBeginEndTime(day);
+        const record = await DailyCfxHolder.findOne({where: {statDay: endTime}})
         if(record) return Promise.resolve(record);
 
-        const holderCount = await CfxBalance.count({
-            where: {
-                [Op.and]:[
-                    {total: {
-                        [Op.gt]:0
-                    }},
-                    {updatedAt: {
-                        [Op.lt]:endTime
-                    }}
-                ]
-            }
-        });
+        const holderCount = await CfxBalance.count({});
         const dailyCfxHolder = new DailyCfxHolder();
-        dailyCfxHolder.statDay = statDay;
+        dailyCfxHolder.statDay = endTime;
         dailyCfxHolder.holderCount = holderCount;
         const newRecord = await DailyCfxHolder.add(dailyCfxHolder);
         console.log('count daily_cfx_holder record:' + JSON.stringify(newRecord));
