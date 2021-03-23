@@ -4,6 +4,7 @@ const templateConf = require('./Template')
 
 export interface Database{
     host: string;
+    port: number;
     user: string;
     pwd: string;
     database: string;
@@ -23,6 +24,9 @@ export interface StatConfig{
     syncBlock: boolean,
     syncTrace: boolean,
     syncTxn: boolean,
+    syncTxnCountDaily: boolean,
+    syncTxnCountHistory: boolean,
+    syncCfxHolderCountDaily: boolean,
     serverTag: string,
     erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,

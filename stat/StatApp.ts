@@ -12,6 +12,10 @@ import {BalanceService} from "./service/watcher/BalanceService";
 import {ContractService} from "./service/contract/ContractService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
+import {DailyTxnSync} from "./service/DailyTxnSync";
+import {DailyTxnQuery} from "./service/DailyTxnQuery";
+import {CfxHolderSync} from "./service/CfxHolderSync";
+import {CfxHolderQuery} from "./service/CfxHolderQuery";
 
 export class StatApp{
     public config: StatConfig;
@@ -24,6 +28,10 @@ export class StatApp{
     public cfx: Conflux;
     public contractService: ContractService;
     public batchBalanceWatcher: BatchBalanceWatcher;
+    public dailyTxnSync: DailyTxnSync;
+    public dailyTxnQuery: DailyTxnQuery;
+    public cfxHolderSync: CfxHolderSync;
+    public cfxHolderQuery: CfxHolderQuery;
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -68,6 +76,11 @@ export class StatApp{
         if (this.config.watchCfxBalance) {
             new CfxWatcher('cfx', this.cfx, this.config).schedule(this.config.cfxWatcherDelay).then()
         }
+        //
+        this.dailyTxnSync = new DailyTxnSync(this.sequelize);
+        this.dailyTxnQuery = new DailyTxnQuery();
+        this.cfxHolderSync = new CfxHolderSync(this.sequelize);
+        this.cfxHolderQuery = new CfxHolderQuery();
         // @ts-ignore
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${this.cfx.networkId}`)
         //
@@ -80,6 +93,12 @@ export class StatApp{
         }
         if (this.config.syncTxn) {
             await this.txnSync.schedule(this.config.syncTxnDelay); // txn
+        }
+        if (this.config.syncTxnCountDaily) {
+            await this.dailyTxnSync.schedule(this.config.syncTxnCountHistory); // dailyTxn
+        }
+        if (this.config.syncCfxHolderCountDaily) {
+            await this.cfxHolderSync.schedule(); // dailyCfxHolder
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

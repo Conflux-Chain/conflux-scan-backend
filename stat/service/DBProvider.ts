@@ -8,6 +8,8 @@ import {KV} from "../model/KV";
 import {TestTimezone} from "../model/TestTimezone";
 import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
+import {DailyTransaction} from "../model/DailyTransaction";
+import {DailyCfxHolder} from "../model/DailyCfxHolder"
 import {
     Balance_cAMP,
     Balance_cBAND,
@@ -132,6 +134,8 @@ export async function initModel(sequelize) {
     Trace.register(sequelize)
     PivotSwitch.register(sequelize)
     TestTimezone.register(sequelize);
+    DailyTransaction.register(sequelize);
+    DailyCfxHolder.register(sequelize);
 }
 
 export function createMySql(dbConf) {
@@ -139,7 +143,7 @@ export function createMySql(dbConf) {
     return new Sequelize(dbConf.database,
         dbConf.user,
         dbConf.pwd, {
-        host: dbConf.host,
+        host: dbConf.host, port: dbConf.port,
         dialect: 'mysql', /* one of 'mysql' | 'mariadb' | 'postgres' | 'mssql' */
         // logging: console.log,            // default true
             logging: false,
