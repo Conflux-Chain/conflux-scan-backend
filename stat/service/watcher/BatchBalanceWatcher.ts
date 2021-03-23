@@ -7,10 +7,10 @@ import {BalanceWatcher} from "./BalanceWatcher";
 import {makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
 
-const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
+export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 export class BatchBalanceWatcher {
     private cfx: Conflux;
-    private contract: {balances};
+    public static contract: {balances};
     private readonly tokenList: string[];
     private readonly erc20list: Erc20WatchList[];
     fraction = BigInt(1e+18)
@@ -22,7 +22,7 @@ export class BatchBalanceWatcher {
         this.erc20list = erc20List
     }
     public async balanceOf(userAddr) {
-        let banList = await this.contract.balances([userAddr], this.tokenList)
+        let banList = await BatchBalanceWatcher.contract.balances([userAddr], this.tokenList)
         let i = 0
         for (const erc20 of this.erc20list) {
             let model = BalanceWatcher.mapModel(erc20.name)
