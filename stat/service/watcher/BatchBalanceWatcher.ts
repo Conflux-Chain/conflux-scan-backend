@@ -17,7 +17,7 @@ export class BatchBalanceWatcher {
     constructor( cfx:Conflux, erc20List:Erc20WatchList[]) {
         this.cfx = cfx;
         // @ts-ignore
-        this.contract = cfx.Contract({abi, address: format.address(batchContractAddress, cfx.networkId)})
+        BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, cfx.networkId)})
         this.tokenList = erc20List.map(erc20=>erc20.address)
         this.erc20list = erc20List
     }

@@ -52,12 +52,12 @@ export class StatApp{
         // @ts-ignore
         const networkId = this.cfx.networkId
         this.traceSync = new BlockTraceSync(this.cfx)
+        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList)
+        this.batchBalanceWatcher.schedule().then()
         this.config.erc20watchList.forEach(erc20=>{
             const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, this.config)
             watcher.schedule(erc20.watchDelay, erc20.tokenType)
         })
-        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList)
-        this.batchBalanceWatcher.schedule().then()
         // @ts-ignore
         this.balanceService = new BalanceService(this.config.erc20watchList, this.cfx.networkId)
         this.balanceService.schedule(3000)

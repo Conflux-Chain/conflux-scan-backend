@@ -188,13 +188,16 @@ export class BalanceWatcher{
             await KV.create({key: this.addressPosKey, value: "0"})
         }
         if (position.value === '-1') {
-            console.log(`reach max ${this.addressPosKey}`)
+            console.log(`reach max ${this.addressPosKey}, do not schedule.`)
             return;
         }
         //
         const that = this;
         async function repeat() {
-            let goOn = await that.run()
+            let goOn = await that.run().catch(err=>{
+                console.log(`balance watcher ${that.name} fail:`, err)
+                return true
+            })
             if (goOn) {
                 setTimeout(repeat, delay)
             }
@@ -211,7 +214,7 @@ export class BalanceWatcher{
         }
         if (this.isNFT) {
             //
-        } else {
+        } else if (this.name !== 'cfx'){
             // erc 20
             await this.batchErc20(lastId);
             return true
@@ -235,8 +238,8 @@ export class BalanceWatcher{
 
     async batchErc20(lastId:number) {
         const batch = 100
-        let left = lastId + 1;
-        let right = left + batch;
+        let left = lastId + 1; //include
+        let right = left + batch - 1;//include
         this.addressPos = right
         const hexBeanList = await Hex40Map.findAll({
             where: {id: {[Op.between]:[left, right]}}
@@ -257,6 +260,7 @@ export class BalanceWatcher{
             await this.save(bean.id, bans[i])
             i++
         }
+        // console.log(`batch erc20 balance, ${this.name}, count ${bans.length}`)
         await this.savePosition(right)
     }
 
