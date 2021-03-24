@@ -1,12 +1,11 @@
 
-export function calBeginEndTime(day: Date): { beginTime: Date, endTime: Date, statDay: string }{
+export function calBeginEndTime(day: Date): { beginTime: Date, endTime: Date }{
     const beginTime = new Date(day);
     beginTime.setHours(0, 0, 0, 0);
     const endTime = new Date(day);
     endTime.setDate(endTime.getDate() + 1);
     endTime.setHours(0, 0, 0, 0);
-    const statDay = endTime.toISOString().substr(0, 10).replace(/\-/g, '');
-    return {beginTime, endTime, statDay};
+    return {beginTime, endTime};
 }
 
 export function getYesterday(day: Date){

@@ -1,6 +1,6 @@
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
-import {Model} from "sequelize";
+import {Model, Op} from "sequelize";
 import {
     Balance, Balance_cAMP,
     Balance_cBAND, Balance_cBTC,
@@ -26,6 +26,7 @@ import {fmtDtUTC} from "../../model/Utils";
 import {StatConfig} from "../../config/StatConfig";
 import {hex} from "../../test/GenData";
 import {NftId} from "../../model/Token";
+import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 const BigFixed = require('bigfixed');
 const superagent = require("superagent")
 const NodeCache = require( "node-cache" );
@@ -52,6 +53,7 @@ export class BalanceWatcher{
     private readonly contractAddress: string;
     private contractHex40id:number
     private tokenIdsCache
+    private isNFT: boolean;
 
     constructor(name:string, contractAddr: string, cfx:Conflux, config:{scanJsonRpcUrl:string}) {
         this.tokenIdsCache = new NodeCache()
@@ -175,8 +177,8 @@ export class BalanceWatcher{
     }
     async schedule(delay:number = 100, tokenType:string = '') {
         this.tokenType = tokenType
-        let isNFT = tokenType === 'erc1155';
-        if (isNFT) {
+        this.isNFT = tokenType === 'erc1155';
+        if (this.isNFT) {
             this.scheduleSyncTokeId().then()
         }
         this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
@@ -186,13 +188,16 @@ export class BalanceWatcher{
             await KV.create({key: this.addressPosKey, value: "0"})
         }
         if (position.value === '-1') {
-            console.log(`reach max ${this.addressPosKey}`)
+            console.log(`reach max ${this.addressPosKey}, do not schedule.`)
             return;
         }
         //
         const that = this;
         async function repeat() {
-            let goOn = await that.run()
+            let goOn = await that.run().catch(err=>{
+                console.log(`balance watcher ${that.name} fail:`, err)
+                return true
+            })
             if (goOn) {
                 setTimeout(repeat, delay)
             }
@@ -207,7 +212,14 @@ export class BalanceWatcher{
         if (lastId < 0) {
             return false;
         }
-        let curId = lastId + 1;
+        if (this.isNFT) {
+            //
+        } else if (this.name !== 'cfx'){
+            // erc 20
+            await this.batchErc20(lastId);
+            return true
+        }
+        let curId = lastId + 1
         this.addressPos = curId
         const hex = await Hex40Map.findByPk(curId)
         if (hex !== null) {
@@ -216,8 +228,40 @@ export class BalanceWatcher{
             console.log(`${fmtDtUTC(new Date())} ${this.addressPosKey} reach max, id: ${curId}`)
             curId = -1
         }
-        await KV.update({value: curId.toString()}, {where:{key: this.addressPosKey}})
+        await this.savePosition(curId);
         return true
+    }
+
+    private async savePosition(curId: number) {
+        await KV.update({value: curId.toString()}, {where: {key: this.addressPosKey}})
+    }
+
+    async batchErc20(lastId:number) {
+        const batch = 100
+        let left = lastId + 1; //include
+        let right = left + batch - 1;//include
+        this.addressPos = right
+        const hexBeanList = await Hex40Map.findAll({
+            where: {id: {[Op.between]:[left, right]}}
+        })
+        if (hexBeanList.length === 0) {
+            if (right > ((await Hex40Map.max("id")))) {
+                console.log(`${fmtDtUTC(new Date())} ${this.addressPosKey} batch reach max, id: ${right}`)
+                await this.savePosition(-1)
+            } else {
+                await this.savePosition(right)
+            }
+            return
+        }
+        const hexList = hexBeanList.map(bean=>`0x${bean.hex}`);
+        let bans = await BatchBalanceWatcher.contract.balances(hexList, [this.contractAddress])
+        let i = 0
+        for (const bean of hexBeanList) {
+            await this.save(bean.id, bans[i])
+            i++
+        }
+        // console.log(`batch erc20 balance, ${this.name}, count ${bans.length}`)
+        await this.savePosition(right)
     }
 
     async queryBalanceErc1155(hex:string) {

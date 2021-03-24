@@ -11,8 +11,8 @@ export class DailyTxnSync{
     }
 
     private async countDaily(day: Date): Promise<IDailyTransaction>{
-        const {beginTime, endTime, statDay} = calBeginEndTime(day);
-        const record = await DailyTransaction.findOne({where: {statDay}})
+        const {beginTime, endTime} = calBeginEndTime(day);
+        const record = await DailyTransaction.findOne({where: {statDay: endTime}})
         if(record) return Promise.resolve(record);
 
         const txCount = await TransactionDB.count({
@@ -28,7 +28,7 @@ export class DailyTxnSync{
             }
         });
         const dailyTransaction = new DailyTransaction();
-        dailyTransaction.statDay = statDay;
+        dailyTransaction.statDay = endTime;
         dailyTransaction.txCount = txCount;
         const newRecord = await DailyTransaction.add(dailyTransaction);
         console.log('count daily_tx record:' + JSON.stringify(newRecord));

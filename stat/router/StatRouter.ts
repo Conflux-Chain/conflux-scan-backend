@@ -170,12 +170,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     // daily tx count
     router.get('/txn/daily/list', async function (ctx) {
-        const page = await statApp.dailyTxnQuery.listTxnDaily();
+        const {skip, limit} = ctx.request.query
+        const page = await statApp.dailyTxnQuery.listTxnDaily(skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
         ctx.body = {code: 0, data: page};
     });
     // daily cfx holder count
     router.get('/cfx_holder/daily/list', async function (ctx) {
-        const page = await statApp.cfxHolderQuery.listCfxHolderDaily();
+        const {skip, limit} = ctx.request.query
+        const page = await statApp.cfxHolderQuery.listCfxHolderDaily(skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
         ctx.body = {code: 0, data: page};
     });
 }
