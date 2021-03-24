@@ -16,6 +16,7 @@ import {DailyTxnSync} from "./service/DailyTxnSync";
 import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
+import {TokenSync} from "./service/TokenSync";
 
 export class StatApp{
     public config: StatConfig;
@@ -32,6 +33,7 @@ export class StatApp{
     public dailyTxnQuery: DailyTxnQuery;
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
+    public tokenSync: TokenSync;
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -81,6 +83,7 @@ export class StatApp{
         this.dailyTxnQuery = new DailyTxnQuery();
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
+        this.tokenSync = new TokenSync(this.sequelize, this.config);
         // @ts-ignore
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${this.cfx.networkId}`)
         //
@@ -99,6 +102,9 @@ export class StatApp{
         }
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
+        }
+        if (this.config.syncToken) {
+            await this.tokenSync.schedule(); // token from scan
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

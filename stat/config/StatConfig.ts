@@ -27,6 +27,7 @@ export interface StatConfig{
     syncTxnCountDaily: boolean,
     syncTxnCountHistory: boolean,
     syncCfxHolderCountDaily: boolean,
+    syncToken: boolean,
     serverTag: string,
     erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,
