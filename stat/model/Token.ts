@@ -12,7 +12,7 @@ export interface IToken{
     transfer?:number
     decimals?:number
     granularity?:number
-    totalSupply?:string
+    totalSupply?:number
     price?:number
     totalPrice?:number
     quoteUrl?:string
@@ -31,7 +31,7 @@ export class Token extends Model<IToken> implements IToken{
     transfer?:number
     decimals?:number
     granularity?:number
-    totalSupply?:string
+    totalSupply?:number
     price?:number
     totalPrice?:number
     quoteUrl?:string
@@ -49,7 +49,7 @@ export class Token extends Model<IToken> implements IToken{
             transfer: {type: DataTypes.BIGINT, allowNull: true, },
             decimals: {type: DataTypes.BIGINT, allowNull: true, },
             granularity: {type: DataTypes.BIGINT, allowNull: true, },
-            totalSupply: {type: DataTypes.CHAR(64), allowNull: true, },
+            totalSupply: {type: DataTypes.DECIMAL(36, 0), allowNull: true, },
             price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
@@ -72,7 +72,7 @@ export class Token extends Model<IToken> implements IToken{
             transfer:token.transfer,
             decimals:token.decimals,
             granularity:token.granularity,
-            totalSupply:token.totalSupply,
+            totalSupply: token.totalSupply?Number(token.totalSupply):token.totalSupply,
             price:token.price,
             totalPrice:token.totalPrice,
             quoteUrl:token.quoteUrl

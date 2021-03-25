@@ -24,6 +24,7 @@ export class TokenSync{
         let currPage = 1;
         do{
             let response = await this.getFromScan(skip, this.pageSize);
+            if(!response) return;
             total = total ? total : response.total;
             console.log('sync toke_list currPage======>', currPage, ',skip======>', skip, ',total======>', total );
 
@@ -32,14 +33,14 @@ export class TokenSync{
                 const base32 = addressSdk.simplifyCfxAddress(token.address);
                 const dbToken: Token = await Token.findOne({where: {base32}});
                 if(dbToken){
-                    const t = lodash.assign(token, {holder: token.holderCount, type: token.transferType,
+                    const t = lodash.assign(token, {type: token.transferType,
                         transfer: token.transferCount, updatedAt: Date.now()});
                     await dbToken.update(t, {where: {id: dbToken.id}});
                 } else{
                     const hex40 = format.hexAddress(token.address);
                     const hexBean = await makeId(hex40);
-                    const t = lodash.assign(token, {holder: token.holderCount, type: token.transferType,
-                        transfer: token.transferCount, base32, hex40id: hexBean.id});
+                    const t = lodash.assign(token, {type: token.transferType,
+                        transfer: token.transferCount, base32, hex40id: hexBean.id, holder: 0});
                     await Token.add(t);
                 }
             }
@@ -66,9 +67,9 @@ export class TokenSync{
             await that.run().catch(err=>{
                 console.log(`sync toke_list fail: `, err);
             });
-            const delay = getNextDelay(now, 0, 60);
-            console.log(`sync toke_list service in delay ${delay/1000}s.`);
-            setTimeout(repeat, delay);
+            const delay = 60;// in minutes
+            setTimeout(repeat, delay * 1000);
+            console.log(`sync toke_list service in delay ${delay}s.`);
         }
         repeat().then();
     }
