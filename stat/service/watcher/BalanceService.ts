@@ -113,8 +113,7 @@ export class BalanceService {
         const hexList = await Hex40Map.findAll({where: {id: {[Op.in]:list.map(h=>h.addressId)}}})
         const map = new Map()
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
-        const conf = this.tokenMap.get(token.symbol)
-        const is1155 = conf && conf.tokenType && conf.tokenType.includes('1155')
+        const is1155 = (token.type || '').includes('1155')
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
             const address = addr ? format.address(addr, this.networkId, true): holder.addressId
