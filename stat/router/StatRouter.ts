@@ -90,7 +90,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                     return;
                 }
                 base =  JSON.parse(base.text)
-                base.list.forEach(token => token.icon = '')
+                // console.log(`base data:`, JSON.stringify(base))
                 const localTokenList = await statApp.balanceService.listToken();
                 const map = new Map()
                 localTokenList.forEach(t=>map.set(t.base32.substr(t.base32.lastIndexOf(':')).toLowerCase(), t))
