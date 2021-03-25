@@ -68,8 +68,8 @@ export class TokenSync{
                 console.log(`sync toke_list fail: `, err);
             });
             const delay = 60;// in minutes
-            setTimeout(repeat, delay * 1000);
-            console.log(`sync toke_list service in delay ${delay}s.`);
+            setTimeout(repeat, delay * 60 *  1000);
+            console.log(`sync toke_list service in delay ${delay}min.`);
         }
         repeat().then();
     }
