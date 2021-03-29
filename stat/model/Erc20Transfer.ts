@@ -71,7 +71,7 @@ export async function buildErc20Transfer(obj, date) {
         value: obj.value || 0,
         createdAt: date,
         epoch: obj.epochNumber,
-        tokenId: obj.tokenId,
+        tokenId: (obj.tokenId === null || obj.tokenId === undefined) ? null : obj.tokenId.toString(),
     };
     return erc20Transfer
 }
