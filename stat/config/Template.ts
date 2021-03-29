@@ -27,6 +27,7 @@ export default {
     syncTxnCountDaily: false,
     syncTxnCountHistory: false,
     syncCfxHolderCountDaily: false,
+    syncToken: false,
     serverTag: 'scan-stat-1',
     erc20watchList:[],
     watchCfxBalance: false,
