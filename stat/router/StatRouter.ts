@@ -14,6 +14,7 @@ import {NftId, Token} from "../model/Token";
 const cors = require('@koa/cors');
 import Application = require("koa");
 import {QueryTypes} from "sequelize";
+import {DailyTokenTxn} from "../model/Erc20Transfer";
 
 const superagent = require('superagent');
 
@@ -47,6 +48,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const addr = ctx.request.query.address
         const resp = await statApp.balanceService.getERC1155balance(addr)
         ctx.body = resp
+    })
+    router.get('/tokens/daily-txn', async (ctx)=>{
+        let limit = parseInt(ctx.request.query.limit || 1000);
+        const list = await DailyTokenTxn.findAll({limit: Math.min(limit,1000)})
+        ctx.body = {code:0, list}
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
         const base32 = ctx.request.query.address
