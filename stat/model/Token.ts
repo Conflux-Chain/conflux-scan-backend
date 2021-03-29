@@ -8,6 +8,14 @@ export interface IToken{
     base32:string
     hex40id:number
     type?:string
+    icon?:string
+    transfer?:number
+    decimals?:number
+    granularity?:number
+    totalSupply?:number
+    price?:number
+    totalPrice?:number
+    quoteUrl?:string
 }
 
 export const TOKEN_ERC_1155 = 'erc1155'
@@ -19,6 +27,15 @@ export class Token extends Model<IToken> implements IToken{
     base32:string
     hex40id:number
     type?:string
+    icon?:string
+    transfer?:number
+    decimals?:number
+    granularity?:number
+    totalSupply?:number
+    price?:number
+    totalPrice?:number
+    quoteUrl?:string
+
     static register(seq:Sequelize) {
         Token.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
@@ -28,9 +45,39 @@ export class Token extends Model<IToken> implements IToken{
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             hex40id: {type: DataTypes.BIGINT, allowNull: false, },
             type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
+            icon: {type: DataTypes.BLOB(), allowNull: true, },
+            transfer: {type: DataTypes.BIGINT, allowNull: true, },
+            decimals: {type: DataTypes.BIGINT, allowNull: true, },
+            granularity: {type: DataTypes.BIGINT, allowNull: true, },
+            totalSupply: {type: DataTypes.DECIMAL(36, 0), allowNull: true, },
+            price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
         },{
             tableName: 'token',
             sequelize: seq,
+            timestamps: true,
+        })
+    }
+
+    static async add(token: Token, dbTx = undefined): Promise<IToken> {
+        return await Token.create({
+            name:token.name,
+            symbol:token.symbol,
+            holder:token.holder,
+            base32:token.base32,
+            hex40id:token.hex40id,
+            type:token.type,
+            icon:token.icon,
+            transfer:token.transfer,
+            decimals:token.decimals,
+            granularity:token.granularity,
+            totalSupply: token.totalSupply?Number(token.totalSupply):token.totalSupply,
+            price:token.price,
+            totalPrice:token.totalPrice,
+            quoteUrl:token.quoteUrl
+        }, {
+            transaction: dbTx
         })
     }
 }

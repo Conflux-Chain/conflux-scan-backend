@@ -16,9 +16,12 @@ export function getYesterday(day: Date){
 }
 
 export function getNextDelay(day: Date, intervalDay: number, intervalMin: number): number{
+    if(intervalDay === 0){
+        return intervalMin*60*1000;
+    }
+
     const beginTime = new Date(day);
     const beginMilliSec = beginTime.getTime();
-
     beginTime.setHours(0, 0, 0, 0);
     beginTime.setDate(beginTime.getDate() + intervalDay);
     const endMilliSec = beginTime.getTime();
