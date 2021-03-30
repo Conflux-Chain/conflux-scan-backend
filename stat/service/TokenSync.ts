@@ -55,7 +55,7 @@ export class TokenSync{
         let order: any;
         if(orderBy){
             const orderItem = [];
-            orderItem.push(orderBy);
+            orderItem.push(orderBy === 'transferCount' ? 'transfer' : orderBy);
             orderItem.push(reverse ? 'DESC' : 'ASC');
             order = [];
             order.push(orderItem);
