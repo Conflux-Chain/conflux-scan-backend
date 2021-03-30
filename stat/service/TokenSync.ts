@@ -18,7 +18,7 @@ export class TokenSync{
         this.config = config
     }
 
-    public async listToken(fields, transferType, orderBy, reverse: Boolean = false, skip: number = 0, limit: number = 10) {
+    public async listToken(fields, transferType, orderBy, reverse, skip: number = 0, limit: number = 10) {
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
@@ -54,15 +54,15 @@ export class TokenSync{
         // order by
         let order: any;
         if(orderBy){
-            const orderItem = [];
             if(orderBy === 'transferCount'){
                 orderBy = 'transfer';
             }
             if(orderBy === 'holderCount'){
                 orderBy = 'holder';
             }
+            const orderItem = [];
             orderItem.push(orderBy);
-            orderItem.push(reverse ? 'DESC' : 'ASC');
+            orderItem.push(reverse === 'true' ? 'DESC' : 'ASC');
             order = [];
             order.push(orderItem);
             options.order = order;
