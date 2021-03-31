@@ -63,6 +63,9 @@ export async function buildErc20Transfer(obj, date) {
     const toId = await makeId(obj.to)
     const contractId = await makeId(obj.address)
     const hashID = await makeId(obj.transactionHash);
+    if (obj.tokenId !== null && obj.tokenId !== undefined && obj.value === undefined) {
+        obj.value = 1
+    }
     let erc20Transfer:IErc20Transfer = {
         txHashId: hashID.id,
         contractId: contractId.id,
