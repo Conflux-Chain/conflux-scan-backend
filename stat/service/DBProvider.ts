@@ -12,7 +12,7 @@ import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder"
 import {
     Balance_cAMP,
-    Balance_cBAND,
+    Balance_cBAND, Balance_cBNB,
     Balance_cBTC,
     Balance_cCOMP,
     Balance_cDAI,
@@ -21,7 +21,7 @@ import {
     Balance_cFOR, Balance_CG, Balance_cITF, Balance_cKNC,
     Balance_cKP3R,
     Balance_cLEND,
-    Balance_cLINK,
+    Balance_cLINK, Balance_cMBTM,
     Balance_cMOON, Balance_conDragon,
     Balance_CRCL_BTC_symbol,
     Balance_cSNX, Balance_csUSD,
@@ -120,6 +120,8 @@ export async function initModel(sequelize) {
     Balance_cITF.register(sequelize);
     Balance_cAMP.register(sequelize);
     Balance_cDPI.register(sequelize);
+    Balance_cBNB.register(sequelize);
+    Balance_cMBTM.register(sequelize);
 
 
     // erc1155
