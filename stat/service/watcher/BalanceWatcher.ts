@@ -188,8 +188,7 @@ export class BalanceWatcher{
         const position = await KV.findOne({where:{key: this.addressPosKey}})
         if (position == null) {
             await KV.create({key: this.addressPosKey, value: "0"})
-        }
-        if (position.value === '-1') {
+        } else if (position.value === '-1') {
             console.log(`reach max ${this.addressPosKey}, do not schedule.`)
             return;
         }
