@@ -1,4 +1,3 @@
-import {getNextDelay} from "./tool/DateTool";
 import {Sequelize} from 'sequelize';
 // @ts-ignore
 import {format} from 'js-conflux-sdk';
@@ -7,6 +6,7 @@ import {makeId} from "../model/HexMap";
 const addressSdk = require('js-conflux-sdk/src/util/address')
 const lodash = require('lodash');
 const superagent = require('superagent');
+import {decodeUtf8} from "./tool/StringTool";
 
 export class TokenSync{
     private sequelize: Sequelize;
@@ -16,6 +16,66 @@ export class TokenSync{
     constructor(sequelize: Sequelize, config:{scanApiUrl:string}) {
         this.sequelize = sequelize;
         this.config = config
+    }
+
+    public async listToken(fields, transferType, orderBy, reverse, skip: number = 0, limit: number = 10) {
+        const options: any = {};
+        // fields
+        let attributes: any = [['base32', 'address'],
+            'name',
+            'symbol',
+            'decimals',
+            'totalSupply',
+            ['holder', 'holderCount'],
+            ['transfer', 'transferCount'],
+            ['type', 'transferType']
+        ];
+        if(fields && fields.indexOf('icon') > 0){
+            attributes.push('icon');
+        }
+        if(fields && fields.indexOf('price') > 0){
+            attributes.push('price');
+            attributes.push('quoteUrl');
+            attributes.push('totalPrice');
+        }
+        options.attributes = attributes;
+
+        // query
+        const query: any = {};
+        if(transferType){
+            query.type = transferType;
+        }
+        options.where = query;
+
+        // page
+        options.offset = skip;
+        options.limit = limit;
+
+        // order by
+        let order: any;
+        if(orderBy){
+            if(orderBy === 'transferCount'){
+                orderBy = 'transfer';
+            }
+            if(orderBy === 'holderCount'){
+                orderBy = 'holder';
+            }
+            const orderItem = [];
+            orderItem.push(orderBy);
+            orderItem.push(reverse === 'true' ? 'DESC' : 'ASC');
+            order = [];
+            order.push(orderItem);
+            options.order = order;
+        }
+        const page = await Token.findAndCountAll(options)
+        if(page && page.rows){
+            page.rows.forEach( row => {
+                if(row.icon) {
+                    row.icon = decodeUtf8(row.icon);
+                }
+            });
+        }
+        return page;
     }
 
     private async run() {
@@ -74,3 +134,4 @@ export class TokenSync{
         repeat().then();
     }
 }
+
