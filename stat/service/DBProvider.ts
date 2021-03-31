@@ -39,6 +39,7 @@ import {
 } from "../model/Balance";
 import {Trace} from "../model/Trace";
 import {NftId, Token} from "../model/Token";
+import {DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 let conf
 export function createDB(config) {
     conf = config
@@ -70,13 +71,20 @@ export function getSumFunction() : string{
 export function isMySQL() : boolean {
     return conf.USE_MYSQL === true
 }
-export async function initModel(sequelize) {
+
+// init for scan-backend
+export async function initPartialModel(sequelize) {
     await sequelize.authenticate().then(()=>{
         console.log('DB authenticated.')
     }).catch(err=>{
         console.log(`connect to DB fail`, err)
     });
     hexMapInit(sequelize);
+    Erc20Transfer.register(sequelize)
+    DailyTokenTxn.register(sequelize)
+}
+export async function initModel(sequelize) {
+    await initPartialModel(sequelize)
     Epoch.register(sequelize);
     TransactionDB.register(sequelize);
     Block.register(sequelize);
