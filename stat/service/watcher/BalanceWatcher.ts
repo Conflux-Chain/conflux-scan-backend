@@ -76,8 +76,10 @@ export class BalanceWatcher{
     static mapModel(name:string): typeof Balance{
         let ret;
         switch (name) {
+            case 'WCFX':
             case 'wcfx':        ret = WCfxBalance;       break;
             case 'dex-cfx':     ret = DexCfxBalance;     break;
+            case 'cUSDT':
             case 'usdt':        ret = USDTBalance;       break;
             case 'dex-usdt':    ret = DexUSDTBalance;    break;
             case 'cfx':         ret = CfxBalance;    break;
