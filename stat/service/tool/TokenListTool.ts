@@ -12,6 +12,7 @@ async function run() {
     transferType = 'ERC20'
     // transferType = 'ERC721'
     const is1155 = transferType === 'ERC1155'
+    const filter = ['cBNB','csUSD','cMBTM']
     client.get(`${scanUrl}`)
         .query({
             fields: '',
@@ -22,7 +23,7 @@ async function run() {
         console.log('err:', err)
         // res.body = JSON.parse(res.body)
         let list = res.body.list
-        list = list.filter(token=>token.symbol === 'cFLUX')
+        list = list.filter(token=>filter.indexOf(token.symbol)>=0 || filter.length === 0)
         console.log(`conf:`)
         list.forEach(token=>{
             let hexAddr = format.hexAddress(token.address)

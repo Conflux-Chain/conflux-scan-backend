@@ -235,4 +235,14 @@ export class Balance_cFLUX extends Balance{
     }
 }
 
+export class Balance_cBNB extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cBNB, 'balance_cBNB')
+    }
+}
+export class Balance_cMBTM extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cMBTM, 'balance_cMBTM')
+    }
+}
 
