@@ -71,9 +71,9 @@ export async function batchSaveCfxTransfer(array: any[], seconds) {
     for (const obj of array) {
         templates.push(await buildCfxTransfer(obj, date))
     }
-    console.log(`batchSaveCfxTransfer ---- ${array.length}`)
+    // console.log(`batchSaveCfxTransfer ---- ${array.length}`)
     return CfxTransfer.bulkCreate(templates, {
-        benchmark: true, logging:console.log,
+        // benchmark: true, logging:console.log,
     })
 }
 
