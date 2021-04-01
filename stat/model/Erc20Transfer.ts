@@ -117,7 +117,9 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
         },{
             tableName: T_DAILY_TOKEN_TXN,
             sequelize: seq,
-            indexes:[]
+            indexes:[
+                {name: 'idx_day', fields: [{name: 'day', order: "DESC"}]}
+            ]
         })
     }
 }

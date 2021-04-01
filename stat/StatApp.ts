@@ -20,7 +20,7 @@ import {TokenSync} from "./service/TokenSync";
 
 export class StatApp{
     public config: StatConfig;
-    private sequelize: Sequelize;
+    public sequelize: Sequelize;
     public blockAndMinerSync: BlockAndMinerSync;
     public balanceService: BalanceService;
     public rankService: RankService;

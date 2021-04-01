@@ -44,11 +44,22 @@ export default {
                 }
             }
         },
-        '/stat/tokens/daily-txn': {
+        '/stat/tokens/daily-token-txn': {
             "get": {
                 tags: ['tokens'],
                 "parameters": [
-                    {name:"limit", required: true, in: "query", schema:{type:"number"}}
+                    {name:"limit", required: true, in: "query", schema:{type:"number", default: 60}}
+                ],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
+        '/stat/daily-cfx-txn': {
+            "get": {
+                tags: ['tokens'],
+                "parameters": [
+                    {name:"limit", required: true, in: "query", schema:{type:"number", default: 60}}
                 ],
                 "responses": {
                     "200": {}
@@ -396,6 +407,18 @@ export default {
                         }
                     }
                 },
+            }
+        },
+        '/stat/top-gas-used': {
+            'get': {
+                description: 'Top account by gas used.',
+                tags: ['Top N'],
+                parameters: [
+                    {name: 'span', in: 'query', required: true, schema: {type: String, enum: ['24h', '3d', '7d'], default:'24h'},},
+                ],
+                responses: {
+                    200: {}
+                }
             }
         },
         '/stat/tx/top-by-type': {

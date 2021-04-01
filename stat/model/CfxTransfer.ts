@@ -103,7 +103,9 @@ export class DailyCfxTxn extends Model<IDailyCfxTxn> implements IDailyCfxTxn{
         },{
             tableName: T_DAILY_CFX_TXN,
             sequelize: seq,
-            indexes:[]
+            indexes:[
+                {name: 'idx_day', fields: [{name: 'day', order: "DESC"}]}
+            ]
         })
     }
 }
