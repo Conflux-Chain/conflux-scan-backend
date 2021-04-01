@@ -17,7 +17,8 @@ export class TxnQuery{
                 order by gas desc limit 10`
         const list = await seq.query(sql, {type: QueryTypes.SELECT})
         const sum = await TransactionDB.sum('gas',{
-            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `'${spanDay} 0:0:0'`)}}
+            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}},
+            // benchmark: true, logging: console.log
         })
         const maxBlockTime = await TransactionDB.max('blockTime')
         return { code: 0, totalGas: sum || 0, maxBlockTime, list}
