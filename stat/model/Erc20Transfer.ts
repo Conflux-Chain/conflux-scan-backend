@@ -36,7 +36,7 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
-            value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
+            value: {type: DataTypes.DECIMAL(65, 0), allowNull: false},
         }, {
             sequelize: seq,
             updatedAt: false,
