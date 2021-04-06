@@ -13,7 +13,7 @@ export interface IErc20Transfer extends ITokenTransfer{
     contractId: number
     fromId: number
     toId: number
-    value: number
+    value: string
 }
 
 export const T_ERC20_TRANSFER = "erc20transfer"
@@ -26,7 +26,7 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
     txHashId: number
     fromId: number
     toId: number
-    value: number
+    value: string
     static register(seq: Sequelize) {
         Erc20Transfer.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -36,7 +36,7 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
-            value: {type: DataTypes.DECIMAL(65, 0), allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: false},
         }, {
             sequelize: seq,
             updatedAt: false,

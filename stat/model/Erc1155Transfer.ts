@@ -9,7 +9,7 @@ export class IErc1155Transfer {
     contractId: number
     fromId: number
     toId: number
-    value: number
+    value: string
     tokenId:string
 }
 
@@ -23,7 +23,7 @@ export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155
     txHashId: number
     fromId: number
     toId: number
-    value: number
+    value: string
     tokenId:string
     static register(seq: Sequelize) {
         Erc1155Transfer.init({
@@ -34,7 +34,7 @@ export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
-            value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: false},
             tokenId: {type: DataTypes.STRING(78), allowNull: true},
         }, {
             sequelize: seq,

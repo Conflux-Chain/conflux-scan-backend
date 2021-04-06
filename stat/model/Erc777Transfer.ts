@@ -9,7 +9,7 @@ export class IErc777Transfer {
     contractId: number
     fromId: number
     toId: number
-    value: number
+    value: string
 }
 
 export const T_ERC777_TRANSFER = "erc777transfer"
@@ -22,7 +22,7 @@ export class Erc777Transfer extends Model<IErc777Transfer> implements IErc777Tra
     txHashId: number
     fromId: number
     toId: number
-    value: number
+    value: string
     static register(seq: Sequelize) {
         Erc777Transfer.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -32,7 +32,7 @@ export class Erc777Transfer extends Model<IErc777Transfer> implements IErc777Tra
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
-            value: {type: DataTypes.DECIMAL(65, 0), allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: false},
         }, {
             sequelize: seq,
             updatedAt: false,
