@@ -41,6 +41,9 @@ import {Trace} from "../model/Trace";
 import {NftId, Token} from "../model/Token";
 import {DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
+import {Erc721Transfer} from "../model/Erc721Transfer";
+import {Erc777Transfer} from "../model/Erc777Transfer";
+import {Erc1155Transfer} from "../model/Erc1155Transfer";
 let conf
 export function createDB(config) {
     conf = config
@@ -82,6 +85,9 @@ export async function initPartialModel(sequelize) {
     });
     hexMapInit(sequelize);
     Erc20Transfer.register(sequelize)
+    Erc721Transfer.register(sequelize)
+    Erc777Transfer.register(sequelize)
+    Erc1155Transfer.register(sequelize)
     DailyTokenTxn.register(sequelize)
     CfxTransfer.register(sequelize)
     DailyCfxTxn.register(sequelize)
