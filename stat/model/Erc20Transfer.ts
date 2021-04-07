@@ -116,7 +116,7 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             txnCount: {type: DataTypes.BIGINT, allowNull: false},
             day: {type: DataTypes.DATEONLY, allowNull: false},
-            type: {type: DataTypes.STRING(8), allowNull: false, unique: true},
+            type: {type: DataTypes.STRING(8), allowNull: false},
         },{
             tableName: T_DAILY_TOKEN_TXN,
             sequelize: seq,
