@@ -72,7 +72,7 @@ export async function buildErc20Transfer(obj, date) {
         contractId: contractId.id,
         fromId: fromId.id,
         toId: toId.id,
-        value: obj.value || 0,
+        value: (obj.value || 0).toString(),
         createdAt: date,
         epoch: obj.epochNumber,
     };

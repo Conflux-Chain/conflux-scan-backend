@@ -68,7 +68,7 @@ export async function buildErc1155Transfer(obj, date) {
         contractId: contractId.id,
         fromId: fromId.id,
         toId: toId.id,
-        value: obj.value || 0,
+        value: (obj.value || 0).toString(),
         createdAt: date,
         epoch: obj.epochNumber,
         tokenId: (obj.tokenId === null || obj.tokenId === undefined) ? null : obj.tokenId.toString(),
