@@ -20,7 +20,7 @@ import {TokenSync} from "./service/TokenSync";
 
 export class StatApp{
     public config: StatConfig;
-    private sequelize: Sequelize;
+    public sequelize: Sequelize;
     public blockAndMinerSync: BlockAndMinerSync;
     public balanceService: BalanceService;
     public rankService: RankService;
@@ -34,6 +34,7 @@ export class StatApp{
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
     public tokenSync: TokenSync;
+    public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -43,7 +44,7 @@ export class StatApp{
         // @ts-ignore
         await this.cfx.updateNetworkId();
         // @ts-ignore
-        this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
+        StatApp.networkId = this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
         // @ts-ignore
         console.log(`network id ${this.cfx.networkId}`)
         // const logger = pino()

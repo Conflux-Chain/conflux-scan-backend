@@ -1,10 +1,33 @@
-import {TransactionDB, Transaction} from "../model/Transaction";
+import {Transaction, TransactionDB} from "../model/Transaction";
 import {Hex40Map} from "../model/HexMap";
-import {Op} from 'sequelize'
+import {QueryTypes, Op, Sequelize, fn} from 'sequelize'
 // @ts-ignore
 import {format} from 'js-conflux-sdk'
+import {StatApp} from "../StatApp";
 
 export class TxnQuery{
+    static async topByGasUsed({span = '24h'}, seq:Sequelize) {
+        const def = {'24h': -1, '3d': -3, '7d': -7}
+        let spanDay = def[span];
+        if (spanDay === undefined) {
+            return {code: 610, message: `unknown span [${span}], support ${Object.keys(def).join(',')}`}
+        }
+        const sql = `select sum(gas) as gas, \`from\` as fromId, hex 
+                from tx left join hex40 on tx.\`from\` = hex40.id 
+                where blockTime > addtime(now(), '${spanDay} 0:0:0') group by \`from\`
+                order by gas desc limit 10`
+        const list:any[] = await seq.query(sql, {type: QueryTypes.SELECT})
+        const sum = await TransactionDB.sum('gas',{
+            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}},
+            // benchmark: true, logging: console.log
+        })
+        const maxBlockTime = await TransactionDB.max('blockTime')
+        list.forEach(row=>{
+            row.hex = `0x${row.hex}`
+            row.base32 = TxnQuery.base32(row.hex, StatApp.networkId)
+        })
+        return { code: 0, totalGas: sum || 0, maxBlockTime, list}
+    }
     async listTxn(condition: Transaction, skip: number = 0, limit: number = 10, networkId: number = 1029) {
         const query: {from?: number} = {}
         if (condition.from) {
@@ -32,14 +55,14 @@ export class TxnQuery{
         })
         page.rows.forEach(r=>{
             r['fromHex'] = hexIdMap.get(r.from) || ''
-            r['fromBase32'] = this.base32(r['fromHex'], networkId)
+            r['fromBase32'] = TxnQuery.base32(r['fromHex'], networkId)
             r.toHex = '0x'+(hexIdMap.get(r.to) || '')
-            r['toBase32'] = this.base32(r.toHex, networkId)
+            r['toBase32'] = TxnQuery.base32(r.toHex, networkId)
         })
         return page;
     }
 
-    base32(hex, networkId) {
+    static base32(hex, networkId) {
         if (hex === null || hex === undefined || hex === '') {
             return ''
         }

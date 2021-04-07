@@ -15,6 +15,7 @@ const cors = require('@koa/cors');
 import Application = require("koa");
 import {QueryTypes} from "sequelize";
 import {DailyTokenTxn} from "../model/Erc20Transfer";
+import {DailyCfxTxn} from "../model/CfxTransfer";
 
 const superagent = require('superagent');
 
@@ -49,9 +50,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const resp = await statApp.balanceService.getERC1155balance(addr)
         ctx.body = resp
     })
-    router.get('/tokens/daily-txn', async (ctx)=>{
+    router.get('/tokens/daily-token-txn', async (ctx)=>{
         let limit = parseInt(ctx.request.query.limit || 1000);
-        const list = await DailyTokenTxn.findAll({limit: Math.min(limit,1000)})
+        const list = await DailyTokenTxn.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
         ctx.body = {code:0, list}
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
@@ -131,6 +132,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             }
         })
     })
+    //top gas used
+    router.get('/top-gas-used', async (ctx)=>{
+        ctx.body = await TxnQuery.topByGasUsed(ctx.request.query, statApp.sequelize)
+    })
+    //
     router.get('/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService
         const {type, limit} = ctx.request.query || {type: 'cfxSend', limit: 10};
@@ -184,6 +190,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const page = await new TxnQuery().listTxn({from},
             parseInt(skip), parseInt(limit), networkId)
         ctx.body = {code: 0, data: page};
+    })
+    // daily cfx transfer count
+    router.get('/daily-cfx-txn', async function (ctx) {
+        let limit = parseInt(ctx.request.query.limit || 1000);
+        const list = await DailyCfxTxn.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
+        ctx.body = {code:0, list}
     })
     // daily tx count
     router.get('/txn/daily/list', async function (ctx) {

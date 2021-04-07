@@ -81,6 +81,8 @@ export class BlockTraceSync{
     private previousEpoch: number
     /**
      * Take tx as the main line, could skip most empty block(without tx).
+     * Known issues: txId will be mistake in case the block contains more than one tx.
+     * The main usage of tracing is to collect [hidden] address.
      * @param epoch
      */
     async fetchByTx(txId: number) : Promise<boolean>{
@@ -143,7 +145,7 @@ export class BlockTraceSync{
                 let value = t.action.value
                 if (value > 0) {
                     await Trace.create({
-                        epochHeight: txInfo.epochHeight, txId: tx.id,
+                        epochHeight: tx.epochHeight, txId: tx.id,
                         from: fromId,
                         to: toId,
                         value: value, blockTime: tx.blockTime
