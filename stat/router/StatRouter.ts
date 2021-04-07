@@ -9,13 +9,13 @@ import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
 import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
-import {NftId, Token} from "../model/Token";
+import {NftId} from "../model/Token";
+import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
+import {DailyCfxTxn} from "../model/CfxTransfer";
 
 const cors = require('@koa/cors');
 import Application = require("koa");
 import {QueryTypes} from "sequelize";
-import {DailyTokenTxn} from "../model/Erc20Transfer";
-import {DailyCfxTxn} from "../model/CfxTransfer";
 
 const superagent = require('superagent');
 
@@ -51,8 +51,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = resp
     })
     router.get('/tokens/daily-token-txn', async (ctx)=>{
-        let limit = parseInt(ctx.request.query.limit || 1000);
-        const list = await DailyTokenTxn.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
+        let limit = Math.min(1000, parseInt(ctx.request.query.limit || 1000));
+        const sql = `select day, max(updatedAt) as updatedAt, sum(txnCount) as txnCount
+            from ${T_DAILY_TOKEN_TXN} group by day order by day desc limit ?`
+        const list = await statApp.sequelize.query(sql,
+            {type: QueryTypes.SELECT, replacements:[limit]}
+            ).catch(err=>{
+                console.log(`${ctx.request.url} fail:`, err)
+            })
         ctx.body = {code:0, list}
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
