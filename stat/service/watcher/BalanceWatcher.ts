@@ -27,6 +27,7 @@ import {StatConfig} from "../../config/StatConfig";
 import {hex} from "../../test/GenData";
 import {NftId} from "../../model/Token";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
+import {StatApp} from "../../StatApp";
 const BigFixed = require('bigfixed');
 const superagent = require("superagent")
 const NodeCache = require( "node-cache" );
@@ -303,7 +304,7 @@ export class BalanceWatcher{
     async queryBalanceErc20(hex: string, addrId: number) {
         try {
             // @ts-ignore
-            const ban = await this.miniERC20.balanceOf(format.address(hex, this.cfx.networkId));
+            const ban = await this.miniERC20.balanceOf(format.address(hex, StatApp.networkId));
             await this.save(addrId, ban);
             if (this.addressPos % 100 === 0) {
                 console.log(`${fmtDtUTC(new Date())} update balance, position of ${this.addressPosKey
@@ -340,7 +341,7 @@ export class CfxWatcher extends BalanceWatcher{
     async queryBalance(hex: string, addrId: number): Promise<void> {
         try {
             // @ts-ignore
-            const accountInfo:any = await this.cfx.getAccount(format.address(hex, this.cfx.networkId))
+            const accountInfo:any = await this.cfx.getAccount(format.address(hex, StatApp.networkId))
             if (accountInfo.balance < 1 && accountInfo.stakingBalance < 1) {
                 await this.model.destroy({where: {addressId: addrId}})
                 return Promise.resolve();

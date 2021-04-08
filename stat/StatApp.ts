@@ -41,9 +41,10 @@ export class StatApp{
 
     public async init() {
         this.cfx = new Conflux({...this.config.conflux})
+        // @ts-ignore
+        await this.cfx.updateNetworkId();
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
-        // @ts-ignore
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${StatApp.networkId}`)
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
