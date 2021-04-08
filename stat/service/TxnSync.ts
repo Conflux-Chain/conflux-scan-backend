@@ -114,13 +114,6 @@ export class TxnSync {
     }
 
     public async schedule(delay:number = 100) {
-        // @ts-ignore
-        await this.cfx.updateNetworkId();
-        const st = await this.cfx.getStatus()
-        // @ts-ignore
-        this.cfx.networkId = st.chainId;
-        // @ts-ignore
-        console.log(`${fmtDtUTC(new Date())} networkId id ${this.cfx.networkId} , status `, st)
         console.log(`sync tx with delay ${delay}`)
         const that = this;
         async function repeat() {
