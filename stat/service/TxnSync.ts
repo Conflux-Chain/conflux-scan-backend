@@ -6,6 +6,7 @@ import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
 import {getSumFunction} from "./DBProvider";
 import {Stopwatch} from "./Stopwatch";
+import {StatApp} from "../StatApp";
 const BigFixed = require('bigfixed');
 
 /**
@@ -93,11 +94,11 @@ export class TxnSync {
         const that = this
 
         async function refreshAction(action: string) {
-            await that.txTopBy(24, 'h', 10, action)
+            await that.txTopBy(24, 'h', 10, action, StatApp.networkId)
             await new Promise(resolve => setTimeout(resolve, 5_000))
-            await that.txTopBy(3, 'd', 10, action)
+            await that.txTopBy(3, 'd', 10, action, StatApp.networkId)
             await new Promise(resolve => setTimeout(resolve, 5_000))
-            await that.txTopBy(7, 'd', 10, action)
+            await that.txTopBy(7, 'd', 10, action, StatApp.networkId)
             await new Promise(resolve => setTimeout(resolve, 5_000))
         }
 
