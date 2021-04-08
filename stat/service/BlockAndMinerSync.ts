@@ -7,6 +7,7 @@ import {addUTCMinutes, calculateBeginTime, fmtDtUTC} from "../model/Utils";
 // @ts-ignore
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {getDBConf, getSumFunction} from "./DBProvider";
+import {StatApp} from "../StatApp";
 
 const BigFixed = require('bigfixed');
 
@@ -25,8 +26,6 @@ export class BlockAndMinerSync {
 
     public async schedule(delay:number = 100) {
         const that = this;
-        // @ts-ignore
-        this.cfx.updateNetworkId();
         async function repeat() {
             const {code} = {...await that.syncBlockByEpoch()}
             if (code === BlockAndMinerSync.CODE_REWARD_NOT_READY) {
@@ -105,7 +104,7 @@ export class BlockAndMinerSync {
         })
         list.forEach(item=>{
             // @ts-ignore
-            item['base32'] = format.address(`0x${item.miner}`, this.cfx.networkId)
+            item['base32'] = format.address(`0x${item.miner}`, StatApp.networkId)
         })
         const allDifficulty = await MinerBlock.sum("difficultySum", {
             where: {beginTime: {[Op.gte]:beginDt}, endTime:{[Op.lte]:endDt}, timeWindow: timeWindow},

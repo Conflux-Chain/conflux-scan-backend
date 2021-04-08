@@ -6,6 +6,7 @@ import {Erc20WatchList} from "../../config/StatConfig";
 import {BalanceWatcher} from "./BalanceWatcher";
 import {makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
+import {StatApp} from "../../StatApp";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 export class BatchBalanceWatcher {
@@ -17,7 +18,7 @@ export class BatchBalanceWatcher {
     constructor( cfx:Conflux, erc20List:Erc20WatchList[]) {
         this.cfx = cfx;
         // @ts-ignore
-        BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, cfx.networkId)})
+        BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
         this.tokenList = erc20List.map(erc20=>erc20.address)
         this.erc20list = erc20List
     }

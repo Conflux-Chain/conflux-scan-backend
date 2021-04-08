@@ -40,13 +40,12 @@ export class StatApp{
     }
 
     public async init() {
-        this.cfx = new Conflux(this.config.conflux)
+        this.cfx = new Conflux({...this.config.conflux})
         // @ts-ignore
         await this.cfx.updateNetworkId();
-        // @ts-ignore
-        StatApp.networkId = this.cfx.networkId = this.cfx.networkId || this.cfx.chainId
-        // @ts-ignore
-        console.log(`network id ${this.cfx.networkId}`)
+        const cfxStatus:any = await this.cfx.getStatus()
+        StatApp.networkId = cfxStatus.networkId
+        console.log(`conflux rpc ${this.config.conflux.url}, network id ${StatApp.networkId}`)
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
@@ -60,8 +59,6 @@ export class StatApp{
         this.rankService = new RankService(this.sequelize)
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
-        // @ts-ignore
-        const networkId = this.cfx.networkId
         this.traceSync = new BlockTraceSync(this.cfx)
         this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList)
         this.batchBalanceWatcher.schedule().then()
@@ -70,11 +67,11 @@ export class StatApp{
             watcher.schedule(erc20.watchDelay, erc20.tokenType)
         })
         // @ts-ignore
-        this.balanceService = new BalanceService(this.config.erc20watchList, this.cfx.networkId)
+        this.balanceService = new BalanceService(this.config.erc20watchList, StatApp.networkId)
         this.balanceService.schedule(3000)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
         //
-        this.contractService = new ContractService(this.config.scanApiUrl, networkId)
+        this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)
         this.contractService.schedule()
         if (this.config.watchCfxBalance) {
             new CfxWatcher('cfx', this.cfx, this.config).schedule(this.config.cfxWatcherDelay).then()
@@ -85,8 +82,7 @@ export class StatApp{
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenSync = new TokenSync(this.sequelize, this.config);
-        // @ts-ignore
-        console.log(`conflux rpc ${this.config.conflux.url}, network id ${this.cfx.networkId}`)
+
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
