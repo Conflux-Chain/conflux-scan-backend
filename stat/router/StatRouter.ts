@@ -23,7 +23,7 @@ export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = {
-            code: 0, message: `Conflux-Stat 2021.01.15 ${statApp.config.serverTag}`
+            code: 0, message: `Conflux-Stat 2021.04.08 ${statApp.config.serverTag} network id ${StatApp.networkId}`
         }
     })
     router.get('/contract/all', async (ctx)=>{
@@ -146,9 +146,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-cfx-holder', async (ctx)=>{
         const rank = statApp.rankService
         const {type, limit} = ctx.request.query || {type: 'cfxSend', limit: 10};
-        // @ts-ignore
-        let networkId = statApp.cfx.networkId;
-        ctx.body = await rank.top(type, parseInt(limit), networkId)
+        ctx.body = await rank.top(type, parseInt(limit), StatApp.networkId)
     })
     // miner topN
     router.get('/miner/top-by-type', async (ctx)=>{
@@ -171,9 +169,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const txnSync = statApp.txnSync;
         const { span, type, rows, action } = ctx.request.query;
         // action: cfxSend/Receive; txnSend/Receive
-        // @ts-ignore
-        let networkId = statApp.cfx.networkId;
-        const top = await txnSync.txTopBy(span, type, parseInt(rows), action, networkId);
+        const top = await txnSync.txTopBy(span, type, parseInt(rows), action, StatApp.networkId);
         ctx.body =  {
             ...top,
         };
@@ -191,10 +187,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     //
     router.get('/txn/list', async function (ctx) {
         const {from, skip, limit} = ctx.request.query
-        // @ts-ignore
-        let networkId = statApp.cfx.networkId;
         const page = await new TxnQuery().listTxn({from},
-            parseInt(skip), parseInt(limit), networkId)
+            parseInt(skip), parseInt(limit), StatApp.networkId)
         ctx.body = {code: 0, data: page};
     })
     // daily cfx transfer count
