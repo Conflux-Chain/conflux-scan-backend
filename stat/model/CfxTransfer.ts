@@ -132,6 +132,8 @@ export async function rollupDailyCfxTxnCurrent() {
 }
 
 export async function scheduleRollupDailyCfxTxn() {
+    console.log(`rollupDailyCfxTxnCurrent begin`)
     await rollupDailyCfxTxnCurrent()
+    console.log(`rollupDailyCfxTxnCurrent end`)
     setTimeout(scheduleRollupDailyCfxTxn, 1000*60*10)// ten minutes
 }

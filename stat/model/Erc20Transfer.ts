@@ -140,10 +140,12 @@ export async function rollupDailyTokenTxn(dt:Date, model: any/*Model*/, type) {
 }
 
 export async function rollupDailyTokenTxnCurrentAll() {
+    console.log(`rollupDailyTokenTxnCurrentAll begin`)
     await rollupDailyTokenTxnCurrent(Erc20Transfer, 'erc20')
     await rollupDailyTokenTxnCurrent(Erc721Transfer, 'erc721')
     await rollupDailyTokenTxnCurrent(Erc777Transfer, 'erc777')
     await rollupDailyTokenTxnCurrent(Erc1155Transfer, 'erc1155')
+    console.log(`rollupDailyTokenTxnCurrentAll end`)
 }
 export async function rollupDailyTokenTxnCurrent(model, type) {
     const cur = new Date()
