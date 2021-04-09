@@ -158,5 +158,5 @@ export async function rollupDailyTokenTxnCurrent(model, type) {
 
 export async function scheduleRollupDailyTokenTxn() {
     await rollupDailyTokenTxnCurrentAll()
-    setTimeout(scheduleRollupDailyTokenTxn, 1000*60*10)// ten minutes
+    setTimeout(scheduleRollupDailyTokenTxn, 1000*60*1)// ten minutes
 }
