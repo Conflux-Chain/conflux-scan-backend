@@ -150,7 +150,7 @@ export class BlockTraceCreateSync{
                     type: trace.type,
                     from: trace.action.from,
                     value: trace.action.value,
-                    addr: trace.action.to,
+                    addr: trace.action.addr,
                     outcome: trace.action.outcome,
                     blockTime: trace.blockTime,
                 });
@@ -189,7 +189,7 @@ export class BlockTraceCreateSync{
             return traceArray;
         }
         // get transaction
-        const block:any = this.getBlockByHash(blockHash);
+        const block:any = await this.getBlockByHash(blockHash);
         // @ts-ignore
         lodash.zip(block.transactions, blockTrace.transactionTraces)
             .forEach(([transaction, transactionTracesItem], transactionIndex) => {
