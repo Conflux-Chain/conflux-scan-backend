@@ -1,9 +1,9 @@
 import {DataTypes, Model} from "sequelize";
 
-export interface ITraceCreate{
+export interface ITraceCreateContract{
     id?:number
     epochHeight:number
-    txId?:number
+    txHashId?:number
     traceIndex?:number
     from:number
     value:number
@@ -11,10 +11,10 @@ export interface ITraceCreate{
     outcome:string
     blockTime:number
 }
-export class TraceCreate extends Model<ITraceCreate> implements ITraceCreate{
+export class TraceCreateContract extends Model<ITraceCreateContract> implements ITraceCreateContract{
     id?:number
     epochHeight:number
-    txId?:number
+    txHashId?:number
     traceIndex?:number
     from:number
     value:number
@@ -22,10 +22,10 @@ export class TraceCreate extends Model<ITraceCreate> implements ITraceCreate{
     outcome:string
     blockTime:number
     static register(seq){
-        TraceCreate.init({
+        TraceCreateContract.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
             epochHeight: {type: DataTypes.BIGINT, allowNull: false},
-            txId: {type: DataTypes.BIGINT, allowNull: false},
+            txHashId: {type: DataTypes.BIGINT, allowNull: false},
             traceIndex: {type: DataTypes.BIGINT, allowNull: false},
             from: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
@@ -34,7 +34,7 @@ export class TraceCreate extends Model<ITraceCreate> implements ITraceCreate{
             blockTime: {type: DataTypes.BIGINT, allowNull: false},
         },{
             sequelize: seq,
-            tableName: 'trace_create',
+            tableName: 'trace_create_contract',
             timestamps: false,
             indexes: [{
                 name: "from_idx", fields: ["from"]

@@ -10,7 +10,7 @@ import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
-import {TraceCreate} from "../model/TraceCreate";
+import {TraceCreateContract} from "../model/TraceCreateContract";
 import {
     Balance_cAMP,
     Balance_cBAND, Balance_cBNB,
@@ -156,7 +156,7 @@ export async function initModel(sequelize) {
     TestTimezone.register(sequelize);
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);
-    TraceCreate.register(sequelize);
+    TraceCreateContract.register(sequelize);
 }
 
 export function createMySql(dbConf) {

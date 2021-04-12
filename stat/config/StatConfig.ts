@@ -15,7 +15,7 @@ export interface StatConfig{
     syncBlockDelay: number;
     syncTxnDelay: number;
     syncTraceDelay: number;
-    syncTraceCreateDelay: number;
+    syncTraceCreateContractDelay: number;
     port: number;
     conflux: ConfluxOption; // chain rpc node
     cfxWsUrl: string
@@ -29,7 +29,7 @@ export interface StatConfig{
     syncTxnCountHistory: boolean,
     syncCfxHolderCountDaily: boolean,
     syncToken: boolean,
-    syncTraceCreate: boolean,
+    syncTraceCreateContract: boolean,
     serverTag: string,
     erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,

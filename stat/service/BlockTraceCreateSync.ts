@@ -1,25 +1,22 @@
 // @ts-ignore
-import {Conflux, Contract, format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {KEY_BLOCK_TRACE_CREATE_TX_ID, KV} from "../model/KV";
 import {TransactionDB} from "../model/Transaction";
 import {makeId} from "../model/HexMap";
-import {TraceCreate} from "../model/TraceCreate";
+import {TraceCreateContract} from "../model/TraceCreateContract";
 const lodash = require('lodash');
 const constant = require('./common/constant');
 
 export class BlockTraceCreateSync{
     protected cfx;
-    private miniERC20: Contract;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.blockHashInEpoch = new Set<string>()
         this.previousEpoch = -1
-        const {abi, bytecode} = require('./watcher/contract/miniERC20.json');
-        this.miniERC20 = <Contract>cfx.Contract({abi, bytecode});
     }
 
     async schedule(delay: number = 100) {
-        console.log(`schedule trace_create sync with delay: ${delay}`)
+        console.log(`schedule trace_create_contract sync with delay: ${delay}`)
         await this.init();
         const that = this
         async function repeat() {
@@ -41,7 +38,7 @@ export class BlockTraceCreateSync{
     async popEpoch() {
         let maxOne = null
         while (true) {
-            maxOne = await TraceCreate.findOne({order:[["id","desc"]], limit: 1})
+            maxOne = await TraceCreateContract.findOne({order:[["id","desc"]], limit: 1})
             if (maxOne == null) {
                 break;
             }
@@ -50,8 +47,8 @@ export class BlockTraceCreateSync{
             } else if (maxOne.epochHeight !== this.previousEpoch) {
                 break;
             }
-            console.log(`delete max one : ${JSON.stringify(maxOne)}`)
-            await TraceCreate.destroy({where: {id: maxOne.id}})
+            console.log(`trace_create_contract delete max one : ${JSON.stringify(maxOne)}`)
+            await TraceCreateContract.destroy({where: {id: maxOne.id}})
         }
         if (maxOne !== null) {
             this.previousEpoch = maxOne.epochHeight
@@ -77,11 +74,11 @@ export class BlockTraceCreateSync{
         const tx = await TransactionDB.findByPk(txId);
         if (tx == null) {
             const maxTxId = await TransactionDB.max("id");
-            if (txId > maxTxId) {
+            if (isNaN(NaN) || txId > maxTxId) {
                 await new Promise(resolve => setTimeout(resolve, 5_000))
                 return false;
             } else {
-                console.log(`tx not found, id ${txId}, max tx id ${maxTxId} `)
+                console.log(`trace_create_contract tx not found, id ${txId}, max tx id ${maxTxId} `)
                 return true;
             }
         }
@@ -92,7 +89,7 @@ export class BlockTraceCreateSync{
 
         // check need to process
         if(tx.epochHeight < this.previousEpoch){
-            console.log(`should never happen! previous epoch:${this.previousEpoch}
+            console.log(`trace_create_contract should never happen! previous epoch:${this.previousEpoch}
             , tx epoch:${tx.epochHeight}, tx id:${tx.id}`);
             return true;
         }
@@ -110,12 +107,12 @@ export class BlockTraceCreateSync{
 
         // persistence to db
         for (const trace of traceCreateArray) {
-            const txId =  (await this.handleAddress(trace.transactionHash)).id;
+            const txHashId =  (await this.handleAddress(trace.transactionHash)).id;
             const from = (await this.handleAddress(trace.from)).id;
             const addr = (await this.handleAddress(trace.addr)).id;
-            await TraceCreate.create({
+            await TraceCreateContract.create({
                 epochHeight: trace.epochNumber,
-                txId,
+                txHashId,
                 traceIndex: trace.transactionTraceIndex,
                 from,
                 value: trace.value,
@@ -175,6 +172,7 @@ export class BlockTraceCreateSync{
                 createTrace.addr = trace.addr;
                 createTrace.outcome = trace.outcome;
                 mergedTraceArray.push(createTrace);
+                console.log('===================================createTrace===>', createTrace);
             }
         })
         return mergedTraceArray;
@@ -185,7 +183,7 @@ export class BlockTraceCreateSync{
         // get trace
         const blockTrace:any[] = await this.cfx.traceBlock(blockHash);
         if (!blockTrace) {
-            console.log(`null traces at blockHash ${blockHash} `);
+            console.log(`trace_create_contract null traces at blockHash ${blockHash} `);
             return traceArray;
         }
         // get transaction
@@ -219,9 +217,9 @@ export class BlockTraceCreateSync{
             block.epochNumber = Number(block.epochNumber);
         }
         block.timestamp = Number(block.timestamp);
-        block.miner = format.hexAddress(block.miner);
-        block.size = BigInt(block.size || 0);
-        block.difficulty = BigInt(block.difficulty || 0);
+        // block.miner = format.hexAddress(block.miner);
+        // block.size = BigInt(block.size || 0);
+        // block.difficulty = BigInt(block.difficulty || 0);
         if (detail) {
             block.transactions.forEach((transaction) => {
                 transaction.from = format.hexAddress(transaction.from);

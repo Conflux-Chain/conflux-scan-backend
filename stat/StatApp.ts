@@ -105,8 +105,8 @@ export class StatApp{
         if (this.config.syncToken) {
             await this.tokenSync.schedule(); // token from scan
         }
-        if (this.config.syncTraceCreate) {
-            await this.traceCreateSync.schedule(this.config.syncTraceCreateDelay); // trace create
+        if (this.config.syncTraceCreateContract) {
+            await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
