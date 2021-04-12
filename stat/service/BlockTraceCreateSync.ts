@@ -174,7 +174,6 @@ export class BlockTraceCreateSync{
                 createTrace.addr = trace.addr;
                 createTrace.outcome = trace.outcome;
                 mergedTraceArray.push(createTrace);
-                console.log('===================================createTrace===>', createTrace);
             }
         })
         return mergedTraceArray;
