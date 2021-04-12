@@ -17,6 +17,7 @@ import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenSync} from "./service/TokenSync";
+import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 
 export class StatApp{
     public config: StatConfig;
@@ -34,6 +35,7 @@ export class StatApp{
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
     public tokenSync: TokenSync;
+    public traceCreateSync: BlockTraceCreateSync
     public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
@@ -82,7 +84,7 @@ export class StatApp{
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenSync = new TokenSync(this.sequelize, this.config);
-
+        this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -102,6 +104,9 @@ export class StatApp{
         }
         if (this.config.syncToken) {
             await this.tokenSync.schedule(); // token from scan
+        }
+        if (this.config.syncTraceCreateContract) {
+            await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
