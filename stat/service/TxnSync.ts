@@ -207,7 +207,6 @@ export class TxnSync {
             }
         }).catch(err=>{
             console.error(`tx fail, epoch ${epoch}:`, err)
-            process.exit(500)
         })
         return {txOk, txCount, epoch};
     }

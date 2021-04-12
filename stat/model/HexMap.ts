@@ -33,12 +33,12 @@ export class Address extends Model<IAddress> implements IAddress{
     }
 }
 export interface HexMapAttributes {
-    id: number;
+    id?: number;
     hex: string
 }
 
 class HexMap extends Model<HexMapAttributes> implements HexMapAttributes {
-    public id: number;
+    public id?: number;
     public hex: string;
 }
 
@@ -66,10 +66,10 @@ export async function makeId(hex: string, dbTx: Transaction = undefined) {
         dbCache.ttl(hex, cacheTtl)
         return cached
     }
-    const [bean] = await map.findOrCreate({where: {hex: hex},
-        defaults: {id: 0, hex},
-        transaction: dbTx
-    });
+    let [bean, created] = await map.upsert({hex: hex}, {transaction: dbTx});
+    if (!created) {
+        bean = await map.findOne({where:{hex}})
+    }
     dbCache.set(hex, bean, cacheTtl)
     // console.info(`created ${created}`)
     return bean;
