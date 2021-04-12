@@ -4,6 +4,7 @@ import {KEY_BLOCK_TRACE_CREATE_TX_ID, KV} from "../model/KV";
 import {TransactionDB} from "../model/Transaction";
 import {makeId} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {fmtDtUTC} from "../model/Utils";
 const lodash = require('lodash');
 const constant = require('./common/constant');
 
@@ -107,9 +108,9 @@ export class BlockTraceCreateSync{
 
         // persistence to db
         for (const trace of traceCreateArray) {
-            const txHashId =  (await this.handleAddress(trace.transactionHash)).id;
-            const from = (await this.handleAddress(trace.from)).id;
-            const addr = (await this.handleAddress(trace.addr)).id;
+            const txHashId =  (await makeId(trace.transactionHash)).id;
+            const from = (await makeId(trace.from)).id;
+            const addr = (await makeId(trace.addr)).id;
             await TraceCreateContract.create({
                 epochHeight: trace.epochNumber,
                 txHashId,
@@ -121,11 +122,12 @@ export class BlockTraceCreateSync{
                 blockTime: trace.blockTime,
             })
         }
-        return true;
-    }
+        if (txId % 100 === 0) {
+            const traceCount = traceCreateArray.length;
+            console.log(`${fmtDtUTC(new Date())} insert ${traceCount} trace_create_contract at txId ${txId}`)
+        }
 
-    async handleAddress(hex: string) {
-        return await makeId(hex);
+        return true;
     }
 
     async getTraceCreateArray(blockHash) {
