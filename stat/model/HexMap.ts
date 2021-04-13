@@ -68,7 +68,7 @@ export async function makeId(hex: string, dbTx: Transaction = undefined) {
     }
     let [bean, created] = await map.upsert({hex: hex}, {transaction: dbTx});
     if (!created) {
-        bean = await map.findOne({where:{hex}})
+        bean = await map.findOne({where:{hex}, transaction: dbTx})
     }
     dbCache.set(hex, bean, cacheTtl)
     // console.info(`created ${created}`)
