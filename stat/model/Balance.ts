@@ -246,3 +246,13 @@ export class Balance_cMBTM extends Balance{
     }
 }
 
+export class Balance_cHBTC extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cHBTC, 'balance_cHBTC')
+    }
+}
+export class Balance_TREA extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_TREA, 'balance_TREA')
+    }
+}

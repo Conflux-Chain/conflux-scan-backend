@@ -19,7 +19,7 @@ import {
     Balance_cDAI,
     Balance_cDF, Balance_cDPI,
     Balance_cETH, Balance_CF, Balance_cFLUX,
-    Balance_cFOR, Balance_CG, Balance_cITF, Balance_cKNC,
+    Balance_cFOR, Balance_CG, Balance_cHBTC, Balance_cITF, Balance_cKNC,
     Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK, Balance_cMBTM,
@@ -31,7 +31,7 @@ import {
     Balance_cUSDC,
     Balance_cYFI,
     Balance_cYFII,
-    Balance_FC, Balance_MNNFT, Balance_TD,
+    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -140,6 +140,8 @@ export async function initModel(sequelize) {
     Balance_cDPI.register(sequelize);
     Balance_cBNB.register(sequelize);
     Balance_cMBTM.register(sequelize);
+    Balance_cHBTC.register(sequelize);
+    Balance_TREA.register(sequelize);
 
 
     // erc1155
