@@ -99,7 +99,7 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     let [bean, created] = await map.upsert(values, {transaction: dbTx});
     if (created) {
         // hex40 has field createdAt
-        if (dt) incDailyAddressCount(dt, 1).then().catch()
+        if (dt && hex.length === 40) incDailyAddressCount(dt, 1).then().catch()
     } else {
         // exists already
         bean = await map.findOne({where:{hex}})
