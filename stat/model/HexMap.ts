@@ -96,7 +96,10 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     const values:HexMapAttributes = {hex: hex};
     if (dt) values.createdAt = dt
     // console.log(`hex map for:`, values)
-    let [bean, created] = await map.upsert(values, {transaction: dbTx});
+    let [bean, created] = await map.upsert(values, {
+        transaction: dbTx, fields:['hex'],
+        // logging: console.log
+    });
     if (created) {
         // hex40 has field createdAt
         if (dt && hex.length === 40) incDailyAddressCount(dt, 1).then().catch()
