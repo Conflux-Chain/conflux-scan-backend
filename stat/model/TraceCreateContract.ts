@@ -2,35 +2,35 @@ import {DataTypes, Model} from "sequelize";
 
 export interface ITraceCreateContract{
     id?:number
-    epochHeight:number
+    epochNumber:number
     txHashId?:number
     traceIndex?:number
     from:number
     value:number
-    addr:number
+    to:number
     outcome:string
     blockTime:number
 }
 export class TraceCreateContract extends Model<ITraceCreateContract> implements ITraceCreateContract{
     id?:number
-    epochHeight:number
+    epochNumber:number
     txHashId?:number
     traceIndex?:number
     from:number
     value:number
-    addr:number
+    to:number
     outcome:string
     blockTime:number
     static register(seq){
         TraceCreateContract.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
-            epochHeight: {type: DataTypes.BIGINT, allowNull: false},
+            epochNumber: {type: DataTypes.BIGINT, allowNull: false},
             txHashId: {type: DataTypes.BIGINT, allowNull: false},
             traceIndex: {type: DataTypes.BIGINT, allowNull: false},
             from: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
-            addr: {type: DataTypes.BIGINT, allowNull: false},
-            outcome: {type: DataTypes.CHAR(10), allowNull: false},
+            to: {type: DataTypes.BIGINT, allowNull: false},
+            outcome: {type: DataTypes.CHAR(10), allowNull: true},
             blockTime: {type: DataTypes.BIGINT, allowNull: false},
         },{
             sequelize: seq,
@@ -39,7 +39,7 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
             indexes: [{
                 name: "from_idx", fields: ["from"]
             }, {
-                name: "addr_idx", fields: ["addr"], unique: true,
+                name: "to_idx", fields: ["to"], unique: true,
             }, {
                 name: 'blockTime_idx', fields: [{name:'blockTime', order: "DESC"}]
             }]

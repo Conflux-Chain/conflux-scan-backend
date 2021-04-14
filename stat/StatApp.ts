@@ -18,6 +18,7 @@ import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenSync} from "./service/TokenSync";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
+import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 
 export class StatApp{
     public config: StatConfig;
@@ -36,6 +37,7 @@ export class StatApp{
     public cfxHolderQuery: CfxHolderQuery;
     public tokenSync: TokenSync;
     public traceCreateSync: BlockTraceCreateSync
+    public traceCreateQuery: BlockTraceCreateQuery;
     public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
@@ -85,6 +87,7 @@ export class StatApp{
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenSync = new TokenSync(this.sequelize, this.config);
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
+        this.traceCreateQuery = new BlockTraceCreateQuery();
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
