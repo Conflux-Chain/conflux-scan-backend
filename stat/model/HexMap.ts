@@ -102,7 +102,7 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
         if (dt && hex.length === 40) incDailyAddressCount(dt, 1).then().catch()
     } else {
         // exists already
-        bean = await map.findOne({where:{hex}})
+        bean = await map.findOne({where:{hex}, transaction: dbTx})
     }
     dbCache.set(hex, bean, cacheTtl)
     // console.info(`created ${created}`)
