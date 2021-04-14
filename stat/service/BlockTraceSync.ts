@@ -88,8 +88,10 @@ export class BlockTraceSync{
     async fetchByTx(txId: number) : Promise<boolean>{
         const tx = await TransactionDB.findByPk(txId);
         if (tx == null) {
-            const maxTxId = await TransactionDB.max("id");
+            const maxTxId:number = await TransactionDB.max("id");
             if (txId > maxTxId) {
+                await new Promise(resolve => setTimeout(resolve, 5_000))
+            } else if (isNaN(maxTxId)) {
                 await new Promise(resolve => setTimeout(resolve, 5_000))
             } else {
                 console.log(`tx not found, id ${txId}, max tx id ${maxTxId} `)
