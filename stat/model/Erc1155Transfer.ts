@@ -59,9 +59,9 @@ export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155
 }
 
 export async function buildErc1155Transfer(obj, date) {
-    const fromId = await makeId(obj.from)
-    const toId = await makeId(obj.to)
-    const contractId = await makeId(obj.address)
+    const fromId = await makeId(obj.from, undefined, {dt:date})
+    const toId = await makeId(obj.to, undefined, {dt:date})
+    const contractId = await makeId(obj.address, undefined, {dt:date})
     const hashID = await makeId(obj.transactionHash);
     let erc1155Transfer:IErc1155Transfer = {
         txHashId: hashID.id,

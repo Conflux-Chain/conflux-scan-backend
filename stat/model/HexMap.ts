@@ -1,4 +1,5 @@
 import {Sequelize, DataTypes, Model, Transaction} from "sequelize";
+import {incDailyAddressCount} from "./StatAddress";
 const NodeCache = require( "node-cache" );
 
 /**
@@ -35,20 +36,46 @@ export class Address extends Model<IAddress> implements IAddress{
 export interface HexMapAttributes {
     id?: number;
     hex: string
+    createdAt?: Date
 }
-
-class HexMap extends Model<HexMapAttributes> implements HexMapAttributes {
+export class Hex64Map extends Model<HexMapAttributes> implements HexMapAttributes {
     public id?: number;
     public hex: string;
+    createdAt?: Date
 }
-
-export class Hex64Map extends HexMap{}
-export class Hex40Map extends HexMap{}
+export class Hex40Map extends Model<HexMapAttributes> implements HexMapAttributes {
+    public id?: number;
+    public hex: string;
+    createdAt?: Date
+    static register(sequelize) {
+    Hex40Map.init(
+            {
+                id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+                hex: {type: DataTypes.CHAR(40), allowNull: false,},
+                createdAt: {type: DataTypes.DATE, allowNull: true,},
+            },
+            {
+                tableName: 'hex40',
+                sequelize: sequelize,
+                timestamps: false, // prevent default columns: createdAt, updatedAt
+                indexes: [
+                    {
+                        name: `hex40_index`,
+                        fields: [{name: 'hex',}],
+                        unique: true
+                    }
+                    // index `createdAt` will affect performance.
+                    // implement stat by other table.
+                ]
+            }
+        )
+    }
+}
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 10 // 10 minutes
 
 // https://sequelize.org/master/class/lib/model.js~Model.html#static-method-findOrCreate
-export async function makeId(hex: string, dbTx: Transaction = undefined) {
+export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = undefined} = {}) {
     if (hex === '0x0') {
         return {id:0};
     }
@@ -66,8 +93,15 @@ export async function makeId(hex: string, dbTx: Transaction = undefined) {
         dbCache.ttl(hex, cacheTtl)
         return cached
     }
-    let [bean, created] = await map.upsert({hex: hex}, {transaction: dbTx});
-    if (!created) {
+    const values:HexMapAttributes = {hex: hex};
+    if (dt) values.createdAt = dt
+    // console.log(`hex map for:`, values)
+    let [bean, created] = await map.upsert(values, {transaction: dbTx});
+    if (created) {
+        // hex40 has field createdAt
+        if (dt) incDailyAddressCount(dt, 1).then().catch()
+    } else {
+        // exists already
         bean = await map.findOne({where:{hex}})
     }
     dbCache.set(hex, bean, cacheTtl)
@@ -76,26 +110,19 @@ export async function makeId(hex: string, dbTx: Transaction = undefined) {
 }
 export const T_ADDRESS = 'address'
 export function hexMapInit(sequelize) {
-    hexMapInit0(sequelize, Hex40Map, 40, 'hex40')
-    hexMapInit0(sequelize, Hex64Map, 64, 'hex64')
-}
-function hexMapInit0(sequelize, clz, length, tableName:string) {
-    clz.init(
+    Hex64Map.init(
         {
-            id: {
-                type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true
-            },
-            hex: {
-                type: DataTypes.CHAR(length), allowNull: false,
-            },
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+            hex: {type: DataTypes.CHAR(64), allowNull: false,},
+            createdAt:{type:DataTypes.VIRTUAL}
         },
         {
-            tableName: tableName,
+            tableName: 'hex64',
             sequelize: sequelize,
             timestamps: false, // prevent default columns: createdAt, updatedAt
             indexes: [
                 {
-                    name: `hex${length}_index`,
+                    name: `hex64_index`,
                     fields: [
                         {
                             name: 'hex',
@@ -107,7 +134,6 @@ function hexMapInit0(sequelize, clz, length, tableName:string) {
             ]
         }
     )
-
 }
 
 

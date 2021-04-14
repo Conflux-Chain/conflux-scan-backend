@@ -56,9 +56,9 @@ export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Tra
 }
 
 export async function buildErc721Transfer(obj, date) {
-    const fromId = await makeId(obj.from)
-    const toId = await makeId(obj.to)
-    const contractId = await makeId(obj.address)
+    const fromId = await makeId(obj.from, undefined, {dt:date})
+    const toId = await makeId(obj.to, undefined, {dt:date})
+    const contractId = await makeId(obj.address, undefined, {dt:date})
     const hashID = await makeId(obj.transactionHash);
     let erc721Transfer:IErc721Transfer = {
         txHashId: hashID.id,

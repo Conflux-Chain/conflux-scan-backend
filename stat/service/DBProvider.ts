@@ -1,5 +1,5 @@
 import {Sequelize} from "sequelize";
-import {Address, AddressInfo, hexMapInit} from "../model/HexMap";
+import {Address, AddressInfo, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {TransactionDB} from "../model/Transaction";
 import {Block, PivotSwitch} from "../model/Block";
@@ -45,6 +45,7 @@ import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {AddressStat} from "../model/StatAddress";
 let conf
 export function createDB(config) {
     conf = config
@@ -92,6 +93,8 @@ export async function initPartialModel(sequelize) {
     DailyTokenTxn.register(sequelize)
     CfxTransfer.register(sequelize)
     DailyCfxTxn.register(sequelize)
+    AddressStat.register(sequelize)
+    Hex40Map.register(sequelize)
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
