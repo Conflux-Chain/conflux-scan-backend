@@ -62,7 +62,7 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
 export async function buildErc20Transfer(obj, date) {
     const fromId = await makeId(obj.from, undefined, {dt:date})
     const toId = await makeId(obj.to, undefined, {dt:date})
-    const contractId = await makeId(obj.address)
+    const contractId = await makeId(obj.address, undefined, {dt:date})
     const hashID = await makeId(obj.transactionHash);
     if (obj.tokenId !== null && obj.tokenId !== undefined && obj.value === undefined) {
         obj.value = 1
