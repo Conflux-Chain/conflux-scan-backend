@@ -3,7 +3,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
 import {EventBus} from "./EventBus";
 import {Erc20WatchList} from "../../config/StatConfig";
-import {BalanceWatcher} from "./BalanceWatcher";
+import {BalanceWatcher, CfxWatcher} from "./BalanceWatcher";
 import {makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
 import {StatApp} from "../../StatApp";
@@ -15,14 +15,19 @@ export class BatchBalanceWatcher {
     private readonly tokenList: string[];
     private readonly erc20list: Erc20WatchList[];
     fraction = BigInt(1e+18)
-    constructor( cfx:Conflux, erc20List:Erc20WatchList[]) {
+    private readonly cfxWatcher:CfxWatcher
+    constructor( cfx:Conflux, erc20List:Erc20WatchList[], cfxWatcher:CfxWatcher) {
         this.cfx = cfx;
+        this.cfxWatcher = cfxWatcher;
         // @ts-ignore
         BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
         this.tokenList = erc20List.map(erc20=>erc20.address)
         this.erc20list = erc20List
     }
     public async balanceOf(userAddr) {
+        if (this.erc20list.length === 0) {
+            return;
+        }
         let banList = await BatchBalanceWatcher.contract.balances([userAddr], this.tokenList)
         let i = 0
         for (const erc20 of this.erc20list) {
@@ -34,9 +39,6 @@ export class BatchBalanceWatcher {
     }
 
     public async schedule(delay = 10_000) {
-        if (this.erc20list.length === 0) {
-            return;
-        }
         //
         const that = this;
         async function repeat() {
@@ -54,6 +56,11 @@ export class BatchBalanceWatcher {
         }
         for (const hex of txAddressSet) {
             await this.balanceOf(hex)
+            // update cfx balance.
+            if (this.cfxWatcher) {
+                let id = (await makeId(hex)).id
+                await this.cfxWatcher.queryBalance(hex, id);
+            }
         }
         console.log(`${fmtDtUTC(new Date())} batch process address count ${txAddressSet.size}`)
     }
