@@ -31,6 +31,7 @@ export class StatApp{
     public cfx: Conflux;
     public contractService: ContractService;
     public batchBalanceWatcher: BatchBalanceWatcher;
+    public cfxWatcher:CfxWatcher;
     public dailyTxnSync: DailyTxnSync;
     public dailyTxnQuery: DailyTxnQuery;
     public cfxHolderSync: CfxHolderSync;
@@ -64,7 +65,10 @@ export class StatApp{
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         this.traceSync = new BlockTraceSync(this.cfx)
-        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList)
+        if (this.config.watchCfxBalance) {
+            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx, this.config)).schedule(this.config.cfxWatcherDelay).then()
+        }
+        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher)
         this.batchBalanceWatcher.schedule().then()
         this.config.erc20watchList.forEach(erc20=>{
             const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, this.config)
@@ -77,9 +81,6 @@ export class StatApp{
         //
         this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)
         this.contractService.schedule()
-        if (this.config.watchCfxBalance) {
-            new CfxWatcher('cfx', this.cfx, this.config).schedule(this.config.cfxWatcherDelay).then()
-        }
         //
         this.dailyTxnSync = new DailyTxnSync(this.sequelize);
         this.dailyTxnQuery = new DailyTxnQuery();
