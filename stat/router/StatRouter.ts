@@ -211,6 +211,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             limit ? parseInt(limit): limit);
         ctx.body = {code: 0, data: page};
     });
+    // get creat trace
+    router.get('/trace/create', async function (ctx) {
+        const {contract} = ctx.request.query
+        const createTrace = await statApp.traceCreateQuery.getCreateTrace(contract);
+        ctx.body = {code: 0, data: createTrace};
+    });
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {
