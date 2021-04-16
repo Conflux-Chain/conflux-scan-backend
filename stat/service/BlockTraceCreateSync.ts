@@ -66,6 +66,10 @@ export class BlockTraceCreateSync{
                 blockTime: trace.blockTime,
             };
             await TraceCreateContract.create(toCreate)
+                .catch(error => {
+                    console.log(`trace_create_contract error at trace:${JSON.stringify(toCreate)}`, error);
+                    throw error;
+                });
         }
         if (epochNumber % 100 === 0) {
             const count = traceCreateArray.length;
@@ -101,7 +105,7 @@ export class BlockTraceCreateSync{
     }
 
     async getTraceArray(epochNumber) {
-        const traceArray = [];
+        let traceArray = [];
         const blockArray = await this.getBlockArray(epochNumber);
         await Promise.all(blockArray.map(async (block) => {
             if (!block.transactions.length) {
@@ -118,8 +122,9 @@ export class BlockTraceCreateSync{
             // @ts-ignore
             lodash.zip(block.transactions, blockTrace.transactionTraces)
                 .forEach(([transaction, transactionTracesItem], transactionIndex) => {
+                    const transactionTraceArray = [];
                     transactionTracesItem.traces.forEach((trace, transactionTraceIndex) => {
-                        const parsedTrace = {
+                        transactionTraceArray.push({
                             epochNumber: block.epochNumber,
                             blockHash: block.hash,
                             blockTime: block.timestamp,
@@ -127,16 +132,16 @@ export class BlockTraceCreateSync{
                             transactionIndex,
                             transactionTraceIndex,
                             status: transaction.status,
-                            ...this.parseTraceAllType(trace, transactionTraceIndex, transactionTracesItem.traces, transaction),
-                        };
-                        traceArray.push(parsedTrace);
+                            ...this.parseTrace(trace),
+                        });
                     });
+                    traceArray = [...traceArray, ...BlockTraceCreateSync.matchTrace(transactionTraceArray, transaction)];
                 });
         }));
         return traceArray;
     }
 
-    async getBlockArray(epochNumber) {
+    private async getBlockArray(epochNumber) {
         const blockHashArray = await this.cfx.getBlocksByEpochNumber(epochNumber);
         const blockArray = await Promise.all(blockHashArray.map(async (blockHash) => {
             return this.cfx.getBlockByHash(blockHash, true);
@@ -167,7 +172,7 @@ export class BlockTraceCreateSync{
         return block;
     }
 
-    private parseTraceAllType(trace, transactionTraceIndex, traces, transaction) {
+    private parseTrace(trace) {
         if (trace.action.from) {
             trace.action.from = format.hexAddress(trace.action.from);
         }
@@ -177,23 +182,42 @@ export class BlockTraceCreateSync{
         if (trace.action.to) {
             trace.action.to = format.hexAddress(trace.action.to);
         }
-        if (trace.type === CONST.TRACE_TYPE.CREATE) {
-            let nextCreateTrace;
-            // eslint-disable-next-line no-plusplus
-            for (let i = transactionTraceIndex + 1; i < traces.length; i++) {
-                const nextTrace = traces[i];
-                if (nextTrace.type === CONST.TRACE_TYPE.CREATE || nextTrace.type === CONST.TRACE_TYPE.CREATE_RESULT) {
-                    nextCreateTrace = nextTrace;
-                    break;
-                }
-            }
-            if (nextCreateTrace === undefined || nextCreateTrace.type === CONST.TRACE_TYPE.CREATE) {
-                trace.action.to = transaction.contractCreated;
-            } else if (nextCreateTrace.type === CONST.TRACE_TYPE.CREATE_RESULT) {
-                trace.action.to = format.hexAddress(nextCreateTrace.action.addr);
-                trace.action.outcome = nextCreateTrace.action.outcome;
-            }
+        if (trace.action.addr) {
+            trace.action.addr = format.hexAddress(trace.action.addr);
+        }
+        if (trace.action.input) {
+            trace.action.input = '';
+        }
+        if (trace.action.init) {
+            trace.action.init = '';
         }
         return trace;
+    }
+
+    private static matchTrace(transactionTraceArray, transaction){
+        if (!transactionTraceArray.length) {
+            return[];
+        }
+
+        const stack = [];
+        for(let i = 0; i < transactionTraceArray.length; i++){
+            const nextTrace = transactionTraceArray[i];
+            if(nextTrace.type !== CONST.TRACE_TYPE.CREATE && nextTrace.type !== CONST.TRACE_TYPE.CREATE_RESULT){
+                continue;
+            }
+            if(nextTrace.type === CONST.TRACE_TYPE.CREATE){
+                stack.push(i);
+            }
+            if(nextTrace.type === CONST.TRACE_TYPE.CREATE_RESULT){
+                const creatTraceIndex = stack.pop();
+                transactionTraceArray[creatTraceIndex].action.to = nextTrace.action.addr;
+                transactionTraceArray[creatTraceIndex].action.outcome = nextTrace.action.outcome;
+            }
+        }
+        if(stack.length > 0){
+            const creatTraceIndex = stack.pop();
+            transactionTraceArray[creatTraceIndex].action.to = transaction.contractCreated;
+        }
+        return transactionTraceArray;
     }
 }
