@@ -76,7 +76,7 @@ const cacheTtl = 60 * 10 // 10 minutes
 
 // https://sequelize.org/master/class/lib/model.js~Model.html#static-method-findOrCreate
 export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = undefined} = {}) {
-    if (hex === '0x0') {
+    if (hex === '0x0' || hex === undefined || hex === null) {
         return {id:0};
     }
     if (hex.startsWith('0x')) {

@@ -49,17 +49,15 @@ export class BlockTraceCreateSync{
         }
     }
 
-        // get trace for create
-        const traceCreateArray = await this.getTraceCreateArray(txInfo.blockHash);
-
+    private async syncByEpoch(epochNumber: number) : Promise<boolean>{
+        const traceCreateArray = await this.getTraceCreateArray(epochNumber);
         const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined
-        // persistence to db
         for (const trace of traceCreateArray) {
             const txHashId =  (await makeId(trace.transactionHash)).id;
             const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
-            const addr = (await makeId(trace.addr, undefined, {dt:blockDt})).id;
-            await TraceCreateContract.create({
-                epochHeight: trace.epochNumber,
+            const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
+            const toCreate = {
+                epochNumber: trace.epochNumber,
                 txHashId,
                 traceIndex: trace.transactionTraceIndex,
                 from,
