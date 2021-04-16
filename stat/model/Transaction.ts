@@ -78,8 +78,8 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
     }
 
     static async add(tx: Transaction, dbTx = undefined): Promise<ITransactionDB> {
-        const fromId = await makeAddrId(tx.from, dbTx);
-        const toId = await makeAddrId(tx.to, dbTx);
+        const fromId = await makeAddrId(tx.from, dbTx, {dt:tx.blockTime});
+        const toId = await makeAddrId(tx.to, dbTx, {dt:tx.blockTime});
         // const hashId = await makeAddrId(tx.hash);
         return await TransactionDB.create({
             epochHeight: tx.epochHeight,

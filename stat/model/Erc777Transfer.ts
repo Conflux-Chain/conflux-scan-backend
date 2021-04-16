@@ -56,9 +56,9 @@ export class Erc777Transfer extends Model<IErc777Transfer> implements IErc777Tra
 }
 
 export async function buildErc777Transfer(obj, date) {
-    const fromId = await makeId(obj.from)
-    const toId = await makeId(obj.to)
-    const contractId = await makeId(obj.address)
+    const fromId = await makeId(obj.from, undefined, {dt:date})
+    const toId = await makeId(obj.to, undefined, {dt:date})
+    const contractId = await makeId(obj.address, undefined, {dt:date})
     const hashID = await makeId(obj.transactionHash);
     let erc777Transfer:IErc777Transfer = {
         txHashId: hashID.id,

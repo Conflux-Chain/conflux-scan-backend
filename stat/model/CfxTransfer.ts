@@ -47,12 +47,9 @@ export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
 }
 
 export async function buildCfxTransfer(obj, date) {
-    const fromId = await makeId(obj.from)
-    const toId = await makeId(obj.to)
+    const fromId = await makeId(obj.from, undefined, {dt:date})
+    const toId = await makeId(obj.to, undefined, {dt:date})
     const hashID = await makeId(obj.transactionHash);
-    if (obj.tokenId !== null && obj.tokenId !== undefined && obj.value === undefined) {
-        obj.value = 1
-    }
     let cfxTransfer:ICfxTransfer = {
         txHashId: hashID.id,
         fromId: fromId.id,

@@ -352,17 +352,18 @@ export class BlockAndMinerSync {
             await Promise.all(
                 blockList.map(async (block) => {
                     maxEpoch = Math.max(maxEpoch, block.epochNumber)
+                    let blockTime = new Date(block.timestamp*1000);
                     const reward = rewardList.find(r=>r.blockHash === block.hash)
                     let minerBase32 = block.miner;
                     let minerHex = format.hexAddress(minerBase32)
-                    const addrBean = await makeId(minerHex, dbTx)
+                    const addrBean = await makeId(minerHex, dbTx, {dt: blockTime})
                     // const hashBean = await makeId(block.hash, dbTx)
                     // console.info(`debug timestamp ${new Date(block.timestamp)}`)
                     return await Block.findOrCreate({
                         where: {hash: block.hash},
                         defaults: {
                             epoch: block.epochNumber,
-                            createAt: new Date(block.timestamp*1000),
+                            createAt: blockTime,
                             minerId: addrBean.id,
                             hash: block.hash,
                             difficulty: block.difficulty,
