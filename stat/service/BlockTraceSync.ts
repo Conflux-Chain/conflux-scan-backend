@@ -88,8 +88,10 @@ export class BlockTraceSync{
     async fetchByTx(txId: number) : Promise<boolean>{
         const tx = await TransactionDB.findByPk(txId);
         if (tx == null) {
-            const maxTxId = await TransactionDB.max("id");
+            const maxTxId:number = await TransactionDB.max("id");
             if (txId > maxTxId) {
+                await new Promise(resolve => setTimeout(resolve, 5_000))
+            } else if (isNaN(maxTxId)) {
                 await new Promise(resolve => setTimeout(resolve, 5_000))
             } else {
                 console.log(`tx not found, id ${txId}, max tx id ${maxTxId} `)
@@ -101,7 +103,7 @@ export class BlockTraceSync{
         if (txInfo === null) {
             return false;
         }
-        await this.parseTxLog(tx.hash)
+        await this.parseTxLog(tx.hash, tx.blockTime)
         if (tx.epochHeight === 0) {
             // skip epoch 0
             return true;
@@ -139,9 +141,9 @@ export class BlockTraceSync{
                     continue;
                 }
                 let from = format.hexAddress(t.action.from);
-                let fromId = (await this.handleAddress(from)).id
+                let fromId = (await this.handleAddress(from, tx.blockTime)).id
                 let to = t.action.to === undefined ? "" : format.hexAddress(t.action.to)
-                let toId = to === "" ? 0 : (await this.handleAddress(to)).id
+                let toId = to === "" ? 0 : (await this.handleAddress(to, tx.blockTime)).id
                 let value = t.action.value
                 if (value > 0) {
                     await Trace.create({
@@ -158,7 +160,7 @@ export class BlockTraceSync{
         return true;
     }
 
-    public async parseTxLog(hash: string) {
+    public async parseTxLog(hash: string, blockTime: Date) {
         let hexCache = new Set<string>()
         const { epochNumber, logs = [] } = await this.cfx.getTransactionReceipt(hash) || {};
         if (logs.length === 0) {
@@ -178,12 +180,12 @@ export class BlockTraceSync{
             let hasFrom = hexCache.has(hexFrom)
             if (!hasFrom) {
                 hexCache.add(hexFrom)
-                await this.handleAddress(hexFrom)
+                await this.handleAddress(hexFrom, blockTime)
             }
             let hasTo = hexCache.has(hexTo);
             if (!hasTo) {
                 hexCache.add(hexTo)
-                await this.handleAddress(hexTo)
+                await this.handleAddress(hexTo, blockTime)
             }
             if (!hasFrom || !hasTo) {
                 // console.log(`parsed log:`, hexFrom, hexTo);
@@ -193,8 +195,8 @@ export class BlockTraceSync{
         })
     }
 
-    async handleAddress(hex: string) {
-        let ret = await makeId(hex);
+    async handleAddress(hex: string, dt:Date) {
+        let ret = await makeId(hex, undefined, {dt});
         EventBus.processTxAddress(hex)
         return ret
     }

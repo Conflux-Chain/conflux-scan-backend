@@ -51,10 +51,11 @@ export class BlockTraceCreateSync{
 
     private async syncByEpoch(epochNumber: number) : Promise<boolean>{
         const traceCreateArray = await this.getTraceCreateArray(epochNumber);
+        const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined
         for (const trace of traceCreateArray) {
             const txHashId =  (await makeId(trace.transactionHash)).id;
-            const from = (await makeId(trace.from)).id;
-            const to = (await makeId(trace.to)).id;
+            const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
+            const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
             const toCreate = {
                 epochNumber: trace.epochNumber,
                 txHashId,
