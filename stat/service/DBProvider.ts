@@ -95,6 +95,7 @@ export async function initPartialModel(sequelize) {
     DailyCfxTxn.register(sequelize)
     AddressStat.register(sequelize)
     Hex40Map.register(sequelize)
+    TraceCreateContract.register(sequelize)
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
@@ -161,7 +162,6 @@ export async function initModel(sequelize) {
     TestTimezone.register(sequelize);
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);
-    TraceCreateContract.register(sequelize);
 }
 
 export function createMySql(dbConf) {
