@@ -66,6 +66,14 @@ export default {
                 }
             }
         },
+        '/stat/daily-address-creation': {
+            "get": {tags: ['daily'],
+                "parameters": [
+                    {name:"limit", required: true, in: "query", schema:{type:"number", default: 60}}
+                ],
+                "responses": {"200": {}}
+            }
+        },
         '/stat/tokens/erc1155/balance-of': {
             "get": {
                 tags: ['tokens'],
@@ -685,7 +693,7 @@ export default {
         '/stat/txn/daily/list': {
             'get': {
                 description: 'list daily transaction count.',
-                tags: ['daily transaction count'],
+                tags: ['daily'],
                 "parameters": [
                     {
                         "name": "skip",
@@ -761,7 +769,7 @@ export default {
         '/stat/cfx_holder/daily/list': {
             'get': {
                 description: 'list daily cfx holder count.',
-                tags: ['daily cfx holder count'],
+                tags: ['daily'],
                 "parameters": [
                     {
                         "name": "skip",
