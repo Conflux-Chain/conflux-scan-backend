@@ -38,7 +38,8 @@ export class ContractInfo extends Model<IContractInfo> implements IContractInfo 
 }
 export async function listAllContract(): Promise<ContractInfo[]> {
     const maxEpochSql = `select max(epoch) as epoch, hexId from ${T_CONTRACT_INFO} group by hexId`
-    const sql = `select main.* from ${T_CONTRACT_INFO} main join (${maxEpochSql}) maxT on main.hexId=maxT.hexId and main.epoch=maxT.epoch`
+    const sql = `select main.* from ${T_CONTRACT_INFO} main join (${maxEpochSql
+        }) maxT on main.hexId=maxT.hexId and main.epoch=maxT.epoch order by main.epoch desc`
     return ContractInfo.sequelize.query(sql, {type: QueryTypes.SELECT})
 }
 export async function batchSaveContractInfo(array: {name:string, hex40:string, epoch:number}[], seconds) {
