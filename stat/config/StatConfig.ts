@@ -32,6 +32,7 @@ export interface StatConfig{
     syncToken: boolean,
     syncTraceCreateContract: boolean,
     serverTag: string,
+    checkRankDelay: boolean,
     erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,
     cfxWatcherDelay:number,
