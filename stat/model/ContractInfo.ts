@@ -58,6 +58,6 @@ export async function batchPopContractInfo(epoch) {
         where: {
             epoch: epoch
         },
-        logging:console.log
+//         logging:console.log
     })
 }
