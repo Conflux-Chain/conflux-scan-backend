@@ -19,6 +19,7 @@ import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenSync} from "./service/TokenSync";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
+import {EpochSync} from "./service/EpochSync";
 
 export class StatApp{
     public config: StatConfig;
@@ -39,6 +40,7 @@ export class StatApp{
     public tokenSync: TokenSync;
     public traceCreateSync: BlockTraceCreateSync
     public traceCreateQuery: BlockTraceCreateQuery;
+    public epochSync: EpochSync
     public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
@@ -89,6 +91,7 @@ export class StatApp{
         this.tokenSync = new TokenSync(this.sequelize, this.config);
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
         this.traceCreateQuery = new BlockTraceCreateQuery();
+        this.epochSync = new EpochSync(this);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -111,6 +114,9 @@ export class StatApp{
         }
         if (this.config.syncTraceCreateContract) {
             await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
+        }
+        if (this.config.syncEpoch) {
+            await this.epochSync.run(this.config.syncEpochNumber);
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

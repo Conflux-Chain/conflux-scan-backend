@@ -19,6 +19,7 @@ export interface StatConfig{
     port: number;
     conflux: ConfluxOption; // chain rpc node
     cfxWsUrl: string
+    preload: number,
     scanApiUrl: string
     scanJsonRpcUrl: string
     database: Database;
@@ -30,6 +31,8 @@ export interface StatConfig{
     syncCfxHolderCountDaily: boolean,
     syncToken: boolean,
     syncTraceCreateContract: boolean,
+    syncEpoch: boolean,
+    syncEpochNumber: number,
     serverTag: string,
     erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,
