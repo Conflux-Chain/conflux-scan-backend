@@ -32,7 +32,6 @@ async function getStaking(txHash) {
   return page('', `${host}/v1/transfer`, {transactionHash:txHash, transferType:'CFX'})
 }
 async function getTransfer(acc, type) {
-  //https://confluxscan.io/v1/transfer?accountAddress=cfx%3Aaamz4502d62j63ehd78vtxkc2tv8x0m7x2z7dshjk6&transferType=CFX
   return page(acc, `${host}/v1/transfer`, {transferType:'CFX'})
 }
 async function getAccount(acc) {
@@ -99,9 +98,7 @@ async function dump(arr, tag, detail) {
   console.log(`${tag} final balance: ${sum} = ${sum/BigInt(1e+18)}, sponsor count ${sponsorCnt}, staking count ${stakingCnt}`)
 }
 let host = 'https://confluxscan.io';
-//?accountAddress=cfx%3Aaamz4502d62j63ehd78vtxkc2tv8x0m7x2z7dshjk6&limit=10&skip=0'
-// let acc = 'cfx:aamz4502d62j63ehd78vtxkc2tv8x0m7x2z7dshjk6'
-let acc = 'cfx:aanctcc2xwhdu4dd8jn9z552uuevx83jmu82ypyjts'
+let acc = ''
 const sponsor = 'cfx:aaejuaaaaaaaaaaaaaaaaaaaaaaaaaaaaegg2r16ar'
 const sponsorVerbose = 'CFX:TYPE.BUILTIN:AAEJUAAAAAAAAAAAAAAAAAAAAAAAAAAAAEGG2R16AR'
 const staking = 'cfx:aaejuaaaaaaaaaaaaaaaaaaaaaaaaaaaajrwuc9jnb'
