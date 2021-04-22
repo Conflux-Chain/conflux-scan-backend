@@ -29,7 +29,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         checkLocal,
         async (ctx) => await setAddressInfo(ctx)
     )
-    router.get('/devops/set-address-name',
+    router.get('/devops/list-contract',
         async (ctx) => {
             const list = await listAllContract()
             ctx.body = {total: list.length, list}
