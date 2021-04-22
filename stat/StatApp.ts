@@ -19,6 +19,7 @@ import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenSync} from "./service/TokenSync";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
+import { Monitor } from "./monitor/Monitor";
 
 export class StatApp{
     public config: StatConfig;
@@ -111,6 +112,9 @@ export class StatApp{
         }
         if (this.config.syncTraceCreateContract) {
             await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
+        }
+        if (this.config.checkRankDelay) {
+            new Monitor(this.config.dingTalkToken, this.config.serverTag).checkRankDelay().then()
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
