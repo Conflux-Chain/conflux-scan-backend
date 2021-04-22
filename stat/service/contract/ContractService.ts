@@ -28,8 +28,6 @@ export class ContractService{
     }
 
     async run() {
-        const limit = 100
-        console.log(`${fmtDtUTC(new Date())} fetch contract list, skip ${this.skip} , from ${this.scanApiUrl}`);
         (await listAllContract()).forEach(c=>{
             this.map.set(c.base32, c.name)
         })
