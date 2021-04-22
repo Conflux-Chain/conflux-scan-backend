@@ -26,7 +26,9 @@ async function alert(arr:TopBatchIndex[], dingTalkToken:string) {
 }
 async function dingMsg(msg:string, dingTalkToken:string) {
     console.log(`pre send msg:${msg}`);
-    
+    if (!dingTalkToken) {
+        return;
+    }
     let url = 'https://oapi.dingtalk.com/robot/send?access_token='+dingTalkToken;
     superagent.post(url,
         {
