@@ -12,6 +12,7 @@ export interface Database{
     syncSchema: boolean;
 }
 export interface StatConfig{
+    dingTalkToken: string;
     syncBlockDelay: number;
     syncTxnDelay: number;
     syncTraceDelay: number;
