@@ -5,6 +5,7 @@ import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
 import {EventBus} from "../service/watcher/EventBus";
+import { listAllContract } from "../model/ContractInfo";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -26,7 +27,14 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     )
     router.get('/devops/set-address-name',
         checkLocal,
-        async (ctx) => await setAddressInfo(ctx))
+        async (ctx) => await setAddressInfo(ctx)
+    )
+    router.get('/devops/list-contract',
+        async (ctx) => {
+            const list = await listAllContract()
+            ctx.body = {total: list.length, list}
+        }
+    )
 
     router.get('/devops/list-rank',
         checkLocal,
