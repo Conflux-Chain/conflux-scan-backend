@@ -1,8 +1,7 @@
 import {Sequelize, DataTypes, Model, QueryTypes} from "sequelize";
 import {makeId} from "./HexMap";
-import {StatApp} from "../StatApp";
-import {TxnQuery} from "../service/TxnQuery";
-import {Erc20Transfer} from "./Erc20Transfer";
+// import {StatApp} from "../StatApp";
+// import {TxnQuery} from "../service/TxnQuery";
 export interface IContractInfo {
     id?:number
     hexId?:number
@@ -42,22 +41,7 @@ export async function listAllContract(): Promise<ContractInfo[]> {
         }) maxT on main.hexId=maxT.hexId and main.epoch=maxT.epoch order by main.epoch desc`
     return ContractInfo.sequelize.query(sql, {type: QueryTypes.SELECT})
 }
-export async function batchSaveContractInfo(array: {name:string, hex40:string, epoch:number}[], seconds) {
-    let templates:IContractInfo[] = []
-    let date = new Date(Number(seconds)*1000)
-    for (const obj of array) {
-        // hex address should exists already.
-        const hexId = (await makeId(obj.hex40, undefined, {dt:date})).id
-        const base32 = TxnQuery.base32(obj.hex40, StatApp.networkId)
-        templates.push({id: 0, base32, name:obj.name, epoch:obj.epoch, hexId})
-    }
-    return ContractInfo.bulkCreate(templates,{
-        // logging: console.log
-    }).catch(err=>{
-        console.log(`ContractInfo.bulkCreate fail:`, err)
-        throw err
-    })
-}
+
 export async function batchPopContractInfo(epoch) {
     return ContractInfo.destroy({
         where: {
