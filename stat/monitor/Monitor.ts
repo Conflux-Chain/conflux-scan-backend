@@ -28,7 +28,7 @@ export class Monitor{
         function repeat() {
             that.checkRankDelay()
         }
-        setTimeout(repeat, 1*1000)
+        setTimeout(repeat, 3600*1000)
     }
     async alert(arr:TopBatchIndex[]) {
         const maxInfo = arr.map(row=>`${row.type} ${row.endTime.toISOString()}`).join('\n')
