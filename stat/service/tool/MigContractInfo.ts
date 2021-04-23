@@ -1,7 +1,9 @@
 import {loadConfig} from "../../config/StatConfig";
-import { batchSaveContractInfo, ContractInfo } from "../../model/ContractInfo";
+import { ContractInfo, IContractInfo } from "../../model/ContractInfo";
+import { makeId } from "../../model/HexMap";
 import { StatApp } from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
+import { TxnQuery } from "../TxnQuery";
 const superagent = require("superagent")
 let fixed = 0
 let missing = 0
@@ -41,6 +43,21 @@ async function doIt() {
     console.log(`save ${contractInfo.length}`);
     ContractInfo.sequelize.close().then();
     
+}
+export async function batchSaveContractInfo(array: {name:string, hex40:string, epoch:number}[], seconds) {
+    let templates:IContractInfo[] = []
+    for (const obj of array) {
+        // hex address should exists already.
+        const hexId = (await makeId(obj.hex40)).id
+        const base32 = TxnQuery.base32(obj.hex40, StatApp.networkId)
+        templates.push({id: 0, base32, name:obj.name, epoch:obj.epoch, hexId})
+    }
+    return ContractInfo.bulkCreate(templates,{
+        // logging: console.log
+    }).catch(err=>{
+        console.log(`ContractInfo.bulkCreate fail:`, err)
+        throw err
+    })
 }
 let scanSyncApiUrl = 'http://localhost:8887'
 const args = process.argv.slice(2)
