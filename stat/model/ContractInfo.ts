@@ -1,8 +1,7 @@
 import {Sequelize, DataTypes, Model, QueryTypes} from "sequelize";
 import {makeId} from "./HexMap";
-import {StatApp} from "../StatApp";
-import {TxnQuery} from "../service/TxnQuery";
-import {Erc20Transfer} from "./Erc20Transfer";
+// import {StatApp} from "../StatApp";
+// import {TxnQuery} from "../service/TxnQuery";
 export interface IContractInfo {
     id?:number
     hexId?:number
@@ -43,6 +42,7 @@ export async function listAllContract(): Promise<ContractInfo[]> {
     return ContractInfo.sequelize.query(sql, {type: QueryTypes.SELECT})
 }
 export async function batchSaveContractInfo(array: {name:string, hex40:string, epoch:number}[], seconds) {
+    /*
     let templates:IContractInfo[] = []
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {
@@ -57,6 +57,7 @@ export async function batchSaveContractInfo(array: {name:string, hex40:string, e
         console.log(`ContractInfo.bulkCreate fail:`, err)
         throw err
     })
+    */
 }
 export async function batchPopContractInfo(epoch) {
     return ContractInfo.destroy({
