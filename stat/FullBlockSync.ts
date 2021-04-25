@@ -14,7 +14,7 @@ export async function run() {
 
 async function syncFullBlock(config:StatConfig) {
     let cfx = new Conflux(config.conflux);
-    console.log(`network ${(await cfx.getStatus())['networkId']}`)
+    console.log(`Conflux ${config.conflux.url} network ${(await cfx.getStatus())['networkId']}`)
     return new FullBlockService(cfx)
         // .syncBlockByEpoch(0)
         .run(always)
