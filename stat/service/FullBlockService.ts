@@ -89,7 +89,7 @@ export class FullBlockService {
         for (const block of blockList) {
             let pos = 0
             for (const txInfo of block.transactions) {
-                if (txInfo.status || txInfo.status === 0) {
+                if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
                     txInfo.fromId = (await makeId(format.hexAddress(txInfo.from), undefined, {dt: blockTime})).id
                     txInfo.toId = txInfo.to && txInfo.to !== '0x' ?
                         (await makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime})).id : 0
@@ -144,3 +144,8 @@ export class FullBlockService {
         };
     }
 }
+/*
+SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
+       FROM INFORMATION_SCHEMA.PARTITIONS
+       WHERE PARTITION_NAME is not null;
+ */
