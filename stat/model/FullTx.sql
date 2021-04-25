@@ -21,4 +21,4 @@ partition by range (epoch)(
     PARTITION p2 VALUES LESS THAN (20000000/*2Kw*/),
     PARTITION p3 VALUES LESS THAN (30000000/*3Kw*/),
     PARTITION pm VALUES LESS THAN maxvalue /*fallback partition, should add partition before reach it.*/
-)
+);

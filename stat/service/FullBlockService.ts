@@ -19,7 +19,10 @@ export class FullBlockService {
         let ret
         do {
             maxEpoch += 1
-            ret = await this.syncBlockByEpoch(maxEpoch)
+            ret = await this.syncBlockByEpoch(maxEpoch).catch(err=>{
+                console.log(`sync block fail at epoch ${maxEpoch}`, err)
+                throw err;
+            })
         } while (always)
         return ret
     }
@@ -88,7 +91,7 @@ export class FullBlockService {
             for (const txInfo of block.transactions) {
                 if (txInfo.status || txInfo.status === 0) {
                     txInfo.fromId = (await makeId(format.hexAddress(txInfo.from), undefined, {dt: blockTime})).id
-                    txInfo.toId = txInfo.to ?
+                    txInfo.toId = txInfo.to && txInfo.to !== '0x' ?
                         (await makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime})).id : 0
                     txInfo.epoch = minEpochNumber
                     txInfo.blockPosition = block.position
