@@ -128,6 +128,7 @@ export class FullBlockService {
             ok = false;
             message = `${err}`
             console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
+            throw err;
         });
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
