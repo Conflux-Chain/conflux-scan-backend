@@ -5,32 +5,65 @@ import { makeId } from "../model/HexMap";
 import { fmtDtUTC } from "../model/Utils";
 import { BlockAndMinerSync } from "./BlockAndMinerSync";
 
+const CODE_REWIND = 20201029
 export class FullBlockService {
     public cfx: Conflux;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
     }
-    private ms = new Date().getTime()
+    // sync metrics
+    private metrics = {
+        ms : new Date().getTime(),
+        txCount : 0,
+        addressTxCount: 0,
+        blockCount: 0,
+    }
+    // sync metrics end
+    private previousPivotHash:string
+
+    private async resetPreviousPivotHash(useWhichEpoch:number) {
+        let maxAtDb = await FullBlock.findOne({
+            where: {epoch: useWhichEpoch, pivot: true}
+        });
+        console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
+        this.previousPivotHash = maxAtDb.hash
+    }
     public async run(always = false) {
         let maxEpoch:number = await FullBlock.max('epoch')
         if (isNaN(maxEpoch)) {
-           maxEpoch = -1
+           maxEpoch = -1 // plus 1 got 0
+        } else {
+            await this.resetPreviousPivotHash(maxEpoch)
         }
         let ret
         do {
-            maxEpoch += 1
-            ret = await this.syncBlockByEpoch(maxEpoch).catch(err=>{
+            ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 console.log(`sync block fail at epoch ${maxEpoch}`, err)
                 throw err;
             })
+            if (ret.code === CODE_REWIND) {
+                maxEpoch -= 1;
+            } else {
+                maxEpoch += 1
+            }
         } while (always)
         return ret
     }
     public async syncBlockByEpoch(minEpochNumber: number) {
         let hashes: string[];
-        let rewardList: any[] = await this.cfx.getBlockRewardInfo(minEpochNumber);
+        let rewardList: any[] = await this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
+            const msg = `${err}`
+            console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
+            if (msg.includes('expected a numbers with less than largest epoch number.')) {
+                // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
+                const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
+                console.log(`latest_state ${latest}`)
+            }
+            return [];
+        });
         if (rewardList.length === 0 && minEpochNumber > 0) {
-            return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward is empty.', epoch: minEpochNumber};
+            // latest_state block doesn't have reward yet
+            // return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward is empty.', epoch: minEpochNumber};
         }
         try {
             hashes = await this.cfx.getBlocksByEpochNumber(minEpochNumber);
@@ -43,10 +76,6 @@ export class FullBlockService {
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
-        
-        if (rewardList.length < blockList.length && minEpochNumber > 0) {
-            return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward not ready.', epoch: minEpochNumber};
-        }
         if (blockList.length === 0) {
             return {
                 code: 0, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
@@ -56,7 +85,25 @@ export class FullBlockService {
         let ok = true;
         let message = "ok";
         // the last one is pivot block.
-        let blockTime = new Date(blockList[blockList.length-1].timestamp*1000);
+        let lastBlock = blockList[blockList.length-1];
+        if (lastBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0) {
+            // pivot switch, pop and re-sync previous,
+            let preEpoch = minEpochNumber-1;
+            await FullBlock.sequelize.transaction(async (dbTx)=>{
+                await Promise.all([
+                    FullBlock.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
+                    FullTransaction.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
+                    AddressTransactionIndex.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
+                ])
+            })
+            const message = `pivot hash not match, current epoch ${minEpochNumber
+            } = ${lastBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
+            console.log(`pivot switch detected: `, message)
+            await this.resetPreviousPivotHash(preEpoch-1)
+            return {code: CODE_REWIND, message}
+        }
+        this.previousPivotHash = lastBlock.hash
+        let blockTime = new Date(lastBlock.timestamp*1000);
         // build block template out of the transaction below.
         let pos = 0
         for (const block of blockList) {
@@ -82,7 +129,7 @@ export class FullBlockService {
                 block.createdAt = blockTime
             }
         }
-        blockList[blockList.length-1].pivot = true
+        lastBlock.pivot = true
         // build transaction template
         const txArr = []
         const txByAddressArr = []
@@ -119,18 +166,32 @@ export class FullBlockService {
         }
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
-            await FullBlock.bulkCreate(blockList, {transaction: dbTx});
-            await FullTransaction.bulkCreate(txArr, {transaction: dbTx});
-            await AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx});
+            await Promise.all([
+                FullBlock.bulkCreate(blockList, {transaction: dbTx}),
+                FullTransaction.bulkCreate(txArr, {transaction: dbTx}),
+                AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
+            ])
         }).then(async ()=>{
+            this.metrics.txCount += txArr.length
+            this.metrics.addressTxCount += txByAddressArr.length
+            this.metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
-            if((minEpochNumber % 100) === 0) {
+            const epochPerStat = 100
+            if((minEpochNumber % epochPerStat) === 0) {
                 let now = new Date().getTime();
-                const elapse = now - this.ms
-                this.ms = now
-                console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
-                    blockList[0].epochNumber
+                const elapse = now - this.metrics.ms
+                console.info(`${fmtDtUTC(new Date())} insert block ${this.metrics.blockCount
+                } tx ${this.metrics.txCount} address's tx ${this.metrics.addressTxCount}, at epoch ${
+                    minEpochNumber
                 }, max block time ${blockTime.toISOString()}, cost ${elapse}ms`)
+                this.metrics.ms = now
+                this.metrics.txCount = this.metrics.addressTxCount = this.metrics.blockCount = 0
+                if ((minEpochNumber % 1000) === 0) {
+                    const target = await this.cfx.getEpochNumber('latest_state')
+                    const remainTime = (target - minEpochNumber) / epochPerStat * elapse
+                    const targetTime:Date = new Date(now + remainTime)
+                    console.log(`estimate target time ${targetTime.toISOString()}, ${target}, ${remainTime/1000/3600}h`)
+                }
             }
         }).catch(err => {
             ok = false;
