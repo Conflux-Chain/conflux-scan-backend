@@ -86,7 +86,7 @@ export class FullBlockService {
         for (const block of blockList) {
             let pos = 0
             for (const txInfo of block.transactions) {
-                if (txInfo.status !== undefined && txInfo.status !== '') {
+                if (txInfo.status || txInfo.status === 0) {
                     txInfo.fromId = (await makeId(format.hexAddress(txInfo.from), undefined, {dt: blockTime})).id
                     txInfo.toId = txInfo.to ?
                         (await makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime})).id : 0
