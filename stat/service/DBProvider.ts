@@ -47,6 +47,7 @@ import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat} from "../model/StatAddress";
 import {ContractInfo} from "../model/ContractInfo";
+import {FullBlock} from "../model/FullBlock";
 let conf
 export function createDB(config) {
     conf = config
@@ -94,6 +95,9 @@ export async function initPartialModel(sequelize) {
     DailyTokenTxn.register(sequelize)
     CfxTransfer.register(sequelize)
     DailyCfxTxn.register(sequelize)
+    FullBlock.register(sequelize)
+    // remove auto generated PK field since we use epoch-position as PK.
+    FullBlock.removeAttribute('id')
     AddressStat.register(sequelize)
     ContractInfo.register(sequelize)
     Hex40Map.register(sequelize)
