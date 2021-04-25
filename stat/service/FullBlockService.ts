@@ -10,7 +10,7 @@ export class FullBlockService {
     constructor(cfx:Conflux) {
         this.cfx = cfx;
     }
-
+    private ms = new Date().getTime()
     public async run(always = false) {
         let maxEpoch:number = await FullBlock.max('epoch')
         if (isNaN(maxEpoch)) {
@@ -124,9 +124,14 @@ export class FullBlockService {
             await AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx});
         }).then(async ()=>{
             // console.log(`====`, blockList[0])
-            ((minEpochNumber % 100) === 0) && console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
-                blockList[0].epochNumber
-            }, max block time ${blockTime.toISOString()}`)
+            if((minEpochNumber % 100) === 0) {
+                let now = new Date().getTime();
+                const elapse = now - this.ms
+                this.ms = now
+                console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
+                    blockList[0].epochNumber
+                }, max block time ${blockTime.toISOString()}, cost ${elapse}ms`)
+            }
         }).catch(err => {
             ok = false;
             message = `${err}`
