@@ -50,29 +50,24 @@ export class FullBlockService {
         return ret
     }
     public async syncBlockByEpoch(minEpochNumber: number) {
-        let hashes: string[];
-        let rewardList: any[] = await this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
-            const msg = `${err}`
-            console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
-            if (msg.includes('expected a numbers with less than largest epoch number.')) {
-                // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
-                const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
-                console.log(`latest_state ${latest}`)
-            }
-            return [];
-        });
-        if (rewardList.length === 0 && minEpochNumber > 0) {
-            // latest_state block doesn't have reward yet
-            // return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward is empty.', epoch: minEpochNumber};
-        }
-        try {
-            hashes = await this.cfx.getBlocksByEpochNumber(minEpochNumber);
-        } catch (e) {
-            console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, e)
-            return;
-        }
+        const [rewardList, hashes] = await Promise.all([
+            this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
+                const msg = `${err}`
+                console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
+                if (msg.includes('expected a numbers with less than largest epoch number.')) {
+                    // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
+                    const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
+                    console.log(`latest_state ${latest}`)
+                }
+                return [];
+            }),
+            this.cfx.getBlocksByEpochNumber(minEpochNumber).catch(err=>{
+                console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
+                return []
+            })
+        ])
         let blockList: any/*IFullBlock*/[] = (await Promise.all(
-            hashes.map(hash=>{
+            (hashes as []).map(hash=>{
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
