@@ -13,7 +13,6 @@ CREATE TABLE `full_block` (
                               `gasLimit` decimal(36,0) NOT NULL DEFAULT '0',
                               `gasUsed` decimal(36,0) NOT NULL DEFAULT '0',
                               primary key  (`epoch` desc, `position` desc),
-                              KEY `idx_minerId` (`minerId` DESC),
                               KEY `idx_block_time` (`createdAt` DESC),
                               KEY `block_hash` (`hash`(10))
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4

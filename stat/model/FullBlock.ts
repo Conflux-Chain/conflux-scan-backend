@@ -62,10 +62,6 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
             timestamps: false,
             indexes: [
                 {
-                    name: 'idx_minerId', // index name must be unique globally under sqlite.
-                    fields: [{name: 'minerId', order: 'DESC'}]
-                },
-                {
                     name: 'idx_block_time', // index name must be unique globally under sqlite.
                     fields: [{name: 'createdAt', order: 'DESC'}]
                 },{
