@@ -98,7 +98,7 @@ export class FullBlockService {
                     txInfo.txPosition = pos++
                     txInfo.createdAt = block.createdAt
                     txInfo.dripValue = txInfo.value
-                    if (txInfo.contractCreated) {
+                    if (txInfo.contractCreated && txInfo.contractCreated !== '0x') {
                         txInfo.contractCreatedId = (await makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime})).id
                     } else {
                         txInfo.contractCreatedId = 0
