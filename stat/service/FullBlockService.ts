@@ -1,6 +1,6 @@
 //@ts-ignore
 import { Conflux, format } from "js-conflux-sdk";
-import { FullBlock, IFullBlock } from "../model/FullBlock";
+import {AddressTransactionIndex, FullBlock, FullTransaction, IFullBlock} from "../model/FullBlock";
 import { makeId } from "../model/HexMap";
 import { fmtDtUTC } from "../model/Utils";
 import { BlockAndMinerSync } from "./BlockAndMinerSync";
@@ -74,14 +74,51 @@ export class FullBlockService {
             if (minEpochNumber === 0) {
                 block.gasUsed = 0
                 // utc '2020-10-28 16:00:00' => '2020-10-29 00:00:00' gmt+8
-                block.createAt = new Date('2020-10-28T16:00:00.000Z')
+                block.createdAt = new Date('2020-10-28T16:00:00.000Z')
             } else {
-                block.createAt = blockTime
+                block.createdAt = blockTime
             }
         }
         blockList[blockList.length-1].pivot = true
+        // build transaction template
+        const txArr = []
+        const txByAddressArr = []
+        for (const block of blockList) {
+            let pos = 0
+            for (const txInfo of block.transactions) {
+                if (txInfo.status !== undefined && txInfo.status !== '') {
+                    txInfo.fromId = (await makeId(format.hexAddress(txInfo.from), undefined, {dt: blockTime})).id
+                    txInfo.toId = txInfo.to ?
+                        (await makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime})).id : 0
+                    txInfo.epoch = minEpochNumber
+                    txInfo.blockPosition = block.position
+                    txInfo.txPosition = pos++
+                    txInfo.createdAt = block.createdAt
+                    txInfo.dripValue = txInfo.value
+                    if (txInfo.contractCreated) {
+                        txInfo.contractCreatedId = (await makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime})).id
+                    } else {
+                        txInfo.contractCreatedId = 0
+                    }
+                    txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
+                    txArr.push(txInfo)
+                    //speed up query transaction of one address
+                    txInfo.addressId = txInfo.fromId
+                    txByAddressArr.push(txInfo)
+                    const dummyTo = txInfo.toId || txInfo.contractCreatedId
+                    if (dummyTo && dummyTo !== txInfo.fromId) {
+                        const clone = {...txInfo}
+                        clone.addressId = dummyTo
+                        txByAddressArr.push(clone)
+                    }
+                }
+            }
+        }
+        //
         await FullBlock.sequelize.transaction(async (dbTx) => {
-            await FullBlock.bulkCreate(blockList);
+            await FullBlock.bulkCreate(blockList, {transaction: dbTx});
+            await FullTransaction.bulkCreate(txArr, {transaction: dbTx});
+            await AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx});
         }).then(async ()=>{
             // console.log(`====`, blockList[0])
             ((minEpochNumber % 100) === 0) && console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
@@ -93,7 +130,8 @@ export class FullBlockService {
             console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
         });
         return {
-            code: ok ? 0 : 500, message, blockCount: blockList.length, epoch: minEpochNumber
+            code: ok ? 0 : 500, message, blockCount: blockList.length,
+            epoch: minEpochNumber, txCount: txArr.length
         };
     }
 }
