@@ -7,6 +7,7 @@ import { BlockAndMinerSync } from "./BlockAndMinerSync";
 
 const CODE_REWIND = 20201029
 const CODE_CONTINUE = 2020102903
+const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
     constructor(cfx:Conflux) {
@@ -51,6 +52,9 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
+            } else if (ret.coode === CODE_EMPTY_BLOCK) {
+                console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
+                await new Promise(r=>setTimeout(r, 500))
             } else {
                 maxEpoch += 1
             }
@@ -81,15 +85,15 @@ export class FullBlockService {
         )) as IFullBlock[]
         if (blockList.length === 0) {
             return {
-                code: 0, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
+                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
             }
         }
         // blockList = blockList.reverse(); // turn to asc order.
         let ok = true;
         let message = "ok";
         // the last one is pivot block.
-        let lastBlock = blockList[blockList.length-1];
-        if (lastBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0) {
+        let pivotBlock = blockList[blockList.length-1];
+        if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0) {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             await FullBlock.sequelize.transaction(async (dbTx)=>{
@@ -100,13 +104,12 @@ export class FullBlockService {
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
-            } = ${lastBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
+                } = ${pivotBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
             console.log(`pivot switch detected: `, message)
             await this.resetPreviousPivotHash(preEpoch-1)
             return {code: CODE_REWIND, message}
         }
-        this.previousPivotHash = lastBlock.hash
-        let blockTime = new Date(lastBlock.timestamp*1000);
+        let blockTime = new Date(pivotBlock.timestamp*1000);
         // build block template out of the transaction below.
         let pos = 0
         for (const block of blockList) {
@@ -123,7 +126,7 @@ export class FullBlockService {
             block.avgGasPrice = block.transactions.length === 0 ? 0
                 : block.transactions.map(t=>t.gasPrice).reduce((a,b)=>a+b, BigInt(0)) / BigInt(block.transactions.length);
             block.position = pos ++
-            block.txCount = block.transactions.length
+            block.txCount = block.transactions.length // all txn, include packed but not executed
             if (minEpochNumber === 0) {
                 block.gasUsed = 0
                 // utc '2020-10-28 16:00:00' => '2020-10-29 00:00:00' gmt+8
@@ -132,9 +135,9 @@ export class FullBlockService {
                 block.createdAt = blockTime
             }
         }
-        lastBlock.pivot = true
+        pivotBlock.pivot = true
         // build transaction template
-        const txArr = []
+        const executedTxArr = []
         const txByAddressArr = []
         for (const block of blockList) {
             let pos = 0
@@ -154,7 +157,7 @@ export class FullBlockService {
                         txInfo.contractCreatedId = 0
                     }
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
-                    txArr.push(txInfo)
+                    executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId
                     txByAddressArr.push(txInfo)
@@ -166,16 +169,18 @@ export class FullBlockService {
                     }
                 }
             }
+            block.executedTxnCount = pos
         }
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}),
-                FullTransaction.bulkCreate(txArr, {transaction: dbTx}),
+                FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
             ])
         }).then(async ()=>{
-            this.metrics.txCount += txArr.length
+            this.previousPivotHash = pivotBlock.hash
+            this.metrics.txCount += executedTxArr.length
             this.metrics.addressTxCount += txByAddressArr.length
             this.metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
@@ -204,7 +209,7 @@ export class FullBlockService {
         });
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
-            epoch: minEpochNumber, txCount: txArr.length
+            epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
     }
 }

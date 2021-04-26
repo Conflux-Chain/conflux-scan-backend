@@ -17,6 +17,7 @@ export interface IFullBlock {
     gasLimit: number;
     gasUsed:number;
     txCount:number;
+    executedTxnCount:number;
     pivot: boolean;
 }
 
@@ -31,7 +32,8 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
     avgGasPrice: number;
     gasLimit: number;
     gasUsed:number;
-    txCount:number;
+    txCount:number; // all txn, include packed but not executed
+    executedTxnCount:number; //
     pivot: boolean;
     position: number;
     static findMax() {
@@ -46,6 +48,7 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
             txCount: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0}, // A 32 bit integer.
+            executedTxnCount: {type: DataTypes.INTEGER, allowNull: true, defaultValue: 0}, // A 32 bit integer.
             position: {type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0}, // A 16 bit integer.
             pivot: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: 0},
             difficulty: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
