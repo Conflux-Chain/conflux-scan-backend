@@ -20,6 +20,7 @@ import {TokenSync} from "./service/TokenSync";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import { Monitor } from "./monitor/Monitor";
+import {scheduleDailyActiveAddress} from "./model/StatAddress";
 
 export class StatApp{
     public config: StatConfig;
@@ -103,6 +104,7 @@ export class StatApp{
         }
         if (this.config.syncTxnCountDaily) {
             await this.dailyTxnSync.schedule(this.config.syncTxnCountHistory); // dailyTxn
+            scheduleDailyActiveAddress().then()
         }
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
@@ -114,7 +116,10 @@ export class StatApp{
             await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
         }
         if (this.config.checkRankDelay) {
-            new Monitor(this.config.dingTalkToken, this.config.serverTag).checkRankDelay().then()
+            let monitor = new Monitor(this.config.dingTalkToken, this.config.serverTag);
+            monitor.checkRankDelay().then(()=>{
+                monitor.checkFullBlockSyncRunning().then()
+            })
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

@@ -45,7 +45,7 @@ import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
-import {AddressStat} from "../model/StatAddress";
+import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {ContractInfo} from "../model/ContractInfo";
 import {AddressTransactionIndex, FullBlock, FullTransaction} from "../model/FullBlock";
 let conf
@@ -95,6 +95,7 @@ export async function initPartialModel(sequelize) {
     DailyTokenTxn.register(sequelize)
     CfxTransfer.register(sequelize)
     DailyCfxTxn.register(sequelize)
+    DailyActiveAddress.register(sequelize)
     // remove auto generated PK field since we use epoch-position as PK.
     FullBlock.register(sequelize);  FullBlock.removeAttribute('id')
     FullTransaction.register(sequelize);  FullTransaction.removeAttribute('id')
