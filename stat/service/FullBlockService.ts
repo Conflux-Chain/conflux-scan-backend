@@ -16,7 +16,7 @@ export class FullBlockService {
     // sync metrics
     private metrics = {
         ms : new Date().getTime(),
-        txCount : 0,
+        executedTxCount : 0,
         addressTxCount: 0,
         blockCount: 0,
     }
@@ -180,7 +180,7 @@ export class FullBlockService {
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
-            this.metrics.txCount += executedTxArr.length
+            this.metrics.executedTxCount += executedTxArr.length
             this.metrics.addressTxCount += txByAddressArr.length
             this.metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
@@ -189,11 +189,11 @@ export class FullBlockService {
                 let now = new Date().getTime();
                 const elapse = now - this.metrics.ms
                 console.info(`${fmtDtUTC(new Date())} insert block ${this.metrics.blockCount
-                } tx ${this.metrics.txCount} address's tx ${this.metrics.addressTxCount}, at epoch ${
+                } tx ${this.metrics.executedTxCount} address's tx ${this.metrics.addressTxCount}, at epoch ${
                     minEpochNumber
                 }, max block time ${blockTime.toISOString()}, cost ${elapse}ms`)
                 this.metrics.ms = now
-                this.metrics.txCount = this.metrics.addressTxCount = this.metrics.blockCount = 0
+                this.metrics.executedTxCount = this.metrics.addressTxCount = this.metrics.blockCount = 0
                 if ((minEpochNumber % 1000) === 0) {
                     const target = await this.cfx.getEpochNumber('latest_state')
                     const remainTime = (target - minEpochNumber) / epochPerStat * elapse
