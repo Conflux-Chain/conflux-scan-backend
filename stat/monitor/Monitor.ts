@@ -1,13 +1,34 @@
 import { QueryTypes } from "sequelize";
 import {TopBatchIndex} from "../model/TopRecord";
+import {FullBlock} from "../model/FullBlock";
 const superagent = require('superagent')
 
 export class Monitor{
     dingTalkToken: string;
     serverTag: string;
+    preSyncEpoch = 0
     constructor(dingTalkToken:string, serverTag:string) {
         this.dingTalkToken = dingTalkToken;
         this.serverTag = serverTag;
+    }
+    async getMaxSyncEpoch() : Promise<number> {
+        return FullBlock.max('epoch')
+    }
+    async checkFullBlockSyncRunning() {
+        if (this.preSyncEpoch === 0) {
+            this.preSyncEpoch = await this.getMaxSyncEpoch()
+        } else {
+            const max = await this.getMaxSyncEpoch()
+            if (max === this.preSyncEpoch) {
+                dingMsg(`[scan] ${this.serverTag} epoch is not growing, epoch ${max}`
+                    , this.dingTalkToken).then()
+            }
+        }
+        const that = this;
+        function repeat() {
+            that.checkFullBlockSyncRunning()
+        }
+        setTimeout(repeat, 60*1000) // 1 minute
     }
     async checkRankDelay() {
         // 'rank_address_by_staking','rank_address_by_cfx','rank_address_by_total_cfx'
@@ -22,7 +43,7 @@ export class Monitor{
         if (typesDelayed.length === 0) {
             console.log(`no delay`);
         } else {
-            this.alert(typesDelayed)
+            this.alert(typesDelayed).then()
         }
         const that = this;
         function repeat() {

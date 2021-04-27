@@ -74,6 +74,14 @@ export default {
                 "responses": {"200": {}}
             }
         },
+        '/stat/daily-active-address': {
+            "get": {tags: ['daily'],
+                "parameters": [
+                    {name:"limit", required: true, in: "query", schema:{type:"number", default: 60}}
+                ],
+                "responses": {"200": {}}
+            }
+        },
         '/stat/tokens/erc1155/balance-of': {
             "get": {
                 tags: ['tokens'],
