@@ -41,7 +41,7 @@ export class FullBlockService {
         do {
             ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 const errStr = `${err}`
-                if (err.includes('Lock wait timeout exceeded;')) {
+                if (errStr.includes('Lock wait timeout exceeded;')) {
                     console.log(`lock time out at epoch ${maxEpoch}:`, err)
                     return {code: CODE_CONTINUE}
                 }
