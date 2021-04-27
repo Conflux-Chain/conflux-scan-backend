@@ -115,7 +115,7 @@ export class FullBlockService {
         for (const block of blockList) {
             block.epoch = minEpochNumber
             block.pivot = false;
-            const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash)
+            const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash) || {}
             let minerBase32 = block.miner;
             let minerHex = format.hexAddress(minerBase32)
             //save address anyway, so use undefined transaction.
