@@ -218,6 +218,8 @@ SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION
        FROM INFORMATION_SCHEMA.PARTITIONS
        WHERE PARTITION_NAME is not null;
 
+alter table full_block add column `executedTxnCount` bigint unsigned null  default null;
+
 https://dev.mysql.com/doc/refman/5.7/en/partitioning-limitations-locking.html
 ALTER TABLE ... TRUNCATE PARTITION prunes locks; only the partitions to be emptied are locked.
  */

@@ -9,7 +9,7 @@ import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
 import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
-import {NftId} from "../model/Token";
+import {DailyToken, NftId, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyCfxTxn} from "../model/CfxTransfer";
 
@@ -202,6 +202,19 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/daily-active-address', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const list = await DailyActiveAddress.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
+        ctx.body = {code:0, list}
+    })
+    // daily token stat
+    router.get('/daily-token-stat', async function (ctx) {
+        let limit = parseInt(ctx.request.query.limit || 1000);
+        const base32 = ctx.request.query.base32 || ''
+        const token = await Token.findOne({where: {base32: base32}})
+        if (!token) {
+            ctx.body = {code: 404, message: `token not found ${base32}`}
+            return
+        }
+        const list = await DailyToken.findAll({limit: Math.min(limit,1000), order:[['day','DESC']],
+            where: {hexId: token.hex40id}})
         ctx.body = {code:0, list}
     })
     // daily cfx transfer count
