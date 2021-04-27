@@ -52,7 +52,7 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-            } else if (ret.coode === CODE_EMPTY_BLOCK) {
+            } else if (ret.code === CODE_EMPTY_BLOCK) {
                 console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 500))
             } else {
@@ -61,7 +61,7 @@ export class FullBlockService {
         } while (always)
         return ret
     }
-    public async syncBlockByEpoch(minEpochNumber: number) {
+    public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         const [rewardList, hashes] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
