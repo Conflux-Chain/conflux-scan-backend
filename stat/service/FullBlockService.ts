@@ -123,8 +123,7 @@ export class FullBlockService {
             block.minerId = addrBean.id
             block.totalReward = reward.totalReward;
             block.txFee = reward.txFee;
-            block.avgGasPrice = block.transactions.length === 0 ? 0
-                : block.transactions.map(t=>t.gasPrice).reduce((a,b)=>a+b, BigInt(0)) / BigInt(block.transactions.length);
+            block.avgGasPrice = 0
             block.position = pos ++
             block.txCount = block.transactions.length // all txn, include packed but not executed
             if (minEpochNumber === 0) {
@@ -140,6 +139,7 @@ export class FullBlockService {
         const executedTxArr = []
         const txByAddressArr = []
         for (const block of blockList) {
+            let sumGasPrice = BigInt(0)
             let pos = 0
             for (const txInfo of block.transactions) {
                 if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
@@ -167,9 +167,11 @@ export class FullBlockService {
                         clone.addressId = dummyTo
                         txByAddressArr.push(clone)
                     }
+                    sumGasPrice += txInfo.gasPrice
                 }
             }
             block.executedTxnCount = pos
+            pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
