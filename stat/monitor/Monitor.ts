@@ -20,7 +20,7 @@ export class Monitor{
         } else {
             const max = await this.getMaxSyncEpoch()
             if (max === this.preSyncEpoch) {
-                dingMsg(`[scan] ${this.serverTag} epoch is not growing, epoch ${max}`
+                dingMsg(`[scan] ${this.serverTag} FullBlockSync: epoch is not growing, epoch ${max}`
                     , this.dingTalkToken).then()
             }
         }

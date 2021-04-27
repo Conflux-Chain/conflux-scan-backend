@@ -54,7 +54,7 @@ export class FullBlockService {
                 // try again
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
-                await new Promise(r=>setTimeout(r, 500))
+                await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
             }
@@ -102,11 +102,18 @@ export class FullBlockService {
         if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0) {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
+            const addresses = new Set<number>();
+            (await FullTransaction.findAll({where: {epoch: preEpoch}})).forEach(tx=>{
+                addresses.add(tx.fromId)
+                addresses.add(tx.toId)
+            })
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
                     FullBlock.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
                     FullTransaction.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
-                    AddressTransactionIndex.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
+                    AddressTransactionIndex.destroy({
+                        where:{epoch: preEpoch, addressId: [...addresses],},
+                        transaction: dbTx}),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
