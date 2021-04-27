@@ -115,14 +115,14 @@ export class FullBlockService {
         for (const block of blockList) {
             block.epoch = minEpochNumber
             block.pivot = false;
-            const reward = minEpochNumber == 0 ? 0 : rewardList.find(r=>r.blockHash === block.hash)
+            const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash)
             let minerBase32 = block.miner;
             let minerHex = format.hexAddress(minerBase32)
             //save address anyway, so use undefined transaction.
             const addrBean = await makeId(minerHex, undefined, {dt: blockTime})
             block.minerId = addrBean.id
-            block.totalReward = reward.totalReward;
-            block.txFee = reward.txFee;
+            block.totalReward = reward.totalReward || 0;
+            block.txFee = reward.txFee || 0;
             block.avgGasPrice = 0
             block.position = pos ++
             block.txCount = block.transactions.length // all txn, include packed but not executed
