@@ -1,7 +1,12 @@
 import {TransactionDB} from "../model/Transaction";
 import {DailyTransaction, IDailyTransaction} from "../model/DailyTransaction";
-import {calBeginEndTime, getYesterday, getNextDelay} from "./tool/DateTool";
-import {Op, Sequelize} from 'sequelize'
+import {calBeginEndTime, getNextDelay, getYesterday} from "./tool/DateTool";
+import {Model, Op, Sequelize, QueryTypes} from 'sequelize'
+import {Erc20Transfer} from "../model/Erc20Transfer";
+import {DailyToken, Token} from "../model/Token";
+import {Erc721Transfer} from "../model/Erc721Transfer";
+import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {Erc777Transfer} from "../model/Erc777Transfer";
 
 export class DailyTxnSync{
     private sequelize: Sequelize;
@@ -60,5 +65,46 @@ export class DailyTxnSync{
             await this.countHistory();
         }
         repeat().then();
+    }
+
+    public async calcDailyToken(dt:Date, tokenHexId:number) {
+        const tokenBean = await Token.findOne({where: {hex40id: tokenHexId}})
+        if (tokenBean === null) {
+            console.log(`${new Date().toISOString()} token not found, hex id ${tokenHexId}`)
+            return
+        }
+        let model
+        switch(tokenBean.type.toLowerCase()) {
+            case 'erc20': model = Erc20Transfer; break;
+            case 'erc721': model = Erc721Transfer; break;
+            case 'erc777': model = Erc777Transfer; break;
+            case 'erc1155': model = Erc1155Transfer; break;
+            default:
+                console.log(`unknown token type [${tokenBean.type}], ${tokenBean.base32}, ${tokenBean.symbol}`)
+                return
+        }
+        //
+        let start = new Date(dt); start.setUTCHours(0,0,0,0)
+        let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+        const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
+            count(distinct(toId)) uniqueSender from erc20transfer where contractId=?
+            and createdAt between ? and ?`
+        const stat:DailyToken = (await model/*Erc20Transfer*/.sequelize.query(sql, {type:QueryTypes.SELECT,
+            replacements:[tokenHexId, start, end],
+            logging: console.log
+        }))[0] as DailyToken
+        if (stat.hexId === null) {
+            stat.hexId = tokenHexId
+            console.log(`stat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol} day ${start}`)
+        }
+        stat.day = start
+        console.log(`stat got :`, stat);
+        const [updatedCnt] = await DailyToken.update(stat, {where: {hexId: tokenHexId, day: start}})
+        if (updatedCnt === 0) {
+            await DailyToken.create(stat as DailyToken)
+            console.log(`create daily token stat :`, stat)
+        } else {
+            console.log(`update daily token stat :`, stat)
+        }
     }
 }
