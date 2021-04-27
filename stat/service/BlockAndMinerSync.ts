@@ -340,29 +340,26 @@ export class BlockAndMinerSync {
         }
         // pivot block time
         let blockTime = new Date(blockList[blockList.length-1].timestamp*1000);
-        // make id out of transaction, avoid lock overlap
-        blockList.map(async (block) => {
-            let minerBase32 = block.miner;
-            let minerHex = format.hexAddress(minerBase32)
-            const addrBean = await makeId(minerHex, undefined, {dt: blockTime})
-            block.minerId = addrBean.id
-        })
         let ok = true;
         let message = "ok";
-        const blockArr:any[] = blockList.map(async (block) => {
+        // make id out of transaction, avoid lock overlap
+        const blockArr:any[] = await Promise.all(blockList.map(async (block) => {
             const reward = rewardList.find(r=>r.blockHash === block.hash)
             // const hashBean = await makeId(block.hash, dbTx)
             // console.info(`debug timestamp ${new Date(block.timestamp)}`)
+            let minerBase32 = block.miner;
+            let minerHex = format.hexAddress(minerBase32)
+            const addrBean = await makeId(minerHex, undefined, {dt: blockTime})
             return {
-                    epoch: block.epochNumber,
+                    epoch: minEpochNumber,
                     createAt: blockTime,
-                    minerId: block.minerId,
+                    minerId: addrBean.id,
                     hash: block.hash,
                     difficulty: block.difficulty,
                     totalReward: reward.totalReward,
                     txFee: reward.txFee,
                 }
-        })
+        }))
         await this.sequelize.transaction(async (dbTx) => {
             await Block.bulkCreate(blockArr, {transaction: dbTx})
             const updateConfig = await KV.update({value: minEpochNumber.toString()},
