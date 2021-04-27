@@ -14,7 +14,6 @@ const BigFixed = require('bigfixed');
 export class BlockAndMinerSync {
     static CODE_REWARD_NOT_READY = 125;
     static cacheSavedTxLength = 100;
-    savedTx = []
     // public currentEpoch: number;
     private sequelize: Sequelize;
     public cfx: Conflux;
@@ -334,63 +333,50 @@ export class BlockAndMinerSync {
         if (rewardList.length < blockList.length) {
             return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward not ready.', epoch: minEpochNumber};
         }
-        blockList = blockList.filter(block=>{
-            const ret = this.savedTx.indexOf(block.hash) < 0
-            if(!ret)console.debug(`hit cache ${block.hash}`)
-            return ret;
-        });
         if (blockList.length === 0) {
             return {
                 code: 0, message: "ok", blockCount: 0, epoch: minEpochNumber
             }
         }
-        // blockList = blockList.reverse(); // turn to asc order.
+        // pivot block time
+        let blockTime = new Date(blockList[blockList.length-1].timestamp*1000);
+        // make id out of transaction, avoid lock overlap
+        blockList.map(async (block) => {
+            let minerBase32 = block.miner;
+            let minerHex = format.hexAddress(minerBase32)
+            const addrBean = await makeId(minerHex, undefined, {dt: blockTime})
+            block.minerId = addrBean.id
+        })
         let ok = true;
         let message = "ok";
+        const blockArr:any[] = blockList.map(async (block) => {
+            const reward = rewardList.find(r=>r.blockHash === block.hash)
+            // const hashBean = await makeId(block.hash, dbTx)
+            // console.info(`debug timestamp ${new Date(block.timestamp)}`)
+            return {
+                    epoch: block.epochNumber,
+                    createAt: blockTime,
+                    minerId: block.minerId,
+                    hash: block.hash,
+                    difficulty: block.difficulty,
+                    totalReward: reward.totalReward,
+                    txFee: reward.txFee,
+                }
+        })
         await this.sequelize.transaction(async (dbTx) => {
-            let maxEpoch = 0
-            await Promise.all(
-                blockList.map(async (block) => {
-                    maxEpoch = Math.max(maxEpoch, block.epochNumber)
-                    let blockTime = new Date(block.timestamp*1000);
-                    const reward = rewardList.find(r=>r.blockHash === block.hash)
-                    let minerBase32 = block.miner;
-                    let minerHex = format.hexAddress(minerBase32)
-                    const addrBean = await makeId(minerHex, dbTx, {dt: blockTime})
-                    // const hashBean = await makeId(block.hash, dbTx)
-                    // console.info(`debug timestamp ${new Date(block.timestamp)}`)
-                    return await Block.findOrCreate({
-                        where: {hash: block.hash},
-                        defaults: {
-                            epoch: block.epochNumber,
-                            createAt: blockTime,
-                            minerId: addrBean.id,
-                            hash: block.hash,
-                            difficulty: block.difficulty,
-                            totalReward: reward.totalReward,
-                            txFee: reward.txFee,
-                        },
-                        transaction: dbTx
-                    })
-                })
-            )
+            await Block.bulkCreate(blockArr, {transaction: dbTx})
             const updateConfig = await KV.update({value: minEpochNumber.toString()},
                 {where: {key: KEY_MINER_EPOCH,}, transaction: dbTx})
             if (updateConfig[0] === 0) {
                 console.log('update position return ', JSON.stringify(updateConfig), ' do creating.')
-                await KV.create({key: KEY_MINER_EPOCH, value: maxEpoch.toString()}
+                await KV.create({key: KEY_MINER_EPOCH, value: minEpochNumber.toString()}
                 ,{transaction: dbTx})
             }
         }).then(async ()=>{
             // console.log(`====`, blockList[0])
             ((minEpochNumber % 100) === 0) && console.info(`${fmtDtUTC(new Date())} insert block count ${blockList.length}, at epoch ${
                 blockList[0].epochNumber
-            }, max block time ${new Date(blockList[blockList.length-1].timestamp*1000).toISOString()}`)
-            // adjust cache size.
-            blockList.forEach(block=>{this.savedTx.push(block.hash)})
-            while (this.savedTx.length > BlockAndMinerSync.cacheSavedTxLength) {
-                this.savedTx.shift()
-            }
+            }, max block time ${blockTime.toISOString()}`)
             await this.rollup()
         }).catch(err => {
             ok = false;
