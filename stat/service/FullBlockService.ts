@@ -132,6 +132,7 @@ export class FullBlockService {
                 block.createdAt = new Date('2020-10-28T16:00:00.000Z')
             } else {
                 block.createdAt = blockTime
+                block.gasUsed = block.gasUsed || 0
             }
         }
         pivotBlock.pivot = true
