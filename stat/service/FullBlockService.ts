@@ -65,29 +65,35 @@ export class FullBlockService {
         const [rewardList, hashes] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
-                console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
-                    const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
-                    console.log(`latest_state ${latest}`)
+                    // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
+                    // console.log(`latest_state ${latest}`)
+                } else {
+                    console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
                 }
                 return [];
             }),
             this.cfx.getBlocksByEpochNumber(minEpochNumber).catch(err=>{
-                console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
+                const msg = `${err}`
+                if (msg.includes('expected a numbers with less than largest epoch number.')) {
+
+                } else {
+                    console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
+                }
                 return []
             })
         ])
+        if (hashes.length === 0) {
+            return {
+                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
+            }
+        }
         let blockList: any/*IFullBlock*/[] = (await Promise.all(
             (hashes as []).map(hash=>{
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
-        if (blockList.length === 0) {
-            return {
-                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
-            }
-        }
         // blockList = blockList.reverse(); // turn to asc order.
         let ok = true;
         let message = "ok";
