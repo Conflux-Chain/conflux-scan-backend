@@ -9,7 +9,7 @@ const CODE_CONTINUE = 2020102903
 const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
-    public debugLog:boolean
+    public debugLog:boolean = true
     constructor(cfx:Conflux) {
         this.cfx = cfx;
     }
