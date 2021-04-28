@@ -8,7 +8,17 @@ export async function run() {
     let seq = createDB(config.database)
     await seq.sync({})
     await initModel(seq)
-    await syncFullBlock(config)
+    if (args[0] === 'fix') {
+        // batch size 10, loop 1 time:
+        // node this fix 10 1
+        const batchSize = Number(args[1] || 1)
+        let loop = Number(args[2] || 1)
+        do {
+            await FullBlockService.fillPropsBatch(batchSize)
+        } while (--loop > 0)
+    } else {
+        await syncFullBlock(config)
+    }
     seq.close().then()
 }
 

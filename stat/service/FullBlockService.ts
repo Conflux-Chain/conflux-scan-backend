@@ -1,8 +1,10 @@
 //@ts-ignore
-import { Conflux, format } from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {AddressTransactionIndex, FullBlock, FullTransaction, IFullBlock} from "../model/FullBlock";
-import { makeId } from "../model/HexMap";
-import { fmtDtUTC } from "../model/Utils";
+import {makeId} from "../model/HexMap";
+import {fmtDtUTC} from "../model/Utils";
+import {QueryTypes} from "sequelize"
+import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "../model/KV";
 
 const CODE_REWIND = 20201029
 const CODE_CONTINUE = 2020102903
@@ -233,6 +235,53 @@ export class FullBlockService {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
+    }
+
+    // fix executed txn count and avg gas price, they are missed or in-correct once.
+    public static async fixProps(epochLeft, epochRight) : Promise<number>{
+        const sqlCount = `select epoch, count(*) as executedTxnCount, avg(gasPrice) as avgGasPrice, blockPosition as position
+            from full_tx where epoch between ? and ?
+            group by epoch, blockPosition;`
+        const list:any[] = await FullTransaction.sequelize.query(sqlCount, {
+            type: QueryTypes.SELECT, replacements: [epochLeft, epochRight]
+        })
+        if (list.length === 0) {
+            return 0
+        }
+
+        // const sqlUpdate = `update full_block set executedTxnCount = ?, avgGasPrice = ?
+        //     where epoch = ? and position = ?`
+        // There is no way to update multiple records by different conditions,
+        // so, take the tricky of insert on duplicate key update.
+        // fill props for non-null field to match schema
+        const dummyDt = new Date()
+        list.forEach(r=>{
+            r.createdAt = dummyDt; r.minerId=0; r.pivot=false;r.txnCount=0;r.difficulty=0;
+        })
+        const updated = await FullBlock.bulkCreate(list,{
+            updateOnDuplicate:['executedTxnCount', 'avgGasPrice'],
+            // benchmark: true, logging: console.log
+        });
+        return updated.length
+    }
+    public static async fillPropsBatch(batchSize:number = 100) : Promise<number> {
+        let prePos = await KV.getNumber(KEY_FILL_BLOCK_PROPS_EPOCH)
+        if (isNaN(prePos)) {
+            prePos = -1
+        }
+        const left = prePos + 1
+        const right = prePos + batchSize
+        let updated = 0
+        return this.fixProps(left, right).then(updated0=> {
+            updated = updated0
+            return KV.upsert({key: KEY_FILL_BLOCK_PROPS_EPOCH, value: right.toString()}, {})
+        }).then(()=>{
+            process.stdout.write(`\r${new Date().toISOString()} fillPropsAfterConfirmedByConfig, epoch [${left}, ${right}] updated ${updated}`)
+            return updated
+        }).catch(err=>{
+            console.log(`${new Date().toISOString()} fillPropsAfterConfirmedByConfig, error:`, err)
+            return 0
+        })
     }
 }
 /*
