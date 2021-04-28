@@ -67,7 +67,16 @@ export class DailyTxnSync{
         repeat().then();
     }
 
-    public async calcDailyToken(dt:Date, tokenHexId:number) {
+    public static async calcAllRegisteredTokenDailyStat(dt:Date) {
+        const tokenList = await Token.findAll()
+        console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
+        for(const token of tokenList) {
+            await this.calcDailyToken(dt, token.hex40id)
+            console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
+        }
+        console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
+    }
+    public static async calcDailyToken(dt:Date, tokenHexId:number) {
         const tokenBean = await Token.findOne({where: {hex40id: tokenHexId}})
         if (tokenBean === null) {
             console.log(`${new Date().toISOString()} token not found, hex id ${tokenHexId}`)
