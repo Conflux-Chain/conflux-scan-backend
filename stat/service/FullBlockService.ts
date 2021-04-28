@@ -4,7 +4,7 @@ import {AddressTransactionIndex, FullBlock, FullTransaction, IFullBlock} from ".
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {QueryTypes} from "sequelize"
-import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "../model/KV";
+import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FILL_BLOCK_REWARD_EPOCH, KV} from "../model/KV";
 
 const CODE_REWIND = 20201029
 const CODE_CONTINUE = 2020102903
@@ -236,7 +236,75 @@ export class FullBlockService {
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
     }
-
+    public async fillBlockRewardByPos() {
+        let prePos = await KV.getNumber(KEY_FILL_BLOCK_REWARD_EPOCH)
+        if (isNaN(prePos)) {
+            prePos = 0 // epoch 0 does not have reward.
+        }
+        console.log(`begin fill block reward at epoch ${prePos+1}`)
+        const exitCode = -2
+        do {
+            const fillRet = await this.fillBlockReward(prePos+1).catch(err=>{
+                console.log(`fill block reward fail, epoch ${prePos+1}`, err)
+                return {code:CODE_CONTINUE, message:'error'}
+            })
+            process.stdout.write(`\r ${new Date().toISOString()} fill block reward at epoch ${prePos+1} return ${
+                fillRet.code}, ${fillRet.message}`)
+            switch (fillRet.code) {
+                case CODE_CONTINUE:
+                    await new Promise(r=>setTimeout(r, 5000))
+                    break;
+                case 0:
+                    prePos += 1
+                    await KV.upsert({value: prePos.toString(), key: KEY_FILL_BLOCK_REWARD_EPOCH})
+                    if (prePos % 100 === 0) {
+                        console.log(`fill block reward to epoch ${prePos}`)
+                    }
+                    break;
+                default:
+                    console.log(`fill block reward return invalid result:`, fillRet)
+                    prePos = exitCode// break the loop
+                    break;
+            }
+        } while (prePos !== exitCode )
+    }
+    public async fillBlockReward(epoch) : Promise<{code:number, message:string}>{
+        const [reward, latestConfirm] = await Promise.all([
+            this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
+                const msg = `${err}`
+                if (msg.includes('expected a numbers with less than largest epoch number.')) {
+                    // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
+                    // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
+                    // console.log(`latest_state ${latest}`)
+                } else {
+                    console.log(`fillBlockReward get reward info fail at epoch ${epoch}: ${msg}`)
+                }
+                return [];
+            }),
+            this.cfx.getEpochNumber('latest_confirmed'),
+        ])
+        if (epoch > latestConfirm) {
+            return {code: CODE_CONTINUE, message:`not confirmed, want ${epoch} > ${latestConfirm} confirmed.`}
+        }
+        if (reward.length === 0) {
+            return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${latestConfirm} confirmed.`}
+        }
+        return FullBlock.sequelize.transaction(async (dbTx)=>{
+            const tx = []
+            reward.forEach(r=>{
+                tx.push(
+                    FullBlock.update(
+                        {totalReward: r.totalReward},
+                        {where: {epoch, hash: r.blockHash}, limit: 1, transaction: dbTx})
+                        .then(([updated]) => updated)
+                )
+            })
+            const updatedArr = await Promise.all(tx)
+            // const allModified = updatedArr.reduce((a,b)=>a+b)
+        }).then(()=>{
+            return {code: 0, message: 'ok'}
+        })
+    }
     // fix executed txn count and avg gas price, they are missed or in-correct once.
     public static async fixProps(epochLeft, epochRight) : Promise<number>{
         const sqlCount = `select epoch, count(*) as executedTxnCount, avg(gasPrice) as avgGasPrice, blockPosition as position
