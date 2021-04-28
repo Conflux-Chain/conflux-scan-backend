@@ -20,7 +20,7 @@ export async function fixDate() {
 
 if (require.main === module) {
     init().then(()=>{
-        fixDate().then()
+        return fixDate()
     }).then(()=>{
         DailyActiveAddress.sequelize.close().then()
     })
