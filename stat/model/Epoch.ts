@@ -5,28 +5,27 @@ export interface EpochPresent {
     epochNumber: number,
     parentHash: string;
     pivotHash: string;
-    timestamp: Date;
+    timestamp: number;
 }
 
 export interface EpochAttributes {
     id: number;
-    timestamp: Date;
-    parentHash: number;
-    pivotHash: number;
-
+    parentHash: string;
+    pivotHash: string;
+    timestamp: number;
 }
 
 export class Epoch extends Model<EpochAttributes> implements EpochAttributes {
     public id: number;
-    timestamp: Date;
-    parentHash: number;
-    pivotHash: number;
+    parentHash: string;
+    pivotHash: string;
+    timestamp: number;
     static register(sequelize) {
         Epoch.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false},
-            timestamp: {type: DataTypes.DATE, allowNull: false},
-            parentHash: {type: DataTypes.BIGINT, allowNull: false},
-            pivotHash: {type: DataTypes.BIGINT, allowNull: false},
+            parentHash: {type: DataTypes.CHAR(128), allowNull: true},
+            pivotHash: {type: DataTypes.CHAR(128), allowNull: true},
+            timestamp: {type: DataTypes.BIGINT, allowNull: true},
         }, {
             tableName: 'epoch',
             sequelize,
@@ -40,12 +39,10 @@ export class Epoch extends Model<EpochAttributes> implements EpochAttributes {
         })
     }
     static async add(epoch: EpochPresent, dbTx: Transaction = undefined) : Promise<Epoch> {
-        let parentId = await makeHex64Id(epoch.parentHash);
-        let pivotId = await makeHex64Id(epoch.pivotHash);
         return Epoch.create({
             id: epoch.epochNumber,
-            parentHash: parentId.id,
-            pivotHash: pivotId.id,
+            parentHash: epoch.parentHash,
+            pivotHash: epoch.pivotHash,
             timestamp: epoch.timestamp
         }, {
             transaction: dbTx

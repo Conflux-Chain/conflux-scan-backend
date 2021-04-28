@@ -34,6 +34,8 @@ export interface StatConfig{
     syncTraceCreateContract: boolean,
     syncEpoch: boolean,
     syncEpochNumber: number,
+    syncContractCreateCountDaily: boolean,
+    syncContractCreateCountHistory: boolean,
     serverTag: string,
     checkRankDelay: boolean,
     erc20watchList:Erc20WatchList[],

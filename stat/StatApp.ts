@@ -22,6 +22,8 @@ import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import { Monitor } from "./monitor/Monitor";
 import {scheduleDailyActiveAddress} from "./model/StatAddress";
 import {EpochSync} from "./service/EpochSync";
+import {DailyContractCreateSync} from "./service/DailyContractCreateSync";
+import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 
 export class StatApp{
     public config: StatConfig;
@@ -43,6 +45,8 @@ export class StatApp{
     public traceCreateSync: BlockTraceCreateSync
     public traceCreateQuery: BlockTraceCreateQuery;
     public epochSync: EpochSync
+    public contractCreateSync: DailyContractCreateSync
+    public contractCreateQuery: DailyContractCreateQuery;
     public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
@@ -94,6 +98,8 @@ export class StatApp{
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
         this.traceCreateQuery = new BlockTraceCreateQuery();
         this.epochSync = new EpochSync(this);
+        this.contractCreateSync = new DailyContractCreateSync(this.sequelize);
+        this.contractCreateQuery = new DailyContractCreateQuery();
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -126,6 +132,9 @@ export class StatApp{
         }
         if (this.config.syncEpoch) {
             await this.epochSync.run(this.config.syncEpochNumber);
+        }
+        if (this.config.syncContractCreateCountDaily) {
+            await this.contractCreateSync.schedule(this.config.syncContractCreateCountHistory); // dailyContractCreate
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

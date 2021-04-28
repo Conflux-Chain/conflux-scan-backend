@@ -11,7 +11,7 @@ export abstract class SyncBase{
 
     protected constructor(app: StatApp) {
         this.app = app;
-        this.forwardQueue = new PreloadMap(this);
+        this.forwardQueue = new PreloadMap(this.getDataFromFullNode.bind(this));
         this.backwardQueue = new PreloadMap(this.getDataFromFullNode.bind(this));
     }
 

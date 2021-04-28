@@ -29,13 +29,14 @@ export class EpochSync extends SyncBase{
     }
 
     async saveDataToDb(epochNumber, modelData) {
-        await Epoch.add(modelData);
+        const newRecord = await Epoch.add(modelData);
+        return Promise.resolve(newRecord);
     }
 
     //---------------------- business method for epoch -----------------------
     private async getEpochByEpochNumber(epochNumber) {
         const {
-            app: { cfx, ttlMap },
+            app: { cfx },
         } = this;
 
         const result = await cfx.getBlockByEpochNumber(epochNumber, false);
@@ -44,8 +45,8 @@ export class EpochSync extends SyncBase{
 
         return {
             epochNumber,
-            pivotHash: pivotBlock.hash,
-            parentHash: pivotBlock.parentHash,
+            pivotHash: pivotBlock.hash.substr(2),
+            parentHash: pivotBlock.parentHash.substr(2),
             timestamp: lodash.min([pivotBlock.timestamp, now]), // XXX: for filter negative timestamp
         };
     }
