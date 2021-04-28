@@ -2,6 +2,7 @@ import {loadConfig, StatConfig} from "./config/StatConfig";
 import {createDB, initModel} from "./service/DBProvider";
 import {Conflux} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
+import {FullBlock} from "./model/FullBlock";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -16,6 +17,8 @@ export async function run() {
         do {
             await FullBlockService.fillPropsBatch(batchSize)
         } while (--loop > 0)
+        const maxEpochInBlock = await FullBlock.max('epoch')
+        console.log(`\n fillPropsBatch done. maxEpochInBlock ${maxEpochInBlock}`);
     } else {
         await syncFullBlock(config)
     }
