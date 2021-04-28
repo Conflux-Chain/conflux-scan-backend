@@ -43,6 +43,12 @@ export class BlockTraceCreateSync{
     private async run() {
         const preEpoch = await KV.getNumber(KEY_BLOCK_TRACE_CREATE_EPOCH)
         const curEpoch = preEpoch + 1
+
+        const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
+        if(curEpoch > epochConfirmed){
+            await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+
         const isSuccess = await this.syncByEpoch(curEpoch)
         if (isSuccess) {
             await KV.update({value: curEpoch.toString()}, {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}})

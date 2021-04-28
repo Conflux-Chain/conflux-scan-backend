@@ -3,6 +3,7 @@ export default {
     port: 8087,
     conflux: { url: 'http://main.confluxrpc.org/v2' },
     cfxWsUrl: '',
+    dingTalkToken: '',
     database: {
         // sqlitePath: './data/database.sqlite',
         database: '',

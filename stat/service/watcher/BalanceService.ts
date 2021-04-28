@@ -116,7 +116,7 @@ export class BalanceService {
         const is1155 = (token.type || '').includes('1155')
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
-            const address = addr ? format.address(addr, this.networkId, true): holder.addressId
+            const address = addr ? format.address(addr, this.networkId): holder.addressId
             // console.log(`balance type is : ${typeof  holder.balance}`)
             return {
                 // holder.balance is string

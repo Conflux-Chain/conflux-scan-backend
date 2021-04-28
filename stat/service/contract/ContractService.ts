@@ -1,3 +1,4 @@
+import { listAllContract } from "../../model/ContractInfo";
 import {fmtDtUTC} from "../../model/Utils";
 
 const superagent = require("superagent")
@@ -27,31 +28,12 @@ export class ContractService{
     }
 
     async run() {
-        const limit = 100
-        console.log(`${fmtDtUTC(new Date())} fetch contract list, skip ${this.skip} , from ${this.scanApiUrl}`)
-        superagent.get(`${this.scanApiUrl}/v1/contract?reverse=false&skip=${this.skip}&limit=${limit}&fields=name`)
-            .timeout(10_000)
-            .end((err, res)=>{
-                if (err || res.status !== 200) {
-                    console.log(`fetch contract fail:`, err)
-                    return
-                }
-                const json = res.body
-                json.list.forEach(cc=>{
-                    // "address": "CFXTEST:TYPE.CONTRACT:ACAKT4A22NBPCYWPJH2T3TRBJRKAAV0VC6ENUEYD0G",
-                    this.map.set(cc.address, cc)
-                })
-                console.log(`${fmtDtUTC(new Date())} map size ${this.map.size}, total ${json.total}`)
-                //
-                this.skip += limit
-                if (this.skip >= json.total) {
-                    this.skip = 0
-                }
-            })
+        (await listAllContract()).forEach(c=>{
+            this.map.set(c.base32, c.name)
+        })
     }
 
     public getName(addr: string) {
-        // "address": "CFXTEST:TYPE.CONTRACT:ACAKT4A22NBPCYWPJH2T3TRBJRKAAV0VC6ENUEYD0G",
         const info = this.map.get(addr)
         return info ? info.name : null
     }

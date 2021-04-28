@@ -16,7 +16,7 @@ import {DailyCfxTxn} from "../model/CfxTransfer";
 const cors = require('@koa/cors');
 import Application = require("koa");
 import {QueryTypes} from "sequelize";
-import {AddressStat} from "../model/StatAddress";
+import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 
 const superagent = require('superagent');
 
@@ -196,6 +196,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/daily-address-creation', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const list = await AddressStat.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
+        ctx.body = {code:0, list}
+    })
+    // daily active address.
+    router.get('/daily-active-address', async function (ctx) {
+        let limit = parseInt(ctx.request.query.limit || 1000);
+        const list = await DailyActiveAddress.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
         ctx.body = {code:0, list}
     })
     // daily cfx transfer count
