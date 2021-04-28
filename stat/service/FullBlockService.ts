@@ -3,13 +3,13 @@ import { Conflux, format } from "js-conflux-sdk";
 import {AddressTransactionIndex, FullBlock, FullTransaction, IFullBlock} from "../model/FullBlock";
 import { makeId } from "../model/HexMap";
 import { fmtDtUTC } from "../model/Utils";
-import { BlockAndMinerSync } from "./BlockAndMinerSync";
 
 const CODE_REWIND = 20201029
 const CODE_CONTINUE = 2020102903
 const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
+    public debugLog:boolean
     constructor(cfx:Conflux) {
         this.cfx = cfx;
     }
@@ -27,7 +27,7 @@ export class FullBlockService {
         let maxAtDb = await FullBlock.findOne({
             where: {epoch: useWhichEpoch, pivot: true}
         });
-        console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
+        this.debugLog && console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) {
@@ -52,8 +52,10 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
+                this.debugLog && console.log(`try again: ${ret.message}`)
+                await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
+                this.debugLog && console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
@@ -62,7 +64,7 @@ export class FullBlockService {
         return ret
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
-        const [rewardList, hashes] = await Promise.all([
+        const [rewardList, hashes, latest_state] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -82,8 +84,12 @@ export class FullBlockService {
                     console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
                 }
                 return []
-            })
+            }),
+            this.cfx.getEpochNumber('latest_state'),
         ])
+        if (latest_state < minEpochNumber) {
+            return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
+        }
         if (hashes.length === 0) {
             return {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
