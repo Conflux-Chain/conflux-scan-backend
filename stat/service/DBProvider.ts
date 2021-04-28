@@ -39,7 +39,7 @@ import {
     WCfxBalance
 } from "../model/Balance";
 import {Trace} from "../model/Trace";
-import {NftId, Token} from "../model/Token";
+import {DailyToken, NftId, Token} from "../model/Token";
 import {DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
@@ -96,6 +96,7 @@ export async function initPartialModel(sequelize) {
     CfxTransfer.register(sequelize)
     DailyCfxTxn.register(sequelize)
     DailyActiveAddress.register(sequelize)
+    DailyToken.register(sequelize)
     // remove auto generated PK field since we use epoch-position as PK.
     FullBlock.register(sequelize);  FullBlock.removeAttribute('id')
     FullTransaction.register(sequelize);  FullTransaction.removeAttribute('id')

@@ -7,6 +7,7 @@ import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
 import {getSumFunction} from "./DBProvider";
 import {Stopwatch} from "./Stopwatch";
 import {StatApp} from "../StatApp";
+import {makeId as makeAddrId} from "../model/HexMap";
 const BigFixed = require('bigfixed');
 
 /**
@@ -173,26 +174,30 @@ export class TxnSync {
                 allTx.push(tx)
             })
         )
+        const txArr = []
+        for (const tx of allTx) {
+            tx.gas = parseInt(tx.gas, 16)
+            tx.gasPrice = parseInt(tx.gasPrice, 16)
+            tx.status = (tx.status === null || tx.status === '') ? null : parseInt(tx.status, 16)
+            tx.value = parseInt(tx.value, 16)
+            tx.nonce = parseInt(tx.nonce, 16)
+            tx.txIndex = parseInt(tx.transactionIndex, 16) || 0
+            tx.blockTime = new Date(parseInt(tx.blockTime, 16) * 1000)
+            tx['data'] = ''
+            tx.epochHeight = epoch;
+            const fromId = await makeAddrId(tx.from, null, {dt:tx.blockTime});
+            const toId = await makeAddrId(tx.to, null, {dt:tx.blockTime});
+            tx.from = fromId.id
+            tx.to = toId.id
+            txArr.push(tx)
+        }
         stopwatch.start('db transaction phase 0')
         let txOk = 'not executed';
         const txCount = allTx.length;
         await TxnSync.staticSequelize.transaction(async (dbTx) => {
             // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc#cfx_gettransactionbyhash
             stopwatch.start('db transaction phase 1')
-            await Promise.all(
-                allTx.map(async (tx) => {
-                    tx['data'] = ''
-                    // console.log(`tx is ${JSON.stringify(tx, null , 4)}`)
-                    tx.epochHeight = epoch;
-                    tx.gas = parseInt(tx.gas, 16)
-                    tx.gasPrice = parseInt(tx.gasPrice, 16)
-                    tx.status = (tx.status === null || tx.status === '') ? null : parseInt(tx.status, 16)
-                    tx.value = parseInt(tx.value, 16)
-                    tx.nonce = parseInt(tx.nonce, 16)
-                    tx.txIndex = parseInt(tx.transactionIndex, 16) || 0
-                    tx.blockTime = new Date(parseInt(tx.blockTime, 16) * 1000)
-                    await TransactionDB.add(tx, dbTx)
-                })
+            await TransactionDB.bulkCreate(txArr, {transaction: dbTx}
             ).then(async ()=>{
                 stopwatch.start('db transaction phase 2')
                 return KV.upsert({key: KEY_TX_EPOCH, value: (epoch + 1).toString()}, {

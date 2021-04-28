@@ -1,15 +1,17 @@
 //@ts-ignore
-import { Conflux, format } from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {AddressTransactionIndex, FullBlock, FullTransaction, IFullBlock} from "../model/FullBlock";
-import { makeId } from "../model/HexMap";
-import { fmtDtUTC } from "../model/Utils";
-import { BlockAndMinerSync } from "./BlockAndMinerSync";
+import {makeId} from "../model/HexMap";
+import {fmtDtUTC} from "../model/Utils";
+import {QueryTypes} from "sequelize"
+import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "../model/KV";
 
 const CODE_REWIND = 20201029
 const CODE_CONTINUE = 2020102903
 const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
+    public debugLog:boolean = true
     constructor(cfx:Conflux) {
         this.cfx = cfx;
     }
@@ -27,7 +29,7 @@ export class FullBlockService {
         let maxAtDb = await FullBlock.findOne({
             where: {epoch: useWhichEpoch, pivot: true}
         });
-        console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
+        this.debugLog && console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) {
@@ -41,7 +43,7 @@ export class FullBlockService {
         do {
             ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 const errStr = `${err}`
-                if (err.includes('Lock wait timeout exceeded;')) {
+                if (errStr.includes('Lock wait timeout exceeded;')) {
                     console.log(`lock time out at epoch ${maxEpoch}:`, err)
                     return {code: CODE_CONTINUE}
                 }
@@ -52,42 +54,54 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-            } else if (ret.coode === CODE_EMPTY_BLOCK) {
-                console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
-                await new Promise(r=>setTimeout(r, 500))
+                this.debugLog && console.log(`try again: ${ret.message}`)
+                await new Promise(r=>setTimeout(r, 1000))
+            } else if (ret.code === CODE_EMPTY_BLOCK) {
+                this.debugLog && console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
+                await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
             }
         } while (always)
         return ret
     }
-    public async syncBlockByEpoch(minEpochNumber: number) {
-        const [rewardList, hashes] = await Promise.all([
+    public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
+        const [rewardList, hashes, latest_state] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
-                console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
-                    const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
-                    console.log(`latest_state ${latest}`)
+                    // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
+                    // console.log(`latest_state ${latest}`)
+                } else {
+                    console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
                 }
                 return [];
             }),
             this.cfx.getBlocksByEpochNumber(minEpochNumber).catch(err=>{
-                console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
+                const msg = `${err}`
+                if (msg.includes('expected a numbers with less than largest epoch number.')) {
+
+                } else {
+                    console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
+                }
                 return []
-            })
+            }),
+            this.cfx.getEpochNumber('latest_state'),
         ])
+        if (latest_state < minEpochNumber) {
+            return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
+        }
+        if (hashes.length === 0) {
+            return {
+                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
+            }
+        }
         let blockList: any/*IFullBlock*/[] = (await Promise.all(
             (hashes as []).map(hash=>{
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
-        if (blockList.length === 0) {
-            return {
-                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
-            }
-        }
         // blockList = blockList.reverse(); // turn to asc order.
         let ok = true;
         let message = "ok";
@@ -96,11 +110,18 @@ export class FullBlockService {
         if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0) {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
+            const addresses = new Set<number>();
+            (await FullTransaction.findAll({where: {epoch: preEpoch}})).forEach(tx=>{
+                addresses.add(tx.fromId)
+                addresses.add(tx.toId)
+            })
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
                     FullBlock.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
                     FullTransaction.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
-                    AddressTransactionIndex.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
+                    AddressTransactionIndex.destroy({
+                        where:{epoch: preEpoch, addressId: [...addresses],},
+                        transaction: dbTx}),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -115,16 +136,15 @@ export class FullBlockService {
         for (const block of blockList) {
             block.epoch = minEpochNumber
             block.pivot = false;
-            const reward = minEpochNumber == 0 ? 0 : rewardList.find(r=>r.blockHash === block.hash)
+            const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash) || {}
             let minerBase32 = block.miner;
             let minerHex = format.hexAddress(minerBase32)
             //save address anyway, so use undefined transaction.
             const addrBean = await makeId(minerHex, undefined, {dt: blockTime})
             block.minerId = addrBean.id
-            block.totalReward = reward.totalReward;
-            block.txFee = reward.txFee;
-            block.avgGasPrice = block.transactions.length === 0 ? 0
-                : block.transactions.map(t=>t.gasPrice).reduce((a,b)=>a+b, BigInt(0)) / BigInt(block.transactions.length);
+            block.totalReward = reward.totalReward || 0;
+            block.txFee = reward.txFee || 0;
+            block.avgGasPrice = 0
             block.position = pos ++
             block.txCount = block.transactions.length // all txn, include packed but not executed
             if (minEpochNumber === 0) {
@@ -133,6 +153,7 @@ export class FullBlockService {
                 block.createdAt = new Date('2020-10-28T16:00:00.000Z')
             } else {
                 block.createdAt = blockTime
+                block.gasUsed = block.gasUsed || 0
             }
         }
         pivotBlock.pivot = true
@@ -140,6 +161,7 @@ export class FullBlockService {
         const executedTxArr = []
         const txByAddressArr = []
         for (const block of blockList) {
+            let sumGasPrice = BigInt(0)
             let pos = 0
             for (const txInfo of block.transactions) {
                 if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
@@ -167,9 +189,11 @@ export class FullBlockService {
                         clone.addressId = dummyTo
                         txByAddressArr.push(clone)
                     }
+                    sumGasPrice += txInfo.gasPrice
                 }
             }
             block.executedTxnCount = pos
+            pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
@@ -212,11 +236,60 @@ export class FullBlockService {
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
     }
+
+    // fix executed txn count and avg gas price, they are missed or in-correct once.
+    public static async fixProps(epochLeft, epochRight) : Promise<number>{
+        const sqlCount = `select epoch, count(*) as executedTxnCount, avg(gasPrice) as avgGasPrice, blockPosition as position
+            from full_tx where epoch between ? and ?
+            group by epoch, blockPosition;`
+        const list:any[] = await FullTransaction.sequelize.query(sqlCount, {
+            type: QueryTypes.SELECT, replacements: [epochLeft, epochRight]
+        })
+        if (list.length === 0) {
+            return 0
+        }
+
+        // const sqlUpdate = `update full_block set executedTxnCount = ?, avgGasPrice = ?
+        //     where epoch = ? and position = ?`
+        // There is no way to update multiple records by different conditions,
+        // so, take the tricky of insert on duplicate key update.
+        // fill props for non-null field to match schema
+        const dummyDt = new Date()
+        list.forEach(r=>{
+            r.createdAt = dummyDt; r.minerId=0; r.pivot=false;r.txnCount=0;r.difficulty=0;
+        })
+        const updated = await FullBlock.bulkCreate(list,{
+            updateOnDuplicate:['executedTxnCount', 'avgGasPrice'],
+            // benchmark: true, logging: console.log
+        });
+        return updated.length
+    }
+    public static async fillPropsBatch(batchSize:number = 100) : Promise<number> {
+        let prePos = await KV.getNumber(KEY_FILL_BLOCK_PROPS_EPOCH)
+        if (isNaN(prePos)) {
+            prePos = -1
+        }
+        const left = prePos + 1
+        const right = prePos + batchSize
+        let updated = 0
+        return this.fixProps(left, right).then(updated0=> {
+            updated = updated0
+            return KV.upsert({key: KEY_FILL_BLOCK_PROPS_EPOCH, value: right.toString()}, {})
+        }).then(()=>{
+            process.stdout.write(`\r${new Date().toISOString()} fillPropsAfterConfirmedByConfig, epoch [${left}, ${right}] updated ${updated}`)
+            return updated
+        }).catch(err=>{
+            console.log(`${new Date().toISOString()} fillPropsAfterConfirmedByConfig, error:`, err)
+            return 0
+        })
+    }
 }
 /*
 SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
        FROM INFORMATION_SCHEMA.PARTITIONS
        WHERE PARTITION_NAME is not null;
+
+alter table full_block add column `executedTxnCount` bigint unsigned null  default null;
 
 https://dev.mysql.com/doc/refman/5.7/en/partitioning-limitations-locking.html
 ALTER TABLE ... TRUNCATE PARTITION prunes locks; only the partitions to be emptied are locked.

@@ -108,3 +108,40 @@ export class NftId extends Model<INftId> implements INftId {
         })
     }
 }
+export const T_DAILY_TOKEN = 'daily_token'
+export interface IDailyToken {
+    id?:number
+    hexId:number
+    day:Date
+    transferCount:number
+    transferAmount:number
+    uniqueReceiver:number
+    uniqueSender:number
+}
+// stat per token
+export class DailyToken extends Model<IDailyToken> implements IDailyToken {
+    id?:number
+    hexId:number
+    day:Date
+    transferCount:number
+    transferAmount:number
+    uniqueReceiver:number
+    uniqueSender:number
+    static register(seq: Sequelize) {
+        DailyToken.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            hexId: {type: DataTypes.BIGINT, allowNull: false, },
+            day: {type: DataTypes.DATEONLY, allowNull: false, },
+            transferCount: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
+            transferAmount: {type: DataTypes.STRING(78), allowNull: false, defaultValue: '0'},
+            uniqueReceiver: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
+            uniqueSender: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
+        },{
+            tableName: T_DAILY_TOKEN,
+            sequelize: seq,
+            indexes:[{
+                name: 'uk_hexId_day', fields:[{name:'hexId'},{name:'day'}], unique: true,
+            }]
+        })
+    }
+}

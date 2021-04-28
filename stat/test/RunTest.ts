@@ -29,11 +29,7 @@ async function createEpoch() {
 }
 
 async function createTx() {
-    let id = rnd(300000);
-    await TransactionDB.add({
-        blockTime: new Date(), epochHeight: 0, from: hex(40), hash: hex64(),
-        id: id, nonce: 20, to: hex(40), gas: 0, txIndex: 0, value: 1})
-    await TransactionDB.destroy({where: {id}})
+
 }
 
 async function testIdAndModel() {
