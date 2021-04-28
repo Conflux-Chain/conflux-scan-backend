@@ -3,6 +3,7 @@ import {createDB, initModel} from "./service/DBProvider";
 import {Conflux} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
+import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "./model/KV";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -18,7 +19,9 @@ export async function run() {
             await FullBlockService.fillPropsBatch(batchSize)
         } while (--loop > 0)
         const maxEpochInBlock = await FullBlock.max('epoch')
-        console.log(`\n fillPropsBatch done. maxEpochInBlock ${maxEpochInBlock}`);
+        const fixedPos = await KV.getNumber(KEY_FILL_BLOCK_PROPS_EPOCH)
+        console.log(`\n fillPropsBatch done. maxEpochInBlock ${maxEpochInBlock
+            }, fixPos ${fixedPos}, ${fixedPos>=maxEpochInBlock ? 'ok, fixed' : 'need fix more.'}`);
     } else {
         await syncFullBlock(config)
     }
