@@ -57,7 +57,7 @@ export class FullBlockService {
                 this.debugLog && console.log(`try again: ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                this.debugLog && console.log(`empty block at epoch ${ret.epoch}, ${ret.message}`)
+                this.debugLog && console.log(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
