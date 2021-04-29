@@ -269,7 +269,7 @@ export class FullBlockService {
         } while (prePos !== exitCode )
     }
     public async fillBlockReward(epoch) : Promise<{code:number, message:string}>{
-        const [reward, latestConfirm] = await Promise.all([
+        const [reward, latestConfirm, maxEpochOfBlock] = await Promise.all([
             this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -282,9 +282,13 @@ export class FullBlockService {
                 return [];
             }),
             this.cfx.getEpochNumber('latest_confirmed'),
+            FullBlock.max('epoch')
         ])
         if (epoch > latestConfirm) {
             return {code: CODE_CONTINUE, message:`not confirmed, want ${epoch} > ${latestConfirm} confirmed.`}
+        }
+        if (epoch > maxEpochOfBlock) {
+            return {code: CODE_CONTINUE, message: `max epoch in full block table is ${maxEpochOfBlock}, less than ${epoch}`}
         }
         if (reward.length === 0) {
             return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${latestConfirm} confirmed.`}
