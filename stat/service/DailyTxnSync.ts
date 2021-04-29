@@ -7,6 +7,7 @@ import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
+const CONST = require('./common/constant');
 
 export class DailyTxnSync{
     private sequelize: Sequelize;
@@ -66,17 +67,21 @@ export class DailyTxnSync{
         }
         repeat().then();
     }
-
-    public static async calcAllRegisteredTokenDailyStat(dt:Date) {
-        const tokenList = await Token.findAll()
-        console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
-        for(const token of tokenList) {
-            await this.calcDailyToken(dt, token.hex40id)
-            console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
-        }
-        console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
+}
+export async  function scheduleDailyTokenStat() {
+    return calcAllRegisteredTokenDailyStat(new Date())
+        .then(()=>setTimeout(scheduleDailyTokenStat, 1000*3600*4))
+}
+export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
+    const tokenList = await Token.findAll()
+    console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
+    for(const token of tokenList) {
+        await calcDailyToken(dt, token.hex40id)
+        console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
     }
-    public static async calcDailyToken(dt:Date, tokenHexId:number) {
+    console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
+}
+export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         const tokenBean = await Token.findOne({where: {hex40id: tokenHexId}})
         if (tokenBean === null) {
             console.log(`${new Date().toISOString()} token not found, hex id ${tokenHexId}`)
@@ -107,13 +112,12 @@ export class DailyTxnSync{
             console.log(`stat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol} day ${start}`)
         }
         stat.day = start
-        console.log(`stat got :`, stat);
+        // console.log(`stat got :`, stat);
         const [updatedCnt] = await DailyToken.update(stat, {where: {hexId: tokenHexId, day: start}})
         if (updatedCnt === 0) {
             await DailyToken.create(stat as DailyToken)
-            console.log(`create daily token stat :`, stat)
+            process.stdout.write(`\r ${CONST.CL} create daily token stat : ${tokenBean.symbol}`)
         } else {
-            console.log(`update daily token stat :`, stat)
+            process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
         }
     }
-}

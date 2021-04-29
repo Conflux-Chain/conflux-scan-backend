@@ -12,7 +12,7 @@ import {BalanceService} from "./service/watcher/BalanceService";
 import {ContractService} from "./service/contract/ContractService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
-import {DailyTxnSync} from "./service/DailyTxnSync";
+import {DailyTxnSync, scheduleDailyTokenStat} from "./service/DailyTxnSync";
 import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
@@ -104,7 +104,8 @@ export class StatApp{
         }
         if (this.config.syncTxnCountDaily) {
             await this.dailyTxnSync.schedule(this.config.syncTxnCountHistory); // dailyTxn
-            scheduleDailyActiveAddress().then()
+            scheduleDailyActiveAddress()
+                .then(()=>{scheduleDailyTokenStat()})
         }
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
