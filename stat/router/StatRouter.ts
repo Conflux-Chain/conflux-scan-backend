@@ -237,6 +237,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             limit ? parseInt(limit): limit);
         ctx.body = {code: 0, data: page};
     });
+    // daily contract count
+    router.get('/contract/daily/list', async function (ctx) {
+        const {skip, limit} = ctx.request.query
+        const page = await statApp.contractCreateQuery.listContractCreateDaily(skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
+        ctx.body = {code: 0, data: page};
+    });
     // get creat trace
     router.get('/trace/create', async function (ctx) {
         const {contract} = ctx.request.query

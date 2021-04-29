@@ -1,32 +1,20 @@
 import {Transaction, DataTypes, Model} from "sequelize";
-import {makeId as makeHex64Id} from "./HexMap";
 
-export interface EpochPresent {
-    epochNumber: number,
-    parentHash: string;
+export interface IEpoch {
+    epoch: number;
     pivotHash: string;
     timestamp: Date;
 }
 
-export interface EpochAttributes {
-    id: number;
+export class Epoch extends Model<IEpoch> implements IEpoch {
+    public epoch: number;
+    pivotHash: string;
     timestamp: Date;
-    parentHash: number;
-    pivotHash: number;
-
-}
-
-export class Epoch extends Model<EpochAttributes> implements EpochAttributes {
-    public id: number;
-    timestamp: Date;
-    parentHash: number;
-    pivotHash: number;
     static register(sequelize) {
         Epoch.init({
-            id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false},
-            timestamp: {type: DataTypes.DATE, allowNull: false},
-            parentHash: {type: DataTypes.BIGINT, allowNull: false},
-            pivotHash: {type: DataTypes.BIGINT, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false},
+            pivotHash: {type: DataTypes.CHAR(128), allowNull: true},
+            timestamp: {type: DataTypes.DATE, allowNull: true},
         }, {
             tableName: 'epoch',
             sequelize,
@@ -39,13 +27,10 @@ export class Epoch extends Model<EpochAttributes> implements EpochAttributes {
             ]
         })
     }
-    static async add(epoch: EpochPresent, dbTx: Transaction = undefined) : Promise<Epoch> {
-        let parentId = await makeHex64Id(epoch.parentHash);
-        let pivotId = await makeHex64Id(epoch.pivotHash);
+    static async add(epoch: IEpoch, dbTx: Transaction = undefined) : Promise<Epoch> {
         return Epoch.create({
-            id: epoch.epochNumber,
-            parentHash: parentId.id,
-            pivotHash: pivotId.id,
+            epoch: epoch.epoch,
+            pivotHash: epoch.pivotHash,
             timestamp: epoch.timestamp
         }, {
             transaction: dbTx

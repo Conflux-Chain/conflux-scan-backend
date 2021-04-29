@@ -48,6 +48,7 @@ import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {ContractInfo} from "../model/ContractInfo";
 import {AddressTransactionIndex, FullBlock, FullTransaction} from "../model/FullBlock";
+import {DailyContractCreate} from "../model/DailyContractCreate";
 let conf
 export function createDB(config) {
     conf = config
@@ -171,6 +172,7 @@ export async function initModel(sequelize) {
     TestTimezone.register(sequelize);
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);
+    DailyContractCreate.register(sequelize);
 }
 
 export function createMySql(dbConf) {
