@@ -21,7 +21,10 @@ export async function run() {
         const maxEpochInBlock = await FullBlock.max('epoch')
         const fixedPos = await KV.getNumber(KEY_FILL_BLOCK_PROPS_EPOCH)
         console.log(`\n fillPropsBatch done. maxEpochInBlock ${maxEpochInBlock
-            }, fixPos ${fixedPos}, ${fixedPos>=maxEpochInBlock ? 'ok, fixed' : 'need fix more.'}`);
+        }, fixPos ${fixedPos}, ${fixedPos >= maxEpochInBlock ? 'ok, fixed' : 'need fix more.'}`);
+    } else if(args[0] === 'reward') {
+        const cfx = new FullBlockService(new Conflux(config.conflux))
+        await cfx.fillBlockRewardByPos()
     } else {
         await syncFullBlock(config)
     }
