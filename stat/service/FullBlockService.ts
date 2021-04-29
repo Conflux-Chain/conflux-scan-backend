@@ -212,7 +212,7 @@ export class FullBlockService {
             if((minEpochNumber % epochPerStat) === 0) {
                 let now = new Date().getTime();
                 const elapse = now - this.metrics.ms
-                console.info(`${fmtDtUTC(new Date())} insert block ${this.metrics.blockCount
+                console.info(`\r\u001b[2K${fmtDtUTC(new Date())} insert block ${this.metrics.blockCount
                 } tx ${this.metrics.executedTxCount} address's tx ${this.metrics.addressTxCount}, at epoch ${
                     minEpochNumber
                 }, max block time ${blockTime.toISOString()}, cost ${elapse}ms`)
