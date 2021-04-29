@@ -101,7 +101,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
-            count(distinct(toId)) uniqueSender from erc20transfer where contractId=?
+            count(distinct(toId)) uniqueSender from ${model.getTableName()} where contractId=?
             and createdAt between ? and ?`
         const stat:DailyToken = (await model/*Erc20Transfer*/.sequelize.query(sql, {type:QueryTypes.SELECT,
             replacements:[tokenHexId, start, end],
@@ -109,7 +109,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         }))[0] as DailyToken
         if (stat.hexId === null) {
             stat.hexId = tokenHexId
-            console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol} day ${start}`)
+            console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol} day ${start.toISOString()}`)
         }
         stat.day = start
         // console.log(`stat got :`, stat);
