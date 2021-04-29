@@ -2,7 +2,7 @@ import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddres
 
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
-import {calcAllRegisteredTokenDailyStat, DailyTxnSync} from "../DailyTxnSync";
+import {calcAllRegisteredTokenDailyStat, calcDailyToken, DailyTxnSync} from "../DailyTxnSync";
 async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.database)
@@ -20,8 +20,14 @@ export async function fixDate() {
 }
 
 if (require.main === module) {
+    const args = process.argv.slice(2)
     init().then(()=>{
-        return fixDate()
+        if (args[0]) {
+            // node this '2021-04-29' 123
+            return calcDailyToken(new Date(args[0]), Number(args[1]))
+        } else {
+            return fixDate()
+        }
     }).then(()=>{
         DailyActiveAddress.sequelize.close().then()
     })
