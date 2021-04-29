@@ -68,7 +68,9 @@ export class DailyTxnSync{
         repeat().then();
     }
 }
+let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
+    showDebugLog = false
     return calcAllRegisteredTokenDailyStat(new Date())
         .then(()=>setTimeout(scheduleDailyTokenStat, 1000*3600*4))
 }
@@ -77,7 +79,7 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
     for(const token of tokenList) {
         await calcDailyToken(dt, token.hex40id)
-        console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
+        showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
     }
     console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
 }
@@ -109,15 +111,15 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         }))[0] as DailyToken
         if (stat.hexId === null) {
             stat.hexId = tokenHexId
-            console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol} day ${start.toISOString()}`)
+            showDebugLog && console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol} day ${start.toISOString()}`)
         }
         stat.day = start
         // console.log(`stat got :`, stat);
         const [updatedCnt] = await DailyToken.update(stat, {where: {hexId: tokenHexId, day: start}})
         if (updatedCnt === 0) {
             await DailyToken.create(stat as DailyToken)
-            process.stdout.write(`\r ${CONST.CL} create daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && process.stdout.write(`\r ${CONST.CL} create daily token stat : ${tokenBean.symbol}`)
         } else {
-            process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
         }
     }
