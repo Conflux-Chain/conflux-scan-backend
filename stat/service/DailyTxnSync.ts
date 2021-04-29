@@ -105,7 +105,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
             and createdAt between ? and ?`
         const stat:DailyToken = (await model/*Erc20Transfer*/.sequelize.query(sql, {type:QueryTypes.SELECT,
             replacements:[tokenHexId, start, end],
-            logging: console.log
+            // logging: console.log
         }))[0] as DailyToken
         if (stat.hexId === null) {
             stat.hexId = tokenHexId
