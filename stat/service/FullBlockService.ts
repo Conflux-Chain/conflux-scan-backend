@@ -258,7 +258,7 @@ export class FullBlockService {
                     prePos += 1
                     await KV.upsert({value: prePos.toString(), key: KEY_FILL_BLOCK_REWARD_EPOCH})
                     if (prePos % 200 === 0) {
-                        console.log(`\r\u001b[2K Fill block reward to epoch ${prePos}`)
+                        console.log(`\r\u001b[2K${new Date().toISOString()} Fill block reward to epoch ${prePos}`)
                     }
                     break;
                 default:
