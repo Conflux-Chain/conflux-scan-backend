@@ -2,7 +2,7 @@ import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddres
 
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
-import {DailyTxnSync} from "../DailyTxnSync";
+import {calcAllRegisteredTokenDailyStat, DailyTxnSync} from "../DailyTxnSync";
 async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.database)
@@ -13,8 +13,8 @@ export async function fixDate() {
     let dt = new Date('2020-10-28')
     let now = new Date()
     while( dt < now) {
-        await DailyTxnSync.calcAllRegisteredTokenDailyStat(dt)
-        dt = new Date(dt.getTime() + 1000*3600*24)
+        await calcAllRegisteredTokenDailyStat(dt)
+        dt.setDate(dt.getDate()+1)
     }
     console.log(`done.`)
 }
