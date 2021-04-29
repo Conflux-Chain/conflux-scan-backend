@@ -1,5 +1,3 @@
-// @ts-ignore
-import {format} from "js-conflux-sdk";
 import {Epoch} from "../model/Epoch";
 import {SyncBase, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
@@ -13,7 +11,7 @@ export class EpochSync extends SyncBase{
         this.app = app;
     }
 
-    //----------------- implementation method from  SyncBase -----------------
+    //----------------- implementation method from SyncBase -----------------
     async getDataFromFullNode(epochNumber): Promise<SyncData> {
         const data = await this.getEpochByEpochNumber(epochNumber);
         const syncData = {
@@ -25,7 +23,7 @@ export class EpochSync extends SyncBase{
     }
 
     async delDataFromDb(epochNumber) {
-        await Epoch.destroy({where:{id: epochNumber}});
+        await Epoch.destroy({where:{epoch: epochNumber}});
     }
 
     async saveDataToDb(epochNumber, modelData) {
@@ -39,41 +37,16 @@ export class EpochSync extends SyncBase{
             app: { cfx },
         } = this;
 
-        const result = await cfx.getBlockByEpochNumber(epochNumber, false);
-        const pivotBlock = this.parseBlock(result);
+        const pivotBlock = await cfx.getBlockByEpochNumber(epochNumber, false);
+        pivotBlock.timestamp = Number(pivotBlock.timestamp);
         const now = Math.floor(Date.now() / 1000);
+        const timestamp = lodash.min([pivotBlock.timestamp, now]);// XXX: for filter negative timestamp
 
         return {
-            epochNumber,
+            epoch: epochNumber,
             pivotHash: pivotBlock.hash.substr(2),
             parentHash: pivotBlock.parentHash.substr(2),
-            timestamp: lodash.min([pivotBlock.timestamp, now]), // XXX: for filter negative timestamp
+            timestamp: new Date(timestamp * 1000),
         };
-    }
-
-    private parseBlock(block, detail = false) {
-        if (block.epochNumber) {
-            block.epochNumber = Number(block.epochNumber);
-        }
-        block.timestamp = Number(block.timestamp);
-        block.miner = format.hexAddress(block.miner);
-        block.size = BigInt(block.size || 0);
-        block.difficulty = BigInt(block.difficulty || 0);
-        if (detail) {
-            block.transactions.forEach((transaction) => {
-                transaction.from = format.hexAddress(transaction.from);
-                if (transaction.to) {
-                    transaction.to = format.hexAddress(transaction.to);
-                }
-                if (transaction.contractCreated) {
-                    transaction.contractCreated = format.hexAddress(transaction.contractCreated);
-                }
-                if (transaction.status) {
-                    transaction.status = Number(transaction.status);
-                }
-                transaction.gasPrice = BigInt(transaction.gasPrice || 0);
-            });
-        }
-        return block;
     }
 }

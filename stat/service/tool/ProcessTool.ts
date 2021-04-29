@@ -10,7 +10,7 @@ process.on('SIGTERM', () => {
   running = false;
 });
 process.on('unhandledRejection', (e) => {
-  console.error(e); // eslint-disable-line no-console
+  console.error(`the process encountered unhandledRejection!`, e); // eslint-disable-line no-console
   running = false;
 });
 

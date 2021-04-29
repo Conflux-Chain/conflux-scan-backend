@@ -42,53 +42,62 @@ export abstract class SyncBase{
         return this.backwardQueue.pop(epochNumber);
     }
 
-    private async saveForward(epochNumber, { parentHash, modelData }) {
+    private async saveForward(epochNumber, { parentHash, modelData }): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
         const prevEpoch = await this.queryEpochFromDb(preEpochNumber);
         if (prevEpoch && parentHash !== prevEpoch.pivotHash) {
-            throw new Error(`ParentEpochError: previous[epoch=${preEpochNumber},pivotHash="${prevEpoch.pivotHash}"]
-            , current[epoch=${epochNumber},parentHash="${parentHash}"]`);
+            return SyncCode.PIVOT_SWITCH;
         }
         await this.saveDataToDb(epochNumber, modelData);
+        return SyncCode.SUCCESS;
     }
 
-    private async saveBackward(epochNumber, { pivotHash, modelData }) {
+    private async saveBackward(epochNumber, { pivotHash, modelData }): Promise<SyncCode> {
         const nextEpochNumber = epochNumber + 1;
         const nextEpoch = await this.queryEpochFromDb(nextEpochNumber);
-        if (nextEpoch && pivotHash !== nextEpoch.parentHash) {
-            throw new Error(`ParentEpochError: next[epoch=${nextEpochNumber}, parentHash="${nextEpoch.parentHash}"]
-            , current[epoch=${epochNumber},pivotHash="${pivotHash}"]`);
-        }
+        // useful only when sync backward
+        // if (nextEpoch && pivotHash !== nextEpoch.parentHash) {
+        //     return SyncCode.PIVOT_SWITCH;
+        // }
         await this.saveDataToDb(epochNumber, modelData);
+        return SyncCode.SUCCESS;
     }
 
     private async syncForward(epochNumber) {
+        let syncCode;
         try {
             const data: SyncData = await this.getDataForwardWithPreload(epochNumber);
-            await this.saveForward(epochNumber, data);
+            syncCode = await this.saveForward(epochNumber, data);
+        } catch (error) {
+            console.error(`sync_base sync forward error, epoch:${epochNumber}`, error);
+            throw error;
+        }
+
+        if(syncCode === SyncCode.SUCCESS){
             epochNumber += 1;
-        } catch (e) {
-            console.error(`sync_base forward sync error, epoch:${epochNumber}`, e);
-            // TODO Ding_talk alert
+        }
+        if(syncCode === SyncCode.PIVOT_SWITCH){
             await this.forwardQueue.clear();
             epochNumber -= 1;
-            await this.delDataFromDb(epochNumber).catch((err) => {
-                console.error(`sync_base del end fail, epoch:${epochNumber}`, err);
-                // TODO Ding_talk alert
-                throw err;
+            await this.delDataFromDb(epochNumber).catch((error) => {
+                console.error(`sync_base del end error, epoch:${epochNumber}`, error);
+                throw error;
             });
         }
         return epochNumber;
     }
 
     private async syncBackward(epochNumber) {
+        let syncCode;
         try {
             const data: SyncData = await this.getDataBackwardWithPreload(epochNumber);
-            await this.saveBackward(epochNumber, data);
+            syncCode = await this.saveBackward(epochNumber, data);
+        } catch (error) {
+            console.error(`sync_base sync backward error, epoch:${epochNumber}`, error);
+        }
+
+        if(syncCode === SyncCode.SUCCESS){
             epochNumber -= 1;
-        } catch (e) {
-            console.error(`sync_base backward sync error, epoch:${epochNumber}`, e);
-            // TODO Ding_talk alert
         }
         return epochNumber;
     }
@@ -114,14 +123,15 @@ export abstract class SyncBase{
     }
 
     public async queryNextEpochFromDb(){
-        let maxEpochNumber:number = await Epoch.max('id')
+        let maxEpochNumber:number = await Epoch.max('epoch')
         return maxEpochNumber ? (maxEpochNumber + 1) : 0;
     }
 
     public async queryEpochFromDb(epochNumber){
-        return await Epoch.findOne({where:{id:epochNumber}});
+        return await Epoch.findOne({where:{epoch: epochNumber}});
     }
 
+    //-------------------- methods subclass to implement ---------------------
     public abstract getDataFromFullNode(epochNumber): Promise<SyncData>;
 
     public abstract saveDataToDb(epochNumber, data);
@@ -129,7 +139,13 @@ export abstract class SyncBase{
     public abstract delDataFromDb(epochNumber);
 }
 
-export class PreloadMap extends Map {
+export class SyncData {
+    parentHash: string;
+    pivotHash: string;
+    modelData: any;
+}
+
+class PreloadMap extends Map {
     private func: any;
     constructor(func) {
         super();
@@ -155,9 +171,8 @@ export class PreloadMap extends Map {
     }
 }
 
-export class SyncData {
-    parentHash: string;
-    pivotHash: string;
-    modelData: any;
+enum SyncCode {
+    SUCCESS,
+    FAILURE,
+    PIVOT_SWITCH,
 }
-

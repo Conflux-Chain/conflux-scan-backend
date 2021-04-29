@@ -21,11 +21,11 @@ const sequelize = createDB(config.database)
 
 async function createEpoch() {
     const epochNumber = 1;
-    await Epoch.destroy({where: {id: epochNumber}})
-    await Epoch.add({epochNumber, parentHash: hex64(), pivotHash: hex64(), timestamp: new Date().getTime()})
+    await Epoch.destroy({where: {epoch: epochNumber}})
+    await Epoch.add({epoch: epochNumber, pivotHash: hex64(), timestamp: new Date()})
     const count = await Epoch.count({})
     console.info(`add epoch ok, total size ${count}`)
-    await Epoch.destroy({where: {id: epochNumber}})
+    await Epoch.destroy({where: {epoch: epochNumber}})
 }
 
 async function createTx() {
