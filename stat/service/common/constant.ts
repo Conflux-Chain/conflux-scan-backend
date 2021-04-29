@@ -1,5 +1,6 @@
 module.exports = {
-
+  // https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
+  CL: '\u001b[2K', // CLEAR line
   TX_STATUS: {
     SUCCESS: 0,
     FAILED: 1,
