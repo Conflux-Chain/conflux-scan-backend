@@ -57,7 +57,7 @@ export async function calcDailyActiveAddress(dt:Date) {
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
     end.setHours(23,59,59,999)
-    let count = await FullTransaction.count({        where:{
+    let count = await FullTransaction.count({  distinct: true, col: 'fromId',      where:{
             createdAt: {[Op.between]:[dt, end]}
         }    })
     // expect that record exists

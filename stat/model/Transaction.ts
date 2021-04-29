@@ -7,7 +7,9 @@ export interface Transaction{
     nonce?: number,
     hash?: string, //64
     from?: string, // 40
+    fromId?:number
     to?: string, // 40
+    toId?:number
     value?: number,
     gas?: number,
     gasPrice?: number;
@@ -75,19 +77,5 @@ export class TransactionDB extends Model<ITransactionDB> implements ITransaction
                 name: 'blockTime', fields: [{name:'blockTime', order: "DESC"}]
             }]
         })
-    }
-
-    static async add(tx: Transaction, dbTx = undefined): Promise<ITransactionDB> {
-        const fromId = await makeAddrId(tx.from, dbTx, {dt:tx.blockTime});
-        const toId = await makeAddrId(tx.to, dbTx, {dt:tx.blockTime});
-        // const hashId = await makeAddrId(tx.hash);
-        return await TransactionDB.create({
-            epochHeight: tx.epochHeight,
-            from: fromId.id,
-            hash: tx.hash, nonce: tx.nonce, to: toId.id,
-            id: tx.id, value: tx.value, gas: tx.gas, txIndex: tx.txIndex,
-            blockTime: tx.blockTime,
-            gasPrice: tx.gasPrice, status: tx.status
-        }, {transaction: dbTx })
     }
 }
