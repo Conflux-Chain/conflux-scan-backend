@@ -7,8 +7,15 @@ import {StatApp} from "../StatApp";
 
 export class FullBlockQuery {
     public async listBlock({epochNumber, blockHash, beginTime, endTime, miner, skip = 0, limit = 10}) {
-        const options: any = {};
+        // parse para
+        let minerId;
+        if(miner){
+            const hex40 = await Hex40Map.findOne({where: {hex: miner.substr(2)}})
+            minerId = hex40?.id
+        }
+
         // fields
+        const options: any = {};
         options.attributes = ['epoch',
             'position',
             'txCount',
@@ -21,13 +28,6 @@ export class FullBlockQuery {
             'totalReward',
             'createdAt',
         ];
-
-        // parse para
-        let minerId;
-        if(miner){
-            const hex40 = await Hex40Map.findOne({where: {hex: miner.substr(2)}})
-            minerId = hex40?.id
-        }
 
         // conditions
         const conditionArray = [];
@@ -63,23 +63,25 @@ export class FullBlockQuery {
         options.offset = skip;
         options.limit = limit;
         const page = await FullBlock.findAndCountAll(options);
+
+        // process para
         if(page && page.rows){
-            const minerIdArray = [];
+            const hex40IdArray = [];
             page.rows.forEach( row => {
-                minerIdArray.push(row.minerId);
+                hex40IdArray.push(row.minerId);
             });
             // miner address
             const hex40Array = await Hex40Map.findAll({
                 where: {
-                    id: { [Op.in]: minerIdArray}
+                    id: { [Op.in]: hex40IdArray}
                 },
             })
-            const hex40IdMap = new Map<number, string>()
+            const hex40Map = new Map<number, string>()
             hex40Array.forEach(hex40=>{
-                hex40IdMap.set(hex40.id, hex40.hex)
+                hex40Map.set(hex40.id, hex40.hex)
             })
             page.rows.forEach(row=>{
-                const base32 = format.address(`0x${hex40IdMap.get(row.minerId)}`, StatApp.networkId);
+                const base32 = format.address(`0x${hex40Map.get(row.minerId)}`, StatApp.networkId);
                 row['miner'] = base32;
             })
         }
