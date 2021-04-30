@@ -6,7 +6,7 @@ import {Hex40Map} from "../model/HexMap";
 import {StatApp} from "../StatApp";
 
 export class FullBlockQuery {
-    public async listBlock({epochNumber, blockHash, beginTime, endTime, skip = 0, limit = 10}) {
+    public async listBlock({epochNumber, blockHash, beginTime, endTime, miner, skip = 0, limit = 10}) {
         const options: any = {};
         // fields
         options.attributes = ['epoch',
@@ -21,6 +21,13 @@ export class FullBlockQuery {
             'totalReward',
             'createdAt',
         ];
+
+        // parse para
+        let minerId;
+        if(miner){
+            const hex40 = await Hex40Map.findOne({where: {hex: miner.substr(2)}})
+            minerId = hex40?.id
+        }
 
         // conditions
         const conditionArray = [];
@@ -37,6 +44,9 @@ export class FullBlockQuery {
             conditionArray.push({createdAt: {
                     [Op.lt]:endTime.getTime() / 1000
                 }});
+        }
+        if(minerId){
+            conditionArray.push({minerId});
         }
         let query: any = {};
         if(conditionArray.length >= 2){
