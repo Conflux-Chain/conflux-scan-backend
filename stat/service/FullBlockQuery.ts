@@ -6,6 +6,12 @@ import {Hex40Map} from "../model/HexMap";
 import {StatApp} from "../StatApp";
 
 export class FullBlockQuery {
+    protected app;
+
+    protected constructor(app) {
+        this.app = app;
+    }
+
     public async listBlock({epochNumber, blockHash, beginTime, endTime, miner, skip = 0, limit = 10}) {
         // parse para
         let minerId;
@@ -63,6 +69,9 @@ export class FullBlockQuery {
         options.offset = skip;
         options.limit = limit;
         const page = await FullBlock.findAndCountAll(options);
+        if(this.app && this.app?.logger){
+            this.app.logger.info({src: 'fullblock.findAndCountAll-------------', msg: `options:${JSON.stringify(options)},page:${JSON.stringify(page)}`});
+        }
 
         // process para
         if(page && page.rows){
