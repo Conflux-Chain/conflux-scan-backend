@@ -95,35 +95,28 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
-            // superagent.get(`${statApp.config.scanApiUrl}/v1/token`)
-            //     .query(ctx.request.querystring).end(async (err, base)=>{
-            //     if (base.status !== 200) {
-            //         ctx.body = base
-            //         ctx.status = base.status;
-            //         r('fail')
-            //         return;
-            //     }
-            //     base =  JSON.parse(base.text)
-            //     // console.log(`base data:`, JSON.stringify(base))
-            //     const localTokenList = await statApp.balanceService.listToken();
-            //     const map = new Map()
-            //     localTokenList.forEach(t=>map.set(t.base32.substr(t.base32.lastIndexOf(':')).toLowerCase(), t))
-            //     base.list.forEach(baseToken=>{
-            //         baseToken.holderCount = '-'
-            //         const info = map.get(baseToken.address.substr(baseToken.address.lastIndexOf(':')).toLowerCase())
-            //         info && (baseToken.holderCount = info.holder)
-            //         if (info && info.name === '') {
-            //             // it's really bad to do it here.
-            //             Token.update({name: baseToken.name},{where: {id: info.id}})
-            //                 .catch()
-            //         }
-            //     })
-            //
-            //     ctx.body = base
-            //     r('ok')
-            // })
             const {fields, transferType, orderBy, reverse, skip, limit} = ctx.request.query;
             const page = await statApp.tokenSync.listToken(fields, transferType, orderBy, reverse, skip? parseInt(skip): skip,
+                limit ? parseInt(limit): limit);
+            const result: any = {};
+            if(page){
+                result.total = page.count;
+                result.list = page.rows;
+            }
+            ctx.body = result;
+            r('ok')
+        }).catch(err=>{
+            ctx.body = {
+                code: 500,
+                message: `${err}`
+            }
+        })
+    })
+    // token by name
+    router.get('/tokens/name', async (ctx)=>{
+        await new Promise(async r=>{
+            const {name, skip, limit} = ctx.request.query;
+            const page = await statApp.tokenSync.listTokenByName(name, skip? parseInt(skip): skip,
                 limit ? parseInt(limit): limit);
             const result: any = {};
             if(page){

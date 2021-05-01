@@ -13,6 +13,7 @@ export class FullBlockQuery {
     }
 
     public async listBlock({epochNumber, blockHash, beginTime, endTime, miner, skip = 0, limit = 10}) {
+        const start0 = Date.now();
         // parse para
         let minerId;
         if(miner){
@@ -77,7 +78,9 @@ export class FullBlockQuery {
         // page
         options.offset = skip;
         options.limit = limit;
+        const start1 = Date.now();
         const page = await FullBlock.findAndCountAll(options);
+        const stop1 = Date.now() - start1;
 
         // process para
         const list = [];
@@ -88,11 +91,13 @@ export class FullBlockQuery {
                 hex40IdSet.add(row['miner']);
                 list.push(row);
             });
+            const start2 = Date.now();
             const hex40Array = await Hex40Map.findAll({
                 where: {
                     id: { [Op.in]: Array.from(hex40IdSet)}
                 },
             })
+            const stop2 = Date.now() - start2;
             const hex40Map = new Map<number, string>()
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
@@ -109,10 +114,10 @@ export class FullBlockQuery {
                 const pivotHash = row['pivotHash'] ? row['hash'] : undefined;
                 row['pivotHash'] = pivotHash;
             })
-        }
-
-        if(this.app && this.app?.logger){
-            this.app.logger.info({src: 'fullblock.findAndCountAll------------', total: `${page?.count}`, list});
+            const stop0 = Date.now() - start0;
+            if(this.app && this.app?.logger){
+                this.app.logger.info({src: 'fullblockquery------------', 'elapsed': stop0, 'FullBlock.findAndCountAll': stop1, 'Hex40Map.findAll': stop2});
+            }
         }
         return {total: page?.count, list};
     }
