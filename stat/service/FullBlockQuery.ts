@@ -13,6 +13,7 @@ export class FullBlockQuery {
     }
 
     public async listBlock({epochNumber, blockHash, beginTime, endTime, miner, skip = 0, limit = 10}) {
+        const start0 = Date.now();
         // parse para
         let minerId;
         if(miner){
@@ -22,17 +23,20 @@ export class FullBlockQuery {
 
         // fields
         const options: any = {};
-        options.attributes = ['epoch',
-            'position',
-            'txCount',
-            'executedTxnCount',
+        options.attributes = [
+            ['epoch', 'epochNumber'],
             'hash',
-            'minerId',
-            'avgGasPrice',
-            'gasUsed',
+            ['minerId', 'miner'],
             'gasLimit',
+            'difficulty',
+            ['createdAt', 'timestamp'],
+            ['txCount', 'transactionCount'],
+            ['executedTxnCount', 'executedTransactionCount'],
+            'avgGasPrice',
+            ['position', 'blockIndex'],
+            ['pivot', 'pivotHash'],
+            'gasUsed',
             'totalReward',
-            'createdAt',
         ];
 
         // conditions
@@ -65,36 +69,57 @@ export class FullBlockQuery {
             options.where = query;
         }
 
+        // order by
+        const order = [];
+        const orderItem = ['createdAt', 'DESC'];
+        order.push(orderItem);
+        options.order = order;
+
         // page
         options.offset = skip;
         options.limit = limit;
+        const start1 = Date.now();
         const page = await FullBlock.findAndCountAll(options);
-        if(this.app && this.app?.logger){
-            this.app.logger.info({src: 'fullblock.findAndCountAll-------------', msg: `options:${JSON.stringify(options)},page:${JSON.stringify(page)}`});
-        }
+        const stop1 = Date.now() - start1;
 
         // process para
+        const list = [];
         if(page && page.rows){
-            const hex40IdArray = [];
-            page.rows.forEach( row => {
-                hex40IdArray.push(row.minerId);
+            const hex40IdSet = new Set<number>();
+            page.rows.forEach( item => {
+                const row = item.toJSON();
+                hex40IdSet.add(row['miner']);
+                list.push(row);
             });
-            // miner address
+            const start2 = Date.now();
             const hex40Array = await Hex40Map.findAll({
                 where: {
-                    id: { [Op.in]: hex40IdArray}
+                    id: { [Op.in]: Array.from(hex40IdSet)}
                 },
             })
+            const stop2 = Date.now() - start2;
             const hex40Map = new Map<number, string>()
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
-            page.rows.forEach(row=>{
-                const base32 = format.address(`0x${hex40Map.get(row.minerId)}`, StatApp.networkId);
-                row['miner'] = base32;
+            list.forEach(row=>{
+                const minerId = row['miner'];
+                if(minerId && hex40Map.get(minerId)){
+                    const base32 = format.address(`0x${hex40Map.get(minerId)}`, StatApp.networkId);
+                    row['miner'] = base32;
+                }
+                const timestampInSec =  row['timestamp'].getTime() / 1000;
+                row['timestamp'] = timestampInSec;
+                row['syncTimestamp'] = timestampInSec;
+                const pivotHash = row['pivotHash'] ? row['hash'] : undefined;
+                row['pivotHash'] = pivotHash;
             })
+            const stop0 = Date.now() - start0;
+            if(this.app && this.app?.logger){
+                this.app.logger.info({src: 'fullblockquery------------', 'elapsed': stop0, 'FullBlock.findAndCountAll': stop1, 'Hex40Map.findAll': stop2});
+            }
         }
-        return page;
+        return {total: page?.count, list};
     }
 }
 
