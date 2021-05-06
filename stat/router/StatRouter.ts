@@ -3,6 +3,7 @@ import * as Koa from 'koa'
 import {Context} from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
+import bodyParser = require("koa-bodyparser");
 import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
@@ -243,6 +244,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const createTrace = await statApp.traceCreateQuery.getCreateTrace(contract);
         ctx.body = {code: 0, data: createTrace};
     });
+    // get creat trace
+    router.post('/recaptcha/siteverify', async function (ctx) {
+        const {token, address, type, description, txn_hash} = ctx.request.body;
+        const verifyResult = await statApp.siteVerify.verify(token, address, type, description, txn_hash);
+        ctx.body = verifyResult;
+    });
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {
@@ -291,6 +298,7 @@ export function register(app:Koa, statApp: StatApp) {
                 imgSrc: ['data:', 'https:', 'localhost', 'http://localhost:8086/favicon.png']
             }}}))
     app.use(cors())
+    app.use(bodyParser())
     let middleware = router.routes();
     app.use(middleware)
     addSwagger(app, router)

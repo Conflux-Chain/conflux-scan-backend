@@ -42,6 +42,10 @@ export class TokenSync{
             const conditionArray = [];
             conditionArray.push({name: { [Op.like]: `%${name}%`}});
             conditionArray.push({symbol: { [Op.like]: `%${name}%`}});
+            if(name.toLocaleUpperCase().startsWith('CFX')){
+                const simpleAddress = addressSdk.simplifyCfxAddress(name);
+                conditionArray.push({base32: simpleAddress});
+            }
             query[Op.or] = conditionArray;
             options.where = query;
         }
@@ -94,7 +98,6 @@ export class TokenSync{
         // page
         options.offset = skip;
         options.limit = limit;
-        console.log(`listToken--1----------options:${JSON.stringify(options)}`)
         // order by
         let order: any;
         if(orderBy){
