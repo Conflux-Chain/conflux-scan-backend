@@ -1,4 +1,4 @@
-import {Sequelize} from 'sequelize';
+import {Op, Sequelize} from 'sequelize';
 // @ts-ignore
 import {format} from 'js-conflux-sdk';
 import {Token} from "../model/Token";
@@ -16,6 +16,54 @@ export class TokenSync{
     constructor(sequelize: Sequelize, config:{scanApiUrl:string}) {
         this.sequelize = sequelize;
         this.config = config
+    }
+
+    public async listTokenByName(name, skip: number = 0, limit: number = 10) {
+        // fields
+        const options: any = {};
+        let attributes: any = [['base32', 'address'],
+            'name',
+            'symbol',
+            'decimals',
+            'totalSupply',
+            ['holder', 'holderCount'],
+            ['transfer', 'transferCount'],
+            ['type', 'transferType'],
+            'icon',
+            'price',
+            'quoteUrl',
+            'totalPrice'
+        ];
+        options.attributes = attributes;
+
+        // query
+        const query: any = {};
+        if(name){
+            const conditionArray = [];
+            conditionArray.push({name: { [Op.like]: `%${name}%`}});
+            conditionArray.push({symbol: { [Op.like]: `%${name}%`}});
+            if(name.toLocaleUpperCase().startsWith('CFX')){
+                const simpleAddress = addressSdk.simplifyCfxAddress(name);
+                conditionArray.push({base32: simpleAddress});
+            }
+            query[Op.or] = conditionArray;
+            options.where = query;
+        }
+
+        // page
+        options.offset = skip;
+        options.limit = limit;
+
+        // process
+        const page = await Token.findAndCountAll(options)
+        if(page && page.rows){
+            page.rows.forEach( row => {
+                if(row.icon) {
+                    row.icon = decodeUtf8(row.icon);
+                }
+            });
+        }
+        return page;
     }
 
     public async listToken(fields, transferType, orderBy, reverse, skip: number = 0, limit: number = 10) {
@@ -50,7 +98,6 @@ export class TokenSync{
         // page
         options.offset = skip;
         options.limit = limit;
-
         // order by
         let order: any;
         if(orderBy){

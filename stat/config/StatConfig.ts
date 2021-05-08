@@ -41,6 +41,9 @@ export interface StatConfig{
     erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,
     cfxWatcherDelay:number,
+    recaptchaUrl:string,
+    recaptchaToken:string,
+    reportUrl: string,
 }
 
 export interface Erc20WatchList{
