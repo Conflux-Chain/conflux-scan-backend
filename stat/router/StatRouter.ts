@@ -238,6 +238,26 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             limit ? parseInt(limit): limit);
         ctx.body = {code: 0, data: page};
     });
+    // daily total contract count
+    router.get('/contract/total/list', async function (ctx) {
+        const {skip, limit} = ctx.request.query
+        const page = await statApp.contractCreateQuery.listContractCreateDaily(skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
+        let yesterdayTotal = 0;
+        // page?.rows.forEach(row => {
+        //     row.contractCount = row.contractCount + yesterdayTotal;
+        //     yesterdayTotal = row.contractCount;
+        // });
+        if(page?.rows){
+            const len = page.rows.length;
+            for(let i = len-1; i >= 0; i--){
+                page.rows[i].contractCount = page.rows[i].contractCount + yesterdayTotal;
+                yesterdayTotal = page.rows[i].contractCount;
+            }
+        }
+
+        ctx.body = {code: 0, data: page};
+    });
     // get creat trace
     router.get('/trace/create', async function (ctx) {
         const {contract} = ctx.request.query
