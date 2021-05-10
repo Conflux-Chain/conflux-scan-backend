@@ -106,6 +106,7 @@ export async function initPartialModel(sequelize) {
     ContractInfo.register(sequelize)
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
+    Token.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
@@ -165,7 +166,6 @@ export async function initModel(sequelize) {
     Balance_TD.register(sequelize);
     Balance_cFLUX.register(sequelize);
 
-    Token.register(sequelize);
     NftId.register(sequelize)
     Trace.register(sequelize)
     PivotSwitch.register(sequelize)

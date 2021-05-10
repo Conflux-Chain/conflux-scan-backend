@@ -30,4 +30,20 @@ module.exports = {
     LATEST_CHECKPOINT: 'latest_checkpoint',
     EARLIEST: 'earliest',
   },
+
+  TX_TYPE: {
+    ALL: 'all',
+    IN: 'incoming',
+    OUT: 'outgoing',
+    FAIL: 'fail',
+    CREATE: 'create',
+  },
+
+  TRANSFER_TYPE: {
+    CFX: 'CFX',
+    ERC20: 'ERC20',
+    ERC721: 'ERC721',
+    ERC777: 'ERC777',
+    ERC1155: 'ERC1155',
+  },
 };
