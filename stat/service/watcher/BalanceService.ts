@@ -155,6 +155,7 @@ export class BalanceService {
             const model = BalanceWatcher.mapModel(token.symbol, true)
             if (model) {
                 return model.findOne({where: {addressId: accountBean.id}})
+                    .then(bean=>bean === null ? {balance:0} : bean)
             }
             return {balance: 0}
         }))
