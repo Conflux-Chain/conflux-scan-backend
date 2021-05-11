@@ -287,3 +287,34 @@ export async function pagingFullBlock(skip:number) : Promise<BlockPage> {
     const remainSkip = pagedSkip - BLOCK_PAGE_MARK_SIZE * skipMarkRows
     return {...nearestOne, skip: remainSkip}
 }
+
+export async function markBlockPosition(count:number=1) {
+    let maxOne:IBlockRowMark = await BlockRowMark.findOne({order:[["id","desc"]], limit: 1})
+    if (maxOne === null) {
+       maxOne = {id:0, epoch: -1, position: -1}
+    }
+    do {
+        const higherAnchor = await FullBlock.findOne({
+            order: [["epoch", "asc"], ["position", "asc"]],
+            where: {
+                [Op.or]: [
+                    {epoch: {[Op.gt]: maxOne.epoch}},
+                    {[Op.and]: [{epoch: maxOne.epoch}, {position: {[Op.gt]: maxOne.position}}]},
+                ]
+            },
+            offset: BLOCK_PAGE_MARK_SIZE,
+            // logging: console.log, benchmark: true
+        })
+        if (higherAnchor === null) {
+            console.log(`\nHigher anchor not found, want higher than: epoch ${maxOne.epoch
+            } position ${maxOne.position}`)
+            return
+        }
+        const saved = await BlockRowMark.create({
+            id: maxOne.id + BLOCK_PAGE_MARK_SIZE,
+            epoch: higherAnchor.epoch, position: higherAnchor.position
+        })
+        process.stdout.write(`\r\u001b[2K ${count} ${JSON.stringify(saved)}`)
+    } while (--count>0)
+    console.log(`\n MarkBlockPosition done.`)
+}

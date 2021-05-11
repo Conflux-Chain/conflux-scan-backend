@@ -3,7 +3,7 @@ import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddres
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {calcAllRegisteredTokenDailyStat, calcDailyToken, DailyTxnSync} from "../DailyTxnSync";
-async function init() {
+export async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.database)
     await seq.sync({})
