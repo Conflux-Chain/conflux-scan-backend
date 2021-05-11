@@ -74,7 +74,7 @@ export class BalanceWatcher{
         }
     }
 
-    static mapModel(name:string): typeof Balance{
+    static mapModel(name:string, silent:boolean = false): typeof Balance{
         let ret;
         switch (name) {
             case 'WCFX':
@@ -122,6 +122,9 @@ export class BalanceWatcher{
             case 'cHBTC':         ret = Balance_cHBTC;    break;
             case 'TREA':         ret = Balance_TREA;    break;
             default:
+                if (silent) {
+                    return null
+                }
                 throw new Error('unknown balance type, please fix the mapping code. name:'+name)
         }
         return ret;

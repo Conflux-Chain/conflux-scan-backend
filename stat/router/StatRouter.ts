@@ -32,6 +32,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             list: [...statApp.contractService.map.values()]
         }
     })
+    router.get('/account-token-balance', async(ctx) => {
+        const {base32, tokenType} = ctx.request.query
+        const list = await statApp.balanceService.listAccountBalance(base32, tokenType)
+        ctx.body = {code: 0, list}
+    })
     router.get('/tokens/nft-token-id-count', async (ctx)=>{
         // const render  = ctx.request.query.render
         const groupList = await NftId.sequelize.query(`select token.name, token.symbol, t.contractHexId, 

@@ -1,3 +1,4 @@
+const lodash = require('lodash');
 import {Balance} from "../../model/Balance";
 import {Token, TOKEN_ERC_1155} from "../../model/Token";
 import {Erc20WatchList} from "../../config/StatConfig";
@@ -143,7 +144,41 @@ export class BalanceService {
         }
         return ret;
     }
-
+    async listAccountBalance(base32: string, tokenType: string) : Promise<any[]>{
+        const hex = format.hexAddress(base32)
+        const accountBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
+        if (accountBean === null) {
+            return []
+        }
+        const tokenList = await Token.findAll({where: {type: tokenType}});
+        const balanceList = await Promise.all(tokenList.map(async token=>{
+            const model = BalanceWatcher.mapModel(token.symbol, true)
+            if (model) {
+                return model.findOne({where: {addressId: accountBean.id}})
+            }
+            return {balance: 0}
+        }))
+        const resultList = []
+        lodash.zip(tokenList, balanceList).forEach(
+            ([token,balanceBean], idx) => {
+                if (token.type.toUpperCase() === 'ERC721') {
+                    balanceBean.balance = this.decimal2drip(balanceBean.balance, 18)
+                }
+                balanceBean.balance && resultList.push({
+                    name: token.name,
+                    symbol: token.symbol,
+                    base32: token.base32,
+                    tokenHex40id: token.hex40id,
+                    icon: token.icon,
+                    type: token.type,
+                    balance: balanceBean.balance,
+                    addressId: balanceBean.addressId,
+                    updatedAt: balanceBean.updatedAt
+                })
+            }
+        )
+        return resultList
+    }
     async getHolderCount(base32: string) : Promise<number> {
         const token = await Token.findOne({where: {base32: base32}})
         if (token == null) {
