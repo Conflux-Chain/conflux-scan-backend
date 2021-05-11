@@ -69,6 +69,6 @@ export function loadConfig(specified:string = undefined): StatConfig {
     // console.log(`specific is `, specific)
     const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
     console.log(`conf is host ${conf.database.host}, user ${conf.database.user} DB ${conf.database.database
-    }, blockTableRowsLimit [${conf.blockTableRowsLimit}]. web port [${conf.port}].`)
+    }. web port [${conf.port}].`)
     return conf;
 }
