@@ -2,7 +2,7 @@
 
 
 
-import {Sequelize, DataTypes, Model} from "sequelize";
+import {Op, Sequelize, DataTypes, Model} from "sequelize";
 
 export interface IFullBlock {
     epoch: number;
@@ -223,4 +223,67 @@ export class AddressTransactionIndex extends Model<IAddressTransactionIndex> imp
             ]
         })
     }
+}
+
+export interface IBlockRowMark {
+    id:number
+    epoch:number
+    position:number
+}
+export class BlockRowMark extends Model<IBlockRowMark> implements IBlockRowMark {
+    id:number
+    epoch:number
+    position:number
+    static register(seq) {
+        BlockRowMark.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, primaryKey: true},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            position: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+        },{
+            sequelize: seq,
+            timestamps: false,
+            tableName: 'block_row_mark',
+            indexes:[
+            ]
+        })
+    }
+}
+export const BLOCK_PAGE_MARK_SIZE = 10_000 // 1w
+export class BlockPage {
+    id:number
+    epoch:number
+    position:number
+    skip:number
+}
+// How to use the result:
+/** select * from t
+ where epoch < result.epoch or (epoch = result.epoch and position < result.position)
+ order by epoch desc, position desc
+ limit result.skip, N
+ */
+export async function pagingFullBlock(skip:number) : Promise<BlockPage> {
+    // find the max mark
+    // const sqlMax = `select * from ${BlockRowMark.getTableName()} order by id desc limit 1`
+    const maxOne = await BlockRowMark.findOne({order:[["id","desc"]], limit: 1})
+    // handle null
+    if (maxOne === null) {
+        return {id:Infinity, epoch:Infinity, position:Infinity, skip}
+    }
+    // calculate rows between max mark and latest block
+    const nonMarkRows = await BlockRowMark.count({where:{
+            epoch: {[Op.gte]: maxOne.epoch},
+            position: {[Op.gt]: maxOne.position},
+        }})
+    //
+    const pagedSkip = skip - nonMarkRows
+    const skipMarkRows = Math.floor(pagedSkip/BLOCK_PAGE_MARK_SIZE)
+    if (skipMarkRows === 0) {
+        return {...maxOne, skip: pagedSkip}
+    }
+    const nearestId = maxOne.id - BLOCK_PAGE_MARK_SIZE * skipMarkRows
+    // find the min mark that greater than pagedSkip
+    const nearestOne = await BlockRowMark.findByPk(nearestId)
+    // must exists
+    const remainSkip = pagedSkip - BLOCK_PAGE_MARK_SIZE * skipMarkRows
+    return {...nearestOne, skip: remainSkip}
 }
