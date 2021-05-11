@@ -1,3 +1,5 @@
+import {decodeUtf8} from "../tool/StringTool";
+
 const lodash = require('lodash');
 import {Balance} from "../../model/Balance";
 import {Token, TOKEN_ERC_1155} from "../../model/Token";
@@ -170,7 +172,7 @@ export class BalanceService {
                     symbol: token.symbol,
                     base32: token.base32,
                     tokenHex40id: token.hex40id,
-                    icon: token.icon,
+                    icon: token.icon ? decodeUtf8(token.icon) : token.icon,
                     type: token.type,
                     balance: balanceBean.balance,
                     addressId: balanceBean.addressId,
