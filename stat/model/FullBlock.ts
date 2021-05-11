@@ -314,6 +314,7 @@ export async function markBlockPosition(count:number=1) {
             id: maxOne.id + BLOCK_PAGE_MARK_SIZE,
             epoch: higherAnchor.epoch, position: higherAnchor.position
         })
+        maxOne = saved
         process.stdout.write(`\r\u001b[2K ${count} ${JSON.stringify(saved)}`)
     } while (--count>0)
     console.log(`\n MarkBlockPosition done.`)
