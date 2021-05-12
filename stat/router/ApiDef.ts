@@ -44,6 +44,13 @@ export default {
                 }
             }
         },
+        '/stat/recent-overview': {
+            "get": {
+                tags: ['daily'],
+                "parameters": [],
+                "responses": {"200": {}}
+            }
+        },
         '/stat/account-token-balance': {
             "get": {
                 tags: ['tokens'],

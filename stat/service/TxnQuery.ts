@@ -6,6 +6,22 @@ import {format} from 'js-conflux-sdk'
 import {StatApp} from "../StatApp";
 
 export class TxnQuery{
+    static async txnCountByTime({span = '24h'}) : Promise<number> {
+        const def = {'24h': -1, '3d': -3, '7d': -7}
+        let spanDay = def[span];
+        return TransactionDB.count({
+            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}
+                , status: 0},
+            // benchmark: true, logging: console.log
+        })
+    }
+    static async gasUsedSum(days:number) : Promise<number> {
+        return TransactionDB.sum('gas',{
+            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}
+                , status: 0},
+            // benchmark: true, logging: console.log
+        })
+    }
     static async topByGasUsed({span = '24h'}, seq:Sequelize) {
         const def = {'24h': -1, '3d': -3, '7d': -7}
         let spanDay = def[span];
@@ -14,11 +30,12 @@ export class TxnQuery{
         }
         const sql = `select sum(gas) as gas, \`from\` as fromId, hex 
                 from tx left join hex40 on tx.\`from\` = hex40.id 
-                where blockTime > addtime(now(), '${spanDay} 0:0:0') group by \`from\`
+                where blockTime > addtime(now(), '${spanDay} 0:0:0') and status=0 group by \`from\`
                 order by gas desc limit 10`
         const list:any[] = await seq.query(sql, {type: QueryTypes.SELECT})
         const sum = await TransactionDB.sum('gas',{
-            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}},
+            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}
+                , status: 0},
             // benchmark: true, logging: console.log
         })
         const maxBlockTime = await TransactionDB.max('blockTime')
