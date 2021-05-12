@@ -47,7 +47,7 @@ import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {ContractInfo} from "../model/ContractInfo";
-import {AddressTransactionIndex, FullBlock, FullTransaction} from "../model/FullBlock";
+import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
 let conf
 export function createDB(config) {
@@ -89,6 +89,7 @@ export async function initPartialModel(sequelize) {
         console.log(`connect to DB fail`, err)
     });
     hexMapInit(sequelize);
+    BlockRowMark.register(sequelize)
     Erc20Transfer.register(sequelize)
     Erc721Transfer.register(sequelize)
     Erc777Transfer.register(sequelize)
