@@ -231,6 +231,9 @@ export interface IBlockRowMark {
     position:number
 }
 export class BlockRowMark extends Model<IBlockRowMark> implements IBlockRowMark {
+    // For example, {id:10, epoch: 3, position: 5} , indicates that
+    // the block on epoch 3 position 5 is the 10th block.
+    // Epoch 0, position 0 is the 1st block.
     id:number
     epoch:number
     position:number
@@ -256,7 +259,11 @@ export class BlockPage {
     skip:number
 }
 // How to use the result:
-/** select * from t
+/**
+ if (result.id === Infinity) : query without condition;
+ else : query with epoch and position condition.
+ SQL:
+ select * from t
  where epoch < result.epoch or (epoch = result.epoch and position < result.position)
  order by epoch desc, position desc
  limit result.skip, N
@@ -274,6 +281,10 @@ export async function pagingFullBlock(skip:number) : Promise<BlockPage> {
             epoch: {[Op.gte]: maxOne.epoch},
             position: {[Op.gt]: maxOne.position},
         }})
+    //
+    if (nonMarkRows >= skip) {
+        return {id:Infinity, epoch:Infinity, position:Infinity, skip}
+    }
     //
     const pagedSkip = skip - nonMarkRows
     const skipMarkRows = Math.floor(pagedSkip/BLOCK_PAGE_MARK_SIZE)
@@ -294,6 +305,8 @@ export async function markBlockPosition(count:number=1) {
        maxOne = {id:0, epoch: -1, position: -1}
     }
     do {
+        // select epoch, position from full_block where epoch > -1 order by epoch asc, position asc limit 10000, 1;
+        // select count(*) from full_block where epoch < 5947;
         const higherAnchor = await FullBlock.findOne({
             order: [["epoch", "asc"], ["position", "asc"]],
             where: {
@@ -302,7 +315,8 @@ export async function markBlockPosition(count:number=1) {
                     {[Op.and]: [{epoch: maxOne.epoch}, {position: {[Op.gt]: maxOne.position}}]},
                 ]
             },
-            offset: BLOCK_PAGE_MARK_SIZE,
+            // minus 1 will make the target record be the BLOCK_PAGE_MARK_SIZE(th) one.
+            offset: BLOCK_PAGE_MARK_SIZE - 1,
             // logging: console.log, benchmark: true
         })
         if (higherAnchor === null) {

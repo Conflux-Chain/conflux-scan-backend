@@ -50,7 +50,7 @@ export default {
                 "parameters": [
                     {name:"base32", required: true, in: "query", schema:{type:"string", default: ''}},
                     {name:"tokenType", required: true, in: "query", schema:{type:"string", default: 'ERC721'}
-                        , comment:'only support 721 for now.'}
+                        , description:'only support 721 for now.'}
                 ],
                 "responses": {
                     "200": {}
