@@ -47,7 +47,9 @@ export default {
         '/stat/recent-overview': {
             "get": {
                 tags: ['daily'],
-                "parameters": [],
+                "parameters": [
+                    {name:"days", required: true, in: "query", schema:{type:"string", default: '1', enum:[1,3,7]}},
+                ],
                 "responses": {"200": {}}
             }
         },

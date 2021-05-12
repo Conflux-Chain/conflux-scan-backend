@@ -143,8 +143,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // stat over view
     router.get('/recent-overview', async (ctx)=>{
         let days = parseInt(ctx.query.days || 1)
-        days = Math.max(days, 7)
-        days = Math.min(days, 1)
+        days = Math.max(days, 1)
+        days = Math.min(days, 7)
         await Promise.all([
             sumRecentCfxTxn(days),
             sumRecentCfxAmount(-days),
