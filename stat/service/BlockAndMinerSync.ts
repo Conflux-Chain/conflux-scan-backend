@@ -1,4 +1,4 @@
-import {Sequelize, QueryTypes, Op} from "sequelize";
+import {Sequelize, QueryTypes, Op, fn} from "sequelize";
 import {makeId} from "../model/HexMap";
 import {Block} from "../model/Block";
 import {IMinerBlock, MinerBlock} from "../model/MinerBlock";
@@ -384,4 +384,12 @@ export class BlockAndMinerSync {
             code: ok ? 0 : 500, message, blockCount: blockList.length
         };
     }
+}
+
+export async function countRecentMiner(days: number) {
+    return MinerBlock.count({
+        where: { 'beginTime': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}, timeWindow:'1h'},
+        distinct: true, col: 'minerId'
+        // benchmark: true, logging: console.log
+    })
 }

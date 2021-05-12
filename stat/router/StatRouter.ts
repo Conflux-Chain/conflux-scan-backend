@@ -12,12 +12,14 @@ import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
 import {DailyToken, NftId, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
-import {DailyCfxTxn} from "../model/CfxTransfer";
+import {DailyCfxTxn, sumRecentCfxAmount, sumRecentCfxTxn} from "../model/CfxTransfer";
 
 const cors = require('@koa/cors');
 import Application = require("koa");
 import {QueryTypes} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
+import {countRecentTokenTransfer, countRecentTokenTransferAccount} from "../service/DailyTxnSync";
+import {countRecentMiner} from "../service/BlockAndMinerSync";
 
 const superagent = require('superagent');
 
@@ -135,6 +137,27 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             ctx.body = {
                 code: 500,
                 message: `${err}`
+            }
+        })
+    })
+    // stat over view
+    router.get('/recent-overview', async (ctx)=>{
+        let days = parseInt(ctx.query.days || 1)
+        days = Math.max(days, 1)
+        days = Math.min(days, 7)
+        await Promise.all([
+            sumRecentCfxTxn(days),
+            sumRecentCfxAmount(-days),
+            TxnQuery.gasUsedSum(-days),
+            countRecentTokenTransfer(-days),
+            countRecentTokenTransferAccount(-days),
+            countRecentMiner(-days),
+        ]).then((arr)=>{
+            const [cfxTxn ,cfxAmount ,gasUsed ,tokenTransfer ,tokenAccount , minerCount] = arr
+            ctx.body = {
+                code: 0, stat: {
+                    cfxTxn, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
+                }, days
             }
         })
     })

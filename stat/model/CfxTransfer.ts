@@ -1,4 +1,4 @@
-import {Op, Sequelize, Transaction, DataTypes, Model} from "sequelize";
+import {Op, Sequelize, Transaction, DataTypes, Model, fn} from "sequelize";
 import {makeId} from "./HexMap";
 
 export interface ICfxTransfer {
@@ -131,4 +131,16 @@ export async function rollupDailyCfxTxnCurrent() {
 export async function scheduleRollupDailyCfxTxn() {
     await rollupDailyCfxTxnCurrent()
     setTimeout(scheduleRollupDailyCfxTxn, 1000*60*10)// ten minutes
+}
+
+export async function sumRecentCfxTxn(days:number) : Promise<number> {
+    return DailyCfxTxn.findAll({limit:days, order:[['day','desc']]})
+        .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b))
+}
+
+export async function sumRecentCfxAmount(days:number) : Promise<number> {
+    return CfxTransfer.sum('value',{
+        where: { 'createdAt': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}},
+        // benchmark: true, logging: console.log
+    })
 }
