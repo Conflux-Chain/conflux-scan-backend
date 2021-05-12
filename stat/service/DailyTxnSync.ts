@@ -98,9 +98,14 @@ export async  function countRecentTokenTransferAccount(days:number) {
     // const options = {where:{createdAt:{[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}}}
     const timeWhere = `where createdAt >= addTime(now(),'${days} 0:0:0')`
     function countAccount(t:string) : Promise<number> {
-        const sql = `select count (*) from (select fromId from ${t} ${timeWhere} union select toId from ${t} ${timeWhere} ) t`
-        return Erc20Transfer.sequelize.query(sql,{type:QueryTypes.SELECT})
-            .then(arr=>Number(arr[0]))
+        const sql = `select count(*) as cnt from (select fromId from ${t} ${timeWhere} union select toId from ${t} ${timeWhere} ) t`
+        return Erc20Transfer.sequelize.query(sql,{
+                // logging: console.log,
+                type:QueryTypes.SELECT,})
+            .then(arr=> {
+                // console.log(`result is ${JSON.stringify(arr)}`)
+                return Number(arr[0]['cnt'])
+            })
     }
     return Promise.all([
         countAccount(T_ERC20_TRANSFER),

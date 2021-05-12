@@ -20,7 +20,7 @@ export class TxnQuery{
             where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}
                 , status: 0},
             // benchmark: true, logging: console.log
-        })
+        }).then(result=>result ? result : 0)
     }
     static async topByGasUsed({span = '24h'}, seq:Sequelize) {
         const def = {'24h': -1, '3d': -3, '7d': -7}
