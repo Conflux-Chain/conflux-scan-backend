@@ -6,6 +6,7 @@ import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
 import {EventBus} from "../service/watcher/EventBus";
 import { listAllContract } from "../model/ContractInfo";
+import {Token} from "../model/Token";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -25,6 +26,12 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             ctx.body = {code: 0, message:"OK"}
         }
     )
+    router.get('/devops/hexId',async (ctx) => {
+        const {hexId} = ctx.request.query
+        const bean = await Hex40Map.findByPk(hexId)
+        const token = await Token.findOne({where: {hex40id: bean?.id || 0}})
+        ctx.body = {hex: bean, token}
+    })
     router.get('/devops/set-address-name',
         checkLocal,
         async (ctx) => await setAddressInfo(ctx)

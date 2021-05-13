@@ -612,6 +612,13 @@ export default {
                 }
             }
         },
+        "/stat/devops/hexId": {
+            "get": {
+                tags: ['developers'],
+                parameters: [{name: 'hexId', in: 'query', required: true, schema: {type: "integer"}},],
+                "responses": {"200": {}}
+            }
+        },
         "/stat/server-info": {
             "get": {
                 tags: ['developers'],
