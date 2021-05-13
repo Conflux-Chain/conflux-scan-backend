@@ -114,7 +114,7 @@ export interface IDailyToken {
     hexId:number
     day:Date
     transferCount:number
-    transferAmount:number
+    transferAmount:string
     uniqueReceiver:number
     uniqueSender:number
 }
@@ -124,7 +124,7 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
     hexId:number
     day:Date
     transferCount:number
-    transferAmount:number
+    transferAmount:string
     uniqueReceiver:number
     uniqueSender:number
     static register(seq: Sequelize) {
