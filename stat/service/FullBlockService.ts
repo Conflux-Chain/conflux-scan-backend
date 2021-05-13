@@ -10,7 +10,7 @@ import {
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
-import {QueryTypes} from "sequelize"
+import {Transaction,QueryTypes} from "sequelize"
 import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FILL_BLOCK_REWARD_EPOCH, KEY_FULL_BLOCK_COUNT, KV} from "../model/KV";
 import {sleep} from "./tool/ProcessTool";
 
@@ -160,7 +160,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
-                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length),
+                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -240,7 +240,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
@@ -276,10 +276,10 @@ export class FullBlockService {
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
     }
-    async diffCount(key:string, diff:number) {
+    async diffCount(key:string, diff:number, dbTx:Transaction) {
         return KV.getNumber(key).then(cnt=>{
             KV.update({value: (cnt+diff).toString()},
-                {where:{key:key}})
+                {where:{key:key}, transaction: dbTx})
         })
     }
     public async fillBlockRewardByPos() {
