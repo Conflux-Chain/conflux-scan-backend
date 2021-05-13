@@ -29,7 +29,8 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
         const bean = await Hex40Map.findByPk(hexId)
-        const token = await Token.findOne({where: {hex40id: bean?.id || 0}})
+        const token = await Token.findOne({where: {hex40id: bean?.id || 0}}) || {icon:''}
+        token.icon = ''
         ctx.body = {hex: bean, token}
     })
     router.get('/devops/set-address-name',
