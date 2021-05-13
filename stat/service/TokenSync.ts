@@ -157,7 +157,9 @@ export class TokenSync{
 
     private async getFromScan(skip: number = 0, limit: number = 10): Promise<{ total: number, list: any }>{
         const response = await superagent.get(`${this.config.scanApiUrl}/v1/token`)
-            .query(`fields=transferCount%2Cicon%2Cprice%2CtotalPrice%2CquoteUrl%2CtransactionCount%2Cerc20TransferCount&skip=${skip}&limit=${limit}`)
+            .query(`fields=transferCount%2Cicon%2Cprice%2CtotalPrice%2CquoteUrl%2CtransactionCount%2Cerc20TransferCount
+            %2CmarketCapId%2CmoonDexSymbol%2CbinanceSymbol
+            &skip=${skip}&limit=${limit}`)
             .timeout(60 * 1000);
         if (response.status !== 200) {
             console.log('sync toke_list fail:', JSON.stringify(response));

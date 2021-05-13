@@ -16,6 +16,9 @@ export interface IToken{
     price?:number
     totalPrice?:number
     quoteUrl?:string
+    marketCapId?:number
+    moonDexSymbol?:string
+    binanceSymbol?:string
 }
 
 export const TOKEN_ERC_1155 = 'erc1155'
@@ -35,6 +38,9 @@ export class Token extends Model<IToken> implements IToken{
     price?:number
     totalPrice?:number
     quoteUrl?:string
+    marketCapId?:number
+    moonDexSymbol?:string
+    binanceSymbol?:string
 
     static register(seq:Sequelize) {
         Token.init({
@@ -53,6 +59,9 @@ export class Token extends Model<IToken> implements IToken{
             price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
+            marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
+            moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
+            binanceSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
         },{
             tableName: 'token',
             sequelize: seq,
@@ -75,7 +84,10 @@ export class Token extends Model<IToken> implements IToken{
             totalSupply: token.totalSupply?Number(token.totalSupply):token.totalSupply,
             price:token.price,
             totalPrice:token.totalPrice,
-            quoteUrl:token.quoteUrl
+            quoteUrl:token.quoteUrl,
+            marketCapId:token.marketCapId,
+            moonDexSymbol:token.moonDexSymbol,
+            binanceSymbol:token.binanceSymbol
         }, {
             transaction: dbTx
         })

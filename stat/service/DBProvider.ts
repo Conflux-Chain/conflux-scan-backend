@@ -11,6 +11,7 @@ import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {TokenQuote} from "../model/TokenQuote";
 import {
     Balance_cAMP,
     Balance_cBAND, Balance_cBNB,
@@ -108,6 +109,7 @@ export async function initPartialModel(sequelize) {
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
     Token.register(sequelize);
+    TokenQuote.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

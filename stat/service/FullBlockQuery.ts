@@ -1,9 +1,10 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
-import {FullBlock, FullTransaction} from "../model/FullBlock";
+import {FullBlock, FullTransaction, AddressTransactionIndex, BlockPage, pagingFullBlock} from "../model/FullBlock";
 import {ContractInfo} from "../model/ContractInfo";
 import {Hex40Map} from "../model/HexMap";
+import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 const CONST = require('./common/constant');
 
 export class FullBlockQuery {
@@ -42,16 +43,19 @@ export class FullBlockQuery {
         const conditionArray = [];
         if(minerId){
             conditionArray.push({minerId});
-        }
-        if(minTimestamp && maxTimestamp) {
-            conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
-                    {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
-        }
-        if(blockHash){
-            conditionArray.push({hash: blockHash});
-        }
-        if(epochNumber){
-            conditionArray.push({epoch: epochNumber});
+            if(minTimestamp && maxTimestamp) {
+                conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
+                        {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
+            }
+            if(blockHash){
+                conditionArray.push({hash: blockHash});
+            }
+            if(epochNumber){
+                conditionArray.push({epoch: epochNumber});
+            }
+        } else{
+            const pagedCondition = await this.buildPagedBlockOptions(skip);
+            if(pagedCondition) conditionArray.push(pagedCondition);
         }
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
@@ -62,11 +66,20 @@ export class FullBlockQuery {
         // order
         options.order = [['createdAt', 'DESC']];
         // query
-        const page = await FullBlock.findAndCountAll(options);
+        let rawList;
+        let count;
+        if(minerId){
+            const page = await FullBlock.findAndCountAll(options);
+            rawList = page?.rows;
+            count = page.count;
+        } else{
+            rawList = await FullBlock.findAll(options);
+            count = KV.getNumber(KEY_FULL_BLOCK_COUNT);
+        }
         const list = [];
-        if(page && page.rows){
+        if(rawList){
             const hex40IdSet = new Set<number>();
-            page.rows.forEach( item => {
+            rawList.forEach( item => {
                 const row = item.toJSON();
                 hex40IdSet.add(row['miner']);
                 list.push(row);
@@ -92,7 +105,7 @@ export class FullBlockQuery {
                 row['pivotHash'] = row['pivotHash'] ? row['hash'] : undefined;
             })
         }
-        const result = {total: page?.count, list};
+        const result = {total: count ? count : 0, list};
         logger?.info({src: `fullblockquery------------`, 'result': JSON.stringify(result)});
         return result;
     }
@@ -136,7 +149,9 @@ export class FullBlockQuery {
             });
             conditionArray.push({epoch: block?.epoch});
             conditionArray.push({blockPosition: block?.position});
-        } else{
+        }
+        if(accountAddressId){
+            conditionArray.push({addressId: accountAddressId});
             if(minTimestamp && maxTimestamp) {
                 conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
                         {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
@@ -175,13 +190,26 @@ export class FullBlockQuery {
         // order
         options.order = [['createdAt', 'DESC']];
         // query
-        const page = await FullTransaction.findAndCountAll(options);
+        let rawList;
+        let count;
+        if(accountAddressId){
+            const page = await AddressTransactionIndex.findAndCountAll(options);
+            rawList = page?.rows;
+            count = page?.count;
+        } else if(blockHash){
+            const page = await FullTransaction.findAndCountAll(options);
+            rawList = page?.rows;
+            count = page?.count;
+        } else{
+            rawList = await FullTransaction.findAll(options);
+            count = KV.getNumber(KEY_FULL_TX_COUNT);
+        }
         const list = [];
-        if(page && page.rows){
+        if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
             const contractHexIdSet = new Set<number>();
-            page.rows.forEach( item => {
+            rawList.forEach( item => {
                 const row = item.toJSON();
                 txHashArray.push(row['hash']);
                 hex40IdSet.add(row['from']);
@@ -237,8 +265,34 @@ export class FullBlockQuery {
                 row['nonce'] = row['nonce'].toString();
             })
         }
-        const result = {total: page?.count, list};
+        const result = {total: count ? count : 0, list};
         logger?.info({src: `fullTransactionQuery------------`, 'result': JSON.stringify(result)});
         return result;
+    }
+
+    private async buildPagedBlockOptions(skip){
+        let pagedCondition;
+        const blockPage = await pagingFullBlock(skip);
+        /** How to use the result:
+         if (result.id === Infinity) : query without condition;
+         else : query with epoch and position condition.
+         SQL:
+         select * from t
+         where epoch < result.epoch or (epoch = result.epoch and position < result.position)
+         order by epoch desc, position desc
+         limit result.skip, N
+         */
+        if(blockPage?.id !== Infinity){
+             pagedCondition = {
+                [Op.or]: [
+                    {epoch: {[Op.lt]: blockPage.epoch}},
+                    {[Op.and]: [
+                            {epoch: blockPage.epoch},
+                            {position: {[Op.lt]: blockPage.position}},
+                        ]},
+                ]
+            };
+        }
+        return pagedCondition;
     }
 }

@@ -26,6 +26,7 @@ import {DailyContractCreateSync} from "./service/DailyContractCreateSync";
 import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 import {ReportService} from "./service/ReportService";
 import {redisWrap, RedisWrap} from "./service/RedisWrap";
+import {TokenQuoteSync} from "./service/TokenQuoteSync";
 
 export class StatApp{
     public config: StatConfig;
@@ -50,6 +51,7 @@ export class StatApp{
     public contractCreateSync: DailyContractCreateSync
     public contractCreateQuery: DailyContractCreateQuery;
     public siteVerify: ReportService;
+    public tokenQuoteSync: TokenQuoteSync;
     public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
@@ -108,6 +110,7 @@ export class StatApp{
         this.contractCreateSync = new DailyContractCreateSync(this.sequelize);
         this.contractCreateQuery = new DailyContractCreateQuery();
         this.siteVerify = new ReportService(this);
+        this.tokenQuoteSync = new TokenQuoteSync(this);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -144,6 +147,9 @@ export class StatApp{
         }
         if (this.config.syncContractCreateCountDaily) {
             await this.contractCreateSync.schedule(this.config.syncContractCreateCountHistory); // dailyContractCreate
+        }
+        if (this.config.syncTokenQuote) {
+            await this.tokenQuoteSync.schedule(this.config.syncTokenQuoteDelay); // token quote
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

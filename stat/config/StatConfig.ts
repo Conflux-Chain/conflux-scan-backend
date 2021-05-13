@@ -51,6 +51,12 @@ export interface StatConfig{
     recaptchaUrl:string,
     recaptchaToken:string,
     reportUrl: string,
+
+    syncTokenQuote: boolean,
+    syncTokenQuoteDelay: number,
+    tokenQuoteConvertSymbolArray: Array<string>,
+    marketCapToken: string,
+    binanceToken: string,
 }
 
 export interface Erc20WatchList{
