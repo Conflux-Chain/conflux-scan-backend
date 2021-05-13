@@ -202,5 +202,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         } else {
             showDebugLog && process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
         }
-        // return calcDailyTokenAmount(dt, tokenHexId)
+        if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
+             await calcDailyTokenAmount(dt, tokenHexId)
+        }
     }

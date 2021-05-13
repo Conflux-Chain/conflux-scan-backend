@@ -423,4 +423,5 @@ ALTER TABLE ... TRUNCATE PARTITION prunes locks; only the partitions to be empti
 select count(*) from block_row_mark;
 select * from block_row_mark order by id desc limit 10;
 select count(*) from full_block where epoch > ;
+select * from daily_token order by transferCount desc limit 10;
  */
