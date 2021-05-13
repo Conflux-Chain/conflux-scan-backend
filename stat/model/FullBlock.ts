@@ -258,6 +258,23 @@ export class BlockPage {
     position:number
     skip:number
 }
+
+export async function countNonMarkBlockRows(maxOne: BlockRowMark) {
+    const nonMarkRows = await FullBlock.count({
+        where: {
+            [Op.or]: {
+                epoch: {[Op.gt]: maxOne.epoch},
+                [Op.and]: {
+                    epoch: {[Op.eq]: maxOne.epoch},
+                    position: {[Op.gt]: maxOne.position},
+                }
+            }
+        },
+        logging: console.log
+    })
+    return nonMarkRows;
+}
+
 // How to use the result:
 /**
  if (result.id === Infinity) : query without condition;
@@ -277,10 +294,7 @@ export async function pagingFullBlock(skip:number) : Promise<BlockPage> {
         return {id:Infinity, epoch:Infinity, position:Infinity, skip}
     }
     // calculate rows between max mark and latest block
-    const nonMarkRows = await BlockRowMark.count({where:{
-            epoch: {[Op.gte]: maxOne.epoch},
-            position: {[Op.gt]: maxOne.position},
-        }})
+    const nonMarkRows = await countNonMarkBlockRows(maxOne);
     //
     if (nonMarkRows >= skip) {
         return {id:Infinity, epoch:Infinity, position:Infinity, skip}

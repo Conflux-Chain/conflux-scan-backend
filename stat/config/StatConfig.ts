@@ -11,7 +11,14 @@ export interface Database{
     blockTableRowsLimit: number;
     syncSchema: boolean;
 }
+export interface RedisConf {
+    host:string
+    port:number,
+    db:number,
+    pwd:string
+}
 export interface StatConfig{
+    redis: RedisConf
     dingTalkToken: string;
     syncBlockDelay: number;
     syncTxnDelay: number;
