@@ -147,7 +147,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
         return;
     }
     let preId = 0;
-    const sql = `select id,\`value\` from ${model.getTableName()} where where contractId=?
+    const sql = `select id,\`value\` from ${model.getTableName()} where contractId=?
             and createdAt between ? and ? and id > ? order by id asc limit ?`
     const pageSize = 1000;
     let sum = BigInt(0)
@@ -162,9 +162,17 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
             } else {
                 preId = -1 // stop while
             }
+            process.stdout.write(`\r${CONST.CL} token ${tokenBean.hex40id} ${tokenBean.hex40id} ${tokenBean.base32
+                } transfer records:${list.length}`)
+        }).catch(err=>{
+            console.log(`query transfer fail: ${sql}`, err)
+            preId = -1
         })
     } while (preId > 0)
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
+        .then(([cnt])=>{
+            console.log(`update daily token transfer amount to ${sum} affect rows ${cnt}`)
+        })
 }
 export async  function calcDailyToken(dt:Date, tokenHexId:number) {
     const [model, tokenBean] = await getTokenModel(tokenHexId)
