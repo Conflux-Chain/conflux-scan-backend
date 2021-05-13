@@ -162,7 +162,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
             } else {
                 preId = -1 // stop while
             }
-            process.stdout.write(`\r${CONST.CL} token ${tokenBean.hex40id} ${tokenBean.hex40id} ${tokenBean.base32
+            process.stdout.write(`\r${CONST.CL} token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
                 } transfer records:${list.length}`)
         }).catch(err=>{
             console.log(`query transfer fail: ${sql}`, err)
@@ -171,7 +171,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     } while (preId > 0)
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
         .then(([cnt])=>{
-            console.log(`update daily token transfer amount to ${sum} affect rows ${cnt}`)
+            console.log(`update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start}`)
         })
 }
 export async  function calcDailyToken(dt:Date, tokenHexId:number) {
