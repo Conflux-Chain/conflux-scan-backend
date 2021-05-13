@@ -138,9 +138,9 @@ export async function sumRecentCfxTxn(days:number) : Promise<number> {
         .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b))
 }
 
-export async function sumRecentCfxAmount(days:number) : Promise<number> {
+export async function sumRecentCfxAmount(days:number) : Promise<BigInt> {
     return CfxTransfer.sum('value',{
         where: { 'createdAt': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}},
         // benchmark: true, logging: console.log
-    })
+    }).then(BigInt)
 }

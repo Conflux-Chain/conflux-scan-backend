@@ -25,6 +25,7 @@ import {EpochSync} from "./service/EpochSync";
 import {DailyContractCreateSync} from "./service/DailyContractCreateSync";
 import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 import {ReportService} from "./service/ReportService";
+import {redisWrap, RedisWrap} from "./service/RedisWrap";
 
 export class StatApp{
     public config: StatConfig;
@@ -53,7 +54,10 @@ export class StatApp{
     constructor(config: StatConfig) {
         this.config = config;
     }
-
+    public async initRedis() {
+        let redisConf = this.config.redis;
+        return RedisWrap.connect(redisConf)
+    }
     public async init() {
         this.cfx = new Conflux({...this.config.conflux})
         // @ts-ignore
@@ -64,6 +68,7 @@ export class StatApp{
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
+        // await this.initRedis();
         await initModel(sequelize);
         if (this.config.database.syncSchema) {
             console.log(`sync model begin.`)
