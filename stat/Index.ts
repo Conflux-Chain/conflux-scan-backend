@@ -10,7 +10,7 @@ export async function init() {
     app.use(async (ctx, next) => {
         await next();
         const rt = ctx.response.get('X-Response-Time');
-        console.log(`logger: ${ctx.method} ${ctx.url} - ${rt}`);
+        console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
     });
 
 // x-response-time
@@ -21,7 +21,7 @@ export async function init() {
         ctx.set('X-Response-Time', `${ms}ms`);
     });
 
-
+    console.log(`${new Date().toISOString()}=======start stat app=======`)
     const config = loadConfig('Prod')
     const statApp = new StatApp(config);
     await statApp.init();

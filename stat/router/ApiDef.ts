@@ -44,6 +44,28 @@ export default {
                 }
             }
         },
+        '/stat/recent-overview': {
+            "get": {
+                tags: ['daily'],
+                "parameters": [
+                    {name:"days", required: true, in: "query", schema:{type:"string", default: '1', enum:[1,3,7]}},
+                ],
+                "responses": {"200": {}}
+            }
+        },
+        '/stat/account-token-balance': {
+            "get": {
+                tags: ['tokens'],
+                "parameters": [
+                    {name:"base32", required: true, in: "query", schema:{type:"string", default: ''}},
+                    {name:"tokenType", required: true, in: "query", schema:{type:"string", default: 'ERC721'}
+                        , description:'only support 721 for now.'}
+                ],
+                "responses": {
+                    "200": {}
+                }
+            }
+        },
         '/stat/tokens/daily-token-txn': {
             "get": {
                 tags: ['tokens'],

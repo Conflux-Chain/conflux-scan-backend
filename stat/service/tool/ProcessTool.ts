@@ -3,15 +3,17 @@ const lodash = require('lodash');
 // ----------------------------------------------------------------------------
 let running = true;
 
-process.on('SIGINT', () => {
+process.on('SIGINT', (signal) => {
+  console.log(`receive ${signal}`)
   running = false;
 });
-process.on('SIGTERM', () => {
+process.on('SIGTERM', (signal) => {
+  console.log(`receive ${signal}`)
   running = false;
 });
 process.on('unhandledRejection', (e) => {
-  console.error(`the process encountered unhandledRejection!`, e); // eslint-disable-line no-console
-  running = false;
+  console.error(`${new Date().toISOString()} the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
+  // running = false;
 });
 
 export function isRunning() {

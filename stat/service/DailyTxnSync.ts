@@ -1,12 +1,14 @@
 import {TransactionDB} from "../model/Transaction";
 import {DailyTransaction, IDailyTransaction} from "../model/DailyTransaction";
 import {calBeginEndTime, getNextDelay, getYesterday} from "./tool/DateTool";
-import {Model, Op, Sequelize, QueryTypes} from 'sequelize'
-import {Erc20Transfer} from "../model/Erc20Transfer";
+import {fn, Op, Sequelize} from 'sequelize'
+import {Erc20Transfer, T_ERC20_TRANSFER} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
-import {Erc721Transfer} from "../model/Erc721Transfer";
-import {Erc1155Transfer} from "../model/Erc1155Transfer";
-import {Erc777Transfer} from "../model/Erc777Transfer";
+import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
+import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
+import {Erc777Transfer, T_ERC777_TRANSFER} from "../model/Erc777Transfer";
+import {QueryTypes} from "sequelize";
+
 const CONST = require('./common/constant');
 
 export class DailyTxnSync{
@@ -82,6 +84,35 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
         showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
     }
     console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
+}
+export async  function countRecentTokenTransfer(days:number) {
+    const options = {where:{createdAt:{[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}}}
+    return Promise.all([
+        Erc20Transfer.count(options),
+        Erc721Transfer.count(options),
+        Erc777Transfer.count(options),
+        Erc1155Transfer.count(options),
+    ]).then(arr=>arr.reduce((a,b)=>a+b))
+}
+export async  function countRecentTokenTransferAccount(days:number) {
+    // const options = {where:{createdAt:{[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}}}
+    const timeWhere = `where createdAt >= addTime(now(),'${days} 0:0:0')`
+    function countAccount(t:string) : Promise<number> {
+        const sql = `select count(*) as cnt from (select fromId from ${t} ${timeWhere} union select toId from ${t} ${timeWhere} ) t`
+        return Erc20Transfer.sequelize.query(sql,{
+                // logging: console.log,
+                type:QueryTypes.SELECT,})
+            .then(arr=> {
+                // console.log(`result is ${JSON.stringify(arr)}`)
+                return Number(arr[0]['cnt'])
+            })
+    }
+    return Promise.all([
+        countAccount(T_ERC20_TRANSFER),
+        countAccount(T_ERC721_TRANSFER),
+        countAccount(T_ERC777_TRANSFER),
+        countAccount(T_ERC1155_TRANSFER),
+    ]).then(arr=>arr.reduce((a,b)=>a+b))
 }
 export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         const tokenBean = await Token.findOne({where: {hex40id: tokenHexId}})

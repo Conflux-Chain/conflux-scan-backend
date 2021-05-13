@@ -1,10 +1,18 @@
 //@ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
-import {AddressTransactionIndex, FullBlock, FullTransaction, IFullBlock} from "../model/FullBlock";
+import {
+    AddressTransactionIndex,
+    BLOCK_PAGE_MARK_SIZE,
+    BlockRowMark, countNonMarkBlockRows,
+    FullBlock,
+    FullTransaction,
+    IFullBlock
+} from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {QueryTypes} from "sequelize"
-import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FILL_BLOCK_REWARD_EPOCH, KV} from "../model/KV";
+import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FILL_BLOCK_REWARD_EPOCH, KEY_FULL_BLOCK_COUNT, KV} from "../model/KV";
+import {sleep} from "./tool/ProcessTool";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -41,6 +49,7 @@ export class FullBlockService {
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }
+        await this.checkCountKV()
         let ret
         do {
             ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
@@ -66,6 +75,33 @@ export class FullBlockService {
             }
         } while (always)
         return ret
+    }
+
+    public async checkCountKV() {
+        const cnt = await KV.getNumber(KEY_FULL_BLOCK_COUNT)
+        if (!isNaN(cnt)) {
+            console.log(`block count in KV: ${cnt}`)
+            return
+        }
+        const maxBlock = await FullBlock.findOne({order:[['epoch','desc']]})
+        if (maxBlock.epoch < BLOCK_PAGE_MARK_SIZE) {
+            // The system may just starts, has a few records.
+            let countNow = (await FullBlock.count()).toString();
+            console.log(`set block count to ${countNow}, as system just starts.`)
+            return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow})
+        }
+        const maxOne = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
+        if (maxOne === null) {
+            console.log(`block row mark not found, and block record at epoch ${maxBlock.epoch
+                }, must build block row mark first. `)
+            await sleep(1000)
+            process.exit(0)
+            return
+        }
+        const nonMarkRows = await countNonMarkBlockRows(maxOne)
+        const countNow = nonMarkRows + maxOne.id;
+        console.log(`create full block count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
+        return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()})
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         const [rewardList, hashes, latest_state] = await Promise.all([
@@ -124,6 +160,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
+                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -203,6 +240,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length),
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
@@ -237,6 +275,12 @@ export class FullBlockService {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
+    }
+    async diffCount(key:string, diff:number) {
+        return KV.getNumber(key).then(cnt=>{
+            KV.update({value: (cnt+diff).toString()},
+                {where:{key:key}})
+        })
     }
     public async fillBlockRewardByPos() {
         let prePos = await KV.getNumber(KEY_FILL_BLOCK_REWARD_EPOCH)
@@ -375,4 +419,8 @@ alter table full_block add column `executedTxnCount` bigint unsigned null  defau
 
 https://dev.mysql.com/doc/refman/5.7/en/partitioning-limitations-locking.html
 ALTER TABLE ... TRUNCATE PARTITION prunes locks; only the partitions to be emptied are locked.
+
+select count(*) from block_row_mark;
+select * from block_row_mark order by id desc limit 10;
+select count(*) from full_block where epoch > ;
  */

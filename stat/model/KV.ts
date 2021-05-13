@@ -4,7 +4,8 @@ export interface IKV {
     key: string;
     value: string
 }
-
+export const KEY_FULL_BLOCK_COUNT = "FULL_BLOCK_COUNT"
+export const KEY_FULL_TX_COUNT = "FULL_TX_COUNT"
 export const KEY_FILL_BLOCK_PROPS_EPOCH = "KEY_FILL_BLOCK_PROPS_EPOCH"
 export const KEY_FILL_BLOCK_REWARD_EPOCH = "KEY_FILL_BLOCK_REWARD_EPOCH"
 export const KEY_MINER_EPOCH = "KEY_MINER_EPOCH"
