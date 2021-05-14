@@ -160,7 +160,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
-                    await this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
+                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -240,7 +240,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
-                await this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
@@ -278,7 +278,7 @@ export class FullBlockService {
     }
     async diffCount(key:string, diff:number, dbTx:Transaction) {
         return KV.getNumber(key).then(cnt=>{
-            KV.update({value: (cnt+diff).toString()},
+            return KV.update({value: (cnt+diff).toString()},
                 {where:{key:key}, transaction: dbTx})
         })
     }
