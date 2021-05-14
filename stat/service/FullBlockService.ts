@@ -3,15 +3,21 @@ import {Conflux, format} from "js-conflux-sdk";
 import {
     AddressTransactionIndex,
     BLOCK_PAGE_MARK_SIZE,
-    BlockRowMark, countNonMarkBlockRows,
+    BlockRowMark, countNonMarkBlockRows, countNonMarkTxRows,
     FullBlock,
     FullTransaction,
-    IFullBlock
+    IFullBlock, ITxnRowMark, TxnRowMark
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {Transaction,QueryTypes} from "sequelize"
-import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FILL_BLOCK_REWARD_EPOCH, KEY_FULL_BLOCK_COUNT, KV} from "../model/KV";
+import {
+    KEY_FILL_BLOCK_PROPS_EPOCH,
+    KEY_FILL_BLOCK_REWARD_EPOCH,
+    KEY_FULL_BLOCK_COUNT,
+    KEY_FULL_TX_COUNT,
+    KV
+} from "../model/KV";
 import {sleep} from "./tool/ProcessTool";
 
 // Do not care the value
@@ -49,7 +55,8 @@ export class FullBlockService {
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }
-        await this.checkCountKV()
+        await this.checkBlockCountKV()
+        await this.checkTxCountKV()
         let ret
         do {
             ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
@@ -77,7 +84,22 @@ export class FullBlockService {
         return ret
     }
 
-    public async checkCountKV() {
+    public async checkTxCountKV() {
+        const cnt = await KV.getNumber(KEY_FULL_TX_COUNT)
+        if (!isNaN(cnt)) {
+            console.log(`tx count in KV: ${cnt}`)
+            return
+        }
+        let maxOne:ITxnRowMark = await TxnRowMark.findOne({order: [["id", "desc"]], limit: 1})
+        if (maxOne === null) {
+            maxOne = {id:0, epoch:-1, blockPosition:-1, txPosition: -1}
+        }
+        const nonMarkRows = await countNonMarkTxRows(maxOne)
+        const countNow = nonMarkRows + maxOne.id;
+        console.log(`create full txn count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
+        return KV.create({key: KEY_FULL_TX_COUNT, value: countNow.toString()})
+    }
+    public async checkBlockCountKV() {
         const cnt = await KV.getNumber(KEY_FULL_BLOCK_COUNT)
         if (!isNaN(cnt)) {
             console.log(`block count in KV: ${cnt}`)
@@ -161,6 +183,7 @@ export class FullBlockService {
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
+                    this.diffCount(KEY_FULL_TX_COUNT, -executedTxArr.length, dbTx),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -241,6 +264,7 @@ export class FullBlockService {
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
+                this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx),
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
@@ -422,6 +446,7 @@ ALTER TABLE ... TRUNCATE PARTITION prunes locks; only the partitions to be empti
 
 select count(*) from block_row_mark;
 select * from block_row_mark order by id desc limit 10;
+select * from tx_row_mark order by id desc limit 10;
 select count(*) from full_block where epoch > ;
 select * from daily_token order by transferCount desc limit 10;
  */

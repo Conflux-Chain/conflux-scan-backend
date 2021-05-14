@@ -389,7 +389,7 @@ function buildTxHigherCondition(maxOne: ITxnRowMark) {
     };
 }
 
-export async function countNonMarkTxRows(maxOne: TxnRowMark) {
+export async function countNonMarkTxRows(maxOne: ITxnRowMark) {
     const nonMarkRows = await FullTransaction.count({
         where: buildTxHigherCondition(maxOne),
         // logging: console.log
