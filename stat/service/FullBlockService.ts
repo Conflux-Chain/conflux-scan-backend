@@ -48,7 +48,7 @@ export class FullBlockService {
         this.debugLog && console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
         this.previousPivotHash = maxAtDb.hash
     }
-    public async run(always = false) {
+    public async run(always = false) : Promise<void> {
         let maxEpoch:number = await FullBlock.max('epoch')
         if (isNaN(maxEpoch)) {
            maxEpoch = -1 // plus 1 got 0
@@ -57,9 +57,10 @@ export class FullBlockService {
         }
         await this.checkBlockCountKV()
         await this.checkTxCountKV()
-        let ret
-        do {
-            ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
+        const that = this
+        async function repeat(){
+            let ret
+            ret = await that.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
                     console.log(`lock time out at epoch ${maxEpoch}:`, err)
@@ -72,16 +73,19 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                this.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                this.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
             }
-        } while (always)
-        return ret
+            if (always) {
+                setTimeout(repeat, 0)
+            }
+        }
+        return repeat()
     }
 
     public async checkTxCountKV() {

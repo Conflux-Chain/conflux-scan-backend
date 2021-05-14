@@ -28,7 +28,7 @@ export async function run() {
     } else {
         await syncFullBlock(config)
     }
-    seq.close().then()
+    // seq.close().then()
 }
 
 async function syncFullBlock(config:StatConfig) {
@@ -37,8 +37,10 @@ async function syncFullBlock(config:StatConfig) {
     return new FullBlockService(cfx)
         // .syncBlockByEpoch(0)
         .run(always)
-        .then(ret=>{
-            console.log(`sync full block ret:`, ret)
+        .then(()=>{
+            if (!always) {
+                return FullBlock.sequelize.close()
+            }
         }).catch(err=>{
             console.log(`error test full block:`, err)
         })

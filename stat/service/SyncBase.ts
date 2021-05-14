@@ -2,7 +2,6 @@ const lodash = require('lodash');
 const CONST = require('./common/constant');
 import {Epoch} from "../model/Epoch";
 import {StatApp} from "../StatApp";
-import {isRunning, sleep} from "./tool/ProcessTool";
 
 export abstract class SyncBase{
     protected app: StatApp;
@@ -112,14 +111,16 @@ export abstract class SyncBase{
             traceEpochNumber = await this.queryNextEpochFromDb();
         }
 
-        while (isRunning()) {
+        async function repeat() {
             const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
             if (traceEpochNumber <= stateEpochNumber - config.preload) {
                 traceEpochNumber = await this.syncForward(traceEpochNumber);
+                setTimeout(repeat, 0)
             } else {
-                await sleep(1000);
+                setTimeout(repeat, 1000)
             }
         }
+        return repeat()
     }
 
     public async queryNextEpochFromDb(){
