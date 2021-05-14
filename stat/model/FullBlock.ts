@@ -224,7 +224,44 @@ export class AddressTransactionIndex extends Model<IAddressTransactionIndex> imp
         })
     }
 }
-
+export interface ITxnRowMark {
+    id:number
+    epoch:number
+    blockPosition:number
+    txPosition:number
+    createdAt:Date
+}
+export class TxnRowMark extends Model<ITxnRowMark> implements ITxnRowMark {
+    id:number
+    epoch:number
+    blockPosition:number
+    txPosition:number
+    createdAt:Date
+    static register(seq) {
+        TxnRowMark.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, primaryKey: true},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            blockPosition: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            txPosition: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            createdAt:{type: DataTypes.DATE, allowNull: false},
+        },{
+            sequelize: seq,
+            timestamps: false,
+            tableName: 'full_tx_row_mark',
+            indexes:[
+                {name: 'idx_time', fields:[{name: 'createdAt', order: 'DESC'}]}
+            ]
+        })
+    }
+}
+export const TX_PAGE_MARK_SIZE = 10_000 //
+export class TxPage {
+    id:number
+    epoch:number
+    blockPosition:number
+    txPosition:number
+    skip:number
+}
 export interface IBlockRowMark {
     id:number
     epoch:number
@@ -251,14 +288,13 @@ export class BlockRowMark extends Model<IBlockRowMark> implements IBlockRowMark 
         })
     }
 }
-export const BLOCK_PAGE_MARK_SIZE = 10_000 // 1w
+export const BLOCK_PAGE_MARK_SIZE = 10_000 //
 export class BlockPage {
     id:number
     epoch:number
     position:number
     skip:number
 }
-
 export async function countNonMarkBlockRows(maxOne: BlockRowMark) {
     const nonMarkRows = await FullBlock.count({
         where: {
@@ -267,6 +303,30 @@ export async function countNonMarkBlockRows(maxOne: BlockRowMark) {
                 [Op.and]: {
                     epoch: {[Op.eq]: maxOne.epoch},
                     position: {[Op.gt]: maxOne.position},
+                }
+            }
+        },
+        logging: console.log
+    })
+    return nonMarkRows;
+}
+
+export async function countNonMarkTxRows(maxOne: TxnRowMark) {
+    const nonMarkRows = await FullTransaction.count({
+        where: {
+            [Op.or]: {
+                // epoch > ?
+                epoch: {[Op.gt]: maxOne.epoch},
+                // or ( epoch = ? and blockPosition > ?)
+                [Op.and]:[
+                    {epoch: maxOne.epoch},
+                    {blockPosition: {[Op.gt]:maxOne.blockPosition}},
+                ],
+                // or ( epoch = ? and blockPosition = ? and txPosition)
+                [Op.and]: {
+                    epoch: maxOne.epoch,
+                    blockPosition: maxOne.blockPosition,
+                    txPosition: {[Op.gt]: maxOne.txPosition},
                 }
             }
         },
