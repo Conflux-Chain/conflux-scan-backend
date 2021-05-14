@@ -57,6 +57,9 @@ export interface StatConfig{
     tokenQuoteConvertSymbolArray: Array<string>,
     marketCapToken: string,
     binanceToken: string,
+
+    syncHomeDashboardData: boolean,
+    syncHomeDashboardDataDelay: number,
 }
 
 export interface Erc20WatchList{
