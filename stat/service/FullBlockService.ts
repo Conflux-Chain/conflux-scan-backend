@@ -10,7 +10,7 @@ import {
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
-import {QueryTypes} from "sequelize"
+import {Transaction,QueryTypes} from "sequelize"
 import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FILL_BLOCK_REWARD_EPOCH, KEY_FULL_BLOCK_COUNT, KV} from "../model/KV";
 import {sleep} from "./tool/ProcessTool";
 
@@ -56,10 +56,10 @@ export class FullBlockService {
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
                     console.log(`lock time out at epoch ${maxEpoch}:`, err)
-                    return {code: CODE_CONTINUE}
+                } else {
+                    console.log(`sync block fail at epoch ${maxEpoch}`, err)
                 }
-                console.log(`sync block fail at epoch ${maxEpoch}`, err)
-                throw err;
+                return {code: CODE_CONTINUE}
             })
             if (ret.code === CODE_REWIND) {
                 maxEpoch -= 1;
@@ -160,7 +160,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
-                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length),
+                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -240,7 +240,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
@@ -276,10 +276,10 @@ export class FullBlockService {
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
     }
-    async diffCount(key:string, diff:number) {
+    async diffCount(key:string, diff:number, dbTx:Transaction) {
         return KV.getNumber(key).then(cnt=>{
             KV.update({value: (cnt+diff).toString()},
-                {where:{key:key}})
+                {where:{key:key}, transaction: dbTx})
         })
     }
     public async fillBlockRewardByPos() {
@@ -423,4 +423,5 @@ ALTER TABLE ... TRUNCATE PARTITION prunes locks; only the partitions to be empti
 select count(*) from block_row_mark;
 select * from block_row_mark order by id desc limit 10;
 select count(*) from full_block where epoch > ;
+select * from daily_token order by transferCount desc limit 10;
  */
