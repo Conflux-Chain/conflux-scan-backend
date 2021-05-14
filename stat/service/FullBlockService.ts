@@ -5,7 +5,7 @@ import {
     BLOCK_PAGE_MARK_SIZE,
     BlockRowMark, countNonMarkBlockRows, countNonMarkTxRows,
     FullBlock,
-    FullTransaction,
+    FullTransaction, IBlockRowMark,
     IFullBlock, ITxnRowMark, TxnRowMark
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
@@ -116,13 +116,9 @@ export class FullBlockService {
             console.log(`set block count to ${countNow}, as system just starts.`)
             return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow})
         }
-        const maxOne = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
+        let maxOne:IBlockRowMark = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
         if (maxOne === null) {
-            console.log(`block row mark not found, and block record at epoch ${maxBlock.epoch
-                }, must build block row mark first. `)
-            await sleep(1000)
-            process.exit(0)
-            return
+            maxOne = {id:0, epoch:-1, position: -1}
         }
         const nonMarkRows = await countNonMarkBlockRows(maxOne)
         const countNow = nonMarkRows + maxOne.id;

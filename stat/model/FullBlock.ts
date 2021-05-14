@@ -353,7 +353,7 @@ export class BlockPage {
     position:number
     skip:number
 }
-export async function countNonMarkBlockRows(maxOne: BlockRowMark) {
+export async function countNonMarkBlockRows(maxOne: IBlockRowMark) {
     const nonMarkRows = await FullBlock.count({
         where: {
             [Op.or]: {
