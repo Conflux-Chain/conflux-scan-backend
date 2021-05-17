@@ -34,6 +34,7 @@ export class RedisWrap{
             port: redisConf.port,
             password: redisConf.pwd,
         });
+        //client.subscribe()
         RedisWrap.init(client)
         client.on('error', err => {
             console.log(`${new Date().toISOString()} Redis Error: ${err}`);

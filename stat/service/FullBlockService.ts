@@ -248,6 +248,7 @@ export class FullBlockService {
                         txInfo.contractCreatedId = 0
                     }
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
+                    txInfo.method = txInfo.data.substr(0, 10)
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId

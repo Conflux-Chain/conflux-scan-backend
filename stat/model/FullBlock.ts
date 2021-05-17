@@ -104,6 +104,7 @@ export interface IFullTransaction {
     gas:number
     status: number
     contractCreatedId:number
+    method?:string
 }
 export class FullTransaction extends Model<IFullTransaction> implements IFullTransaction {
     epoch:number
@@ -119,6 +120,7 @@ export class FullTransaction extends Model<IFullTransaction> implements IFullTra
     gas:number
     status: number
     contractCreatedId:number
+    method?:string
     static register(sequelize) {
         // mysql partition limits that :
         // A primary must include all columns in the table's partitioning location.
@@ -137,6 +139,7 @@ export class FullTransaction extends Model<IFullTransaction> implements IFullTra
             gas: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0}, // sum(gasPrice of tx) / txCount
             status: {type: DataTypes.TINYINT, allowNull: false, defaultValue: 0}, // A 8 bit integer.
             contractCreatedId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            method: {type: DataTypes.CHAR(10), allowNull: true}
         }, {
             tableName: 'full_tx',
             sequelize,
