@@ -8,6 +8,7 @@ import {EventBus} from "../service/watcher/EventBus";
 import {listAllContract} from "../model/ContractInfo";
 import {Token} from "../model/Token";
 import {QueryTypes} from "sequelize";
+import {BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -33,6 +34,16 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         const token = await Token.findOne({where: {hex40id: bean?.id || 0}}) || {icon:''}
         token.icon = ''
         ctx.body = {hex: bean, token}
+    })
+    router.get('/devops/sync-max-info',async (ctx) => {
+        await Promise.all([
+            TxnRowMark.findOne({order:[["id","desc"]], limit: 1}),
+            BlockRowMark.findOne({order:[["id","desc"]], limit: 1}),
+            FullBlock.findOne({order:[["epoch", "desc"]], limit: 1}),
+            FullTransaction.findOne({order:[["epoch", "desc"]], limit: 1}),
+        ]).then(arr=>{
+            ctx.body = {marks:arr}
+        })
     })
     router.get('/devops/db-partition',async (ctx) => {
         const sql = `SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME

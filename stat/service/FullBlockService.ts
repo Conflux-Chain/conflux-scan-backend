@@ -6,7 +6,7 @@ import {
     BlockRowMark, countNonMarkBlockRows, countNonMarkTxRows,
     FullBlock,
     FullTransaction, IBlockRowMark,
-    IFullBlock, ITxnRowMark, TxnRowMark
+    IFullBlock, ITxnRowMark, markBlockPosition, markTxPosition, TxnRowMark
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
@@ -80,6 +80,13 @@ export class FullBlockService {
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
+            }
+            if ( maxEpoch % BLOCK_PAGE_MARK_SIZE === 0 && maxEpoch > BLOCK_PAGE_MARK_SIZE) {
+                let avoidReOrg = 1000;
+                Promise.all([
+                    markTxPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg),
+                    markBlockPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg)
+                ]).then()
             }
             if (always) {
                 setTimeout(repeat, 0)
