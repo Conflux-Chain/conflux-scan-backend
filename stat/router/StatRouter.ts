@@ -120,6 +120,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             }
         })
     })
+    router.get('/tokens/fiat/list', async (ctx)=>{
+        const fiatArray = statApp.config.tokenQuoteConvertSymbolArray;
+        ctx.body = {code:0, list: fiatArray}
+    })
     // token by name
     router.get('/tokens/name', async (ctx)=>{
         await new Promise(async r=>{

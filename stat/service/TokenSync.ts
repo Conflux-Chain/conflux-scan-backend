@@ -85,6 +85,18 @@ export class TokenSync{
             attributes.push('price');
             attributes.push('quoteUrl');
             attributes.push('totalPrice');
+            attributes.push('priceCNY');
+            attributes.push('priceUSD');
+            attributes.push('priceGBP');
+            attributes.push('priceKRW');
+            attributes.push('priceRUB');
+            attributes.push('priceEUR');
+            attributes.push('totalPriceCNY');
+            attributes.push('totalPriceUSD');
+            attributes.push('totalPriceGBP');
+            attributes.push('totalPriceKRW');
+            attributes.push('totalPriceRUB');
+            attributes.push('totalPriceEUR');
         }
         options.attributes = attributes;
 

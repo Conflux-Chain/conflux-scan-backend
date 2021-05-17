@@ -3,6 +3,7 @@ import {TokenQuote} from "../model/TokenQuote";
 import {Op} from 'sequelize'
 const lodash = require('lodash');
 const superagent = require('superagent');
+const BigFixed = require('bigfixed');
 
 export class TokenQuoteSync {
   protected app;
@@ -70,7 +71,6 @@ export class TokenQuoteSync {
             price: quote.price || null,
           };
         });
-      console.log(`updateFromMarketCap---------quoteArray:${JSON.stringify(quoteArray)}`);
       await this.upsertQuote(quoteArray);
     });
   }
@@ -104,7 +104,6 @@ export class TokenQuoteSync {
       };
       return result;
     }));
-    console.log(`updateFromMoonDex---------quoteArray:${JSON.stringify(quoteArray)}`);
     await this.upsertQuote(quoteArray);
   }
 
@@ -131,7 +130,6 @@ export class TokenQuoteSync {
         price: quote || null,
       };
     }));
-    console.log(`updateFromBinance---------quoteArray:${JSON.stringify(quoteArray)}`);
     await this.upsertQuote(quoteArray);
   }
 
@@ -160,6 +158,14 @@ export class TokenQuoteSync {
         await dbQuote.update(q, {where: {id: dbQuote.id}});
       } else{
         await TokenQuote.add(quote);
+      }
+      const dbToken: Token = await Token.findOne({where: {base32: address}});
+      if(dbToken){
+        const totalPrice = (quote.price && dbToken.totalSupply && Number.isInteger(dbToken.decimals))
+            ? BigFixed(quote.price).mul(dbToken.totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
+            : 0;
+        const newPrice = {[`totalPrice${quote.convertSymbol}`]: totalPrice, [`price${quote.convertSymbol}`]: quote.price, updatedAt: Date.now(), id: dbToken.id};
+        await dbToken.update(newPrice, {where: {id: dbToken.id}});
       }
     });
   }

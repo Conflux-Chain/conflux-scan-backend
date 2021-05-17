@@ -19,6 +19,18 @@ export interface IToken{
     marketCapId?:number
     moonDexSymbol?:string
     binanceSymbol?:string
+    priceCNY?:number
+    priceUSD?:number
+    priceGBP?:number
+    priceKRW?:number
+    priceRUB?:number
+    priceEUR?:number
+    totalPriceCNY?:number
+    totalPriceUSD?:number
+    totalPriceGBP?:number
+    totalPriceKRW?:number
+    totalPriceRUB?:number
+    totalPriceEUR?:number
 }
 
 export const TOKEN_ERC_1155 = 'erc1155'
@@ -41,6 +53,18 @@ export class Token extends Model<IToken> implements IToken{
     marketCapId?:number
     moonDexSymbol?:string
     binanceSymbol?:string
+    priceCNY?:number
+    priceUSD?:number
+    priceGBP?:number
+    priceKRW?:number
+    priceRUB?:number
+    priceEUR?:number
+    totalPriceCNY?:number
+    totalPriceUSD?:number
+    totalPriceGBP?:number
+    totalPriceKRW?:number
+    totalPriceRUB?:number
+    totalPriceEUR?:number
 
     static register(seq:Sequelize) {
         Token.init({
@@ -62,6 +86,18 @@ export class Token extends Model<IToken> implements IToken{
             marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
             moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
             binanceSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
+            priceCNY: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            priceUSD: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            priceGBP: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            priceKRW: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            priceRUB: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            priceEUR: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            totalPriceCNY:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            totalPriceUSD:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            totalPriceGBP:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            totalPriceKRW:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            totalPriceRUB:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            totalPriceEUR:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
         },{
             tableName: 'token',
             sequelize: seq,
@@ -87,7 +123,19 @@ export class Token extends Model<IToken> implements IToken{
             quoteUrl:token.quoteUrl,
             marketCapId:token.marketCapId,
             moonDexSymbol:token.moonDexSymbol,
-            binanceSymbol:token.binanceSymbol
+            binanceSymbol:token.binanceSymbol,
+            priceCNY:token.priceCNY,
+            priceUSD:token.priceUSD,
+            priceGBP:token.priceGBP,
+            priceKRW:token.priceKRW,
+            priceRUB:token.priceRUB,
+            priceEUR:token.priceEUR,
+            totalPriceCNY:token.totalPriceCNY,
+            totalPriceUSD:token.totalPriceUSD,
+            totalPriceGBP:token.totalPriceGBP,
+            totalPriceKRW:token.totalPriceKRW,
+            totalPriceRUB:token.totalPriceRUB,
+            totalPriceEUR:token.totalPriceEUR,
         }, {
             transaction: dbTx
         })
