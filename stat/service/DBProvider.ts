@@ -110,6 +110,7 @@ export async function initPartialModel(sequelize) {
     TraceCreateContract.register(sequelize)
     Token.register(sequelize);
     TokenQuote.register(sequelize);
+    KV.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
@@ -117,7 +118,6 @@ export async function initModel(sequelize) {
     TransactionDB.register(sequelize);
     Block.register(sequelize);
     MinerBlock.register(sequelize);
-    KV.register(sequelize);
     TopBatchIndex.register(sequelize)
     TopRecord.register(sequelize);
     Address.register(sequelize)

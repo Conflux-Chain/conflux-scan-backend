@@ -310,7 +310,11 @@ export async function pagingFullBlock(skip:number) : Promise<BlockPage> {
     const nearestOne = await BlockRowMark.findByPk(nearestId)
     // must exists
     const remainSkip = pagedSkip - BLOCK_PAGE_MARK_SIZE * skipMarkRows
-    return {...nearestOne, skip: remainSkip}
+    // return {...nearestOne, skip: remainSkip}
+    return { id:nearestOne.id,
+        epoch:nearestOne.epoch,
+        position:nearestOne.position,
+        skip:remainSkip};
 }
 
 export async function markBlockPosition(count:number=1) {

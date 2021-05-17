@@ -55,7 +55,9 @@ export class FullBlockQuery {
             }
         } else{
             const pagedCondition = await this.buildPagedBlockOptions(skip);
-            if(pagedCondition) conditionArray.push(pagedCondition);
+            logger?.info({src: `pagedCondition------------`, 'result': JSON.stringify(pagedCondition)});
+            if(pagedCondition) conditionArray.push(pagedCondition.where);
+            options.offset = pagedCondition.skip;
         }
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
@@ -64,7 +66,7 @@ export class FullBlockQuery {
             options.where = {[Op.and]: conditionArray};
         }
         // order
-        options.order = [['createdAt', 'DESC']];
+        options.order = [['epoch', 'DESC'], ['position', 'DESC']];
         // query
         let rawList;
         let count;
@@ -74,7 +76,7 @@ export class FullBlockQuery {
             count = page.count;
         } else{
             rawList = await FullBlock.findAll(options);
-            count = KV.getNumber(KEY_FULL_BLOCK_COUNT);
+            count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
         }
         const list = [];
         if(rawList){
@@ -106,7 +108,7 @@ export class FullBlockQuery {
             })
         }
         const result = {total: count ? count : 0, list};
-        logger?.info({src: `fullblockquery------------`, 'result': JSON.stringify(result)});
+        // logger?.info({src: `fullblockquery------------`, 'result': JSON.stringify(result)});
         return result;
     }
 
@@ -188,7 +190,7 @@ export class FullBlockQuery {
             options.where = {[Op.and]: conditionArray};
         }
         // order
-        options.order = [['createdAt', 'DESC']];
+        options.order = [['epochNumber', 'DESC'], ['blockHash', 'DESC'], ['transactionIndex', 'DESC']];
         // query
         let rawList;
         let count;
@@ -202,7 +204,7 @@ export class FullBlockQuery {
             count = page?.count;
         } else{
             rawList = await FullTransaction.findAll(options);
-            count = KV.getNumber(KEY_FULL_TX_COUNT);
+            count = await KV.getNumber(KEY_FULL_TX_COUNT);
         }
         const list = [];
         if(rawList){
@@ -216,7 +218,7 @@ export class FullBlockQuery {
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['contractCreated']);
                 contractHexIdSet.add(row['to']);
-                logger?.info({src: `fullTransactionQuery------------`, 'row': JSON.stringify(row)});
+                // logger?.info({src: `fullTransactionQuery------------`, 'row': JSON.stringify(row)});
                 list.push(row);
             });
             const hex40Array = await Hex40Map.findAll({
@@ -266,13 +268,15 @@ export class FullBlockQuery {
             })
         }
         const result = {total: count ? count : 0, list};
-        logger?.info({src: `fullTransactionQuery------------`, 'result': JSON.stringify(result)});
+        // logger?.info({src: `fullTransactionQuery------------`, 'result': JSON.stringify(result)});
         return result;
     }
 
     private async buildPagedBlockOptions(skip){
-        let pagedCondition;
+        const{ logger } = this.app;
+        const pagedCondition: any = {};
         const blockPage = await pagingFullBlock(skip);
+        logger?.info({src: `buildPagedBlockOptions------------`, 'result': JSON.stringify(blockPage), 'blockPageEpoch': `hhh${blockPage.epoch}`});
         /** How to use the result:
          if (result.id === Infinity) : query without condition;
          else : query with epoch and position condition.
@@ -283,7 +287,7 @@ export class FullBlockQuery {
          limit result.skip, N
          */
         if(blockPage?.id !== Infinity){
-             pagedCondition = {
+             pagedCondition.where = {
                 [Op.or]: [
                     {epoch: {[Op.lt]: blockPage.epoch}},
                     {[Op.and]: [
@@ -292,6 +296,7 @@ export class FullBlockQuery {
                         ]},
                 ]
             };
+            pagedCondition.skip = blockPage.skip;
         }
         return pagedCondition;
     }
