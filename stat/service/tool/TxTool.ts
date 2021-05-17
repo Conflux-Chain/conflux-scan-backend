@@ -12,7 +12,7 @@ if ('txMethod' === args[0]) {
         // node this txMethod baseTxId round
         let baseId = Number(args[1])
         let round = Number(args[2])
-        while(round>0 && baseId<=maxTx.epoch) {
+        while(round>=0 && baseId<=maxTx.epoch) {
             const txList = await FullTransaction.findAll({where:{epoch: baseId}})
             for (let tx of txList) {
                 const txInfo = await cfx.getTransactionByHash(tx.hash)
@@ -21,7 +21,7 @@ if ('txMethod' === args[0]) {
                     where: {epoch: tx.epoch, blockPosition: tx.blockPosition, txPosition: tx.txPosition}
                 })
             }
-            process.stdout.write(`\r${round} epoch ${baseId} update tx ${txList.length}`)
+            process.stdout.write(`\r\u001b[2K Left round${round}, epoch ${baseId} update tx ${txList.length}`)
             baseId++
             round --
         }
