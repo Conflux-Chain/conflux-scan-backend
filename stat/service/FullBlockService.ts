@@ -5,8 +5,8 @@ import {
     BLOCK_PAGE_MARK_SIZE,
     BlockRowMark, countNonMarkBlockRows, countNonMarkTxRows,
     FullBlock,
-    FullTransaction,
-    IFullBlock, ITxnRowMark, TxnRowMark
+    FullTransaction, IBlockRowMark,
+    IFullBlock, ITxnRowMark, markBlockPosition, markTxPosition, TxnRowMark
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
@@ -48,7 +48,7 @@ export class FullBlockService {
         this.debugLog && console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
         this.previousPivotHash = maxAtDb.hash
     }
-    public async run(always = false) {
+    public async run(always = false) : Promise<void> {
         let maxEpoch:number = await FullBlock.max('epoch')
         if (isNaN(maxEpoch)) {
            maxEpoch = -1 // plus 1 got 0
@@ -57,9 +57,10 @@ export class FullBlockService {
         }
         await this.checkBlockCountKV()
         await this.checkTxCountKV()
-        let ret
-        do {
-            ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
+        const that = this
+        async function repeat(){
+            let ret
+            ret = await that.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
                     console.log(`lock time out at epoch ${maxEpoch}:`, err)
@@ -72,16 +73,26 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                this.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                this.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
             }
-        } while (always)
-        return ret
+            if ( maxEpoch % BLOCK_PAGE_MARK_SIZE === 0 && maxEpoch > BLOCK_PAGE_MARK_SIZE) {
+                let avoidReOrg = 1000;
+                Promise.all([
+                    markTxPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg),
+                    markBlockPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg)
+                ]).then()
+            }
+            if (always) {
+                setTimeout(repeat, 0)
+            }
+        }
+        return repeat()
     }
 
     public async checkTxCountKV() {
@@ -112,13 +123,9 @@ export class FullBlockService {
             console.log(`set block count to ${countNow}, as system just starts.`)
             return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow})
         }
-        const maxOne = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
+        let maxOne:IBlockRowMark = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
         if (maxOne === null) {
-            console.log(`block row mark not found, and block record at epoch ${maxBlock.epoch
-                }, must build block row mark first. `)
-            await sleep(1000)
-            process.exit(0)
-            return
+            maxOne = {id:0, epoch:-1, position: -1}
         }
         const nonMarkRows = await countNonMarkBlockRows(maxOne)
         const countNow = nonMarkRows + maxOne.id;

@@ -290,7 +290,7 @@ export async function pagingFullTx(skip:number) : Promise<TxPage> {
     const remainSkip = pagedSkip - TX_PAGE_MARK_SIZE * skipMarkRows
     return {...nearestOne, skip: remainSkip}
 }
-export async function markTxPosition(count:number=1) {
+export async function markTxPosition(count:number=1, maxEpoch:number = Infinity) {
     let maxOne:ITxnRowMark = await TxnRowMark.findOne({order:[["id","desc"]], limit: 1})
     if (maxOne === null) {
         maxOne = {id:0, epoch: -1, blockPosition: -1, txPosition: -1}
@@ -307,6 +307,9 @@ export async function markTxPosition(count:number=1) {
             console.log(`\nHigher anchor not found, want higher than: epoch ${maxOne.epoch
             } block position ${maxOne.blockPosition} tx pos ${maxOne.txPosition}`)
             return
+        } else if (higherAnchor.epoch > maxEpoch) {
+            console.log(`reach max epoch, reOrg may occur, stop marking. ${higherAnchor} > ${maxEpoch}`)
+            return ;
         }
         const saved = await TxnRowMark.create({
             id: maxOne.id + TX_PAGE_MARK_SIZE,
@@ -353,7 +356,7 @@ export class BlockPage {
     position:number
     skip:number
 }
-export async function countNonMarkBlockRows(maxOne: BlockRowMark) {
+export async function countNonMarkBlockRows(maxOne: IBlockRowMark) {
     const nonMarkRows = await FullBlock.count({
         where: {
             [Op.or]: {
@@ -435,7 +438,7 @@ export async function pagingFullBlock(skip:number) : Promise<BlockPage> {
     return {...nearestOne, skip: remainSkip}
 }
 
-export async function markBlockPosition(count:number=1) {
+export async function markBlockPosition(count:number=1, maxEpoch:number=Infinity) {
     let maxOne:IBlockRowMark = await BlockRowMark.findOne({order:[["id","desc"]], limit: 1})
     if (maxOne === null) {
        maxOne = {id:0, epoch: -1, position: -1}
@@ -459,11 +462,14 @@ export async function markBlockPosition(count:number=1) {
             console.log(`\nHigher anchor not found, want higher than: epoch ${maxOne.epoch
             } position ${maxOne.position}`)
             return
+        } else if (higherAnchor.epoch > maxEpoch) {
+            console.log(`reach max epoch, reOrg may occur, stop marking. ${higherAnchor} > ${maxEpoch}`)
+            return ;
         }
         const saved = await BlockRowMark.create({
             id: maxOne.id + BLOCK_PAGE_MARK_SIZE,
             epoch: higherAnchor.epoch, position: higherAnchor.position
-        })
+        });
         maxOne = saved
         process.stdout.write(`\r\u001b[2K ${count} ${JSON.stringify(saved)}`)
     } while (--count>0)
