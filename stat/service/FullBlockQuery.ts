@@ -15,7 +15,6 @@ export class FullBlockQuery {
     }
 
     public async listBlock({epochNumber, blockHash, minTimestamp, maxTimestamp, miner, skip = 0, limit = 10}) {
-        const start = new Date().getTime()
         const{ logger } = this.app;
         // parse para
         let minerId;
@@ -23,8 +22,6 @@ export class FullBlockQuery {
             const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(miner).substr(2)}})
             minerId = hex40?.id
         }
-        const stop1 = new Date().getTime()
-        logger.info({src: `listBlock---stop1------------`, 'cost': stop1-start});
         // attributes
         const options: any = {offset: skip, limit};
         options.attributes = [
@@ -44,7 +41,6 @@ export class FullBlockQuery {
         ];
         // where
         const conditionArray = [];
-        let stop2;
         if(minerId){
             conditionArray.push({minerId});
             if(minTimestamp && maxTimestamp) {
@@ -61,8 +57,6 @@ export class FullBlockQuery {
             const pagedCondition = await this.buildPagedBlockOptions(skip);
             if(pagedCondition) conditionArray.push(pagedCondition.where);
             options.offset = pagedCondition.skip;
-            stop2 = new Date().getTime()
-            logger.info({src: `listBlock---stop2------------`, 'cost': stop2-stop1});
         }
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
@@ -70,25 +64,18 @@ export class FullBlockQuery {
         if(conditionArray.length > 1){
             options.where = {[Op.and]: conditionArray};
         }
-        const stop3 = new Date().getTime()
-        logger.info({src: `listBlock---stop3------------`, 'cost': stop3-stop2});
         // order
         options.order = [['epoch', 'DESC'], ['position', 'DESC']];
         // query
         let rawList;
         let count;
-        let stop4;
         if(minerId){
             const page = await FullBlock.findAndCountAll(options);
             rawList = page?.rows;
             count = page.count;
-            stop4 = new Date().getTime()
-            logger.info({src: `listBlock---stop4------------`, 'cost': stop4- stop3});
         } else{
             rawList = await FullBlock.findAll(options);
             count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
-            stop4 = new Date().getTime()
-            logger.info({src: `listBlock---stop5------------`, 'cost': stop4-stop3});
         }
         const list = [];
         if(rawList){
@@ -107,8 +94,6 @@ export class FullBlockQuery {
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
-            const stop6 = new Date().getTime()
-            logger.info({src: `listBlock---stop6------------`, 'cost': stop6-stop4});
             // fields mapping
             list.forEach(row=>{
                 const minerId = row['miner'];
@@ -120,8 +105,6 @@ export class FullBlockQuery {
                 row['syncTimestamp'] = timestampInSec;
                 row['pivotHash'] = row['pivotHash'] ? row['hash'] : undefined;
             })
-            const stop7 = new Date().getTime()
-            logger.info({src: `listBlock---stop7------------`, 'cost': stop7-stop6});
         }
         const result = {total: count ? count : 0, list};
         // logger?.info({src: `fullblockquery------------`, 'result': JSON.stringify(result)});
@@ -234,7 +217,6 @@ export class FullBlockQuery {
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['contractCreated']);
                 contractHexIdSet.add(row['to']);
-                // logger?.info({src: `fullTransactionQuery------------`, 'row': JSON.stringify(row)});
                 list.push(row);
             });
             const hex40Array = await Hex40Map.findAll({
@@ -291,12 +273,8 @@ export class FullBlockQuery {
     private async buildPagedBlockOptions(skip){
         const{ logger } = this.app;
 
-        const start = new Date().getTime()
         const pagedCondition: any = {};
         const blockPage = await pagingFullBlock(skip, logger);
-        const stop1 = new Date().getTime()
-        logger.info({src: `buildPagedBlockOptions---stop1------------`, 'cost': stop1-start});
-        logger?.info({src: `buildPagedBlockOptions------------`, 'result': JSON.stringify(blockPage), 'blockPageEpoch': `hhh${blockPage.epoch}`});
         /** How to use the result:
          if (result.id === Infinity) : query without condition;
          else : query with epoch and position condition.
@@ -318,8 +296,6 @@ export class FullBlockQuery {
             };
             pagedCondition.skip = blockPage.skip;
         }
-        const stop2 = new Date().getTime()
-        logger.info({src: `buildPagedBlockOptions---stop2------------`, 'cost': stop2-stop1});
         return pagedCondition;
     }
 }

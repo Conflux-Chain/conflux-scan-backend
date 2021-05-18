@@ -288,29 +288,20 @@ export async function countNonMarkBlockRows(maxOne: BlockRowMark) {
 export async function pagingFullBlock(skip:number, logger: any) : Promise<BlockPage> {
     // find the max mark
     // const sqlMax = `select * from ${BlockRowMark.getTableName()} order by id desc limit 1`
-    const start = new Date().getTime()
     const maxOne = await BlockRowMark.findOne({order:[["id","desc"]], limit: 1})
-    const stop1 = new Date().getTime()
-    logger.info({src: `pagingFullBlock---stop1------------`, 'cost': stop1-start});
     // handle null
     if (maxOne === null) {
         return {id:Infinity, epoch:Infinity, position:Infinity, skip}
     }
     // calculate rows between max mark and latest block
     const nonMarkRows = await countNonMarkBlockRows(maxOne);
-    const stop2 = new Date().getTime()
-    logger.info({src: `pagingFullBlock---stop2------------`, 'cost': stop2-stop1});
-    //
     if (nonMarkRows >= skip) {
         return {id:Infinity, epoch:Infinity, position:Infinity, skip}
     }
-    //
+
     const pagedSkip = skip - nonMarkRows
     const skipMarkRows = Math.floor(pagedSkip/BLOCK_PAGE_MARK_SIZE)
-    const stop3 = new Date().getTime()
     if (skipMarkRows === 0) {
-        // return {...maxOne, skip: pagedSkip}
-        logger.info({src: `pagingFullBlock---stop3------------`, 'cost': stop3-stop2});
         return {
             id: maxOne.id,
             epoch: maxOne.epoch,
@@ -321,13 +312,8 @@ export async function pagingFullBlock(skip:number, logger: any) : Promise<BlockP
     const nearestId = maxOne.id - BLOCK_PAGE_MARK_SIZE * skipMarkRows
     // find the min mark that greater than pagedSkip
     const nearestOne = await BlockRowMark.findByPk(nearestId)
-    const stop4 = new Date().getTime()
-    logger.info({src: `pagingFullBlock---stop4------------`, 'cost': stop4-stop3});
     // must exists
     const remainSkip = pagedSkip - BLOCK_PAGE_MARK_SIZE * skipMarkRows
-    // return {...nearestOne, skip: remainSkip}
-    const stop5 = new Date().getTime()
-    logger.info({src: `pagingFullBlock---stop5------------`, 'cost': stop5-stop4});
     return {
         id: nearestOne.id,
         epoch: nearestOne.epoch,
