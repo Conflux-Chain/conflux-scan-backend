@@ -103,14 +103,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
-            const {fields, transferType, orderBy, reverse, skip, limit} = ctx.request.query;
-            const page = await statApp.tokenSync.listToken(fields, transferType, orderBy, reverse, skip? parseInt(skip): skip,
+            const {fields, transferType, currency, orderBy, reverse, skip, limit} = ctx.request.query;
+            const result = await statApp.tokenSync.listToken(fields, transferType, currency, orderBy, reverse, skip? parseInt(skip): skip,
                 limit ? parseInt(limit): limit);
-            const result: any = {};
-            if(page){
-                result.total = page.count;
-                result.list = page.rows;
-            }
             ctx.body = result;
             r('ok')
         }).catch(err=>{
@@ -127,14 +122,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // token by name
     router.get('/tokens/name', async (ctx)=>{
         await new Promise(async r=>{
-            const {name, skip, limit} = ctx.request.query;
-            const page = await statApp.tokenSync.listTokenByName(name, skip? parseInt(skip): skip,
+            const {name, currency, skip, limit} = ctx.request.query;
+            const result = await statApp.tokenSync.listTokenByName(name, currency, skip? parseInt(skip): skip,
                 limit ? parseInt(limit): limit);
-            const result: any = {};
-            if(page){
-                result.total = page.count;
-                result.list = page.rows;
-            }
             ctx.body = result;
             r('ok')
         }).catch(err=>{

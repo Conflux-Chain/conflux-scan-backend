@@ -281,14 +281,16 @@ export async function pagingFullTx(skip:number) : Promise<TxPage> {
     const pagedSkip = skip - nonMarkRows
     const skipMarkRows = Math.floor(pagedSkip/TX_PAGE_MARK_SIZE)
     if (skipMarkRows === 0) {
-        return {...maxOne, skip: pagedSkip}
+        return {id: maxOne.id, epoch: maxOne.epoch, blockPosition: maxOne.blockPosition,
+            txPosition: maxOne.txPosition, skip: pagedSkip}
     }
     const nearestId = maxOne.id - TX_PAGE_MARK_SIZE * skipMarkRows
     // find the min mark that greater than pagedSkip
     const nearestOne = await TxnRowMark.findByPk(nearestId)
     // must exists
     const remainSkip = pagedSkip - TX_PAGE_MARK_SIZE * skipMarkRows
-    return {...nearestOne, skip: remainSkip}
+    return {id: nearestOne.id, epoch: nearestOne.epoch, blockPosition: nearestOne.blockPosition,
+        txPosition: nearestOne.txPosition, skip: remainSkip}
 }
 export async function markTxPosition(count:number=1, maxEpoch:number = Infinity) {
     let maxOne:ITxnRowMark = await TxnRowMark.findOne({order:[["id","desc"]], limit: 1})

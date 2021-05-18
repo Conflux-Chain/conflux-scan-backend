@@ -18,7 +18,7 @@ export class TokenSync{
         this.config = config
     }
 
-    public async listTokenByName(name, skip: number = 0, limit: number = 10) {
+    public async listTokenByName(name, currency, skip: number = 0, limit: number = 10) {
         // fields
         const options: any = {};
         let attributes: any = [['base32', 'address'],
@@ -32,7 +32,19 @@ export class TokenSync{
             'icon',
             'price',
             'quoteUrl',
-            'totalPrice'
+            'totalPrice',
+            'priceCNY',
+            'priceUSD',
+            'priceGBP',
+            'priceKRW',
+            'priceRUB',
+            'priceEUR',
+            'totalPriceCNY',
+            'totalPriceUSD',
+            'totalPriceGBP',
+            'totalPriceKRW',
+            'totalPriceRUB',
+            'totalPriceEUR',
         ];
         options.attributes = attributes;
 
@@ -56,17 +68,22 @@ export class TokenSync{
 
         // process
         const page = await Token.findAndCountAll(options)
+        const list = [];
         if(page && page.rows){
-            page.rows.forEach( row => {
-                if(row.icon) {
-                    row.icon = decodeUtf8(row.icon);
+            page.rows.forEach( item => {
+                const row = item.toJSON();
+                row['price'] = row[`price${currency}`];
+                row['totalPrice'] = row[`totalPrice${currency}`];
+                if(row['icon']) {
+                    row['icon'] = decodeUtf8(row['icon']);
                 }
+                list.push(row);
             });
         }
-        return page;
+        return { total: page?.count || 0, list };
     }
 
-    public async listToken(fields, transferType, orderBy, reverse, skip: number = 0, limit: number = 10) {
+    public async listToken(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10) {
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
@@ -81,6 +98,7 @@ export class TokenSync{
         if(fields && fields.indexOf('icon') > 0){
             attributes.push('icon');
         }
+        console.log(`listToken--0----------------fields:${JSON.stringify(fields)}`);
         if(fields && fields.indexOf('price') > 0){
             attributes.push('price');
             attributes.push('quoteUrl');
@@ -99,6 +117,7 @@ export class TokenSync{
             attributes.push('totalPriceEUR');
         }
         options.attributes = attributes;
+        console.log(`listToken--1----------------attributes:${JSON.stringify(attributes)}`);
 
         // query
         const query: any = {};
@@ -119,22 +138,36 @@ export class TokenSync{
             if(orderBy === 'holderCount'){
                 orderBy = 'holder';
             }
+            if(orderBy === 'price'){
+                orderBy = `price${currency}`;
+            }
+            if(orderBy === 'totalPrice'){
+                orderBy = `totalPrice${currency}`;
+            }
             const orderItem = [];
             orderItem.push(orderBy);
             orderItem.push(reverse === 'true' ? 'DESC' : 'ASC');
             order = [];
             order.push(orderItem);
+            console.log(`listToken--2----------------order:${JSON.stringify(order)}`);
             options.order = order;
         }
         const page = await Token.findAndCountAll(options)
+        const list = [];
         if(page && page.rows){
-            page.rows.forEach( row => {
-                if(row.icon) {
-                    row.icon = decodeUtf8(row.icon);
+            page.rows.forEach( item => {
+                const row = item.toJSON();
+                console.log(`listToken--3----------------row:${JSON.stringify(row)}`);
+                row['price'] = row[`price${currency}`];
+                row['totalPrice'] = row[`totalPrice${currency}`];
+                if(row['icon']) {
+                    row['icon'] = decodeUtf8(row['icon']);
                 }
+                list.push(row);
+                console.log(`listToken--4----------------row:${JSON.stringify(row)}`);
             });
         }
-        return page;
+        return { total: page?.count || 0, list };
     }
 
     private async run() {

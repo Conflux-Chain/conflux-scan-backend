@@ -1,7 +1,7 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
-import {FullBlock, FullTransaction, AddressTransactionIndex, BlockPage, pagingFullBlock} from "../model/FullBlock";
+import {FullBlock, FullTransaction, AddressTransactionIndex, pagingFullBlock, pagingFullTx} from "../model/FullBlock";
 import {ContractInfo} from "../model/ContractInfo";
 import {Hex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
@@ -55,8 +55,10 @@ export class FullBlockQuery {
             }
         } else{
             const pagedCondition = await this.buildPagedBlockOptions(skip);
-            if(pagedCondition) conditionArray.push(pagedCondition.where);
-            options.offset = pagedCondition.skip;
+            if(pagedCondition) {
+                conditionArray.push(pagedCondition.where);
+                options.offset = pagedCondition.skip;
+            }
         }
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
@@ -181,6 +183,12 @@ export class FullBlockQuery {
                     conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
                 }
             }
+        } else{
+            const pagedCondition = await this.buildPagedTxOptions(skip);
+            if(pagedCondition) {
+                conditionArray.push(pagedCondition.where);
+                options.offset = pagedCondition.skip;
+            }
         }
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
@@ -189,7 +197,7 @@ export class FullBlockQuery {
             options.where = {[Op.and]: conditionArray};
         }
         // order
-        options.order = [['epochNumber', 'DESC'], ['blockHash', 'DESC'], ['transactionIndex', 'DESC']];
+        options.order = [['epoch', 'DESC'], ['blockPosition', 'DESC'], ['txPosition', 'DESC']];
         // query
         let rawList;
         let count;
@@ -295,6 +303,29 @@ export class FullBlockQuery {
                 ]
             };
             pagedCondition.skip = blockPage.skip;
+        }
+        return pagedCondition;
+    }
+
+    private async buildPagedTxOptions(skip){
+        const pagedCondition: any = {};
+        const txPage = await pagingFullTx(skip);
+        if(txPage?.id !== Infinity){
+            pagedCondition.where = {
+                [Op.or]: [
+                    {epoch: {[Op.lt]: txPage.epoch}},
+                    {[Op.and]: [
+                            {epoch: txPage.epoch},
+                            {blockPosition: {[Op.lt]: txPage.blockPosition}},
+                        ]},
+                    {[Op.and]: [
+                            {epoch: txPage.epoch},
+                            {blockPosition: txPage.blockPosition},
+                            {txPosition: {[Op.lt]: txPage.txPosition}},
+                        ]},
+                ]
+            };
+            pagedCondition.skip = txPage.skip;
         }
         return pagedCondition;
     }
