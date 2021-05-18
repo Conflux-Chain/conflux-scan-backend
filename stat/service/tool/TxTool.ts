@@ -14,13 +14,15 @@ if ('txMethod' === args[0]) {
         let round = Number(args[2])
         while(round>=0 && baseId<=maxTx.epoch) {
             const txList = await FullTransaction.findAll({where:{epoch: baseId}})
+            const up = []
             for (let tx of txList) {
                 const txInfo = await cfx.getTransactionByHash(tx.hash)
                 // @ts-ignore
-                await FullTransaction.update({method: txInfo.data.substr(0,10)},{
+                up.push( FullTransaction.update({method: txInfo.data.substr(0,10)},{
                     where: {epoch: tx.epoch, blockPosition: tx.blockPosition, txPosition: tx.txPosition}
-                })
+                }) )
             }
+            await Promise.all(up)
             process.stdout.write(`\r\u001b[2K Left round${round}, epoch ${baseId} update tx ${txList.length}`)
             baseId++
             round --
