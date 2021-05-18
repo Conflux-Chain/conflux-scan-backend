@@ -38,7 +38,7 @@ async function doIt() {
             contractInfo.push({name: value, hex40: key.split('/')[1], epoch: info.epochNumber});
         } else if (key.endsWith('/abi') && key.startsWith('contract/') && isAbi) {
             let abi = {}
-            let unzipStr: string;
+            let unzipStr: string = 'not set';
             try {
                 unzipStr = Buffer.from(zlib.unzipSync(Buffer.from(info.value, "base64"))).toString();
                 abi = JSON.parse(unzipStr)

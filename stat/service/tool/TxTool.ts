@@ -23,7 +23,7 @@ if ('txMethod' === args[0]) {
                 }) )
             }
             await Promise.all(up)
-            process.stdout.write(`\r\u001b[2K Left round${round}, epoch ${baseId} update tx ${txList.length}`)
+            process.stdout.write(`\r\u001b[2K Left round ${round}, epoch ${baseId} update tx ${txList.length}`)
             baseId++
             round --
         }
