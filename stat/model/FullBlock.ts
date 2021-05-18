@@ -375,7 +375,7 @@ export async function countNonMarkBlockRows(maxOne: IBlockRowMark) {
     return nonMarkRows;
 }
 
-function buildTxHigherCondition(maxOne: ITxnRowMark) {
+export function buildTxHigherCondition(maxOne: ITxnRowMark) {
     return {
         [Op.or]: {
             // epoch > ?

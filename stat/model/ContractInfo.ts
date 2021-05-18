@@ -1,4 +1,4 @@
-import {Sequelize, DataTypes, Model, QueryTypes} from "sequelize";
+import {Op,Sequelize, DataTypes, Model, QueryTypes} from "sequelize";
 import {makeId} from "./HexMap";
 import {Conflux} from "js-conflux-sdk";
 // import {StatApp} from "../StatApp";
@@ -101,5 +101,20 @@ export async function saveAbiInfo(abi:any) {
         console.log(`save abi info: ${arr.length}`)
     }).catch(err=>{
         console.log(`bulk create abi info fail:`, err)
+    })
+}
+export async function fillMethodInfo(arr:{method?:string}[]) {
+    if (arr.length === 0) {
+        return;
+    }
+    const map = new Map<string, AbiInfo>()
+    arr.map(row=>row.method).filter(row=>Boolean(row)).forEach(row=>map.set(row, null))
+    await AbiInfo.findAll({where:{hash:{[Op.in]:[...map.keys()]}}}).then(list=>{
+        list.forEach(info=>map.set(info.hash, info))
+    }).catch(err=>{
+        console.log(`build method map fail:`, err)
+    })
+    arr.forEach(row=>{
+        row['methodInfo'] = map.get(row.method)?.fullName || row.method
     })
 }

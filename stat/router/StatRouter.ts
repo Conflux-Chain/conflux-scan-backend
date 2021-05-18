@@ -230,14 +230,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/daily-token-stat', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const base32 = ctx.request.query.base32 || ''
-        const token = await Token.findOne({where: {base32: base32}})
+        const token = await Token.findOne({where: {base32: base32}, attributes:{exclude:['icon']}})
         if (!token) {
             ctx.body = {code: 404, message: `token not found ${base32}`}
             return
         }
         const list = await DailyToken.findAll({limit: Math.min(limit,1000), order:[['day','DESC']],
             where: {hexId: token.hex40id}})
-        ctx.body = {code:0, list}
+        ctx.body = {code:0, list, token}
     })
     // daily cfx transfer count
     router.get('/daily-cfx-txn', async function (ctx) {
