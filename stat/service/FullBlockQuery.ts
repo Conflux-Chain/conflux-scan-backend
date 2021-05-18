@@ -24,7 +24,7 @@ export class FullBlockQuery {
             minerId = hex40?.id
         }
         const stop1 = new Date().getTime()
-        logger.info({src: `listBlock---stop1------------`, 'cost': stop1});
+        logger.info({src: `listBlock---stop1------------`, 'cost': stop1-start});
         // attributes
         const options: any = {offset: skip, limit};
         options.attributes = [
@@ -44,6 +44,7 @@ export class FullBlockQuery {
         ];
         // where
         const conditionArray = [];
+        let stop2;
         if(minerId){
             conditionArray.push({minerId});
             if(minTimestamp && maxTimestamp) {
@@ -60,8 +61,8 @@ export class FullBlockQuery {
             const pagedCondition = await this.buildPagedBlockOptions(skip);
             if(pagedCondition) conditionArray.push(pagedCondition.where);
             options.offset = pagedCondition.skip;
-            const stop2 = new Date().getTime()
-            logger.info({src: `listBlock---stop2------------`, 'cost': stop2});
+            stop2 = new Date().getTime()
+            logger.info({src: `listBlock---stop2------------`, 'cost': stop2-stop1});
         }
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
@@ -70,23 +71,24 @@ export class FullBlockQuery {
             options.where = {[Op.and]: conditionArray};
         }
         const stop3 = new Date().getTime()
-        logger.info({src: `listBlock---stop3------------`, 'cost': stop3});
+        logger.info({src: `listBlock---stop3------------`, 'cost': stop3-stop2});
         // order
         options.order = [['epoch', 'DESC'], ['position', 'DESC']];
         // query
         let rawList;
         let count;
+        let stop4;
         if(minerId){
             const page = await FullBlock.findAndCountAll(options);
             rawList = page?.rows;
             count = page.count;
-            const stop4 = new Date().getTime()
-            logger.info({src: `listBlock---stop4------------`, 'cost': stop4});
+            stop4 = new Date().getTime()
+            logger.info({src: `listBlock---stop4------------`, 'cost': stop4- stop3});
         } else{
             rawList = await FullBlock.findAll(options);
             count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
-            const stop5 = new Date().getTime()
-            logger.info({src: `listBlock---stop5------------`, 'cost': stop5});
+            stop4 = new Date().getTime()
+            logger.info({src: `listBlock---stop5------------`, 'cost': stop4-stop3});
         }
         const list = [];
         if(rawList){
@@ -106,7 +108,7 @@ export class FullBlockQuery {
                 hex40Map.set(hex40.id, hex40.hex)
             })
             const stop6 = new Date().getTime()
-            logger.info({src: `listBlock---stop6------------`, 'cost': stop6});
+            logger.info({src: `listBlock---stop6------------`, 'cost': stop6-stop4});
             // fields mapping
             list.forEach(row=>{
                 const minerId = row['miner'];
@@ -119,7 +121,7 @@ export class FullBlockQuery {
                 row['pivotHash'] = row['pivotHash'] ? row['hash'] : undefined;
             })
             const stop7 = new Date().getTime()
-            logger.info({src: `listBlock---stop7------------`, 'cost': stop7});
+            logger.info({src: `listBlock---stop7------------`, 'cost': stop7-stop6});
         }
         const result = {total: count ? count : 0, list};
         // logger?.info({src: `fullblockquery------------`, 'result': JSON.stringify(result)});
