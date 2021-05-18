@@ -46,7 +46,7 @@ import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
-import {ContractInfo} from "../model/ContractInfo";
+import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
 let conf
@@ -91,6 +91,7 @@ export async function initPartialModel(sequelize) {
     hexMapInit(sequelize);
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)
+    AbiInfo.register(sequelize)
     Erc20Transfer.register(sequelize)
     Erc721Transfer.register(sequelize)
     Erc777Transfer.register(sequelize)

@@ -178,7 +178,8 @@ export class FullBlockService {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();
-            (await FullTransaction.findAll({where: {epoch: preEpoch}})).forEach(tx=>{
+            const popTx = await FullTransaction.findAll({where: {epoch: preEpoch}})
+            popTx.forEach(tx=>{
                 addresses.add(tx.fromId)
                 addresses.add(tx.toId)
             })
@@ -190,7 +191,7 @@ export class FullBlockService {
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
-                    this.diffCount(KEY_FULL_TX_COUNT, -executedTxArr.length, dbTx),
+                    this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -248,6 +249,7 @@ export class FullBlockService {
                         txInfo.contractCreatedId = 0
                     }
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
+                    txInfo.method = txInfo.data.substr(0, 10)
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId

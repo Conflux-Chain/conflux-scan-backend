@@ -5,10 +5,17 @@ import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
 import {EventBus} from "../service/watcher/EventBus";
-import {listAllContract} from "../model/ContractInfo";
+import {fillMethodInfo, listAllContract} from "../model/ContractInfo";
 import {Token} from "../model/Token";
 import {QueryTypes} from "sequelize";
-import {BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
+import {
+    BlockRowMark,
+    buildTxHigherCondition,
+    FullBlock,
+    FullTransaction,
+    pagingFullTx,
+    TxnRowMark
+} from "../model/FullBlock";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -57,6 +64,18 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/set-address-name',
         checkLocal,
         async (ctx) => await setAddressInfo(ctx)
+    )
+    router.get('/devops/test-list-tx-with-method',
+        async (ctx) => {
+            const pageInfo = await pagingFullTx(0)
+            const where = pageInfo.epoch === Infinity ? {} : buildTxHigherCondition(pageInfo)
+            const {epoch} = ctx.request.query
+            epoch && (where['epoch'] = Number(epoch))
+            const txList = await FullTransaction.findAll({where, offset:pageInfo.skip, limit: 10,
+                order:[["epoch","desc"],["blockPosition","desc"],["txPosition","desc"]]})
+            await fillMethodInfo(txList)
+            ctx.body = {list:txList, pageInfo}
+        }
     )
     router.get('/devops/list-contract',
         async (ctx) => {

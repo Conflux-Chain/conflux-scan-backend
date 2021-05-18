@@ -9,6 +9,7 @@ export async function init() {
     let seq = createDB(config.database)
     await seq.sync({})
     await initModel(seq)
+    return config
 }
 export async function fixDate(hexId=0) {
     let dt = new Date('2020-10-28')

@@ -12,6 +12,7 @@ CREATE TABLE `full_tx` (
   `gas` decimal(36,0) NOT NULL DEFAULT '0',
   `status` tinyint NOT NULL DEFAULT '0',
   `contractCreatedId` bigint unsigned NOT NULL,
+  `method` char (10) null ,
   primary key  (`epoch` desc, `blockPosition` desc, `txPosition` desc),
   KEY `idx_block_time` (`createdAt` DESC),
   KEY `idx_hash` (`hash`(10))
