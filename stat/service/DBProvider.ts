@@ -11,6 +11,7 @@ import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {TokenQuote} from "../model/TokenQuote";
 import {
     Balance_cAMP,
     Balance_cBAND, Balance_cBNB,
@@ -109,6 +110,9 @@ export async function initPartialModel(sequelize) {
     ContractInfo.register(sequelize)
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
+    Token.register(sequelize);
+    TokenQuote.register(sequelize);
+    KV.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
@@ -116,7 +120,6 @@ export async function initModel(sequelize) {
     TransactionDB.register(sequelize);
     Block.register(sequelize);
     MinerBlock.register(sequelize);
-    KV.register(sequelize);
     TopBatchIndex.register(sequelize)
     TopRecord.register(sequelize);
     Address.register(sequelize)
@@ -168,7 +171,6 @@ export async function initModel(sequelize) {
     Balance_TD.register(sequelize);
     Balance_cFLUX.register(sequelize);
 
-    Token.register(sequelize);
     NftId.register(sequelize)
     Trace.register(sequelize)
     PivotSwitch.register(sequelize)
