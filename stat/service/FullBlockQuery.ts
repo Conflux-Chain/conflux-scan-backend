@@ -290,8 +290,12 @@ export class FullBlockQuery {
 
     private async buildPagedBlockOptions(skip){
         const{ logger } = this.app;
+
+        const start = new Date().getTime()
         const pagedCondition: any = {};
-        const blockPage = await pagingFullBlock(skip);
+        const blockPage = await pagingFullBlock(skip, logger);
+        const stop1 = new Date().getTime()
+        logger.info({src: `buildPagedBlockOptions---stop1------------`, 'cost': stop1-start});
         logger?.info({src: `buildPagedBlockOptions------------`, 'result': JSON.stringify(blockPage), 'blockPageEpoch': `hhh${blockPage.epoch}`});
         /** How to use the result:
          if (result.id === Infinity) : query without condition;
@@ -314,6 +318,8 @@ export class FullBlockQuery {
             };
             pagedCondition.skip = blockPage.skip;
         }
+        const stop2 = new Date().getTime()
+        logger.info({src: `buildPagedBlockOptions---stop2------------`, 'cost': stop2-stop1});
         return pagedCondition;
     }
 }
