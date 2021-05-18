@@ -108,13 +108,21 @@ export async function fillMethodInfo(arr:{method?:string}[]) {
         return;
     }
     const map = new Map<string, AbiInfo>()
-    arr.map(row=>row.method).filter(row=>Boolean(row)).forEach(row=>map.set(row, null))
-    await AbiInfo.findAll({where:{hash:{[Op.in]:[...map.keys()]}}}).then(list=>{
+    arr.map(row=>row.method).filter(row=>{
+        return Boolean(row)
+    }).forEach(row=>{
+        map.set(row, null)
+    })
+    await AbiInfo.findAll({where:{hash:{[Op.in]:[...map.keys()]}}
+        , logging: console.log
+    }).then(list=>{
         list.forEach(info=>map.set(info.hash, info))
     }).catch(err=>{
         console.log(`build method map fail:`, err)
     })
     arr.forEach(row=>{
-        row['methodInfo'] = map.get(row.method)?.fullName || row.method
+        let fullName = map.get(row.method)?.fullName || row.method;
+        row.method = fullName
+        // console.log(`set full name ${fullName} to ${row.method} , map v ${map.get(row.method)}`)
     })
 }
