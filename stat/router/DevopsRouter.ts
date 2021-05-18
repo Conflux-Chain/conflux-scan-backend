@@ -68,7 +68,8 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/test-list-tx-with-method',
         async (ctx) => {
             const pageInfo = await pagingFullTx(0)
-            const txList = await FullTransaction.findAll({where:buildTxHigherCondition(pageInfo), offset:pageInfo.skip, limit: 10,
+            const where = pageInfo.epoch === Infinity ? {} : buildTxHigherCondition(pageInfo)
+            const txList = await FullTransaction.findAll({where, offset:pageInfo.skip, limit: 10,
                 order:[["epoch","desc"],["blockPosition","desc"],["txPosition","desc"]]})
             await fillMethodInfo(txList)
             ctx.body = {list:txList, pageInfo}
