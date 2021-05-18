@@ -1,4 +1,4 @@
-import {BlockRowMark, markBlockPosition} from "../../model/FullBlock";
+import {BlockRowMark, markBlockPosition, markTxPosition} from "../../model/FullBlock";
 import {init} from "./FixDailyTokenStat";
 
 async function markBloc() {
@@ -6,11 +6,17 @@ async function markBloc() {
 }
 const args = process.argv.slice(2)
 if ('block' === args[0]) {
-    init().then( ()=>
+    init().then(() =>
         markBlockPosition(Number(args[1] || 1))
-    ).then(()=>{
-        BlockRowMark.sequelize.close()
+    ).then(() => {
+        return BlockRowMark.sequelize.close()
+    }).then()
+} else if ('tx' === args[0]) {
+    init().then(() =>
+        markTxPosition(Number(args[1] || 1))
+    ).then(() => {
+        return BlockRowMark.sequelize.close()
     }).then()
 } else {
-    console.log(`what ?`)
+    console.log(`what ? [block | tx]`)
 }

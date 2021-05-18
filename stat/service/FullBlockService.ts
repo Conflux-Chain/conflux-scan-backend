@@ -3,15 +3,21 @@ import {Conflux, format} from "js-conflux-sdk";
 import {
     AddressTransactionIndex,
     BLOCK_PAGE_MARK_SIZE,
-    BlockRowMark, countNonMarkBlockRows,
+    BlockRowMark, countNonMarkBlockRows, countNonMarkTxRows,
     FullBlock,
-    FullTransaction,
-    IFullBlock
+    FullTransaction, IBlockRowMark,
+    IFullBlock, ITxnRowMark, markBlockPosition, markTxPosition, TxnRowMark
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
-import {QueryTypes} from "sequelize"
-import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FILL_BLOCK_REWARD_EPOCH, KEY_FULL_BLOCK_COUNT, KV} from "../model/KV";
+import {Transaction,QueryTypes} from "sequelize"
+import {
+    KEY_FILL_BLOCK_PROPS_EPOCH,
+    KEY_FILL_BLOCK_REWARD_EPOCH,
+    KEY_FULL_BLOCK_COUNT,
+    KEY_FULL_TX_COUNT,
+    KV
+} from "../model/KV";
 import {sleep} from "./tool/ProcessTool";
 
 // Do not care the value
@@ -42,42 +48,69 @@ export class FullBlockService {
         this.debugLog && console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
         this.previousPivotHash = maxAtDb.hash
     }
-    public async run(always = false) {
+    public async run(always = false) : Promise<void> {
         let maxEpoch:number = await FullBlock.max('epoch')
         if (isNaN(maxEpoch)) {
            maxEpoch = -1 // plus 1 got 0
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }
-        await this.checkCountKV()
-        let ret
-        do {
-            ret = await this.syncBlockByEpoch(maxEpoch+1).catch(err=>{
+        await this.checkBlockCountKV()
+        await this.checkTxCountKV()
+        const that = this
+        async function repeat(){
+            let ret
+            ret = await that.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
                     console.log(`lock time out at epoch ${maxEpoch}:`, err)
-                    return {code: CODE_CONTINUE}
+                } else {
+                    console.log(`sync block fail at epoch ${maxEpoch}`, err)
                 }
-                console.log(`sync block fail at epoch ${maxEpoch}`, err)
-                throw err;
+                return {code: CODE_CONTINUE}
             })
             if (ret.code === CODE_REWIND) {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                this.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                this.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
             }
-        } while (always)
-        return ret
+            if ( maxEpoch % BLOCK_PAGE_MARK_SIZE === 0 && maxEpoch > BLOCK_PAGE_MARK_SIZE) {
+                let avoidReOrg = 1000;
+                Promise.all([
+                    markTxPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg),
+                    markBlockPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg)
+                ]).then()
+            }
+            if (always) {
+                setTimeout(repeat, 0)
+            }
+        }
+        return repeat()
     }
 
-    public async checkCountKV() {
+    public async checkTxCountKV() {
+        const cnt = await KV.getNumber(KEY_FULL_TX_COUNT)
+        if (!isNaN(cnt)) {
+            console.log(`tx count in KV: ${cnt}`)
+            return
+        }
+        let maxOne:ITxnRowMark = await TxnRowMark.findOne({order: [["id", "desc"]], limit: 1})
+        if (maxOne === null) {
+            maxOne = {id:0, epoch:-1, blockPosition:-1, txPosition: -1}
+        }
+        const nonMarkRows = await countNonMarkTxRows(maxOne)
+        const countNow = nonMarkRows + maxOne.id;
+        console.log(`create full txn count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
+        return KV.create({key: KEY_FULL_TX_COUNT, value: countNow.toString()})
+    }
+    public async checkBlockCountKV() {
         const cnt = await KV.getNumber(KEY_FULL_BLOCK_COUNT)
         if (!isNaN(cnt)) {
             console.log(`block count in KV: ${cnt}`)
@@ -90,13 +123,9 @@ export class FullBlockService {
             console.log(`set block count to ${countNow}, as system just starts.`)
             return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow})
         }
-        const maxOne = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
+        let maxOne:IBlockRowMark = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
         if (maxOne === null) {
-            console.log(`block row mark not found, and block record at epoch ${maxBlock.epoch
-                }, must build block row mark first. `)
-            await sleep(1000)
-            process.exit(0)
-            return
+            maxOne = {id:0, epoch:-1, position: -1}
         }
         const nonMarkRows = await countNonMarkBlockRows(maxOne)
         const countNow = nonMarkRows + maxOne.id;
@@ -160,7 +189,8 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
-                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length),
+                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
+                    this.diffCount(KEY_FULL_TX_COUNT, -executedTxArr.length, dbTx),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -240,7 +270,8 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
+                this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx),
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
@@ -276,10 +307,10 @@ export class FullBlockService {
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
     }
-    async diffCount(key:string, diff:number) {
+    async diffCount(key:string, diff:number, dbTx:Transaction) {
         return KV.getNumber(key).then(cnt=>{
-            KV.update({value: (cnt+diff).toString()},
-                {where:{key:key}})
+            return KV.update({value: (cnt+diff).toString()},
+                {where:{key:key}, transaction: dbTx})
         })
     }
     public async fillBlockRewardByPos() {
@@ -422,5 +453,7 @@ ALTER TABLE ... TRUNCATE PARTITION prunes locks; only the partitions to be empti
 
 select count(*) from block_row_mark;
 select * from block_row_mark order by id desc limit 10;
+select * from tx_row_mark order by id desc limit 10;
 select count(*) from full_block where epoch > ;
+select * from daily_token order by transferCount desc limit 10;
  */

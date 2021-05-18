@@ -1,7 +1,7 @@
 import {TransactionDB} from "../model/Transaction";
 import {DailyTransaction, IDailyTransaction} from "../model/DailyTransaction";
 import {calBeginEndTime, getNextDelay, getYesterday} from "./tool/DateTool";
-import {fn, Op, Sequelize} from 'sequelize'
+import {fn, Op, Sequelize, Model} from 'sequelize'
 import {Erc20Transfer, T_ERC20_TRANSFER} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
@@ -114,11 +114,12 @@ export async  function countRecentTokenTransferAccount(days:number) {
         countAccount(T_ERC1155_TRANSFER),
     ]).then(arr=>arr.reduce((a,b)=>a+b))
 }
-export async  function calcDailyToken(dt:Date, tokenHexId:number) {
+
+export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
         const tokenBean = await Token.findOne({where: {hex40id: tokenHexId}})
         if (tokenBean === null) {
             console.log(`${new Date().toISOString()} token not found, hex id ${tokenHexId}`)
-            return
+            return [null,null]
         }
         let model
         switch(tokenBean.type.toLowerCase()) {
@@ -128,9 +129,57 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
             case 'erc1155': model = Erc1155Transfer; break;
             default:
                 console.log(`unknown token type [${tokenBean.type}], ${tokenBean.base32}, ${tokenBean.symbol}`)
-                return
+                return [null, tokenBean];
         }
-        //
+        return [model, tokenBean]
+}
+export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
+    const [model, tokenBean] = await getTokenModel(tokenHexId)
+    if (model === null) {
+        return;
+    }
+    let start = new Date(dt); start.setUTCHours(0,0,0,0)
+    let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+    let dailyTokenWhere = {where: {hexId: tokenHexId, day: start}};
+    const dailyToken = DailyToken.findOne(dailyTokenWhere)
+    if (dailyToken == null) {
+        console.log(`daily token not found ${tokenHexId}, ${start}`)
+        return;
+    }
+    let preId = 0;
+    const sql = `select id,\`value\` from ${model.getTableName()} where contractId=?
+            and createdAt between ? and ? and id > ? order by id asc limit ?`
+    const pageSize = 1000;
+    let sum = BigInt(0)
+    do {
+        await model.sequelize.query(sql,{type:QueryTypes.SELECT,
+            replacements:[tokenHexId, start, end, preId, pageSize]}).then(list=>{
+                list.forEach(row=>{
+                    sum += BigInt(row.value)
+                })
+            if (list.length > 0) {
+                preId = list[list.length-1].id
+            } else {
+                preId = -1 // stop while
+            }
+            process.stdout.write(`\r${CONST.CL} token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
+                } transfer records:${list.length}`)
+        }).catch(err=>{
+            console.log(`query transfer fail: ${sql}`, err)
+            preId = -1
+        })
+    } while (preId > 0)
+    await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
+        .then(([cnt])=>{
+            process.stdout.write(`\r${CONST.CL}update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start}`)
+        })
+}
+export async  function calcDailyToken(dt:Date, tokenHexId:number) {
+    const [model, tokenBean] = await getTokenModel(tokenHexId)
+    if (model === null) {
+        return;
+    }
+    //
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
@@ -152,5 +201,8 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
             showDebugLog && process.stdout.write(`\r ${CONST.CL} create daily token stat : ${tokenBean.symbol}`)
         } else {
             showDebugLog && process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
+        }
+        if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
+             await calcDailyTokenAmount(dt, tokenHexId)
         }
     }

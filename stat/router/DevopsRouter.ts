@@ -5,7 +5,10 @@ import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
 import {EventBus} from "../service/watcher/EventBus";
-import { listAllContract } from "../model/ContractInfo";
+import {listAllContract} from "../model/ContractInfo";
+import {Token} from "../model/Token";
+import {QueryTypes} from "sequelize";
+import {BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -25,6 +28,32 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             ctx.body = {code: 0, message:"OK"}
         }
     )
+    router.get('/devops/hexId',async (ctx) => {
+        const {hexId} = ctx.request.query
+        const bean = await Hex40Map.findByPk(hexId)
+        const token = await Token.findOne({where: {hex40id: bean?.id || 0}}) || {icon:''}
+        token.icon = ''
+        ctx.body = {hex: bean, token}
+    })
+    router.get('/devops/sync-max-info',async (ctx) => {
+        await Promise.all([
+            TxnRowMark.findOne({order:[["id","desc"]], limit: 1}),
+            BlockRowMark.findOne({order:[["id","desc"]], limit: 1}),
+            FullBlock.findOne({order:[["epoch", "desc"]], limit: 1}),
+            FullTransaction.findOne({order:[["epoch", "desc"]], limit: 1}),
+        ]).then(arr=>{
+            ctx.body = {marks:arr}
+        })
+    })
+    router.get('/devops/db-partition',async (ctx) => {
+        const sql = `SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
+       FROM INFORMATION_SCHEMA.PARTITIONS
+       WHERE PARTITION_NAME is not null;`
+        const list = await Hex40Map.sequelize.query(sql,{
+            type: QueryTypes.SELECT
+        })
+        ctx.body = {list}
+    })
     router.get('/devops/set-address-name',
         checkLocal,
         async (ctx) => await setAddressInfo(ctx)
