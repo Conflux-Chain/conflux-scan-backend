@@ -2,7 +2,7 @@
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {FullBlock, FullTransaction, AddressTransactionIndex, pagingFullBlock, pagingFullTx} from "../model/FullBlock";
-import {ContractInfo} from "../model/ContractInfo";
+import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 const CONST = require('./common/constant');
@@ -214,6 +214,7 @@ export class FullBlockQuery {
             count = await KV.getNumber(KEY_FULL_TX_COUNT);
         }
         const list = [];
+        let extraInfo = {}
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
@@ -272,8 +273,11 @@ export class FullBlockQuery {
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
+            await fillMethodInfo(list).catch(err=>{
+                extraInfo['fillMethodError'] = err
+            })
         }
-        const result = {total: count ? count : 0, list};
+        const result = {total: count ? count : 0, list, extraInfo};
         // logger?.info({src: `fullTransactionQuery------------`, 'result': JSON.stringify(result)});
         return result;
     }

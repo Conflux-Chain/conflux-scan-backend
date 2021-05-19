@@ -79,20 +79,25 @@ export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
         })
     }
 }
+// Refer:
+// https://docs.soliditylang.org/en/v0.5.3/abi-spec.html
+// https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
 export async function saveAbiInfo(abi:any) {
     const cfx = new Conflux({url:''})
     const contract = cfx.Contract({abi})
     const arr:IAbiInfo[] = []
+    // each key is a prop of the contract, only care the exact method/event like abc(address,uint)
+    const maxFullName = 1024
     for (let key of Object.keys(contract)) {
         const field = contract[key]
         if (key.includes('(')) {
             // console.log(`${key} : ${typeof field} ${Object.keys(field).join(',')}, ${field.signature}`)
-            if (field.signature.length === 66) {
+            const template = {fullName: key.substr(0, maxFullName), hash: field.signature, type: "function"}
+            if (field.signature.length === 66/*keccak hash*/) {
                 // event
-                arr.push({fullName: key, hash: field.signature, type: "event"})
-            } else {
-                arr.push({fullName: key, hash: field.signature, type: "function"})
+                template.type = "event"
             }
+            arr.push(template)
         }
     }
     AbiInfo.bulkCreate(arr, {
