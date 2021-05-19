@@ -149,7 +149,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         days = Math.max(days, 1)
         days = Math.min(days, 7)
         await Promise.all([
-            sumRecentCfxTxn(days),
+            TxnQuery.txnCountByTime({span:'24h'}),
+            // sumRecentCfxTxn(days),
             sumRecentCfxAmount(-days),
             TxnQuery.gasUsedSum(-days),
             countRecentTokenTransfer(-days),
