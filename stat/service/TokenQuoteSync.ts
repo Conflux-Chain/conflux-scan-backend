@@ -83,7 +83,7 @@ export class TokenQuoteSync {
     const response = await superagent.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest')
       .set('X-CMC_PRO_API_KEY', config.marketCapToken)
       .query({ id: idArray.join(','), convert });
-    console.log({ status: response.status, text: response.text }); // for debug
+    // console.log({ status: response.status, text: response.text }); // for debug
     return lodash.mapValues(response.body.data, (each) => each.quote[convert]);
   }
 
@@ -143,7 +143,7 @@ export class TokenQuoteSync {
         .query({
           symbol: `${symbol}${convert}`,
         });
-    console.log({ status: response.status, text: response.text }); // for debug
+    // console.log({ status: response.status, text: response.text }); // for debug
     return lodash.get(response, ['body', 'price']);
   }
 
