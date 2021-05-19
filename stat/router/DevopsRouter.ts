@@ -5,8 +5,8 @@ import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
 import {EventBus} from "../service/watcher/EventBus";
-import {fillMethodInfo, listAllContract} from "../model/ContractInfo";
-import {Token} from "../model/Token";
+import {AbiInfo, fillMethodInfo, listAllContract} from "../model/ContractInfo";
+import {DailyToken, Token} from "../model/Token";
 import {QueryTypes} from "sequelize";
 import {
     BlockRowMark,
@@ -17,6 +17,7 @@ import {
     TxnRowMark
 } from "../model/FullBlock";
 import {FullBlockQuery} from "../service/FullBlockQuery";
+import {KV} from "../model/KV";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -75,6 +76,35 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
                 ...ctx.request.query,
                 skip, limit})
             ctx.body = page
+        }
+    )
+    router.get('/devops/view-table',
+        async (ctx) => {
+            const {skipStr = 0, limitStr = 10, t='full_tx'} = ctx.request.query
+            const skip = Number(skipStr)
+            const limit = Number(limitStr)
+            let list = []
+            switch(t) {
+                case 'full_tx': list = await FullTransaction.findAll({
+                    offset: skip, limit, order:[['epoch','desc']]
+                });break;
+                case 'daily_token':
+                    list = await DailyToken.findAll({offset: skip, limit, order:[['day','desc']]})
+                    break;
+                case 'config':
+                    list = await KV.findAll({offset: skip, limit})
+                    break;
+                case 'abi_info':
+                    list = await AbiInfo.findAll({offset: skip, limit, order:[["createdAt",'desc']]})
+                    break;
+                case 'block_row_mark':
+                    list = await BlockRowMark.findAll({offset: skip, limit, order:[["id",'desc']]})
+                    break;
+                case 'full_tx_row_mark':
+                    list = await TxnRowMark.findAll({offset: skip, limit, order:[["id",'desc']]})
+                    break;
+            }
+            ctx.body = {list}
         }
     )
     router.get('/devops/test-list-tx-with-method',
