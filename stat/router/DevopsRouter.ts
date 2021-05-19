@@ -16,6 +16,7 @@ import {
     pagingFullTx,
     TxnRowMark
 } from "../model/FullBlock";
+import {FullBlockQuery} from "../service/FullBlockQuery";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -64,6 +65,17 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/set-address-name',
         checkLocal,
         async (ctx) => await setAddressInfo(ctx)
+    )
+    router.get('/devops/list-tx',
+        async (ctx) => {
+            const {skipStr = 0, limitStr = 10} = ctx.request.query
+            const skip = Number(skipStr)
+            const limit = Number(limitStr)
+            const page = await new FullBlockQuery({networkId:StatApp.networkId}).listTransaction({
+                ...ctx.request.query,
+                skip, limit})
+            ctx.body = page
+        }
     )
     router.get('/devops/test-list-tx-with-method',
         async (ctx) => {

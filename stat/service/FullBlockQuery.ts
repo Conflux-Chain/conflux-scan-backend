@@ -10,7 +10,7 @@ const CONST = require('./common/constant');
 export class FullBlockQuery {
     protected app;
 
-    protected constructor(app: any) {
+    public constructor(app: any) {
         this.app = app;
     }
 
@@ -142,6 +142,7 @@ export class FullBlockQuery {
             'gas',
             ['createdAt', 'timestamp'],
             'status',
+            'method',
             ['contractCreatedId', 'contractCreated'],
         ];
         // where
