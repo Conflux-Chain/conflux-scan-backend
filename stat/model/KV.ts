@@ -14,6 +14,8 @@ export const KEY_BLOCK_TRACE_TX_ID = "KEY_BLOCK_TRACE_TX_ID"
 export const KEY_BLOCK_TRACE_CREATE_EPOCH = "KEY_BLOCK_TRACE_CREATE_EPOCH"
 export const KEY_BALANCE_POS_PREFIX = "BALANCE_POS_"
 export const KEY_NFT_TOKEN_ID_POS = "NFT_TOKEN_ID_POS_"
+export const KEY_BLOCK_QUERY_RDB_SWITCH = "SWITCH_BLOCK_QUERY_RDB"
+export const KEY_TX_QUERY_RDB_SWITCH = "SWITCH_TX_QUERY_RDB"
 
 export class KV extends Model<IKV> implements IKV {
     key: string;
@@ -25,6 +27,11 @@ export class KV extends Model<IKV> implements IKV {
             return Promise.resolve(null);
         }
         return Promise.resolve(parseInt(str))
+    }
+
+    static async getSwitch(key: string): Promise<Boolean> {
+        const str = (await KV.findOne({where: {key}}) || {}).value
+        return Promise.resolve((str || '').toLowerCase() === 'true')
     }
 
     static register(sequelize) {
