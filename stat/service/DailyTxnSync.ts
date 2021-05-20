@@ -8,6 +8,7 @@ import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {Erc777Transfer, T_ERC777_TRANSFER} from "../model/Erc777Transfer";
 import {QueryTypes} from "sequelize";
+import {BalanceWatcher} from "./watcher/BalanceWatcher";
 
 const CONST = require('./common/constant');
 
@@ -171,7 +172,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     } while (preId > 0)
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
         .then(([cnt])=>{
-            process.stdout.write(`\r${CONST.CL}update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start}`)
+            process.stdout.write(`\r${CONST.CL}update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
         })
 }
 export async  function calcDailyToken(dt:Date, tokenHexId:number) {
@@ -203,6 +204,17 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
             showDebugLog && process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
         }
         if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
-             await calcDailyTokenAmount(dt, tokenHexId)
+             await calcDailyTokenAmount(dt, tokenHexId).catch(err=>{
+                 console.log(`calcDailyTokenAmount fail, ${dt.toISOString()} ${tokenHexId}`, err)
+             })
         }
+    // holder count
+    const banModel = BalanceWatcher.mapModel(tokenBean.symbol, true)
+    if (banModel) {
+        banModel.count({}).then(cnt=>{
+            return DailyToken.update({holderCount: cnt}, {where: {hexId: tokenHexId, day: start}})
+        }).catch(err=>{
+            console.log(`update daily token holder fail ${tokenBean.hex40id}:`, err)
+        })
     }
+}
