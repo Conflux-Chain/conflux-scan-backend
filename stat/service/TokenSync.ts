@@ -83,7 +83,7 @@ export class TokenSync{
         return { total: page?.count || 0, list };
     }
 
-    public async listToken(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10) {
+    public async listToken(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, address) {
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
@@ -98,7 +98,6 @@ export class TokenSync{
         if(fields && fields.indexOf('icon') > 0){
             attributes.push('icon');
         }
-        console.log(`listToken--0----------------fields:${JSON.stringify(fields)}`);
         if(fields && fields.indexOf('price') > 0){
             attributes.push('price');
             attributes.push('quoteUrl');
@@ -117,12 +116,14 @@ export class TokenSync{
             attributes.push('totalPriceEUR');
         }
         options.attributes = attributes;
-        console.log(`listToken--1----------------attributes:${JSON.stringify(attributes)}`);
 
         // query
         const query: any = {};
         if(transferType){
             query.type = transferType;
+        }
+        if(address){
+            query.base32 = address;
         }
         options.where = query;
 
@@ -149,7 +150,6 @@ export class TokenSync{
             orderItem.push(reverse === 'true' ? 'DESC' : 'ASC');
             order = [];
             order.push(orderItem);
-            console.log(`listToken--2----------------order:${JSON.stringify(order)}`);
             options.order = order;
         }
         const page = await Token.findAndCountAll(options)
@@ -157,14 +157,12 @@ export class TokenSync{
         if(page && page.rows){
             page.rows.forEach( item => {
                 const row = item.toJSON();
-                console.log(`listToken--3----------------row:${JSON.stringify(row)}`);
                 row['price'] = row[`price${currency}`];
                 row['totalPrice'] = row[`totalPrice${currency}`];
                 if(row['icon']) {
                     row['icon'] = decodeUtf8(row['icon']);
                 }
                 list.push(row);
-                console.log(`listToken--4----------------row:${JSON.stringify(row)}`);
             });
         }
         return { total: page?.count || 0, list };
