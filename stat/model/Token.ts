@@ -207,4 +207,25 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
             }]
         })
     }
+
+    static async calcRecentIncrease(hexId: number) : Promise<[number, DailyToken, DailyToken]> {
+        const list = await DailyToken.findAll({
+                where:{hexId: hexId},
+                order:[['day','desc']], limit: 3}
+            )
+        if (list.length < 2) {
+            return [0,list[0],null]
+        }
+        // two or three record, d1 is latest day and may be in progress.
+        const [d1,d2,d3] = list
+        // recent 1 >= recent 2
+        if (d1.holderCount && d2.holderCount && d1.holderCount >= d2.holderCount) {
+            return [(d1.holderCount - d2.holderCount) / d2.holderCount, d1, d2]
+        }
+        // recent 2 compare recent 3
+        if (d3 && d2.holderCount && d3.holderCount) {
+            return [(d2.holderCount - d3.holderCount) / d3.holderCount, d2, d3]
+        }
+        return [0, d1, d2]
+    }
 }

@@ -1,7 +1,7 @@
 import {Op, Sequelize} from 'sequelize';
 // @ts-ignore
 import {format} from 'js-conflux-sdk';
-import {Token} from "../model/Token";
+import {DailyToken, Token} from "../model/Token";
 import {makeId} from "../model/HexMap";
 const addressSdk = require('js-conflux-sdk/src/util/address')
 const lodash = require('lodash');
@@ -87,6 +87,7 @@ export class TokenSync{
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
+            'hex40id',
             'name',
             'symbol',
             'decimals',
@@ -162,8 +163,17 @@ export class TokenSync{
                 if(row['icon']) {
                     row['icon'] = decodeUtf8(row['icon']);
                 }
+                row['transferType'] = (row['transferType'] || '').toUpperCase();
                 list.push(row);
             });
+            if (address && page.rows[0]) {
+                // query token detail page, should has only one record
+                const [percent] = await DailyToken.calcRecentIncrease(page.rows[0].hex40id).catch((err)=>{
+                    list[0]['holderIncreaseError'] = err.toLocaleString()
+                    return [0]
+                })
+                list[0]['holderIncreasePercent'] = percent
+            }
         }
         return { total: page?.count || 0, list };
     }

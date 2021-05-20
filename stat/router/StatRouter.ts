@@ -104,18 +104,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         //         })
         // })
 
-        await new Promise(async r=>{
+
             const {fields, currency, address} = ctx.request.query;
             const result = await statApp.tokenSync.listToken(fields, null, currency, null, null, 0,
                 1, address);
-            ctx.body = result?.list?.shift();
-            r('ok')
-        }).catch(err=>{
-            ctx.body = {
-                code: 500,
-                message: `${err}`
-            }
-        })
+            ctx.body = result?.list?.shift() || {};
+
     })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
