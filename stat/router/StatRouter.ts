@@ -82,33 +82,46 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
     })
     router.get('/tokens/by-address', async (ctx)=>{
-        const res = await new Promise((resolve) => {
-            // front end use lower case and without type.contract
-            const tokenAddr = ctx.request.query.address
-            const addr = tokenAddr.toLowerCase()
-            superagent.get(`${statApp.config.scanApiUrl}/v1/token/${addr}`)
-                .query(ctx.request.querystring)
-                .end(async (err, res)=>{
-                    if (err) {
-                        console.log(`scan api fetch token fail:`, err)
-                        ctx.body = res.body
-                        ctx.status = 600
-                        resolve("fail")
-                        return
-                    }
-                    if (res.status === 200) {
-                      res.body.holderCount = (await statApp.balanceService.getHolderCount(addr)) || '-'
-                    }
-                    ctx.body = res.body
-                    resolve("ok")
-                })
+        // const res = await new Promise((resolve) => {
+        //     // front end use lower case and without type.contract
+        //     const tokenAddr = ctx.request.query.address
+        //     const addr = tokenAddr.toLowerCase()
+        //     superagent.get(`${statApp.config.scanApiUrl}/v1/token/${addr}`)
+        //         .query(ctx.request.querystring)
+        //         .end(async (err, res)=>{
+        //             if (err) {
+        //                 console.log(`scan api fetch token fail:`, err)
+        //                 ctx.body = res.body
+        //                 ctx.status = 600
+        //                 resolve("fail")
+        //                 return
+        //             }
+        //             if (res.status === 200) {
+        //               res.body.holderCount = (await statApp.balanceService.getHolderCount(addr)) || '-'
+        //             }
+        //             ctx.body = res.body
+        //             resolve("ok")
+        //         })
+        // })
+
+        await new Promise(async r=>{
+            const {fields, currency, address} = ctx.request.query;
+            const result = await statApp.tokenSync.listToken(fields, null, currency, null, null, 0,
+                1, address);
+            ctx.body = result?.list?.shift();
+            r('ok')
+        }).catch(err=>{
+            ctx.body = {
+                code: 500,
+                message: `${err}`
+            }
         })
     })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
             const {fields, transferType, currency, orderBy, reverse, skip, limit} = ctx.request.query;
             const result = await statApp.tokenSync.listToken(fields, transferType, currency, orderBy, reverse, skip? parseInt(skip): skip,
-                limit ? parseInt(limit): limit);
+                limit ? parseInt(limit): limit, null);
             ctx.body = result;
             r('ok')
         }).catch(err=>{
