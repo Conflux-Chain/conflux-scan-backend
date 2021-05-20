@@ -163,6 +163,7 @@ export class TokenSync{
                 if(row['icon']) {
                     row['icon'] = decodeUtf8(row['icon']);
                 }
+                row['transferType'] = (row['transferType'] || '').toUpperCase();
                 list.push(row);
             });
             if (address && page.rows[0]) {
