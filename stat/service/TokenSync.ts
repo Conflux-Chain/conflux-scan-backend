@@ -87,6 +87,7 @@ export class TokenSync{
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
+            'hex40id',
             'name',
             'symbol',
             'decimals',
@@ -164,10 +165,10 @@ export class TokenSync{
                 }
                 list.push(row);
             });
-            if (address) {
+            if (address && page.rows[0]) {
                 // query token detail page, should has only one record
                 const [percent] = await DailyToken.calcRecentIncrease(page.rows[0].hex40id).catch((err)=>{
-                    list[0]['holderIncreaseError'] = err
+                    list[0]['holderIncreaseError'] = err.toLocaleString()
                     return [0]
                 })
                 list[0]['holderIncreasePercent'] = percent
