@@ -13,6 +13,7 @@ import {pickNumber} from "../model/Utils";
 import {DailyToken, NftId, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyCfxTxn, sumRecentCfxAmount, sumRecentCfxTxn} from "../model/CfxTransfer";
+const NodeCache = require( "node-cache" );
 
 const cors = require('@koa/cors');
 import Application = require("koa");
@@ -24,6 +25,8 @@ import {countRecentMiner} from "../service/BlockAndMinerSync";
 const superagent = require('superagent');
 
 export const ROUTER_PREFIX = '/stat'
+const dbCache = new NodeCache()
+const cacheTtl = 60 * 10 // 10 minutes
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = {
@@ -136,11 +139,18 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     // stat over view
     router.get('/recent-overview', async (ctx)=>{
+        const cached = dbCache.get(ctx.request.url)
+        if (cached) {
+            ctx.body = cached;
+            ctx.response.set('cached','true')
+            return
+        }
         let days = parseInt(ctx.query.days || 1)
         days = Math.max(days, 1)
         days = Math.min(days, 7)
         await Promise.all([
-            sumRecentCfxTxn(days),
+            TxnQuery.txnCountByTime({span:'24h'}),
+            // sumRecentCfxTxn(days),
             sumRecentCfxAmount(-days),
             TxnQuery.gasUsedSum(-days),
             countRecentTokenTransfer(-days),
@@ -153,6 +163,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                     cfxTxn, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
                 }, days
             }
+            dbCache.set(ctx.request.url, ctx.body, cacheTtl)
         })
     })
     //top gas used

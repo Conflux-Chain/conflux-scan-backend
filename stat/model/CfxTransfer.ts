@@ -1,5 +1,6 @@
 import {Op, Sequelize, Transaction, DataTypes, Model, fn} from "sequelize";
 import {makeId} from "./HexMap";
+import {TransactionDB} from "./Transaction";
 
 export interface ICfxTransfer {
     id?: number
@@ -139,8 +140,16 @@ export async function sumRecentCfxTxn(days:number) : Promise<number> {
 }
 
 export async function sumRecentCfxAmount(days:number) : Promise<BigInt> {
-    return CfxTransfer.sum('value',{
-        where: { 'createdAt': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}},
+    // select sum(`value`) from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0');
+    // select createdAt ,`fromId`,`value`,txHashId from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0') order by `value` desc limit 10;
+    // select sum(`value`) from tx where blockTime > addtime(now(), '-7 0:0:0') and status=0;
+    return TransactionDB.sum('value',{
+        where: {
+            'blockTime': {
+                [Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)
+            },
+            status: 0
+        },
         // benchmark: true, logging: console.log
     }).then(BigInt)
 }
