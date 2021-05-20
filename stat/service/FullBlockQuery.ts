@@ -144,6 +144,9 @@ export class FullBlockQuery {
             'status',
             ['contractCreatedId', 'contractCreated'],
         ];
+        if(!accountAddressId){
+            options.attributes.push('method');
+        }
         // where
         const conditionArray = [];
         if(blockHash){
