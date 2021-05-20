@@ -177,6 +177,7 @@ export interface IDailyToken {
     transferAmount:string
     uniqueReceiver:number
     uniqueSender:number
+    holderCount:number
 }
 // stat per token
 export class DailyToken extends Model<IDailyToken> implements IDailyToken {
@@ -187,6 +188,7 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
     transferAmount:string
     uniqueReceiver:number
     uniqueSender:number
+    holderCount:number
     static register(seq: Sequelize) {
         DailyToken.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
@@ -196,6 +198,7 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
             transferAmount: {type: DataTypes.STRING(78), allowNull: false, defaultValue: '0'},
             uniqueReceiver: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
             uniqueSender: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
+            holderCount: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
         },{
             tableName: T_DAILY_TOKEN,
             sequelize: seq,
