@@ -142,7 +142,6 @@ export class FullBlockQuery {
             'gas',
             ['createdAt', 'timestamp'],
             'status',
-            'method',
             ['contractCreatedId', 'contractCreated'],
         ];
         // where
@@ -207,15 +206,17 @@ export class FullBlockQuery {
             rawList = page?.rows;
             count = page?.count;
         } else if(blockHash){
+            options.attributes.push('method');
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
             count = page?.count;
         } else{
+            options.attributes.push('method');
             rawList = await FullTransaction.findAll(options);
             count = await KV.getNumber(KEY_FULL_TX_COUNT);
         }
         const list = [];
-        let extraInfo = {}
+        let extraInfo = {dataSource:'rdb'}
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
@@ -257,6 +258,13 @@ export class FullBlockQuery {
                     receiptInfoMap.set(txHash, {gasFee: receipt?.gasFee, txExecErrorMsg: receipt?.txExecErrorMsg});
                 }
             }));
+            const methodMap = new Map<string,FullTransaction>()
+            if (accountAddressId) {
+                // fetch method, consider save it.
+                const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
+                    attributes:['hash','method']})
+                methodList.forEach(row=>methodMap.set(row.hash, row))
+            }
             // fields mapping
             list.forEach(row=>{
                 row['contractInfo'] = contractInfoMap.get(row['to']);
@@ -264,6 +272,9 @@ export class FullBlockQuery {
                 row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : null;
                 if(hex40Map.get(row['contractCreated'])){
                     row['contractCreated'] = format.address(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId);
+                }
+                if (accountAddressId) {
+                    row['method'] = methodMap.get(row['hash'])?.method
                 }
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
