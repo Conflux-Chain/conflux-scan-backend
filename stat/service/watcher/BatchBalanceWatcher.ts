@@ -55,6 +55,7 @@ export class BatchBalanceWatcher {
     async run() {
         this.txAddressSet = this.txAddressSet || EventBus.swapAddressSet();
         if (this.txAddressSet.size === 0) {
+            this.txAddressSet = null
             console.log(`swapAddressSet empty data.`)
             return
         }
