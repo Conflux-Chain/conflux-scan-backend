@@ -69,7 +69,7 @@ export class BatchBalanceWatcher {
                 await this.cfxWatcher.queryBalance(hex, id);
             }
         }
-        this.txAddressSet = null
         console.log(`${fmtDtUTC(new Date())} batch process address count ${this.txAddressSet.size}`)
+        this.txAddressSet = null
     }
 }
