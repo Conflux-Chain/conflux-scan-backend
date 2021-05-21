@@ -28,6 +28,7 @@ import {ReportService} from "./service/ReportService";
 import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {TokenQuoteSync} from "./service/TokenQuoteSync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
+import {MinerBlockSync} from "./service/MinerBlockSync";
 
 export class StatApp{
     public config: StatConfig;
@@ -54,6 +55,7 @@ export class StatApp{
     public siteVerify: ReportService;
     public tokenQuoteSync: TokenQuoteSync;
     public homeDashboardService: HomeDashboardService;
+    public minerBlockSync: MinerBlockSync;
     public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
@@ -114,6 +116,7 @@ export class StatApp{
         this.siteVerify = new ReportService(this);
         this.tokenQuoteSync = new TokenQuoteSync(this);
         this.homeDashboardService = new HomeDashboardService(this);
+        this.minerBlockSync = new MinerBlockSync(this);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -155,7 +158,10 @@ export class StatApp{
             await this.tokenQuoteSync.schedule(this.config.syncTokenQuoteDelay); // token quote
         }
         if (this.config.syncHomeDashboardData) {
-            await this.tokenQuoteSync.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
+            await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
+        }
+        if (this.config.syncMinerBlock) {
+            await this.minerBlockSync.run(this.config.syncMinerBlockEpochNumber);
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

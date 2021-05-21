@@ -2,6 +2,7 @@
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {FullBlock, FullTransaction, AddressTransactionIndex, pagingFullBlock, pagingFullTx} from "../model/FullBlock";
+import {FullMinerBlock} from "../model/FullMinerBlock";
 import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
@@ -41,14 +42,13 @@ export class FullBlockQuery {
         ];
         // where
         const conditionArray = [];
-        if(minerId){
+        if(blockHash){
+            conditionArray.push({hash: blockHash});
+        }else if(minerId){
             conditionArray.push({minerId});
             if(minTimestamp && maxTimestamp) {
                 conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
                         {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
-            }
-            if(blockHash){
-                conditionArray.push({hash: blockHash});
             }
             if(epochNumber){
                 conditionArray.push({epoch: epochNumber});
@@ -71,9 +71,46 @@ export class FullBlockQuery {
         // query
         let rawList;
         let count;
-        if(minerId){
-            const page = await FullBlock.findAndCountAll(options);
-            rawList = page?.rows;
+        if(blockHash){
+            rawList = await FullBlock.findAll(options);
+            rawList = rawList?.filter(item => {
+                const row = item.toJSON();
+                let valid = true;
+                const timestamp = new Date(row['timestamp']).getTime();
+                if(epochNumber) valid = valid && (row['epochNumber'] === epochNumber);
+                if(minTimestamp) valid = valid && (timestamp >= minTimestamp * 1000);
+                if(maxTimestamp) valid = valid && (timestamp <= maxTimestamp * 1000);
+                return valid;
+            });
+            count = rawList?.length;
+        }else if(minerId){
+            const minerOptions = {...options};
+            minerOptions.attributes = ['minerId', 'epoch', 'position', 'createdAt'];
+            const page = await FullMinerBlock.findAndCountAll(minerOptions);
+            const epochSet = new Set();
+            const positionSet = new Set();
+            page?.rows?.forEach(item => {
+                const row = item.toJSON();
+                epochSet.add(row['epoch']);
+                positionSet.add(row['position']);
+            })
+            const fullBlockMap = {};
+            if(epochSet.size > 0 && positionSet.size > 0){
+                const blockOptions = {...options};
+                blockOptions.where = {[Op.and]: [{epoch: {[Op.in]: Array.from(epochSet)}},
+                        {position: { [Op.in]: Array.from(positionSet)}}]};
+                blockOptions.offset = undefined;
+                blockOptions.limit = undefined;
+                const fullBlockList = await FullBlock.findAll(blockOptions);
+                fullBlockList?.forEach(item => {
+                    const row = item.toJSON();
+                    fullBlockMap[`${row['epochNumber']}-${row['blockIndex']}`] = item;
+                });
+            }
+            rawList = page?.rows?.map(item => {
+                const row = item.toJSON();
+                return fullBlockMap[`${row['epoch']}-${row['position']}`];
+            }).filter(Boolean);
             count = page.count;
         } else{
             rawList = await FullBlock.findAll(options);
@@ -157,7 +194,7 @@ export class FullBlockQuery {
             conditionArray.push({addressId: accountAddressId});
             if(minTimestamp && maxTimestamp) {
                 conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
-                        {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
+                        {createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}}]});
             }
             if(opponentAddressId){
                 const conditionOpponent = {};
@@ -172,20 +209,22 @@ export class FullBlockQuery {
                     conditionArray.push({toId: accountAddressId});
                 } else if(txType === CONST.TX_TYPE.OUT){
                     conditionArray.push({fromId: accountAddressId});
-                }  else if(txType === CONST.TX_TYPE.FAIL || status === CONST.TX_STATUS.FAILED){
+                } else if(txType === CONST.TX_TYPE.FAIL || status === CONST.TX_STATUS.FAILED){
                     conditionArray.push({
                         [Op.and]: [
                             {[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]},
                             {status: CONST.TX_STATUS.FAILED},
                         ]
                     });
+                } else if(txType === CONST.TX_TYPE.CREATE){
+                    conditionArray.push({contractCreatedId: {[Op.gt]: 0}});
                 } else{
                     conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
                 }
             }
         } else{
             const pagedCondition = await this.buildPagedTxOptions(skip);
-            if(pagedCondition) {
+            if(pagedCondition){
                 conditionArray.push(pagedCondition.where);
                 options.offset = pagedCondition.skip;
             }

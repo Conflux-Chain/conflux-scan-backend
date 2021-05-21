@@ -60,6 +60,9 @@ export interface StatConfig{
 
     syncHomeDashboardData: boolean,
     syncHomeDashboardDataDelay: number,
+
+    syncMinerBlock: boolean,
+    syncMinerBlockEpochNumber: number,
 }
 
 export interface Erc20WatchList{

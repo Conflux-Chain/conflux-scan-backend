@@ -1,6 +1,7 @@
 import {Epoch} from "../model/Epoch";
 import {SyncBase, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
+import {fmtDtUTC} from "../model/Utils";
 const lodash = require('lodash');
 
 export class EpochSync extends SyncBase{
@@ -28,6 +29,9 @@ export class EpochSync extends SyncBase{
 
     async saveDataToDb(epochNumber, modelData) {
         const newRecord = await Epoch.add(modelData);
+        if (epochNumber % 100 === 0) {
+            console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
+        }
         return Promise.resolve(newRecord);
     }
 

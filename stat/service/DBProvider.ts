@@ -50,6 +50,7 @@ import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
+import {FullMinerBlock} from "../model/FullMinerBlock";
 let conf
 export function createDB(config) {
     conf = config
@@ -113,6 +114,7 @@ export async function initPartialModel(sequelize) {
     Token.register(sequelize);
     TokenQuote.register(sequelize);
     KV.register(sequelize);
+    FullMinerBlock.register(sequelize);FullMinerBlock.removeAttribute('id')
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

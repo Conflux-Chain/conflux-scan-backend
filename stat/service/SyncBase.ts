@@ -111,10 +111,11 @@ export abstract class SyncBase{
             traceEpochNumber = await this.queryNextEpochFromDb();
         }
 
+        const that = this
         async function repeat() {
             const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
             if (traceEpochNumber <= stateEpochNumber - config.preload) {
-                traceEpochNumber = await this.syncForward(traceEpochNumber);
+                traceEpochNumber = await that.syncForward(traceEpochNumber);
                 setTimeout(repeat, 0)
             } else {
                 setTimeout(repeat, 1000)
