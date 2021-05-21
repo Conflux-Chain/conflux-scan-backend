@@ -58,7 +58,7 @@ export class BatchBalanceWatcher {
         }
         if (this.txAddressSet.size === 0) {
             this.txAddressSet = null
-            console.log(`swapAddressSet empty data.`)
+            console.log(`swapAddressSet empty data. 2`)
             return
         }
         for (const hex of this.txAddressSet) {
