@@ -61,7 +61,7 @@ export class TokenQuoteSync {
       });
 
       const marketCapIdToQuote = await this.getFromMarketCap(tokenMarketCapIdArray, convert).catch(err=>{
-        console.log(`error getFromMarketCap:`, err)
+        console.log(`error getFromMarketCap:`, err.toString())
         return undefined
       });
       if (marketCapIdToQuote === undefined) {
