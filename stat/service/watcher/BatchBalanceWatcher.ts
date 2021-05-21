@@ -53,7 +53,9 @@ export class BatchBalanceWatcher {
     }
     txAddressSet :Set<string>
     async run() {
-        this.txAddressSet = this.txAddressSet || EventBus.swapAddressSet();
+        if (this.txAddressSet === null) {
+            this.txAddressSet = EventBus.swapAddressSet();
+        }
         if (this.txAddressSet.size === 0) {
             this.txAddressSet = null
             console.log(`swapAddressSet empty data.`)
