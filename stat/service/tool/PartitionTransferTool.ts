@@ -12,7 +12,7 @@ export async function loop20transfer(times: number) {
     await Promise.all([
         Erc20Transfer.max('epoch'),
         Erc20Transfer.min('epoch'),
-    ]).then((epochMax0, minEpochDB)=>{
+    ]).then(([epochMax0, minEpochDB])=>{
         epochMax = Number(epochMax0)
         epochMin = Number(minEpochDB)
         return AddressErc20Transfer.max('epoch')
