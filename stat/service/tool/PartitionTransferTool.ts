@@ -9,17 +9,23 @@ export async function loop20transfer(times: number) {
     let epochMax = 0
     let epochMin = -1
     let erc20transferEpochMax = -1
+    /*
+     select min(epoch), max(epoch) from erc20transfer;
+     */
     await Promise.all([
         Erc20Transfer.max('epoch'),
         Erc20Transfer.min('epoch'),
     ]).then(([epochMax0, minEpochDB])=>{
+        console.log(`full transfer min ${minEpochDB} max ${epochMax0}`)
         epochMax = Number(epochMax0)
         epochMin = Number(minEpochDB)
         return AddressErc20Transfer.max('epoch')
     }).then(addr20tMax=>{
         if (!isNaN(Number(addr20tMax))) {
+            console.log(`use partition max ${addr20tMax}`)
             erc20transferEpochMax = Number(addr20tMax)
         } else {
+            console.log(`use full transfer, before ${epochMin}`)
             erc20transferEpochMax = epochMin - 1
         }
     }).catch(err=>{
