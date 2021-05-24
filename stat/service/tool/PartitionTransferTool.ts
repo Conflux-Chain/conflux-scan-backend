@@ -7,13 +7,20 @@ export async function copy20transferByEpoch(epoch: number) {
 
 export async function loop20transfer(times: number) {
     let epochMax = 0
+    let epochMin = -1
     let erc20transferEpochMax = -1
-    await Erc20Transfer.max('epoch').then(epochMax0=>{
+    await Promise.all([
+        Erc20Transfer.max('epoch'),
+        Erc20Transfer.min('epoch'),
+    ]).then((epochMax0, minEpochDB)=>{
         epochMax = Number(epochMax0)
+        epochMin = Number(minEpochDB)
         return AddressErc20Transfer.max('epoch')
     }).then(addr20tMax=>{
         if (!isNaN(Number(addr20tMax))) {
             erc20transferEpochMax = Number(addr20tMax)
+        } else {
+            erc20transferEpochMax = erc20transferEpochMax - 1
         }
     }).catch(err=>{
         console.log(`setup loop fail:`, err)
