@@ -44,11 +44,11 @@ export async function loop20transfer(times: number) {
                 return AddressErc20Transfer.bulkCreate(copies,{
 
                 }).then(arr=>{
-                    process.stdout.write(`\r\u001b[2K epoch ${epochMax} addresses 20transfer ${arr.length}`)
+                    process.stdout.write(`\r\u001b[2K epoch ${erc20transferEpochMax} addresses 20transfer ${arr.length}`)
                 })
             }
         }).catch(err=>{
-            console.log(`error at epoch ${epochMax}:`, err)
+            console.log(`\nError at epoch ${epochMax}:`, err)
             times = -1
         })
         //
