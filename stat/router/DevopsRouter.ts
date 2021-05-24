@@ -12,12 +12,12 @@ import {
     BlockRowMark,
     buildTxHigherCondition,
     FullBlock,
-    FullTransaction,
+    FullTransaction, pagingFullBlock,
     pagingFullTx,
     TxnRowMark
 } from "../model/FullBlock";
 import {FullBlockQuery} from "../service/FullBlockQuery";
-import {KV} from "../model/KV";
+import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -76,6 +76,24 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
                 ...ctx.request.query,
                 skip, limit})
             ctx.body = page
+        }
+    )
+    router.get('/devops/paging-tx',
+        async (ctx) => {
+            let {skip} = ctx.request.query
+            skip = Number(skip || 0)
+            ctx.body = await pagingFullTx(skip)
+            const v = await KV.getNumber(KEY_FULL_TX_COUNT)
+            ctx.body.txCountMark = v
+        }
+    )
+    router.get('/devops/paging-block',
+        async (ctx) => {
+            let {skip} = ctx.request.query
+            skip = Number(skip || 0)
+            ctx.body = await pagingFullBlock(skip, null)
+            const v = await KV.getNumber(KEY_FULL_BLOCK_COUNT)
+            ctx.body.blockCountMark = v
         }
     )
     router.get('/devops/view-table',

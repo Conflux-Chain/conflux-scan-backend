@@ -264,6 +264,8 @@ export class TxPage {
     blockPosition:number
     txPosition:number
     skip:number
+    nonMarkRows:number
+    calcTotal:number //nonMarkRow+id
 }
 export async function pagingFullTx(skip:number) : Promise<TxPage> {
     // find the max mark
@@ -271,29 +273,35 @@ export async function pagingFullTx(skip:number) : Promise<TxPage> {
     // handle null
     if (maxOne === null) {
         return {id:Infinity, epoch:Infinity, blockPosition:Infinity,
-            txPosition: Infinity, skip}
+            txPosition: Infinity, skip, calcTotal:-1, nonMarkRows: -1}
     }
     // calculate rows between max mark and latest block
     const nonMarkRows = await countNonMarkTxRows(maxOne);
     //
     if (nonMarkRows >= skip) {
         return {id:Infinity, epoch:Infinity, blockPosition:Infinity,
-            txPosition: Infinity, skip}
+            txPosition: Infinity, skip, nonMarkRows, calcTotal:nonMarkRows+maxOne.id}
     }
     //
     const pagedSkip = skip - nonMarkRows
-    const skipMarkRows = Math.floor(pagedSkip/TX_PAGE_MARK_SIZE)
+    let skipMarkRows = Math.floor(pagedSkip/TX_PAGE_MARK_SIZE)
     if (skipMarkRows === 0) {
         return {id: maxOne.id, epoch: maxOne.epoch, blockPosition: maxOne.blockPosition,
-            txPosition: maxOne.txPosition, skip: pagedSkip}
+            txPosition: maxOne.txPosition, skip: pagedSkip - 1, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
     }
-    const nearestId = maxOne.id - TX_PAGE_MARK_SIZE * skipMarkRows
+    let nearestId = maxOne.id - TX_PAGE_MARK_SIZE * skipMarkRows
     // find the min mark that greater than pagedSkip
-    const nearestOne = await TxnRowMark.findByPk(nearestId)
+    let nearestOne = await TxnRowMark.findByPk(nearestId)
     // must exists
     const remainSkip = pagedSkip - TX_PAGE_MARK_SIZE * skipMarkRows
+    console.log(`TX : want skip ${skip},has total ${nonMarkRows+maxOne.id} nonMarkRows ${nonMarkRows}, max id ${maxOne.id}, pagedSkip ${pagedSkip
+        } skipMarkRows ${skipMarkRows}, nearestId ${nearestId}, remain ${remainSkip}`)
+    if (nearestOne === null) {
+        return {id:-1, epoch:-1, blockPosition:-1,
+            txPosition: -1, skip:remainSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id} // should found nothing.
+    }
     return {id: nearestOne.id, epoch: nearestOne.epoch, blockPosition: nearestOne.blockPosition,
-        txPosition: nearestOne.txPosition, skip: remainSkip}
+        txPosition: nearestOne.txPosition, skip: remainSkip-1, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
 }
 export async function markTxPosition(count:number=1, maxEpoch:number = Infinity) {
     let maxOne:ITxnRowMark = await TxnRowMark.findOne({order:[["id","desc"]], limit: 1})
@@ -360,6 +368,8 @@ export class BlockPage {
     epoch:number
     position:number
     skip:number
+    nonMarkRows:number
+    calcTotal:number //nonMarkRow+id
 }
 export async function countNonMarkBlockRows(maxOne: IBlockRowMark) {
     const nonMarkRows = await FullBlock.count({
@@ -421,12 +431,12 @@ export async function pagingFullBlock(skip:number, logger: any) : Promise<BlockP
     const maxOne = await BlockRowMark.findOne({order:[["id","desc"]], limit: 1})
     // handle null
     if (maxOne === null) {
-        return {id:Infinity, epoch:Infinity, position:Infinity, skip}
+        return {id:Infinity, epoch:Infinity, position:Infinity, skip, nonMarkRows:-1, calcTotal: -1}
     }
     // calculate rows between max mark and latest block
     const nonMarkRows = await countNonMarkBlockRows(maxOne);
     if (nonMarkRows >= skip) {
-        return {id:Infinity, epoch:Infinity, position:Infinity, skip}
+        return {id:Infinity, epoch:Infinity, position:Infinity, skip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
     }
 
     const pagedSkip = skip - nonMarkRows
@@ -436,19 +446,30 @@ export async function pagingFullBlock(skip:number, logger: any) : Promise<BlockP
             id: maxOne.id,
             epoch: maxOne.epoch,
             position: maxOne.position,
-            skip: pagedSkip
+            skip: pagedSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id
         };
     }
     const nearestId = maxOne.id - BLOCK_PAGE_MARK_SIZE * skipMarkRows
     // find the min mark that greater than pagedSkip
     const nearestOne = await BlockRowMark.findByPk(nearestId)
+    if (nearestOne === null) {
+        return {
+            id: -1,
+            epoch: -1,
+            position: -1,
+            skip: pagedSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id
+        }; // should found nothing.
+    }
     // must exists
-    const remainSkip = pagedSkip - BLOCK_PAGE_MARK_SIZE * skipMarkRows
+    const remainSkip = pagedSkip - BLOCK_PAGE_MARK_SIZE * skipMarkRows;
+    console.log(`BLOCK : want skip ${skip},has total ${nonMarkRows+maxOne.id} nonMarkRows ${nonMarkRows}, max id ${maxOne.id}, pagedSkip ${pagedSkip
+        } skipMarkRows ${skipMarkRows}, nearestId ${nearestId}, remain ${remainSkip}`)
     return {
         id: nearestOne.id,
         epoch: nearestOne.epoch,
         position: nearestOne.position,
         skip: remainSkip
+        , nonMarkRows, calcTotal: nonMarkRows+maxOne.id
     };
 }
 
