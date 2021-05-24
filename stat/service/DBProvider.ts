@@ -45,7 +45,7 @@ import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../
 import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
-import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
@@ -94,6 +94,7 @@ export async function initPartialModel(sequelize) {
         createAddressErc20TransferTable(sequelize),
         create721partition(sequelize),
         createAddressErc777TransferTable(sequelize),
+        createAddressErc1155TransferTable(sequelize),
     ])
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)

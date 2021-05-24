@@ -4,6 +4,7 @@ import {init} from "./FixDailyTokenStat";
 import {Op} from 'sequelize'
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "../../model/Erc777Transfer";
+import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
 export async function copy20transferByEpoch(epoch: number) {
 
 }
@@ -82,6 +83,8 @@ init().then(()=>{
             return loop20transfer(Number(args[1] || 1), Erc721Transfer, AddressErc721Transfer)
         case 'erc777':
             return loop20transfer(Number(args[1] || 1), Erc777Transfer, AddressErc777Transfer)
+        case 'erc1155':
+            return loop20transfer(Number(args[1] || 1), Erc1155Transfer, AddressErc1155Transfer)
         default:
             console.log(`unknown action: should be [erc20]`)
     }
