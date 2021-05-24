@@ -44,7 +44,7 @@ export async function loop20transfer(times: number) {
                 // not found
                 return Promise.reject(`no higher epoch > ${erc20transferEpochMax}`)
             }
-            erc20transferEpochMax = higherEpoch
+            erc20transferEpochMax = Number(higherEpoch)
             return Erc20Transfer.findAll({where:{epoch: higherEpoch},
                 // logging:console.log
             })
