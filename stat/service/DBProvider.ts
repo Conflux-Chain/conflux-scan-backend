@@ -41,7 +41,7 @@ import {
 } from "../model/Balance";
 import {Trace} from "../model/Trace";
 import {DailyToken, NftId, Token} from "../model/Token";
-import {DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
+import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
@@ -90,6 +90,9 @@ export async function initPartialModel(sequelize) {
         console.log(`connect to DB fail`, err)
     });
     hexMapInit(sequelize);
+    await Promise.all([
+        createAddressErc20TransferTable(sequelize)
+    ])
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)
     AbiInfo.register(sequelize)
