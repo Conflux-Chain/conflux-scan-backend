@@ -64,10 +64,11 @@ export function build20transferList2address(list:Erc20Transfer[]) : IAddressErc2
     const result : IAddressErc20Transfer[] = []
     let idx = 0
     list.forEach(row=>{
-        result.push(buildAddress20transfer(row, row.fromId, idx++))
+        result.push(buildAddress20transfer(row, row.fromId, idx))
         if (row.fromId !== row.toId) {
-            result.push(buildAddress20transfer(row, row.toId, idx))
+            result.push(buildAddress20transfer(row, row.toId, idx+1))
         }
+        idx += 10
     })
     return result
 }
