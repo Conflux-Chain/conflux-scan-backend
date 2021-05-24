@@ -1,6 +1,7 @@
 import {FullTransaction} from "../../model/FullBlock";
 import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "../../model/Erc20Transfer";
 import {init} from "./FixDailyTokenStat";
+import {Op} from 'sequelize'
 export async function copy20transferByEpoch(epoch: number) {
 
 }
@@ -35,9 +36,18 @@ export async function loop20transfer(times: number) {
     console.log(`full 20 transfer epoch at ${epochMax}, partition epoch ${erc20transferEpochMax
         }, begin run ${times}`)
     while (times > 0 && erc20transferEpochMax <= epochMax) {
-        erc20transferEpochMax += 1
-        await Erc20Transfer.findAll({where:{epoch: erc20transferEpochMax},
-            // logging:console.log
+        // find min epoch greater than previous processed.
+        await Erc20Transfer.min("epoch", {where:{
+            epoch: {[Op.gt]:erc20transferEpochMax}
+        }}).then(higherEpoch=> {
+            if (isNaN(Number(higherEpoch))) {
+                // not found
+                return Promise.reject(`no higher epoch > ${erc20transferEpochMax}`)
+            }
+            erc20transferEpochMax = higherEpoch
+            return Erc20Transfer.findAll({where:{epoch: higherEpoch},
+                // logging:console.log
+            })
         }).then(list=>{
             if (list.length > 0) {
                 const copies = build20transferList2address(list)
