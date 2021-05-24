@@ -19,6 +19,7 @@ export interface IErc20Transfer extends ITokenTransfer{
 }
 
 export interface IAddressErc20Transfer {
+    id?: number
     epoch: number
     txHashId: number
     createdAt: Date
@@ -31,6 +32,7 @@ export interface IAddressErc20Transfer {
 export const T_ADDRESS_ERC20TRANSFER = 'address_erc20_transfer'
 const ADDRESS_ERC20TRANSFER_SQL = `
     CREATE table if not exists ${T_ADDRESS_ERC20TRANSFER} (
+  \`id\` bigint unsigned NOT NULL auto_increment,
   \`addressId\` bigint unsigned NOT NULL,
   \`epoch\` bigint unsigned NOT NULL,
   \`contractId\` bigint unsigned NOT NULL,
@@ -39,7 +41,7 @@ const ADDRESS_ERC20TRANSFER_SQL = `
   \`fromId\` bigint unsigned NOT NULL,
   \`toId\` bigint unsigned NOT NULL,
   \`value\` varchar(78) NOT NULL DEFAULT '0',
-  primary key  (\`addressId\` desc,\`epoch\` desc, \`txHashId\` desc),
+  primary key  (\`addressId\` desc,\`epoch\` desc, \`id\` desc),
   KEY \`idx_createdAt\` (\`createdAt\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
@@ -51,8 +53,8 @@ export async function createAddressErc20TransferTable(seq:Sequelize) {
         type:QueryTypes.UPDATE
     }).then(()=>{
         return AddressErc20Transfer.register(seq)
-    }).then(()=>{
-        AddressErc20Transfer.removeAttribute("id")
+    // }).then(()=>{
+    //     AddressErc20Transfer.removeAttribute("id")
     }).catch(err=>{
         console.log(`createAddressErc20TransferTable fail, sql ${ADDRESS_ERC20TRANSFER_SQL}:`, err)
         process.exit(9)
@@ -76,6 +78,7 @@ function buildAddress20transfer(row:Erc20Transfer, addrId:number) : IAddressErc2
     }
 }
 export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implements IAddressErc20Transfer {
+    id?: number //Need it to make primary key unique.
     addressId:number
     epoch: number
     createdAt: Date
@@ -86,6 +89,7 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
     value: string
     static register(seq: Sequelize) {
         AddressErc20Transfer.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
             addressId: {type: DataTypes.BIGINT, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},

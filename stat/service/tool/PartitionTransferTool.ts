@@ -11,6 +11,7 @@ export async function loop20transfer(times: number) {
     let erc20transferEpochMax = -1
     /*
      select min(epoch), max(epoch) from erc20transfer;
+     select * from address_erc20_transfer limit 10;
      */
     await Promise.all([
         Erc20Transfer.max('epoch'),
