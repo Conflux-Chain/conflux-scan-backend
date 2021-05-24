@@ -23,7 +23,7 @@ export async function loop20transfer(times: number) {
     while (times > 0 && erc20transferEpochMax <= epochMax) {
         erc20transferEpochMax += 1
         await Erc20Transfer.findAll({where:{epoch: erc20transferEpochMax},
-            logging:console.log
+            // logging:console.log
         }).then(list=>{
             if (list.length > 0) {
                 const copies = build20transferList2address(list)
