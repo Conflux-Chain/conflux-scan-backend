@@ -3,6 +3,7 @@ import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "
 import {init} from "./FixDailyTokenStat";
 import {Op} from 'sequelize'
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
+import {AddressErc777Transfer, Erc777Transfer} from "../../model/Erc777Transfer";
 export async function copy20transferByEpoch(epoch: number) {
 
 }
@@ -17,6 +18,7 @@ export async function loop20transfer(times: number, full_t, partition_t) {
      select min(epoch), max(epoch) from erc20transfer;
      select * from address_erc20_transfer limit 10;
      */
+    console.log(`partition transfer ${full_t.getTableName()} ----- ${partition_t.getTableName()}`)
     await Promise.all([
         full_t.max('epoch'),
         full_t.min('epoch'),
@@ -78,6 +80,8 @@ init().then(()=>{
             return loop20transfer(Number(args[1] || 1), Erc20Transfer, AddressErc20Transfer)
         case 'erc721':
             return loop20transfer(Number(args[1] || 1), Erc721Transfer, AddressErc721Transfer)
+        case 'erc777':
+            return loop20transfer(Number(args[1] || 1), Erc777Transfer, AddressErc777Transfer)
         default:
             console.log(`unknown action: should be [erc20]`)
     }

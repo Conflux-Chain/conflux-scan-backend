@@ -44,7 +44,7 @@ import {DailyToken, NftId, Token} from "../model/Token";
 import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
-import {Erc777Transfer} from "../model/Erc777Transfer";
+import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
@@ -93,6 +93,7 @@ export async function initPartialModel(sequelize) {
     await Promise.all([
         createAddressErc20TransferTable(sequelize),
         create721partition(sequelize),
+        createAddressErc777TransferTable(sequelize),
     ])
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)

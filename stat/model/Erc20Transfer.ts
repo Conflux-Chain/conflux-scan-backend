@@ -72,12 +72,13 @@ export function build20transferList2address(list:Erc20Transfer[]) : IAddressErc2
     })
     return result
 }
-function buildAddress20transfer(row:Erc20Transfer, addrId:number, pos:number) : IAddressErc20Transfer {
+function buildAddress20transfer(row:any, addrId:number, pos:number) : any {
     return {
         addressId: addrId,
         tracePos: pos,
         contractId: row.contractId, createdAt: row.createdAt, epoch: row.epoch, fromId: row.fromId,
-        toId: row.toId, txHashId: row.txHashId, value: row.value
+        toId: row.toId, txHashId: row.txHashId, value: row.value,
+        tokenId: row.tokenId,
     }
 }
 export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implements IAddressErc20Transfer {
