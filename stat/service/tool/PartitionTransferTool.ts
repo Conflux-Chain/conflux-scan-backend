@@ -20,7 +20,7 @@ export async function loop20transfer(times: number) {
         if (!isNaN(Number(addr20tMax))) {
             erc20transferEpochMax = Number(addr20tMax)
         } else {
-            erc20transferEpochMax = erc20transferEpochMax - 1
+            erc20transferEpochMax = epochMin - 1
         }
     }).catch(err=>{
         console.log(`setup loop fail:`, err)
