@@ -32,7 +32,6 @@ export interface IAddressErc20Transfer {
 export const T_ADDRESS_ERC20TRANSFER = 'address_erc20_transfer'
 const ADDRESS_ERC20TRANSFER_SQL = `
     CREATE table if not exists ${T_ADDRESS_ERC20TRANSFER} (
-  \`id\` bigint unsigned NOT NULL,
   \`addressId\` bigint unsigned NOT NULL,
   \`epoch\` bigint unsigned NOT NULL,
   \`tracePos\` int unsigned NOT NULL,
@@ -54,8 +53,8 @@ export async function createAddressErc20TransferTable(seq:Sequelize) {
         type:QueryTypes.UPDATE
     }).then(()=>{
         return AddressErc20Transfer.register(seq)
-    // }).then(()=>{
-    //     AddressErc20Transfer.removeAttribute("id")
+    }).then(()=>{
+        AddressErc20Transfer.removeAttribute("id")
     }).catch(err=>{
         console.log(`createAddressErc20TransferTable fail, sql ${ADDRESS_ERC20TRANSFER_SQL}:`, err)
         process.exit(9)
