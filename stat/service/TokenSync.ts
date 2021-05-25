@@ -69,7 +69,6 @@ export class TokenSync{
         // process
         const page = await Token.findAndCountAll(options)
         const list = [];
-        currency = '';
         if(page && page.rows){
             page.rows.forEach( item => {
                 const row = item.toJSON();
@@ -134,7 +133,6 @@ export class TokenSync{
         options.limit = limit;
         // order by
         let order: any;
-        currency = '';
         if(orderBy){
             if(orderBy === 'transferCount'){
                 orderBy = 'transfer';
