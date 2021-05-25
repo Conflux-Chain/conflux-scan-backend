@@ -1,6 +1,6 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {Erc20Transfer} from "../model/Erc20Transfer";
+import {Erc20Transfer, AddressErc20Transfer} from "../model/Erc20Transfer";
 import {TransferQueryBase} from "./TransferQueryBase";
 const CONST = require('./common/constant');
 
@@ -26,8 +26,15 @@ export class Crc20TransferQuery extends TransferQueryBase{
             ['createdAt', 'timestamp'],
         ];
     }
-    public async doQuery(options: any): Promise<any>{
-        return await Erc20Transfer.findAndCountAll(options);
+    public async doQuery(options: any, queryOptions: any): Promise<any>{
+        const{ logger } = this.app;
+
+        if(options.address !== undefined){
+            logger?.info({src: `${this.getTransferType()}.all.findAndCountAll--------`, 'options': JSON.stringify(options)});
+            return await Erc20Transfer.findAndCountAll(queryOptions);
+        }
+        logger?.info({src: `${this.getTransferType()}.address.findAndCountAll--------`, 'options': JSON.stringify(options)});
+        return await AddressErc20Transfer.findAndCountAll(queryOptions);
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
                               contractInfoMap: Map<number, object>, tokenInfoMap: Map<number, object>): Promise<any>{

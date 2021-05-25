@@ -1,7 +1,7 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
-import {Hex40Map, Hex64Map} from "../model/HexMap";
+import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
 import {ContractInfo} from "../model/ContractInfo";
 import {Token} from "../model/Token";
 const CONST = require('./common/constant');
@@ -13,57 +13,28 @@ export abstract class TransferQueryBase {
         this.app = app;
     }
 
-    private async hex40IdMap(hex40Array: Array<string>): Promise<Map<string, number>>{
-        const result = await Hex40Map.findAll({
-            where: {hex: { [Op.in]: hex40Array}},
-        })
-        const hex40IdMap = new Map<string, number>()
-        result.forEach(hex40=>{
-            hex40IdMap.set(hex40.hex, hex40.id)
-        })
-        return hex40IdMap;
-    }
-
-    private async idHex40Map(idArray: Array<number>): Promise<Map<number, string>>{
-        const result = await Hex40Map.findAll({
-            where: {id: { [Op.in]: idArray}},
-        })
-        const idHex40Map = new Map<number, string>()
-        result.forEach(hex40=>{
-            idHex40Map.set(hex40.id, hex40.hex)
-        })
-        return idHex40Map;
-    }
-
-    private async idHex64Map(idArray: Array<number>): Promise<Map<number, string>>{
-        const result = await Hex64Map.findAll({
-            where: {id: { [Op.in]: idArray}},
-        })
-        const idHex64Map = new Map<number, string>()
-        result.forEach(hex64=>{
-            idHex64Map.set(hex64.id, hex64.hex)
-        })
-        return idHex64Map;
-    }
-
-    private buildQueryOptions({accountAddressId, minTimestamp, maxTimestamp, opponentAddressId, transactionHash, tokenId,
-                                      txType, skip, limit}){
+    private buildQueryOptions({accountAddressId, addressId, minTimestamp, maxTimestamp, opponentAddressId, transactionHashId,
+                                  tokenId, txType, skip, limit}){
         const{ logger } = this.app;
         // page
-        const options: any = {offset: skip, limit};
+        const queryOptions: any = {offset: skip, limit, raw: true};
         // condition
         const conditionArray = [];
+        if(accountAddressId){
+            conditionArray.push({addressId: accountAddressId});
+        }
+        if(addressId){
+            conditionArray.push({contractId: addressId});
+        }
         if(minTimestamp && maxTimestamp) {
             conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
                     {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
         }
         if(opponentAddressId){
-            const conditionOpponent = {};
-            conditionOpponent[Op.or] = [{toId: opponentAddressId}, {fromId: opponentAddressId}];
-            conditionArray.push(conditionOpponent);
+            conditionArray.push({[Op.or]: [{toId: opponentAddressId}, {fromId: opponentAddressId}]});
         }
-        if(transactionHash) {
-            conditionArray.push({hash: transactionHash});
+        if(transactionHashId) {
+            conditionArray.push({txHashId: transactionHashId});
         }
         if(tokenId) {
             conditionArray.push({tokenId: tokenId.toString()});
@@ -74,101 +45,105 @@ export abstract class TransferQueryBase {
             } else if(txType === CONST.TX_TYPE.OUT){
                 conditionArray.push({fromId: accountAddressId});
             } else{
-                const conditionTypeAll = {};
-                conditionTypeAll[Op.or] = [{toId: accountAddressId}, {fromId: accountAddressId}];
-                conditionArray.push(conditionTypeAll);
+                conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
         }
         if(conditionArray.length === 1){
-            options.where = conditionArray[0];
+            queryOptions.where = conditionArray[0];
         }
         if(conditionArray.length > 1){
-            options.where = {};
-            options.where[Op.and] = conditionArray;
+            queryOptions.where = {};
+            queryOptions.where[Op.and] = conditionArray;
         }
         // order
-        options.order = [['createdAt', 'DESC']];
-        logger?.info({src: `${this.getTransferType()}----------`, 'options': JSON.stringify(options)});
-        return options;
+        queryOptions.order = [['epoch', 'DESC']];
+        if(accountAddressId !== undefined){
+            queryOptions.order.push(['tracePos', 'DESC']);
+        }
+        if(addressId !== undefined){
+            queryOptions.order.push(['createdAt', 'DESC']);
+        }
+
+        return queryOptions;
     }
 
     public abstract getTransferType(): string;
     public abstract buildQueryFields(): any;
-    public abstract doQuery(options: any): Promise<any>;
+    public abstract doQuery(options: any, queryOptions: any): Promise<any>;
     public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
-                                       contractInfoMap: Map<number, object>, tokenInfoMap: Map<number, object>): Promise<any>;
+                                       contractInfoMap: object, tokenInfoMap: object): Promise<any>;
 
-    public async listTransfer({accountAddress, minTimestamp, maxTimestamp, opponentAddress, transactionHash, tokenId,
-                                     txType = CONST.TX_TYPE.ALL, status, skip = 0, limit = 10}) {
+    public async listTransfer(options) {
         const{ logger } = this.app;
+        const {accountAddress, address, minTimestamp, maxTimestamp, opponentAddress, transactionHash, tokenId,
+            txType , status, skip = 0, limit = 10} = options;
 
         // parameter
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
-        const addressArray = [accountAddress, opponentAddress].filter(Boolean)
-            .map(item => {const hex40 = format.hexAddress(item);return hex40.substr(2);});
-        const addressMap = addressArray?.length > 0 ? await this.hex40IdMap(addressArray) : undefined;
-        const accountAddressId = addressMap?.get(accountAddress ? format.hexAddress(accountAddress).substr(2) : undefined);
-        const opponentAddressId = addressMap?.get(opponentAddress ? format.hexAddress(opponentAddress).substr(2) : undefined);
+        const accountAddressHex = accountAddress && format.hexAddress(accountAddress).substr(2);
+        const addressHex = address && format.hexAddress(address).substr(2);
+        const opponentAddressHex = opponentAddress && format.hexAddress(opponentAddress).substr(2);
+        const addressArray = [accountAddressHex, addressHex, opponentAddressHex].filter(Boolean);
+        const addressMap = addressArray?.length > 0 ? await hex40IdMap(addressArray) : undefined;
+        const accountAddressId = addressMap?.get(accountAddressHex);
+        const addressId = addressMap?.get(addressHex);
+        const opponentAddressId = addressMap?.get(opponentAddressHex);
+        let transactionHashId;
+        if(transactionHash){
+            const hex64 = await Hex64Map.findOne({where: {hex: transactionHash.substr(2)}});
+            transactionHashId = hex64?.id;
+        }
 
-        // field
-        const options = this.buildQueryOptions({accountAddressId, minTimestamp, maxTimestamp, opponentAddressId
-            , transactionHash, tokenId, txType, skip, limit});
-        options.attributes = this.buildQueryFields();
+        // queryOptions
+        const queryOptions = this.buildQueryOptions({accountAddressId, addressId, minTimestamp, maxTimestamp, opponentAddressId,
+            transactionHashId, tokenId, txType, skip, limit});
+        queryOptions.attributes = this.buildQueryFields();
 
         // query
-        const page = await this.doQuery(options);
+        const page = await this.doQuery(options, queryOptions);
         const list = [];
-        if(page && page.rows){
+        if(page?.rows){
             const hex40IdSet = new Set<number>();
             const hex64IdSet = new Set<number>();
-            const contractHexIdSet = new Set<number>();
-            const tokenHexIdSet = new Set<number>();
-            page.rows.forEach( item => {
-                const row = item.toJSON();
+            page.rows.forEach( row => {
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['address']);
                 hex64IdSet.add(row['transactionHash']);
-                contractHexIdSet.add(row['from']);
-                contractHexIdSet.add(row['to']);
-                tokenHexIdSet.add(row['address']);
                 list.push(row);
             });
-            const hex40Map = await this.idHex40Map(Array.from(hex40IdSet));
-            const hex64Map = await this.idHex64Map(Array.from(hex64IdSet));
-
-            // contract
-            const contractInfoMap = new Map();
-            const contractHexIdArray = Array.from(contractHexIdSet)
+            const hex40Map = await idHex40Map(Array.from(hex40IdSet));
+            const hex64Map = await idHex64Map(Array.from(hex64IdSet));
+            const contractHexIdArray = Array.from(hex40IdSet)
                 .filter(id => hex40Map.get(id)?.startsWith('8'));
+
+            // contract and token
+            const contractInfoMap = {};
+            const tokenInfoMap = {};
             if(contractHexIdArray.length > 0){
                 const contractInfoArray = await ContractInfo.findAll({
                     where: {hexId: { [Op.in]: contractHexIdArray}}, order: [['epoch', 'ASC']]
                 });
-                contractInfoArray.forEach(contractInfo=>{
-                    contractInfoMap.set(contractInfo.hexId , { address: contractInfo.base32, name: contractInfo.name });
+                contractInfoArray?.forEach(contractInfo=>{
+                    contractInfoMap[contractInfo.hexId] = { address: contractInfo.base32, name: contractInfo.name };
                 })
-            }
-
-            // token
-            const tokenInfoMap = new Map();
-            const tokenHexIdArray = Array.from(tokenHexIdSet).filter(Boolean).map(id => Number(id));
-            if(tokenHexIdArray.length > 0){
                 const tokenInfoArray = await Token.findAll({
                     attributes: ['base32', 'name', 'symbol'],
-                    where: {hex40id: { [Op.in]: tokenHexIdArray}}
+                    where: {hex40id: { [Op.in]: contractHexIdArray}}
                 });
-                tokenInfoArray.forEach(tokenInfo=>{
-                    tokenInfoMap.set(tokenInfo.hex40id , { address: tokenInfo.base32, name: tokenInfo.name, symbol: tokenInfo.symbol });
+                tokenInfoArray?.forEach(tokenInfo=>{
+                    tokenInfoMap[tokenInfo.hex40id] = { address: tokenInfo.base32, name: tokenInfo.name, symbol: tokenInfo.symbol };
                 })
             }
 
             // fields mapping
             list.forEach(row=>{
-                row['fromContractInfo'] = contractInfoMap.get(row['from']);
-                row['toContractInfo'] = contractInfoMap.get(row['to']);
+                row['fromContractInfo'] = contractInfoMap[row['from']];
+                row['toContractInfo'] = contractInfoMap[row['to']];
+                row['fromTokenInfo'] = tokenInfoMap[row['from']];
+                row['toTokenInfo'] = tokenInfoMap[row['to']];
                 row['transactionHash'] = `0x${hex64Map.get(row['transactionHash'])}`;
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
                 row['to'] = format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId);
@@ -177,8 +152,7 @@ export abstract class TransferQueryBase {
                 this.processQueryResult(row, hex40Map, hex64Map, contractInfoMap, tokenInfoMap);
             })
         }
-        const result = {total: page?.count, list};
-        logger?.info({src: `${this.getTransferType()}----------`, 'result': JSON.stringify(result)});
+        const result = {total: page?.count || 0, list};
         return result;
     }
 }

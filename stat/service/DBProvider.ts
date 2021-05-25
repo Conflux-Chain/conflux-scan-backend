@@ -41,7 +41,7 @@ import {
 } from "../model/Balance";
 import {Trace} from "../model/Trace";
 import {DailyToken, NftId, Token} from "../model/Token";
-import {DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
+import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
