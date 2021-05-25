@@ -2,7 +2,7 @@ import {RedisClient} from "redis";
 import {RedisConf} from "../config/StatConfig";
 const redis = require('redis');
 const { promisify } = require('util');
-
+export const CHANNEL_TEST = 'test'
 export class RedisWrap{
     getAsync:Function
     setAsync:Function
@@ -28,7 +28,13 @@ export class RedisWrap{
         })
     }
 
+    static async testSub (channel:string, cb: (channel: string, message: string) => void) {
+        redisWrap.client.subscribe(channel)
+        redisWrap.client.on('message', cb)
+    }
+
     static async connect(redisConf:RedisConf) {
+        console.log(`connect to redis: ${redisConf.host} ${redisConf.port}`)
         const client = redis.createClient({
             host: redisConf.host,
             port: redisConf.port,
