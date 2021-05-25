@@ -19,27 +19,29 @@ export interface IErc20Transfer extends ITokenTransfer{
 }
 
 export interface IAddressErc20Transfer {
+    addressId:number
     epoch: number
+    tracePos: number
     txHashId: number
     createdAt: Date
     contractId: number
     fromId: number
     toId: number
     value: string
-    addressId:number
 }
 export const T_ADDRESS_ERC20TRANSFER = 'address_erc20_transfer'
 const ADDRESS_ERC20TRANSFER_SQL = `
     CREATE table if not exists ${T_ADDRESS_ERC20TRANSFER} (
   \`addressId\` bigint unsigned NOT NULL,
   \`epoch\` bigint unsigned NOT NULL,
+  \`tracePos\` int unsigned NOT NULL,
   \`contractId\` bigint unsigned NOT NULL,
   \`txHashId\` bigint unsigned NOT NULL,
   \`createdAt\` datetime NOT NULL,
   \`fromId\` bigint unsigned NOT NULL,
   \`toId\` bigint unsigned NOT NULL,
   \`value\` varchar(78) NOT NULL DEFAULT '0',
-  primary key  (\`addressId\` desc,\`epoch\` desc, \`txHashId\` desc),
+  primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
   KEY \`idx_createdAt\` (\`createdAt\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
@@ -60,24 +62,29 @@ export async function createAddressErc20TransferTable(seq:Sequelize) {
 }
 export function build20transferList2address(list:Erc20Transfer[]) : IAddressErc20Transfer[] {
     const result : IAddressErc20Transfer[] = []
+    let idx = 0
     list.forEach(row=>{
-        result.push(buildAddress20transfer(row, row.fromId))
+        result.push(buildAddress20transfer(row, row.fromId, idx))
         if (row.fromId !== row.toId) {
-            result.push(buildAddress20transfer(row, row.toId))
+            result.push(buildAddress20transfer(row, row.toId, idx+1))
         }
+        idx += 10
     })
     return result
 }
-function buildAddress20transfer(row:Erc20Transfer, addrId:number) : IAddressErc20Transfer {
+function buildAddress20transfer(row:any, addrId:number, pos:number) : any {
     return {
         addressId: addrId,
+        tracePos: pos,
         contractId: row.contractId, createdAt: row.createdAt, epoch: row.epoch, fromId: row.fromId,
-        toId: row.toId, txHashId: row.txHashId, value: row.value
+        toId: row.toId, txHashId: row.txHashId, value: row.value,
+        tokenId: row.tokenId,
     }
 }
 export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implements IAddressErc20Transfer {
     addressId:number
     epoch: number
+    tracePos: number //Need it to make primary key unique.
     createdAt: Date
     contractId: number
     txHashId: number
@@ -88,6 +95,7 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
         AddressErc20Transfer.init({
             addressId: {type: DataTypes.BIGINT, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
+            tracePos: {type: DataTypes.BIGINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
             txHashId: {type: DataTypes.BIGINT, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
