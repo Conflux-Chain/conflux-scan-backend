@@ -1,7 +1,92 @@
-import {Op, Sequelize, Transaction, DataTypes, Model} from "sequelize";
+import {Op, Sequelize, Transaction, DataTypes, Model, QueryTypes} from "sequelize";
 import {makeId} from "./HexMap";
+import {AddressErc20Transfer} from "./Erc20Transfer";
 
-export class IErc777Transfer {
+//===============================================
+//===============================================
+export interface IAddressErc777Transfer {
+    addressId: number
+    epoch: number
+    tracePos: number
+    createdAt: Date
+    txHashId: number
+    contractId: number
+    fromId: number
+    toId: number
+    value: string
+}
+
+export const T_ADDRESS_ERC777_TRANSFER = "address_erc777transfer"
+const T_ADDRESS_ERC777_TRANSFER_SQL = `
+    create table if not exists ${T_ADDRESS_ERC777_TRANSFER}
+(
+\t addressId bigint not null,
+\t epoch bigint not null,
+\t tracePos bigint not null,
+\tcreatedAt datetime not null,
+\ttxHashId bigint not null,
+\tcontractId bigint not null,
+\tfromId bigint not null,
+\ttoId bigint not null,
+\tvalue decimal(36) not null,
+    primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
+  KEY \`idx_createdAt\` (\`createdAt\` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+partition by hash (addressId)
+   PARTITIONS 97;
+`
+export async function createAddressErc777TransferTable(seq:Sequelize) {
+    return seq.query(T_ADDRESS_ERC777_TRANSFER_SQL,{
+        type:QueryTypes.UPDATE
+    }).then(()=>{
+        return AddressErc777Transfer.register(seq)
+    }).then(()=>{
+        AddressErc777Transfer.removeAttribute("id")
+    }).catch(err=>{
+        console.log(`createAddressErc777TransferTable fail, sql ${T_ADDRESS_ERC777_TRANSFER_SQL}:`, err)
+        process.exit(9)
+    })
+}
+export class AddressErc777Transfer extends Model<IAddressErc777Transfer> implements IAddressErc777Transfer {
+    addressId: number
+    epoch: number
+    tracePos: number
+    createdAt: Date
+    contractId: number
+    txHashId: number
+    fromId: number
+    toId: number
+    value: string
+    static register(seq: Sequelize) {
+        AddressErc777Transfer.init({
+            addressId: {type: DataTypes.BIGINT, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            tracePos: {type: DataTypes.INTEGER, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: false},
+        }, {
+            sequelize: seq,
+            updatedAt: false,
+            tableName: T_ADDRESS_ERC777_TRANSFER,
+            indexes: [
+                {
+                    name: 'idx_epoch',
+                    fields: [{name: 'epoch', order: "DESC"}]
+                },
+                {
+                    name: 'idx_datetime',
+                    fields: [{name: 'createdAt', order: "DESC"}]
+                },
+            ],
+        })
+    }
+}
+
+export interface IErc777Transfer {
     id?: number
     epoch: number
     createdAt: Date
@@ -54,6 +139,8 @@ export class Erc777Transfer extends Model<IErc777Transfer> implements IErc777Tra
         })
     }
 }
+
+//===============================================
 
 export async function buildErc777Transfer(obj, date) {
     const fromId = await makeId(obj.from, undefined, {dt:date})

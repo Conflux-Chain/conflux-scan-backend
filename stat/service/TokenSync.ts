@@ -69,6 +69,7 @@ export class TokenSync{
         // process
         const page = await Token.findAndCountAll(options)
         const list = [];
+        currency = '';
         if(page && page.rows){
             page.rows.forEach( item => {
                 const row = item.toJSON();
@@ -133,6 +134,7 @@ export class TokenSync{
         options.limit = limit;
         // order by
         let order: any;
+        currency = '';
         if(orderBy){
             if(orderBy === 'transferCount'){
                 orderBy = 'transfer';
@@ -183,10 +185,12 @@ export class TokenSync{
         let total;
         let currPage = 1;
         do{
-            let response = await this.getFromScan(skip, this.pageSize);
+            let response = await this.getFromScan(skip, this.pageSize).catch(err=>{
+                console.log(`error get from scan:`, err)
+            });
             if(!response) return;
             total = total ? total : response.total;
-            console.log('sync toke_list currPage======>', currPage, ',skip======>', skip, ',total======>', total );
+            console.log('sync toke_list currPage======', currPage, ',skip======', skip, ',total======', total );
 
             const tokenList = response.list;
             for (const token of tokenList) {
@@ -233,7 +237,13 @@ export class TokenSync{
             setTimeout(repeat, delay * 60 *  1000);
             console.log(`sync toke_list service in delay ${delay}min.`);
         }
-        repeat().then();
+        try {
+            repeat().then().catch(err => {
+                console.log(`schedule TokenSync fail:`, err)
+            });
+        } catch (err) {
+            console.log(`catch error token sync:`, err)
+        }
     }
 }
 

@@ -23,6 +23,7 @@ export class BatchBalanceWatcher {
         BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
         this.tokenList = erc20List.map(erc20=>erc20.address)
         this.erc20list = erc20List
+        this.txAddressSet = null
     }
     public async balanceOf(userAddr) {
         if (this.erc20list.length === 0) {
@@ -42,19 +43,25 @@ export class BatchBalanceWatcher {
         //
         const that = this;
         async function repeat() {
-            await that.run()
+            await that.run().catch(err=>{
+                console.log(`error process batch balance:`, err)
+            })
             setTimeout(repeat, delay)
         }
         repeat().then()
         console.log(`schedule batch balance watcher with delay ${delay}.`)
     }
-
+    txAddressSet :Set<string>
     async run() {
-        const txAddressSet = EventBus.swapAddressSet();
-        if (txAddressSet.size === 0) {
+        if (this.txAddressSet === null) {
+            this.txAddressSet = EventBus.swapAddressSet();
+        }
+        if (this.txAddressSet.size === 0) {
+            this.txAddressSet = null
+            console.log(`swapAddressSet empty data. 2`)
             return
         }
-        for (const hex of txAddressSet) {
+        for (const hex of this.txAddressSet) {
             await this.balanceOf(hex)
             // update cfx balance.
             if (this.cfxWatcher) {
@@ -62,6 +69,7 @@ export class BatchBalanceWatcher {
                 await this.cfxWatcher.queryBalance(hex, id);
             }
         }
-        console.log(`${fmtDtUTC(new Date())} batch process address count ${txAddressSet.size}`)
+        console.log(`${fmtDtUTC(new Date())} batch process address count ${this.txAddressSet.size}`)
+        this.txAddressSet = null
     }
 }

@@ -60,7 +60,13 @@ export class TokenQuoteSync {
         return token.marketCapId;
       });
 
-      const marketCapIdToQuote = await this.getFromMarketCap(tokenMarketCapIdArray, convert);
+      const marketCapIdToQuote = await this.getFromMarketCap(tokenMarketCapIdArray, convert).catch(err=>{
+        console.log(`error getFromMarketCap:`, err.toString())
+        return undefined
+      });
+      if (marketCapIdToQuote === undefined) {
+        return
+      }
       const quoteArray = tokenArray.map((token) => {
           const quote = marketCapIdToQuote[token.marketCapId] || {};
           return {
