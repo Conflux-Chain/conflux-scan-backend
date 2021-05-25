@@ -50,6 +50,7 @@ import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
+import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 let conf
 export function createDB(config) {
     conf = config
@@ -90,6 +91,7 @@ export async function initPartialModel(sequelize) {
         console.log(`connect to DB fail`, err)
     });
     hexMapInit(sequelize);
+    await createFullMinerBlockTable(sequelize)
     await Promise.all([
         createAddressErc20TransferTable(sequelize),
         create721partition(sequelize),

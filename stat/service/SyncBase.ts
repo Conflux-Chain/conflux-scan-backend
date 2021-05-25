@@ -64,8 +64,9 @@ export abstract class SyncBase{
 
     private async syncForward(epochNumber) {
         let syncCode;
+        let data: SyncData;
         try {
-            const data: SyncData = await this.getDataForwardWithPreload(epochNumber);
+            data = await this.getDataForwardWithPreload(epochNumber);
             syncCode = await this.saveForward(epochNumber, data);
         } catch (error) {
             console.error(`sync_base sync forward error, epoch:${epochNumber}`, error);
@@ -78,7 +79,7 @@ export abstract class SyncBase{
         if(syncCode === SyncCode.PIVOT_SWITCH){
             await this.forwardQueue.clear();
             epochNumber -= 1;
-            await this.delDataFromDb(epochNumber).catch((error) => {
+            await this.delDataFromDb(epochNumber, data.modelData).catch((error) => {
                 console.error(`sync_base del end error, epoch:${epochNumber}`, error);
                 throw error;
             });
@@ -111,10 +112,11 @@ export abstract class SyncBase{
             traceEpochNumber = await this.queryNextEpochFromDb();
         }
 
+        const that = this
         async function repeat() {
             const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
             if (traceEpochNumber <= stateEpochNumber - config.preload) {
-                traceEpochNumber = await this.syncForward(traceEpochNumber);
+                traceEpochNumber = await that.syncForward(traceEpochNumber);
                 setTimeout(repeat, 0)
             } else {
                 setTimeout(repeat, 1000)
@@ -135,9 +137,9 @@ export abstract class SyncBase{
     //-------------------- methods subclass to implement ---------------------
     public abstract getDataFromFullNode(epochNumber): Promise<SyncData>;
 
-    public abstract saveDataToDb(epochNumber, data);
+    public abstract saveDataToDb(epochNumber, modelData);
 
-    public abstract delDataFromDb(epochNumber);
+    public abstract delDataFromDb(epochNumber, modelData);
 }
 
 export class SyncData {
