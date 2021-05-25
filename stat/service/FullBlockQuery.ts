@@ -24,7 +24,7 @@ export class FullBlockQuery {
             minerId = hex40?.id
         }
         // attributes
-        const options: any = {offset: skip, limit};
+        const options: any = {offset: skip, limit, raw: true};
         options.attributes = [
             ['epoch', 'epochNumber'],
             'hash',
@@ -73,8 +73,7 @@ export class FullBlockQuery {
         let count;
         if(blockHash){
             rawList = await FullBlock.findAll(options);
-            rawList = rawList?.filter(item => {
-                const row = item.toJSON();
+            rawList = rawList?.filter(row => {
                 let valid = true;
                 const timestamp = new Date(row['timestamp']).getTime();
                 if(epochNumber) valid = valid && (row['epochNumber'] === epochNumber);
@@ -89,26 +88,22 @@ export class FullBlockQuery {
             const page = await FullMinerBlock.findAndCountAll(minerOptions);
             const epochSet = new Set();
             const positionSet = new Set();
-            page?.rows?.forEach(item => {
-                const row = item.toJSON();
+            page?.rows?.forEach(row => {
                 epochSet.add(row['epoch']);
                 positionSet.add(row['position']);
             })
             const fullBlockMap = {};
             if(epochSet.size > 0 && positionSet.size > 0){
                 const blockOptions = {...options};
-                blockOptions.where = {[Op.and]: [{epoch: {[Op.in]: Array.from(epochSet)}},
-                        {position: { [Op.in]: Array.from(positionSet)}}]};
+                blockOptions.where = {epoch: {[Op.in]: Array.from(epochSet)}};
                 blockOptions.offset = undefined;
                 blockOptions.limit = undefined;
                 const fullBlockList = await FullBlock.findAll(blockOptions);
                 fullBlockList?.forEach(item => {
-                    const row = item.toJSON();
-                    fullBlockMap[`${row['epochNumber']}-${row['blockIndex']}`] = item;
+                    fullBlockMap[`${item['epochNumber']}-${item['blockIndex']}`] = item;
                 });
             }
-            rawList = page?.rows?.map(item => {
-                const row = item.toJSON();
+            rawList = page?.rows?.map(row => {
                 return fullBlockMap[`${row['epoch']}-${row['position']}`];
             }).filter(Boolean);
             count = page.count;
@@ -119,8 +114,7 @@ export class FullBlockQuery {
         const list = [];
         if(rawList){
             const hex40IdSet = new Set<number>();
-            rawList.forEach( item => {
-                const row = item.toJSON();
+            rawList.forEach( row => {
                 hex40IdSet.add(row['miner']);
                 list.push(row);
             });
@@ -165,7 +159,7 @@ export class FullBlockQuery {
             opponentAddressId = hex40?.id
         }
         // attributes
-        const options: any = {offset: skip, limit};
+        const options: any = {offset: skip, limit, raw: true};
         options.attributes = [
             ['epoch', 'epochNumber'],
             ['blockPosition', 'blockHash'],
@@ -260,8 +254,7 @@ export class FullBlockQuery {
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
             const contractHexIdSet = new Set<number>();
-            rawList.forEach( item => {
-                const row = item.toJSON();
+            rawList.forEach( row => {
                 txHashArray.push(row['hash']);
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);

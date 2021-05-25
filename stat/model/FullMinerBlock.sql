@@ -7,4 +7,4 @@ CREATE TABLE `full_miner_block` (
   KEY `block_time_idx` (`createdAt` DESC)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8
 partition by hash (minerId)
-   PARTITIONS 13;
+   PARTITIONS 199;

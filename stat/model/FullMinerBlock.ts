@@ -1,4 +1,4 @@
-import {DataTypes, Model} from "sequelize";
+import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
 
 /**
  * list block mined by miner
@@ -8,6 +8,34 @@ export interface IFullMinerBlock {
     epoch: number;
     position: number;
     createdAt: Date,
+}
+
+const T_FULL_MINER_BLOCK = 'full_miner_block';
+const T_FULL_MINER_BLOCK_SQL = `
+create table if not exists ${T_FULL_MINER_BLOCK}
+(
+\t \`minerId\` bigint(20) unsigned NOT NULL,
+\t \`epoch\` bigint(20) unsigned NOT NULL,
+\t \`position\` smallint(6) NOT NULL DEFAULT '0',
+\t \`createdAt\` datetime NOT NULL,
+  PRIMARY KEY (\`minerId\` DESC, \`epoch\` DESC, \`position\` DESC),
+  KEY \`block_time_idx\` (\`createdAt\` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+partition by hash (addressId)
+  PARTITIONS 199;
+`
+
+export async function createFullMinerBlockTable(seq:Sequelize) {
+    return seq.query(T_FULL_MINER_BLOCK_SQL,{
+        type:QueryTypes.UPDATE
+    }).then(()=>{
+        return FullMinerBlock.register(seq)
+    }).then(()=>{
+        FullMinerBlock.removeAttribute("id")
+    }).catch(err=>{
+        console.log(`createFullMinerBlockTable fail, sql ${T_FULL_MINER_BLOCK_SQL}:`, err)
+        process.exit(9)
+    })
 }
 
 export class FullMinerBlock extends Model<IFullMinerBlock> implements IFullMinerBlock {

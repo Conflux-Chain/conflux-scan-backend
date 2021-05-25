@@ -23,7 +23,7 @@ export class EpochSync extends SyncBase{
         return syncData;
     }
 
-    async delDataFromDb(epochNumber) {
+    async delDataFromDb(epochNumber, modelData) {
         await Epoch.destroy({where:{epoch: epochNumber}});
     }
 

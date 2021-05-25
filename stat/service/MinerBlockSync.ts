@@ -5,9 +5,7 @@ import {SyncBase, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
-import {Epoch} from "../model/Epoch";
-import {AddressTransactionIndex, FullBlock, FullTransaction} from "../model/FullBlock";
-import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT} from "../model/KV";
+import {Op} from "sequelize";
 
 export class MinerBlockSync extends SyncBase{
     protected app;
@@ -22,8 +20,13 @@ export class MinerBlockSync extends SyncBase{
         return await this.getMinerBlockArray(epochNumber);
     }
 
-    async delDataFromDb(epochNumber) {
-        await FullMinerBlock.destroy({where:{epoch: epochNumber}});
+    async delDataFromDb(epochNumber, modelData) {
+        const minerIdSet = new Set();
+        modelData.forEach(item => {minerIdSet.add(item.minerId)});
+        await FullMinerBlock.destroy({where: {[Op.and]: [
+            {minerId: {[Op.in]: Array.from(minerIdSet)}},
+            {epoch: epochNumber}]}
+        });
     }
 
     async saveDataToDb(epochNumber, modelData) {
@@ -49,7 +52,7 @@ export class MinerBlockSync extends SyncBase{
 
         const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber);
         const blockArray = await Promise.all(blockHashArray.map(async (hash) => {
-            return await cfx.getBlockByHash(hash, true)
+            return await cfx.getBlockByHash(hash, false)
         }));
         const minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
             const hex40 = format.hexAddress(block.miner);
