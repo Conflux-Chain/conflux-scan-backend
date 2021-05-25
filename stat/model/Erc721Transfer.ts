@@ -1,7 +1,90 @@
-import {Op, Sequelize, Transaction, DataTypes, Model} from "sequelize";
+import {QueryTypes, DataTypes, Model, Sequelize} from "sequelize";
 import {makeId} from "./HexMap";
+import {sleep} from "../service/tool/ProcessTool";
 
-export class IErc721Transfer {
+export interface IAddressErc721Transfer {
+    addressId: number
+    epoch: number
+    tracePos: number
+    createdAt: Date
+    txHashId: number
+    contractId: number
+    fromId: number
+    toId: number
+    tokenId:string
+}
+export const T_ADDRESS_ERC721_TRANSFER = "address_erc721transfer"
+const T_ADDRESS_ERC721_TRANSFER_SQL = `
+    create table if not exists ${T_ADDRESS_ERC721_TRANSFER}
+(
+\t addressId bigint not null,
+\t epoch bigint not null,
+\t tracePos bigint not null,
+\tcreatedAt datetime not null,
+\ttxHashId bigint not null,
+\tcontractId bigint not null,
+\tfromId bigint not null,
+\ttoId bigint not null,
+\ttokenId varchar(78) null,
+    primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
+    KEY \`idx_createdAt\` (\`createdAt\` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+partition by hash (addressId)
+   PARTITIONS 13;
+`
+export async function create721partition(seq:Sequelize) {
+    return seq.query(T_ADDRESS_ERC721_TRANSFER_SQL, {
+        type: QueryTypes.UPDATE
+    }).then(()=>{
+        return AddressErc721Transfer.register(seq)
+    }).then(()=>{
+        AddressErc721Transfer.removeAttribute('id')
+    }).catch(err=>{
+        console.log(`create721partition fail: sql ${T_ADDRESS_ERC721_TRANSFER_SQL}: `, err)
+        sleep(1000)
+        process.exit(9)
+    })
+}
+export class AddressErc721Transfer extends Model<IAddressErc721Transfer> implements IAddressErc721Transfer {
+    addressId: number
+    epoch: number
+    tracePos: number
+    createdAt: Date
+    contractId: number
+    txHashId: number
+    fromId: number
+    toId: number
+    tokenId:string
+    static register(seq: Sequelize) {
+        AddressErc721Transfer.init({
+            addressId: {type: DataTypes.BIGINT, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            tracePos: {type: DataTypes.INTEGER, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+            tokenId: {type: DataTypes.STRING(78), allowNull: true},
+        }, {
+            sequelize: seq,
+            updatedAt: false,
+            tableName: T_ADDRESS_ERC721_TRANSFER,
+            indexes: [
+                {
+                    name: 'idx_epoch',
+                    fields: [{name: 'epoch', order: "DESC"}]
+                },
+                {
+                    name: 'idx_datetime',
+                    fields: [{name: 'createdAt', order: "DESC"}]
+                },
+            ],
+        })
+    }
+}
+//========================================
+export interface IErc721Transfer {
     id?: number
     epoch: number
     createdAt: Date
