@@ -60,7 +60,7 @@ export class Monitor{
         dingMsg(msg, this.dingTalkToken).then()
     }
 }
-async function dingMsg(msg:string, dingTalkToken:string) {
+export async function dingMsg(msg:string, dingTalkToken:string) {
     console.log(`pre send msg:${msg}`);
     if (!dingTalkToken) {
         return;

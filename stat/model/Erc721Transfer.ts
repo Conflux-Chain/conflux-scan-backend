@@ -2,6 +2,8 @@ import {QueryTypes, DataTypes, Model, Sequelize} from "sequelize";
 import {makeId} from "./HexMap";
 import {sleep} from "../service/tool/ProcessTool";
 import {createTable} from "../service/DBProvider";
+import {ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
+import {popPartition} from "./ErcTransfer";
 
 export interface IAddressErc721Transfer {
     addressId: number
@@ -161,15 +163,13 @@ export async function batchSaveErc721Transfer(array: any[], seconds) {
         templates.push(await buildErc721Transfer(obj, date))
     }
     // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Erc721Transfer.bulkCreate(templates, {
+    return Promise.all([Erc721Transfer.bulkCreate(templates, {
         // benchmark: true, logging:console.log,
-    })
+        }),
+        RedisWrap.sendStreamMessage(templates, ERC721_TRANSFER_Q)
+    ])
 }
 
 export async function batchPopErc721Transfer(epoch) {
-    return Erc721Transfer.destroy({
-        where: {
-            epoch: epoch
-        }
-    })
+    return popPartition(epoch, Erc721Transfer, AddressErc721Transfer)
 }

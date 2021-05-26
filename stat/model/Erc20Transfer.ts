@@ -59,8 +59,8 @@ export async function createAddressErc20TransferTable(seq:Sequelize) {
         process.exit(9)
     })
 }
-export function build20transferList2address(list:Erc20Transfer[]) : IAddressErc20Transfer[] {
-    const result : IAddressErc20Transfer[] = []
+export function build20transferList2address(list:any[]) : IAddressErc20Transfer[] {
+    const result : any[] = []
     let idx = 0
     list.forEach(row=>{
         result.push(buildAddress20transfer(row, row.fromId, idx))
@@ -191,17 +191,16 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
         templates.push(await buildErc20Transfer(obj, date))
     }
     // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Erc20Transfer.bulkCreate(templates, {
-        // benchmark: true, logging:console.log,
-    })
+    return Promise.all([
+        Erc20Transfer.bulkCreate(templates, {
+            // benchmark: true, logging:console.log,
+        }),
+        RedisWrap.sendStreamMessage(templates, ERC20_TRANSFER_Q)
+    ])
 }
 
 export async function batchPopErc20Transfer(epoch) {
-    return Erc20Transfer.destroy({
-        where: {
-            epoch: epoch
-        }
-    })
+    return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
 }
 
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'

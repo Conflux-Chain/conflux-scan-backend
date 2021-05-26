@@ -1,6 +1,8 @@
 import {Op, Sequelize, Transaction, DataTypes, Model, QueryTypes} from "sequelize";
 import {makeId} from "./HexMap";
 import {AddressErc20Transfer} from "./Erc20Transfer";
+import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
+import {popPartition} from "./ErcTransfer";
 import {createTable} from "../service/DBProvider";
 
 //===============================================
@@ -165,15 +167,13 @@ export async function batchSaveErc777Transfer(array: any[], seconds) {
         templates.push(await buildErc777Transfer(obj, date))
     }
     // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Erc777Transfer.bulkCreate(templates, {
+    return Promise.all([Erc777Transfer.bulkCreate(templates, {
         // benchmark: true, logging:console.log,
-    })
+        }),
+        RedisWrap.sendStreamMessage(templates, ERC777_TRANSFER_Q)
+    ])
 }
 
 export async function batchPopErc777Transfer(epoch) {
-    return Erc777Transfer.destroy({
-        where: {
-            epoch: epoch
-        }
-    })
+    return popPartition(epoch, Erc777Transfer, AddressErc777Transfer)
 }
