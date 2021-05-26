@@ -4,6 +4,8 @@ import {Erc721Transfer} from "./Erc721Transfer";
 import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
+import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
+import {popPartition} from "./ErcTransfer";
 
 export interface ITokenTransfer {
     createdAt: Date
@@ -203,7 +205,8 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
 }
 
 export async function batchPopErc20Transfer(epoch) {
-    return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
+    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC20_TRANSFER_Q)
+    // return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
 }
 
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'

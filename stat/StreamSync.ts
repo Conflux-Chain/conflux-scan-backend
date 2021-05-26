@@ -6,16 +6,21 @@ import {
     RedisStreamMessage,
     RedisWrap
 } from "./service/RedisWrap";
-import {AddressErc20Transfer, build20transferList2address} from "./model/Erc20Transfer";
-import {AddressErc1155Transfer} from "./model/Erc1155Transfer";
-import {AddressErc777Transfer} from "./model/Erc777Transfer";
-import {AddressErc721Transfer} from "./model/Erc721Transfer";
+import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "./model/Erc20Transfer";
+import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
+import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
+import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 
-async function handleTokenTransfer(model:any, data:RedisStreamMessage[]) {
-    // console.log(`handleTokenTransfer `, data)
+async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
+    console.log(`handleTokenTransfer `, data.length)
     const list:any[] = data.map(msg=>msg.message)
     return Promise.all(
         list.map(transferArr=>{
+            if (transferArr.action === 'pop') {
+                return popPartition(transferArr.epoch, fullT, model).then(()=>{
+                    return RedisWrap.xDel(data)
+                });
+            }
             const copies = build20transferList2address(transferArr)
             if (!copies.length) {
                 return RedisWrap.xDel(data)
@@ -36,25 +41,26 @@ async function handleTokenTransfer(model:any, data:RedisStreamMessage[]) {
 }
 import {init} from "./service/tool/FixDailyTokenStat";
 import {dingMsg} from "./monitor/Monitor";
+import {popPartition} from "./model/ErcTransfer";
 let config:StatConfig
 async function run() {
     config = await init()
     RedisWrap.connect(config.redis).then(()=>{
         RedisWrap.listenStreamMessage(
             ERC20_TRANSFER_Q,
-            (data)=>handleTokenTransfer(AddressErc20Transfer,data)
+            (data)=>handleTokenTransfer(Erc20Transfer, AddressErc20Transfer,data)
         );
         RedisWrap.listenStreamMessage(
             ERC721_TRANSFER_Q,
-            (data)=>handleTokenTransfer(AddressErc721Transfer,data)
+            (data)=>handleTokenTransfer(Erc721Transfer, AddressErc721Transfer,data)
         );
         RedisWrap.listenStreamMessage(
             ERC777_TRANSFER_Q,
-            (data)=>handleTokenTransfer(AddressErc777Transfer,data)
+            (data)=>handleTokenTransfer(Erc777Transfer, AddressErc777Transfer,data)
         );
         RedisWrap.listenStreamMessage(
             ERC1155_TRANSFER_Q,
-            (data)=>handleTokenTransfer(AddressErc1155Transfer,data)
+            (data)=>handleTokenTransfer(Erc1155Transfer, AddressErc1155Transfer,data)
         );
     }).then(()=>{
 

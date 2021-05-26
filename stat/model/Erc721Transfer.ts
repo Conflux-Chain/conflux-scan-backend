@@ -174,5 +174,6 @@ export async function batchSaveErc721Transfer(array: any[], seconds) {
 }
 
 export async function batchPopErc721Transfer(epoch) {
-    return popPartition(epoch, Erc721Transfer, AddressErc721Transfer)
+    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC721_TRANSFER_Q)
+    // return popPartition(epoch, Erc721Transfer, AddressErc721Transfer)
 }

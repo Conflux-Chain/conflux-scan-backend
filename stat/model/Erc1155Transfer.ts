@@ -1,7 +1,7 @@
 import {QueryTypes, Op, Sequelize, Transaction, DataTypes, Model} from "sequelize";
 import {makeId} from "./HexMap";
 import {AddressErc777Transfer} from "./Erc777Transfer";
-import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
+import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
 import {popPartition} from "./ErcTransfer";
 import {createTable} from "../service/DBProvider";
 
@@ -184,5 +184,6 @@ export async function batchSaveErc1155Transfer(array: any[], seconds) {
 }
 
 export async function batchPopErc1155Transfer(epoch) {
-    return popPartition(epoch, Erc1155Transfer, AddressErc1155Transfer)
+    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC1155_TRANSFER_Q)
+    // return popPartition(epoch, Erc1155Transfer, AddressErc1155Transfer)
 }

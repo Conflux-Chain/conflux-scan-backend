@@ -178,5 +178,6 @@ export async function batchSaveErc777Transfer(array: any[], seconds) {
 }
 
 export async function batchPopErc777Transfer(epoch) {
-    return popPartition(epoch, Erc777Transfer, AddressErc777Transfer)
+    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC777_TRANSFER_Q)
+    // return popPartition(epoch, Erc777Transfer, AddressErc777Transfer)
 }
