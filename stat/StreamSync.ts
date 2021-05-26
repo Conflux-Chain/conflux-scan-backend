@@ -12,7 +12,7 @@ import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 
 async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
-    console.log(`handleTokenTransfer `, data.length)
+    // console.log(`handleTokenTransfer `, data.length)
     const list:any[] = data.map(msg=>msg.message)
     return Promise.all(
         list.map(transferArr=>{
