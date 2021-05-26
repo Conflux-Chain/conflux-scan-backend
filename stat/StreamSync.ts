@@ -18,7 +18,7 @@ async function handleTokenTransfer(model:any, data:RedisStreamMessage[]) {
         list.map(transferArr=>{
             const copies = build20transferList2address(transferArr)
             if (!copies.length) {
-                return Promise.resolve();
+                return RedisWrap.xDel(data)
             }
             return model.bulkCreate(copies).then(arr=>{
                 process.stdout.write(`\r\u001b[2K ${new Date().toISOString()} bulk create transfer ${arr.length}`)
