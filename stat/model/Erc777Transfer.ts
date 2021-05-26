@@ -161,6 +161,9 @@ export async function buildErc777Transfer(obj, date) {
 }
 
 export async function batchSaveErc777Transfer(array: any[], seconds) {
+    if (!array.length) {
+        return;
+    }
     let templates = []
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {

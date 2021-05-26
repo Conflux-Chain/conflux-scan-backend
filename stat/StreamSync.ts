@@ -17,17 +17,20 @@ async function handleTokenTransfer(model:any, data:RedisStreamMessage[]) {
     return Promise.all(
         list.map(transferArr=>{
             const copies = build20transferList2address(transferArr)
+            if (!copies.length) {
+                return Promise.resolve();
+            }
             return model.bulkCreate(copies).then(arr=>{
                 process.stdout.write(`\r\u001b[2K ${new Date().toISOString()} bulk create transfer ${arr.length}`)
                 return arr
             }).then(()=>{
                 return RedisWrap.xDel(data)
-            })
+            });
         })
     ).catch(err=>{
         const info = data.map(msg=>msg.messageId).join(',')
         console.log(`handle transfer message fail: ${data[0].stream} ${info}.`)
-        dingMsg(`handle transfer message fail: ${data[0].stream}: ${err}`, config.dingTalkToken)
+        dingMsg(`[${config.serverTag}] handle transfer message fail: ${data[0].stream}: ${err}`, config.dingTalkToken)
         throw err;
     })
 }

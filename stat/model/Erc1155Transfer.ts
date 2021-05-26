@@ -166,7 +166,10 @@ export async function buildErc1155Transfer(obj, date) {
 }
 
 export async function batchSaveErc1155Transfer(array: any[], seconds) {
-    let templates = []
+    if (!array.length) {
+        return;
+    }
+    let templates = [];
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {
         templates.push(await buildErc1155Transfer(obj, date))
