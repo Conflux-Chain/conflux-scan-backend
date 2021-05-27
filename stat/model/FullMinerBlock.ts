@@ -1,4 +1,6 @@
 import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
+import {StatApp} from "../StatApp";
+import {createTable} from "../service/DBProvider";
 
 /**
  * list block mined by miner
@@ -21,14 +23,13 @@ create table if not exists ${T_FULL_MINER_BLOCK}
   PRIMARY KEY (\`minerId\` DESC, \`epoch\` DESC, \`position\` DESC),
   KEY \`block_time_idx\` (\`createdAt\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
-partition by hash (addressId)
+partition by hash (minerId)
   PARTITIONS 199;
 `
 
 export async function createFullMinerBlockTable(seq:Sequelize) {
-    return seq.query(T_FULL_MINER_BLOCK_SQL,{
-        type:QueryTypes.UPDATE
-    }).then(()=>{
+    return createTable(seq, T_FULL_MINER_BLOCK_SQL)
+    .then(()=>{
         return FullMinerBlock.register(seq)
     }).then(()=>{
         FullMinerBlock.removeAttribute("id")

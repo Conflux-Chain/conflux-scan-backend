@@ -1,4 +1,4 @@
-import {Sequelize} from "sequelize";
+import {QueryTypes, Sequelize} from "sequelize";
 import {Address, AddressInfo, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {TransactionDB} from "../model/Transaction";
@@ -41,7 +41,7 @@ import {
 } from "../model/Balance";
 import {Trace} from "../model/Trace";
 import {DailyToken, NftId, Token} from "../model/Token";
-import {DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
+import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
@@ -51,6 +51,7 @@ import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
+import {StatApp} from "../StatApp";
 let conf
 export function createDB(config) {
     conf = config
@@ -82,7 +83,17 @@ export function getSumFunction() : string{
 export function isMySQL() : boolean {
     return conf.USE_MYSQL === true
 }
-
+export async function createTable(seq:Sequelize, sql:string) {
+    return new Promise(async r=>{
+        if (StatApp.readonly) {
+            r(1)
+        } else {
+            await seq.query(sql,{
+                type:QueryTypes.UPDATE
+            }).then(()=>r(1))
+        }
+    })
+}
 // init for scan-backend
 export async function initPartialModel(sequelize) {
     await sequelize.authenticate().then(()=>{

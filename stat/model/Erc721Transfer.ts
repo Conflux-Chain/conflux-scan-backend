@@ -1,6 +1,7 @@
 import {QueryTypes, DataTypes, Model, Sequelize} from "sequelize";
 import {makeId} from "./HexMap";
 import {sleep} from "../service/tool/ProcessTool";
+import {createTable} from "../service/DBProvider";
 
 export interface IAddressErc721Transfer {
     addressId: number
@@ -33,9 +34,7 @@ partition by hash (addressId)
    PARTITIONS 13;
 `
 export async function create721partition(seq:Sequelize) {
-    return seq.query(T_ADDRESS_ERC721_TRANSFER_SQL, {
-        type: QueryTypes.UPDATE
-    }).then(()=>{
+    return createTable(seq, T_ADDRESS_ERC721_TRANSFER_SQL).then(()=>{
         return AddressErc721Transfer.register(seq)
     }).then(()=>{
         AddressErc721Transfer.removeAttribute('id')
@@ -71,10 +70,10 @@ export class AddressErc721Transfer extends Model<IAddressErc721Transfer> impleme
             updatedAt: false,
             tableName: T_ADDRESS_ERC721_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
+                // {
+                //     name: 'idx_epoch',
+                //     fields: [{name: 'epoch', order: "DESC"}]
+                // },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]
