@@ -6,7 +6,6 @@ import {popPartition} from "./ErcTransfer";
 import {createTable} from "../service/DBProvider";
 
 //===============================================
-//===============================================
 export interface IAddressErc777Transfer {
     addressId: number
     epoch: number
@@ -38,6 +37,7 @@ const T_ADDRESS_ERC777_TRANSFER_SQL = `
 partition by hash (addressId)
    PARTITIONS 97;
 `
+
 export async function createAddressErc777TransferTable(seq:Sequelize) {
     return createTable(seq, T_ADDRESS_ERC777_TRANSFER_SQL).then(()=>{
         return AddressErc777Transfer.register(seq)

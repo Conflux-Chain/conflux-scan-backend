@@ -73,7 +73,7 @@ export async function dingMsg(msg:string, dingTalkToken:string) {
                 "content": `${msg}\n[scan]`
             }
         }).then(res=>{
-            console.log(`send message done.`, res.ok);
+            console.log(`send ding message done, success:`, res.ok);
         })
         .catch(err=>{
             console.log(`send ding message fail: ${msg}`);

@@ -191,6 +191,9 @@ export class RedisStreamMessage {
 }
 export const redisWrap = new RedisWrap()
 
+export async function xLen(stream: string) {
+    return redisWrap.client.sendCommand('xlen', [stream])
+}
 /*
 apt install redis-tools
  */

@@ -1,13 +1,10 @@
-import {FullTransaction} from "../../model/FullBlock";
 import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "../../model/Erc20Transfer";
 import {init} from "./FixDailyTokenStat";
 import {Op} from 'sequelize'
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "../../model/Erc777Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
-export async function copy20transferByEpoch(epoch: number) {
 
-}
 
 export async function loop20transfer(times: number, full_t, partition_t) {
     // const full_t = Erc20Transfer
