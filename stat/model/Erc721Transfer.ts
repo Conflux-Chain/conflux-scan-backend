@@ -71,10 +71,10 @@ export class AddressErc721Transfer extends Model<IAddressErc721Transfer> impleme
             updatedAt: false,
             tableName: T_ADDRESS_ERC721_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
+                // {
+                //     name: 'idx_epoch',
+                //     fields: [{name: 'epoch', order: "DESC"}]
+                // },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]

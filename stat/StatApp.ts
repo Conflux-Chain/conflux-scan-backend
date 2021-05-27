@@ -6,6 +6,7 @@ import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";
 import {Conflux} from "js-conflux-sdk";
+import {TokenTool} from "./service/tool/TokenTool";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
 import {BlockTraceSync} from "./service/BlockTraceSync";
 import {BalanceService} from "./service/watcher/BalanceService";
@@ -56,6 +57,7 @@ export class StatApp{
     public tokenQuoteSync: TokenQuoteSync;
     public homeDashboardService: HomeDashboardService;
     public minerBlockSync: MinerBlockSync;
+    public tokenTool: TokenTool;
     public static networkId = 1029
     constructor(config: StatConfig) {
         this.config = config;
@@ -71,6 +73,7 @@ export class StatApp{
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${StatApp.networkId}`)
+        this.tokenTool = new TokenTool(this.cfx);
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
@@ -107,7 +110,7 @@ export class StatApp{
         this.dailyTxnQuery = new DailyTxnQuery();
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
-        this.tokenSync = new TokenSync(this.sequelize, this.config);
+        this.tokenSync = new TokenSync(this);
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
         this.traceCreateQuery = new BlockTraceCreateQuery();
         this.epochSync = new EpochSync(this);

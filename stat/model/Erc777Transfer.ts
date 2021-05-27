@@ -73,10 +73,10 @@ export class AddressErc777Transfer extends Model<IAddressErc777Transfer> impleme
             updatedAt: false,
             tableName: T_ADDRESS_ERC777_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
+                // {
+                //     name: 'idx_epoch',
+                //     fields: [{name: 'epoch', order: "DESC"}]
+                // },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]

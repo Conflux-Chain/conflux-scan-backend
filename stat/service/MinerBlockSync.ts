@@ -21,7 +21,7 @@ export class MinerBlockSync extends SyncBase{
     }
 
     async delDataFromDb(epochNumber, modelData) {
-        const minerIdSet = new Set();
+        const minerIdSet = new Set<number>();
         modelData.forEach(item => {minerIdSet.add(item.minerId)});
         await FullMinerBlock.destroy({where: {[Op.and]: [
             {minerId: {[Op.in]: Array.from(minerIdSet)}},

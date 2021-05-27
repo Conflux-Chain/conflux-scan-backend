@@ -103,13 +103,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         //             resolve("ok")
         //         })
         // })
-
-
-            const {fields, currency, address} = ctx.request.query;
-            const result = await statApp.tokenSync.listToken(fields, null, currency, null, null, 0,
-                1, address);
-            ctx.body = result?.list?.shift() || {};
-
+        const {fields, currency, address} = ctx.request.query;
+        const result = await statApp.tokenSync.queryTokenByAddress(address,fields, currency);
+        ctx.body = result || {};
     })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{

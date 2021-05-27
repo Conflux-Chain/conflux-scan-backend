@@ -107,10 +107,10 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
             updatedAt: false,
             tableName: T_ADDRESS_ERC20TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
+                // {
+                //     name: 'idx_epoch',
+                //     fields: [{name: 'epoch', order: "DESC"}]
+                // },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]

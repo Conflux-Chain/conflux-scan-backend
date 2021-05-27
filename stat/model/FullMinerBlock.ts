@@ -21,7 +21,7 @@ create table if not exists ${T_FULL_MINER_BLOCK}
   PRIMARY KEY (\`minerId\` DESC, \`epoch\` DESC, \`position\` DESC),
   KEY \`block_time_idx\` (\`createdAt\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
-partition by hash (addressId)
+partition by hash (minerId)
   PARTITIONS 199;
 `
 
