@@ -18,6 +18,7 @@ import {
 } from "../model/FullBlock";
 import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
+import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, ERC777_TRANSFER_Q, xLen} from "../service/RedisWrap";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -53,6 +54,15 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         ]).then(arr=>{
             ctx.body = {marks:arr}
         })
+    })
+    router.get('/devops/stream-queue-report', async (ctx)=>{
+        const [erc20, erc721, erc777, erc1155] = await Promise.all([
+            xLen(ERC20_TRANSFER_Q),
+            xLen(ERC721_TRANSFER_Q),
+            xLen(ERC777_TRANSFER_Q),
+            xLen(ERC1155_TRANSFER_Q),
+        ])
+        ctx.body = {xLen:{erc20, erc721, erc777, erc1155}}
     })
     router.get('/devops/db-partition',async (ctx) => {
         const sql = `SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME

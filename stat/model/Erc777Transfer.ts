@@ -1,9 +1,10 @@
 import {Op, Sequelize, Transaction, DataTypes, Model, QueryTypes} from "sequelize";
 import {makeId} from "./HexMap";
 import {AddressErc20Transfer} from "./Erc20Transfer";
+import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
+import {popPartition} from "./ErcTransfer";
 import {createTable} from "../service/DBProvider";
 
-//===============================================
 //===============================================
 export interface IAddressErc777Transfer {
     addressId: number
@@ -36,6 +37,7 @@ const T_ADDRESS_ERC777_TRANSFER_SQL = `
 partition by hash (addressId)
    PARTITIONS 97;
 `
+
 export async function createAddressErc777TransferTable(seq:Sequelize) {
     return createTable(seq, T_ADDRESS_ERC777_TRANSFER_SQL).then(()=>{
         return AddressErc777Transfer.register(seq)
@@ -159,21 +161,23 @@ export async function buildErc777Transfer(obj, date) {
 }
 
 export async function batchSaveErc777Transfer(array: any[], seconds) {
+    if (!array.length) {
+        return;
+    }
     let templates = []
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {
         templates.push(await buildErc777Transfer(obj, date))
     }
     // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Erc777Transfer.bulkCreate(templates, {
+    return Promise.all([Erc777Transfer.bulkCreate(templates, {
         // benchmark: true, logging:console.log,
-    })
+        }),
+        RedisWrap.sendStreamMessage(templates, ERC777_TRANSFER_Q)
+    ])
 }
 
 export async function batchPopErc777Transfer(epoch) {
-    return Erc777Transfer.destroy({
-        where: {
-            epoch: epoch
-        }
-    })
+    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC777_TRANSFER_Q)
+    // return popPartition(epoch, Erc777Transfer, AddressErc777Transfer)
 }

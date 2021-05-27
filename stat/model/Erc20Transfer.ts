@@ -4,6 +4,8 @@ import {Erc721Transfer} from "./Erc721Transfer";
 import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
+import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
+import {popPartition} from "./ErcTransfer";
 
 export interface ITokenTransfer {
     createdAt: Date
@@ -59,8 +61,8 @@ export async function createAddressErc20TransferTable(seq:Sequelize) {
         process.exit(9)
     })
 }
-export function build20transferList2address(list:Erc20Transfer[]) : IAddressErc20Transfer[] {
-    const result : IAddressErc20Transfer[] = []
+export function build20transferList2address(list:any[]) : IAddressErc20Transfer[] {
+    const result : any[] = []
     let idx = 0
     list.forEach(row=>{
         result.push(buildAddress20transfer(row, row.fromId, idx))
@@ -185,23 +187,26 @@ export async function buildErc20Transfer(obj, date) {
 }
 
 export async function batchSaveErc20Transfer(array: any[], seconds) {
+    if (!array.length) {
+        return;
+    }
     let templates = []
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {
         templates.push(await buildErc20Transfer(obj, date))
     }
     // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Erc20Transfer.bulkCreate(templates, {
-        // benchmark: true, logging:console.log,
-    })
+    return Promise.all([
+        Erc20Transfer.bulkCreate(templates, {
+            // benchmark: true, logging:console.log,
+        }),
+        RedisWrap.sendStreamMessage(templates, ERC20_TRANSFER_Q)
+    ])
 }
 
 export async function batchPopErc20Transfer(epoch) {
-    return Erc20Transfer.destroy({
-        where: {
-            epoch: epoch
-        }
-    })
+    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC20_TRANSFER_Q)
+    // return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
 }
 
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'
