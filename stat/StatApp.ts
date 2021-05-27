@@ -79,7 +79,7 @@ export class StatApp{
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
-        // await this.initRedis();
+        await this.initRedis();
         await initModel(sequelize);
         if (this.config.database.syncSchema) {
             console.log(`sync model begin.`)
