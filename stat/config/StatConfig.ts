@@ -10,6 +10,7 @@ export interface Database{
     database: string;
     blockTableRowsLimit: number;
     syncSchema: boolean;
+    readonly : boolean;
 }
 export interface RedisConf {
     host:string

@@ -59,6 +59,7 @@ export class StatApp{
     public minerBlockSync: MinerBlockSync;
     public tokenTool: TokenTool;
     public static networkId = 1029
+    public static readonly = false
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -72,6 +73,7 @@ export class StatApp{
         await this.cfx.updateNetworkId();
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
+        StatApp.readonly = this.config.database.readonly
         console.log(`conflux rpc ${this.config.conflux.url}, network id ${StatApp.networkId}`)
         this.tokenTool = new TokenTool(this.cfx);
         // const logger = pino()

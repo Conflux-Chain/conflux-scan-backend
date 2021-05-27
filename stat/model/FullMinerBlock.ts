@@ -1,4 +1,6 @@
 import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
+import {StatApp} from "../StatApp";
+import {createTable} from "../service/DBProvider";
 
 /**
  * list block mined by miner
@@ -26,9 +28,8 @@ partition by hash (minerId)
 `
 
 export async function createFullMinerBlockTable(seq:Sequelize) {
-    return seq.query(T_FULL_MINER_BLOCK_SQL,{
-        type:QueryTypes.UPDATE
-    }).then(()=>{
+    return createTable(seq, T_FULL_MINER_BLOCK_SQL)
+    .then(()=>{
         return FullMinerBlock.register(seq)
     }).then(()=>{
         FullMinerBlock.removeAttribute("id")

@@ -1,6 +1,7 @@
 import {QueryTypes, Op, Sequelize, Transaction, DataTypes, Model} from "sequelize";
 import {makeId} from "./HexMap";
 import {AddressErc777Transfer} from "./Erc777Transfer";
+import {createTable} from "../service/DBProvider";
 
 //=================
 export interface IAddressErc1155Transfer {
@@ -37,9 +38,7 @@ partition by hash (addressId)
    PARTITIONS 23;
 `
 export async function createAddressErc1155TransferTable(seq:Sequelize) {
-    return seq.query(T_ADDRESS_ERC1155_TRANSFER_SQL,{
-        type:QueryTypes.UPDATE
-    }).then(()=>{
+    return createTable(seq, T_ADDRESS_ERC1155_TRANSFER_SQL).then(()=>{
         return AddressErc1155Transfer.register(seq)
     }).then(()=>{
         AddressErc1155Transfer.removeAttribute("id")

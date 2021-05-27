@@ -3,6 +3,7 @@ import {makeId} from "./HexMap";
 import {Erc721Transfer} from "./Erc721Transfer";
 import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
+import {createTable} from "../service/DBProvider";
 
 export interface ITokenTransfer {
     createdAt: Date
@@ -49,9 +50,7 @@ partition by hash (addressId)
 `
 
 export async function createAddressErc20TransferTable(seq:Sequelize) {
-    return seq.query(ADDRESS_ERC20TRANSFER_SQL,{
-        type:QueryTypes.UPDATE
-    }).then(()=>{
+    return createTable(seq, ADDRESS_ERC20TRANSFER_SQL).then(()=>{
         return AddressErc20Transfer.register(seq)
     }).then(()=>{
         AddressErc20Transfer.removeAttribute("id")
