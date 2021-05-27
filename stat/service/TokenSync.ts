@@ -94,9 +94,13 @@ export class TokenSync{
 
     public async queryTokenByAddress(address, fields, currency) {
         const result = await this.listToken(fields, null, currency, null, null, 0, 1, address);
+        console.log(`queryTokenByAddress---1------------------------${JSON.stringify(result)}`);
         const token = result?.list?.shift();
+        console.log(`queryTokenByAddress---2------------------------token:${JSON.stringify(token)}`);
         const isRegistered = token !== undefined;
+        console.log(`queryTokenByAddress---3------------------------isRegistered:${JSON.stringify(isRegistered)}`);
         const tokenInfo = await this.app.tokenTool.getToken(address);
+        console.log(`queryTokenByAddress---4------------------------tokenInfo:${JSON.stringify(tokenInfo)}`);
 
         let transferType;
         const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(address).substr(2) } });
@@ -104,7 +108,9 @@ export class TokenSync{
         if (addressId) {
             transferType = await TokenSync.getTransferType(addressId);
         }
+        console.log(`queryTokenByAddress---5------------------------transferType:${JSON.stringify(transferType)}`);
         const totalSupply = await this.app.tokenTool.getTokenTotalSupply(address);
+        console.log(`queryTokenByAddress---6------------------------totalSupply:${JSON.stringify(totalSupply)}`);
 
         return lodash.defaults(token, { address, name: tokenInfo.name, symbol: tokenInfo.symbol,
             decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply });
