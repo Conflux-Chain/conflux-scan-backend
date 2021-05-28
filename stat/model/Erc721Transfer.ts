@@ -30,7 +30,8 @@ const T_ADDRESS_ERC721_TRANSFER_SQL = `
 \ttoId bigint not null,
 \ttokenId varchar(78) null,
     primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
-    KEY \`idx_createdAt\` (\`createdAt\` DESC)
+    KEY \`idx_datetime\` (\`createdAt\` DESC),
+    KEY \`idx_epoch\` (\`epoch\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 13;
