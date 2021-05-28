@@ -30,10 +30,8 @@ export class Crc721TransferQuery extends TransferQueryBase{
         const{ logger } = this.app;
 
         if(options.address !== undefined){
-            logger?.info({src: `${this.getTransferType()}.all.findAndCountAll--------`, 'options': JSON.stringify(options)});
             return await Erc721Transfer.findAndCountAll(queryOptions);
         }
-        logger?.info({src: `${this.getTransferType()}.address.findAndCountAll--------`, 'options': JSON.stringify(options)});
         return await AddressErc721Transfer.findAndCountAll(options);
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
