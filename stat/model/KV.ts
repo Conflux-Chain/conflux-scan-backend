@@ -16,6 +16,7 @@ export const KEY_BALANCE_POS_PREFIX = "BALANCE_POS_"
 export const KEY_NFT_TOKEN_ID_POS = "NFT_TOKEN_ID_POS_"
 export const KEY_BLOCK_QUERY_RDB_SWITCH = "SWITCH_BLOCK_QUERY_RDB"
 export const KEY_TX_QUERY_RDB_SWITCH = "SWITCH_TX_QUERY_RDB"
+export const KEY_TRANSFER_QUERY_RDB_SWITCH = "SWITCH_TRANSFER_QUERY_RDB"
 
 export class KV extends Model<IKV> implements IKV {
     key: string;

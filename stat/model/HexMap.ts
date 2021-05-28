@@ -1,4 +1,4 @@
-import {Sequelize, DataTypes, Model, Transaction} from "sequelize";
+import {Sequelize, DataTypes, Model, Transaction, Op} from "sequelize";
 import {incDailyAddressCount} from "./StatAddress";
 const NodeCache = require( "node-cache" );
 
@@ -172,4 +172,37 @@ export class AddressInfo extends Model<IAddressInfo> implements IAddressInfo {
             timestamps: false
         })
     }
+}
+
+export async function hex40IdMap(hex40Array: Array<string>): Promise<Map<string, number>> {
+    const result = await Hex40Map.findAll({
+        where: {hex: {[Op.in]: hex40Array}},
+    })
+    const hex40IdMap = new Map<string, number>()
+    result.forEach(hex40 => {
+        hex40IdMap.set(hex40.hex, hex40.id)
+    })
+    return hex40IdMap;
+}
+
+export async function idHex40Map(idArray: Array<number>): Promise<Map<number, string>>{
+    const result = await Hex40Map.findAll({
+        where: {id: { [Op.in]: idArray}},
+    })
+    const idHex40Map = new Map<number, string>()
+    result.forEach(hex40=>{
+        idHex40Map.set(hex40.id, hex40.hex)
+    })
+    return idHex40Map;
+}
+
+export async function idHex64Map(idArray: Array<number>): Promise<Map<number, string>>{
+    const result = await Hex64Map.findAll({
+        where: {id: { [Op.in]: idArray}},
+    })
+    const idHex64Map = new Map<number, string>()
+    result.forEach(hex64=>{
+        idHex64Map.set(hex64.id, hex64.hex)
+    })
+    return idHex64Map;
 }
