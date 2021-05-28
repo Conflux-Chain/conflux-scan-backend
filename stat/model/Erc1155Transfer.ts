@@ -1,6 +1,9 @@
 import {QueryTypes, Op, Sequelize, Transaction, DataTypes, Model} from "sequelize";
 import {makeId} from "./HexMap";
 import {AddressErc777Transfer} from "./Erc777Transfer";
+import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
+import {popPartition} from "./ErcTransfer";
+import {createTable} from "../service/DBProvider";
 
 //=================
 export interface IAddressErc1155Transfer {
@@ -37,9 +40,7 @@ partition by hash (addressId)
    PARTITIONS 23;
 `
 export async function createAddressErc1155TransferTable(seq:Sequelize) {
-    return seq.query(T_ADDRESS_ERC1155_TRANSFER_SQL,{
-        type:QueryTypes.UPDATE
-    }).then(()=>{
+    return createTable(seq, T_ADDRESS_ERC1155_TRANSFER_SQL).then(()=>{
         return AddressErc1155Transfer.register(seq)
     }).then(()=>{
         AddressErc1155Transfer.removeAttribute("id")
@@ -76,10 +77,10 @@ export class AddressErc1155Transfer extends Model<IAddressErc1155Transfer> imple
             updatedAt: false,
             tableName: T_ADDRESS_ERC1155_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
+                // {
+                //     name: 'idx_epoch',
+                //     fields: [{name: 'epoch', order: "DESC"}]
+                // },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]
@@ -165,21 +166,24 @@ export async function buildErc1155Transfer(obj, date) {
 }
 
 export async function batchSaveErc1155Transfer(array: any[], seconds) {
-    let templates = []
+    if (!array.length) {
+        return;
+    }
+    let templates = [];
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {
         templates.push(await buildErc1155Transfer(obj, date))
     }
     // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Erc1155Transfer.bulkCreate(templates, {
-        // benchmark: true, logging:console.log,
-    })
+    return Promise.all([Erc1155Transfer.bulkCreate(templates, {
+            // benchmark: true, logging:console.log,
+        }),
+        RedisWrap.sendStreamMessage(templates, ERC1155_TRANSFER_Q)
+        ]
+    )
 }
 
 export async function batchPopErc1155Transfer(epoch) {
-    return Erc1155Transfer.destroy({
-        where: {
-            epoch: epoch
-        }
-    })
+    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC1155_TRANSFER_Q)
+    // return popPartition(epoch, Erc1155Transfer, AddressErc1155Transfer)
 }

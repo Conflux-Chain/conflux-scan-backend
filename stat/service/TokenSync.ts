@@ -7,21 +7,30 @@ const addressSdk = require('js-conflux-sdk/src/util/address')
 const lodash = require('lodash');
 const superagent = require('superagent');
 import {decodeUtf8} from "./tool/StringTool";
+const {Hex40Map} = require("../model/HexMap");
+import {StatApp} from "../StatApp";
+const {AddressErc20Transfer, Erc20Transfer} = require("../model/Erc20Transfer");
+const {AddressErc721Transfer, Erc721Transfer} = require("../model/Erc721Transfer");
+const {AddressErc777Transfer, Erc777Transfer} = require("../model/Erc777Transfer");
+const {AddressErc1155Transfer, Erc1155Transfer} = require("../model/Erc1155Transfer");
+const CONST = require('./common/constant');
 
 export class TokenSync{
+    private app: StatApp;
     private sequelize: Sequelize;
     private config: {scanApiUrl:string};
     private pageSize: number = 10;
 
-    constructor(sequelize: Sequelize, config:{scanApiUrl:string}) {
-        this.sequelize = sequelize;
-        this.config = config
+    constructor(app: any) {
+        this.app = app;
+        this.sequelize = app.sequelize;
+        this.config = app.config
     }
 
     public async listTokenByName(name, currency, skip: number = 0, limit: number = 10) {
         // fields
         const options: any = {};
-        let attributes: any = [['base32', 'address'],
+        options.attributes = [['base32', 'address'],
             'name',
             'symbol',
             'decimals',
@@ -46,7 +55,6 @@ export class TokenSync{
             'totalPriceRUB',
             'totalPriceEUR',
         ];
-        options.attributes = attributes;
 
         // query
         const query: any = {};
@@ -82,6 +90,37 @@ export class TokenSync{
             });
         }
         return { total: page?.count || 0, list };
+    }
+
+    public async queryTokenByAddress(address, fields, currency) {
+        const result = await this.listToken(fields, null, currency, null, null, 0, 1, address);
+        const token = result?.list?.shift();
+        const isRegistered = token !== undefined;
+        const tokenInfo = await this.app.tokenTool.getToken(address);
+
+        let transferType;
+        const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(address).substr(2) } });
+        const addressId = hex40?.id;
+        if (addressId) {
+            transferType = await TokenSync.getTransferType(addressId);
+        }
+        const totalSupply = await this.app.tokenTool.getTokenTotalSupply(address);
+
+        return lodash.defaults(token, { address, name: tokenInfo.name, symbol: tokenInfo.symbol,
+            decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply });
+    }
+
+    private static async getTransferType(addressId) {
+        const [erc20Record, erc721Record, erc777Record, erc1155Record] = await Promise.all([
+            Erc20Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
+            Erc721Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
+            Erc777Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
+            Erc1155Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
+        ]);
+        if(erc20Record) return  CONST.TRANSFER_TYPE.ERC20;
+        if(erc721Record) return CONST.TRANSFER_TYPE.ERC721;
+        if(erc777Record) return CONST.TRANSFER_TYPE.ERC777;
+        if(erc1155Record) return CONST.TRANSFER_TYPE.ERC1155;
     }
 
     public async listToken(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, address) {
@@ -229,7 +268,6 @@ export class TokenSync{
     public async schedule() {
         const that = this;
         async function repeat() {
-            const now = new Date();
             await that.run().catch(err=>{
                 console.log(`sync toke_list fail: `, err);
             });

@@ -117,11 +117,14 @@ export class FullBlockService {
             return
         }
         const maxBlock = await FullBlock.findOne({order:[['epoch','desc']]})
+        if (maxBlock === null) {
+            return KV.create({key: KEY_FULL_BLOCK_COUNT, value: '0'})
+        }
         if (maxBlock.epoch < BLOCK_PAGE_MARK_SIZE) {
             // The system may just starts, has a few records.
             let countNow = (await FullBlock.count()).toString();
-            console.log(`set block count to ${countNow}, as system just starts.`)
-            return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow})
+            console.log(`set block count to ${countNow}, as system just starts.`);
+            return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow});
         }
         let maxOne:IBlockRowMark = await BlockRowMark.findOne({order: [["id", "desc"]], limit: 1})
         if (maxOne === null) {

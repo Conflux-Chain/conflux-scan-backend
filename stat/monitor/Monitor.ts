@@ -60,7 +60,7 @@ export class Monitor{
         dingMsg(msg, this.dingTalkToken).then()
     }
 }
-async function dingMsg(msg:string, dingTalkToken:string) {
+export async function dingMsg(msg:string, dingTalkToken:string) {
     console.log(`pre send msg:${msg}`);
     if (!dingTalkToken) {
         return;
@@ -73,7 +73,7 @@ async function dingMsg(msg:string, dingTalkToken:string) {
                 "content": `${msg}\n[scan]`
             }
         }).then(res=>{
-            console.log(`send message done.`, res.ok);
+            console.log(`send ding message done, success:`, res.ok);
         })
         .catch(err=>{
             console.log(`send ding message fail: ${msg}`);
