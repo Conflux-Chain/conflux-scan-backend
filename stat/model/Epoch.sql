@@ -1,7 +1,6 @@
 CREATE TABLE `epoch` (
   `id` bigint(20) NOT NULL,
   `timestamp` datetime NOT NULL,
-  `parentHash` bigint(20) NOT NULL,
   `pivotHash` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `time_idx` (`timestamp`)

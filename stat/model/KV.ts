@@ -1,4 +1,4 @@
-import {DataTypes, Model} from "sequelize";
+import {DataTypes, Model, Transaction} from "sequelize";
 
 export interface IKV {
     key: string;
@@ -6,6 +6,7 @@ export interface IKV {
 }
 export const KEY_FULL_BLOCK_COUNT = "FULL_BLOCK_COUNT"
 export const KEY_FULL_TX_COUNT = "FULL_TX_COUNT"
+export const KEY_FULL_CFX_TRANSFER_COUNT = "FULL_CFX_TRANSFER_COUNT"
 export const KEY_FILL_BLOCK_PROPS_EPOCH = "KEY_FILL_BLOCK_PROPS_EPOCH"
 export const KEY_FILL_BLOCK_REWARD_EPOCH = "KEY_FILL_BLOCK_REWARD_EPOCH"
 export const KEY_MINER_EPOCH = "KEY_MINER_EPOCH"
@@ -43,6 +44,14 @@ export class KV extends Model<IKV> implements IKV {
             sequelize,
             tableName: 'config',
             timestamps: false
+        })
+    }
+
+    static async diffCount(key:string, diff:number, dbTx:Transaction) {
+        return KV.getNumber(key).then(cnt=>{
+            const dbValue = (typeof cnt === 'number') ? cnt : 0;
+            return KV.update({value: (dbValue+diff).toString()},
+                {where:{key:key}, transaction: dbTx})
         })
     }
 }
