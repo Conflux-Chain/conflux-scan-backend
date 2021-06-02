@@ -346,11 +346,14 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     return CfxTransfer.sequelize.transaction(async (dbTx) => {
         const resultArray = await Promise.all([
             CfxTransfer.bulkCreate(templates, {transaction: dbTx}),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx),
-            doMark(),
+            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger),
             AddressCfxTransfer.bulkCreate(addressCfxTransferArray, {transaction: dbTx}),
         ]);
-        logger?.info({src: `batchSaveCfxTransfer------------`, 'array.length': array?.length, 'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray)});
+        const countArray = resultArray[1];
+        const epoch = templates.shift().epoch;
+        await doMark(countArray, epoch, logger)
+        // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
+        //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
     });
 
     // async add address-cfx-transfer
@@ -364,13 +367,13 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     // });
 }
 
-export async function doMark(){
-    const maxData = await CfxTransfer.findOne({order: [['id', 'DESC']], limit: 1, raw: true });
-    const maxId = maxData?.id;
-    const maxEpoch = maxData?.epoch;
-    if ( maxId && (maxId % CFX_TRANSFER_PAGE_MARK_SIZE === 0) && maxId > CFX_TRANSFER_PAGE_MARK_SIZE) {
+export async function doMark(countArray, epoch, logger){
+    const oldPage = Math.floor(countArray.slice(0,1) / CFX_TRANSFER_PAGE_MARK_SIZE);
+    const newPage = Math.floor(countArray.slice(1,2) / CFX_TRANSFER_PAGE_MARK_SIZE);
+    // logger?.info({src: `batchSaveCfxTransfer-2------------`, 'oldPage': oldPage, 'newPage': newPage});
+    if ( newPage > oldPage) {
         let avoidReOrg = 1000;
-        return markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, maxEpoch - avoidReOrg);
+        return markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, epoch - avoidReOrg);
     }
     return Promise.resolve(0);
 }
@@ -401,7 +404,7 @@ export async function popPartitionCfxTransfer(epoch, logger = undefined){
             KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
             CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
         ]);
-        logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
+        // logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
     });
 }
 

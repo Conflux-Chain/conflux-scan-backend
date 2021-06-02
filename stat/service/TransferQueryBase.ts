@@ -96,6 +96,13 @@ export abstract class TransferQueryBase {
             transactionHashId = hex64?.id;
         }
 
+        // check if address exist
+        if((accountAddress !== undefined && accountAddressId === undefined)
+            || (address !== undefined && addressId === undefined)
+            || (opponentAddress !== undefined && opponentAddressId === undefined)){
+            return {total: 0, list: []};
+        }
+
         // queryOptions
         const queryOptions = this.buildQueryOptions({accountAddressId, addressId, minTimestamp, maxTimestamp, opponentAddressId,
             transactionHashId, tokenId, txType, skip, limit});
