@@ -32,7 +32,8 @@ const T_ADDRESS_ERC777_TRANSFER_SQL = `
 \ttoId bigint not null,
 \tvalue decimal(36) not null,
     primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
-  KEY \`idx_createdAt\` (\`createdAt\` DESC)
+  KEY \`idx_datetime\` (\`createdAt\` DESC),
+  KEY \`idx_epoch\` (\`epoch\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 97;
@@ -74,10 +75,10 @@ export class AddressErc777Transfer extends Model<IAddressErc777Transfer> impleme
             updatedAt: false,
             tableName: T_ADDRESS_ERC777_TRANSFER,
             indexes: [
-                // {
-                //     name: 'idx_epoch',
-                //     fields: [{name: 'epoch', order: "DESC"}]
-                // },
+                {
+                    name: 'idx_epoch',
+                    fields: [{name: 'epoch', order: "DESC"}]
+                },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]

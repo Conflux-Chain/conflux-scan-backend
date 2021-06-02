@@ -1,14 +1,19 @@
 CREATE TABLE `epoch` (
-  `id` bigint(20) NOT NULL,
+  `epoch` bigint(20) NOT NULL,
   `timestamp` datetime NOT NULL,
-  `parentHash` bigint(20) NOT NULL,
-  `pivotHash` bigint(20) NOT NULL,
-  PRIMARY KEY (`id`),
+  `pivotHash` varchar(128) NOT NULL,
+  PRIMARY KEY (`epoch`),
   KEY `time_idx` (`timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-partition by range (id) (
-    PARTITION p1 VALUES LESS THAN (10000000/*1Kw*/),
-    PARTITION p2 VALUES LESS THAN (20000000/*2Kw*/),
-    PARTITION p3 VALUES LESS THAN (30000000/*3Kw*/),
-    PARTITION pm VALUES LESS THAN maxvalue /*fallback partition, should add partition before reach it.*/
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+partition by range (epoch) (
+     PARTITION p1 VALUES LESS THAN (10000000) ENGINE = InnoDB,
+     PARTITION p2 VALUES LESS THAN (20000000) ENGINE = InnoDB,
+     PARTITION p3 VALUES LESS THAN (30000000) ENGINE = InnoDB,
+     PARTITION p4 VALUES LESS THAN (40000000) ENGINE = InnoDB,
+     PARTITION p5 VALUES LESS THAN (50000000) ENGINE = InnoDB,
+     PARTITION p6 VALUES LESS THAN (60000000) ENGINE = InnoDB,
+     PARTITION p7 VALUES LESS THAN (70000000) ENGINE = InnoDB,
+     PARTITION p8 VALUES LESS THAN (80000000) ENGINE = InnoDB,
+     PARTITION p9 VALUES LESS THAN (90000000) ENGINE = InnoDB,
+     PARTITION p10 VALUES LESS THAN (100000000) ENGINE = InnoDB
     );

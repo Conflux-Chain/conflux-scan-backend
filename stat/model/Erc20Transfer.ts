@@ -44,8 +44,9 @@ const ADDRESS_ERC20TRANSFER_SQL = `
   \`fromId\` bigint unsigned NOT NULL,
   \`toId\` bigint unsigned NOT NULL,
   \`value\` varchar(78) NOT NULL DEFAULT '0',
-  primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
-  KEY \`idx_createdAt\` (\`createdAt\` DESC)
+  PRIMARY KEY (\`addressId\`,\`epoch\`,\`tracePos\`),
+  KEY \`idx_datetime\` (\`createdAt\`),
+  KEY \`idx_epoch\` (\`epoch\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 97;
@@ -108,10 +109,10 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
             updatedAt: false,
             tableName: T_ADDRESS_ERC20TRANSFER,
             indexes: [
-                // {
-                //     name: 'idx_epoch',
-                //     fields: [{name: 'epoch', order: "DESC"}]
-                // },
+                {
+                    name: 'idx_epoch',
+                    fields: [{name: 'epoch', order: "DESC"}]
+                },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]

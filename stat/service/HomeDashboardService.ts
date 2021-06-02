@@ -34,7 +34,7 @@ export class HomeDashboardService{
       const addressCount = await Hex40Map.count({});
       const transactionCount = await FullTransaction.count({});
       const contractCount = await TraceCreateContract.count({});
-      logger?.info({src: 'HomeDashboardService', msg: `addressCount:${addressCount}, transactionCount:${transactionCount}, contractCount:${contractCount}`})
+      // logger?.info({src: 'HomeDashboardService', msg: `addressCount:${addressCount}, transactionCount:${transactionCount}, contractCount:${contractCount}`})
       this.data = {addressCount, transactionCount, contractCount};
     }
 }

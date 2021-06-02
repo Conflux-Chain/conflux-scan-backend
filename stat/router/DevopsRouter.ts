@@ -1,4 +1,5 @@
 import * as Router from "koa-router";
+const addressSdk = require('js-conflux-sdk/src/util/address')
 import {StatApp} from "../StatApp";
 import {Context} from "koa";
 import {setAddressInfo} from "../service/ConfigService";
@@ -19,6 +20,7 @@ import {
 import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, ERC777_TRANSFER_Q, xLen} from "../service/RedisWrap";
+import {TxnQuery} from "../service/TxnQuery";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -40,10 +42,19 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     )
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
-        const bean = await Hex40Map.findByPk(hexId)
+        let bean:Hex40Map
+        if (hexId.toString().startsWith('cfx')) {
+            let hex = addressSdk.simplifyCfxAddress(hexId)
+            bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
+        } else if (hexId.toString().startsWith('0x')) {
+            bean = await Hex40Map.findOne({where: {hex: hexId.toString().substr(2)}})
+        } else {
+            bean = await Hex40Map.findByPk(hexId)
+        }
         const token = await Token.findOne({where: {hex40id: bean?.id || 0}}) || {icon:''}
         token.icon = ''
-        ctx.body = {hex: bean, token}
+        const base32 = bean ? TxnQuery.base32('0x'+bean.hex, StatApp.networkId) : ''
+        ctx.body = {hex: bean, token, base32}
     })
     router.get('/devops/sync-max-info',async (ctx) => {
         await Promise.all([
