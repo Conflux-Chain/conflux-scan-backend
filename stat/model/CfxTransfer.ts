@@ -344,14 +344,13 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     // sync add address-cfx-transfer
     const addressCfxTransferArray = buildCfxTransferList2address(templates);
     return CfxTransfer.sequelize.transaction(async (dbTx) => {
-        const resultArray = await Promise.all([
+        const [_, rows] = await Promise.all([
             CfxTransfer.bulkCreate(templates, {transaction: dbTx}),
             KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger),
             AddressCfxTransfer.bulkCreate(addressCfxTransferArray, {transaction: dbTx}),
         ]);
-        const countArray = resultArray[1];
-        const epoch = templates.shift().epoch;
-        await doMark(countArray, epoch, logger)
+        const epoch = templates[0].epoch;
+        await doMark(rows, epoch, logger)
         // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
         //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
     });
@@ -367,9 +366,10 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     // });
 }
 
-export async function doMark(countArray, epoch, logger){
-    const oldPage = Math.floor(countArray.slice(0,1) / CFX_TRANSFER_PAGE_MARK_SIZE);
-    const newPage = Math.floor(countArray.slice(1,2) / CFX_TRANSFER_PAGE_MARK_SIZE);
+export async function doMark(rows, epoch, logger){
+    const [oldValue, newValue] = rows;
+    const oldPage = Math.floor(oldValue / CFX_TRANSFER_PAGE_MARK_SIZE);
+    const newPage = Math.floor(newValue / CFX_TRANSFER_PAGE_MARK_SIZE);
     // logger?.info({src: `batchSaveCfxTransfer-2------------`, 'oldPage': oldPage, 'newPage': newPage});
     if ( newPage > oldPage) {
         let avoidReOrg = 1000;

@@ -47,17 +47,13 @@ export class KV extends Model<IKV> implements IKV {
         })
     }
 
-    static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined) {
-        const cnt = await KV.getNumber(key);
-        const dbValue = (typeof cnt === 'number') ? cnt : 0;
-        const resultArray = await KV.update({value: (dbValue+diff).toString()},
-            {where:{key:key}, transaction: dbTx});
+    static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined): Promise<[number, number]> {
+        const oldValue = await KV.getNumber(key);
+        if(isNaN(oldValue)) throw new Error(`no key:${key} in KV`);
+
+        const newValue = oldValue + diff;
+        await KV.update({value: newValue.toString()}, {where:{key:key}, transaction: dbTx});
         // logger?.info(`batchSaveCfxTransfer-0----------------------dbValue+diff:${dbValue+diff},----resultArray:${JSON.stringify(resultArray)}`);
-        const updateResult = resultArray?.shift();
-        if(updateResult === 1){
-            return Promise.resolve([dbValue, dbValue+diff]);
-        } else{
-            return Promise.resolve([dbValue, dbValue]);
-        }
+        return Promise.resolve([oldValue, newValue]);
     }
 }
