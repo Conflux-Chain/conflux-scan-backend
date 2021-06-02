@@ -24,7 +24,7 @@ import {
     Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK, Balance_cMBTM,
-    Balance_cMOON, Balance_conDragon,
+    Balance_cMOON, Balance_cOKT, Balance_conDragon,
     Balance_CRCL_BTC_symbol,
     Balance_cSNX, Balance_csUSD,
     Balance_cSWRV,
@@ -32,7 +32,7 @@ import {
     Balance_cUSDC,
     Balance_cYFI,
     Balance_cYFII,
-    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA,
+    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -183,6 +183,9 @@ export async function initModel(sequelize) {
     Balance_cMBTM.register(sequelize);
     Balance_cHBTC.register(sequelize);
     Balance_TREA.register(sequelize);
+    Balance_YAO.register(sequelize);
+    Balance_cOKT.register(sequelize);
+
 
 
     // erc1155
