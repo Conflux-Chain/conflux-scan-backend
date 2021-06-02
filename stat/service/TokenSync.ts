@@ -1,6 +1,7 @@
 import {Op, Sequelize} from 'sequelize';
 // @ts-ignore
 import {format} from 'js-conflux-sdk';
+import {ContractInfo} from "../model/ContractInfo";
 import {DailyToken, Token} from "../model/Token";
 import {makeId} from "../model/HexMap";
 const addressSdk = require('js-conflux-sdk/src/util/address')
@@ -89,7 +90,19 @@ export class TokenSync{
                 list.push(row);
             });
         }
-        return { total: page?.count || 0, list };
+
+        // query contract
+        const contractList = [];
+        const contractInfoMap = new Map();
+        const contractInfoArray = await ContractInfo.findAll({
+            where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], raw: true
+        });
+        contractInfoArray?.forEach(contractInfo=>{
+            contractInfoMap.set(contractInfo.hexId , { address: contractInfo['base32'], name: contractInfo['name'] });
+        })
+        contractInfoMap?.forEach(value => contractList.push(value));
+
+        return { total: list.length, list, contractTotal: contractList.length, contractList };
     }
 
     public async queryTokenByAddress(address, fields, currency) {
