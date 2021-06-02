@@ -10,10 +10,10 @@ import {
     Balance_cFOR, Balance_CG, Balance_cHBTC, Balance_cITF, Balance_cKNC, Balance_cKP3R,
     Balance_cLEND,
     Balance_cLINK, Balance_cMBTM,
-    Balance_cMOON, Balance_conDragon,
+    Balance_cMOON, Balance_cOKT, Balance_conDragon,
     Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_cUMA,
     Balance_cUSDC, Balance_cYFI, Balance_cYFII,
-    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA,
+    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -121,6 +121,9 @@ export class BalanceWatcher{
             case 'cMBTM':         ret = Balance_cMBTM;    break;
             case 'cHBTC':         ret = Balance_cHBTC;    break;
             case 'TREA':         ret = Balance_TREA;    break;
+            case 'YAO':         ret = Balance_YAO;    break;
+            case 'cOKT':         ret = Balance_cOKT;    break;
+
             default:
                 if (silent) {
                     return null

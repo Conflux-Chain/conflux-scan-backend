@@ -256,3 +256,13 @@ export class Balance_TREA extends Balance{
         Balance.register(seq, Balance_TREA, 'balance_TREA')
     }
 }
+export class Balance_YAO extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_YAO, 'balance_YAO')
+    }
+}
+export class Balance_cOKT extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_cOKT, 'balance_cOKT')
+    }
+}
