@@ -1,6 +1,7 @@
-import {Op, Sequelize} from 'sequelize';
 // @ts-ignore
 import {format} from 'js-conflux-sdk';
+import {Op, Sequelize} from 'sequelize';
+import {SyncBase, SyncData} from "./SyncBase";
 import {DailyToken, Token} from "../model/Token";
 import {makeId} from "../model/HexMap";
 const addressSdk = require('js-conflux-sdk/src/util/address')
@@ -9,24 +10,27 @@ const superagent = require('superagent');
 import {decodeUtf8} from "./tool/StringTool";
 const {Hex40Map} = require("../model/HexMap");
 import {StatApp} from "../StatApp";
-const {AddressErc20Transfer, Erc20Transfer} = require("../model/Erc20Transfer");
-const {AddressErc721Transfer, Erc721Transfer} = require("../model/Erc721Transfer");
-const {AddressErc777Transfer, Erc777Transfer} = require("../model/Erc777Transfer");
-const {AddressErc1155Transfer, Erc1155Transfer} = require("../model/Erc1155Transfer");
+import {FullMinerBlock} from "../model/FullMinerBlock";
+const {Erc20Transfer} = require("../model/Erc20Transfer");
+const {Erc721Transfer} = require("../model/Erc721Transfer");
+const {Erc777Transfer} = require("../model/Erc777Transfer");
+const {Erc1155Transfer} = require("../model/Erc1155Transfer");
 const CONST = require('./common/constant');
 
-export class TokenSync{
-    private app: StatApp;
+export class TokenSync extends SyncBase{
+    protected app: StatApp;
     private sequelize: Sequelize;
     private config: {scanApiUrl:string};
     private pageSize: number = 10;
 
     constructor(app: any) {
+        super(app);
         this.app = app;
         this.sequelize = app.sequelize;
         this.config = app.config
     }
 
+    //--------------------------------query-----------------------------------
     public async listTokenByName(name, currency, skip: number = 0, limit: number = 10) {
         // fields
         const options: any = {};
@@ -219,7 +223,8 @@ export class TokenSync{
         return { total: page?.count || 0, list };
     }
 
-    private async run() {
+    //---------------------------sync from scan-api---------------------------
+    private async syncFromScan() {
         let skip = 0;
         let total;
         let currPage = 1;
@@ -264,15 +269,14 @@ export class TokenSync{
         return response.body;
     }
 
-    // 1hour interval
     public async schedule() {
         const that = this;
         async function repeat() {
-            await that.run().catch(err=>{
+            await that.syncFromScan().catch(err=>{
                 console.log(`sync toke_list fail: `, err);
             });
             const delay = 60;// in minutes
-            setTimeout(repeat, delay * 60 *  1000);
+            setTimeout(repeat, delay * 60 *  1000);// 1hour interval
             console.log(`sync toke_list service in delay ${delay}min.`);
         }
         try {
@@ -283,5 +287,75 @@ export class TokenSync{
             console.log(`catch error token sync:`, err)
         }
     }
+
+    //----------------- implementation method from SyncBase ------------------
+    async delDataFromDb(epochNumber, modelData) {
+    }
+
+    async getDataFromFullNode(epochNumber): Promise<SyncData> {
+        return Promise.resolve(undefined);
+    }
+
+    async saveDataToDb(epochNumber, modelData) {
+    }
+
+    public async queryNextEpochFromDb(){
+        let maxEpochNumber:number = await FullMinerBlock.max('epoch')
+        return maxEpochNumber ? (maxEpochNumber + 1) : 0;
+    }
+
+    //---------------------- business method for token -----------------------
+    async getAnnounceArray(epochNumber) {
+        const {
+            app: { tokenTool },
+        } = this;
+
+        const eventLogArray = await this.getLogs(epochNumber);
+        return eventLogArray.map((eventLog) => tokenTool.decodeAnnounce(eventLog)).filter(Boolean);
+    }
+
+    private async getLogs(epochNumber) {
+        const {
+            app: { cfx },
+        } = this;
+
+        const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber});
+        return eventLogArray.map((v) => this.parseEventLog(v));
+    }
+
+    private parseEventLog(eventLog) {
+        eventLog.epochNumber = Number(eventLog.epochNumber);
+        eventLog.address = format.hexAddress(eventLog.address);
+        eventLog.transactionLogIndex = Number(eventLog.transactionLogIndex);
+        return eventLog;
+    }
+
+    private async getMinerBlockArray(epochNumber) {
+        const {
+            app: { cfx },
+        } = this;
+
+        const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber);
+        const blockArray = await Promise.all(blockHashArray.map(async (hash) => {
+            return await cfx.getBlockByHash(hash, false)
+        }));
+        const minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
+            const hex40 = format.hexAddress(block.miner);
+            const blockDt = new Date(block.timestamp * 1000);
+            const hex40Id = (await makeId(hex40, undefined, {dt: blockDt})).id;
+            return {minerId: hex40Id, epoch: block.epochNumber, position, createdAt: blockDt};
+        }));
+        const pivotBlock: any = blockArray[blockArray.length - 1];
+        let pivotHash = pivotBlock.hash.substr(2);
+        let parentHash = pivotBlock.parentHash.substr(2);
+
+        return {
+            parentHash,
+            pivotHash,
+            modelData: minerBlockArray,
+        };
+    }
 }
+
+
 
