@@ -34,8 +34,7 @@ create table if not exists ${T_ADDRESS_ERC1155_TRANSFER}
 \t \`value\` decimal(36) not null,
 \t tokenId varchar(78) null,
     primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
-  KEY \`idx_datetime\` (\`createdAt\` DESC),
-  KEY \`idx_epoch\` (\`epoch\` DESC)
+  KEY \`idx_createdAt\` (\`createdAt\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 23;
@@ -78,10 +77,10 @@ export class AddressErc1155Transfer extends Model<IAddressErc1155Transfer> imple
             updatedAt: false,
             tableName: T_ADDRESS_ERC1155_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
+                // {
+                //     name: 'idx_epoch',
+                //     fields: [{name: 'epoch', order: "DESC"}]
+                // },
                 {
                     name: 'idx_datetime',
                     fields: [{name: 'createdAt', order: "DESC"}]

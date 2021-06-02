@@ -42,7 +42,7 @@ import {
 import {Trace} from "../model/Trace";
 import {DailyToken, NftId, Token} from "../model/Token";
 import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
-import {CfxTransfer, createAddressCfxTransferTable, DailyCfxTxn, CfxTransferRowMark} from "../model/CfxTransfer";
+import {CfxTransfer, DailyCfxTxn} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
@@ -102,15 +102,13 @@ export async function initPartialModel(sequelize) {
         console.log(`connect to DB fail`, err)
     });
     hexMapInit(sequelize);
+    await createFullMinerBlockTable(sequelize)
     await Promise.all([
         createAddressErc20TransferTable(sequelize),
         create721partition(sequelize),
         createAddressErc777TransferTable(sequelize),
         createAddressErc1155TransferTable(sequelize),
-        createAddressCfxTransferTable(sequelize),
-        createFullMinerBlockTable(sequelize),
     ])
-    CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)
     AbiInfo.register(sequelize)

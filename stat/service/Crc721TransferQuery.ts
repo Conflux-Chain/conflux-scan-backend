@@ -29,10 +29,10 @@ export class Crc721TransferQuery extends TransferQueryBase{
     public async doQuery(options: any, queryOptions: any): Promise<any>{
         const{ logger } = this.app;
 
-        if(options.accountAddress !== undefined){
-            return await AddressErc721Transfer.findAndCountAll(queryOptions);
+        if(options.address !== undefined){
+            return await Erc721Transfer.findAndCountAll(queryOptions);
         }
-        return await Erc721Transfer.findAndCountAll(queryOptions);
+        return await AddressErc721Transfer.findAndCountAll(options);
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
                               contractInfoMap: Map<number, object>, tokenInfoMap: Map<number, object>): Promise<any>{

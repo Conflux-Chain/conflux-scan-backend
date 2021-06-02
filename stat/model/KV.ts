@@ -1,4 +1,4 @@
-import {DataTypes, Model, Transaction} from "sequelize";
+import {DataTypes, Model} from "sequelize";
 
 export interface IKV {
     key: string;
@@ -6,7 +6,6 @@ export interface IKV {
 }
 export const KEY_FULL_BLOCK_COUNT = "FULL_BLOCK_COUNT"
 export const KEY_FULL_TX_COUNT = "FULL_TX_COUNT"
-export const KEY_FULL_CFX_TRANSFER_COUNT = "FULL_CFX_TRANSFER_COUNT"
 export const KEY_FILL_BLOCK_PROPS_EPOCH = "KEY_FILL_BLOCK_PROPS_EPOCH"
 export const KEY_FILL_BLOCK_REWARD_EPOCH = "KEY_FILL_BLOCK_REWARD_EPOCH"
 export const KEY_MINER_EPOCH = "KEY_MINER_EPOCH"
@@ -45,19 +44,5 @@ export class KV extends Model<IKV> implements IKV {
             tableName: 'config',
             timestamps: false
         })
-    }
-
-    static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined) {
-        const cnt = await KV.getNumber(key);
-        const dbValue = (typeof cnt === 'number') ? cnt : 0;
-        const resultArray = await KV.update({value: (dbValue+diff).toString()},
-            {where:{key:key}, transaction: dbTx});
-        // logger?.info(`batchSaveCfxTransfer-0----------------------dbValue+diff:${dbValue+diff},----resultArray:${JSON.stringify(resultArray)}`);
-        const updateResult = resultArray?.shift();
-        if(updateResult === 1){
-            return Promise.resolve([dbValue, dbValue+diff]);
-        } else{
-            return Promise.resolve([dbValue, dbValue]);
-        }
     }
 }

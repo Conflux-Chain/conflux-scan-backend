@@ -1,275 +1,9 @@
 import {Op, Sequelize, Transaction, DataTypes, Model, fn} from "sequelize";
 import {makeId} from "./HexMap";
 import {TransactionDB} from "./Transaction";
-import {createTable} from "../service/DBProvider";
-import {CFX_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
-import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 
-// ============= partition by address table ==============
-export interface IAddressCfxTransfer {
-    addressId: number
-    epoch: number
-    tracePos: number
-    createdAt: Date
-    txHashId: number
-    fromId: number
-    toId: number
-    value: number
-}
-export const T_ADDRESS_CFX_TRANSFER = 'address_cfx_transfer'
-export const T_ADDRESS_CFX_TRANSFER_SQL = `
-create table if not exists ${T_ADDRESS_CFX_TRANSFER}
-(
- \`addressId\` bigint(20) unsigned NOT NULL,
- \`epoch\` bigint(20) unsigned NOT NULL,
- \`tracePos\` smallint(6) unsigned NOT NULL,
- \`createdAt\` datetime NOT NULL,
- \`txHashId\` bigint(20) unsigned NOT NULL,
- \`fromId\` bigint(20) unsigned NOT NULL,
- \`toId\` bigint(20) unsigned NOT NULL,
- \`value\` decimal(36) NOT NULL,
-  PRIMARY KEY (\`addressId\` DESC, \`epoch\` DESC, \`tracePos\` DESC),
-  KEY \`idx_epoch\` (\`epoch\`),
-  KEY \`idx_datetime\` (\`createdAt\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8
-partition by hash (addressId)
-  PARTITIONS 97;
-`
-
-export async function createAddressCfxTransferTable(seq:Sequelize) {
-    return createTable(seq, T_ADDRESS_CFX_TRANSFER_SQL)
-    .then(()=>{
-        return AddressCfxTransfer.register(seq)
-    }).then(()=>{
-        AddressCfxTransfer.removeAttribute("id")
-    }).catch(err=>{
-        console.log(`createAddressCfxTransferTable fail, sql ${T_ADDRESS_CFX_TRANSFER_SQL}:`, err)
-        process.exit(9)
-    })
-}
-
-export class AddressCfxTransfer extends Model<IAddressCfxTransfer> implements IAddressCfxTransfer {
-    addressId: number
-    epoch: number
-    tracePos: number
-    createdAt: Date
-    txHashId: number
-    fromId: number
-    toId: number
-    value: number
-    static register(seq) {
-        AddressCfxTransfer.init(
-            {
-            addressId: {type: DataTypes.BIGINT, allowNull: false},
-            epoch: {type: DataTypes.BIGINT, allowNull: false},
-            tracePos: {type: DataTypes.INTEGER, allowNull: false},
-            createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
-            fromId: {type: DataTypes.BIGINT, allowNull: false},
-            toId: {type: DataTypes.BIGINT, allowNull: false},
-            value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
-        }, {
-            sequelize: seq,
-            updatedAt: false,
-            tableName: T_ADDRESS_CFX_TRANSFER,
-            indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
-                {
-                    name: 'idx_datetime',
-                    fields: [{name: 'createdAt', order: "DESC"}]
-                },
-            ],
-        })
-    }
-}
-
-export function buildCfxTransferList2address(list:any[]) : IAddressCfxTransfer[] {
-    const result : any[] = []
-    let idx = 0
-    list.forEach(row=>{
-        result.push(buildAddressCfxTransfer(row, row.fromId, idx))
-        if (row.fromId !== row.toId) {
-            result.push(buildAddressCfxTransfer(row, row.toId, idx+1))
-        }
-        idx += 10
-    })
-    return result
-}
-
-function buildAddressCfxTransfer(row:any, addrId:number, pos:number) : any {
-    return {
-        addressId: addrId, epoch: row.epoch, tracePos: pos, createdAt: row.createdAt,
-        txHashId: row.txHashId, fromId: row.fromId, toId: row.toId,  value: row.value
-    }
-}
-
-// ============= full table paging ==============
-export interface ICfxTransferRowMark {
-    id: number // row id
-    epoch: number
-    dataId: number // refer to cfx_transfer.id
-}
-export class CfxTransferRowMark extends Model<ICfxTransferRowMark> implements ICfxTransferRowMark{
-    id: number // row id
-    epoch: number
-    dataId: number // refer to cfx_transfer.id
-    static register(seq) {
-        CfxTransferRowMark.init({
-            id: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, primaryKey: true},
-            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
-            dataId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
-        },{
-            sequelize: seq,
-            timestamps: false,
-            tableName: 'cfx_transfer_row_mark',
-            indexes:[
-            ]
-        })
-    }
-}
-
-export const CFX_TRANSFER_PAGE_MARK_SIZE = 10_000
-export async function markCfxTransferPosition(count:number=1, maxEpoch:number=Infinity) {
-    let maxOne:ICfxTransferRowMark = await CfxTransferRowMark.findOne({order:[["id","desc"]], limit: 1})
-    if (maxOne === null) {
-        maxOne = {id:0, epoch: -1, dataId: -1}
-    }
-    do {
-        const higherAnchor = await CfxTransfer.findOne({
-            order: [["epoch", "asc"], ["id", "asc"]],
-            where: buildHigherCfxTransferRowCondition(maxOne),
-            // minus 1 will make the target record be the PAGE_MARK_SIZE(th) one.
-            offset: CFX_TRANSFER_PAGE_MARK_SIZE - 1,
-            // logging: console.log, benchmark: true
-        })
-        if (higherAnchor === null) {
-            console.log(`\nCfx transfer Higher anchor not found, want higher than: epoch ${maxOne.epoch
-            } dataId ${maxOne.dataId}`)
-            return
-        } else if (higherAnchor.epoch > maxEpoch) {
-            console.log(`cfx transfer: reach max epoch, reOrg may occur, stop marking. ${higherAnchor} > ${maxEpoch}`)
-            return ;
-        }
-        const saved = await CfxTransferRowMark.create({
-            id: maxOne.id + CFX_TRANSFER_PAGE_MARK_SIZE,
-            epoch: higherAnchor.epoch, dataId: higherAnchor.id
-        });
-        maxOne = saved
-        process.stdout.write(`\r\u001b[2K markCfxTransferPosition ${count} ${JSON.stringify(saved)}`)
-    } while (--count>0)
-    console.log(`\n markCfxTransferPosition done.`)
-}
-
-export class CfxTransferPage {
-    id:number
-    epoch:number
-    dataId:number
-    skip:number
-    nonMarkRows:number
-    calcTotal:number //nonMarkRow+id
-}
-export async function pagingFullCfxTransfer(skip:number, logger: any = undefined) : Promise<CfxTransferPage> {
-    // find the max mark
-    const maxOne = await CfxTransferRowMark.findOne({order:[["id","desc"]], limit: 1})
-    // handle null
-    if (maxOne === null) {
-        return {id:Infinity, epoch:Infinity, dataId:Infinity, skip, nonMarkRows:-1, calcTotal: -1}
-    }
-    // calculate rows between max mark and latest block
-    const nonMarkRows = await countNonMarkCfxTransferRows(maxOne);
-    if (nonMarkRows >= skip) {
-        return {id:Infinity, epoch:Infinity, dataId:Infinity, skip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
-    }
-
-    const pagedSkip = skip - nonMarkRows
-    const skipMarkRows = Math.floor(pagedSkip/CFX_TRANSFER_PAGE_MARK_SIZE)
-    if (skipMarkRows === 0) {
-        return {
-            id: maxOne.id,
-            epoch: maxOne.epoch,
-            dataId: maxOne.dataId,
-            skip: pagedSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id
-        };
-    }
-    const nearestId = maxOne.id - CFX_TRANSFER_PAGE_MARK_SIZE * skipMarkRows
-    // find the min mark that greater than pagedSkip
-    const nearestOne = await CfxTransferRowMark.findByPk(nearestId)
-    if (nearestOne === null) {
-        return {
-            id: -1,
-            epoch: -1,
-            dataId: -1,
-            skip: pagedSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id
-        }; // should found nothing.
-    }
-    // must exists
-    const remainSkip = pagedSkip - CFX_TRANSFER_PAGE_MARK_SIZE * skipMarkRows;
-    console.log(`cfx transfer : want skip ${skip},has total ${nonMarkRows+maxOne.id} nonMarkRows ${nonMarkRows}, max id ${maxOne.id}, pagedSkip ${pagedSkip
-    } skipMarkRows ${skipMarkRows}, nearestId ${nearestId}, remain ${remainSkip}`)
-    return {
-        id: nearestOne.id,
-        epoch: nearestOne.epoch,
-        dataId: nearestOne.dataId,
-        skip: remainSkip
-        , nonMarkRows, calcTotal: nonMarkRows+maxOne.id
-    };
-}
-
-function buildHigherCfxTransferRowCondition(maxOne: ICfxTransferRowMark) {
-    return {
-        [Op.or]: {
-            epoch: {[Op.gt]: maxOne.epoch},
-            [Op.and]: {
-                epoch: {[Op.eq]: maxOne.epoch},
-                id: {[Op.gt]: maxOne.dataId},
-            }
-        }
-    };
-}
-
-export async function countNonMarkCfxTransferRows(maxOne: ICfxTransferRowMark) {
-    const nonMarkRows = await CfxTransfer.count({
-        where: buildHigherCfxTransferRowCondition(maxOne),
-        // logging: console.log
-    })
-    return nonMarkRows;
-}
-
-export async function checkCfxTransferCountKV(logger) {
-    const cnt = await KV.getNumber(KEY_FULL_CFX_TRANSFER_COUNT)
-    if (!isNaN(cnt)) {
-        // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer in KV:${cnt}`});
-        return
-    }
-
-    const maxCfxTransfer = await CfxTransfer.findOne({order:[['id','desc']], limit: 1})
-    if (maxCfxTransfer === null) {
-        // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer:0, as no value in KV`});
-        return KV.create({key: KEY_FULL_CFX_TRANSFER_COUNT, value: '0'})
-    }
-
-    if (maxCfxTransfer.id < CFX_TRANSFER_PAGE_MARK_SIZE) {
-        let countNow = (await CfxTransfer.count()).toString();
-        // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer:${countNow}, as system just starts.`});
-        return KV.create({key: KEY_FULL_CFX_TRANSFER_COUNT, value: countNow});
-    }
-
-    let maxOne:ICfxTransferRowMark = await CfxTransferRowMark.findOne({order: [["id", "desc"]], limit: 1});
-    if (maxOne === null) {
-        maxOne = {id:0, epoch:-1, dataId: -1}
-    }
-    const nonMarkRows = await countNonMarkCfxTransferRows(maxOne);
-    const countNow = nonMarkRows + maxOne.id;
-    // logger?.info({src: `checkCfxTransferCountKV------------`, msg: `count cfx-transfer:${countNow}, non-mark rows:${nonMarkRows}, mark-rows:${maxOne.id}`});
-    return KV.create({key: KEY_FULL_CFX_TRANSFER_COUNT, value: countNow.toString()});
-}
-
-// ============= full table ==============
 export interface ICfxTransfer {
-    id?: number // data is fixed at a delayed time, so id is not consistent with epoch.
+    id?: number
     epoch: number
     createdAt: Date
     txHashId: number
@@ -314,11 +48,9 @@ export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
 }
 
 export async function buildCfxTransfer(obj, date) {
-    const [fromId, toId, hashID] = await Promise.all([
-        makeId(obj.from, undefined, {dt:date}),
-        makeId(obj.to, undefined, {dt:date}),
-        makeId(obj.transactionHash),
-    ])
+    const fromId = await makeId(obj.from, undefined, {dt:date})
+    const toId = await makeId(obj.to, undefined, {dt:date})
+    const hashID = await makeId(obj.transactionHash);
     let cfxTransfer:ICfxTransfer = {
         txHashId: hashID.id,
         fromId: fromId.id,
@@ -330,85 +62,27 @@ export async function buildCfxTransfer(obj, date) {
     return cfxTransfer
 }
 
-export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
-    if(!array?.length){
-        return Promise.resolve([]);
-    }
 
+export async function batchSaveCfxTransfer(array: any[], seconds) {
     let templates = []
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {
         templates.push(await buildCfxTransfer(obj, date))
     }
-
-    // sync add address-cfx-transfer
-    const addressCfxTransferArray = buildCfxTransferList2address(templates);
-    return CfxTransfer.sequelize.transaction(async (dbTx) => {
-        const resultArray = await Promise.all([
-            CfxTransfer.bulkCreate(templates, {transaction: dbTx}),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger),
-            AddressCfxTransfer.bulkCreate(addressCfxTransferArray, {transaction: dbTx}),
-        ]);
-        const countArray = resultArray[1];
-        const epoch = templates.shift().epoch;
-        await doMark(countArray, epoch, logger)
-        // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
-        //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
-    });
-
-    // async add address-cfx-transfer
-    // return await CfxTransfer.sequelize.transaction(async (dbTx) => {
-    //     await Promise.all([
-    //         CfxTransfer.bulkCreate(templates, {transaction: dbTx}),
-    //         KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx),
-    //         doMark(),
-    //         RedisWrap.sendStreamMessage(templates, CFX_TRANSFER_Q),
-    //     ])
-    // });
-}
-
-export async function doMark(countArray, epoch, logger){
-    const oldPage = Math.floor(countArray.slice(0,1) / CFX_TRANSFER_PAGE_MARK_SIZE);
-    const newPage = Math.floor(countArray.slice(1,2) / CFX_TRANSFER_PAGE_MARK_SIZE);
-    // logger?.info({src: `batchSaveCfxTransfer-2------------`, 'oldPage': oldPage, 'newPage': newPage});
-    if ( newPage > oldPage) {
-        let avoidReOrg = 1000;
-        return markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, epoch - avoidReOrg);
-    }
-    return Promise.resolve(0);
-}
-
-export async function batchPopCfxTransfer(epoch, logger) {
-    return popPartitionCfxTransfer(epoch, logger);
-    // return RedisWrap.sendStreamMessage({action:'popCfxTransfer', epoch}, CFX_TRANSFER_Q);
-}
-
-export async function popPartitionCfxTransfer(epoch, logger = undefined){
-    const cfxTransferArray = await CfxTransfer.findAll({where: {epoch}});
-    if(!cfxTransferArray?.length){
-        return;
-    }
-
-    const addressIds = new Set<number>()
-    cfxTransferArray.forEach(row => {
-        addressIds.add(row.fromId);
-        addressIds.add(row.toId);
+    // console.log(`batchSaveCfxTransfer ---- ${array.length}`)
+    return CfxTransfer.bulkCreate(templates, {
+        // benchmark: true, logging:console.log,
     })
-
-    return CfxTransfer.sequelize.transaction(async (dbTx) => {
-        const resultArray = await Promise.all([
-            AddressCfxTransfer.destroy({
-                where: { epoch, addressId: {[Op.in]: [...addressIds]} },
-                transaction: dbTx
-            }),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
-            CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
-        ]);
-        // logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
-    });
 }
 
-// ============= daily cfx transfer ==============
+export async function batchPopCfxTransfer(epoch) {
+    return CfxTransfer.destroy({
+        where: {
+            epoch: epoch
+        }
+    })
+}
+
 export const T_DAILY_CFX_TXN = 'daily_cfx_txn'
 export interface IDailyCfxTxn {
     id?:number

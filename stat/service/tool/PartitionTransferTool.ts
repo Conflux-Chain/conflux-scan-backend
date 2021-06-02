@@ -4,7 +4,6 @@ import {Op} from 'sequelize'
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "../../model/Erc777Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
-import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 
 
 export async function loop20transfer(times: number, full_t, partition_t) {
@@ -83,10 +82,8 @@ init().then(()=>{
             return loop20transfer(Number(args[1] || 1), Erc777Transfer, AddressErc777Transfer)
         case 'erc1155':
             return loop20transfer(Number(args[1] || 1), Erc1155Transfer, AddressErc1155Transfer)
-        case 'cfx':
-            return loop20transfer(Number(args[1] || 1), CfxTransfer, AddressCfxTransfer)
         default:
-            console.log(`unknown action: should be [any one of erc20, erc721, erc777, erc1155, cfx]`)
+            console.log(`unknown action: should be [erc20]`)
     }
 }).catch(err=>{
     console.log(`error:`, err)

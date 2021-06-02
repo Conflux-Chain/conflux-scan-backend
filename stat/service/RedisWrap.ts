@@ -8,7 +8,6 @@ export const ERC20_TRANSFER_Q = 'ERC20_TRANSFER_Q'
 export const ERC721_TRANSFER_Q = 'ERC721_TRANSFER_Q'
 export const ERC777_TRANSFER_Q = 'ERC777_TRANSFER_Q'
 export const ERC1155_TRANSFER_Q = 'ERC1155_TRANSFER_Q'
-export const CFX_TRANSFER_Q = 'CFX_TRANSFER_Q'
 export class RedisWrap{
     getAsync:Function
     setAsync:Function
@@ -69,7 +68,6 @@ export class RedisWrap{
         // So, only block for 10ms.
         return redisWrap.sendCommand('XREAD', ['count', 1, 'BLOCK', 10, 'STREAMS', q, preIdExclusive])
     }
-
     static convertMessage(raw:[]) : RedisStreamMessage[] {
         const ret:RedisStreamMessage[] = []
         raw.forEach(stream=>{

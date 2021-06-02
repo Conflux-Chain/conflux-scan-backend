@@ -2,7 +2,7 @@ import {loadConfig, StatConfig} from "./config/StatConfig";
 import {
     ERC1155_TRANSFER_Q,
     ERC20_TRANSFER_Q, ERC721_TRANSFER_Q,
-    ERC777_TRANSFER_Q, CFX_TRANSFER_Q,
+    ERC777_TRANSFER_Q,
     RedisStreamMessage,
     RedisWrap
 } from "./service/RedisWrap";
@@ -10,7 +10,6 @@ import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
-import {AddressCfxTransfer, CfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
 
 async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
     // console.log(`handleTokenTransfer `, data.length)
@@ -19,11 +18,6 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
         list.map(transferArr=>{
             if (transferArr.action === 'pop') {
                 return popPartition(transferArr.epoch, fullT, model).then(()=>{
-                    return RedisWrap.xDel(data)
-                });
-            }
-            if (transferArr.action === 'popCfxTransfer') {
-                return popPartitionCfxTransfer(transferArr.epoch).then(()=>{
                     return RedisWrap.xDel(data)
                 });
             }
@@ -67,10 +61,6 @@ async function run() {
         RedisWrap.listenStreamMessage(
             ERC1155_TRANSFER_Q,
             (data)=>handleTokenTransfer(Erc1155Transfer, AddressErc1155Transfer,data)
-        );
-        RedisWrap.listenStreamMessage(
-            CFX_TRANSFER_Q,
-            (data)=>handleTokenTransfer(CfxTransfer, AddressCfxTransfer,data)
         );
     }).then(()=>{
 
