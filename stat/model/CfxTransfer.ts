@@ -344,13 +344,15 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     // sync add address-cfx-transfer
     const addressCfxTransferArray = buildCfxTransferList2address(templates);
     return CfxTransfer.sequelize.transaction(async (dbTx) => {
-        const resultArray = await Promise.all([
+        const [_, rows] = await Promise.all([
             CfxTransfer.bulkCreate(templates, {transaction: dbTx}),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx),
-            doMark(),
+            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger),
             AddressCfxTransfer.bulkCreate(addressCfxTransferArray, {transaction: dbTx}),
         ]);
-        logger?.info({src: `batchSaveCfxTransfer------------`, 'array.length': array?.length, 'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray)});
+        const epoch = templates[0].epoch;
+        await doMark(rows, epoch, logger)
+        // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
+        //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
     });
 
     // async add address-cfx-transfer
@@ -364,13 +366,14 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     // });
 }
 
-export async function doMark(){
-    const maxData = await CfxTransfer.findOne({order: [['id', 'DESC']], limit: 1, raw: true });
-    const maxId = maxData?.id;
-    const maxEpoch = maxData?.epoch;
-    if ( maxId && (maxId % CFX_TRANSFER_PAGE_MARK_SIZE === 0) && maxId > CFX_TRANSFER_PAGE_MARK_SIZE) {
+export async function doMark(rows, epoch, logger){
+    const [oldValue, newValue] = rows;
+    const oldPage = Math.floor(oldValue / CFX_TRANSFER_PAGE_MARK_SIZE);
+    const newPage = Math.floor(newValue / CFX_TRANSFER_PAGE_MARK_SIZE);
+    // logger?.info({src: `batchSaveCfxTransfer-2------------`, 'oldPage': oldPage, 'newPage': newPage});
+    if ( newPage > oldPage) {
         let avoidReOrg = 1000;
-        return markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, maxEpoch - avoidReOrg);
+        return markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, epoch - avoidReOrg);
     }
     return Promise.resolve(0);
 }
@@ -401,7 +404,7 @@ export async function popPartitionCfxTransfer(epoch, logger = undefined){
             KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
             CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
         ]);
-        logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
+        // logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
     });
 }
 
