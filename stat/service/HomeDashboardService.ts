@@ -1,7 +1,7 @@
 // @ts-ignore
 import {Hex40Map} from "../model/HexMap";
-import {FullTransaction} from "../model/FullBlock";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {KEY_FULL_TX_COUNT, KV} from "../model/KV";
 
 export class HomeDashboardService{
     protected app;
@@ -32,7 +32,7 @@ export class HomeDashboardService{
     private async run() {
       const{ logger } = this.app;
       const addressCount = await Hex40Map.count({});
-      const transactionCount = await FullTransaction.count({});
+      const transactionCount = await KV.getNumber(KEY_FULL_TX_COUNT);;
       const contractCount = await TraceCreateContract.count({});
       // logger?.info({src: 'HomeDashboardService', msg: `addressCount:${addressCount}, transactionCount:${transactionCount}, contractCount:${contractCount}`})
       this.data = {addressCount, transactionCount, contractCount};
