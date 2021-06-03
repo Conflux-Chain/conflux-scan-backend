@@ -1,8 +1,7 @@
-import {Op, Sequelize, Transaction, DataTypes, Model, fn} from "sequelize";
+import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {makeId} from "./HexMap";
 import {TransactionDB} from "./Transaction";
 import {createTable} from "../service/DBProvider";
-import {CFX_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 
 // ============= partition by address table ==============
@@ -413,16 +412,19 @@ export const T_DAILY_CFX_TXN = 'daily_cfx_txn'
 export interface IDailyCfxTxn {
     id?:number
     txnCount:number
+    userCount:number
     day:Date
 }
 export class DailyCfxTxn extends Model<IDailyCfxTxn> implements IDailyCfxTxn{
     id?:number
     txnCount:number
+    userCount:number
     day:Date
     static register(seq){
         DailyCfxTxn.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             txnCount: {type: DataTypes.BIGINT, allowNull: false},
+            userCount: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             day: {type: DataTypes.DATEONLY, allowNull: false, unique: true},
         },{
             tableName: T_DAILY_CFX_TXN,
@@ -433,16 +435,32 @@ export class DailyCfxTxn extends Model<IDailyCfxTxn> implements IDailyCfxTxn{
         })
     }
 }
-
+export async function calcUniqueUser(start:Date, end:Date, model: any) : Promise<number> {
+    const t = model.getTableName()
+    const sql = `select count(*) as cnt from (
+        select fromId from ${t} where createdAt between ? and ?
+     union 
+        select toId from ${t} where createdAt between ? and ?
+    ) t`
+    return model/*CfxTransfer*/.sequelize.query(sql,
+        {type:QueryTypes.SELECT, replacements: [start, end, start, end]}
+        ).then(arr=>{
+        return Number(arr[0]['cnt'])
+    })
+}
 export async function rollupDailyCfxTxn(dt:Date) {
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
     end.setHours(23,59,59,999)
-    let count = await CfxTransfer.count({        where:{
+    let [transferCount, userCount] = await Promise.all([
+        CfxTransfer.count({        where:{
             createdAt: {[Op.between]:[dt, end]}
-        }    })
+        }    }),
+        calcUniqueUser(dt, end, CfxTransfer),
+    ])
     await DailyCfxTxn.upsert({
-        txnCount: count, day: dt
+        txnCount: transferCount, day: dt,
+        userCount,
     })
 }
 

@@ -6,7 +6,7 @@ export interface IBlock {
     hash: string;
     epoch: number;
     difficulty: number;
-    totalReward: BigInteger;
+    totalReward: number;
 }
 
 export interface IBlockAttributes {
