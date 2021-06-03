@@ -104,13 +104,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         //         })
         // })
         const {fields, currency, address} = ctx.request.query;
-        const result = await statApp.tokenSync.queryTokenByAddress(address,fields, currency);
+        const result = await statApp.tokenQuery.queryTokenByAddress(address,fields, currency);
         ctx.body = result || {};
     })
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
             const {fields, transferType, currency, orderBy, reverse, skip, limit} = ctx.request.query;
-            const result = await statApp.tokenSync.listToken(fields, transferType, currency, orderBy, reverse, skip? parseInt(skip): skip,
+            const result = await statApp.tokenQuery.listToken(fields, transferType, currency, orderBy, reverse, skip? parseInt(skip): skip,
                 limit ? parseInt(limit): limit, null);
             ctx.body = result;
             r('ok')
@@ -122,14 +122,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         })
     })
     router.get('/tokens/fiat/list', async (ctx)=>{
-        const fiatArray = statApp.config.tokenQuoteConvertSymbolArray;
+        const fiatArray = statApp.config.quoteConvertSymbolArray;
         ctx.body = {code:0, list: fiatArray}
     })
     // token by name
     router.get('/tokens/name', async (ctx)=>{
         await new Promise(async r=>{
             const {name, currency, skip, limit} = ctx.request.query;
-            const result = await statApp.tokenSync.listTokenByName(name, currency, skip? parseInt(skip): skip,
+            const result = await statApp.tokenQuery.listTokenByName(name, currency, skip? parseInt(skip): skip,
                 limit ? parseInt(limit): limit);
             ctx.body = result;
             r('ok')

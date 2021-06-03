@@ -39,6 +39,7 @@ export interface StatConfig{
     syncTxnCountHistory: boolean,
     syncCfxHolderCountDaily: boolean,
     syncToken: boolean,
+    syncTokenEpochNumber: number,
     syncTraceCreateContract: boolean,
     syncEpoch: boolean,
     syncEpochNumber: number,
@@ -53,9 +54,9 @@ export interface StatConfig{
     recaptchaToken:string,
     reportUrl: string,
 
-    syncTokenQuote: boolean,
-    syncTokenQuoteDelay: number,
-    tokenQuoteConvertSymbolArray: Array<string>,
+    syncQuote: boolean,
+    syncQuoteDelay: number,
+    quoteConvertSymbolArray: Array<string>,
     marketCapToken: string,
     binanceToken: string,
 
