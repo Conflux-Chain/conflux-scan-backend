@@ -260,21 +260,21 @@ export async function calcAllTokenUniqueUser(start:Date, end:Date) : Promise<num
         return Number(arr[0]['cnt'])
     })
 }
-export async function rollupDailyTokenTxn(dt:Date, model: any/*Model*/, type) {
+export async function rollupDailyTokenTxn(dt:Date, model: any/*Model*/, type:string) {
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
     end.setHours(23,59,59,999)
     if (type === TOKEN_TYPE_ALL_4) {
         const userCount = await calcAllTokenUniqueUser(dt, end)
         return DailyTokenTxn.upsert({
-            txnCount: 0, day: dt, type, userCount,
+            txnCount: 0, day: dt, type: type.toUpperCase(), userCount,
         })
     }
     let count = await model.count({        where:{
             createdAt: {[Op.between]:[dt, end]}
         }    })
     return DailyTokenTxn.upsert({
-        txnCount: count, day: dt, type, userCount: 0
+        txnCount: count, day: dt, type: type.toUpperCase(), userCount: 0
     })
 }
 export const TOKEN_TYPE_ALL_4 = '_ALL_4'
