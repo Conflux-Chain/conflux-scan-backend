@@ -64,7 +64,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/tokens/daily-token-txn', async (ctx)=>{
         let limit = Math.min(1000, parseInt(ctx.request.query.limit || 1000));
-        const sql = `select day, max(updatedAt) as updatedAt, sum(txnCount) as txnCount
+        const sql = `select day, max(updatedAt) as updatedAt, sum(txnCount) as txnCount,
+                sum(userCount) as userCount
             from ${T_DAILY_TOKEN_TXN} group by day order by day desc limit ?`
         const list = await statApp.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements:[limit]}
