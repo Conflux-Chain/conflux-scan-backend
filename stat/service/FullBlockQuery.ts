@@ -23,6 +23,10 @@ export class FullBlockQuery {
             const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(miner).substr(2)}})
             minerId = hex40?.id
         }
+        // check if exist
+        if(miner !== undefined && minerId === undefined){
+            return {total: 0, list: []};
+        }
         // attributes
         const options: any = {offset: skip, limit, raw: true};
         options.attributes = [
@@ -157,6 +161,11 @@ export class FullBlockQuery {
         if(opponentAddress){
             const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(opponentAddress).substr(2)}})
             opponentAddressId = hex40?.id
+        }
+        // check if exist
+        if((accountAddress !== undefined && accountAddressId === undefined)
+            || (opponentAddress !== undefined && opponentAddressId === undefined)){
+            return {total: 0, list: []};
         }
         // attributes
         const options: any = {offset: skip, limit, raw: true};
