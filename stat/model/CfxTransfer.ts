@@ -413,18 +413,21 @@ export interface IDailyCfxTxn {
     id?:number
     txnCount:number
     userCount:number
+    amount:number
     day:Date
 }
 export class DailyCfxTxn extends Model<IDailyCfxTxn> implements IDailyCfxTxn{
     id?:number
     txnCount:number
     userCount:number
+    amount:number
     day:Date
     static register(seq){
         DailyCfxTxn.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             txnCount: {type: DataTypes.BIGINT, allowNull: false},
             userCount: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
+            amount: {type: DataTypes.DECIMAL(56,0), allowNull: false, defaultValue: 0},
             day: {type: DataTypes.DATEONLY, allowNull: false, unique: true},
         },{
             tableName: T_DAILY_CFX_TXN,
@@ -452,15 +455,18 @@ export async function rollupDailyCfxTxn(dt:Date) {
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
     end.setHours(23,59,59,999)
-    let [transferCount, userCount] = await Promise.all([
+    let [transferCount, userCount, amount] = await Promise.all([
         CfxTransfer.count({        where:{
             createdAt: {[Op.between]:[dt, end]}
         }    }),
         calcUniqueUser(dt, end, CfxTransfer),
+        CfxTransfer.sum('value', {
+            where: {createdAt:{[Op.between]:[dt, end]}}
+        })
     ])
     await DailyCfxTxn.upsert({
         txnCount: transferCount, day: dt,
-        userCount,
+        userCount, amount
     })
 }
 
