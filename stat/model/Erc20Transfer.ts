@@ -214,18 +214,21 @@ export const T_DAILY_TOKEN_TXN = 'daily_token_txn'
 export interface IDailyTokenTxn {
     id?:number
     txnCount:number
+    userCount:number
     day:Date
     type: string // erc20 erc721 erc777 erc1155
 }
 export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenTxn{
     id?:number
     txnCount:number
+    userCount:number
     day:Date
     type: string
     static register(seq){
         DailyTokenTxn.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
-            txnCount: {type: DataTypes.BIGINT, allowNull: false},
+            txnCount: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+            userCount: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             day: {type: DataTypes.DATEONLY, allowNull: false},
             type: {type: DataTypes.STRING(8), allowNull: false},
         },{
@@ -237,29 +240,56 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
         })
     }
 }
-
-export async function rollupDailyTokenTxn(dt:Date, model: any/*Model*/, type) {
+export async function calcAllTokenUniqueUser(start:Date, end:Date) : Promise<number> {
+    const sqlInner = [Erc20Transfer, Erc721Transfer, Erc777Transfer, Erc1155Transfer].map(
+        token=>`select fromId from ${token.getTableName()} where createdAt between ? and ?
+            union select toId from ${token.getTableName()} where createdAt between ? and ?`
+    ).join(' union ');
+    const replace = [
+        start, end, start, end,
+        start, end, start, end,
+        start, end, start, end,
+        start, end, start, end,
+    ]
+    const sql = `select count(*) as cnt from (
+        ${sqlInner}
+    ) t`
+    return Erc20Transfer.sequelize.query(sql,
+        {type:QueryTypes.SELECT, replacements: replace}
+    ).then(arr=>{
+        return Number(arr[0]['cnt'])
+    })
+}
+export async function rollupDailyTokenTxn(dt:Date, model: any/*Model*/, type:string) {
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
     end.setHours(23,59,59,999)
+    if (type === TOKEN_TYPE_ALL_4) {
+        const userCount = await calcAllTokenUniqueUser(dt, end)
+        return DailyTokenTxn.upsert({
+            txnCount: 0, day: dt, type: type.toUpperCase(), userCount,
+        })
+    }
     let count = await model.count({        where:{
             createdAt: {[Op.between]:[dt, end]}
         }    })
-    await DailyTokenTxn.upsert({
-        txnCount: count, day: dt, type
+    return DailyTokenTxn.upsert({
+        txnCount: count, day: dt, type: type.toUpperCase(), userCount: 0
     })
 }
-
+export const TOKEN_TYPE_ALL_4 = '_ALL_4'
 export async function rollupDailyTokenTxnCurrentAll() {
     await rollupDailyTokenTxnCurrent(Erc20Transfer, 'erc20')
     await rollupDailyTokenTxnCurrent(Erc721Transfer, 'erc721')
     await rollupDailyTokenTxnCurrent(Erc777Transfer, 'erc777')
     await rollupDailyTokenTxnCurrent(Erc1155Transfer, 'erc1155')
+    // all four token unique user.
+    await rollupDailyTokenTxnCurrent(undefined, TOKEN_TYPE_ALL_4)
 }
 export async function rollupDailyTokenTxnCurrent(model, type) {
     const cur = new Date()
     if (cur.getHours() === 0 && cur.getMinutes() < 30) {
-        // rollup previous day, time point is an hour ago.
+        // rollup previous day, time point is an hour ago, calculated time span should be previous day.
         await rollupDailyTokenTxn(new Date(cur.getTime() - 1000*3600), model, type)
     }
     await rollupDailyTokenTxn(cur, model, type);
