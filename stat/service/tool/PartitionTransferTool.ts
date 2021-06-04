@@ -7,12 +7,13 @@ import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transf
 import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 
 
-export async function loop20transfer(times: number, full_t, partition_t) {
+let epochMax = 0
+let epochMin = -1
+let erc20transferEpochMax = -1
+export async function checkBoundary(times: number, full_t, partition_t) {
     // const full_t = Erc20Transfer
     // const partition_t = AddressErc20Transfer
-    let epochMax = 0
-    let epochMin = -1
-    let erc20transferEpochMax = -1
+
     /*
      select min(epoch), max(epoch) from erc20transfer;
      select * from address_erc20_transfer limit 10;
@@ -21,12 +22,17 @@ export async function loop20transfer(times: number, full_t, partition_t) {
     await Promise.all([
         full_t.max('epoch'),
         full_t.min('epoch'),
-    ]).then(([epochMax0, minEpochDB])=>{
+    ]).then(([epochMax0, minEpochDB]) => {
         console.log(`full transfer min ${minEpochDB} max ${epochMax0}`)
         epochMax = Number(epochMax0)
         epochMin = Number(minEpochDB)
+        if (args.length >= 3) {
+            // force epoch [from, to]
+            epochMax = Number(args[3])
+            return Number(args[2]) - 1
+        }
         return partition_t.max('epoch')
-    }).then(addr20tMax=>{
+    }).then(addr20tMax => {
         if (!isNaN(Number(addr20tMax))) {
             console.log(`use partition max ${addr20tMax}`)
             erc20transferEpochMax = Number(addr20tMax)
@@ -34,9 +40,12 @@ export async function loop20transfer(times: number, full_t, partition_t) {
             console.log(`use full transfer, before ${epochMin}`)
             erc20transferEpochMax = epochMin - 1
         }
-    }).catch(err=>{
+    }).catch(err => {
         console.log(`setup loop fail:`, err)
     })
+}
+export async function loop20transfer(times: number, full_t, partition_t) {
+    await checkBoundary(times, full_t, partition_t)
     console.log(`full transfer epoch at ${epochMax}, partition epoch ${erc20transferEpochMax
         }, begin run ${times}`)
     while (times > 0 && erc20transferEpochMax <= epochMax) {
@@ -72,7 +81,8 @@ export async function loop20transfer(times: number, full_t, partition_t) {
     console.log(`\n Done.`)
 }
 const args = process.argv.slice(2)
-// node this erc20 5
+//             0   1   2     3
+// node this erc20 5 <lowFrom> <highEnd>
 init().then(()=>{
     switch(args[0]) {
         case 'erc20':
