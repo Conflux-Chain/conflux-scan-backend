@@ -162,4 +162,30 @@ export abstract class TransferQueryBase {
         const result = {total: page?.count || 0, list};
         return result;
     }
+
+    public abstract doQueryAccountAddress(options: any, queryOptions: any): Promise<any>;
+
+    public async listAccountAddress(options) {
+        const {address, skip = 0, limit = 10} = options;
+
+        const addressHex = address && format.hexAddress(address).substr(2);
+        const addressMap = await hex40IdMap([addressHex]);
+        const addressId = addressMap?.get(addressHex);
+        if(address !== undefined && addressId === undefined){
+            return {total: 0, list: []};
+        }
+
+        const queryOptions: any = {where: {contractId: addressId}, offset: skip, limit, raw: true};
+        const page = await this.doQueryAccountAddress(options, queryOptions);
+        let list ;
+        if(page?.rows){
+            const hex40IdSet = new Set<number>();
+            page.rows.forEach( row => {
+                hex40IdSet.add(row['addressId']);
+            });
+            const hex40Map = await idHex40Map(Array.from(hex40IdSet));
+            list = [...hex40Map.values()];
+        }
+        return {total: list?.length || 0, list: list || []};
+    }
 }

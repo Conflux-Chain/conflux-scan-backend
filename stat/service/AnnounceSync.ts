@@ -6,11 +6,12 @@ import {makeId} from "../model/HexMap";
 import {StatApp} from "../StatApp";
 import {KEY_TOKEN_SYNC_EPOCH, KV} from "../model/KV";
 import {fmtDtUTC} from "../model/Utils";
+import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
-export class TokenSync extends SyncBase{
+export class AnnounceSync extends SyncBase{
     protected app: StatApp;
 
     constructor(app: any) {
@@ -20,13 +21,18 @@ export class TokenSync extends SyncBase{
 
     //----------------- implementation method from SyncBase ------------------
     async getDataFromFullNode(epochNumber): Promise<SyncData> {
-        return this.getTokenInfoArray(epochNumber);
+        return this.getAnnounceInfo(epochNumber);
     }
 
     async delDataFromDb(epochNumber, modelData) {
         const addressSet = new Set<string>();
-        modelData.forEach(item => {addressSet.add(item.base32)});
+        modelData.tokenArray.forEach(item => {addressSet.add(item.base32)});
         await Token.destroy({where:
+                {base32: {[Op.in]: Array.from(addressSet)}}
+        });
+        addressSet.clear();
+        modelData.contractArray.forEach(item => {addressSet.add(item.base32)});
+        await Contract.destroy({where:
                 {base32: {[Op.in]: Array.from(addressSet)}}
         });
         const preEpochNumber = epochNumber > -1 ? epochNumber - 1 : epochNumber;
@@ -34,23 +40,35 @@ export class TokenSync extends SyncBase{
     }
 
     async saveDataToDb(epochNumber, modelData) {
-        for (const token of modelData) {
-            const tokenDb: Token = await Token.findOne({where: {base32: token.base32}});
+        for (const token of modelData.tokenArray) {
+            const tokenDb: Token = await Token.findOne({where: {base32: token.base32}, raw: true});
             if(tokenDb){
-                const t = lodash.assign(token, {icon: token.icon, quoteUrl: token.quoteUrl,
+                const t = lodash.assign(tokenDb, {icon: token.icon, quoteUrl: token.quoteUrl,
                     marketCapId: token.marketCapId, moonDexSymbol: token.moonDexSymbol,
-                    binanceSymbol: token.binanceSymbol, updatedAt: Date.now()});
-                await tokenDb.update(t, {where: {id: tokenDb.id}});
-                // console.log(`full_token.update------------------t:${JSON.stringify(t)}`)
+                    binanceSymbol: token.binanceSymbol, updatedAt: new Date()});
+                await Token.update(t, {where: {id: tokenDb.id}});
             } else{
                 const t = lodash.assign(token, {holder: 0});
                 await Token.add(t);
-                // console.log(`full_token.insert------------------t:${JSON.stringify(t)}`)
             }
         }
+
+        for (const contract of modelData.contractArray) {
+            const contractDb: Contract = await Contract.findOne({where: {base32: contract.base32}, raw: true});
+            if(contractDb){
+                const c = lodash.assign(contractDb, {epoch: epochNumber, name: contract.name, website: contract.website,
+                    abi: contract.abi, sourceCode: contract.sourceCode, icon: contract.icon, updatedAt: new Date()});
+                await Contract.update(c, {where: {id: contractDb.id}});
+            } else{
+                const c = lodash.assign(contract, {epoch: epochNumber});
+                await Contract.add(c);
+            }
+        }
+
         await KV.update({value: epochNumber.toString()}, {where: {key: KEY_TOKEN_SYNC_EPOCH}});
         if (epochNumber % 100 === 0) {
-            console.log(`${fmtDtUTC(new Date())} insert ${modelData?.length} full_token at epoch:${epochNumber}`)
+            const cntr = modelData.tokenArray.length + modelData.contractArray.length;
+            console.log(`${fmtDtUTC(new Date())} insert ${cntr} full_token at epoch:${epochNumber}`)
         }
         return Promise.resolve(1);
     }
@@ -61,29 +79,25 @@ export class TokenSync extends SyncBase{
     }
 
     //---------------------- business method for token -----------------------
-    private async getTokenInfoArray(epochNumber) {
+    private async getAnnounceInfo(epochNumber) {
         const {
             app: { cfx, tokenTool },
         } = this;
 
-        const tokenMap = {};
+        let tokenMap = {};
+        let contractMap = {};
         const announceArray = await this.getAnnounceArray(epochNumber);
-        announceArray?.forEach(announce => {
+        for(const announce of announceArray) {
             const key = Buffer.from(announce.key, 'base64').toString();
             const params = key.split('/');
+            console.log(`announcement------epoch:${epochNumber}------${params}`);
             if(params[0] === 'token') {
-                if(params[1] === 'list'){
-                    const [_, , hex] = params;
-                    tokenMap[hex] = tokenMap[hex] || {};
-                } else{
-                    const [_, hex, field] = params;
-                    const token = tokenMap[hex] || {};
-                    token[field] = (field !== 'icon') ? Buffer.from(announce.value, 'base64').toString()
-                        : Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString();
-                    tokenMap[hex] = token;
-                }
+                AnnounceSync.parseAnnounce(params, announce, tokenMap);
             }
-        });
+            if(params[0] === 'contract') {
+                AnnounceSync.parseAnnounce(params, announce, contractMap);
+            }
+        }
 
         const tokenArray = [];
         await Object.keys(tokenMap).map(async hex => {
@@ -94,16 +108,37 @@ export class TokenSync extends SyncBase{
             const tokenInfo = await tokenTool.getToken(token.base32);
             token = lodash.defaults(token, { totalSupply, name: tokenInfo.name, symbol: tokenInfo.symbol,
                 decimals: tokenInfo.decimals, granularity: tokenInfo.granularity });
-            // console.log(`full_token.token------------------token:${JSON.stringify(token)}`)
             tokenArray.push(token);
+        });
+        const contractArray = [];
+        await Object.keys(contractMap).map(async hex => {
+            let contract = contractMap[hex];
+            contract.hex40id = (await makeId(hex)).id;
+            contract.base32 = format.address(hex, StatApp.networkId);
+            contractArray.push(contract);
         });
 
         const pivotBlock: any = await cfx.getBlockByEpochNumber(epochNumber, false);
         return {
             pivotHash: pivotBlock.hash.substr(2),
             parentHash: pivotBlock.parentHash.substr(2),
-            modelData: tokenArray,
+            modelData: {tokenArray, contractArray} ,
         };
+    }
+
+    private static parseAnnounce(params, announce, map){
+        if(params[1] === 'list'){
+            const [ , , hex] = params;
+            map[hex] = map[hex] || {};
+        } else{
+            const [ , hex, field] = params;
+            const item = map[hex] || {};
+            item[field] = (field === 'abi' || field === 'sourceCode' || field === 'icon')
+                ? Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString()
+                : Buffer.from(announce.value, 'base64').toString();
+            map[hex] = item;
+        }
+        return map;
     }
 
     private async getAnnounceArray(epochNumber) {
@@ -121,7 +156,7 @@ export class TokenSync extends SyncBase{
         } = this;
 
         const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber});
-        return eventLogArray.map((v) => TokenSync.parseEventLog(v));
+        return eventLogArray.map((v) => AnnounceSync.parseEventLog(v));
     }
 
     private static parseEventLog(eventLog) {

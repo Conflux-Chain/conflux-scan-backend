@@ -1,27 +1,105 @@
 // @ts-ignore
-import {Hex40Map, Hex64Map} from "../model/HexMap";
+import {format} from "js-conflux-sdk";
+import {Hex40Map, Hex64Map, idHex40Map, idHex64Map} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {Op} from "sequelize";
 
 export class BlockTraceCreateQuery{
-    async getCreateTrace(contractAddr: string) {
-        const contractAddrHex = await Hex40Map.findOne({where: {hex: contractAddr.substr(2)}});
-        if(!contractAddrHex){
-            console.error(`getTraceCreate no contract ${contractAddr}`);
-            return {msg: `get create trace, no contract ${contractAddr} found`};
+    protected app;
+
+    constructor(app: any) {
+        this.app = app;
+    }
+
+    async query(address: string) {
+        const{ logger } = this.app;
+
+        const hex40Bean = await Hex40Map.findOne({where: {hex: address.substr(2)}});
+        if(!hex40Bean){
+            // logger?.info({src: `trace_create`, 'result': `no contract ${address}`});
+            return {msg: `get create trace, no contract ${address} found`};
         }
 
-        const traceCreate = await TraceCreateContract.findOne({where: {to: contractAddrHex.id}});
-        if(!traceCreate){
-            console.error(`getTraceCreate no trace_create_contract for contract ${contractAddr}`);
-            return {msg: `get create trace, no create trace found for contract ${contractAddr}`};
+        const trace = await TraceCreateContract.findOne({where: {to: hex40Bean.id}});
+        if(!trace){
+            // logger?.info({src: `trace_create`, 'result': `no trace_create_contract for contract ${address}`});
+            return {msg: `get create trace, no create trace found for contract ${address}`};
         }
 
-        const txHashHex = await Hex64Map.findOne({where: {id: traceCreate.txHashId}});
-        const creatorHex = await Hex40Map.findOne({where: {id: traceCreate.from}});
+        const hex64Bean = await Hex64Map.findOne({where: {id: trace.txHashId}});
+        const fromHex40Bean = await Hex40Map.findOne({where: {id: trace.from}});
         return {
-            transactionHash: txHashHex ? '0x' + txHashHex.hex : undefined,
-            creator: creatorHex ? '0x' + creatorHex.hex : undefined,
-            contractAddr,
+            epochNumber: trace.epochNumber,
+            transactionHash: hex64Bean ? '0x' + hex64Bean.hex : undefined,
+            from: fromHex40Bean ? '0x' + fromHex40Bean.hex : undefined,
+            address,
         };
+    }
+
+    public async list({from, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, skip = 0,
+                          limit = 10, reverse = false}) {
+        const{ logger } = this.app;
+        // parse para
+        let fromId;
+        if(from){
+            const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(from).substr(2)}})
+            fromId = hex40?.id
+        }
+        if(from !== undefined && fromId === undefined){
+            return {total: 0, list: []};
+        }
+        // attributes
+        const options: any = {offset: skip, limit, raw: true};
+        options.attributes = [
+            'epochNumber',
+            ['txHashId', 'transactionHash'],
+            'from',
+            ['to', 'address'],
+        ];
+        // where
+        const conditionArray = [];
+        if(from){
+            conditionArray.push({from: fromId});
+        }
+        if(minEpochNumber && maxEpochNumber) {
+            conditionArray.push({ [Op.and]: [{epochNumber: { [Op.gte]: minEpochNumber}},
+                    {epochNumber: { [Op.lt]: maxEpochNumber}}]});
+        }
+        if(minTimestamp && maxTimestamp) {
+            conditionArray.push({ [Op.and]: [{blockTime: { [Op.gte]: minTimestamp}},
+                    {blockTime: { [Op.lt]: maxTimestamp}}]});
+        }
+        if(conditionArray.length === 1){
+            options.where = conditionArray[0];
+        }
+        if(conditionArray.length > 1){
+            options.where = {[Op.and]: conditionArray};
+        }
+        // order
+        if(reverse){
+            options.order = [['blockTime', 'DESC']];
+        }
+        // query
+        const page = await TraceCreateContract.findAndCountAll(options);
+        const list = [];
+        if(page?.rows){
+            const hex40IdSet = new Set<number>();
+            const hex64IdSet = new Set<number>();
+            page.rows.forEach( row => {
+                hex64IdSet.add(row['transactionHash']);
+                hex40IdSet.add(row['from']);
+                hex40IdSet.add(row['address']);
+                list.push(row);
+            });
+            const hex40Map = await idHex40Map(Array.from(hex40IdSet));
+            const hex64Map = await idHex64Map(Array.from(hex64IdSet));
+            // fields mapping
+            list.forEach(row=>{
+                row['transactionHash'] = `0x${hex64Map.get(row['transactionHash'])}`;
+                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
+                row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+            })
+        }
+        return {total: page?.count || 0, list};
     }
 }

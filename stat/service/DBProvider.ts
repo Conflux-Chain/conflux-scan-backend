@@ -48,6 +48,7 @@ import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777T
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
+import {Contract} from "../model/Contract";
 import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
@@ -129,6 +130,7 @@ export async function initPartialModel(sequelize) {
     AddressTransactionIndex.register(sequelize);  AddressTransactionIndex.removeAttribute('id')
     AddressStat.register(sequelize)
     ContractInfo.register(sequelize)
+    Contract.register(sequelize)
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
     Token.register(sequelize);

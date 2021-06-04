@@ -18,7 +18,7 @@ import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenQuery} from "./service/TokenQuery";
-import {TokenSync} from "./service/TokenSync";
+import {AnnounceSync} from "./service/AnnounceSync";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import { Monitor } from "./monitor/Monitor";
@@ -31,6 +31,7 @@ import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {QuoteSync} from "./service/QuoteSync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {MinerBlockSync} from "./service/MinerBlockSync";
+import {ContractQuery} from "./service/ContractQuery";
 
 export class StatApp{
     public config: StatConfig;
@@ -49,7 +50,7 @@ export class StatApp{
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
     public tokenQuery: TokenQuery;
-    public tokenSync: TokenSync;
+    public announceSync: AnnounceSync;
     public traceCreateSync: BlockTraceCreateSync
     public traceCreateQuery: BlockTraceCreateQuery;
     public epochSync: EpochSync
@@ -59,6 +60,7 @@ export class StatApp{
     public quoteSync: QuoteSync;
     public homeDashboardService: HomeDashboardService;
     public minerBlockSync: MinerBlockSync;
+    public contractQuery: ContractQuery;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -115,9 +117,9 @@ export class StatApp{
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);
-        this.tokenSync = new TokenSync(this);
+        this.announceSync = new AnnounceSync(this);
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
-        this.traceCreateQuery = new BlockTraceCreateQuery();
+        this.traceCreateQuery = new BlockTraceCreateQuery(this);
         this.epochSync = new EpochSync(this);
         this.contractCreateSync = new DailyContractCreateSync(this.sequelize);
         this.contractCreateQuery = new DailyContractCreateQuery();
@@ -125,6 +127,7 @@ export class StatApp{
         this.quoteSync = new QuoteSync(this);
         this.homeDashboardService = new HomeDashboardService(this);
         this.minerBlockSync = new MinerBlockSync(this);
+        this.contractQuery = new ContractQuery(this);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -144,8 +147,8 @@ export class StatApp{
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
         }
-        if (this.config.syncToken) {
-            await this.tokenSync.run(this.config.syncTokenEpochNumber); // token from full node
+        if (this.config.syncAnnounce) {
+            await this.announceSync.run(this.config.syncAnnounceEpochNumber); // announce from full node
         }
         if (this.config.syncTraceCreateContract) {
             await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create

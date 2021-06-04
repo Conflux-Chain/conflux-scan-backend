@@ -1,7 +1,6 @@
 import {CfxTransfer, pagingFullCfxTransfer, AddressCfxTransfer} from "../model/CfxTransfer";
 import {TransferQueryBase} from "./TransferQueryBase";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "../model/KV";
-import {pagingFullTx} from "../model/FullBlock";
 import {Op} from "sequelize";
 const CONST = require('./common/constant');
 
@@ -67,5 +66,9 @@ export class CfxTransferQuery extends TransferQueryBase{
             pagedCondition.skip = cfxTransferPage.skip;
         }
         return pagedCondition;
+    }
+
+    public async doQueryAccountAddress(options: any, queryOptions: any): Promise<any> {
+        throw new Error(`${this.getTransferType()} no need count account address!`);
     }
 }

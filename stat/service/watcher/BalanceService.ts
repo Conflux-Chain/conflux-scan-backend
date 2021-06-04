@@ -5,6 +5,7 @@ import {Balance} from "../../model/Balance";
 import {Token, TOKEN_ERC_1155} from "../../model/Token";
 import {Erc20WatchList} from "../../config/StatConfig";
 import {Hex40Map, makeId} from "../../model/HexMap";
+import {Contract} from "../../model/Contract";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
@@ -117,20 +118,24 @@ export class BalanceService {
         const map = new Map()
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
         const is1155 = (token.type || '').includes('1155')
-        const retList = list.map(holder=>{
+
+        const retList = [];
+        await list.map(async holder=>{
             const addr = map.get(holder.addressId)
             const address = addr ? format.address(addr, this.networkId): holder.addressId
             // console.log(`balance type is : ${typeof  holder.balance}`)
-            return {
+            const contract = await Contract.findOne({where: {base32: address}});
+            const item = {
                 // holder.balance is string
                 balance: is1155 ? holder.balance : this.decimal2drip(holder.balance, 18),
                 account: {
                     address,
-                    name: addr ? ContractService.instance.getName(address) : undefined,
+                    name: contract?.name,
                 },
                 hexId: holder.addressId,
                 // addr,
-            }
+            };
+            retList.push(item);
         })
         return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
     }
