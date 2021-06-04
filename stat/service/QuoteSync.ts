@@ -5,7 +5,7 @@ const lodash = require('lodash');
 const superagent = require('superagent');
 const BigFixed = require('bigfixed');
 
-export class TokenQuoteSync {
+export class QuoteSync {
   protected app;
 
   constructor(app: any) {
@@ -46,7 +46,7 @@ export class TokenQuoteSync {
       app: { config },
     } = this;
 
-    const convertSymbolArray: Array<string> = config.tokenQuoteConvertSymbolArray;
+    const convertSymbolArray: Array<string> = config.quoteConvertSymbolArray;
     if(convertSymbolArray.length === 0){
         return;
     }

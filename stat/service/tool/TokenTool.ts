@@ -44,4 +44,14 @@ export class TokenTool {
         }));
         return result;
     }
+
+    decodeAnnounce(eventLog) {
+        try {
+            const tuple = this.contract.Announce.decodeLog(eventLog);
+            return { ...eventLog, ...tuple.toObject() };
+        } catch (e) {
+            // pass
+        }
+        return undefined;
+    }
 }
