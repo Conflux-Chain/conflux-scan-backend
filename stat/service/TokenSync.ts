@@ -41,11 +41,11 @@ export class TokenSync extends SyncBase{
                     marketCapId: token.marketCapId, moonDexSymbol: token.moonDexSymbol,
                     binanceSymbol: token.binanceSymbol, updatedAt: Date.now()});
                 await tokenDb.update(t, {where: {id: tokenDb.id}});
-                console.log(`full_token.update------------------t:${JSON.stringify(t)}`)
+                // console.log(`full_token.update------------------t:${JSON.stringify(t)}`)
             } else{
                 const t = lodash.assign(token, {holder: 0});
                 await Token.add(t);
-                console.log(`full_token.insert------------------t:${JSON.stringify(t)}`)
+                // console.log(`full_token.insert------------------t:${JSON.stringify(t)}`)
             }
         }
         await KV.update({value: epochNumber.toString()}, {where: {key: KEY_TOKEN_SYNC_EPOCH}});
@@ -94,7 +94,7 @@ export class TokenSync extends SyncBase{
             const tokenInfo = await tokenTool.getToken(token.base32);
             token = lodash.defaults(token, { totalSupply, name: tokenInfo.name, symbol: tokenInfo.symbol,
                 decimals: tokenInfo.decimals, granularity: tokenInfo.granularity });
-            console.log(`full_token.token------------------token:${JSON.stringify(token)}`)
+            // console.log(`full_token.token------------------token:${JSON.stringify(token)}`)
             tokenArray.push(token);
         });
 
