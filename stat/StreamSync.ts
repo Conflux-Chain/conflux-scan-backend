@@ -39,6 +39,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                         console.log(`We know and ignore this error: ${err} \n sql ${err.sql}`)
                         StreamErrorLog.create({message: `${JSON.stringify({epoch, sql: err.sql})}`,
                            remark:null, id:null })
+                        return []
                     }
                     throw err
                 })
