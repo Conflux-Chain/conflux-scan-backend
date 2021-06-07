@@ -119,7 +119,7 @@ export async function fillMethodInfo(arr:{method?:string}[]) {
         map.set(row, null)
     })
     await AbiInfo.findAll({where:{hash:{[Op.in]:[...map.keys()]}}
-        , logging: console.log
+        // , logging: console.log
     }).then(list=>{
         list.forEach(info=>map.set(info.hash, info))
     }).catch(err=>{
