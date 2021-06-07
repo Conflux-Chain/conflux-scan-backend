@@ -255,7 +255,9 @@ export async function calcAllTokenUniqueUser(start:Date, end:Date) : Promise<num
         ${sqlInner}
     ) t`
     return Erc20Transfer.sequelize.query(sql,
-        {type:QueryTypes.SELECT, replacements: replace}
+        {type:QueryTypes.SELECT, replacements: replace,
+        // logging: console.log, benchmark: true
+        }
     ).then(arr=>{
         return Number(arr[0]['cnt'])
     })
