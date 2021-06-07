@@ -4,7 +4,7 @@ import {Op} from 'sequelize';
 import {SyncBase, SyncData} from "./SyncBase";
 import {makeId} from "../model/HexMap";
 import {StatApp} from "../StatApp";
-import {KEY_TOKEN_SYNC_EPOCH, KV} from "../model/KV";
+import {KEY_ANNOUNCE_SYNC_EPOCH, KV} from "../model/KV";
 import {fmtDtUTC} from "../model/Utils";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
@@ -36,7 +36,7 @@ export class AnnounceSync extends SyncBase{
                 {base32: {[Op.in]: Array.from(addressSet)}}
         });
         const preEpochNumber = epochNumber > -1 ? epochNumber - 1 : epochNumber;
-        await KV.update({value: preEpochNumber.toString()}, {where: {key: KEY_TOKEN_SYNC_EPOCH}});
+        await KV.update({value: preEpochNumber.toString()}, {where: {key: KEY_ANNOUNCE_SYNC_EPOCH}});
     }
 
     async saveDataToDb(epochNumber, modelData) {
@@ -65,7 +65,7 @@ export class AnnounceSync extends SyncBase{
             }
         }
 
-        await KV.update({value: epochNumber.toString()}, {where: {key: KEY_TOKEN_SYNC_EPOCH}});
+        await KV.update({value: epochNumber.toString()}, {where: {key: KEY_ANNOUNCE_SYNC_EPOCH}});
         if (epochNumber % 100 === 0) {
             const cntr = modelData.tokenArray.length + modelData.contractArray.length;
             console.log(`${fmtDtUTC(new Date())} insert ${cntr} announce at epoch:${epochNumber}`)
@@ -74,7 +74,7 @@ export class AnnounceSync extends SyncBase{
     }
 
     public async queryNextEpochFromDb(){
-        let maxEpochNumber:number = await KV.getNumber(KEY_TOKEN_SYNC_EPOCH);
+        let maxEpochNumber:number = await KV.getNumber(KEY_ANNOUNCE_SYNC_EPOCH);
         return maxEpochNumber ? (maxEpochNumber + 1) : 0;
     }
 
