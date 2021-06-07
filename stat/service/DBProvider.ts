@@ -53,6 +53,7 @@ import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRo
 import {DailyContractCreate} from "../model/DailyContractCreate";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {StatApp} from "../StatApp";
+import {StreamErrorLog} from "../model/ErrorLog";
 let conf
 export function createDB(config) {
     conf = config
@@ -135,6 +136,7 @@ export async function initPartialModel(sequelize) {
     TraceCreateContract.register(sequelize)
     Token.register(sequelize);
     TokenQuote.register(sequelize);
+    StreamErrorLog.register(sequelize)
     KV.register(sequelize);
 }
 export async function initModel(sequelize) {

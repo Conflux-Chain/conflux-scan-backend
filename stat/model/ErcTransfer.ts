@@ -3,7 +3,7 @@ import {fmtDtUTC} from "./Utils";
 let logCount = 100
 export async function popPartition(epoch: number, fullTransfer: any, partitionT:any) {
     if (logCount-- > 0) {
-        console.log(`${fmtDtUTC(new Date())} PopPartition epoch ${epoch} ---`)
+        console.log(`\n${fmtDtUTC(new Date())} PopPartition epoch ${epoch} ${partitionT.getTableName()} ---`)
     }
     // let fullTransfer = Erc20Transfer;
     // let partitionT = AddressErc20Transfer;

@@ -11,6 +11,7 @@ import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressCfxTransfer, CfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
+import {UniqueConstraintError} from "sequelize"
 
 async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
     // console.log(`handleTokenTransfer `, data.length)
@@ -31,8 +32,19 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             if (!copies.length) {
                 return RedisWrap.xDel(data)
             }
-            return model.bulkCreate(copies).then(arr=>{
-                process.stdout.write(`\r\u001b[2K ${new Date().toISOString()} bulk create transfer ${arr.length}`)
+            return model.bulkCreate(copies)
+                .catch(err=>{
+                    const epoch = copies[0].epoch
+                    if (err instanceof UniqueConstraintError) {
+                        console.log(`We know and ignore this error: ${err} \n sql ${err.sql}`)
+                        StreamErrorLog.create({message: `${JSON.stringify({epoch, sql: err.sql})}`,
+                           remark:null, id:null })
+                        return []
+                    }
+                    throw err
+                })
+            .then(arr=>{
+                process.stdout.write(`\r\u001b[2K ${new Date().toISOString()} bulk create transfer ${model.getTableName()} ${arr.length}    `)
                 return arr
             }).then(()=>{
                 return RedisWrap.xDel(data)
@@ -48,6 +60,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
 import {init} from "./service/tool/FixDailyTokenStat";
 import {dingMsg} from "./monitor/Monitor";
 import {popPartition} from "./model/ErcTransfer";
+import {StreamErrorLog} from "./model/ErrorLog";
 let config:StatConfig
 async function run() {
     config = await init()

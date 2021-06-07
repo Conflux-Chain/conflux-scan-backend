@@ -8,6 +8,7 @@ import {decodeUtf8} from "./tool/StringTool";
 const {Hex40Map} = require("../model/HexMap");
 import {StatApp} from "../StatApp";
 import {toBase32} from "./tool/AddressTool";
+import {ContractInfo} from "../model/ContractInfo";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -45,6 +46,9 @@ export class TokenQuery {
     }
 
     public async search(name, currency, skip: number = 0, limit: number = 10) {
+        if(!name){
+            return {total: 0, list: [], contractTotal: 0, contractList: []};
+        }
         // fields
         const options: any = {};
         options.attributes = [['base32', 'address'],
@@ -106,7 +110,18 @@ export class TokenQuery {
                 list.push(row);
             });
         }
-        return { total: page?.count || 0, list };
+        // query contract
+        const contractList = [];
+        const contractInfoMap = new Map();
+        const contractInfoArray = await ContractInfo.findAll({
+            where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], raw: true
+        });
+        contractInfoArray?.forEach(contractInfo=>{
+            contractInfoMap.set(contractInfo.hexId , { address: contractInfo['base32'], name: contractInfo['name'] });
+        })
+        contractInfoMap?.forEach(value => contractList.push(value));
+
+        return { total: list.length, list, contractTotal: contractList.length, contractList };
     }
 
     public async list(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, address) {
