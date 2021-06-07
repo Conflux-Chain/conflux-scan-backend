@@ -68,7 +68,7 @@ export class AnnounceSync extends SyncBase{
         await KV.update({value: epochNumber.toString()}, {where: {key: KEY_TOKEN_SYNC_EPOCH}});
         if (epochNumber % 100 === 0) {
             const cntr = modelData.tokenArray.length + modelData.contractArray.length;
-            console.log(`${fmtDtUTC(new Date())} insert ${cntr} full_token at epoch:${epochNumber}`)
+            console.log(`${fmtDtUTC(new Date())} insert ${cntr} announce at epoch:${epochNumber}`)
         }
         return Promise.resolve(1);
     }
