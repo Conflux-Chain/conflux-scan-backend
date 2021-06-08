@@ -119,23 +119,20 @@ export class BalanceService {
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
         const is1155 = (token.type || '').includes('1155')
 
-        const retList = [];
-        await list.map(async holder=>{
+        const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
             const address = addr ? format.address(addr, this.networkId): holder.addressId
             // console.log(`balance type is : ${typeof  holder.balance}`)
-            const contract = await Contract.findOne({where: {base32: address}});
-            const item = {
+            return {
                 // holder.balance is string
                 balance: is1155 ? holder.balance : this.decimal2drip(holder.balance, 18),
                 account: {
                     address,
-                    name: contract?.name,
+                    name: addr ? ContractService.instance.getName(address) : undefined,
                 },
                 hexId: holder.addressId,
                 // addr,
             };
-            retList.push(item);
         })
         return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
     }

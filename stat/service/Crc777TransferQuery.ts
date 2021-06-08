@@ -43,6 +43,6 @@ export class Crc777TransferQuery extends TransferQueryBase{
     }
 
     public async doQueryAccountAddress(options: any, queryOptions: any): Promise<any> {
-        return AddressErc20Transfer.findAll(queryOptions);
+        return AddressErc777Transfer.findAll(queryOptions);
     }
 }
