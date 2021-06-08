@@ -3,10 +3,17 @@ import {Conflux, format} from "js-conflux-sdk";
 import {
     AddressTransactionIndex,
     BLOCK_PAGE_MARK_SIZE,
-    BlockRowMark, countNonMarkBlockRows, countNonMarkTxRows,
+    BlockRowMark,
+    countNonMarkBlockRows,
+    countNonMarkTxRows,
     FullBlock,
-    FullTransaction, IBlockRowMark,
-    IFullBlock, ITxnRowMark, markBlockPosition, markTxPosition, TxnRowMark
+    FullTransaction,
+    IBlockRowMark,
+    IFullBlock,
+    ITxnRowMark,
+    markBlockPosition,
+    markTxPosition,
+    TxnRowMark
 } from "../model/FullBlock";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
@@ -18,7 +25,7 @@ import {
     KEY_FULL_TX_COUNT,
     KV
 } from "../model/KV";
-import {sleep} from "./tool/ProcessTool";
+
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -33,7 +40,7 @@ export class FullBlockService {
     }
     // sync metrics
     private metrics = {
-        ms : new Date().getTime(),
+        ms : 0,
         executedTxCount : 0,
         addressTxCount: 0,
         blockCount: 0,
@@ -342,10 +349,10 @@ export class FullBlockService {
         };
     }
     async diffCount(key:string, diff:number, dbTx:Transaction) {
-        return KV.getNumber(key).then(cnt=>{
-            return KV.update({value: (cnt+diff).toString()},
-                {where:{key:key}, transaction: dbTx})
-        })
+        const sql = "update config set `value` = ? + cast(`value` as unsigned) where `key`=?"
+        return KV.sequelize.query(sql,
+            {type: QueryTypes.UPDATE, replacements: [diff, key],
+                transaction: dbTx})
     }
     public async fillBlockRewardByPos() {
         let prePos = await KV.getNumber(KEY_FILL_BLOCK_REWARD_EPOCH)
