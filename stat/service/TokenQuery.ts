@@ -9,6 +9,7 @@ const {Hex40Map} = require("../model/HexMap");
 import {StatApp} from "../StatApp";
 import {toBase32} from "./tool/AddressTool";
 import {ContractInfo} from "../model/ContractInfo";
+import {Contract} from "../model/Contract";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -30,8 +31,10 @@ export class TokenQuery {
         let base32 = toBase32(address);
         const result = await this.list(fields, null, currency, null, null, 0, 1, base32);
         const token = result?.list?.shift();
-        const isRegistered = token !== undefined;
         const tokenInfo = await tokenTool.getToken(base32);
+
+        const dbContract: Contract = await Contract.findOne({where: {base32}});
+        const isRegistered = dbContract !== undefined;
 
         let transferType;
         const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(base32).substr(2) } });
