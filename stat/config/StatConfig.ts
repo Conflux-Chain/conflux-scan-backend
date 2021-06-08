@@ -39,6 +39,7 @@ export interface StatConfig{
     syncTxnCountHistory: boolean,
     syncCfxHolderCountDaily: boolean,
     syncAnnounce: boolean,
+    syncToken: boolean,
     syncAnnounceEpochNumber: number,
     syncTraceCreateContract: boolean,
     syncEpoch: boolean,

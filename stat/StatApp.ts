@@ -17,6 +17,7 @@ import {DailyTxnSync, scheduleDailyTokenStat} from "./service/DailyTxnSync";
 import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
+import {TokenSync} from "./service/TokenSync";
 import {TokenQuery} from "./service/TokenQuery";
 import {AnnounceSync} from "./service/AnnounceSync";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
@@ -49,6 +50,7 @@ export class StatApp{
     public dailyTxnQuery: DailyTxnQuery;
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
+    public tokenSync: TokenSync;
     public tokenQuery: TokenQuery;
     public announceSync: AnnounceSync;
     public traceCreateSync: BlockTraceCreateSync
@@ -116,6 +118,7 @@ export class StatApp{
         this.dailyTxnQuery = new DailyTxnQuery();
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
+        this.tokenSync = new TokenSync(this);
         this.tokenQuery = new TokenQuery(this);
         this.announceSync = new AnnounceSync(this);
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
@@ -149,6 +152,9 @@ export class StatApp{
         }
         if (this.config.syncAnnounce) {
             await this.announceSync.run(this.config.syncAnnounceEpochNumber); // announce from full node
+        }
+        if (this.config.syncToken) {
+            await this.tokenSync.schedule(); // token from scan
         }
         if (this.config.syncTraceCreateContract) {
             await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
