@@ -37,6 +37,12 @@ export class FullBlockService {
         executedTxCount : 0,
         addressTxCount: 0,
         blockCount: 0,
+        //
+        queryFullNodeTime: 0,
+        buildTime: 0,
+        saveBlockTime: 0,
+        saveTxTime: 0,
+        saveAddrTxTime: 0,
     }
     // sync metrics end
     private previousPivotHash:string
@@ -136,6 +142,7 @@ export class FullBlockService {
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()})
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
+        let start = Date.now()
         const [rewardList, hashes, latest_state] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
@@ -172,6 +179,9 @@ export class FullBlockService {
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
+        let now = Date.now();
+        let metrics = this.metrics;
+        metrics.queryFullNodeTime += now - start;  start = now;
         // blockList = blockList.reverse(); // turn to asc order.
         let ok = true;
         let message = "ok";
@@ -238,19 +248,31 @@ export class FullBlockService {
             let pos = 0
             for (const txInfo of block.transactions) {
                 if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
-                    txInfo.fromId = (await makeId(format.hexAddress(txInfo.from), undefined, {dt: blockTime})).id
-                    txInfo.toId = txInfo.to && txInfo.to !== '0x' ?
-                        (await makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime})).id : 0
+                    const [fromId, toId, contractId] = await Promise.all([
+                        makeId(format.hexAddress(txInfo.from), undefined, {dt: blockTime}).then(res=>res.id),
+                        new Promise(r=>{
+                            if (txInfo.to && txInfo.to !== '0x') {
+                                makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime}).then(res=>r(res.id))
+                            } else {
+                                r(0)
+                            }
+                        }),
+                        new Promise(r=>{
+                            if (txInfo.contractCreated && txInfo.contractCreated !== '0x') {
+                                makeId(format.hexAddress(txInfo.contractCreated), undefined, {dt: blockTime}).then(res=>r(res.id))
+                            } else {
+                                r (0)
+                            }
+                        })
+                    ])
+                    txInfo.fromId = fromId
+                    txInfo.toId =  toId
                     txInfo.epoch = minEpochNumber
                     txInfo.blockPosition = block.position
                     txInfo.txPosition = pos++
                     txInfo.createdAt = block.createdAt
                     txInfo.dripValue = txInfo.value
-                    if (txInfo.contractCreated && txInfo.contractCreated !== '0x') {
-                        txInfo.contractCreatedId = (await makeId(format.hexAddress(txInfo.contractCreated), undefined, {dt: blockTime})).id
-                    } else {
-                        txInfo.contractCreatedId = 0
-                    }
+                    txInfo.contractCreatedId = contractId
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
                     txInfo.method = txInfo.data.substr(0, 10)
                     executedTxArr.push(txInfo)
@@ -269,31 +291,34 @@ export class FullBlockService {
             block.executedTxnCount = pos
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
+        now = Date.now();    metrics.buildTime += now - start;  start = now;
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
-                FullBlock.bulkCreate(blockList, {transaction: dbTx}),
-                FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}),
-                AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}),
+                FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
+                FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
+                AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx),
             ])
         }).then(async ()=>{
             this.previousPivotHash = pivotBlock.hash
-            this.metrics.executedTxCount += executedTxArr.length
-            this.metrics.addressTxCount += txByAddressArr.length
-            this.metrics.blockCount += blockList.length
+            metrics.executedTxCount += executedTxArr.length
+            metrics.addressTxCount += txByAddressArr.length
+            metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
             const epochPerStat = 100
             if((minEpochNumber % epochPerStat) === 0) {
                 let now = new Date().getTime();
-                const elapse = now - this.metrics.ms
-                console.info(`\r\u001b[2K${fmtDtUTC(new Date())} insert block ${this.metrics.blockCount
-                } tx ${this.metrics.executedTxCount} address's tx ${this.metrics.addressTxCount}, at epoch ${
+                const elapse = now - metrics.ms
+                console.info(`\r\u001b[2K${fmtDtUTC(new Date())} insert block ${metrics.blockCount
+                } tx ${metrics.executedTxCount} address's tx ${metrics.addressTxCount}, at epoch ${
                     minEpochNumber
-                }, max block time ${blockTime.toISOString()}, cost ${elapse}ms`)
-                this.metrics.ms = now
-                this.metrics.executedTxCount = this.metrics.addressTxCount = this.metrics.blockCount = 0
+                }, max block time ${blockTime.toISOString()}, cost ${elapse}ms (full node ${metrics.queryFullNodeTime
+                    } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime} )   `)
+                metrics.ms = now
+                metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = 0;
+                metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
                 if ((minEpochNumber % 1000) === 0) {
                     const target = await this.cfx.getEpochNumber('latest_state')
                     const remainTime = (target - minEpochNumber) / epochPerStat * elapse
