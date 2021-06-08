@@ -31,11 +31,8 @@ export class TokenQuery {
         let base32 = toBase32(address);
         const result = await this.list(fields, null, currency, null, null, 0, 1, base32);
         const token = result?.list?.shift();
+        const isRegistered = token !== undefined;
         const tokenInfo = await tokenTool.getToken(base32);
-
-        const dbContract: Contract = await Contract.findOne({where: {base32}});
-        const isRegistered = dbContract !== undefined;
-
         let transferType;
         const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(base32).substr(2) } });
         const hex40id = hex40?.id;
