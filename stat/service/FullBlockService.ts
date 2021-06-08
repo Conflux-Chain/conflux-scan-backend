@@ -43,6 +43,8 @@ export class FullBlockService {
         saveBlockTime: 0,
         saveTxTime: 0,
         saveAddrTxTime: 0,
+        diffBlockCntTime: 0,
+        diffTxCntTime: 0,
     }
     // sync metrics end
     private previousPivotHash:string
@@ -143,6 +145,7 @@ export class FullBlockService {
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
+        let veryBegin = start
         const [rewardList, hashes, latest_state] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
@@ -298,10 +301,12 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx),
-                this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
+                this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
             ])
         }).then(async ()=>{
+            let now = Date.now()
+            metrics.ms += now - veryBegin
             this.previousPivotHash = pivotBlock.hash
             metrics.executedTxCount += executedTxArr.length
             metrics.addressTxCount += txByAddressArr.length
@@ -309,19 +314,18 @@ export class FullBlockService {
             // console.log(`====`, blockList[0])
             const epochPerStat = 100
             if((minEpochNumber % epochPerStat) === 0) {
-                let now = new Date().getTime();
-                const elapse = now - metrics.ms
-                console.info(`\r\u001b[2K${fmtDtUTC(new Date())} insert block ${metrics.blockCount
-                } tx ${metrics.executedTxCount} address's tx ${metrics.addressTxCount}, at epoch ${
+                console.info(`\r\u001b[2K${fmtDtUTC(new Date())} block ${metrics.blockCount
+                } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
-                }, max block time ${blockTime.toISOString()}, cost ${elapse}ms (full node ${metrics.queryFullNodeTime
-                    } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime} )   `)
-                metrics.ms = now
-                metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = 0;
+                }, time ${blockTime.toISOString()}, cost ${metrics.ms}ms (full node ${metrics.queryFullNodeTime
+                    } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
+                    } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime})   `)
+                metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
                 metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
+                metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
                 if ((minEpochNumber % 1000) === 0) {
                     const target = await this.cfx.getEpochNumber('latest_state')
-                    const remainTime = (target - minEpochNumber) / epochPerStat * elapse
+                    const remainTime = (target - minEpochNumber) / epochPerStat * (now - veryBegin)
                     const targetTime:Date = new Date(now + remainTime)
                     console.log(`estimate target time ${targetTime.toISOString()}, ${target}, ${remainTime/1000/3600}h`)
                 }
