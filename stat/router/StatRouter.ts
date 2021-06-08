@@ -83,35 +83,22 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
     })
     router.get('/tokens/by-address', async (ctx)=>{
-        // const res = await new Promise((resolve) => {
-        //     // front end use lower case and without type.contract
-        //     const tokenAddr = ctx.request.query.address
-        //     const addr = tokenAddr.toLowerCase()
-        //     superagent.get(`${statApp.config.scanApiUrl}/v1/token/${addr}`)
-        //         .query(ctx.request.querystring)
-        //         .end(async (err, res)=>{
-        //             if (err) {
-        //                 console.log(`scan api fetch token fail:`, err)
-        //                 ctx.body = res.body
-        //                 ctx.status = 600
-        //                 resolve("fail")
-        //                 return
-        //             }
-        //             if (res.status === 200) {
-        //               res.body.holderCount = (await statApp.balanceService.getHolderCount(addr)) || '-'
-        //             }
-        //             ctx.body = res.body
-        //             resolve("ok")
-        //         })
-        // })
         const {fields, currency, address} = ctx.request.query;
-        const result = await statApp.tokenQuery.queryTokenByAddress(address,fields, currency);
+        const result = await statApp.tokenQuery.query(address,fields, currency);
         ctx.body = result || {};
     })
+
+    router.get('/contract/by-address', async (ctx)=>{
+        const {fields, address} = ctx.request.query;
+        console.log(`fields---------${JSON.stringify(fields)},address---------------${address}`)
+        const result = await statApp.contractQuery.query(address,fields);
+        ctx.body = result || {};
+    })
+
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
             const {fields, transferType, currency, orderBy, reverse, skip, limit} = ctx.request.query;
-            const result = await statApp.tokenQuery.listToken(fields, transferType, currency, orderBy, reverse, skip? parseInt(skip): skip,
+            const result = await statApp.tokenQuery.list(fields, transferType, currency, orderBy, reverse, skip? parseInt(skip): skip,
                 limit ? parseInt(limit): limit, null);
             ctx.body = result;
             r('ok')
@@ -130,7 +117,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/tokens/name', async (ctx)=>{
         await new Promise(async r=>{
             const {name, currency, skip, limit} = ctx.request.query;
-            const result = await statApp.tokenQuery.listTokenByName(name, currency, skip? parseInt(skip): skip,
+            const result = await statApp.tokenQuery.search(name, currency, skip? parseInt(skip): skip,
                 limit ? parseInt(limit): limit);
             ctx.body = result;
             r('ok')
@@ -298,7 +285,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // get creat trace
     router.get('/trace/create', async function (ctx) {
         const {contract} = ctx.request.query
-        const createTrace = await statApp.traceCreateQuery.getCreateTrace(contract);
+        const createTrace = await statApp.traceCreateQuery.query(contract);
         ctx.body = {code: 0, data: createTrace};
     });
     // get creat trace

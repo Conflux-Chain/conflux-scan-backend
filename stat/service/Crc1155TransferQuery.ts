@@ -2,6 +2,7 @@
 import {format} from "js-conflux-sdk";
 import {Erc1155Transfer, AddressErc1155Transfer} from "../model/Erc1155Transfer";
 import {TransferQueryBase} from "./TransferQueryBase";
+import {AddressErc20Transfer} from "../model/Erc20Transfer";
 const CONST = require('./common/constant');
 
 export class Crc1155TransferQuery extends TransferQueryBase{
@@ -40,5 +41,9 @@ export class Crc1155TransferQuery extends TransferQueryBase{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC1155;
         return row;
+    }
+
+    public async doQueryAccountAddress(options: any, queryOptions: any): Promise<any> {
+        return AddressErc1155Transfer.findAll(queryOptions);
     }
 }

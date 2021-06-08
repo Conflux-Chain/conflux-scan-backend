@@ -7,7 +7,9 @@ const lodash = require('lodash');
 import {decodeUtf8} from "./tool/StringTool";
 const {Hex40Map} = require("../model/HexMap");
 import {StatApp} from "../StatApp";
+import {toBase32} from "./tool/AddressTool";
 import {ContractInfo} from "../model/ContractInfo";
+import {Contract} from "../model/Contract";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -21,29 +23,32 @@ export class TokenQuery {
         this.app = app;
     }
 
-    public async queryTokenByAddress(address, fields, currency) {
+    public async query(address, fields = undefined, currency = undefined) {
         const {
             app: { tokenTool },
         } = this;
 
-        const result = await this.listToken(fields, null, currency, null, null, 0, 1, address);
+        let base32 = toBase32(address);
+        const result = await this.list(fields, null, currency, null, null, 0, 1, base32);
         const token = result?.list?.shift();
-        const isRegistered = token !== undefined;
-        const tokenInfo = await tokenTool.getToken(address);
+        const tokenInfo = await tokenTool.getToken(base32);
+
+        const dbContract: Contract = await Contract.findOne({where: {base32}});
+        const isRegistered = dbContract !== undefined;
 
         let transferType;
-        const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(address).substr(2) } });
-        const addressId = hex40?.id;
-        if (addressId) {
-            transferType = await TokenQuery.getTransferType(addressId);
+        const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(base32).substr(2) } });
+        const hex40id = hex40?.id;
+        if (hex40id) {
+            transferType = await TokenQuery.getTransferType(hex40id);
         }
-        const totalSupply = await tokenTool.getTokenTotalSupply(address);
+        const totalSupply = await tokenTool.getTokenTotalSupply(base32);
 
-        return lodash.defaults(token, { address, name: tokenInfo.name, symbol: tokenInfo.symbol,
+        return lodash.defaults(token, { base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
             decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply });
     }
 
-    public async listTokenByName(name, currency, skip: number = 0, limit: number = 10) {
+    public async search(name, currency, skip: number = 0, limit: number = 10) {
         if(!name){
             return {total: 0, list: [], contractTotal: 0, contractList: []};
         }
@@ -122,7 +127,7 @@ export class TokenQuery {
         return { total: list.length, list, contractTotal: contractList.length, contractList };
     }
 
-    public async listToken(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, address) {
+    public async list(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, address) {
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
@@ -135,25 +140,31 @@ export class TokenQuery {
             ['transfer', 'transferCount'],
             ['type', 'transferType']
         ];
-        if(fields && fields.indexOf('icon') > 0){
-            attributes.push('icon');
-        }
-        if(fields && fields.indexOf('price') > 0){
-            attributes.push('price');
-            attributes.push('quoteUrl');
-            attributes.push('totalPrice');
-            attributes.push('priceCNY');
-            attributes.push('priceUSD');
-            attributes.push('priceGBP');
-            attributes.push('priceKRW');
-            attributes.push('priceRUB');
-            attributes.push('priceEUR');
-            attributes.push('totalPriceCNY');
-            attributes.push('totalPriceUSD');
-            attributes.push('totalPriceGBP');
-            attributes.push('totalPriceKRW');
-            attributes.push('totalPriceRUB');
-            attributes.push('totalPriceEUR');
+        if(fields && fields.length>0) {
+            if (!lodash.isArray(fields)) {
+                fields = [fields];
+            }
+            const set = new Set(fields);
+            if (set.has('icon')) {
+                attributes.push('icon');
+            }
+            if (set.has('price')) {
+                attributes.push('price');
+                attributes.push('quoteUrl');
+                attributes.push('totalPrice');
+                attributes.push('priceCNY');
+                attributes.push('priceUSD');
+                attributes.push('priceGBP');
+                attributes.push('priceKRW');
+                attributes.push('priceRUB');
+                attributes.push('priceEUR');
+                attributes.push('totalPriceCNY');
+                attributes.push('totalPriceUSD');
+                attributes.push('totalPriceGBP');
+                attributes.push('totalPriceKRW');
+                attributes.push('totalPriceRUB');
+                attributes.push('totalPriceEUR');
+            }
         }
         options.attributes = attributes;
 
@@ -216,6 +227,19 @@ export class TokenQuery {
             }
         }
         return { total: page?.count || 0, list };
+    }
+
+    public async listRegisterAddress() {
+        const options: any = {attributes: ['base32', 'hex40id'], raw: true};
+        const tokenList = await Token.findAll(options)
+        const list = [];
+        if(tokenList){
+            tokenList.forEach( item => {
+                const hex40 = format.hexAddress(item.base32);
+                list.push(hex40);
+            });
+        }
+        return { total: list.length, list };
     }
 
     private static async getTransferType(addressId) {

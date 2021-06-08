@@ -1,133 +1,93 @@
 // @ts-ignore
 import {format} from 'js-conflux-sdk';
-import {Op} from 'sequelize';
-import {SyncBase, SyncData} from "./SyncBase";
-import {makeId} from "../model/HexMap";
 import {StatApp} from "../StatApp";
-import {KEY_TOKEN_SYNC_EPOCH, KV} from "../model/KV";
-import {fmtDtUTC} from "../model/Utils";
+import {Sequelize} from 'sequelize';
 import {Token} from "../model/Token";
+import {makeId} from "../model/HexMap";
+const addressSdk = require('js-conflux-sdk/src/util/address')
 const lodash = require('lodash');
-const zlib = require('zlib');
+const superagent = require('superagent');
+import {KV, KEY_TOKEN_SYNC_BY_SCAN_SWITCH} from "../model/KV";
 
-export class TokenSync extends SyncBase{
-    protected app: StatApp;
+export class TokenSync{
+    private app: StatApp;
+    private sequelize: Sequelize;
+    private config: {scanApiUrl:string};
+    private pageSize: number = 10;
 
     constructor(app: any) {
-        super(app);
         this.app = app;
+        this.sequelize = app.sequelize;
+        this.config = app.config
     }
 
-    //----------------- implementation method from SyncBase ------------------
-    async getDataFromFullNode(epochNumber): Promise<SyncData> {
-        return this.getTokenInfoArray(epochNumber);
-    }
-
-    async delDataFromDb(epochNumber, modelData) {
-        const addressSet = new Set<string>();
-        modelData.forEach(item => {addressSet.add(item.base32)});
-        await Token.destroy({where:
-                {base32: {[Op.in]: Array.from(addressSet)}}
-        });
-        const preEpochNumber = epochNumber > -1 ? epochNumber - 1 : epochNumber;
-        await KV.update({value: preEpochNumber.toString()}, {where: {key: KEY_TOKEN_SYNC_EPOCH}});
-    }
-
-    async saveDataToDb(epochNumber, modelData) {
-        for (const token of modelData) {
-            const tokenDb: Token = await Token.findOne({where: {base32: token.base32}});
-            if(tokenDb){
-                const t = lodash.assign(token, {icon: token.icon, quoteUrl: token.quoteUrl,
-                    marketCapId: token.marketCapId, moonDexSymbol: token.moonDexSymbol,
-                    binanceSymbol: token.binanceSymbol, updatedAt: Date.now()});
-                await tokenDb.update(t, {where: {id: tokenDb.id}});
-                // console.log(`full_token.update------------------t:${JSON.stringify(t)}`)
-            } else{
-                const t = lodash.assign(token, {holder: 0});
-                await Token.add(t);
-                // console.log(`full_token.insert------------------t:${JSON.stringify(t)}`)
-            }
+    private async run() {
+        const rdbSwitch = await KV.getSwitch(KEY_TOKEN_SYNC_BY_SCAN_SWITCH);
+        if (!rdbSwitch) {
+           return;
         }
-        await KV.update({value: epochNumber.toString()}, {where: {key: KEY_TOKEN_SYNC_EPOCH}});
-        if (epochNumber % 100 === 0) {
-            console.log(`${fmtDtUTC(new Date())} insert ${modelData?.length} full_token at epoch:${epochNumber}`)
-        }
-        return Promise.resolve(1);
-    }
 
-    public async queryNextEpochFromDb(){
-        let maxEpochNumber:number = await KV.getNumber(KEY_TOKEN_SYNC_EPOCH);
-        return maxEpochNumber ? (maxEpochNumber + 1) : 0;
-    }
+        let skip = 0;
+        let total;
+        let currPage = 1;
+        do{
+            let response = await this.getFromScan(skip, this.pageSize).catch(err=>{
+                console.log(`error get from scan:`, err)
+            });
+            if(!response) return;
+            total = total ? total : response.total;
+            console.log('sync toke_list currPage======', currPage, ',skip======', skip, ',total======', total );
 
-    //---------------------- business method for token -----------------------
-    private async getTokenInfoArray(epochNumber) {
-        const {
-            app: { cfx, tokenTool },
-        } = this;
-
-        const tokenMap = {};
-        const announceArray = await this.getAnnounceArray(epochNumber);
-        announceArray?.forEach(announce => {
-            const key = Buffer.from(announce.key, 'base64').toString();
-            const params = key.split('/');
-            if(params[0] === 'token') {
-                if(params[1] === 'list'){
-                    const [_, , hex] = params;
-                    tokenMap[hex] = tokenMap[hex] || {};
+            const tokenList = response.list;
+            for (const token of tokenList) {
+                const base32 = addressSdk.simplifyCfxAddress(token.address);
+                const dbToken: Token = await Token.findOne({where: {base32}});
+                if(dbToken){
+                    const t = lodash.assign(token, {type: token.transferType,
+                        transfer: token.transferCount, updatedAt: Date.now()});
+                    await dbToken.update(t, {where: {id: dbToken.id}});
                 } else{
-                    const [_, hex, field] = params;
-                    const token = tokenMap[hex] || {};
-                    token[field] = (field !== 'icon') ? Buffer.from(announce.value, 'base64').toString()
-                        : Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString();
-                    tokenMap[hex] = token;
+                    const hex40 = format.hexAddress(token.address);
+                    const hexBean = await makeId(hex40);
+                    const t = lodash.assign(token, {type: token.transferType,
+                        transfer: token.transferCount, base32, hex40id: hexBean.id, holder: 0});
+                    await Token.add(t);
                 }
             }
-        });
-
-        const tokenArray = [];
-        await Object.keys(tokenMap).map(async hex => {
-            let token = tokenMap[hex];
-            token.hex40id = (await makeId(hex)).id;
-            token.base32 = format.address(hex, StatApp.networkId);
-            const totalSupply = await tokenTool.getTokenTotalSupply(token.base32);
-            const tokenInfo = await tokenTool.getToken(token.base32);
-            token = lodash.defaults(token, { totalSupply, name: tokenInfo.name, symbol: tokenInfo.symbol,
-                decimals: tokenInfo.decimals, granularity: tokenInfo.granularity });
-            // console.log(`full_token.token------------------token:${JSON.stringify(token)}`)
-            tokenArray.push(token);
-        });
-
-        const pivotBlock: any = await cfx.getBlockByEpochNumber(epochNumber, false);
-        return {
-            pivotHash: pivotBlock.hash.substr(2),
-            parentHash: pivotBlock.parentHash.substr(2),
-            modelData: tokenArray,
-        };
+            skip = (++currPage - 1) * this.pageSize ;
+        } while (skip <= total);
     }
 
-    private async getAnnounceArray(epochNumber) {
-        const {
-            app: { tokenTool },
-        } = this;
-
-        const eventLogArray = await this.getLogs(epochNumber);
-        return eventLogArray.map((eventLog) => tokenTool.decodeAnnounce(eventLog)).filter(Boolean);
+    private async getFromScan(skip: number = 0, limit: number = 10): Promise<{ total: number, list: any }>{
+        const response = await superagent.get(`${this.config.scanApiUrl}/v1/token`)
+            .query(`fields=transferCount%2Cicon%2Cprice%2CtotalPrice%2CquoteUrl%2CtransactionCount%2Cerc20TransferCount
+            %2CmarketCapId%2CmoonDexSymbol%2CbinanceSymbol
+            &skip=${skip}&limit=${limit}`)
+            .timeout(60 * 1000);
+        if (response.status !== 200) {
+            console.log('sync toke_list fail:', JSON.stringify(response));
+            return;
+        }
+        return response.body;
     }
 
-    private async getLogs(epochNumber) {
-        const {
-            app: { cfx },
-        } = this;
-
-        const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber});
-        return eventLogArray.map((v) => TokenSync.parseEventLog(v));
-    }
-
-    private static parseEventLog(eventLog) {
-        eventLog.epochNumber = Number(eventLog.epochNumber);
-        eventLog.address = format.hexAddress(eventLog.address);
-        eventLog.transactionLogIndex = Number(eventLog.transactionLogIndex);
-        return eventLog;
+    // 1hour interval
+    public async schedule() {
+        const that = this;
+        async function repeat() {
+            await that.run().catch(err=>{
+                console.log(`sync toke_list fail: `, err);
+            });
+            const delay = 60;// in minutes
+            setTimeout(repeat, delay * 60 *  1000);
+            console.log(`sync toke_list service in delay ${delay}min.`);
+        }
+        try {
+            repeat().then().catch(err => {
+                console.log(`schedule TokenSync fail:`, err)
+            });
+        } catch (err) {
+            console.log(`catch error token sync:`, err)
+        }
     }
 }

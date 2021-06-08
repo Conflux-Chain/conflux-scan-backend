@@ -5,6 +5,7 @@ import {Balance} from "../../model/Balance";
 import {Token, TOKEN_ERC_1155} from "../../model/Token";
 import {Erc20WatchList} from "../../config/StatConfig";
 import {Hex40Map, makeId} from "../../model/HexMap";
+import {Contract} from "../../model/Contract";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
@@ -117,6 +118,7 @@ export class BalanceService {
         const map = new Map()
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
         const is1155 = (token.type || '').includes('1155')
+
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
             const address = addr ? format.address(addr, this.networkId): holder.addressId
@@ -130,7 +132,7 @@ export class BalanceService {
                 },
                 hexId: holder.addressId,
                 // addr,
-            }
+            };
         })
         return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
     }

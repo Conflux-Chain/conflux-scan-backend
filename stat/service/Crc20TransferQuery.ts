@@ -40,4 +40,8 @@ export class Crc20TransferQuery extends TransferQueryBase{
         row['transferType'] = CONST.TRANSFER_TYPE.ERC20;
         return row;
     }
+
+    public async doQueryAccountAddress(options: any, queryOptions: any): Promise<any> {
+        return AddressErc20Transfer.findAll(queryOptions);
+    }
 }
