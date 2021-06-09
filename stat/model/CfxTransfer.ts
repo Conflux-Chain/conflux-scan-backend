@@ -1,5 +1,5 @@
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
-import {makeId} from "./HexMap";
+import {batchBuildId, Hex64Map, makeId} from "./HexMap";
 import {TransactionDB} from "./Transaction";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
@@ -314,13 +314,13 @@ export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
 
 export async function buildCfxTransfer(obj, date) {
     const start = Date.now()
-    const [fromId, toId, hashID] = await Promise.all([
+    const [fromId, toId] = await Promise.all([
         makeId(obj.from, undefined, {dt:date}).then(res=>{metrics.makeIdMs1 += Date.now() - start; return res;}),
         makeId(obj.to, undefined, {dt:date}).then(res=>{metrics.makeIdMs2 += Date.now() - start; return res;}),
-        makeId(obj.transactionHash).then(res=>{metrics.makeIdMs3 += Date.now() - start; return res;}),
+        //makeId(obj.transactionHash).then(res=>{metrics.makeIdMs3 += Date.now() - start; return res;}),
     ])
     let cfxTransfer:ICfxTransfer = {
-        txHashId: hashID.id,
+        txHashId: obj.txHashId, //hashID.id,
         fromId: fromId.id,
         toId: toId.id,
         value: obj.value || 0,
@@ -358,6 +358,8 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     const veryStart = Date.now()
     let templates = []
     let date = new Date(Number(seconds)*1000)
+    await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map)
+        .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart})
     for (const obj of array) {
         templates.push(await buildCfxTransfer(obj, date))
     }

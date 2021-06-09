@@ -111,6 +111,25 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     // console.info(`created ${created}`)
     return bean;
 }
+export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map) {
+    const hexSet = new Set<string>()
+    arr.forEach(bean=>{
+        hexSet.add(bean[hexKey])
+    })
+    const templates = []
+    hexSet.forEach(hex=>{
+        templates.push({hex: hex.substr(2)})
+    })
+    return Hex40Map.bulkCreate(templates, {
+        updateOnDuplicate:['hex']
+    }).then(hexArr=>{
+        const map = new Map<string, number>()
+        hexArr.forEach(bean=>map.set(bean.hex, bean.id))
+        arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
+        hexSet.clear()
+        return map;
+    })
+}
 export const T_ADDRESS = 'address'
 export function hexMapInit(sequelize) {
     Hex64Map.init(
