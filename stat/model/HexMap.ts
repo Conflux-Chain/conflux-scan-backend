@@ -120,7 +120,7 @@ export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model
     hexSet.forEach(hex=>{
         templates.push({hex: hex.substr(2)})
     })
-    return Hex40Map.bulkCreate(templates, {
+    return model.bulkCreate(templates, {
         updateOnDuplicate:['hex']
     }).then(hexArr=>{
         const map = new Map<string, number>()
