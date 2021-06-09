@@ -1,5 +1,5 @@
 import {QueryTypes, DataTypes, Model, Op, Sequelize} from "sequelize";
-import {makeId} from "./HexMap";
+import {batchBuildId, Hex64Map, makeId} from "./HexMap";
 import {Erc721Transfer} from "./Erc721Transfer";
 import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
@@ -166,17 +166,17 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
 }
 
 export async function buildErc20Transfer(obj, date) {
-    const [fromId, toId, contractId, hashID] = await Promise.all([
+    const [fromId, toId, contractId] = await Promise.all([
         makeId(obj.from, undefined, {dt:date}),
         makeId(obj.to, undefined, {dt:date}),
         makeId(obj.address, undefined, {dt:date}),
-        makeId(obj.transactionHash)
+        // makeId(obj.transactionHash)
     ])
     if (obj.tokenId !== null && obj.tokenId !== undefined && obj.value === undefined) {
         obj.value = 1
     }
     let erc20Transfer:IErc20Transfer = {
-        txHashId: hashID.id,
+        txHashId: obj.txHashId, //hashID.id,
         contractId: contractId.id,
         fromId: fromId.id,
         toId: toId.id,
@@ -193,6 +193,7 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
     }
     let templates = []
     let date = new Date(Number(seconds)*1000)
+    await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map)
     for (const obj of array) {
         templates.push(await buildErc20Transfer(obj, date))
     }
