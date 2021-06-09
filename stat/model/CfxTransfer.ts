@@ -131,7 +131,7 @@ export class CfxTransferRowMark extends Model<ICfxTransferRowMark> implements IC
 }
 
 export const CFX_TRANSFER_PAGE_MARK_SIZE = 10_000
-export async function markCfxTransferPosition(count:number=1, maxEpoch:number=Infinity) {
+export async function markCfxTransferPosition(count:number=1, maxEpoch:number=Infinity, showLog = false) {
     let maxOne:ICfxTransferRowMark = await CfxTransferRowMark.findOne({order:[["id","desc"]], limit: 1})
     if (maxOne === null) {
         maxOne = {id:0, epoch: -1, dataId: -1}
@@ -149,7 +149,7 @@ export async function markCfxTransferPosition(count:number=1, maxEpoch:number=In
             } dataId ${maxOne.dataId}`)
             return
         } else if (higherAnchor.epoch > maxEpoch) {
-            console.log(`cfx transfer: reach max epoch, reOrg may occur, stop marking. ${higherAnchor} > ${maxEpoch}`)
+            showLog && console.log(`cfx transfer: reach max epoch, reOrg may occur, stop marking. ${higherAnchor.epoch} > ${maxEpoch}`)
             return ;
         }
         const saved = await CfxTransferRowMark.create({
@@ -157,9 +157,9 @@ export async function markCfxTransferPosition(count:number=1, maxEpoch:number=In
             epoch: higherAnchor.epoch, dataId: higherAnchor.id
         });
         maxOne = saved
-        process.stdout.write(`\r\u001b[2K markCfxTransferPosition ${count} ${JSON.stringify(saved)}`)
+        showLog && process.stdout.write(`\r\u001b[2K markCfxTransferPosition ${count} ${JSON.stringify(saved)}`)
     } while (--count>0)
-    console.log(`\n markCfxTransferPosition done.`)
+    showLog && console.log(`\n markCfxTransferPosition done.`)
 }
 
 export class CfxTransferPage {
@@ -331,6 +331,8 @@ export async function buildCfxTransfer(obj, date) {
 const metrics = {
     count: 0,
     sumMs: 0,
+    transferCnt:0,
+    partitionCnt: 0,
     buildMs1: 0,
     buildMs2: 0,
     saveFullMs: 0,
@@ -340,6 +342,7 @@ const metrics = {
     reset: function () {
         metrics.count = metrics.sumMs = metrics.buildMs1 = metrics.buildMs2 = 0
         metrics.savePartitionMs = metrics.saveFullMs = metrics.upCntMs = metrics.markMs = 0
+        metrics.transferCnt = metrics.partitionCnt = 0
     }
 }
 export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
@@ -352,9 +355,11 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     for (const obj of array) {
         templates.push(await buildCfxTransfer(obj, date))
     }
+    metrics.transferCnt += templates.length
     let now = Date.now(); metrics.buildMs1 = now - veryStart; let start = now;
     // sync add address-cfx-transfer
     const addressCfxTransferArray = buildCfxTransferList2address(templates);
+    metrics.partitionCnt += addressCfxTransferArray.length
     now = Date.now(); metrics.buildMs2 = now - start; start = now;
     return CfxTransfer.sequelize.transaction(async (dbTx) => {
         const [_, rows] = await Promise.all([

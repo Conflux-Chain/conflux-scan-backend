@@ -321,7 +321,7 @@ export async function markTxPosition(count:number=1, maxEpoch:number = Infinity)
             } block position ${maxOne.blockPosition} tx pos ${maxOne.txPosition}`)
             return
         } else if (higherAnchor.epoch > maxEpoch) {
-            console.log(`reach max epoch, reOrg may occur, stop marking. ${higherAnchor} > ${maxEpoch}`)
+            console.log(`mark tx: reach max epoch, reOrg may occur, stop marking. ${higherAnchor.epoch} > ${maxEpoch}`)
             return ;
         }
         const saved = await TxnRowMark.create({
@@ -498,7 +498,7 @@ export async function markBlockPosition(count:number=1, maxEpoch:number=Infinity
             } position ${maxOne.position}`)
             return
         } else if (higherAnchor.epoch > maxEpoch) {
-            console.log(`reach max epoch, reOrg may occur, stop marking. ${higherAnchor} > ${maxEpoch}`)
+            console.log(`mark bock: reach max epoch, reOrg may occur, stop marking. ${higherAnchor.epoch} > ${maxEpoch}`)
             return ;
         }
         const saved = await BlockRowMark.create({
