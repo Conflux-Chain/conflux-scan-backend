@@ -313,10 +313,11 @@ export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
 }
 
 export async function buildCfxTransfer(obj, date) {
+    const start = Date.now()
     const [fromId, toId, hashID] = await Promise.all([
-        makeId(obj.from, undefined, {dt:date}),
-        makeId(obj.to, undefined, {dt:date}),
-        makeId(obj.transactionHash),
+        makeId(obj.from, undefined, {dt:date}).then(res=>{metrics.makeIdMs1 += Date.now() - start; return res;}),
+        makeId(obj.to, undefined, {dt:date}).then(res=>{metrics.makeIdMs2 += Date.now() - start; return res;}),
+        makeId(obj.transactionHash).then(res=>{metrics.makeIdMs3 += Date.now() - start; return res;}),
     ])
     let cfxTransfer:ICfxTransfer = {
         txHashId: hashID.id,
@@ -340,10 +341,14 @@ const metrics = {
     upCntMs: 0,
     markMs: 0,
     commitMs: 0, dbMs: 0,
+    makeIdMs1: 0,
+    makeIdMs2: 0,
+    makeIdMs3: 0,
     reset: function () {
         metrics.count = metrics.sumMs = metrics.buildMs1 = metrics.buildMs2 = 0
         metrics.savePartitionMs = metrics.saveFullMs = metrics.upCntMs = metrics.markMs = 0
         metrics.transferCnt = metrics.partitionCnt = metrics.commitMs = metrics.dbMs = 0
+        metrics.makeIdMs1 = metrics.makeIdMs2 = metrics.makeIdMs3 = 0
     }
 }
 export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
