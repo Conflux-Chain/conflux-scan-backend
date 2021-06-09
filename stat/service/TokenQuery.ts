@@ -9,7 +9,6 @@ const {Hex40Map} = require("../model/HexMap");
 import {StatApp} from "../StatApp";
 import {toBase32} from "./tool/AddressTool";
 import {ContractInfo} from "../model/ContractInfo";
-import {Contract} from "../model/Contract";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -34,14 +33,19 @@ export class TokenQuery {
         const isRegistered = token !== undefined;
         const tokenInfo = await tokenTool.getToken(base32);
         let transferType;
-        const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(base32).substr(2) } });
-        const hex40id = hex40?.id;
-        if (hex40id) {
-            transferType = await TokenQuery.getTransferType(hex40id);
+        let transferCount;
+        if(isRegistered === false){
+            const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(base32).substr(2) } });
+            const hex40id = hex40?.id;
+            if (hex40id) {
+                const transferInfo = await TokenQuery.getTransferType(hex40id);
+                transferType = transferInfo?.transferType;
+                transferCount = transferInfo?.transferCount || 0;
+            }
         }
         const totalSupply = await tokenTool.getTokenTotalSupply(base32);
         return lodash.defaults(token, { address, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
-            decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply });
+            decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply , transferCount});
     }
 
     public async search(name, currency, skip: number = 0, limit: number = 10) {
@@ -240,14 +244,14 @@ export class TokenQuery {
 
     private static async getTransferType(addressId) {
         const [erc20Record, erc721Record, erc777Record, erc1155Record] = await Promise.all([
-            Erc20Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
-            Erc721Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
-            Erc777Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
-            Erc1155Transfer.findOne({ attributes: ['contractId'], where: { contractId: addressId }, limit: 1 }),
+            Erc20Transfer.count({ where: { contractId: addressId }}),
+            Erc721Transfer.count({ where: { contractId: addressId }}),
+            Erc777Transfer.count({ where: { contractId: addressId }}),
+            Erc1155Transfer.count({ where: { contractId: addressId }}),
         ]);
-        if(erc20Record) return  CONST.TRANSFER_TYPE.ERC20;
-        if(erc721Record) return CONST.TRANSFER_TYPE.ERC721;
-        if(erc777Record) return CONST.TRANSFER_TYPE.ERC777;
-        if(erc1155Record) return CONST.TRANSFER_TYPE.ERC1155;
+        if(erc20Record) return  {transferType: CONST.TRANSFER_TYPE.ERC20, transferCount: erc20Record};
+        if(erc721Record) return {transferType: CONST.TRANSFER_TYPE.ERC721, transferCount: erc721Record};
+        if(erc777Record) return {transferType: CONST.TRANSFER_TYPE.ERC777, transferCount: erc777Record};
+        if(erc1155Record) return {transferType: CONST.TRANSFER_TYPE.ERC1155, transferCount: erc1155Record};
     }
 }
