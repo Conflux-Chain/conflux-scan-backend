@@ -40,8 +40,7 @@ export class TokenQuery {
             transferType = await TokenQuery.getTransferType(hex40id);
         }
         const totalSupply = await tokenTool.getTokenTotalSupply(base32);
-
-        return lodash.defaults(token, { base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
+        return lodash.defaults(token, { address, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
             decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply });
     }
 
