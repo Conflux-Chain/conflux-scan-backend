@@ -339,10 +339,11 @@ const metrics = {
     savePartitionMs: 0,
     upCntMs: 0,
     markMs: 0,
+    commitMs: 0, dbMs: 0,
     reset: function () {
         metrics.count = metrics.sumMs = metrics.buildMs1 = metrics.buildMs2 = 0
         metrics.savePartitionMs = metrics.saveFullMs = metrics.upCntMs = metrics.markMs = 0
-        metrics.transferCnt = metrics.partitionCnt = 0
+        metrics.transferCnt = metrics.partitionCnt = metrics.commitMs = metrics.dbMs = 0
     }
 }
 export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
@@ -361,6 +362,7 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     const addressCfxTransferArray = buildCfxTransferList2address(templates);
     metrics.partitionCnt += addressCfxTransferArray.length
     now = Date.now(); metrics.buildMs2 = now - start; start = now;
+    const dbStart = now
     return CfxTransfer.sequelize.transaction(async (dbTx) => {
         const [_, rows] = await Promise.all([
             CfxTransfer.bulkCreate(templates, {transaction: dbTx}).then(res=>metrics.saveFullMs+=Date.now()-start),
@@ -373,12 +375,16 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
         start = Date.now()
         const epoch = templates[0].epoch;
         await doMark(rows, epoch, logger).then(()=>metrics.markMs += Date.now()-start)
+        start = Date.now()
         // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
         //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
     }).then(()=>{
+        now = Date.now()
         metrics.count += 1
-        metrics.sumMs += Date.now() - veryStart
-        if (metrics.count === 100) {
+        metrics.sumMs += now - veryStart
+        metrics.commitMs += now - start
+        metrics.dbMs += now - dbStart
+        if (metrics.count === 1) {
             console.log(`save cfx transfer, ${JSON.stringify(metrics)}`)
             metrics.reset()
         }
