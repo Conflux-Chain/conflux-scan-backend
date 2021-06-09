@@ -328,30 +328,55 @@ export async function buildCfxTransfer(obj, date) {
     };
     return cfxTransfer
 }
-
+const metrics = {
+    count: 0,
+    sumMs: 0,
+    buildMs1: 0,
+    buildMs2: 0,
+    saveFullMs: 0,
+    savePartitionMs: 0,
+    upCntMs: 0,
+    markMs: 0,
+    reset: function () {
+        metrics.count = metrics.sumMs = metrics.buildMs1 = metrics.buildMs2 = 0
+        metrics.savePartitionMs = metrics.saveFullMs = metrics.upCntMs = metrics.markMs = 0
+    }
+}
 export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     if(!array?.length){
         return Promise.resolve([]);
     }
-
+    const veryStart = Date.now()
     let templates = []
     let date = new Date(Number(seconds)*1000)
     for (const obj of array) {
         templates.push(await buildCfxTransfer(obj, date))
     }
-
+    let now = Date.now(); metrics.buildMs1 = now - veryStart; let start = now;
     // sync add address-cfx-transfer
     const addressCfxTransferArray = buildCfxTransferList2address(templates);
+    now = Date.now(); metrics.buildMs2 = now - start; start = now;
     return CfxTransfer.sequelize.transaction(async (dbTx) => {
         const [_, rows] = await Promise.all([
-            CfxTransfer.bulkCreate(templates, {transaction: dbTx}),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger),
-            AddressCfxTransfer.bulkCreate(addressCfxTransferArray, {transaction: dbTx}),
+            CfxTransfer.bulkCreate(templates, {transaction: dbTx}).then(res=>metrics.saveFullMs+=Date.now()-start),
+            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger).then(res=>{
+                metrics.upCntMs += Date.now() - start
+                return res
+            }),
+            AddressCfxTransfer.bulkCreate(addressCfxTransferArray, {transaction: dbTx}).then(()=>metrics.savePartitionMs += Date.now()-start),
         ]);
+        start = Date.now()
         const epoch = templates[0].epoch;
-        await doMark(rows, epoch, logger)
+        await doMark(rows, epoch, logger).then(()=>metrics.markMs += Date.now()-start)
         // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
         //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
+    }).then(()=>{
+        metrics.count += 1
+        metrics.sumMs += Date.now() - veryStart
+        if (metrics.count === 100) {
+            console.log(`save cfx transfer, ${JSON.stringify(metrics)}`)
+            metrics.reset()
+        }
     });
 
     // async add address-cfx-transfer
