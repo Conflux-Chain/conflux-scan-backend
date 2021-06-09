@@ -357,7 +357,7 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
         templates.push(await buildCfxTransfer(obj, date))
     }
     metrics.transferCnt += templates.length
-    let now = Date.now(); metrics.buildMs1 = now - veryStart; let start = now;
+    let now = Date.now(); metrics.buildMs1 += now - veryStart; let start = now;
     // sync add address-cfx-transfer
     const addressCfxTransferArray = buildCfxTransferList2address(templates);
     metrics.partitionCnt += addressCfxTransferArray.length
