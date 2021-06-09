@@ -384,7 +384,7 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
         metrics.sumMs += now - veryStart
         metrics.commitMs += now - start
         metrics.dbMs += now - dbStart
-        if (metrics.count === 1) {
+        if (metrics.count === 100) {
             console.log(`save cfx transfer, ${JSON.stringify(metrics)}`)
             metrics.reset()
         }
