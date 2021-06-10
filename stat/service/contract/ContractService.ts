@@ -35,6 +35,6 @@ export class ContractService{
 
     public getName(addr: string) {
         const info = this.map.get(addr)
-        return info ? info.name : null
+        return info ? info : null
     }
 }

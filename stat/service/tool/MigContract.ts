@@ -1,12 +1,17 @@
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
-import {makeId} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
+import {ContractInfo} from "../../model/ContractInfo";
 import {Contract} from "../../model/Contract";
+import {makeId} from "../../model/HexMap";
 // @ts-ignore
-const { address ,format} = require('js-conflux-sdk');
-const superagent = require("superagent")
+import {Conflux, format} from "js-conflux-sdk";
+import {TokenTool} from "./TokenTool";
 const lodash = require('lodash');
+const zlib = require('zlib');
+
+let cfx;
+let tokenTool;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -14,6 +19,9 @@ async function init() {
     let seq = createDB(config.database)
     await seq.sync({})
     await initModel(seq)
+
+    cfx = new Conflux({...config.conflux})
+    tokenTool = new TokenTool(cfx);
 }
 
 async function run() {
@@ -22,77 +30,127 @@ async function run() {
 }
 
 async function sync() {
-    let skip = 0;
-    let total;
-    let currPage = 1;
-    do{
-        let response = await list(skip, pageSize).catch(err=>{
-            console.log(`error get contract_list from scan:`, err)
-        });
-        if(!response) return;
-        total = total ? total : response.total;
-        console.log('sync contract_list currPage------', currPage, ',skip------', skip, ',total------', total );
-
-        const contractList = response.list;
-        for (const c of contractList) {
-            let base32 =  c.address;
-            if(base32.startsWith('CFX')){
-                base32 = address.simplifyCfxAddress(base32);
-            }
-            const contract: any = await query(base32);
-            const dbContract: Contract = await Contract.findOne({where: {base32}});
-            if(dbContract){
-                const t = lodash.assign(dbContract, {name: contract.name, website: contract.website,
-                    abi: contract.abi,
-                    sourceCode: contract.sourceCode,
-                    icon: contract.icon, updatedAt: Date.now()});
-                console.log(`sync contract_list update-----------------------${JSON.stringify(t)}` );
-                if(save){
-                    await dbContract.update(t, {where: {id: dbContract.id}});
-                }
+    const epochList = await ContractInfo.findAll({attributes: ['epoch'], order: [['epoch', 'ASC']], raw: true});
+    let epochArray = [];
+    epochList.forEach(item => {
+        epochArray.push(item.epoch);
+    })
+    console.log(`mig-contract--------------epochArray:${JSON.stringify(epochArray)}`);
+    if (args.length >= 2) {
+        epochArray = [];
+        // @ts-ignore
+        epochArray.push(Number(args[1]));
+        console.log(`mig-contract--------------changed epochArray:${epochArray}`);
+    }
+    for(const epochNumber of epochArray){
+        const {contractArray} = await getAnnounceInfo(epochNumber);
+        for (const contract of contractArray) {
+            const contractDb: Contract = await Contract.findOne({where: {base32: contract.base32},raw: true});
+            if(contractDb){
+                const updateInfo = lodash.defaults({}, {epoch: epochNumber, name: contract.name, website: contract.website,
+                    abi: contract.abi, sourceCode: contract.sourceCode, icon: contract.icon, updatedAt: new Date()});
+                const c = lodash.assign(contractDb, updateInfo);
+                await Contract.update(c, {where: {id: contractDb.id}});
+                console.log(`mig-contract--update------------epoch:${epochNumber}, name:${c.name}`);
             } else{
-                const hex40 = format.hexAddress(contract.address);
-                const hex40id = (await makeId(hex40)).id;
-                const t = lodash.assign({base32, hex40id}, {epoch: contract.epochNumber, name: contract.name, website: contract.website,
-                    abi: contract.abi,
-                    sourceCode: contract.sourceCode,
-                    icon: contract.icon});
-                console.log(`sync contract_list insert-----------------------${JSON.stringify(t)}` );
-                if(save){
-                    await Contract.add(t);
-                }
+                const c = lodash.assign(contract, {epoch: epochNumber});
+                await Contract.add(c);
+                console.log(`mig-contract--add------------epoch:${epochNumber}, name:${c.name}`);
             }
         }
-        skip = (++currPage - 1) * pageSize ;
-    } while (skip <= total);
-}
-
-async function list(skip: number = 0, limit: number = 10): Promise<{ total: number, list: any }>{
-    const response = await superagent.get(`${scanApiUrl}/v1/contract`)
-        .query(`skip=${skip}&limit=${limit}`)
-        .timeout(3 * 60 * 1000);
-    if (response.status !== 200) {
-        console.log('sync contract_list fail:', JSON.stringify(response));
-        return;
     }
-return response.body;
+
 }
 
-async function query(address): Promise<any>{
-    const response = await superagent.get(`${scanApiUrl}/v1/contract/${address}`)
-        .query(`fields=name&fields=website&fields=abi&fields=sourceCode&fields=icon`)
-        .timeout(3 * 60 * 1000);
-    if (response.status !== 200) {
-        console.log('sync contract_detail fail:', JSON.stringify(response));
-        return;
-    }
-    return response.body;
-}
-
-let scanApiUrl = 'https://www.confluxscan.io'
-const pageSize = 100;
+//              0       1
+// node this netId epochNumber
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0])
-let save = Boolean(args[1])
-// usage: node this [contract|abi] networkId [save]
 run().then();
+
+//-----------------------------------------------------------------
+async function getAnnounceInfo(epochNumber) {
+    let tokenMap = {};
+    let contractMap = {};
+    const announceArray = await getAnnounceArray(epochNumber);
+    for(const announce of announceArray) {
+        const key = Buffer.from(announce.key, 'base64').toString();
+        const params = key.split('/');
+        //console.log(`announcement------epoch:${epochNumber}------${params}`);
+        if(params[0] === 'token') {
+            parseAnnounce(params, announce, tokenMap);
+        }
+        if(params[0] === 'contract') {
+            parseAnnounce(params, announce, contractMap);
+        }
+    }
+    //console.log(`announcement------epoch:${epochNumber}------contractMap${JSON.stringify(contractMap)}`);
+
+    const tokenArray = [];
+    await Object.keys(tokenMap).map(async hex => {
+        let token = tokenMap[hex];
+        token.hex40id = (await makeId(hex)).id;
+        token.base32 = format.address(hex, StatApp.networkId);
+        const totalSupply = await tokenTool.getTokenTotalSupply(token.base32);
+        const tokenInfo = await tokenTool.getToken(token.base32);
+        token = lodash.defaults(token, { totalSupply, name: tokenInfo.name, symbol: tokenInfo.symbol,
+            decimals: tokenInfo.decimals, granularity: tokenInfo.granularity });
+        tokenArray.push(token);
+    });
+    const contractArray = [];
+    const contractHexArray = Object.keys(contractMap);
+    for(const hex of contractHexArray){
+        let contract = contractMap[hex];
+        contract.hex40id = (await makeId(hex)).id;
+        contract.base32 = format.address(hex, StatApp.networkId);
+        contractArray.push(contract);
+    }
+    // console.log(`announcement------epoch:${epochNumber}------contractArray:${contractArray}`);
+    return {tokenArray, contractArray};
+}
+
+function parseAnnounce(params, announce, map){
+    if(params[1] === 'list'){
+        const [ , , hex] = params;
+        map[hex] = map[hex] || {};
+    } else{
+        const [ , hex, field] = params;
+        const item = map[hex] || {};
+        item[field] = (field === 'abi' || field === 'sourceCode' || field === 'icon')
+            ? Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString()
+            : Buffer.from(announce.value, 'base64').toString();
+
+        if (field === 'name' && item[field].length >= 256) {
+            item[field] = item[field].substr(0, 256);
+        }
+        //console.log(`announcement------field:${field}------value:${item[field]}`);
+        map[hex] = item;
+    }
+    return map;
+}
+
+async function getAnnounceArray(epochNumber) {
+    const eventLogArray = await getLogs(epochNumber);
+    return eventLogArray.map((eventLog) => tokenTool.decodeAnnounce(eventLog)).filter(Boolean);
+}
+
+async function getLogs(epochNumber) {
+    const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber}).catch(async err=>{
+        const msg = `${err}`
+        if (msg.includes('expected a numbers with less than largest epoch number.')) {
+            const latest = await cfx.getEpochNumber('latest_state');
+            console.log(`epoch-sync.logs epoch:${epochNumber} latestState:${latest} not executed`)
+        } else {
+            console.log(`epoch-sync.logs epoch:${epochNumber} error:${msg}`)
+        }
+        return [];
+    });
+    return eventLogArray.map((v) => parseEventLog(v));
+}
+
+function parseEventLog(eventLog) {
+    eventLog.epochNumber = Number(eventLog.epochNumber);
+    eventLog.address = format.hexAddress(eventLog.address);
+    eventLog.transactionLogIndex = Number(eventLog.transactionLogIndex);
+    return eventLog;
+}

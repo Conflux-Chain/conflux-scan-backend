@@ -69,8 +69,8 @@ export class Token extends Model<IToken> implements IToken{
     static register(seq:Sequelize) {
         Token.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
-            symbol: {type: DataTypes.CHAR(64), allowNull: false, },
-            name: {type: DataTypes.CHAR(64), allowNull: false, defaultValue: ''},
+            symbol: {type: DataTypes.CHAR(64), allowNull: true },
+            name: {type: DataTypes.CHAR(64), allowNull: true},
             holder: {type: DataTypes.BIGINT, allowNull: false, },
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             hex40id: {type: DataTypes.BIGINT, allowNull: false, },

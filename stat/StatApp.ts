@@ -19,7 +19,6 @@ import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenSync} from "./service/TokenSync";
 import {TokenQuery} from "./service/TokenQuery";
-import {AnnounceSync} from "./service/AnnounceSync";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import { Monitor } from "./monitor/Monitor";
@@ -31,7 +30,6 @@ import {ReportService} from "./service/ReportService";
 import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {QuoteSync} from "./service/QuoteSync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
-import {MinerBlockSync} from "./service/MinerBlockSync";
 import {ContractQuery} from "./service/ContractQuery";
 
 export class StatApp{
@@ -52,7 +50,6 @@ export class StatApp{
     public cfxHolderQuery: CfxHolderQuery;
     public tokenSync: TokenSync;
     public tokenQuery: TokenQuery;
-    public announceSync: AnnounceSync;
     public traceCreateSync: BlockTraceCreateSync
     public traceCreateQuery: BlockTraceCreateQuery;
     public epochSync: EpochSync
@@ -61,7 +58,6 @@ export class StatApp{
     public siteVerify: ReportService;
     public quoteSync: QuoteSync;
     public homeDashboardService: HomeDashboardService;
-    public minerBlockSync: MinerBlockSync;
     public contractQuery: ContractQuery;
     public tokenTool: TokenTool;
     public static networkId = 1029
@@ -93,7 +89,7 @@ export class StatApp{
         } else {
             console.log(`skip sync db schema.`)
         }
-        this.rankService = new RankService(this.sequelize)
+        this.rankService = new RankService(this)
         this.txnSync = new TxnSync(this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         this.traceSync = new BlockTraceSync(this.cfx)
@@ -107,7 +103,7 @@ export class StatApp{
             watcher.schedule(erc20.watchDelay, erc20.tokenType)
         })
         // @ts-ignore
-        this.balanceService = new BalanceService(this.config.erc20watchList, StatApp.networkId)
+        this.balanceService = new BalanceService(this, this.config.erc20watchList, StatApp.networkId)
         this.balanceService.schedule(3000)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
         //
@@ -120,7 +116,6 @@ export class StatApp{
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenSync = new TokenSync(this);
         this.tokenQuery = new TokenQuery(this);
-        this.announceSync = new AnnounceSync(this);
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
         this.epochSync = new EpochSync(this);
@@ -129,7 +124,6 @@ export class StatApp{
         this.siteVerify = new ReportService(this);
         this.quoteSync = new QuoteSync(this);
         this.homeDashboardService = new HomeDashboardService(this);
-        this.minerBlockSync = new MinerBlockSync(this);
         this.contractQuery = new ContractQuery(this);
         //
         if (this.config.syncBlock) {
@@ -150,9 +144,6 @@ export class StatApp{
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
         }
-        if (this.config.syncAnnounce) {
-            await this.announceSync.run(this.config.syncAnnounceEpochNumber); // announce from full node
-        }
         if (this.config.syncToken) {
             await this.tokenSync.schedule(); // token from scan
         }
@@ -165,9 +156,6 @@ export class StatApp{
                 monitor.checkFullBlockSyncRunning().then()
             })
         }
-        if (this.config.syncEpoch) {
-            await this.epochSync.run(this.config.syncEpochNumber);
-        }
         if (this.config.syncContractCreateCountDaily) {
             await this.contractCreateSync.schedule(this.config.syncContractCreateCountHistory); // dailyContractCreate
         }
@@ -177,8 +165,8 @@ export class StatApp{
         if (this.config.syncHomeDashboardData) {
             await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
         }
-        if (this.config.syncMinerBlock) {
-            await this.minerBlockSync.run(this.config.syncMinerBlockEpochNumber);
+        if (this.config.syncEpoch) {
+            await this.epochSync.run(this.config.syncEpochNumber);
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

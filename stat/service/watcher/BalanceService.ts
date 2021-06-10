@@ -13,14 +13,17 @@ import {Op} from "sequelize";
 import {ContractService} from "../contract/ContractService";
 import {base32toVerbose} from "../tool/AddressTool";
 const BigFixed = require('bigfixed');
+import {StatApp} from "../../StatApp";
 
 export class BalanceService {
+    private app: StatApp;
     private tokens: Erc20WatchList[];
     private readonly networkId: number;
     private tokenMap:Map<string, Erc20WatchList>
 
-    constructor(erc20watchList: Erc20WatchList[], networkId:number = 1029) {
-        this.tokens = erc20watchList
+    constructor(app, erc20watchList: Erc20WatchList[], networkId:number = 1029) {
+        this.app = app;
+        this.tokens = erc20watchList;
         this.networkId = networkId;
         this.tokenMap = new Map()
         erc20watchList.forEach(t=>{
@@ -101,6 +104,10 @@ export class BalanceService {
     }
 
     async rankHolder(base32: any, skip: any, limit: any) {
+        const {
+            app: { tokenTool },
+        } = this;
+
         const token = await Token.findOne({where: {base32: base32}})
         if (token == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 404}
@@ -134,8 +141,35 @@ export class BalanceService {
                 // addr,
             };
         })
+
+        // add token info if contract name no exists
+        const addressSet = new Set<string>();
+        retList.forEach(item => {
+            if(!item.account.name &&  format.hexAddress(item.account.address).startsWith('0x8')){
+                addressSet.add(item.account.address);
+            }
+        });
+        const tokenInfoMap = new Map();
+        if(addressSet.size > 0){
+            const page = await this.app.tokenQuery.list(['icon'], undefined, undefined,
+                undefined, undefined, undefined, undefined, [...addressSet]);
+            page?.list?.forEach(token => {
+                tokenInfoMap.set(token.address, {name: token.name, symbol: token.symbol, icon: token.icon});
+            });
+        }
+        for(const item of retList){
+            if(!item.account.name){
+                item['tokenInfo'] = tokenInfoMap.get(item.account.address) || {};
+            }
+            if(!item.account.name && !item['tokenInfo']['name']){
+                const tokenInfo = await tokenTool.getToken(item.account.address);
+                item['tokenInfo'] = {name: tokenInfo.name, symbol: tokenInfo.symbol} || {};
+            }
+        }
+
         return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
     }
+
     zeros = '00000000000000000000000'
     decimal2drip(d:any, fraction:number) {
         const arr = d.toString().split('.')
@@ -148,6 +182,7 @@ export class BalanceService {
         }
         return ret;
     }
+
     async listAccountBalance(base32: string, tokenType: string) : Promise<any[]>{
         const hex = format.hexAddress(base32)
         const accountBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})

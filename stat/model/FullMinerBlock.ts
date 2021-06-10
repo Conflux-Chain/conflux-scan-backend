@@ -1,5 +1,4 @@
-import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
-import {StatApp} from "../StatApp";
+import {DataTypes, Model, Sequelize} from "sequelize";
 import {createTable} from "../service/DBProvider";
 
 /**
@@ -73,4 +72,19 @@ export class FullMinerBlock extends Model<IFullMinerBlock> implements IFullMiner
                 ]
             })
     }
+}
+
+export function buildFullMinerBlock(list:any[]) : IFullMinerBlock[] {
+    const result : any[] = []
+    let idx =
+    list.forEach(row=>{
+        const minerBlock = {
+            minerId: row.minerId,
+            epoch: row.epoch,
+            position: row.position,
+            createdAt: row.createdAt
+        };
+        result.push(minerBlock)
+    })
+    return result
 }
