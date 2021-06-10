@@ -86,10 +86,6 @@ export class TokenQuery {
             const conditionArray = [];
             conditionArray.push({name: { [Op.like]: `%${name}%`}});
             conditionArray.push({symbol: { [Op.like]: `%${name}%`}});
-            if(name.toLocaleUpperCase().startsWith('CFX')){
-                const simpleAddress = addressSdk.simplifyCfxAddress(name);
-                conditionArray.push({base32: simpleAddress});
-            }
             query[Op.or] = conditionArray;
             options.where = query;
         }
