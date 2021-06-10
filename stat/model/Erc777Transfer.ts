@@ -169,7 +169,7 @@ export async function batchSaveErc777Transfer(array: any[], seconds) {
     }
     let templates = []
     let date = new Date(Number(seconds)*1000)
-    await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'ERC777Transfer')
+    //await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'ERC777Transfer')
     for (const obj of array) {
         templates.push(await buildErc777Transfer(obj, date))
     }

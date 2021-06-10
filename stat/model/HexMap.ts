@@ -112,30 +112,43 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     // console.info(`created ${created}`)
     return bean;
 }
-export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string) {
-    const hexSet = new Set<string>()
+export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<string> {
+    if (hexSet === undefined) {
+        hexSet = new Set<string>()
+    }
     arr.forEach(bean=>{
         hexSet.add(bean[hexKey])
-    })
+    });
+    return hexSet
+}
+export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string) : Promise<Map<string,number>> {
     const templates = []
     hexSet.forEach(hex=>{
         templates.push({hex: hex.substr(2)})
     })
     let lockKey = 'batchBuildId'; // isolate lock by epoch ?
-    const lockOk = await waitLock(lockKey, 'batchBuildId'+biz)
+    const lockOk = await waitLock(lockKey, 'batchBuildId_'+biz)
     if (!lockOk) {
         throw new Error(`Get lock fail when batch build id, ${biz}`)
     }
     return model.bulkCreate(templates, {
         updateOnDuplicate:['hex']
-    }).then(hexArr=>{
+    }).then(hexArr=> {
         const map = new Map<string, number>()
-        hexArr.forEach(bean=>map.set(bean.hex, bean.id))
-        arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
-        hexSet.clear()
+        hexArr.forEach(bean => map.set(bean.hex, bean.id))
         return map;
     }).finally(()=>{
+        hexSet.clear()
         delLock(lockKey)
+    })
+}
+export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
+    arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
+}
+export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string) {
+    const set = buildHexSet(undefined, arr, hexKey)
+    return buildIdMap(set, model, biz).then(map=>{
+        fillHexId(map, arr, hexKey, idKey)
     })
 }
 export const T_ADDRESS = 'address'
