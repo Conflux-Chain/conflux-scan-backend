@@ -1,5 +1,6 @@
 import {Sequelize, DataTypes, Model, Transaction, Op} from "sequelize";
 import {incDailyAddressCount} from "./StatAddress";
+import {delLock, waitLock} from "./Lock";
 const NodeCache = require( "node-cache" );
 
 /**
@@ -111,7 +112,7 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     // console.info(`created ${created}`)
     return bean;
 }
-export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map) {
+export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string) {
     const hexSet = new Set<string>()
     arr.forEach(bean=>{
         hexSet.add(bean[hexKey])
@@ -120,6 +121,11 @@ export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model
     hexSet.forEach(hex=>{
         templates.push({hex: hex.substr(2)})
     })
+    let lockKey = 'batchBuildId'; // isolate lock by epoch ?
+    const lockOk = await waitLock(lockKey, 'batchBuildId'+biz)
+    if (!lockOk) {
+        throw new Error(`Get lock fail when batch build id, ${biz}`)
+    }
     return model.bulkCreate(templates, {
         updateOnDuplicate:['hex']
     }).then(hexArr=>{
@@ -128,6 +134,8 @@ export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model
         arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
         hexSet.clear()
         return map;
+    }).finally(()=>{
+        delLock(lockKey)
     })
 }
 export const T_ADDRESS = 'address'

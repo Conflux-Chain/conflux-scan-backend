@@ -193,7 +193,7 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
     }
     let templates = []
     let date = new Date(Number(seconds)*1000)
-    await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map)
+    await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'ERC20Transfer')
     for (const obj of array) {
         templates.push(await buildErc20Transfer(obj, date))
     }

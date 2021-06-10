@@ -54,6 +54,7 @@ import {DailyContractCreate} from "../model/DailyContractCreate";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
+import {Lock} from "../model/Lock";
 let conf
 export function createDB(config) {
     conf = config
@@ -112,6 +113,7 @@ export async function initPartialModel(sequelize) {
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
     ])
+    Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)
