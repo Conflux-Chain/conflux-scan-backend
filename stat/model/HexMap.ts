@@ -140,10 +140,12 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
         return map;
     }).finally(()=>{
         hexSet.clear()
-        debugLogCnt && console.log(`finally ${lockKey}`)
+        // debugLogCnt && console.log(`finally ${lockKey}`)
         delLock(lockKey).then(()=>{
-            debugLogCnt -= 1
-            debugLogCnt && console.log(`del lock key ${lockKey}`)
+            if (debugLogCnt > 0) {
+                debugLogCnt -= 1
+                debugLogCnt && console.log(`del lock key ${lockKey} ${biz}`)
+            }
         })
     })
 }
