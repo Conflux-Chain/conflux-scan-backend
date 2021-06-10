@@ -121,6 +121,7 @@ export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<
     });
     return hexSet
 }
+let debugLogCnt = 10
 export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string) : Promise<Map<string,number>> {
     const templates = []
     hexSet.forEach(hex=>{
@@ -139,7 +140,11 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
         return map;
     }).finally(()=>{
         hexSet.clear()
-        delLock(lockKey)
+        debugLogCnt && console.log(`finally ${lockKey}`)
+        delLock(lockKey).then(()=>{
+            debugLogCnt -= 1
+            debugLogCnt && console.log(`del lock key ${lockKey}`)
+        })
     })
 }
 export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
