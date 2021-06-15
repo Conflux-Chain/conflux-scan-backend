@@ -44,7 +44,15 @@ export class EpochSync extends SyncBase{
     async save(epochNumber, modelData) {
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Epoch.add(modelData.epoch, dbTx);
-            await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
+            try{
+                await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
+            } catch (err){
+                const msg = `${err}`
+                await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+                await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
+                console.log(`epoch-sync.save epoch:${epochNumber} error:${msg}`)
+                throw err;
+            }
             await this.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
         });
         if (epochNumber % 100 === 0) {
