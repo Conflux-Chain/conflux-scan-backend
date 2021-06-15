@@ -234,9 +234,9 @@ export class TokenQuery {
         const{ logger } = this.app;
 
         const options: any = {attributes: ['base32', 'hex40id'], raw: true};
-        logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, options: `${JSON.stringify(options)}`});
+        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, options: `${JSON.stringify(options)}`});
         const tokenList = await Token.findAll(options)
-        logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, tokenList: `${JSON.stringify(tokenList)}`});
+        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, tokenList: `${JSON.stringify(tokenList)}`});
         const list = [];
         if(tokenList){
             tokenList.forEach( item => {
@@ -244,7 +244,7 @@ export class TokenQuery {
                 list.push(hex40);
             });
         }
-        logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, list: `${JSON.stringify(list)}`});
+        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, list: `${JSON.stringify(list)}`});
         return { total: list.length, list };
     }
 
