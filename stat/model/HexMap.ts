@@ -1,5 +1,6 @@
 import {Sequelize, DataTypes, Model, Transaction, Op} from "sequelize";
 import {incDailyAddressCount} from "./StatAddress";
+import {delLock, waitLock} from "./Lock";
 const NodeCache = require( "node-cache" );
 
 /**
@@ -110,6 +111,52 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     dbCache.set(hex, bean, cacheTtl)
     // console.info(`created ${created}`)
     return bean;
+}
+export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<string> {
+    if (hexSet === undefined) {
+        hexSet = new Set<string>()
+    }
+    arr.forEach(bean=>{
+        hexSet.add(bean[hexKey])
+    });
+    return hexSet
+}
+let debugLogCnt = 10
+export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string) : Promise<Map<string,number>> {
+    const templates = []
+    hexSet.forEach(hex=>{
+        templates.push({hex: hex.substr(2)})
+    })
+    let lockKey = 'batchBuildId'; // isolate lock by epoch ?
+    const lockOk = await waitLock(lockKey, 'batchBuildId_'+biz)
+    if (!lockOk) {
+        throw new Error(`Get lock fail when batch build id, ${biz}`)
+    }
+    return model.bulkCreate(templates, {
+        updateOnDuplicate:['hex']
+    }).then(hexArr=> {
+        const map = new Map<string, number>()
+        hexArr.forEach(bean => map.set(bean.hex, bean.id))
+        return map;
+    }).finally(()=>{
+        hexSet.clear()
+        // debugLogCnt && console.log(`finally ${lockKey}`)
+        delLock(lockKey).then(()=>{
+            if (debugLogCnt > 0) {
+                debugLogCnt -= 1
+                debugLogCnt && console.log(`del lock key ${lockKey} ${biz}`)
+            }
+        })
+    })
+}
+export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
+    arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
+}
+export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string) {
+    const set = buildHexSet(undefined, arr, hexKey)
+    return buildIdMap(set, model, biz).then(map=>{
+        fillHexId(map, arr, hexKey, idKey)
+    })
 }
 export const T_ADDRESS = 'address'
 export function hexMapInit(sequelize) {

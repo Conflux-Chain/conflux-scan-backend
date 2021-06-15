@@ -100,7 +100,7 @@ export class BalanceService {
             return;
         }
         let holder = await table.count({})
-        await tokenBean.update({holder: holder, type: token.tokenType}, {where: {id: tokenBean.id}})
+        await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
     }
 
     async rankHolder(base32: any, skip: any, limit: any) {

@@ -1,5 +1,5 @@
 import {Op, Sequelize, Transaction, DataTypes, Model, QueryTypes} from "sequelize";
-import {makeId} from "./HexMap";
+import {batchBuildId, Hex64Map, makeId} from "./HexMap";
 import {AddressErc20Transfer} from "./Erc20Transfer";
 import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
 import {popPartition} from "./ErcTransfer";
@@ -145,12 +145,14 @@ export class Erc777Transfer extends Model<IErc777Transfer> implements IErc777Tra
 //===============================================
 
 export async function buildErc777Transfer(obj, date) {
-    const fromId = await makeId(obj.from, undefined, {dt:date})
-    const toId = await makeId(obj.to, undefined, {dt:date})
-    const contractId = await makeId(obj.address, undefined, {dt:date})
-    const hashID = await makeId(obj.transactionHash);
+    const [fromId, toId, contractId] = await Promise.all([
+        makeId(obj.from, undefined, {dt:date}),
+        makeId(obj.to, undefined, {dt:date}),
+        makeId(obj.address, undefined, {dt:date}),
+        // makeId(obj.transactionHash)
+    ])
     let erc777Transfer:IErc777Transfer = {
-        txHashId: hashID.id,
+        txHashId: obj.txHashId, //hashID.id,
         contractId: contractId.id,
         fromId: fromId.id,
         toId: toId.id,
@@ -167,6 +169,7 @@ export async function batchSaveErc777Transfer(array: any[], seconds) {
     }
     let templates = []
     let date = new Date(Number(seconds)*1000)
+    //await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'ERC777Transfer')
     for (const obj of array) {
         templates.push(await buildErc777Transfer(obj, date))
     }
