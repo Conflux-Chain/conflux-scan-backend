@@ -16,7 +16,7 @@ const {Erc1155Transfer} = require("../model/Erc1155Transfer");
 const CONST = require('./common/constant');
 
 export class TokenQuery {
-    protected app: StatApp;
+    protected app: any;
 
     constructor(app: any) {
         this.app = app;
@@ -24,14 +24,15 @@ export class TokenQuery {
 
     public async query(address, fields = undefined, currency = undefined) {
         const {
-            app: { tokenTool },
+            app: { tokenTool, confluxSDK },
         } = this;
 
         let base32 = toBase32(address);
-        const result = await this.list(fields, null, currency, null, null, 0, 1, base32);
+        const result = await this.list(fields, null, currency, null, null, 0, 1, [base32]);
         const token = result?.list?.shift();
         const isRegistered = token !== undefined;
-        const tokenInfo = await tokenTool.getToken(base32);
+        const toolkit = tokenTool || confluxSDK;
+        const tokenInfo = await toolkit.getToken(base32);
         let transferType;
         let transferCount;
         if(isRegistered === false){
@@ -43,9 +44,18 @@ export class TokenQuery {
                 transferCount = transferInfo?.transferCount || 0;
             }
         }
-        const totalSupply = await tokenTool.getTokenTotalSupply(base32);
+        const totalSupply = await toolkit.getTokenTotalSupply(base32);
+        let holderIncreasePercent = 0;
+        let holderIncreaseError;
+        if (address && token) {
+            // query token detail page, should has only one record
+            [holderIncreasePercent] = await DailyToken.calcRecentIncrease(token.hex40id).catch((err)=>{
+                holderIncreaseError = err.toLocaleString()
+                return [0]
+            })
+        }
         return lodash.defaults(token, { address, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
-            decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply , transferCount});
+            decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply , transferCount, holderIncreasePercent});
     }
 
     public async search(name, currency, skip: number = 0, limit: number = 10) {
@@ -123,7 +133,7 @@ export class TokenQuery {
         return { total: list.length, list, contractTotal: contractList.length, contractList };
     }
 
-    public async list(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, address) {
+    public async list(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, addressArray) {
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
@@ -169,8 +179,11 @@ export class TokenQuery {
         if(transferType){
             query.type = transferType;
         }
-        if(address){
-            query.base32 = address;
+        if(addressArray?.length){
+            if (!lodash.isArray(addressArray)) {
+                addressArray = [addressArray];
+            }
+            query.base32 = {[Op.in]: addressArray};
         }
         options.where = query;
 
@@ -213,21 +226,17 @@ export class TokenQuery {
                 row['transferType'] = (row['transferType'] || '').toUpperCase();
                 list.push(row);
             });
-            if (address && page.rows[0]) {
-                // query token detail page, should has only one record
-                const [percent] = await DailyToken.calcRecentIncrease(page.rows[0].hex40id).catch((err)=>{
-                    list[0]['holderIncreaseError'] = err.toLocaleString()
-                    return [0]
-                })
-                list[0]['holderIncreasePercent'] = percent
-            }
         }
         return { total: page?.count || 0, list };
     }
 
     public async listRegisterAddress() {
+        const{ logger } = this.app;
+
         const options: any = {attributes: ['base32', 'hex40id'], raw: true};
+        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, options: `${JSON.stringify(options)}`});
         const tokenList = await Token.findAll(options)
+        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, tokenList: `${JSON.stringify(tokenList)}`});
         const list = [];
         if(tokenList){
             tokenList.forEach( item => {
@@ -235,6 +244,7 @@ export class TokenQuery {
                 list.push(hex40);
             });
         }
+        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, list: `${JSON.stringify(list)}`});
         return { total: list.length, list };
     }
 

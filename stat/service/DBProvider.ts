@@ -138,10 +138,10 @@ export async function initPartialModel(sequelize) {
     TokenQuote.register(sequelize);
     StreamErrorLog.register(sequelize)
     KV.register(sequelize);
+    Epoch.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
-    Epoch.register(sequelize);
     TransactionDB.register(sequelize);
     Block.register(sequelize);
     MinerBlock.register(sequelize);

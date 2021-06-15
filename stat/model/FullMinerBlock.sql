@@ -4,6 +4,7 @@ CREATE TABLE `full_miner_block` (
   `position` smallint(6) NOT NULL DEFAULT '0',
   `createdAt` datetime NOT NULL,
   PRIMARY KEY (`minerId` DESC, `epoch` DESC, `position` DESC),
+  KEY `epoch_idx` (`epoch` DESC),
   KEY `block_time_idx` (`createdAt` DESC)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8
 partition by hash (minerId)

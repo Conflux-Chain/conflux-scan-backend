@@ -10,8 +10,8 @@ export abstract class SyncBase{
 
     protected constructor(app: StatApp) {
         this.app = app;
-        this.forwardQueue = new PreloadMap(this.getDataFromFullNode.bind(this));
-        this.backwardQueue = new PreloadMap(this.getDataFromFullNode.bind(this));
+        this.forwardQueue = new PreloadMap(this.getData.bind(this));
+        this.backwardQueue = new PreloadMap(this.getData.bind(this));
     }
 
     private async getDataForwardWithPreload(epochNumber): Promise<SyncData> {
@@ -43,22 +43,22 @@ export abstract class SyncBase{
 
     private async saveForward(epochNumber, { parentHash, modelData }): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
-        const prevEpoch = await this.queryEpochFromDb(preEpochNumber);
+        const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
         if (prevEpoch && parentHash !== prevEpoch.pivotHash) {
             return SyncCode.PIVOT_SWITCH;
         }
-        await this.saveDataToDb(epochNumber, modelData);
+        await this.save(epochNumber, modelData);
         return SyncCode.SUCCESS;
     }
 
     private async saveBackward(epochNumber, { pivotHash, modelData }): Promise<SyncCode> {
         const nextEpochNumber = epochNumber + 1;
-        const nextEpoch = await this.queryEpochFromDb(nextEpochNumber);
+        const nextEpoch = await this.getEpochByEpochNumber(nextEpochNumber);
         // useful only when sync backward
         // if (nextEpoch && pivotHash !== nextEpoch.parentHash) {
         //     return SyncCode.PIVOT_SWITCH;
         // }
-        await this.saveDataToDb(epochNumber, modelData);
+        await this.save(epochNumber, modelData);
         return SyncCode.SUCCESS;
     }
 
@@ -79,7 +79,7 @@ export abstract class SyncBase{
         if(syncCode === SyncCode.PIVOT_SWITCH){
             await this.forwardQueue.clear();
             epochNumber -= 1;
-            await this.delDataFromDb(epochNumber, data.modelData).catch((error) => {
+            await this.delete(epochNumber, data.modelData).catch((error) => {
                 console.error(`sync_base del end error, epoch:${epochNumber}`, error);
                 throw error;
             });
@@ -109,7 +109,7 @@ export abstract class SyncBase{
 
         let traceEpochNumber = epochNumber;
         if(traceEpochNumber === undefined){
-            traceEpochNumber = await this.queryNextEpochFromDb();
+            traceEpochNumber = await this.getNextEpochNumber();
         }
 
         const that = this
@@ -125,21 +125,21 @@ export abstract class SyncBase{
         return repeat()
     }
 
-    public async queryNextEpochFromDb(){
+    public async getNextEpochNumber(){
         let maxEpochNumber:number = await Epoch.max('epoch')
         return maxEpochNumber ? (maxEpochNumber + 1) : 0;
     }
 
-    public async queryEpochFromDb(epochNumber){
+    public async getEpochByEpochNumber(epochNumber){
         return await Epoch.findOne({where:{epoch: epochNumber}});
     }
 
     //-------------------- methods subclass to implement ---------------------
-    public abstract getDataFromFullNode(epochNumber): Promise<SyncData>;
+    public abstract getData(epochNumber): Promise<SyncData>;
 
-    public abstract saveDataToDb(epochNumber, modelData);
+    public abstract save(epochNumber, modelData);
 
-    public abstract delDataFromDb(epochNumber, modelData);
+    public abstract delete(epochNumber, modelData);
 }
 
 export class SyncData {

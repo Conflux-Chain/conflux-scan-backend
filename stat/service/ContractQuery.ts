@@ -7,7 +7,7 @@ import {decodeUtf8} from "./tool/StringTool";
 const lodash = require('lodash');
 
 export class ContractQuery {
-    protected app: StatApp;
+    protected app: any;
     public addressNameMap: Map<string, any>
 
     constructor(app: any) {
@@ -15,9 +15,14 @@ export class ContractQuery {
     }
 
     public async query(address, fields = undefined) {
+        const{ logger } = this.app;
+
         let base32 = toBase32(address);
+        // logger?.info({src: `ContractQuery.query.rdb`, base32: `${JSON.stringify(base32)}`});
         const result = await this.list(fields, 0, 1, base32);
+        // logger?.info({src: `ContractQuery.query.rdb`, result: `${JSON.stringify(result)}`});
         const contract = result?.list?.shift();
+        // logger?.info({src: `ContractQuery.query.rdb`, contract: `${JSON.stringify(contract)}`});
         return contract || {};
     }
 

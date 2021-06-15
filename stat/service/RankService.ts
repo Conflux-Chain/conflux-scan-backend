@@ -4,13 +4,21 @@ import {pickNumber} from "../model/Utils";
 import {ADDR_INFO_STATE_OK, T_ADDRESS, T_ADDRESS_INFO} from "../model/HexMap";
 // @ts-ignore
 import {format} from 'js-conflux-sdk'
+import {ContractService} from "./contract/ContractService";
+import {StatApp} from "../StatApp";
 
 export class RankService{
+    private app: StatApp;
     private sequelize: Sequelize;
-    constructor(seq) {
-        this.sequelize = seq;
+    constructor(app) {
+        this.app = app;
+        this.sequelize = app.sequelize;
     }
     async top(type: string, limit: number = 10, networkId: number = 1029) : Promise<any> {
+        const {
+            app: { tokenTool },
+        } = this;
+
         limit = pickNumber(limit, 10)
         const newLine = ''
         const maxBatchId:number = await TopBatchIndex.max('id',
@@ -29,16 +37,43 @@ export class RankService{
         newLine} left join ${T_ADDRESS_INFO} on ${t_addr}.id = ${T_ADDRESS_INFO}.id ${newLine
         } where batch_id=? order by \`rank\` limit ?`;
         // console.log(`sql is : ${sql}`)
-        const list:any[] = await this.sequelize.query(sql, {
+        const list:any[] = await this.app.sequelize.query(sql, {
             replacements: [maxBatchId, limit],
             type: QueryTypes.SELECT,
             benchmark: true, logging: console.log
         })
+        const addressSet = new Set<string>();
         list.forEach(r=>{
             r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null
             r.hex = `0x${r.hex}`
             r.base32address = format.address(r.hex, networkId)
+            if(!r.name){
+                r.name = ContractService.instance.getName(r.base32address)
+            }
+            if(!r.name &&  format.hexAddress(r.base32address).startsWith('0x8')){
+                addressSet.add(r.base32address);
+            }
         })
+
+        // add token info if contract name no exists
+        const tokenInfoMap = new Map();
+        if(addressSet.size > 0){
+            const page = await this.app.tokenQuery.list(['icon'], undefined, undefined,
+                undefined, undefined, undefined, undefined, [...addressSet]);
+            page?.list?.forEach(token => {
+                tokenInfoMap.set(token.address, {name: token.name, symbol: token.symbol, icon: token.icon});
+            });
+        }
+        for(const r of list){
+            if(!r.name){
+                r.tokenInfo = tokenInfoMap.get(r.base32address) || {};
+            }
+            if(!r.name && !r.tokenInfo.name){
+                const tokenInfo = await tokenTool.getToken(r.base32address);
+                r.tokenInfo = {name: tokenInfo.name, symbol: tokenInfo.symbol} || {};
+            }
+        }
+
         const count = await TopRecord.count({where: {batchId: maxBatchId}})
         return {code: 0, total: count, batchDesc, list};
     }
