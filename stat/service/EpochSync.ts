@@ -67,7 +67,8 @@ export class EpochSync extends SyncBase{
             } else {
                 console.log(`epoch-sync.pivotBlock epoch:${epochNumber} error:${msg}`)
             }
-            return {};
+            throw err;
+            //return {};
         });
         pivotBlock.timestamp = Number(pivotBlock.timestamp);
         const now = Math.floor(Date.now() / 1000);
