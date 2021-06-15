@@ -48,10 +48,14 @@ export class EpochSync extends SyncBase{
                 await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             } catch (err){
                 const msg = `${err}`
-                await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
-                await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
-                console.log(`epoch-sync.save epoch:${epochNumber} error:${msg}`)
-                throw err;
+                if (msg.includes('UniqueConstraintError')) {
+                    await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+                    await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
+                    console.log(`epoch-sync.save epoch:${epochNumber} unique constraint error:${msg}`)
+                } else {
+                    console.log(`epoch-sync.save epoch:${epochNumber} other error:${msg}`)
+                    throw err;
+                }
             }
             await this.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
         });
