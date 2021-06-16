@@ -28,7 +28,7 @@ export class TokenQuery {
         } = this;
 
         let base32 = toBase32(address);
-        const result = await this.list(fields, null, currency, null, null, 0, 1, [base32]);
+        const result = await this.list([base32], fields, null, currency, null, null, 0, 1);
         const token = result?.list?.shift();
         const isRegistered = token !== undefined;
         const toolkit = tokenTool || confluxSDK;
@@ -62,8 +62,9 @@ export class TokenQuery {
         if(!name){
             return {total: 0, list: [], contractTotal: 0, contractList: []};
         }
+
         // fields
-        const options: any = {};
+        const options: any = {raw: true};
         options.attributes = [['base32', 'address'],
             'name',
             'symbol',
@@ -100,6 +101,9 @@ export class TokenQuery {
             options.where = query;
         }
 
+        // order
+        options.order = [['totalPrice', 'DESC'], ['createdAt', 'ASC']];
+
         // page
         options.offset = skip;
         options.limit = limit;
@@ -122,23 +126,18 @@ export class TokenQuery {
             });
         }
         // query contract
-        const contractList = [];
-        const contractInfoMap = new Map();
         const contractInfoArray = await ContractInfo.findAll({
             where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], raw: true
         });
-        contractInfoArray?.forEach(contractInfo=>{
-            const address =  contractInfo['base32'];
-            if(!addressSet.has(address)){
-                contractInfoMap.set(contractInfo.hexId , { address, name: contractInfo['name'] });
-            }
-        })
-        contractInfoMap?.forEach(value => contractList.push(value));
+        let contractList = contractInfoArray?.filter(item => !addressSet.has(item['base32']))
+            .map(item =>  {return { address: item['base32'], name: item['name'], epoch: item['epoch'] };});
+        contractList = lodash.orderBy(contractList, 'epoch', 'asc');
 
         return { total: list.length, list, contractTotal: contractList.length, contractList };
     }
 
-    public async list(fields, transferType, currency, orderBy, reverse, skip: number = 0, limit: number = 10, addressArray) {
+    public async list(addressArray, fields, transferType = undefined, currency = undefined, orderBy = undefined,
+                      reverse = undefined, skip: number = 0, limit: number = 10) {
         const options: any = {};
         // fields
         let attributes: any = [['base32', 'address'],
