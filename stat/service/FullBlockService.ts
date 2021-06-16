@@ -329,7 +329,7 @@ export class FullBlockService {
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime})   `)
                 if ((minEpochNumber % 1000) === 0) {
                     const target = await this.cfx.getEpochNumber('latest_state')
-                    const remainTime = (target - minEpochNumber) / epochPerStat * (now - veryBegin)
+                    const remainTime = (target - minEpochNumber) / epochPerStat * (metrics.ms)
                     const targetTime:Date = new Date(now + remainTime)
                     console.log(`estimate target time ${targetTime.toISOString()}, ${target}, ${remainTime/1000/3600}h`)
                 }
