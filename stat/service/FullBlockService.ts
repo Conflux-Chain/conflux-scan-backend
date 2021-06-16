@@ -203,6 +203,7 @@ export class FullBlockService {
             return preLoadResult
         }
         this.preLoadMap.start(minEpochNumber+1)
+        this.preLoadMap.start(minEpochNumber+2)
         // blockList = blockList.reverse(); // turn to asc order.
         const blockList = preLoadResult.blockList
         const rewardList = preLoadResult.rewardList
