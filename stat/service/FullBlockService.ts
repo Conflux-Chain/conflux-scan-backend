@@ -25,6 +25,7 @@ import {
     KEY_FULL_TX_COUNT,
     KV
 } from "../model/KV";
+import {PreloadMap} from "./SyncBase";
 
 
 // Do not care the value
@@ -35,8 +36,10 @@ const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
     public debugLog:boolean = true
+    preLoadMap:PreloadMap
     constructor(cfx:Conflux) {
         this.cfx = cfx;
+        this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this))
     }
     // sync metrics
     private metrics = {
@@ -150,9 +153,7 @@ export class FullBlockService {
         console.log(`create full block count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()})
     }
-    public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
-        let start = Date.now()
-        let veryBegin = start
+    private async loadEpochData(minEpochNumber: number) {
         const [rewardList, hashes, latest_state] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
@@ -189,10 +190,22 @@ export class FullBlockService {
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
+        return {code: 0, message: 'ok', blockList, rewardList}
+    }
+    public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
+        let start = Date.now()
+        let veryBegin = start
+        let preLoadResult = await this.preLoadMap.pop(minEpochNumber)
         let now = Date.now();
         let metrics = this.metrics;
         metrics.queryFullNodeTime += now - start;  start = now;
+        if (preLoadResult.code !== 0) {
+            return preLoadResult
+        }
+        this.preLoadMap.start(minEpochNumber+1)
         // blockList = blockList.reverse(); // turn to asc order.
+        const blockList = preLoadResult.blockList
+        const rewardList = preLoadResult.rewardList
         let ok = true;
         let message = "ok";
         // the last one is pivot block.
