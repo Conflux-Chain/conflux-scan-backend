@@ -6,7 +6,7 @@ export class DailyContractCreateQuery{
         const query: any = {}
         const page = await DailyContractCreate.findAndCountAll({
             attributes: ['statDay', 'contractCount'],
-            where: query, offset: skip, limit, order:[["statDay", "DESC"]]
+            where: query, offset: skip, limit, order:[["statDay", "DESC"]], raw: true
         })
         return page;
     }

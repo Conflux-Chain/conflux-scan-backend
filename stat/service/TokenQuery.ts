@@ -107,6 +107,7 @@ export class TokenQuery {
         // process
         const page = await Token.findAndCountAll(options)
         const list = [];
+        const addressSet = new Set<string>();
         currency = '';
         if(page && page.rows){
             page.rows.forEach( item => {
@@ -117,6 +118,7 @@ export class TokenQuery {
                     row['icon'] = decodeUtf8(row['icon']);
                 }
                 list.push(row);
+                addressSet.add(row['address']);
             });
         }
         // query contract
@@ -126,7 +128,10 @@ export class TokenQuery {
             where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], raw: true
         });
         contractInfoArray?.forEach(contractInfo=>{
-            contractInfoMap.set(contractInfo.hexId , { address: contractInfo['base32'], name: contractInfo['name'] });
+            const address =  contractInfo['base32'];
+            if(!addressSet.has(address)){
+                contractInfoMap.set(contractInfo.hexId , { address, name: contractInfo['name'] });
+            }
         })
         contractInfoMap?.forEach(value => contractList.push(value));
 
