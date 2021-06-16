@@ -14,6 +14,7 @@ import {ContractService} from "../contract/ContractService";
 import {base32toVerbose} from "../tool/AddressTool";
 const BigFixed = require('bigfixed');
 import {StatApp} from "../../StatApp";
+import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 
 export class BalanceService {
     private app: StatApp;
@@ -190,30 +191,23 @@ export class BalanceService {
             return []
         }
         const tokenList = await Token.findAll({where: {type: tokenType}});
-        const balanceList = await Promise.all(tokenList.map(async token=>{
-            const model = BalanceWatcher.mapModel(token.symbol, true)
-            if (model) {
-                return model.findOne({where: {addressId: accountBean.id}})
-                    .then(bean=>bean === null ? {balance:0} : bean)
-            }
-            return {balance: 0}
-        }))
+        const contracts = tokenList.map(t=>t.base32);
+        const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []
-        lodash.zip(tokenList, balanceList).forEach(
-            ([token,balanceBean], idx) => {
-                if (token.type.toUpperCase() === 'ERC721') {
-                    balanceBean.balance = this.decimal2drip(balanceBean.balance, 18)
+        lodash.zip(tokenList, banList).forEach(
+            ([token,ban], idx) => {
+                let upperCase = token.type.toUpperCase();
+                if (upperCase !== 'ERC721' || upperCase !== 'ERC1155') {
+                    ban = Number(ban) / Number(token.decimals || 18)
                 }
-                balanceBean.balance && resultList.push({
+                ban && resultList.push({
                     name: token.name,
                     symbol: token.symbol,
                     base32: token.base32,
                     tokenHex40id: token.hex40id,
                     icon: token.icon ? decodeUtf8(token.icon) : token.icon,
                     type: token.type,
-                    balance: balanceBean.balance,
-                    addressId: balanceBean.addressId,
-                    updatedAt: balanceBean.updatedAt
+                    balance: ban,
                 })
             }
         )
