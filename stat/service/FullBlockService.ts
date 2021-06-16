@@ -327,15 +327,15 @@ export class FullBlockService {
                 }, time ${blockTime.toISOString()}, cost ${metrics.ms}ms (full node ${metrics.queryFullNodeTime
                     } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime})   `)
-                metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
-                metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
-                metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
                 if ((minEpochNumber % 1000) === 0) {
                     const target = await this.cfx.getEpochNumber('latest_state')
                     const remainTime = (target - minEpochNumber) / epochPerStat * (now - veryBegin)
                     const targetTime:Date = new Date(now + remainTime)
                     console.log(`estimate target time ${targetTime.toISOString()}, ${target}, ${remainTime/1000/3600}h`)
                 }
+                metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
+                metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
+                metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
             }
         }).catch(err => {
             ok = false;
