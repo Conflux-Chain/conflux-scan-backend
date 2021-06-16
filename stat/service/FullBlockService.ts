@@ -190,7 +190,7 @@ export class FullBlockService {
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
-        return {code: 0, message: 'ok', blockList, rewardList}
+        return {code: 0, message: 'ok', blockList, rewardList, latest_state}
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
@@ -198,15 +198,15 @@ export class FullBlockService {
         let preLoadResult = await this.preLoadMap.pop(minEpochNumber)
         let now = Date.now();
         let metrics = this.metrics;
-        metrics.queryFullNodeTime += now - start;  start = now;
+        metrics.queryFullNodeTime += now - start;  start = now; // =====================================================
         if (preLoadResult.code !== 0) {
             return preLoadResult
         }
-        this.preLoadMap.start(minEpochNumber+1)
-        this.preLoadMap.start(minEpochNumber+2)
-        this.preLoadMap.start(minEpochNumber+3)
-        this.preLoadMap.start(minEpochNumber+4)
-        this.preLoadMap.start(minEpochNumber+5)
+        if (preLoadResult.latest_state - minEpochNumber > 500) {
+            for (let i=1; i<=10; i++) {
+                this.preLoadMap.start(minEpochNumber + i)
+            }
+        }
         // blockList = blockList.reverse(); // turn to asc order.
         const blockList = preLoadResult.blockList
         const rewardList = preLoadResult.rewardList
