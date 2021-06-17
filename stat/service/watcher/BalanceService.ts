@@ -190,7 +190,7 @@ export class BalanceService {
         if (accountBean === null) {
             return []
         }
-        const tokenList = await Token.findAll({where: {type: tokenType}});
+        const tokenList = await Token.findAll({where: {type: tokenType, fetchBalance: true}});
         const contracts = tokenList.map(t=>t.base32);
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []
