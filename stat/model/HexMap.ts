@@ -123,16 +123,27 @@ export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<
 }
 let debugLogCnt = 10
 export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) : Promise<Map<string,number>> {
-    const tasks = []
+    const templates = []
     hexSet.forEach(hex=>{
-        tasks.push(makeId(hex, undefined, {dt}))
+        templates.push({hex: hex.substr(2)})
     })
     let lockKey = 'batchBuildId'; // isolate lock by epoch ?
     const lockOk = await waitLock(lockKey, 'batchBuildId_'+biz)
     if (!lockOk) {
         throw new Error(`Get lock fail when batch build id, ${biz}`)
     }
-    return Promise.all(tasks).then(hexArr=> {
+    return model.bulkCreate(templates, {
+        updateOnDuplicate:['hex']
+    }).then(hexArr=> {
+        // bulk create don't guarantee returning the id. In case duplicate occur
+        const hasMissing = hexArr.find(bean => isNaN(bean.id)) !== undefined
+        if (hasMissing) {
+            console.log(`bulk create not fulfilled. ${dt}`)
+            const hexWithout0x = templates.map(d => d.hex)
+            return model.findAll({where: {hex: {[Op.in]: hexWithout0x}}})
+        }
+        return hexArr
+    }).then(hexArr=>{
         const map = new Map<string, number>()
         hexArr.forEach(bean => map.set(bean.hex, bean.id))
         return map;
