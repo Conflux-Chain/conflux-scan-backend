@@ -15,7 +15,7 @@ import {
     markTxPosition,
     TxnRowMark
 } from "../model/FullBlock";
-import {makeId} from "../model/HexMap";
+import {Hex40Map, makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {Transaction,QueryTypes} from "sequelize"
 import {
@@ -192,6 +192,33 @@ export class FullBlockService {
         )) as IFullBlock[]
         return {code: 0, message: 'ok', blockList, rewardList, latest_state}
     }
+    async buildHexIds(blockList) : Promise<Map<string, number>> {
+        const map = new Set<string>()
+        for (const block of blockList) {
+            for (const txInfo of block.transactions) {
+                if (!map.has(txInfo.from)) {
+                    map.add(txInfo.from)
+                }
+                if (txInfo.to && txInfo.to !== '0x' && txInfo.to !== txInfo.from) {
+                    map.add(txInfo.to)
+                }
+                if (txInfo.contractCreated && txInfo.contractCreated !== '0x') {
+                    map.add(txInfo.contractCreated)
+                }
+            }
+        }
+        const templates = []
+        map.forEach(base32=>{
+            templates.push({hex: format.hexAddress(base32).substr(2), base32})
+        })
+        return Hex40Map.bulkCreate(templates, {
+            updateOnDuplicate:['hex']
+        }).then(hexArr=> {
+            const map = new Map<string, number>()
+            hexArr.forEach( (bean,idx) => map.set(templates[idx].base32, bean.id))
+            return map;
+        })
+    }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
         let veryBegin = start
@@ -268,6 +295,7 @@ export class FullBlockService {
         }
         pivotBlock.pivot = true
         // build transaction template
+        const hexMap = await this.buildHexIds(blockList);
         const executedTxArr = []
         const txByAddressArr = []
         for (const block of blockList) {
@@ -275,31 +303,14 @@ export class FullBlockService {
             let pos = 0
             for (const txInfo of block.transactions) {
                 if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
-                    const [fromId, toId, contractId] = await Promise.all([
-                        makeId(format.hexAddress(txInfo.from), undefined, {dt: blockTime}).then(res=>res.id),
-                        new Promise(r=>{
-                            if (txInfo.to && txInfo.to !== '0x') {
-                                makeId(format.hexAddress(txInfo.to), undefined, {dt: blockTime}).then(res=>r(res.id))
-                            } else {
-                                r(0)
-                            }
-                        }),
-                        new Promise(r=>{
-                            if (txInfo.contractCreated && txInfo.contractCreated !== '0x') {
-                                makeId(format.hexAddress(txInfo.contractCreated), undefined, {dt: blockTime}).then(res=>r(res.id))
-                            } else {
-                                r (0)
-                            }
-                        })
-                    ])
-                    txInfo.fromId = fromId
-                    txInfo.toId =  toId
+                    txInfo.fromId = hexMap.get(txInfo.from) || 0
+                    txInfo.toId =  hexMap.get(txInfo.to) || 0
+                    txInfo.contractCreatedId = hexMap.get(txInfo.contractCreated) || 0
                     txInfo.epoch = minEpochNumber
                     txInfo.blockPosition = block.position
                     txInfo.txPosition = pos++
                     txInfo.createdAt = block.createdAt
                     txInfo.dripValue = txInfo.value
-                    txInfo.contractCreatedId = contractId
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
                     txInfo.method = txInfo.data.substr(0, 10)
                     executedTxArr.push(txInfo)
@@ -318,7 +329,7 @@ export class FullBlockService {
             block.executedTxnCount = pos
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
-        now = Date.now();    metrics.buildTime += now - start;  start = now;
+        now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
