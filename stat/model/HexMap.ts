@@ -122,19 +122,17 @@ export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<
     return hexSet
 }
 let debugLogCnt = 10
-export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string) : Promise<Map<string,number>> {
-    const templates = []
+export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) : Promise<Map<string,number>> {
+    const tasks = []
     hexSet.forEach(hex=>{
-        templates.push({hex: hex.substr(2)})
+        tasks.push(makeId(hex, undefined, {dt}))
     })
     let lockKey = 'batchBuildId'; // isolate lock by epoch ?
     const lockOk = await waitLock(lockKey, 'batchBuildId_'+biz)
     if (!lockOk) {
         throw new Error(`Get lock fail when batch build id, ${biz}`)
     }
-    return model.bulkCreate(templates, {
-        updateOnDuplicate:['hex']
-    }).then(hexArr=> {
+    return Promise.all(tasks).then(hexArr=> {
         const map = new Map<string, number>()
         hexArr.forEach(bean => map.set(bean.hex, bean.id))
         return map;
@@ -152,9 +150,9 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
 export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
     arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
 }
-export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string) {
+export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) {
     const set = buildHexSet(undefined, arr, hexKey)
-    return buildIdMap(set, model, biz).then(map=>{
+    return buildIdMap(set, model, biz, dt).then(map=>{
         fillHexId(map, arr, hexKey, idKey)
     })
 }

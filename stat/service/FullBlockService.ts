@@ -192,7 +192,7 @@ export class FullBlockService {
         )) as IFullBlock[]
         return {code: 0, message: 'ok', blockList, rewardList, latest_state}
     }
-    async buildHexIds(blockList) : Promise<Map<string, number>> {
+    async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
         for (const block of blockList) {
             for (const txInfo of block.transactions) {
@@ -208,14 +208,17 @@ export class FullBlockService {
             }
         }
         const templates = []
+        const base32arr =  []
         map.forEach(base32=>{
-            templates.push({hex: format.hexAddress(base32).substr(2), base32})
+            templates.push(makeId(format.hexAddress(base32), undefined, {dt}));
+            base32arr.push(base32)
         })
-        return Hex40Map.bulkCreate(templates, {
-            updateOnDuplicate:['hex']
-        }).then(hexArr=> {
+        return Promise.all(templates).then(hexArr=> {
             const map = new Map<string, number>()
-            hexArr.forEach( (bean,idx) => map.set(templates[idx].base32, bean.id))
+            hexArr.forEach( (bean,idx) => {
+                // console.log(`build id ${templates[idx].base32} == ${bean.hex} == ${bean.id}`)
+                map.set(base32arr[idx], bean.id)
+            })
             return map;
         })
     }
@@ -295,7 +298,7 @@ export class FullBlockService {
         }
         pivotBlock.pivot = true
         // build transaction template
-        const hexMap = await this.buildHexIds(blockList);
+        const hexMap = await this.buildHexIds(blockList, blockTime);
         const executedTxArr = []
         const txByAddressArr = []
         for (const block of blockList) {

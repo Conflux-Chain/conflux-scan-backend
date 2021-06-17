@@ -358,7 +358,7 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     const veryStart = Date.now()
     let templates = []
     let date = new Date(Number(seconds)*1000)
-    await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'CfxTransfer')
+    await batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'CfxTransfer', date)
         .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart})
     for (const obj of array) {
         templates.push(await buildCfxTransfer(obj, date))
