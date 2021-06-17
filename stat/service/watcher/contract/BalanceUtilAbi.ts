@@ -1,95 +1,93 @@
 export const BALANCE_UTIL_ABI = [{
-    "anonymous": false,
-    "inputs": [{"indexed": true, "internalType": "address", "name": "account", "type": "address"}],
-    "name": "WhitelistAdminAdded",
-    "type": "event"
-}, {
-    "anonymous": false,
-    "inputs": [{"indexed": true, "internalType": "address", "name": "account", "type": "address"}],
-    "name": "WhitelistAdminRemoved",
-    "type": "event"
-}, {
-    "constant": false,
-    "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
-    "name": "addWhitelistAdmin",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-}, {
-    "constant": true,
-    "inputs": [],
-    "name": "implementation",
-    "outputs": [{"internalType": "address", "name": "impl", "type": "address"}],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-}, {
-    "constant": true,
-    "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
-    "name": "isWhitelistAdmin",
-    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-}, {
-    "constant": false,
-    "inputs": [],
-    "name": "renounceWhitelistAdmin",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-}, {
-    "constant": true,
-    "inputs": [{"internalType": "address", "name": "account", "type": "address"}, {
+    "inputs": [{
         "internalType": "address",
-        "name": "token",
+        "name": "account",
         "type": "address"
-    }],
-    "name": "balanceOf",
+    }, {"internalType": "address", "name": "token", "type": "address"}],
+    "name": "getBalance",
     "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "payable": false,
     "stateMutability": "view",
     "type": "function"
 }, {
-    "constant": true,
+    "inputs": [{"internalType": "address", "name": "account", "type": "address"}, {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+    }],
+    "name": "getBalances",
+    "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
+    "stateMutability": "view",
+    "type": "function"
+}, {
     "inputs": [{"internalType": "address[]", "name": "accounts", "type": "address[]"}, {
         "internalType": "address[]",
         "name": "tokens",
         "type": "address[]"
     }],
-    "name": "balancesOf",
+    "name": "getBalances",
     "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
-    "payable": false,
     "stateMutability": "view",
     "type": "function"
 }, {
-    "constant": true,
-    "inputs": [{"internalType": "address", "name": "account", "type": "address"}, {
-        "internalType": "address[]",
-        "name": "tokens",
-        "type": "address[]"
+    "inputs": [{"internalType": "address", "name": "token", "type": "address"}, {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
     }],
-    "name": "balancesOf",
-    "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
-    "payable": false,
+    "name": "getTokenURI",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
     "stateMutability": "view",
     "type": "function"
 }, {
-    "constant": true,
-    "inputs": [{"internalType": "address", "name": "account", "type": "address"}, {
+    "inputs": [{"internalType": "address", "name": "token", "type": "address"}, {
+        "internalType": "uint256[]",
+        "name": "tokenIds",
+        "type": "uint256[]"
+    }],
+    "name": "getTokenURIs",
+    "outputs": [{"internalType": "string[]", "name": "", "type": "string[]"}],
+    "stateMutability": "view",
+    "type": "function"
+}, {
+    "inputs": [{"internalType": "address[]", "name": "tokens", "type": "address[]"}, {
+        "internalType": "uint256[]",
+        "name": "tokenIds",
+        "type": "uint256[]"
+    }],
+    "name": "getTokenURIs",
+    "outputs": [{"internalType": "string[]", "name": "", "type": "string[]"}],
+    "stateMutability": "view",
+    "type": "function"
+}, {
+    "inputs": [{"internalType": "address", "name": "token", "type": "address"}, {
         "internalType": "address",
-        "name": "token",
+        "name": "owner",
         "type": "address"
     }, {"internalType": "uint256", "name": "offset", "type": "uint256"}, {
         "internalType": "uint256",
         "name": "limit",
         "type": "uint256"
     }],
-    "name": "tokensOfByIndex",
-    "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
-    "payable": false,
+    "name": "getTokens",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}, {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+    }],
+    "stateMutability": "view",
+    "type": "function"
+}, {
+    "inputs": [{"internalType": "address", "name": "token", "type": "address"}, {
+        "internalType": "uint256",
+        "name": "offset",
+        "type": "uint256"
+    }, {"internalType": "uint256", "name": "limit", "type": "uint256"}],
+    "name": "getTokens",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}, {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+    }],
     "stateMutability": "view",
     "type": "function"
 }]

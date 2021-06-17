@@ -21,6 +21,8 @@ import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, ERC777_TRANSFER_Q, xLen} from "../service/RedisWrap";
 import {TxnQuery} from "../service/TxnQuery";
+import {AddressErc20Transfer, Erc20Transfer} from "../model/Erc20Transfer";
+import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -55,6 +57,16 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         token.icon = ''
         const base32 = bean ? TxnQuery.base32('0x'+bean.hex, StatApp.networkId) : ''
         ctx.body = {hex: bean, token, base32}
+    })
+    router.get('/devops/sync-max-epoch',async (ctx) => {
+        await Promise.all([
+            Erc20Transfer.max('epoch').then(epoch=>{return {epoch, t:'Erc20Transfer'}}),
+            AddressErc20Transfer.max('epoch').then(epoch=>{return {epoch, t:'AddressErc20Transfer'}}),
+            CfxTransfer.max('epoch').then(epoch=>{return {epoch, t:'CfxTransfer'}}),
+            AddressCfxTransfer.max('epoch').then(epoch=>{return {epoch, t:'AddressCfxTransfer'}}),
+            FullTransaction.max('epoch').then(epoch=>{return {epoch, t:'FullTransaction'}}),
+            FullBlock.max('epoch').then(epoch=>{return {epoch, t:'FullBlock'}}),
+        ])
     })
     router.get('/devops/sync-max-info',async (ctx) => {
         await Promise.all([
