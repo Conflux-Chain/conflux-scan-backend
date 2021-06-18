@@ -180,7 +180,7 @@ export function hexMapInit(sequelize) {
             sequelize: sequelize,
             timestamps: false, // prevent default columns: createdAt, updatedAt
             indexes: [
-                {
+                // {
                     // name: `hex64_index`,
                     // fields: [
                     //     {
@@ -189,7 +189,7 @@ export function hexMapInit(sequelize) {
                     //     }
                     // ],
                     // unique: true
-                }
+                // }
             ]
         }
     )
