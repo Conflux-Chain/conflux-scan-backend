@@ -354,7 +354,7 @@ const metrics = {
         metrics.makeIdMs1 = metrics.makeIdMs2 = metrics.makeIdMs3 = 0
     }
 }
-async function buildFromToId(array, dt:Date) {
+async function buildFromToId(array, dt:Date, templates) {
     const hexSet = buildHexSet(undefined, array, 'from')
     buildHexSet(hexSet, array, 'to')
     const tasks = []
@@ -366,6 +366,11 @@ async function buildFromToId(array, dt:Date) {
     })
     fillHexId(hexMap, array, 'from', 'fromId')
     fillHexId(hexMap, array, 'to', 'toId')
+
+    for (const obj of array) {
+        templates.push(buildCfxTransfer(obj, dt))
+    }
+    return templates
 }
 export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     if(!array?.length){
@@ -377,12 +382,9 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     await Promise.all([
         batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'CfxTransfer', date)
             .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart}),
-        buildFromToId(array, date).then(()=>{metrics.makeIdMs2 += Date.now() - veryStart}),
+        buildFromToId(array, date, templates).then(()=>{metrics.makeIdMs2 += Date.now() - veryStart}),
     ]);
 
-    for (const obj of array) {
-        templates.push(buildCfxTransfer(obj, date))
-    }
     metrics.transferCnt += templates.length
     let now = Date.now(); metrics.buildMs1 += now - veryStart; let start = now;
     // sync add address-cfx-transfer
