@@ -122,7 +122,7 @@ export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<
     return hexSet
 }
 let debugLogCnt = 10
-export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string) : Promise<Map<string,number>> {
+export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) : Promise<Map<string,number>> {
     const templates = []
     hexSet.forEach(hex=>{
         templates.push({hex: hex.substr(2)})
@@ -135,6 +135,15 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
     return model.bulkCreate(templates, {
         updateOnDuplicate:['hex']
     }).then(hexArr=> {
+        // bulk create don't guarantee returning the id. In case duplicate occur
+        const hasMissing = hexArr.find(bean => isNaN(bean.id)) !== undefined
+        if (hasMissing) {
+            console.log(`bulk create not fulfilled. ${dt}`)
+            const hexWithout0x = templates.map(d => d.hex)
+            return model.findAll({where: {hex: {[Op.in]: hexWithout0x}}})
+        }
+        return hexArr
+    }).then(hexArr=>{
         const map = new Map<string, number>()
         hexArr.forEach(bean => map.set(bean.hex, bean.id))
         return map;
@@ -152,9 +161,9 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
 export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
     arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
 }
-export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string) {
+export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) {
     const set = buildHexSet(undefined, arr, hexKey)
-    return buildIdMap(set, model, biz).then(map=>{
+    return buildIdMap(set, model, biz, dt).then(map=>{
         fillHexId(map, arr, hexKey, idKey)
     })
 }
@@ -171,16 +180,16 @@ export function hexMapInit(sequelize) {
             sequelize: sequelize,
             timestamps: false, // prevent default columns: createdAt, updatedAt
             indexes: [
-                {
-                    name: `hex64_index`,
-                    fields: [
-                        {
-                            name: 'hex',
-                            // length: 10,
-                        }
-                    ],
-                    unique: true
-                }
+                // {
+                    // name: `hex64_index`,
+                    // fields: [
+                    //     {
+                    //         name: 'hex',
+                    //         // length: 10,
+                    //     }
+                    // ],
+                    // unique: true
+                // }
             ]
         }
     )
