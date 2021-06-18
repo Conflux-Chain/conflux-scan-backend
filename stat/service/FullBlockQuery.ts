@@ -141,7 +141,7 @@ export class FullBlockQuery {
                 row['timestamp'] = timestampInSec;
                 row['syncTimestamp'] = timestampInSec;
                 row['pivotHash'] = row['pivotHash'] ? row['hash'] : undefined;
-                if(row['totalReward'] === 0){
+                if(row['totalReward'] === '0'){
                     row['totalReward'] = undefined;
                 }
             })
