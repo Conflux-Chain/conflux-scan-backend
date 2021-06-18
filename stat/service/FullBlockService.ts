@@ -25,6 +25,7 @@ import {
     KEY_FULL_TX_COUNT,
     KV
 } from "../model/KV";
+import {PreloadMap} from "./SyncBase";
 
 
 // Do not care the value
@@ -35,8 +36,10 @@ const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
     public debugLog:boolean = true
+    preLoadMap:PreloadMap
     constructor(cfx:Conflux) {
         this.cfx = cfx;
+        this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this))
     }
     // sync metrics
     private metrics = {
@@ -150,9 +153,7 @@ export class FullBlockService {
         console.log(`create full block count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()})
     }
-    public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
-        let start = Date.now()
-        let veryBegin = start
+    private async loadEpochData(minEpochNumber: number) {
         const [rewardList, hashes, latest_state] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
@@ -189,10 +190,26 @@ export class FullBlockService {
                 return this.cfx.getBlockByHash(hash, true)
             })
         )) as IFullBlock[]
+        return {code: 0, message: 'ok', blockList, rewardList, latest_state}
+    }
+    public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
+        let start = Date.now()
+        let veryBegin = start
+        let preLoadResult = await this.preLoadMap.pop(minEpochNumber)
         let now = Date.now();
         let metrics = this.metrics;
-        metrics.queryFullNodeTime += now - start;  start = now;
+        metrics.queryFullNodeTime += now - start;  start = now; // =====================================================
+        if (preLoadResult.code !== 0) {
+            return preLoadResult
+        }
+        if (preLoadResult.latest_state - minEpochNumber > 500) {
+            for (let i=1; i<=10; i++) {
+                this.preLoadMap.start(minEpochNumber + i)
+            }
+        }
         // blockList = blockList.reverse(); // turn to asc order.
+        const blockList = preLoadResult.blockList
+        const rewardList = preLoadResult.rewardList
         let ok = true;
         let message = "ok";
         // the last one is pivot block.
@@ -327,15 +344,15 @@ export class FullBlockService {
                 }, time ${blockTime.toISOString()}, cost ${metrics.ms}ms (full node ${metrics.queryFullNodeTime
                     } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime})   `)
-                metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
-                metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
-                metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
                 if ((minEpochNumber % 1000) === 0) {
                     const target = await this.cfx.getEpochNumber('latest_state')
-                    const remainTime = (target - minEpochNumber) / epochPerStat * (now - veryBegin)
+                    const remainTime = (target - minEpochNumber) / epochPerStat * (metrics.ms)
                     const targetTime:Date = new Date(now + remainTime)
                     console.log(`estimate target time ${targetTime.toISOString()}, ${target}, ${remainTime/1000/3600}h`)
                 }
+                metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
+                metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
+                metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
             }
         }).catch(err => {
             ok = false;

@@ -9,7 +9,7 @@ async function run(round) {
     // @ts-ignore
     let nonce:BigInt = await cfx.getNextNonce(sender.address)
     const start = new Date().getTime();
-    let batchSize = 20;
+    let batchSize = 1;
     let arr = []
     while (i < round) {
         // @ts-ignore
@@ -30,9 +30,12 @@ async function checkBalance() {
     let cfxU = BalanceWatcher.drip2cfx(ban, 1e+18)
     console.log(`balance of main account ${sender.toString()} is ${cfxU}`)
 }
-
+const receivers = []
 async function send(i:BigInt, nonce:number) {
-    const receiver = cfx.wallet.addRandom()
+    if (receivers.length < 1000) {
+        receivers.push(cfx.wallet.addRandom())
+    }
+    const receiver = receivers[receivers.length-1]
     // @ts-ignore
     const receiverHex = addressSdk.simplifyCfxAddress(receiver.address);
     let txParams = {

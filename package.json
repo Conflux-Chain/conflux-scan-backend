@@ -14,7 +14,7 @@
     "@koa/cors": "^3.1.0",
     "@types/koa-bodyparser": "^4.3.0",
     "bigfixed": "0.0.2",
-    "js-conflux-sdk": "1.6.2",
+    "js-conflux-sdk": "1.6.4",
     "koa": "^2.13.1",
     "koa-bodyparser": "^4.3.0",
     "koa-helmet": "6.0.0",

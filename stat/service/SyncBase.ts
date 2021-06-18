@@ -148,7 +148,7 @@ export class SyncData {
     modelData: any;
 }
 
-class PreloadMap extends Map {
+export class PreloadMap extends Map {
     private func: any;
     constructor(func) {
         super();
