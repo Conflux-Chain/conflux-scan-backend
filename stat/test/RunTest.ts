@@ -70,7 +70,7 @@ async function testTopMinerBlock() {
 }
 
 async function testTxSync(loop:boolean = false) {
-    const porter = new TxnSync(sequelize, config.conflux)
+    const porter = new TxnSync(undefined, sequelize, config.conflux)
     do {
         const info = await porter.run()
         console.log(`sync tx done.`, info)

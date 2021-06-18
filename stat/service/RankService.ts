@@ -58,8 +58,7 @@ export class RankService{
         // add token info if contract name no exists
         const tokenInfoMap = new Map();
         if(addressSet.size > 0){
-            const page = await this.app.tokenQuery.list(['icon'], undefined, undefined,
-                undefined, undefined, undefined, undefined, [...addressSet]);
+            const page = await this.app.tokenQuery.list([...addressSet], ['icon']);
             page?.list?.forEach(token => {
                 tokenInfoMap.set(token.address, {name: token.name, symbol: token.symbol, icon: token.icon});
             });
