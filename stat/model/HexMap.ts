@@ -181,14 +181,14 @@ export function hexMapInit(sequelize) {
             timestamps: false, // prevent default columns: createdAt, updatedAt
             indexes: [
                 {
-                    name: `hex64_index`,
-                    fields: [
-                        {
-                            name: 'hex',
-                            // length: 10,
-                        }
-                    ],
-                    unique: true
+                    // name: `hex64_index`,
+                    // fields: [
+                    //     {
+                    //         name: 'hex',
+                    //         // length: 10,
+                    //     }
+                    // ],
+                    // unique: true
                 }
             ]
         }

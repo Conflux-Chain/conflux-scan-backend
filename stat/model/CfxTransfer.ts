@@ -379,7 +379,7 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
             .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart}),
         buildFromToId(array, date).then(()=>{metrics.makeIdMs2 += Date.now() - veryStart}),
     ]);
-
+    // must wait building id finished.
     for (const obj of array) {
         templates.push(buildCfxTransfer(obj, date))
     }
