@@ -114,8 +114,7 @@ export class TokenQuery {
         const addressSet = new Set<string>();
         currency = '';
         if(page && page.rows){
-            page.rows.forEach( item => {
-                const row = item.toJSON();
+            page.rows.forEach( row => {
                 row['price'] = row[`price${currency}`];
                 row['totalPrice'] = row[`totalPrice${currency}`];
                 if(row['icon']) {
@@ -125,13 +124,17 @@ export class TokenQuery {
                 addressSet.add(row['address']);
             });
         }
+
         // query contract
         const contractInfoArray = await ContractInfo.findAll({
             where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], raw: true
         });
-        let contractList = contractInfoArray?.filter(item => !addressSet.has(item['base32']))
-            .map(item =>  {return { address: item['base32'], name: item['name'], epoch: item['epoch'] };});
-        contractList = lodash.orderBy(contractList, 'epoch', 'asc');
+        const contractInfoMap = new Map();
+        contractInfoArray?.filter(item => !addressSet.has(item['base32'])).forEach(item=>{
+            contractInfoMap.set(item.hexId , { address: item['base32'], name: item['name'], epoch: item['epoch'] });
+        })
+        let contractList = [];
+        contractInfoMap?.forEach(value => contractList.push(value));
 
         return { total: list.length, list, contractTotal: contractList.length, contractList };
     }
