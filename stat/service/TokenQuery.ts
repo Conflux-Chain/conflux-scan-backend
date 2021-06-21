@@ -145,7 +145,7 @@ export class TokenQuery {
             'name',
             'symbol',
             'decimals',
-            'totalSupply',
+            'totalSupply','fetchBalance',
             ['holder', 'holderCount'],
             ['transfer', 'transferCount'],
             ['type', 'transferType']
