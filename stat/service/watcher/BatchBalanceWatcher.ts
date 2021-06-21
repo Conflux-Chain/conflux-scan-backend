@@ -45,7 +45,13 @@ export class BatchBalanceWatcher {
         // contract used by portal
         // let banList = await BatchBalanceWatcher.contract.balances([userAddr], this.tokenList)
         // contract made by BO, which support tokens include 1155.
-        let banList = await BatchBalanceWatcher.allTokenContract.getBalances(userAddr, this.tokenList)
+        let banList = await BatchBalanceWatcher.allTokenContract.getBalances(userAddr, this.tokenList).catch(err=>{
+            console.log(`allTokenContract.getBalances fail, param:${userAddr}, ${this.tokenList} , error:`, err)
+            return []
+        })
+        if (banList.length === 0) {
+            return;
+        }
         console.log(`BatchBalanceWatcher , balance list length ${banList.length}`)
         let i = 0
         for (const erc20 of this.erc20list) {
