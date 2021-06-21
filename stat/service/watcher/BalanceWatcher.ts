@@ -218,7 +218,7 @@ export class BalanceWatcher{
             await this.save(bean.id, bans[i])
             i++
         }
-        console.log(`batch erc balance, ${this.name}, count ${bans.length}`)
+        // console.log(`batch erc balance, ${this.name}, count ${bans.length}`)
         await this.savePosition(right)
     }
 
