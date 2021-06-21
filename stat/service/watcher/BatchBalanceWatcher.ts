@@ -61,7 +61,7 @@ export class BatchBalanceWatcher {
         const that = this;
         async function repeat() {
             await that.run().catch(err=>{
-                console.log(`error process batch balance:`, err)
+                console.log(`error process batch balance:`, err.data, err)
             })
             setTimeout(repeat, delay)
         }
