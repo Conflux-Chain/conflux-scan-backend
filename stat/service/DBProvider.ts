@@ -32,7 +32,7 @@ import {
     Balance_cUSDC,
     Balance_cYFI,
     Balance_cYFII,
-    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
+    Balance_FC, Balance_K, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -191,7 +191,7 @@ export async function initModel(sequelize) {
     Balance_TREA.register(sequelize);
     Balance_YAO.register(sequelize);
     Balance_cOKT.register(sequelize);
-
+    Balance_K.register(sequelize);
 
 
     // erc1155
