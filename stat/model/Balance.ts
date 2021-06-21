@@ -266,3 +266,10 @@ export class Balance_cOKT extends Balance{
         Balance.register(seq, Balance_cOKT, 'balance_cOKT')
     }
 }
+// It's a test token in testnet.
+export class Balance_K extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_K, 'balance_K')
+    }
+}
+// test model end.

@@ -11,7 +11,7 @@ import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
-const TESTNET_UTIL_CONTRACT = 'cfxtest:acb4j27jhmvpvnzfcn7rmgfk90b1xkxw263ba2jv6x'
+const TESTNET_UTIL_CONTRACT = 'cfxtest:achamkxtk3yn534h483vdvv0kcffwr221uyw9xnucr'
 export class BatchBalanceWatcher {
     private cfx: Conflux;
     public static contract: {balances};
