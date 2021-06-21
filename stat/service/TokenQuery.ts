@@ -8,7 +8,7 @@ import {decodeUtf8} from "./tool/StringTool";
 const {Hex40Map} = require("../model/HexMap");
 import {StatApp} from "../StatApp";
 import {toBase32} from "./tool/AddressTool";
-import {ContractInfo} from "../model/ContractInfo";
+import {Contract} from "../model/Contract";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -126,12 +126,13 @@ export class TokenQuery {
         }
 
         // query contract
-        const contractInfoArray = await ContractInfo.findAll({
+        const contractInfoArray = await Contract.findAll({
+            attributes: ['base32', 'name', 'epoch', 'hex40id'],
             where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], raw: true
         });
         const contractInfoMap = new Map();
         contractInfoArray?.filter(item => !addressSet.has(item['base32'])).forEach(item=>{
-            contractInfoMap.set(item.hexId , { address: item['base32'], name: item['name'], epoch: item['epoch'] });
+            contractInfoMap.set(item.hex40id , { address: item['base32'], name: item['name'], epoch: item['epoch'] });
         })
         let contractList = [];
         contractInfoMap?.forEach(value => contractList.push(value));
