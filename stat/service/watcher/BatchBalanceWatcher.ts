@@ -52,7 +52,7 @@ export class BatchBalanceWatcher {
         if (banList.length === 0) {
             return;
         }
-        console.log(`BatchBalanceWatcher , balance list length ${banList.length}`)
+        // console.log(`BatchBalanceWatcher , balance list length ${banList.length}`)
         let i = 0
         for (const erc20 of this.erc20list) {
             let model = BalanceWatcher.mapModel(erc20.name)
