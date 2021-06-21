@@ -57,7 +57,7 @@ export class BatchBalanceWatcher {
         for (const erc20 of this.erc20list) {
             let model = BalanceWatcher.mapModel(erc20.name)
             let id = (await makeId(userAddr)).id
-            await BalanceWatcher.saveModel(model, id, banList[i], true, this.fraction)
+            await BalanceWatcher.saveModel(model, id, banList[i], !(erc20.tokenType||'').includes('1155'), this.fraction)
             i++
         }
     }
