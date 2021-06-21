@@ -185,7 +185,8 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         }
     )
     router.get('/devops/test-balance-watcher', async (ctx) => {
-        const watcher = new BalanceWatcher('conDragon', '0x83928828f200b79b78404dce3058ba0c8c4076c3', statApp.cfx, {scanJsonRpcUrl:''})
+        const watcher = new BalanceWatcher('conDragon', '0x83928828f200b79b78404dce3058ba0c8c4076c3', statApp.cfx,
+            {tokenType:'ERC1155'})
         await watcher.run()
         ctx.body = {code: 0, message: 'ok'}
     })
