@@ -17,7 +17,7 @@ import {
 } from "../model/FullBlock";
 import {Hex40Map, makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
-import {Transaction,QueryTypes} from "sequelize"
+import {Transaction,QueryTypes,UniqueConstraintError} from "sequelize"
 import {
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KEY_FILL_BLOCK_REWARD_EPOCH,
@@ -333,6 +333,7 @@ export class FullBlockService {
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
+        let fixDupError = false
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
@@ -370,10 +371,25 @@ export class FullBlockService {
             }
         }).catch(err => {
             ok = false;
-            message = `${err}`
-            console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
-            throw err;
+            if (err instanceof UniqueConstraintError) {
+                console.log(`Known issue, UniqueConstraintError error:`, err.message)
+                fixDupError = true
+            } else {
+                message = `${err}`
+                console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
+                throw err;
+            }
         });
+        if (fixDupError) {
+            await Promise.all([txByAddressArr.map( async tx=>AddressTransactionIndex.destroy({
+                where: {addressId: tx.addressId, epoch: tx.epoch}}))]
+            ).then(()=>{
+                console.log(`fix dup error, ok. ${minEpochNumber}`)
+            }).catch(err=>{
+                console.log(`fix dup error fail , ${minEpochNumber} : `, err)
+            })
+            return {code: CODE_CONTINUE, message: `continue after fix UniqueConstraintError, ${minEpochNumber}.`}
+        }
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
