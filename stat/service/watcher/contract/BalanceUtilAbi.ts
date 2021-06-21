@@ -20,6 +20,16 @@ export const BALANCE_UTIL_ABI = [{
     "type": "function"
 }, {
     "inputs": [{"internalType": "address[]", "name": "accounts", "type": "address[]"}, {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+    }],
+    "name": "getBalances",
+    "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
+    "stateMutability": "view",
+    "type": "function"
+}, {
+    "inputs": [{"internalType": "address[]", "name": "accounts", "type": "address[]"}, {
         "internalType": "address[]",
         "name": "tokens",
         "type": "address[]"

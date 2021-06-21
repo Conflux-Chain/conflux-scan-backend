@@ -54,7 +54,6 @@ export class BalanceWatcher{
     private readonly contractAddress: string;
     private contractHex40id:number
     private tokenIdsCache
-    private isNFT: boolean;
 
     constructor(name:string, contractAddr: string, cfx:Conflux, config:{scanJsonRpcUrl:string}) {
         this.tokenIdsCache = new NodeCache()
@@ -63,6 +62,7 @@ export class BalanceWatcher{
         this.contractAddress = contractAddr
         this.cfx = cfx;
         this.model = BalanceWatcher.mapModel(name)
+        this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
         if (contractAddr) {
             const {abi, bytecode} = require('./contract/miniERC20.json');
             this.miniERC20 = cfx.Contract({abi, bytecode, address: contractAddr});
@@ -189,11 +189,6 @@ export class BalanceWatcher{
     }
     async schedule(delay:number = 100, tokenType:string = '') {
         this.tokenType = tokenType
-        this.isNFT = tokenType === 'erc1155';
-        if (this.isNFT) {
-            this.scheduleSyncTokeId().then()
-        }
-        this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
         //
         const position = await KV.findOne({where:{key: this.addressPosKey}})
         if (position == null) {
@@ -217,17 +212,15 @@ export class BalanceWatcher{
         console.log(`schedule balance watcher : ${this.name}`)
     }
 
-    async run() :Promise<boolean> {
+    public async run() :Promise<boolean> {
         // console.log(`run balance watcher ${this.name}`)
         let lastId = await KV.getNumber(this.addressPosKey)
         if (lastId < 0) {
             return false;
         }
-        if (this.isNFT) {
-            //
-        } else if (this.name !== 'cfx'){
-            // erc 20
-            await this.batchErc20(lastId);
+        if (this.name !== 'cfx'){
+            // erc 20, 721, 1155
+            await this.batchErc(lastId);
             return true
         }
         let curId = lastId + 1
@@ -247,7 +240,7 @@ export class BalanceWatcher{
         await KV.update({value: curId.toString()}, {where: {key: this.addressPosKey}})
     }
 
-    async batchErc20(lastId:number) {
+    async batchErc(lastId:number, flag1155:boolean = false) {
         const batch = 100
         let left = lastId + 1; //include
         let right = left + batch - 1;//include
@@ -265,16 +258,20 @@ export class BalanceWatcher{
             return
         }
         const hexList = hexBeanList.map(bean=>`0x${bean.hex}`);
-        let bans = await BatchBalanceWatcher.contract.balances(hexList, [this.contractAddress])
+        const utilContractAddr = BatchBalanceWatcher.getUtilContractAddr()
+        let bans = flag1155
+            ? await BatchBalanceWatcher.allTokenContract.getBalances(hexList, utilContractAddr)
+            : await BatchBalanceWatcher.contract.balances(hexList, [this.contractAddress])
         let i = 0
         for (const bean of hexBeanList) {
             await this.save(bean.id, bans[i])
             i++
         }
-        // console.log(`batch erc20 balance, ${this.name}, count ${bans.length}`)
+        console.log(`batch erc balance, ${this.name}, count ${bans.length}`)
         await this.savePosition(right)
     }
 
+    // Deprecated
     async queryBalanceErc1155(hex:string) {
         let tokenIdList = this.tokenIdsCache.get(this.contractHex40id)
         if (tokenIdList === undefined) {

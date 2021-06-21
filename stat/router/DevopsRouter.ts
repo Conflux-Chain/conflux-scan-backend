@@ -23,6 +23,7 @@ import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, ERC777_TRANSFER
 import {TxnQuery} from "../service/TxnQuery";
 import {AddressErc20Transfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
+import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -183,6 +184,11 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             ctx.body = await TopBatchIndex.findAll({limit: 30, order: [['id', 'desc']]})
         }
     )
+    router.get('/devops/test-balance-watcher', async (ctx) => {
+        const watcher = new BalanceWatcher('conDragon', '0x83928828f200b79b78404dce3058ba0c8c4076c3', statApp.cfx, {scanJsonRpcUrl:''})
+        await watcher.run()
+        ctx.body = {code: 0, message: 'ok'}
+    })
     router.get('/devops/table-size',
         checkLocal,
         async (ctx) => {

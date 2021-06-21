@@ -32,11 +32,21 @@ export class BatchBalanceWatcher {
         this.erc20list = erc20List
         this.txAddressSet = null
     }
+
+    public static async getUtilContractAddr() {
+        // use config in DB ?
+        const utilContract = StatApp.networkId === 1 ? TESTNET_UTIL_CONTRACT : MAINNET_UTIL_CONTRACT
+        return utilContract;
+    }
     public async balanceOf(userAddr) {
         if (this.erc20list.length === 0) {
             return;
         }
-        let banList = await BatchBalanceWatcher.contract.balances([userAddr], this.tokenList)
+        // contract used by portal
+        // let banList = await BatchBalanceWatcher.contract.balances([userAddr], this.tokenList)
+        // contract made by BO, which support tokens include 1155.
+        let banList = await BatchBalanceWatcher.allTokenContract.getBalances(userAddr, this.tokenList)
+        console.log(`BatchBalanceWatcher , balance list length ${banList.length}`)
         let i = 0
         for (const erc20 of this.erc20list) {
             let model = BalanceWatcher.mapModel(erc20.name)
