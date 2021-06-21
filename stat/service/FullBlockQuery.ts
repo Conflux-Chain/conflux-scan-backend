@@ -59,7 +59,7 @@ export class FullBlockQuery {
             }
         } else{
             const pagedCondition = await this.buildPagedBlockOptions(skip);
-            if(pagedCondition) {
+            if(pagedCondition.where) {
                 conditionArray.push(pagedCondition.where);
                 options.offset = pagedCondition.skip;
             }
@@ -230,7 +230,7 @@ export class FullBlockQuery {
             }
         } else{
             const pagedCondition = await this.buildPagedTxOptions(skip);
-            if(pagedCondition){
+            if(pagedCondition.where){
                 conditionArray.push(pagedCondition.where);
                 options.offset = pagedCondition.skip;
             }
