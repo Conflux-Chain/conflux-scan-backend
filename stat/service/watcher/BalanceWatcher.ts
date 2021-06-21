@@ -215,7 +215,7 @@ export class BalanceWatcher{
         }
         let i = 0;
         for (const bean of hexBeanList) {
-            await this.save(bean.id, bans[i])
+            await this.save(bean.id, bans[i], !flag1155)
             i++
         }
         // console.log(`batch erc balance, ${this.name}, count ${bans.length}`)
