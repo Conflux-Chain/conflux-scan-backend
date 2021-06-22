@@ -136,6 +136,7 @@ export class TokenQuery {
         })
         let contractList = [];
         contractInfoMap?.forEach(value => contractList.push(value));
+        contractList = contractList.length > 10 ? contractList.slice(0, 10) : contractList;
 
         return { total: list.length, list, contractTotal: contractList.length, contractList };
     }
