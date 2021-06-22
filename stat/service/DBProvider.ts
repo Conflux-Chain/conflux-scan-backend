@@ -13,6 +13,7 @@ import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {TokenQuote} from "../model/TokenQuote";
 import {
+    Balance_ACGNFT,
     Balance_cAMP,
     Balance_cBAND, Balance_cBNB,
     Balance_cBTC,
@@ -31,8 +32,8 @@ import {
     Balance_cUMA,
     Balance_cUSDC,
     Balance_cYFI,
-    Balance_cYFII,
-    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
+    Balance_cYFII, Balance_EPIK_NFT,
+    Balance_FC, Balance_K, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -191,7 +192,9 @@ export async function initModel(sequelize) {
     Balance_TREA.register(sequelize);
     Balance_YAO.register(sequelize);
     Balance_cOKT.register(sequelize);
-
+    Balance_K.register(sequelize);
+    Balance_ACGNFT.register(sequelize);
+    Balance_EPIK_NFT.register(sequelize);
 
 
     // erc1155

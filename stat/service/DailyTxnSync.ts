@@ -192,7 +192,8 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         }))[0] as DailyToken
         if (stat.hexId === null) {
             stat.hexId = tokenHexId
-            showDebugLog && console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol} day ${start.toISOString()}`)
+            showDebugLog && console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol
+                } day ${start.toISOString()}, table ${model.getTableName()}`)
         }
         stat.day = start
         // console.log(`stat got :`, stat);

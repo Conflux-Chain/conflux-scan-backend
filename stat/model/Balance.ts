@@ -266,3 +266,22 @@ export class Balance_cOKT extends Balance{
         Balance.register(seq, Balance_cOKT, 'balance_cOKT')
     }
 }
+// It's a test token in testnet.
+export class Balance_K extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_K, 'balance_K')
+    }
+}
+// test model end.
+
+export class Balance_ACGNFT extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_ACGNFT, 'balance_ACGNFT')
+    }
+}
+export class Balance_EPIK_NFT extends Balance{
+static register(seq){
+        Balance.register(seq, Balance_EPIK_NFT, 'balance_EPIK_NFT')
+    }
+}
+

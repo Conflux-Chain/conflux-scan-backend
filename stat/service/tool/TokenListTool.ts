@@ -9,10 +9,10 @@ async function run() {
     const scanUrl = 'https://confluxscan.io/stat/tokens/list'
     const client = superagent
     let transferType = 'ERC1155'
-    transferType = 'ERC20'
+    // transferType = 'ERC20'
     // transferType = 'ERC721'
     const is1155 = transferType === 'ERC1155'
-    const filter = ['YAO','cOKT']
+    const filter = ['ACGNFT','EPIK-NFT']
     client.get(`${scanUrl}`)
         .query({
             fields: '',
@@ -27,7 +27,7 @@ async function run() {
         console.log(`conf:`)
         list.forEach(token=>{
             let hexAddr = format.hexAddress(token.address)
-            console.log(`${JSON.stringify({name: token.symbol, address: hexAddr, watchDelay: 100, tokenType: transferType.toLowerCase()})},`)
+            console.log(`${JSON.stringify({name: token.symbol, address: hexAddr, watchDelay: 100, tokenType: transferType.toUpperCase()})},`)
         })
         console.log(`\n model:`)
         list.forEach(token=>{

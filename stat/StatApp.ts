@@ -94,13 +94,13 @@ export class StatApp{
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         this.traceSync = new BlockTraceSync(this.cfx)
         if (this.config.watchCfxBalance) {
-            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx, this.config)).schedule(this.config.cfxWatcherDelay).then()
+            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx)).schedule(this.config.cfxWatcherDelay).then()
         }
         this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher)
         this.batchBalanceWatcher.schedule().then()
         this.config.erc20watchList.forEach(erc20=>{
-            const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, this.config)
-            watcher.schedule(erc20.watchDelay, erc20.tokenType)
+            const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, {tokenType: erc20.tokenType})
+            watcher.schedule(erc20.watchDelay)
         })
         // @ts-ignore
         this.balanceService = new BalanceService(this, this.config.erc20watchList, StatApp.networkId)

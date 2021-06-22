@@ -2,7 +2,7 @@
 import {Conflux, format} from "js-conflux-sdk";
 import {Model, Op} from "sequelize";
 import {
-    Balance, Balance_cAMP,
+    Balance, Balance_ACGNFT, Balance_cAMP,
     Balance_cBAND, Balance_cBNB, Balance_cBTC,
     Balance_cCOMP,
     Balance_cDAI, Balance_cDF, Balance_cDPI,
@@ -12,8 +12,8 @@ import {
     Balance_cLINK, Balance_cMBTM,
     Balance_cMOON, Balance_cOKT, Balance_conDragon,
     Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_cUMA,
-    Balance_cUSDC, Balance_cYFI, Balance_cYFII,
-    Balance_FC, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
+    Balance_cUSDC, Balance_cYFI, Balance_cYFII, Balance_EPIK_NFT,
+    Balance_FC, Balance_K, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -54,15 +54,15 @@ export class BalanceWatcher{
     private readonly contractAddress: string;
     private contractHex40id:number
     private tokenIdsCache
-    private isNFT: boolean;
 
-    constructor(name:string, contractAddr: string, cfx:Conflux, config:{scanJsonRpcUrl:string}) {
+    constructor(name:string, contractAddr: string, cfx:Conflux, config:{tokenType:string}) {
         this.tokenIdsCache = new NodeCache()
-        this.config = config
         this.name = name
         this.contractAddress = contractAddr
         this.cfx = cfx;
+        this.tokenType = config.tokenType || 'NotSet'
         this.model = BalanceWatcher.mapModel(name)
+        this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
         if (contractAddr) {
             const {abi, bytecode} = require('./contract/miniERC20.json');
             this.miniERC20 = cfx.Contract({abi, bytecode, address: contractAddr});
@@ -123,7 +123,9 @@ export class BalanceWatcher{
             case 'TREA':         ret = Balance_TREA;    break;
             case 'YAO':         ret = Balance_YAO;    break;
             case 'cOKT':         ret = Balance_cOKT;    break;
-
+            case 'K':         ret = Balance_K;    break;
+            case 'ACGNFT':         ret = Balance_ACGNFT;    break;
+            case 'EPIK-NFT':         ret = Balance_EPIK_NFT;    break;
             default:
                 if (silent) {
                     return null
@@ -133,67 +135,7 @@ export class BalanceWatcher{
         return ret;
     }
 
-    // curl -X POST '127.0.0.1:8888' -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":0,"method":"listERC1155TokenId","params":[{"address":"0x83928828f200b79b78404dce3058ba0c8c4076c3", "limit":100}]}'
-    async syncTokenIds() {
-        const posKey = `${KEY_NFT_TOKEN_ID_POS}${this.contractHex40id}`
-        let minTokenId = await KV.getNumber(posKey);
-        if (isNaN(minTokenId)) {
-            await KV.create({key: posKey, value: "0"})
-            minTokenId = 0
-        }
-        const limit = 1000
-        let jsonRpc = await superagent.post(`${this.config.scanJsonRpcUrl}`)
-            .send({
-                "jsonrpc": "2.0",  "id": 1,
-                "method":"listERC1155TokenId",
-                "params": [{
-                    "address": this.contractAddress,
-                    "limit": limit, reverse: false,
-                    "minTokenId": minTokenId,
-                }]
-            }).catch(err=>{
-                console.log(`${fmtDtUTC(new Date())} call scan api fail , ${this.config.scanJsonRpcUrl} :`, err)
-                return null
-            });
-        if (jsonRpc === null) {
-            return
-        }
-        if (jsonRpc.body.error) {
-            console.log(`call token rpc result in error:`, jsonRpc.body.error)
-            return;
-        }
-        let resultArr = jsonRpc.body.result;
-        let max = 0
-        for (let i = 0; i < resultArr.length; i++) {
-            const obj = resultArr[i]
-            await NftId.upsert({contractHexId: this.contractHex40id, nftId: obj.tokenId})
-            max = Math.max(max, Number(obj.tokenId))
-        }
-        if (resultArr.length < limit) {
-            // reset to zero, scan again. token id may be not continuous.
-            max = 0
-        }
-        await KV.update({value: max.toString()}, {where: {key: posKey}})
-        console.log(`${fmtDtUTC(new Date())} fetch token id for ${this.contractAddress} hex id ${this.contractHex40id}, token id count ${resultArr.length}`)
-    }
-    async scheduleSyncTokeId() {
-        const hexBean = await makeId(this.contractAddress)
-        this.contractHex40id = hexBean.id
-        console.log(`schedule sync token id ${this.contractAddress}, address hex id ${this.contractHex40id}`)
-        let that = this;
-        async function repeat() {
-            await that.syncTokenIds()
-            setTimeout(repeat, 10_000)
-        }
-        repeat().then()
-    }
-    async schedule(delay:number = 100, tokenType:string = '') {
-        this.tokenType = tokenType
-        this.isNFT = tokenType === 'erc1155';
-        if (this.isNFT) {
-            this.scheduleSyncTokeId().then()
-        }
-        this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
+    async schedule(delay:number = 100) {
         //
         const position = await KV.findOne({where:{key: this.addressPosKey}})
         if (position == null) {
@@ -217,17 +159,15 @@ export class BalanceWatcher{
         console.log(`schedule balance watcher : ${this.name}`)
     }
 
-    async run() :Promise<boolean> {
+    public async run() :Promise<boolean> {
         // console.log(`run balance watcher ${this.name}`)
         let lastId = await KV.getNumber(this.addressPosKey)
         if (lastId < 0) {
             return false;
         }
-        if (this.isNFT) {
-            //
-        } else if (this.name !== 'cfx'){
-            // erc 20
-            await this.batchErc20(lastId);
+        if (this.name !== 'cfx'){
+            // erc 20, 721, 1155
+            await this.batchErc(lastId, this.tokenType.includes('1155'));
             return true
         }
         let curId = lastId + 1
@@ -247,7 +187,7 @@ export class BalanceWatcher{
         await KV.update({value: curId.toString()}, {where: {key: this.addressPosKey}})
     }
 
-    async batchErc20(lastId:number) {
+    async batchErc(lastId:number, flag1155:boolean = false) {
         const batch = 100
         let left = lastId + 1; //include
         let right = left + batch - 1;//include
@@ -265,16 +205,26 @@ export class BalanceWatcher{
             return
         }
         const hexList = hexBeanList.map(bean=>`0x${bean.hex}`);
-        let bans = await BatchBalanceWatcher.contract.balances(hexList, [this.contractAddress])
-        let i = 0
+        const utilContractAddr = await BatchBalanceWatcher.getUtilContractAddr()
+        let bans = flag1155
+            ? await BatchBalanceWatcher.allTokenContract.getBalances(hexList, this.contractAddress).catch(err=>{
+                console.log(` allTokenContract.getBalances error ${err}, util contract ${utilContractAddr}, token ${this.contractAddress}`)
+                return []
+            })
+            : await BatchBalanceWatcher.contract.balances(hexList, [this.contractAddress])
+        if (bans.length === 0) {
+            return;
+        }
+        let i = 0;
         for (const bean of hexBeanList) {
-            await this.save(bean.id, bans[i])
+            await this.save(bean.id, bans[i], !flag1155)
             i++
         }
-        // console.log(`batch erc20 balance, ${this.name}, count ${bans.length}`)
+        // console.log(`batch erc balance, ${this.name}, count ${bans.length}`)
         await this.savePosition(right)
     }
 
+    // Deprecated
     async queryBalanceErc1155(hex:string) {
         let tokenIdList = this.tokenIdsCache.get(this.contractHex40id)
         if (tokenIdList === undefined) {
@@ -342,8 +292,8 @@ export class BalanceWatcher{
     }
 }
 export class CfxWatcher extends BalanceWatcher{
-    constructor(name:string, cfx:Conflux, config:StatConfig) {
-        super(name, null, cfx, config);
+    constructor(name:string, cfx:Conflux) {
+        super(name, null, cfx, {tokenType: 'CFX'});
     }
     async queryBalance(hex: string, addrId: number): Promise<void> {
         try {
