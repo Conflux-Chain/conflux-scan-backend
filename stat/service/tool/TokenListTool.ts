@@ -12,7 +12,7 @@ async function run() {
     // transferType = 'ERC20'
     // transferType = 'ERC721'
     const is1155 = transferType === 'ERC1155'
-    const filter = ['YAO','cOKT', 'K']
+    const filter = ['ACGNFT','EPIK-NFT']
     client.get(`${scanUrl}`)
         .query({
             fields: '',

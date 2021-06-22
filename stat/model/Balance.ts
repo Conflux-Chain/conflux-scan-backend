@@ -273,3 +273,15 @@ export class Balance_K extends Balance{
     }
 }
 // test model end.
+
+export class Balance_ACGNFT extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_ACGNFT, 'balance_ACGNFT')
+    }
+}
+export class Balance_EPIK_NFT extends Balance{
+static register(seq){
+        Balance.register(seq, Balance_EPIK_NFT, 'balance_EPIK_NFT')
+    }
+}
+
