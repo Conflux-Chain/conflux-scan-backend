@@ -52,7 +52,9 @@ import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {Contract} from "../model/Contract";
 import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
+import {DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
+import {DailyContractRegister} from "../model/DailyContractRegister";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
@@ -211,6 +213,8 @@ export async function initModel(sequelize) {
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);
     DailyContractCreate.register(sequelize);
+    DailyContractStat.register(sequelize);
+    DailyContractRegister.register(sequelize);
 }
 
 export function createMySql(dbConf) {

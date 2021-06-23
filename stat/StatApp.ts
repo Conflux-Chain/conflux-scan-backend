@@ -31,6 +31,9 @@ import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {QuoteSync} from "./service/QuoteSync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
+import {ContractStat} from "./service/ContractStat";
+import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
+import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
 
 export class StatApp{
     public config: StatConfig;
@@ -59,6 +62,9 @@ export class StatApp{
     public quoteSync: QuoteSync;
     public homeDashboardService: HomeDashboardService;
     public contractQuery: ContractQuery;
+    public contractStat: ContractStat;
+    public contractRegisterSync: DailyContractRegisterSync
+    public contractRegisterQuery: DailyContractRegisterQuery;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -125,6 +131,9 @@ export class StatApp{
         this.quoteSync = new QuoteSync(this);
         this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
+        this.contractStat = new ContractStat(this.sequelize);
+        this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
+        this.contractRegisterQuery = new DailyContractRegisterQuery();
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -165,8 +174,14 @@ export class StatApp{
         if (this.config.syncHomeDashboardData) {
             await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
         }
+        if (this.config.statContractDaily) {
+            await this.contractStat.schedule(this.config.syncContractHistory);
+        }
         if (this.config.syncEpoch) {
             await this.epochSync.run(this.config.syncEpochNumber);
+        }
+        if (this.config.syncContractRegisterCountDaily) {
+            await this.contractRegisterSync.schedule(this.config.syncContractRegisterCountHistory); // dailyContractRegister
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

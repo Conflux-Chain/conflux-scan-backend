@@ -95,6 +95,19 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = result || {};
     })
 
+    router.get('/contract/name', async (ctx)=>{
+        const {name} = ctx.request.query;
+        const total = await statApp.contractQuery.count(name);
+        ctx.body = {total} || {};
+    })
+
+    router.get('/contract/daily/stat', async (ctx)=>{
+        const {address, skip, limit} = ctx.request.query
+        const page = await statApp.contractQuery.listStat(address, skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
+        ctx.body = {code: 0, data: page};
+    })
+
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
             const {fields, transferType, currency, orderBy, reverse, skip, limit, addressArray} = ctx.request.query;
@@ -287,6 +300,23 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/contract/deploy/list', async function (ctx) {
         const {skip, limit} = ctx.request.query
         const page = await statApp.contractCreateQuery.listContractCreateDaily(skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
+
+        let totalContract = 0;
+        if(page?.rows){
+            const len = page.rows.length;
+            for(let i = len-1; i >= 0; i--){
+                totalContract = page.rows[i].contractCount + totalContract;
+                (page.rows[i])['contractTotalCount'] = totalContract;
+            }
+        }
+        ctx.body = {code: 0, data: page};
+    });
+
+    // registered contract statistic
+    router.get('/contract/register/list', async function (ctx) {
+        const {skip, limit} = ctx.request.query
+        const page = await statApp.contractRegisterQuery.listContractRegisterDaily(skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
 
         let totalContract = 0;
