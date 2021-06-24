@@ -49,7 +49,13 @@ export class BlockTraceCreateSync{
             await new Promise(resolve => setTimeout(resolve, 1000))
         }
 
-        const isSuccess = await this.syncByEpoch(curEpoch)
+        let isSuccess = false;
+        try{
+            isSuccess = await this.syncByEpoch(curEpoch)
+        }catch (e){
+            // `Invalid params: expected a numbers with less than largest epoch number`
+            // console.log(`trace_create_contract error: ${e}`);
+        }
         if (isSuccess) {
             await KV.update({value: curEpoch.toString()}, {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}})
         }
@@ -121,7 +127,7 @@ export class BlockTraceCreateSync{
 
             const blockTrace:any[] = await this.cfx.traceBlock(block.hash);
             if (!blockTrace) {
-                console.error(`trace_create_contract no trace at block:${block.hash}`);
+                // console.error(`trace_create_contract no trace at block:${block.hash}`);
                 return traceArray;
             }
 
