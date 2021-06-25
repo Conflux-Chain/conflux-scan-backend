@@ -142,7 +142,6 @@ export async function initPartialModel(sequelize) {
     TokenQuote.register(sequelize);
     StreamErrorLog.register(sequelize)
     KV.register(sequelize);
-    Position.register(sequelize);
     Epoch.register(sequelize);
 }
 export async function initModel(sequelize) {
