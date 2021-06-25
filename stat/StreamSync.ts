@@ -4,7 +4,7 @@ import {
     ERC20_TRANSFER_Q, ERC721_TRANSFER_Q,
     ERC777_TRANSFER_Q, CFX_TRANSFER_Q,
     RedisStreamMessage,
-    RedisWrap
+    RedisWrap, TRANSFER_ADDRESS_Q
 } from "./service/RedisWrap";
 import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "./model/Erc20Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
@@ -32,6 +32,9 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             if (!copies.length) {
                 return RedisWrap.xDel(data)
             }
+            sendAddressIds(copies).catch(err=>{
+                console.log(`send address in transfer error:`, err)
+            })
             return model.bulkCreate(copies)
                 .catch(err=>{
                     const epoch = copies[0].epoch
@@ -57,6 +60,16 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
         throw err;
     })
 }
+
+async function sendAddressIds(arr:{fromId:number, toId:number}[]) {
+    const set = new Set<number>()
+    arr.forEach(item=>{
+        set.add(item.fromId)
+        set.add(item.toId)
+    })
+    return RedisWrap.sendStreamMessage([...set], TRANSFER_ADDRESS_Q)
+}
+
 import {init} from "./service/tool/FixDailyTokenStat";
 import {dingMsg} from "./monitor/Monitor";
 import {popPartition} from "./model/ErcTransfer";
