@@ -1,4 +1,4 @@
-import {DataTypes, Model, Transaction} from "sequelize";
+import {DataTypes, Model, Transaction, Sequelize} from "sequelize";
 
 export interface IKV {
     key: string;
@@ -61,5 +61,31 @@ export class KV extends Model<IKV> implements IKV {
         await KV.update({value: newValue.toString()}, {where:{key:key}, transaction: dbTx});
         // logger?.info(`batchSaveCfxTransfer-0----------------------dbValue+diff:${dbValue+diff},----resultArray:${JSON.stringify(resultArray)}`);
         return Promise.resolve([oldValue, newValue]);
+    }
+}
+
+export interface IPosition {
+    tag:string
+    pos:number
+    active:boolean
+}
+export class Position extends Model<IPosition> implements IPosition {
+    tag:string
+    pos:number
+    active: boolean
+    static register(seq:Sequelize) {
+        Position.init({
+            tag: {type: DataTypes.STRING(32), unique: true, primaryKey: true},
+            pos: {type: DataTypes.BIGINT({unsigned: true})},
+            active: {type: DataTypes.BOOLEAN, defaultValue: true},
+        },{
+            sequelize: seq,
+        })
+    }
+    static async getPosition(tag:string) : Promise<Position> {
+        return Position.findByPk(tag)
+    }
+    static async setPosition(tag:string, pos:number) {
+        return Position.update({pos}, {where:{tag}, limit: 1})
     }
 }

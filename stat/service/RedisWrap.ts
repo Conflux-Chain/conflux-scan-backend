@@ -4,6 +4,7 @@ import {sleep} from "./tool/ProcessTool";
 const redis = require('redis');
 const { promisify } = require('util');
 export const CHANNEL_TEST = 'test'
+export const TRANSFER_ADDRESS_Q = 'TRANSFER_ADDRESS_Q'
 export const ERC20_TRANSFER_Q = 'ERC20_TRANSFER_Q'
 export const ERC721_TRANSFER_Q = 'ERC721_TRANSFER_Q'
 export const ERC777_TRANSFER_Q = 'ERC777_TRANSFER_Q'
