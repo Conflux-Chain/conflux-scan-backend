@@ -53,8 +53,14 @@ export class BlockTraceCreateSync{
         try{
             isSuccess = await this.syncByEpoch(curEpoch)
         }catch (e){
-            // `Invalid params: expected a numbers with less than largest epoch number`
-            // console.log(`trace_create_contract error: ${e}`);
+            const msg = `${e}`
+            if (msg.includes('expected a numbers with less than largest epoch number.')) {
+                const latest = await this.cfx.getEpochNumber('latest_state');
+                console.log(`trace_create_contract epoch:${curEpoch} latestState:${latest} not executed`)
+            } else {
+                console.log(`trace_create_contract epoch:${curEpoch} error:${msg}`)
+                throw e;
+            }
         }
         if (isSuccess) {
             await KV.update({value: curEpoch.toString()}, {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}})
