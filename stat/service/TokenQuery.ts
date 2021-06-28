@@ -148,7 +148,7 @@ export class TokenQuery {
         let attributes: any = [['base32', 'address'],
             'hex40id',
             'name',
-            'symbol',
+            'symbol', 'fetchBalance',
             'decimals',
             'totalSupply','fetchBalance',
             ['holder', 'holderCount'],
