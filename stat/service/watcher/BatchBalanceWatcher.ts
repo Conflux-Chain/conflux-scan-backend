@@ -45,6 +45,9 @@ export class BatchBalanceWatcher {
         if (this.erc20list.length === 0) {
             return;
         }
+        if (userAddr === '0x0000000000000000000000000000000000000000') {
+            return;
+        }
         // contract used by portal
         // let banList = await BatchBalanceWatcher.contract.balances([userAddr], this.tokenList)
         // contract made by BO, which support tokens include 1155.
