@@ -2,8 +2,11 @@
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 const {Contract} = require("../model/Contract");
+const {DailyContractStat} = require("../model/DailyContractStat");
 import {toBase32} from "./tool/AddressTool";
 import {decodeUtf8} from "./tool/StringTool";
+import {DailyTransaction} from "../model/DailyTransaction";
+import {Hex40Map} from "../model/HexMap";
 const lodash = require('lodash');
 
 export class ContractQuery {
@@ -12,6 +15,10 @@ export class ContractQuery {
 
     constructor(app: any) {
         this.app = app;
+    }
+
+    public async count(name) {
+        return Contract.count({where: {name}});
     }
 
     public async query(address, fields = undefined) {
@@ -92,5 +99,19 @@ export class ContractQuery {
             });
         }
         return { total: list.length, list };
+    }
+
+    async listStat(address, skip: number = 0, limit: number = 1000) {
+        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(address).substr(2)}})
+        const hex40id = hex40?.id
+        if(hex40id === undefined){
+            return {total: 0};
+        }
+
+        const page = await DailyContractStat.findAndCountAll({
+            attributes: ['statTime', 'tx', 'cfxTransfer', 'tokenTransfer'],
+            where: {hex40id}, offset: skip, limit, order:[["statTime", "DESC"]]
+        })
+        return { total: page?.count || 0, list: page?.rows };;
     }
 }
