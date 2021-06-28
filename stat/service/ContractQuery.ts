@@ -110,7 +110,7 @@ export class ContractQuery {
 
         const page = await DailyContractStat.findAndCountAll({
             attributes: ['statTime', 'tx', 'cfxTransfer', 'tokenTransfer'],
-            where: {hex40id}, offset: skip, limit, order:[["statDay", "DESC"]]
+            where: {hex40id}, offset: skip, limit, order:[["statTime", "DESC"]]
         })
         return { total: page?.count || 0, list: page?.rows };;
     }

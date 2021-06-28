@@ -25,8 +25,8 @@ export class DailyContractStat extends Model<IDailyContractStat> implements IDai
             statTime: {type: DataTypes.DATE, allowNull: false},
             tx: {type: DataTypes.BIGINT, allowNull: false},
             cfxTransfer: {type: DataTypes.BIGINT, allowNull: false},
-            tokenType: {type: DataTypes.BIGINT, allowNull: true},
-            tokenTransfer: {type: DataTypes.BIGINT, allowNull: false},
+            tokenType: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
+            tokenTransfer: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
         },{
             sequelize: sequelize,
             tableName: 'daily_contract_stat',

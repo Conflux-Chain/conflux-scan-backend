@@ -95,10 +95,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = result || {};
     })
 
-    router.get('/contract/name', async (ctx)=>{
+    router.get('/contract/registered/name', async (ctx)=>{
         const {name} = ctx.request.query;
         const total = await statApp.contractQuery.count(name);
-        ctx.body = {total} || {};
+        ctx.body = {name, registered: total} || {};
     })
 
     router.get('/contract/daily/stat', async (ctx)=>{

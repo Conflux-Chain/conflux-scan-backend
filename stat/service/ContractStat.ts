@@ -8,6 +8,7 @@ import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Contract} from "../model/Contract";
 import {AddressTransactionIndex} from "../model/FullBlock";
+import {TraceCreateContract} from "../model/TraceCreateContract";
 
 const lodash = require('lodash');
 const CONST = require('./common/constant');
@@ -24,16 +25,20 @@ export class ContractStat{
         const hex40IdList = contractList?.map( item => item.hex40id) || [];
         for(const hex40id of hex40IdList){
             const stat = await this.statDailyByAddress(hex40id, day);
+            if(!stat){
+                continue;
+            }
             const contractStatDb = await DailyContractStat.findOne({where: {hex40id}});
             if(contractStatDb){
-                const updateInfo = lodash.defaults({}, stat, {updatedAt: new Date()});
-                const statUpdate = lodash.assign(contractStatDb, updateInfo);
-                await DailyContractStat.update(statUpdate, {where: {id: contractStatDb.id}});
+                // NO-OP
+                // const updateInfo = lodash.defaults({}, stat, {updatedAt: new Date()});
+                // const statUpdate = lodash.assign(contractStatDb, updateInfo);
+                // await DailyContractStat.update(statUpdate, {where: {id: contractStatDb.id}});
             } else{
                 let statNew = lodash.assign(new DailyContractStat(), stat);
                 await DailyContractStat.add(statNew);
+                console.log(`daily_contract_stat record:${JSON.stringify(stat)}`);
             }
-            console.log(`daily_contract_stat record:${JSON.stringify(stat)}`);
         }
         return Promise.resolve(1);
     }
@@ -67,6 +72,12 @@ export class ContractStat{
 
     private async statDailyByAddress(addressId, statDay){
         const {beginTime, endTime} = calBeginEndTime(statDay);
+
+        const traceCreate = await TraceCreateContract.findOne({where: {to: addressId}});
+        if(traceCreate.blockTime < beginTime.getTime() / 1000){
+            return undefined;
+        }
+
         const txCount = await AddressTransactionIndex.count({
             where: {[Op.and]:[{addressId}, {createdAt: {[Op.gte]:beginTime}}, {createdAt: {[Op.lt]:endTime}}]}});
         const cfxTransferCount = await AddressCfxTransfer.count({
@@ -77,12 +88,12 @@ export class ContractStat{
             tokenType: tokenTransfer.type, tokenTransfer: tokenTransfer.count};
     }
 
-    private async getTokenTransferStat(addressId, beginTime, endTime) {
+    private async getTokenTransferStat(contractId, beginTime, endTime) {
         const [erc20Record, erc721Record, erc777Record, erc1155Record] = await Promise.all([
-            Erc20Transfer.count({ where: { contractId: addressId }}),
-            Erc721Transfer.count({ where: { contractId: addressId }}),
-            Erc777Transfer.count({ where: { contractId: addressId }}),
-            Erc1155Transfer.count({ where: { contractId: addressId }}),
+            Erc20Transfer.count({ where: { contractId }}),
+            Erc721Transfer.count({ where: { contractId }}),
+            Erc777Transfer.count({ where: { contractId }}),
+            Erc1155Transfer.count({ where: { contractId }}),
         ]);
         let type;
         if(erc20Record) type = CONST.TRANSFER_TYPE.ERC20;
@@ -92,7 +103,7 @@ export class ContractStat{
 
         const model = ContractStat.getTokenTransferModel(type);
         const count = await model?.count({
-            where: {[Op.and]:[{addressId}, {createdAt: {[Op.gte]:beginTime}}, {createdAt: {[Op.lt]:endTime}}]}});
+            where: {[Op.and]:[{ contractId }, {createdAt: {[Op.gte]:beginTime}}, {createdAt: {[Op.lt]:endTime}}]}});
 
         return {type, count};
     }
