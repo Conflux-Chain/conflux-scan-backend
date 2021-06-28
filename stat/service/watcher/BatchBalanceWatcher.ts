@@ -2,16 +2,19 @@
 import {Conflux, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
 import {EventBus} from "./EventBus";
-import {Erc20WatchList} from "../../config/StatConfig";
+import {Erc20WatchList, RedisConf} from "../../config/StatConfig";
 import {BalanceWatcher, CfxWatcher} from "./BalanceWatcher";
-import {makeId} from "../../model/HexMap";
+import {Hex40Map, makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
+import {RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q} from "../RedisWrap";
+import {Op} from 'sequelize'
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
 const TESTNET_UTIL_CONTRACT = 'cfxtest:achamkxtk3yn534h483vdvv0kcffwr221uyw9xnucr'
+
 export class BatchBalanceWatcher {
     private cfx: Conflux;
     public static contract: {balances};
@@ -38,8 +41,11 @@ export class BatchBalanceWatcher {
         const utilContract = StatApp.networkId === 1 ? TESTNET_UTIL_CONTRACT : MAINNET_UTIL_CONTRACT
         return utilContract;
     }
-    public async balanceOf(userAddr) {
+    public async balanceOf(userAddr, hexId:number = 0) {
         if (this.erc20list.length === 0) {
+            return;
+        }
+        if (userAddr === '0x0000000000000000000000000000000000000000') {
             return;
         }
         // contract used by portal
@@ -56,10 +62,28 @@ export class BatchBalanceWatcher {
         let i = 0
         for (const erc20 of this.erc20list) {
             let model = BalanceWatcher.mapModel(erc20.name)
-            let id = (await makeId(userAddr)).id
+            let id = hexId || (await makeId(userAddr)).id
             await BalanceWatcher.saveModel(model, id, banList[i], !(erc20.tokenType||'').includes('1155'), this.fraction)
             i++
         }
+    }
+    async handleTokenTransferAddress(data:RedisStreamMessage[]) {
+        for (const item of data) {
+            const {message: ids} = item
+            const hexList = await Hex40Map.findAll({where: {id:{[Op.in]: ids}}})
+            for (const hexBean of hexList) {
+                await this.balanceOf('0x'+hexBean.hex, hexBean.id)
+            }
+        }
+        return RedisWrap.xDel(data)
+    }
+
+    // xadd TRANSFER_ADDRESS_Q * v1 [1,2]
+    async listenTransfer() {
+        return RedisWrap.listenStreamMessage(
+            TRANSFER_ADDRESS_Q,
+            (data) => this.handleTokenTransferAddress(data)
+        )
     }
 
     public async schedule(delay = 10_000) {
@@ -81,7 +105,7 @@ export class BatchBalanceWatcher {
         }
         if (this.txAddressSet.size === 0) {
             this.txAddressSet = null
-            console.log(`swapAddressSet empty data. 2`)
+            console.log(`swapAddressSet empty data.`)
             return
         }
         for (const hex of this.txAddressSet) {

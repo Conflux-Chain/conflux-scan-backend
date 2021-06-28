@@ -4,7 +4,7 @@ import {Epoch} from "../model/Epoch";
 import {TransactionDB} from "../model/Transaction";
 import {Block, PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
-import {KV} from "../model/KV";
+import {KV, Position} from "../model/KV";
 import {TestTimezone} from "../model/TestTimezone";
 import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
@@ -116,6 +116,7 @@ export async function initPartialModel(sequelize) {
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
     ])
+    Position.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)
