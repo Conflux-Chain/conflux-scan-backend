@@ -81,6 +81,7 @@ export class Position extends Model<IPosition> implements IPosition {
             active: {type: DataTypes.BOOLEAN, defaultValue: true},
         },{
             sequelize: seq,
+            tableName: 'Positions'
         })
     }
 
@@ -93,6 +94,10 @@ export class Position extends Model<IPosition> implements IPosition {
         return Position.findByPk(tag)
     }
     static async setPosition(tag:string, pos:number) {
-        return Position.update({pos}, {where:{tag}, limit: 1})
+        return Position.update({pos}, {where:{tag}, limit: 1}).then(([cnt])=>{
+            if (cnt === 0) {
+                return Position.create({tag, pos, active: true})
+            }
+        })
     }
 }

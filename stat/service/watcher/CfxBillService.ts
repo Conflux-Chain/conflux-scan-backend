@@ -1,6 +1,6 @@
 import {AddressCfxBill, buildAddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {Conflux} from "js-conflux-sdk";
-import {Hex64Map} from "../../model/HexMap";
+import {Hex64Map, makeId} from "../../model/HexMap";
 import {Op} from "sequelize"
 import {init} from "../tool/FixDailyTokenStat";
 import {POS_CFX_BILL, Position} from "../../model/KV";
@@ -9,6 +9,7 @@ const CODE_REACH_EPOCH_LIMIT = 123
 const CODE_STOP = 2013
 export class CfxBillService {
     cfx:Conflux
+    prePos:number = 0
     constructor(cfx:Conflux) {
         this.cfx = cfx
     }
@@ -18,29 +19,50 @@ export class CfxBillService {
             return max - 1000
         })
     }
+
+    async setupEpoch0() {
+        async function make(hex:string, ban, pos) {
+            const idBean = await makeId(hex)
+            return AddressCfxBill.create({
+                addressId: idBean.id,
+                fromId: 0, toId: idBean.id,
+                balance: ban * 1e+18,
+                createdAt: undefined,
+                epoch: 0,
+                tracePos: pos,
+                txHashId: 0,
+                value: ban * 1e+18,
+            })
+        }
+        // cfx:acb59fk6vryh8dj5vyvehj9apzhpd72rdpwsc651kz four year
+        await make('0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b', 42_0000_0000, 0)
+        // cfx:ach9eg1rk28060m3kpw44np1znvn6p9ffjkk6651nb two year
+        await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 8_0000_0000, 1)
+    }
     async run() {
-        const prePos = await Position.getPosDefault(POS_CFX_BILL, 0)
-        let stopAtEpoch = await this.getStopAtEpoch()
+        this.prePos = await Position.getPosDefault(POS_CFX_BILL, 0)
+        if (this.prePos === 0) {
+            await this.setupEpoch0()
+        }
+        let stopAtEpoch = await this.getStopAtEpoch();
 
         const that = this
-        let handlePos = prePos
         async function repeat() {
-            handlePos ++
-            that.processPos(handlePos).catch(err=>{
-                console.log(`cfx bill service fail at epoch ${handlePos} #`, err)
+            that.processPos(that.prePos+1, stopAtEpoch).catch(err=>{
+                console.log(`cfx bill service fail at epoch ${that.prePos+1} #`, err)
                 return CODE_STOP
             }).then((res)=>{
-                that.debugProgress(handlePos)
+                that.debugProgress(that.prePos+1, stopAtEpoch)
                 if (res === CODE_REACH_EPOCH_LIMIT) {
                     that.getStopAtEpoch().then(epoch=>{
                         stopAtEpoch = epoch
-                        handlePos --
                         setTimeout(repeat, 5000)
                     });
                     return
                 }
                 if (res !== CODE_STOP){
-                    Position.setPosition(POS_CFX_BILL, handlePos).then(()=>{
+                    // console.log(`save pos ${that.prePos}`)
+                    Position.setPosition(POS_CFX_BILL, that.prePos).then(()=>{
                         setTimeout(repeat, 0)
                     })
                 }
@@ -49,41 +71,58 @@ export class CfxBillService {
         repeat().then()
     }
 
-    debugProgress(pos) {
+    debugProgress(pos, stopAtEpoch) {
         if (pos % 100 === 0) {
-            console.log(`${new Date().toISOString()} current pos ${pos}`)
+            console.log(`${new Date().toISOString()} current pos ${pos}, target ${stopAtEpoch}`)
         }
     }
-    async processPos(transferId: number, maxEpoch:number = Infinity) {
-        const transfer = await CfxTransfer.findByPk(transferId);
-        if (!transfer) {
-            console.log(`transfer not found, id ${transferId}`)
-            return
-        }
-        if (transfer.epoch >= maxEpoch) {
+
+    async processPos(epoch: number, maxEpoch:number) {
+        const nextEpoch = await CfxTransfer.min('epoch',
+            {where: {epoch: {[Op.gte]: epoch}}})
+
+        if (nextEpoch >= maxEpoch) {
             return CODE_REACH_EPOCH_LIMIT
         }
-        return this.processTransfer(transfer);
+        let transferList = await CfxTransfer.findAll({
+            where: {epoch: nextEpoch},
+            order: [['id','asc']]
+        })
+        let recordPos = 0
+        for (const transfer of transferList) {
+            const ret = await this.processTransfer(transfer, recordPos)
+            if (ret === CODE_STOP) {
+                await AddressCfxBill.destroy({
+                    where: {epoch: nextEpoch}
+                })
+                return ret
+            }
+            recordPos += 10
+        }
+        this.prePos = Number(nextEpoch)
     }
-    async processTransfer(transfer:CfxTransfer) {
+    async processTransfer(transfer:CfxTransfer, recordPos:number) {
         // check tx success and in the right epoch
-        const txHash = await Hex64Map.findByPk(transfer.txHashId)
-        if (!txHash) {
+        const txHashBean = await Hex64Map.findByPk(transfer.txHashId)
+        if (!txHashBean) {
             console.log(`tx hash not found , transfer id ${transfer.id}, epoch ${
                 transfer.epoch}, tx hash id ${transfer.txHashId}`)
+
         }
-        const txInfo:any = await this.cfx.getTransactionByHash(txHash.hex).catch(err=>{
-            console.log(`getTransactionByHash fail, hash ${txHash.hex}.`, err)
+        const txHash = '0x'+txHashBean.hex;
+        const txInfo:any = await this.cfx.getTransactionReceipt(txHash).catch(err=>{
+            console.log(`getTransactionByHash fail, hash ${txHash}.`, err)
         });
         if (!txInfo) {
             return
         }
-        if (txInfo.status !== 0) {
-            console.log(`transaction failed, ${txHash.hex}`)
-            return
+        if (txInfo.outcomeStatus !== 0) {
+            console.log(`transaction failed, ${txHash}`)
+            return CODE_STOP
         }
-        if (txInfo.epoch !== transfer.epoch) {
-            console.log(`transaction epoch ${txInfo.epoch} !== ${transfer.epoch} in transfer, skip.`)
+        if (txInfo.epochNumber !== transfer.epoch) {
+            console.log(`transaction epoch ${txInfo.epochNumber} !== ${transfer.epoch} in transfer with id ${transfer.id}, tx ${txHash
+            }  skip.`)
             return
         }
         // find both side previous record
@@ -92,16 +131,17 @@ export class CfxBillService {
                 this.findPreBill(transfer.fromId, transfer.epoch),
                 this.findPreBill(transfer.toId, transfer.epoch),
             ])
-            const curFrom = this.buildAddressCfxBill(transfer, preFrom, transfer.fromId)
-            const curTo = this.buildAddressCfxBill(transfer, preTo, transfer.toId)
+            const curFrom = this.buildAddressCfxBill(transfer, preFrom, transfer.fromId, recordPos)
+            const curTo = this.buildAddressCfxBill(transfer, preTo, transfer.toId, recordPos+1)
             return AddressCfxBill.bulkCreate([curFrom, curTo])
         }
         // if from equals to, then do nothing.
     }
-    buildAddressCfxBill(transfer:CfxTransfer, pre:AddressCfxBill, addrId:number) {
+    buildAddressCfxBill(transfer:CfxTransfer, pre:AddressCfxBill, addrId:number, recordPos) {
         // The pos field is part of the unique key, the value of it is meaningless.
-        const ret = buildAddressCfxTransfer(transfer, addrId, transfer.id % 10000000)
-        ret.balance = (pre ? pre.balance : 0) + transfer.value
+        const ret = buildAddressCfxTransfer(transfer, addrId, recordPos)
+        ret.balance = Number((pre ? pre.balance : 0) )
+            + Number(( transfer.fromId === addrId ? -transfer.value: transfer.value))
         return ret;
     }
     async findPreBill(addressId:number, epoch:number) {
