@@ -53,7 +53,7 @@ export class ContractStat{
     }
 
     // 16:10:00 UTC
-    public async schedule(countHistory: boolean) {
+    public async schedule() {
         const that = this;
         async function repeat() {
             const now = new Date();
@@ -63,9 +63,6 @@ export class ContractStat{
             const delay = getNextDelay(now, 1, 10);
             console.log(`schedule daily_contract_stat service in delay ${delay/1000}s.`);
             setTimeout(repeat, delay);
-        }
-        if(countHistory){
-            await this.statHistory();
         }
         repeat().then();
     }

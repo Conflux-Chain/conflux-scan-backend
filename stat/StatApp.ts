@@ -176,13 +176,13 @@ export class StatApp{
             await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
         }
         if (this.config.statContractDaily) {
-            await this.contractStat.schedule(this.config.syncContractHistory);
+            await this.contractStat.schedule();
         }
         if (this.config.syncEpoch) {
             await this.epochSync.run(this.config.syncEpochNumber);
         }
         if (this.config.syncContractRegisterCountDaily) {
-            await this.contractRegisterSync.schedule(this.config.syncContractRegisterCountHistory); // dailyContractRegister
+            await this.contractRegisterSync.schedule(); // dailyContractRegister
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

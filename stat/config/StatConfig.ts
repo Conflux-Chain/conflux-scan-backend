@@ -68,10 +68,7 @@ export interface StatConfig{
     syncMinerBlockEpochNumber: number,
 
     statContractDaily: boolean,
-    syncContractHistory: boolean,
-
     syncContractRegisterCountDaily: boolean,
-    syncContractRegisterCountHistory: boolean,
 }
 
 export interface Erc20WatchList{

@@ -37,7 +37,7 @@ export class DailyContractRegisterSync{
     }
 
     // 16:10:00 UTC
-    public async schedule(countHistory: boolean) {
+    public async schedule() {
         const that = this;
         async function repeat() {
             const now = new Date();
@@ -47,9 +47,6 @@ export class DailyContractRegisterSync{
             const delay = getNextDelay(now, 1, 10);
             console.log(`schedule daily_contract_register service in delay ${delay/1000}s.`);
             setTimeout(repeat, delay);
-        }
-        if(countHistory){
-            await this.countHistory();
         }
         repeat().then();
     }
