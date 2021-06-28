@@ -69,6 +69,7 @@ export interface IPosition {
     pos:number
     active:boolean
 }
+export const POS_CFX_BILL = 'POS_CFX_BILL'
 export class Position extends Model<IPosition> implements IPosition {
     tag:string
     pos:number
@@ -80,6 +81,12 @@ export class Position extends Model<IPosition> implements IPosition {
             active: {type: DataTypes.BOOLEAN, defaultValue: true},
         },{
             sequelize: seq,
+        })
+    }
+
+    public static async getPosDefault(tag: string, v: number) {
+        return this.getPosition(tag).then(res=>{
+            return res ? res.pos : v
         })
     }
     static async getPosition(tag:string) : Promise<Position> {

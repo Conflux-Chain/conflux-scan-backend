@@ -43,7 +43,13 @@ import {
 import {Trace} from "../model/Trace";
 import {DailyToken, NftId, Token} from "../model/Token";
 import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
-import {CfxTransfer, createAddressCfxTransferTable, DailyCfxTxn, CfxTransferRowMark} from "../model/CfxTransfer";
+import {
+    CfxTransfer,
+    createAddressCfxTransferTable,
+    DailyCfxTxn,
+    CfxTransferRowMark,
+    createAddressCfxBillTable
+} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
@@ -113,6 +119,7 @@ export async function initPartialModel(sequelize) {
         createAddressErc1155TransferTable(sequelize),
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
+        createAddressCfxBillTable(sequelize),
     ])
     Position.register(sequelize)
     Lock.register(sequelize)
