@@ -85,7 +85,7 @@ export class CfxBillService {
         })
         if (!trace) {
             console.log(`trace not found: ${JSON.stringify(transfer)}`)
-            return
+            return CODE_STOP
         }
         const tx = await TransactionDB.findByPk(trace.txId)
         if (!tx) {
