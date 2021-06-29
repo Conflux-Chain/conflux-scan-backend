@@ -97,7 +97,9 @@ export class CfxBillService {
             txHashId
         }, {where:{id: transfer.id, txHashId: 0}, limit: 1})
         if (upCnt) {
-            console.log(`fix transfer tx hash id, transfer id ${transfer.id} epoch ${transfer.epoch}`)
+            await transfer.reload({})
+            console.log(`fix transfer tx hash id, transfer id ${transfer.id} epoch ${transfer.epoch
+            }, tx hash ${tx.hash}, with id ${txHashId}`)
             return 0
         }
         console.log(`fix transfer tx hash id fail, transfer ${JSON.stringify(transfer)
