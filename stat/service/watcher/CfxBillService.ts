@@ -92,7 +92,7 @@ export class CfxBillService {
             console.log(`tx not found, trace id ${trace.id}, transfer ${JSON.stringify(transfer)}`)
             return CODE_STOP
         }
-        const txHashId = await makeId(tx.hash)
+        const txHashId = (await makeId(tx.hash)).id
         const [upCnt] = await CfxTransfer.update({
             txHashId
         }, {where:{id: transfer.id, txHashId: 0}, limit: 1})
