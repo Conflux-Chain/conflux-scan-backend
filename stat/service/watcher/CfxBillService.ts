@@ -95,7 +95,7 @@ export class CfxBillService {
         const txHashId = await makeId(tx.hash)
         const [upCnt] = await CfxTransfer.update({
             txHashId
-        }, {where:{id: transfer.id}, limit: 1})
+        }, {where:{id: transfer.id, txHashId: 0}, limit: 1})
         if (upCnt) {
             console.log(`fix transfer tx hash id, transfer id ${transfer.id} epoch ${transfer.epoch}`)
             return 0
