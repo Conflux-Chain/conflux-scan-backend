@@ -142,14 +142,14 @@ export class CfxBillService {
         if (!txHashBean) {
             console.log(`tx hash not found , transfer id ${transfer.id}, epoch ${
                 transfer.epoch}, tx hash id ${transfer.txHashId}`)
-
+            return CODE_STOP
         }
         const txHash = '0x'+txHashBean.hex;
         const txInfo:any = await this.cfx.getTransactionReceipt(txHash).catch(err=>{
             console.log(`getTransactionByHash fail, hash ${txHash}.`, err)
         });
         if (!txInfo) {
-            return
+            return CODE_STOP
         }
         if (txInfo.outcomeStatus !== 0) {
             console.log(`transaction failed, ${txHash}`)
@@ -158,7 +158,7 @@ export class CfxBillService {
         if (txInfo.epochNumber !== transfer.epoch) {
             console.log(`transaction epoch ${txInfo.epochNumber} !== ${transfer.epoch} in transfer with id ${transfer.id}, tx ${txHash
             }  skip.`)
-            return
+            return CODE_STOP
         }
         // find both side previous record
         if (transfer.fromId !== transfer.toId) {
