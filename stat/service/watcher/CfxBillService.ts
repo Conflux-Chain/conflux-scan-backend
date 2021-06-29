@@ -4,6 +4,8 @@ import {Hex64Map, makeId} from "../../model/HexMap";
 import {Op} from "sequelize"
 import {init} from "../tool/FixDailyTokenStat";
 import {POS_CFX_BILL, Position} from "../../model/KV";
+import {Trace} from "../../model/Trace";
+import {TransactionDB} from "../../model/Transaction";
 
 const CODE_REACH_EPOCH_LIMIT = 123
 const CODE_STOP = 2013
@@ -76,7 +78,32 @@ export class CfxBillService {
             console.log(`${new Date().toISOString()} current pos ${pos}, target ${stopAtEpoch}`)
         }
     }
-
+    async fixHashId(transfer:CfxTransfer) : Promise<number> {
+        const trace = await Trace.findOne({
+            where: {from: transfer.fromId, to:transfer.toId, blockTime:transfer.createdAt,
+            value: transfer.value}
+        })
+        if (!trace) {
+            console.log(`trace not found: ${JSON.stringify(transfer)}`)
+            return
+        }
+        const tx = await TransactionDB.findByPk(trace.txId)
+        if (!tx) {
+            console.log(`tx not found, trace id ${trace.id}, transfer ${JSON.stringify(transfer)}`)
+            return CODE_STOP
+        }
+        const txHashId = await makeId(tx.hash)
+        const [upCnt] = await CfxTransfer.update({
+            txHashId
+        }, {where:{id: transfer.id}, limit: 1})
+        if (upCnt) {
+            console.log(`fix transfer tx hash id, transfer id ${transfer.id} epoch ${transfer.epoch}`)
+            return 0
+        }
+        console.log(`fix transfer tx hash id fail, transfer ${JSON.stringify(transfer)
+        }, \n trace ${JSON.stringify(trace)} tx hash ${tx.hash}`)
+        return CODE_STOP
+    }
     async processPos(epoch: number, maxEpoch:number) {
         const nextEpoch = await CfxTransfer.min('epoch',
             {where: {epoch: {[Op.gte]: epoch}}})
@@ -90,6 +117,12 @@ export class CfxBillService {
         })
         let recordPos = 0
         for (const transfer of transferList) {
+            if (transfer.txHashId === 0) {
+                const fixCode = await this.fixHashId(transfer)
+                if (fixCode !== 0) {
+                    return fixCode
+                }
+            }
             const ret = await this.processTransfer(transfer, recordPos)
             if (ret === CODE_STOP) {
                 await AddressCfxBill.destroy({
