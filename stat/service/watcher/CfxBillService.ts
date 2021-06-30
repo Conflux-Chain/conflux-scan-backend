@@ -51,23 +51,25 @@ export class CfxBillService {
 
         const that = this
         async function repeat() {
-            that.processPos(that.prePos+1, stopAtEpoch).catch(err=>{
+            return that.processPos(that.prePos+1, stopAtEpoch).catch(err=>{
                 console.log(`cfx bill service fail at epoch ${that.prePos+1} #`, err)
                 return CODE_STOP
             }).then((res)=>{
                 that.debugProgress(that.prePos+1, stopAtEpoch)
                 if (res === CODE_REACH_EPOCH_LIMIT) {
-                    that.getStopAtEpoch().then(epoch=>{
+                    return that.getStopAtEpoch().then(epoch=>{
+                        that.debugProgress(that.prePos+1, stopAtEpoch)
                         stopAtEpoch = epoch
                         setTimeout(repeat, 5000)
                     });
-                    return
                 }
                 if (res !== CODE_STOP){
                     // console.log(`save pos ${that.prePos}`)
-                    Position.setPosition(POS_CFX_BILL, that.prePos).then(()=>{
+                    return Position.setPosition(POS_CFX_BILL, that.prePos).then(()=>{
                         setTimeout(repeat, 0)
                     })
+                } else {
+                    console.log(`stop.`)
                 }
             })
         }
@@ -79,124 +81,101 @@ export class CfxBillService {
             console.log(`${new Date().toISOString()} current pos ${pos}, target ${stopAtEpoch}`)
         }
     }
-    async fixHashId(transfer:CfxTransfer) : Promise<number> {
-        const traceList = await Trace.findAll({
-            where: {from: transfer.fromId, to:transfer.toId,
-                epochHeight: transfer.epoch,
-                blockTime:{[Op.between]:[
-                    new Date(transfer.createdAt.getTime()-9000),
-                    new Date(transfer.createdAt.getTime()+9000),
-                    ]},
-            value: transfer.value}
-        })
-        let trace = null
-        if (traceList.length === 1) {
-            trace = traceList[0]
-        } else if(traceList.length > 0){
-            // more traces with same tx id
-            const txId = traceList[0].txId
-            const matchTimeOne = traceList.find(t=>t.blockTime.getTime() === transfer.createdAt.getTime())
-            const hasDifferent = traceList.find(t=>t.txId!==txId)
-            if (matchTimeOne) {
-                trace = matchTimeOne
-            } else if (hasDifferent) {
-                //
-                console.log('more than one trace')
-                for ( const t of traceList) {
-                    console.log(`${JSON.stringify(t)}`)
-                }
-            } else {
-                trace = traceList[0]
-            }
+    logCnt = 100
+    checkLog() {
+        if (this.logCnt <= 0) {
+            return false
         }
-        const candidates = []
-        if (!trace) {
-            console.log(`trace not found: ${JSON.stringify(transfer)}`)
-            console.log(`debug it:`)
-            const hashes = await this.cfx.getBlocksByEpochNumber(transfer.epoch)
-            for (const hash of hashes) {
-                const [traces, blockDetail] = await Promise.all([
-                    this.cfx.traceBlock(hash),
-                    this.cfx.getBlockByHash(hash, true),
-                ])
-                console.log(`block ${hash} traces: ${traces['transactionTraces'].length}`)
-                let idx = 0
-                for (const obj of traces['transactionTraces']) {
-                    const rpcTx = blockDetail['transactions'][idx]
-                    let printTxHash = true
-                    for (const t of obj.traces) {
-                        if (t.action.value > 0) {
-                            if (printTxHash) {
-                                console.log(`tx hash: ${rpcTx.hash}`)
-                                printTxHash = false
-                            }
-                            const fromHex = format.hexAddress(t.action.from)
-                            const toHex =  format.hexAddress(t.action.to)
-                            const [fromId,toId] = await Promise.all([
-                                makeId(fromHex).then(res=>res.id),
-                                makeId(toHex).then(res=>res.id),
-                            ])
-                            const match = fromId === transfer.fromId
-                                && toId === transfer.toId && Number(t.action.value) === Number(transfer.value)
-                            if (match) {
-                                console.log(`trace, ${fromHex} ${fromId}->${toId} ${toHex} , value ${t.action.value} , match ${match}`)
-                                candidates.push(rpcTx.hash)
-                            }
+        this.logCnt --
+        return true;
+    }
+    verbose = false
+    async fixHashId(epoch, transferList:CfxTransfer[]) : Promise<number> {
+        let transferIdx = 0
+        this.checkLog() && console.log(`\n debug it, epoch ${epoch}:`)
+        const hashes = await this.cfx.getBlocksByEpochNumber(epoch)
+        for (const hash of hashes) {
+            const [traces, blockDetail] = await Promise.all([
+                this.cfx.traceBlock(hash),
+                this.cfx.getBlockByHash(hash, true),
+            ])
+            this.checkLog() && console.log(`------ block ${hash} traces: ${traces['transactionTraces'].length}`)
+            let idx = 0
+            for (const obj of traces['transactionTraces']) {
+                const rpcTx = blockDetail['transactions'][idx++]
+                if (obj.traces.length === 0) {
+                    continue
+                }
+                if (rpcTx.status === 0 || rpcTx.status === null || rpcTx.status === undefined) {
+                    // ok or unknown
+                } else {
+                    // failed
+                    this.checkLog() && console.log(`skip failed tx ${rpcTx.hash}, status ${rpcTx.status}`);
+                    continue;
+                }
+                let printTx = true
+                for (const t of obj.traces) {
+                    if (t.action.value > 0) {
+                        const transfer = transferList[transferIdx++];
+                        if (transfer.txHashId > 0 && !this.verbose) {
+                            continue
+                        }
+                        if (printTx) {
+                            printTx = false;
+                            this.checkLog() && console.log(`  -- tx ${rpcTx.hash}`);
+                        }
+                        const fromHex = format.hexAddress(t.action.from)
+                        const toHex =  format.hexAddress(t.action.to)
+                        const [fromId,toId] = await Promise.all([
+                            makeId(fromHex).then(res=>res.id),
+                            makeId(toHex).then(res=>res.id),
+                        ])
+                        const match = fromId === transfer.fromId
+                            && toId === transfer.toId && Number(t.action.value) === Number(transfer.value)
+                        this.checkLog() && console.log(`trace, ${fromHex} ${fromId}->${toId} ${toHex} , value ${t.action.value} , match ${match}`)
+                        if (transfer.txHashId > 0) {
+                        } else if (match) {
+                            const txHashId = (await makeId(rpcTx.hash)).id;
+                            transfer.set({txHashId})
+                        } else {
+                            console.log(`  want ${JSON.stringify(transfer)}`)
                         }
                     }
-                    idx ++
                 }
             }
-            if (candidates.length === 0){
-                return CODE_STOP
-            }
         }
-        let hash = ''
-        if (candidates.length === 1) {
-            hash = candidates[0]
-        } else if (trace){
-            const tx = await TransactionDB.findByPk(trace.txId)
-            if (!tx) {
-                console.log(`tx not found, trace id ${trace.id}, transfer ${JSON.stringify(transfer)}`)
-                return CODE_STOP
-            }
-            hash = tx.hash
-        } else {
+        const allFixed = transferList
+            .filter(t=>t.changed() || t.txHashId > 0)
+                .length === transferList.length
+        if (!allFixed) {
+            console.log(`fix fail.`)
             return CODE_STOP
         }
-        const txHashId = (await makeId(hash)).id;
-        const [upCnt] = await CfxTransfer.update({
-            txHashId
-        }, {where:{id: transfer.id, txHashId: 0}, limit: 1})
-        if (upCnt) {
-            await transfer.reload({})
-            console.log(`fix transfer tx hash id, transfer id ${transfer.id} epoch ${transfer.epoch
-            }, tx hash ${hash}, with id ${txHashId}`)
-            return 0
+        for (const t of transferList) {
+            if (t.changed()) {
+                await t.save();
+            }
         }
-        console.log(`fix transfer tx hash id fail, transfer ${JSON.stringify(transfer)
-        }, \n trace ${JSON.stringify(trace)} tx hash ${hash}`)
-        return CODE_STOP
+        return 0
     }
     async processPos(epoch: number, maxEpoch:number) {
         const nextEpoch = await CfxTransfer.min('epoch',
             {where: {epoch: {[Op.gte]: epoch}}})
 
         if (nextEpoch >= maxEpoch) {
+            console.log(`reach max ${nextEpoch} >= ${maxEpoch}`)
             return CODE_REACH_EPOCH_LIMIT
         }
         let transferList = await CfxTransfer.findAll({
             where: {epoch: nextEpoch},
             order: [['id','asc']]
         })
+        const needFixCnt = transferList.filter(t=>t.txHashId === 0).length
+        if (needFixCnt > 0) {
+            await this.fixHashId(nextEpoch, transferList)
+        }
         let recordPos = 0
         for (const transfer of transferList) {
-            if (transfer.txHashId === 0) {
-                const fixCode = await this.fixHashId(transfer)
-                if (fixCode !== 0) {
-                    return fixCode
-                }
-            }
             const ret = await this.processTransfer(transfer, recordPos)
             if (ret === CODE_STOP) {
                 await AddressCfxBill.destroy({
@@ -212,8 +191,7 @@ export class CfxBillService {
         // check tx success and in the right epoch
         const txHashBean = await Hex64Map.findByPk(transfer.txHashId)
         if (!txHashBean) {
-            console.log(`tx hash not found , transfer id ${transfer.id}, epoch ${
-                transfer.epoch}, tx hash id ${transfer.txHashId}`)
+            console.log(`tx hash not found , ${JSON.stringify(transfer)}`)
             return CODE_STOP
         }
         const txHash = '0x'+txHashBean.hex;
@@ -261,13 +239,16 @@ export class CfxBillService {
 }
 /*
 delete from address_cfx_bill where epoch > (select pos from Positions where tag='POS_CFX_BILL');
-select * from address_cfx_bill where epoch = (select pos from Positions where tag='POS_CFX_BILL');
+select *,balance/1e+18 from address_cfx_bill where epoch = (select pos from Positions where tag='POS_CFX_BILL');
+select * from cfx_transfer where epoch=1;
  */
 //
 if (require.main === module) {
     init().then(cfg=>{
         const cfx = new Conflux(cfg.conflux)
         const svc = new CfxBillService(cfx)
+        const args = process.argv.slice(2)
+        svc.verbose = args[0] === 'verbose'
         return svc.run()
     })
 }
