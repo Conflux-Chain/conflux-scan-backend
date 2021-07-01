@@ -1,12 +1,15 @@
 import {AddressCfxBill, buildAddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
-import {Hex64Map, makeId} from "../../model/HexMap";
+import {Hex40Map, Hex64Map, makeId} from "../../model/HexMap";
 import {Op} from "sequelize"
 import {init} from "../tool/FixDailyTokenStat";
 import {POS_CFX_BILL, Position} from "../../model/KV";
 import {Trace} from "../../model/Trace";
 import {TransactionDB} from "../../model/Transaction";
+import {CfxBalance} from "../../model/Balance";
+import {FullMinerBlock} from "../../model/FullMinerBlock";
+const percentile = require("percentile");
 
 const CODE_REACH_EPOCH_LIMIT = 123
 const CODE_STOP = 2013
@@ -236,6 +239,87 @@ export class CfxBillService {
             order:[['epoch','desc']], limit: 1,
         })
     }
+
+    async checkBalanceBase32(base32:string) {
+        return this.getBalanceBase32(base32).then(res=>{
+            return {match: res.latestBill && res.dbCfxBalance?.balance === res.latestBill?.balance, ...res}
+        }).then(res=>{
+            console.log(`check result: ${JSON.stringify(res)}`)
+            const diff = Math.abs(res.dbCfxBalance?.balance - Number(res.latestBill?.balance)/1e+18);
+            console.log(
+              `\n         base32     : ${base32
+              }\n         hex        : ${res.hex
+              }\n         hexId      : ${res.hexId
+              }\n         db balance : ${res.dbCfxBalance?.balance
+              }\n         db updated : ${((res.dbCfxBalance || {})['updatedAt'] || new Date(0)).toISOString()
+              }\n latestBill time    : ${res.latestBill?.createdAt?.toISOString()
+              }\n latestBill balance : ${Number(res.latestBill?.balance)/1e+18
+              }\n latestBill epoch   : ${res.latestBill?.epoch
+              }\n               diff : ${diff >= 1 ? diff : '< 1'
+              }`
+            )
+        }).then(()=>{
+            return CfxBalance.sequelize.close()
+        })
+    }
+    async getBalanceBase32(base32:string) {
+        const hex = format.hexAddress(base32)
+        return this.getBalanceHex(hex).then(res=>{
+            return {base32, ...res}
+        })
+    }
+    async getBalanceHex(hex:string) {
+        const id = await Hex40Map.findOne({where: {hex: hex.substr(2)}}).then(res => res?.id)
+        return this.getBalanceHexId(id).then(res=>{
+            return {hex, ...res}
+        })
+    }
+    async getBalanceHexId(id:number) {
+        if (id) {
+            const[cfxBal,latestBill] = await Promise.all([
+                CfxBalance.findByPk(id),
+                AddressCfxBill.findOne({where:{addressId: id,},
+                    order: [['epoch','desc']], limit: 1})
+            ])
+            return {
+                hexId: id, dbCfxBalance: cfxBal, latestBill
+            }
+        }
+        return {hexId: id, msg: 'invalid id'}
+    }
+
+    async checkCfxHolder() {
+        let id = 0
+        let maxId = await CfxBalance.max('addressId')
+        let diffArr = []
+        let max = 0
+        let badId = 0
+        while (id++ <= maxId) {
+            const miner = await FullMinerBlock.findOne({where:{minerId:id}, limit: 1})
+            if (miner) {
+                continue
+            }
+            const res = await this.getBalanceHexId(id);
+            if (!res.dbCfxBalance) {
+                continue
+            }
+            const diff = Math.abs(res.dbCfxBalance?.balance - Number(res.latestBill?.balance)/1e+18);
+            if (diff > max) {
+                max = diff
+                badId = res.hexId
+            }
+            diffArr.push(diff)
+            if (id % 1000 === 0) {
+                const p = 90
+                const pv = percentile(p, diffArr);
+                console.log(`${new Date().toISOString()} checked ${diffArr.length} lower than ${pv >= 1 ? pv : '< 1'} takes percent ${p}%, max diff ${max} on id ${badId
+                }, cur id ${res.hexId}, maxDB id ${maxId}`)
+                if (id % 10_000 === 0) {
+                    diffArr = [] // reset
+                }
+            }
+        }
+    }
 }
 /*
 delete from address_cfx_bill where epoch > (select pos from Positions where tag='POS_CFX_BILL');
@@ -248,7 +332,13 @@ if (require.main === module) {
         const cfx = new Conflux(cfg.conflux)
         const svc = new CfxBillService(cfx)
         const args = process.argv.slice(2)
+        console.log(`args ${args}`)
         svc.verbose = args[0] === 'verbose'
-        return svc.run()
+        if (args[0] === 'check') {
+            return svc.checkBalanceBase32(args[1])
+        } else if (args[0] === 'checkAll') {
+            return svc.checkCfxHolder()
+        }
+        // return svc.run()
     })
 }
