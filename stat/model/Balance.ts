@@ -285,3 +285,13 @@ static register(seq){
     }
 }
 
+export class Balance_POOLGO extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_POOLGO, 'balance_POOLGO')
+    }
+}
+export class Balance_POS extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_POS, 'balance_POS')
+    }
+}
