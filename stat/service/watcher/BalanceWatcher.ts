@@ -13,7 +13,7 @@ import {
     Balance_cMOON, Balance_cOKT, Balance_conDragon,
     Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_cUMA,
     Balance_cUSDC, Balance_cYFI, Balance_cYFII, Balance_EPIK_NFT,
-    Balance_FC, Balance_K, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
+    Balance_FC, Balance_K, Balance_MNNFT, Balance_POOLGO, Balance_POS, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -126,6 +126,9 @@ export class BalanceWatcher{
             case 'K':         ret = Balance_K;    break;
             case 'ACGNFT':         ret = Balance_ACGNFT;    break;
             case 'EPIK-NFT':         ret = Balance_EPIK_NFT;    break;
+            case 'POOLGO':         ret = Balance_POOLGO;    break;
+            case 'POS':         ret = Balance_POS;    break;
+
             default:
                 if (silent) {
                     return null

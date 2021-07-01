@@ -33,7 +33,7 @@ import {
     Balance_cUSDC,
     Balance_cYFI,
     Balance_cYFII, Balance_EPIK_NFT,
-    Balance_FC, Balance_K, Balance_MNNFT, Balance_TD, Balance_TREA, Balance_YAO,
+    Balance_FC, Balance_K, Balance_MNNFT, Balance_POOLGO, Balance_POS, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
     DexCfxBalance,
     DexUSDTBalance,
@@ -198,6 +198,8 @@ export async function initModel(sequelize) {
     Balance_K.register(sequelize);
     Balance_ACGNFT.register(sequelize);
     Balance_EPIK_NFT.register(sequelize);
+    Balance_POOLGO.register(sequelize);
+    Balance_POS.register(sequelize);
 
 
     // erc1155
