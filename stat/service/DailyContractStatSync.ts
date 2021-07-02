@@ -13,7 +13,7 @@ import {TraceCreateContract} from "../model/TraceCreateContract";
 const lodash = require('lodash');
 const CONST = require('./common/constant');
 
-export class ContractStat{
+export class DailyContractStatSync {
     private sequelize: Sequelize;
 
     constructor(sequelize: Sequelize) {
@@ -98,7 +98,7 @@ export class ContractStat{
         if(erc777Record) type = CONST.TRANSFER_TYPE.ERC777;
         if(erc1155Record) type = CONST.TRANSFER_TYPE.ERC1155;
 
-        const model = ContractStat.getTokenTransferModel(type);
+        const model = DailyContractStatSync.getTokenTransferModel(type);
         const count = await model?.count({
             where: {[Op.and]:[{ contractId }, {createdAt: {[Op.gte]:beginTime}}, {createdAt: {[Op.lt]:endTime}}]}});
 
