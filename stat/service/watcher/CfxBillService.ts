@@ -338,7 +338,8 @@ if (require.main === module) {
             return svc.checkBalanceBase32(args[1])
         } else if (args[0] === 'checkAll') {
             return svc.checkCfxHolder()
+        } else {
+            return svc.run()
         }
-        // return svc.run()
     })
 }

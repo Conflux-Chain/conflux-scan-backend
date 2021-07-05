@@ -161,7 +161,7 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
     })
 }
 export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
-    arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
+    arr.forEach(data=>{ data[idKey] = map.get(data[hexKey]?.substr(2)) || 0})
 }
 export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) {
     const set = buildHexSet(undefined, arr, hexKey)
