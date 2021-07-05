@@ -33,36 +33,35 @@ export class EpochSync extends SyncBase{
         return syncData;
     }
 
-    async delete(epochNumber, modelData) {
-        await Epoch.sequelize.transaction(async (dbTx) => {
-            const epochDel = await Epoch.destroy({where:{epoch: epochNumber}, transaction: dbTx});
-            const minerBlockDel = await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
-            console.log(`full-epoch-sync re-org epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}`)
-        });
+    async validate(epochNumber, modelData) {
+        const blockArray = modelData.minerBlockArray;
+        const revertBlockArray = blockArray.filter(block => block.epoch !== epochNumber);
+        if(revertBlockArray.length){
+            console.log(`epoch-sync.validate epoch:${epochNumber}, minerBlockArray:${JSON.stringify(blockArray)}`)
+            return Promise.resolve(false);
+        }
+
+        return Promise.resolve(true);
     }
 
     async save(epochNumber, modelData) {
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Epoch.add(modelData.epoch, dbTx);
-            try{
-                await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
-            } catch (err){
-                const msg = `${err}`
-                if (msg.includes('UniqueConstraintError')) {
-                    await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
-                    await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
-                    console.log(`epoch-sync.save epoch:${epochNumber} unique constraint error:${msg}`)
-                } else {
-                    console.log(`epoch-sync.save epoch:${epochNumber} other error:${msg}`)
-                    throw err;
-                }
-            }
+            await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             await this.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
         });
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
         }
         return Promise.resolve();
+    }
+
+    async delete(epochNumber, modelData) {
+        await Epoch.sequelize.transaction(async (dbTx) => {
+            const epochDel = await Epoch.destroy({where:{epoch: epochNumber}, transaction: dbTx});
+            const minerBlockDel = await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}`)
+        });
     }
 
     //---------------------- business method for epoch -----------------------
@@ -237,9 +236,9 @@ export class EpochSync extends SyncBase{
             const msg = `${err}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
                 const latest = await cfx.getEpochNumber('latest_state');
-                console.log(`epoch-sync.logs epoch:${epochNumber} latestState:${latest} not executed`)
+                console.log(`epoch-sync.eventLogArray epoch:${epochNumber} latestState:${latest} not executed`)
             } else {
-                console.log(`epoch-sync.logs epoch:${epochNumber} error:${msg}`)
+                console.log(`epoch-sync.eventLogArray epoch:${epochNumber} error:${msg}`)
             }
             return [];
         });
