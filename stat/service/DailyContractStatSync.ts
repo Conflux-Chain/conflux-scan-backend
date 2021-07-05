@@ -21,14 +21,14 @@ export class DailyContractStatSync {
     }
 
     private async statDaily(day: Date): Promise<any>{
-        const contractList = await Contract.findAll({attributes: ['hex40id'], raw: true})
-        const hex40IdList = contractList?.map( item => item.hex40id) || [];
-        for(const hex40id of hex40IdList){
-            const stat = await this.statDailyByAddress(hex40id, day);
+        const contractList = await TraceCreateContract.findAll({attributes: ['to', 'blockTime'], raw: true}) || [];
+        for(const contract of contractList){
+            const stat = await this.statDailyByAddress(contract, day);
             if(!stat){
                 continue;
             }
-            const contractStatDb = await DailyContractStat.findOne({where: {hex40id}});
+
+            const contractStatDb = await DailyContractStat.findOne({where: {hex40id: contract.to, statTime: stat.statTime}});
             if(contractStatDb){
                 // NO-OP
                 // const updateInfo = lodash.defaults({}, stat, {updatedAt: new Date()});
@@ -47,7 +47,9 @@ export class DailyContractStatSync {
         const start = startDay || new Date('2020/10/29');
         const end = endDay || getYesterday(new Date());
         do{
+            console.log(`contract stat history at day:${start} start...`);
             await this.statDaily(start);
+            console.log(`contract stat history at day:${start} end.`);
             start.setDate(start.getDate() + 1)
         } while(start.getTime() <= end.getTime());
     }
@@ -67,11 +69,12 @@ export class DailyContractStatSync {
         repeat().then();
     }
 
-    private async statDailyByAddress(addressId, statDay){
+    private async statDailyByAddress(contract, statDay){
         const {beginTime, endTime} = calBeginEndTime(statDay);
 
-        const traceCreate = await TraceCreateContract.findOne({where: {to: addressId}});
-        if(traceCreate.blockTime < beginTime.getTime() / 1000){
+        const addressId = contract.to;
+        const blockTime = contract.blockTime;
+        if(blockTime < beginTime.getTime() / 1000){
             return undefined;
         }
 
@@ -121,3 +124,4 @@ export class DailyContractStatSync {
         return model;
     }
 }
+
