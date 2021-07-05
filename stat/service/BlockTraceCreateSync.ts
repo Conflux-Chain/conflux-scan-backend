@@ -55,8 +55,9 @@ export class BlockTraceCreateSync{
         }catch (e){
             const msg = `${e}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
-                const latest = await this.cfx.getEpochNumber('latest_state');
-                console.log(`trace_create_contract epoch:${curEpoch} latestState:${latest} not executed`)
+                // const latest = await this.cfx.getEpochNumber('latest_state');
+                // console.log(`trace_create_contract epoch:${curEpoch} latestState:${latest} not executed`)
+                await new Promise(resolve => setTimeout(resolve, 3000))
             } else {
                 console.log(`trace_create_contract epoch:${curEpoch} error:${msg}`)
                 throw e;

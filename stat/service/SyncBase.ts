@@ -44,7 +44,8 @@ export abstract class SyncBase{
     private async saveForward(epochNumber, { parentHash, modelData }): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
         const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
-        if (prevEpoch && parentHash !== prevEpoch.pivotHash) {
+        const validate = await this.validate(epochNumber, modelData);
+        if (prevEpoch && parentHash !== prevEpoch.pivotHash || !validate) {
             return SyncCode.PIVOT_SWITCH;
         }
         await this.save(epochNumber, modelData);
@@ -136,6 +137,8 @@ export abstract class SyncBase{
 
     //-------------------- methods subclass to implement ---------------------
     public abstract getData(epochNumber): Promise<SyncData>;
+
+    public abstract validate(epochNumber, modelData): Promise<boolean>;
 
     public abstract save(epochNumber, modelData);
 
