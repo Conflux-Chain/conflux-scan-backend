@@ -1,12 +1,14 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {StatApp} from "../StatApp";
+import {Hex40Map} from "../model/HexMap";
 const {Contract} = require("../model/Contract");
 const {DailyContractStat} = require("../model/DailyContractStat");
+const {ContractVerify} = require("../model/ContractVerify");
+import {AddressTransactionIndex} from "../model/FullBlock";
 import {toBase32} from "./tool/AddressTool";
 import {decodeUtf8} from "./tool/StringTool";
-import {DailyTransaction} from "../model/DailyTransaction";
-import {Hex40Map} from "../model/HexMap";
+import {makeId} from "../model/HexMap";
+
 const lodash = require('lodash');
 
 export class ContractQuery {
@@ -101,17 +103,78 @@ export class ContractQuery {
         return { total: list.length, list };
     }
 
-    async listStat(address, skip: number = 0, limit: number = 1000) {
-        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(address).substr(2)}})
-        const hex40id = hex40?.id
-        if(hex40id === undefined){
-            return {total: 0};
+    public async addVerify({name, address, compiler, version, optimizeFlag, optimizeRuns, license, verifyResult, similarity}) {
+        const{ logger } = this.app;
+        const base32 = toBase32(address);
+        const hex40id = (await makeId(address)).id;
+
+        const verify = new ContractVerify();
+        verify.base32 = base32;
+        verify.hex40id = hex40id;
+        verify.name = name;
+        verify.compiler = compiler;
+        verify.version = version;
+        verify.optimizeFlag = optimizeFlag;
+        verify.optimizeRuns = optimizeRuns;
+        verify.license = license;
+        verify.verifyResult = verifyResult;
+        verify.similarity = similarity;
+        const result = await ContractVerify.add(verify);
+        logger?.info({ src: `[${address}]stat verify request`, addResult: `${JSON.stringify(result)}` });
+        return result;
+    }
+
+    public async updateVerify({id, address, verifyResult, similarity, version}) {
+        const{ logger } = this.app;
+        const base32 = toBase32(address);
+
+        const dbVerify = await ContractVerify.findOne({where: {id}, raw: true});
+        if(dbVerify.base32 !== base32){
+            logger?.error({ src: `[${address}]stat verify request`, updateError: `record.base32 not equals ${base32}` });
         }
 
-        const page = await DailyContractStat.findAndCountAll({
-            attributes: ['statTime', 'tx', 'cfxTransfer', 'tokenTransfer'],
-            where: {hex40id}, offset: skip, limit, order:[["statTime", "DESC"]]
-        })
-        return { total: page?.count || 0, list: page?.rows };;
+        const updateInfo = lodash.defaults({}, {verifyResult, similarity, version, updatedAt: new Date()});
+        const updateVerify = lodash.assign(dbVerify, updateInfo);
+        const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
+        logger?.info({ src: `[${address}]stat verify request`, updateResult: `${JSON.stringify(result)}` });
+        return result;
+    }
+
+    public async queryVerify({address}) {
+        const{ logger } = this.app;
+        const base32 = toBase32(address);
+
+        const result = await ContractVerify.findOne({where: {base32, verifyResult: true}});
+        logger?.info({ src: `[${address}]stat verify request`, queryResult: `${JSON.stringify(result)}` });
+        return result;
+    }
+
+    public async listVerify({skip = 0, limit = 10, reverse = true, verifyResult = true}) {
+        const{ logger, cfxSDK } = this.app;
+        const page = await ContractVerify.findAndCountAll({
+            attributes: [
+                'name',
+                'hex40id',
+                ['base32', 'address'],
+                'compiler',
+                'version',
+                ['optimizeFlag', 'optimization'],
+                ['optimizeRuns', 'runs'],
+                ['updatedAt', 'timestamp'],
+            ],
+            where: {verifyResult},
+            order: [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]],
+            offset: skip, limit, raw: true});
+        logger?.info({ src: `list stat verify request`, page: `${JSON.stringify(page)}` });
+        const list = page?.rows || [];
+        for(const row of list) {
+            row.optimization = row.optimization === 1;
+            row.timestamp = row.timestamp.getTime() / 1000;
+            row.transactionCount = await AddressTransactionIndex.count({where: {addressId: row.hex40id}});
+            row.balance = (await cfxSDK.getBalance(row.address)).toString();
+        }
+        logger?.info({ src: `list stat verify request`, list: `${JSON.stringify(list)}` });
+
+        return  {total: list.length, list};;
     }
 }

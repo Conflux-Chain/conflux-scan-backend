@@ -101,13 +101,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {name, registered: total} || {};
     })
 
-    router.get('/contract/daily/stat', async (ctx)=>{
-        const {address, skip, limit} = ctx.request.query
-        const page = await statApp.contractQuery.listStat(address, skip? parseInt(skip): skip,
-            limit ? parseInt(limit): limit);
-        ctx.body = {code: 0, data: page};
-    })
-
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
             const {fields, transferType, currency, orderBy, reverse, skip, limit, addressArray} = ctx.request.query;
@@ -329,6 +322,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         ctx.body = {code: 0, data: page};
     });
+
+    router.get('/contract/stat/list', async (ctx)=>{
+        const {address, skip, limit} = ctx.request.query
+        const page = await statApp.contractStatQuery.listStat(address, skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
+        ctx.body = {code: 0, data: page};
+    })
 
     // get creat trace
     router.get('/trace/create', async function (ctx) {

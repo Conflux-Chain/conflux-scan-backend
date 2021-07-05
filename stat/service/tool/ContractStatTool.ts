@@ -1,6 +1,6 @@
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
-import {ContractStat} from "../ContractStat";
+import {DailyContractStatSync} from "../DailyContractStatSync";
 
 let contractStatTool;
 
@@ -11,7 +11,7 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 
-    contractStatTool = new ContractStat(seq);
+    contractStatTool = new DailyContractStatSync(seq);
 }
 
 async function sync(startDay, endDay) {

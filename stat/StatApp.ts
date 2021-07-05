@@ -31,7 +31,8 @@ import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {QuoteSync} from "./service/QuoteSync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
-import {ContractStat} from "./service/ContractStat";
+import {DailyContractStatSync} from "./service/DailyContractStatSync";
+import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
 import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
 
@@ -62,7 +63,8 @@ export class StatApp{
     public quoteSync: QuoteSync;
     public homeDashboardService: HomeDashboardService;
     public contractQuery: ContractQuery;
-    public contractStat: ContractStat;
+    public contractStatSync: DailyContractStatSync;
+    public contractStatQuery: DailyContractStatQuery;
     public contractRegisterSync: DailyContractRegisterSync
     public contractRegisterQuery: DailyContractRegisterQuery;
     public tokenTool: TokenTool;
@@ -132,7 +134,8 @@ export class StatApp{
         this.quoteSync = new QuoteSync(this);
         this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
-        this.contractStat = new ContractStat(this.sequelize);
+        this.contractStatSync = new DailyContractStatSync(this.sequelize);
+        this.contractStatQuery = new DailyContractStatQuery();
         this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
         this.contractRegisterQuery = new DailyContractRegisterQuery();
         //
@@ -175,8 +178,8 @@ export class StatApp{
         if (this.config.syncHomeDashboardData) {
             await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
         }
-        if (this.config.statContractDaily) {
-            await this.contractStat.schedule();
+        if (this.config.syncContractStatInfoDaily) {
+            await this.contractStatSync.schedule();
         }
         if (this.config.syncEpoch) {
             await this.epochSync.run(this.config.syncEpochNumber);

@@ -16,8 +16,8 @@ export class DailyContractRegisterSync{
         if(record) return Promise.resolve(record);
 
         const contractCount = await Contract.count({
-            where: {[Op.and]:[{createdAt: {[Op.gte]:beginTime.getTime() / 1000}},
-                    {createdAt: {[Op.lt]:endTime.getTime() / 1000}}]}
+            where: {[Op.and]:[{createdAt: {[Op.gte]:beginTime}},
+                    {createdAt: {[Op.lt]:endTime}}]}
         });
         const dailyContractRegister = new DailyContractRegister();
         dailyContractRegister.statDay = beginTime;

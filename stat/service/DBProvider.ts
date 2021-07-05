@@ -55,6 +55,7 @@ import {DailyContractCreate} from "../model/DailyContractCreate";
 import {DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {DailyContractRegister} from "../model/DailyContractRegister";
+import {ContractVerify} from "../model/ContractVerify";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
@@ -145,6 +146,7 @@ export async function initPartialModel(sequelize) {
     StreamErrorLog.register(sequelize)
     KV.register(sequelize);
     Epoch.register(sequelize);
+    ContractVerify.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

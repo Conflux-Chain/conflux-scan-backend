@@ -67,7 +67,7 @@ export interface StatConfig{
     syncMinerBlock: boolean,
     syncMinerBlockEpochNumber: number,
 
-    statContractDaily: boolean,
+    syncContractStatInfoDaily: boolean,
     syncContractRegisterCountDaily: boolean,
 }
 
