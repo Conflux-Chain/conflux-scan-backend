@@ -124,7 +124,7 @@ export class ContractQuery {
         return result;
     }
 
-    public async updateVerify({id, address, verifyResult, similarity, version}) {
+    public async updateVerify({id, address, version, sourceCode, abi, verifyResult, similarity}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
 
@@ -134,7 +134,10 @@ export class ContractQuery {
         }
 
         const updateInfo = lodash.defaults({}, {verifyResult, similarity, version, updatedAt: new Date()});
-        const updateVerify = lodash.assign(dbVerify, updateInfo);
+        let updateVerify = lodash.assign(dbVerify, updateInfo);
+        if(verifyResult){
+            updateVerify = lodash.assign(updateInfo, {sourceCode, abi});
+        }
         const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
         logger?.info({ src: `[${address}]stat verify request`, updateResult: `${JSON.stringify(result)}` });
         return result;

@@ -7,6 +7,8 @@ export interface IContractVerify{
     name:string
     compiler?:string
     version?:string
+    sourceCode?:string
+    abi?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
     license?:string
@@ -21,6 +23,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     name:string
     compiler?:string
     version?:string
+    sourceCode?:string
+    abi?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
     license?:string
@@ -36,6 +40,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name: {type: DataTypes.CHAR(255), allowNull: false},
             compiler: {type: DataTypes.CHAR(255), allowNull: true},
             version: {type: DataTypes.CHAR(255), allowNull: true},
+            sourceCode: {type: DataTypes.TEXT, allowNull: true, },
+            abi: {type: DataTypes.TEXT, allowNull: true, },
             optimizeFlag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             optimizeRuns: {type: DataTypes.INTEGER, allowNull: true, },
             license: {type: DataTypes.CHAR(255), allowNull: true},
@@ -57,6 +63,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name:contract.name,
             compiler:contract.compiler,
             version:contract.version,
+            sourceCode:contract.sourceCode,
+            abi:contract.abi,
             optimizeFlag:contract.optimizeFlag,
             optimizeRuns: contract.optimizeRuns,
             license:contract.license,
