@@ -74,7 +74,9 @@ export class Hex40Map extends Model<HexMapAttributes> implements HexMapAttribute
 }
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 10 // 10 minutes
-
+export async function makeIdV(hex: string, dbTx: Transaction = undefined, p = undefined) : Promise<number>{
+    return makeId(hex, dbTx, p).then(res=>res.id)
+}
 // https://sequelize.org/master/class/lib/model.js~Model.html#static-method-findOrCreate
 export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = undefined} = {}) {
     if (hex === '0x0' || hex === undefined || hex === null) {
