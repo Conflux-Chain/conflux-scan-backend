@@ -8,6 +8,7 @@ export interface IToken{
     base32:string
     hex40id:number
     fetchBalance?:boolean
+    auditResult?:boolean
     type?:string
     icon?:string
     transfer?:number
@@ -43,6 +44,7 @@ export class Token extends Model<IToken> implements IToken{
     base32:string
     hex40id:number
     fetchBalance?:boolean
+    auditResult?:boolean
     type?:string
     icon?:string
     transfer?:number
@@ -77,6 +79,7 @@ export class Token extends Model<IToken> implements IToken{
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             hex40id: {type: DataTypes.BIGINT, allowNull: false, },
             fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true},
+            auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
             transfer: {type: DataTypes.BIGINT, allowNull: true, },

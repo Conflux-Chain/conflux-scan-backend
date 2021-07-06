@@ -92,14 +92,14 @@ export class TokenQuery {
         ];
 
         // query
-        const query: any = {};
+        const query: any = {auditResult: true};
         if(name){
             const conditionArray = [];
             conditionArray.push({name: { [Op.like]: `%${name}%`}});
             conditionArray.push({symbol: { [Op.like]: `%${name}%`}});
             query[Op.or] = conditionArray;
-            options.where = query;
         }
+        options.where = query;
 
         // order
         options.order = [['totalPrice', 'DESC'], ['createdAt', 'ASC']];
@@ -184,7 +184,7 @@ export class TokenQuery {
         options.attributes = attributes;
 
         // query
-        const query: any = {};
+        const query: any = {auditResult: true};
         if(transferType){
             query.type = transferType;
         }
@@ -242,7 +242,7 @@ export class TokenQuery {
     public async listRegisterAddress() {
         const{ logger } = this.app;
 
-        const options: any = {attributes: ['base32', 'hex40id'], raw: true};
+        const options: any = {attributes: ['base32', 'hex40id'], where: {auditResult: true}, raw: true};
         // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, options: `${JSON.stringify(options)}`});
         const tokenList = await Token.findAll(options)
         // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, tokenList: `${JSON.stringify(tokenList)}`});
