@@ -29,7 +29,7 @@ Bill struct:
  */
 import {Model,Sequelize,Op,DataTypes} from "sequelize";
 // @ts-ignore
-import {Conflux, format} from "js-conflux-sdk";
+import {Conflux, Drip, format} from "js-conflux-sdk";
 import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
 import {hex} from "../../test/GenData";
 import {AddressCfxBill, T_ADDRESS_CFX_BILL_SQL} from "../../model/CfxTransfer";
@@ -47,6 +47,8 @@ const REWARD = 'reward'
 const GENESIS = 'genesis'
 export class DummyNode {
     cfx:Conflux
+    verbose: boolean = false;
+    stopAtEpoch = 0
     constructor(cfx:Conflux) {
         this.cfx = cfx;
     }
@@ -56,6 +58,12 @@ export class DummyNode {
     }
 
     async setupEpoch0() {
+        await this.updateMaxEpochLimit()
+        // @ts-ignore
+        await this.cfx.updateNetworkId()
+        // @ts-ignore
+        const networkId = this.cfx.networkId;
+        console.log(`network id ${networkId}`)
         const anyOne = await CfxBill.findOne({})
         if (anyOne) {
             return
@@ -75,14 +83,12 @@ export class DummyNode {
             })
         }
 
-        // @ts-ignore
-        const networdId = this.cfx.networdId;
-        if (networdId === 1029) {
+        if (networkId === 1029) {
             // cfx:acb59fk6vryh8dj5vyvehj9apzhpd72rdpwsc651kz four year
             await make('0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b', 42_0000_0000, 0)
             // cfx:ach9eg1rk28060m3kpw44np1znvn6p9ffjkk6651nb two year
             await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 8_0000_0000, 1)
-        } else if (networdId === 1) {
+        } else if (networkId === 1) {
             // cfxtest:aathrdjwhfsjzt88577vz42r4hkh41vmt68xu9h4vc
             await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 50_0000_0000, 0)
         }
@@ -167,6 +173,11 @@ export class DummyNode {
         for (const [blockIndex,block] of blockList.entries()) {
             for (const [txIndex,tx] of block.transactions.entries()) {
                 const receipt = tx.receipt
+                if (!receipt && tx.status === null && tx.blockHash === null) {
+                    console.log(`tx receipt not found, epoch ${epoch} block hash ${block.hash
+                    }\n tx hash ${tx.hash} tx index ${txIndex}`)
+                    continue
+                }
                 if (receipt.epochNumber !== epoch) {
                     // not executed in current epoch
                     continue
@@ -221,6 +232,12 @@ export class DummyNode {
         billList.forEach(b=>{
             const key = keyMapper(b);
             b.balance = this.addBalance(map.get(key), b.diffDrip)//?.balance || ZERO_BIGINT) + BigInt(b.diffDrip)
+            if (b.balance < ZERO_BIGINT && b.type !== GAS) {
+                console.log(`negative balance, owner ${b.ownerId}, epoch ${b.epoch
+                } type ${b.type} block ${b.blockIndex} tx ${b.txIndex} diff ${new Drip(-b.diffDrip).toCFX()
+                } balance ${new Drip(-b.balance).toCFX()}\n ${JSON.stringify(b)}`)
+                process.exit(0)
+            }
             map.set(b.owner, b) // multiple bills for one owner within an epoch.
         })
     }
@@ -279,6 +296,10 @@ export class DummyNode {
         })
     }
     async processOne(epoch, auto=false) {
+        if (epoch >= this.stopAtEpoch) {
+            await new Promise(r=>setTimeout(r, 5000))
+            return
+        }
         let base32idmapScope, preBillMapScope;
         return this.fetchEpoch(epoch)
         .then(res=>{
@@ -289,7 +310,7 @@ export class DummyNode {
                 base32idmapScope = base32idmap
                 return this.getPreBill(base32idmap.values())
             }).then(preBillMap=>{
-                preBillMapScope = preBillMap
+                preBillMapScope = new Map(preBillMap)
                 return {bills, preBillMap}
             })
         }).then(({bills, preBillMap})=>{
@@ -299,46 +320,98 @@ export class DummyNode {
         }).then(bills=>{
             return CfxBill.bulkCreate(bills)
         }).then((bills)=> {
-            this.checkMiner(base32idmapScope, preBillMapScope, bills)
             if (!auto || epoch % 100 == 0) {
-                console.log(`${new Date().toISOString()} process epoch ${epoch} finished, create bills ${bills.length}`)
+                console.log(`${new Date().toISOString()} process epoch ${epoch} finished, create bills ${bills.length
+                }, target epoch ${this.stopAtEpoch}, diff ${this.stopAtEpoch - epoch}`)
+                this.updateMaxEpochLimit()
             }
+            if (this.verbose) {
+                // sync check
+                return this.checkMiner(preBillMapScope, bills)
+            } else {
+                // async check
+                this.checkMiner(preBillMapScope, bills)
+            }
+        })
+    }
+
+    async updateMaxEpochLimit() {
+        this.cfx.getEpochNumber('latest_confirmed').then(res=>{
+            this.stopAtEpoch = res - 1000
         })
     }
     // if the miner doesn't have tx in current epoch,
     // and previous record is a reward
     // and previous record epoch is greater than current epoch - 7200 (about 1 hour)
-    // the delete previous record, to reduce table size.
-    async checkMiner(base32idmapScope, preBillMapScope, bills) {
+    // then delete previous record, to reduce table size.
+    minerCounterMap = new Map<number, number>()
+    async checkMiner(preBillMapScope, bills) {
+        const beyondRewardTxMiner = new Set<number>()
         for(const bill of bills) {
-            if (base32idmapScope.has(bill.from) || base32idmapScope.has(bill.to)) {
-                // has tx in current epoch
+            if (bill.type !== REWARD) {
+                beyondRewardTxMiner.add(bill.ownerId)
+                if(this.verbose)console.log(`miner has tx, ${bill.ownerId}, ${bill.type}`)
+            }
+        }
+        for(const bill of bills) {
+            if (beyondRewardTxMiner.has(bill.ownerId)) {
+                // this miner has tx in current epoch.
+                if(this.verbose)console.log(`miner has tx, owner ${bill.ownerId} epoch ${bill.epoch}`)
                 continue
             }
             const pre = preBillMapScope.get(bill.ownerId)
-            if (pre === null || pre.type !== REWARD || bill.epoch - pre.epoch < 7200) {
-                // pre not found, or pre is not reward, or pre is too close to current
+            if (pre === null || pre === undefined || pre.type !== REWARD) {
+                // pre not found, or pre is not reward
                 continue
             }
-            pre.destroy()
+            // pre is reward
+            const counter = this.minerCounterMap.get(bill.ownerId) || 0
+            if (counter == 0) {
+                // keep first
+                this.minerCounterMap.set(bill.ownerId, counter+1)
+            } else if (counter < 7200) {
+                // do not keep in DB
+                this.minerCounterMap.set(bill.ownerId, counter+1)
+                // inst.destroy() has wrong condition.
+                let logIt = this.verbose ? console.log : false
+                await CfxBill.destroy({ where: {ownerId: pre.ownerId, epoch: pre.epoch,
+                        seq: {[Op.lte]:pre.seq}, type:REWARD},
+                    logging: logIt,
+                }).then(res=>{
+                    if(this.verbose) console.log(`delete pre reward, owner ${bill.ownerId
+                    } cur epoch ${bill.epoch} pre epoch ${pre.epoch} counter ${counter}`)
+                })
+            } else {
+                // keep one, and reset counter.
+                this.minerCounterMap.set(bill.ownerId, 1)
+            }
         }
     }
 }
 if (require.main === module) {
-    const cfx = new Conflux({
-        url: 'http://47.242.194.209:12537',
-        networkId: 2
-    });
-    const node = new DummyNode(cfx)
+    //
+    const args = process.argv.slice(2)
+    const args0 = args[0]
+    //
+    const node = new DummyNode(undefined)
+    node.verbose = args.includes('verbose')
     let epoch;
     init().then(config=>{
+        node.cfx = new Conflux(config.conflux)
         return node.setupEpoch0()
     }).then(res=>{
         return node.getEpochInDB()
     }).then(epochInDB=>{
         epoch = epochInDB + 1;
-        // return node.processOne(epoch)
-        return node.loop(epoch)
+        if (args0) {
+            return node.loop(epoch)
+        } else {
+            return node.processOne(epoch).then(()=>{
+                return CfxBill.sequelize.close()
+            }).then(()=>{
+                process.exit(0)
+            })
+        }
     }).catch(err=>{
         console.log(`cfx bill fail, epoch ${epoch}:`, err)
         // return CfxBill.sequelize.close()
@@ -372,6 +445,13 @@ export class CfxBill extends Model<ICfxBill> implements ICfxBill{
             sequelize: seq,
             timestamps: false,
             tableName: T_CFX_BILL,
+            indexes:[
+                {name:'PRIMARY', unique: true, fields:[
+                        {name: 'ownerId',},
+                        {name: 'epoch', order:"DESC"},
+                        {name: 'seq', order:"DESC"},
+                    ]}
+            ]
         })
     }
 }
