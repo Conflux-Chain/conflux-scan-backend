@@ -210,7 +210,7 @@ export class FullBlockQuery {
             if(transactionHash) {
                 conditionArray.push({hash: transactionHash});
             }
-            if(txType && accountAddressId){
+            //if(txType && accountAddressId){
                 if(txType === CONST.TX_TYPE.IN){
                     conditionArray.push({toId: accountAddressId});
                 } else if(txType === CONST.TX_TYPE.OUT){
@@ -227,7 +227,7 @@ export class FullBlockQuery {
                 } else{
                     conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
                 }
-            }
+            //}
         } else{
             const pagedCondition = await this.buildPagedTxOptions(skip);
             if(pagedCondition.where){
