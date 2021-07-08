@@ -25,8 +25,11 @@ Bill struct:
  if the previous record of the miner is also a reward, then aggregate.
  In this case, the fromId is the epoch from which the aggregation begin.
  We can save the total number of blocks one miner mined, split to txIndex and traceIndex.
-    if (traceIndex === 4294967295(2^32-1)) txIndex++, traceIndex = 0.
+    if (traceIndex === MINED_COUNT_AGGREGATE_SIZE) txIndex++, traceIndex = 0.
  */
+const NodeCache = require( "node-cache" );
+const dbCache = new NodeCache()
+const cacheTtl = 60 * 50 // 50 minutes
 import {Model,Sequelize,Op,DataTypes} from "sequelize";
 // @ts-ignore
 import {Conflux, Drip, format} from "js-conflux-sdk";
@@ -35,8 +38,10 @@ import {hex} from "../../test/GenData";
 import {AddressCfxBill, T_ADDRESS_CFX_BILL_SQL} from "../../model/CfxTransfer";
 import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
+import {PreloadMap} from "../SyncBase";
 
 const DRIP_FACTOR = BigInt(1e+18)
+const MINUS_DRIP_FACTOR = -BigInt(1e+18)
 const STORAGE_DIV = BigInt(1024)
 const ZERO_BIGINT = BigInt(0)
 const ONE_BIGINT = BigInt(1)
@@ -45,12 +50,15 @@ const STORAGE_USED = 'store_u'
 const STORAGE_RELEASED = 'store_r'
 const REWARD = 'reward'
 const GENESIS = 'genesis'
+const MINED_COUNT_AGGREGATE_SIZE = 1_000_000_000
 export class DummyNode {
     cfx:Conflux
     verbose: boolean = false;
     stopAtEpoch = 0
+    preLoadMap:PreloadMap
     constructor(cfx:Conflux) {
         this.cfx = cfx;
+        this.preLoadMap = new PreloadMap(this.fetchEpochRaw.bind(this))
     }
     log(tag, param, res){
         console.log(tag, param, typeof res)
@@ -114,7 +122,16 @@ export class DummyNode {
             return block
         })
     }
+    preFetchedTo = 0
     async fetchEpoch(epoch) {
+        if (epoch+10 === this.preFetchedTo) {
+            for(let i=1; i<=10; i++) {
+                this.preLoadMap.start(++this.preFetchedTo)
+            }
+        }
+        return this.preLoadMap.pop(epoch)
+    }
+    async fetchEpochRaw(epoch) {
         return Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(async hashes=>{
                 // console.log(`hashes: \n ${hashes.join('\n')}`)
@@ -137,6 +154,9 @@ export class DummyNode {
                 }
             })
             return blockList
+        }).then(res=>{
+            // console.log(`epoch detail:\n ${JSON.stringify(res)}`)
+            return this.buildBill(epoch, res)
         })
     }
     computeStorageDrip(unit) {
@@ -189,16 +209,28 @@ export class DummyNode {
                 }
                 // traces for this tx. traces is prior to gas and storage in one epoch.
                 const transactionTraces = block.traces.transactionTraces;
-                for (const [traceIndex,{action}] of transactionTraces[txIndex].traces.entries()) {
-                    if (!action.value) {
+                for (const [traceIndex,{action,type}] of transactionTraces[txIndex].traces.entries()) {
+                    if (!action.value || action.callType === 'delegatecall') {
                         continue
                     }
-                    const traceBillFrom = {
-                        owner:action.from, epoch, blockIndex, txIndex, traceIndex, type:'transfer',
-                        from: action.from, to: action.to, diffDrip: -action.value, seq:billArr.length
-                    };
-                    billArr.push(traceBillFrom)
+                    let tType = type
+                    if (type === 'internal_transfer_action') {
+                        tType = 'in_trans'
+                    } else if (type === 'create' || type ==='call') {
+                    } else if (type === 'create_result' || type ==='call_result') {
+                        //value should be zero, won't trigger
+                    } else {
+                        console.log(`unknown trace type ${type}, epoch ${epoch} block ${block.hash} tx ${txIndex}, trace ${traceIndex}`)
+                        process.exit(8)
+                        return
+                    }
                     if (action.from !== action.to) {
+                        // if from eq to, then ignore, only care gas. other wise, the 'out' will cause negative result.
+                        const traceBillFrom = {
+                            owner:action.from, epoch, blockIndex, txIndex, traceIndex, type:tType,
+                            from: action.from, to: action.to, diffDrip: -action.value, seq:billArr.length
+                        };
+                        billArr.push(traceBillFrom)
                         const traceBillTo = {
                             ...traceBillFrom, owner: action.to, diffDrip: action.value, seq:billArr.length
                         }
@@ -231,28 +263,49 @@ export class DummyNode {
         // find previous record
         billList.forEach(b=>{
             const key = keyMapper(b);
-            b.balance = this.addBalance(map.get(key), b.diffDrip)//?.balance || ZERO_BIGINT) + BigInt(b.diffDrip)
-            if (b.balance < ZERO_BIGINT && b.type !== GAS) {
-                console.log(`negative balance, owner ${b.ownerId}, epoch ${b.epoch
-                } type ${b.type} block ${b.blockIndex} tx ${b.txIndex} diff ${new Drip(-b.diffDrip).toCFX()
-                } balance ${new Drip(-b.balance).toCFX()}\n ${JSON.stringify(b)}`)
-                process.exit(0)
+            this.addBalance(map.get(key), b)//?.balance || ZERO_BIGINT) + BigInt(b.diffDrip)
+            if (b.balance < ZERO_BIGINT
+                // && b.type !== GAS
+                // && b.ownerId === 991
+            ) {
+                NegativeCfxBill.create(b)
+                // console.log(`negative balance, owner ${b.ownerId}, epoch ${b.epoch
+                // } type ${b.type} block ${b.blockIndex} tx ${b.txIndex} diff ${new Drip(-b.diffDrip).toCFX()
+                // } balance ${new Drip(-b.balance).toCFX()}\n ${JSON.stringify(b)}`)
+                // process.exit(0)
             }
-            map.set(b.owner, b) // multiple bills for one owner within an epoch.
+            map.set(key, b) // multiple bills for one owner within an epoch.
+            dbCache.set(key, b, cacheTtl)
         })
     }
-    addBalance(bill:CfxBill, diff:bigint) {
-        if (bill) {
+    addBalance(pre:CfxBill, b) {
+        if (pre) {
             // console.log(`type is ${typeof bill.balance}, ${bill.balance}`)
-            return BigInt(bill.balance) + diff
+            b.balance = BigInt(pre.balance) + BigInt(b.diffDrip)
+            if (b.type === REWARD) {
+                if (pre.type === REWARD) {
+                    b.traceIndex = pre.traceIndex + 1 // aggregate
+                } else {
+                    b.traceIndex = 1 // reset
+                }
+            }
         } else {
-            return diff
+            b.balance = BigInt(b.diffDrip)
+            b.traceIndex = 1 // mined block count
         }
     }
     async getPreBill(set:IterableIterator<number>) : Promise<Map<number,CfxBill>>{
         return await Promise.all([...set].map(async hexId=>{
+            const cache = dbCache.get(hexId);
+            if (cache) {
+                dbCache.set(hexId, cache, cacheTtl)
+                return cache
+            }
             return CfxBill.findOne({where:{ownerId: hexId,}, order:[
-                ['epoch','desc'],['seq','desc']], limit: 1})
+                ['epoch','desc'],['seq','desc']], limit: 1}).then(res=>{
+                    dbCache.set(hexId, res, cacheTtl)
+                    return res
+            })
         })).then(arr=>{
             const map = new Map<number, CfxBill>()
             arr.forEach(bill=>{
@@ -302,10 +355,7 @@ export class DummyNode {
         }
         let base32idmapScope, preBillMapScope;
         return this.fetchEpoch(epoch)
-        .then(res=>{
-            // console.log(`epoch detail:\n ${JSON.stringify(res)}`)
-            return this.buildBill(epoch, res)
-        }).then(bills=>{
+        .then(bills=>{
             return this.prepareId(bills).then((base32idmap)=>{
                 base32idmapScope = base32idmap
                 return this.getPreBill(base32idmap.values())
@@ -327,10 +377,10 @@ export class DummyNode {
             }
             if (this.verbose) {
                 // sync check
-                return this.checkMiner(preBillMapScope, bills)
+                return this.checkMiner(preBillMapScope, bills, epoch)
             } else {
                 // async check
-                this.checkMiner(preBillMapScope, bills)
+                this.checkMiner(preBillMapScope, bills, epoch)
             }
         })
     }
@@ -345,7 +395,12 @@ export class DummyNode {
     // and previous record epoch is greater than current epoch - 7200 (about 1 hour)
     // then delete previous record, to reduce table size.
     minerCounterMap = new Map<number, number>()
-    async checkMiner(preBillMapScope, bills) {
+    async checkMiner(preBillMapScope, bills, epoch) {
+        if (epoch % 10000 === 0) {
+            // save point
+            this.minerCounterMap.clear()
+            return
+        }
         const beyondRewardTxMiner = new Set<number>()
         for(const bill of bills) {
             if (bill.type !== REWARD) {
@@ -353,6 +408,7 @@ export class DummyNode {
                 if(this.verbose)console.log(`miner has tx, ${bill.ownerId}, ${bill.type}`)
             }
         }
+        const toBeDel = []
         for(const bill of bills) {
             if (beyondRewardTxMiner.has(bill.ownerId)) {
                 // this miner has tx in current epoch.
@@ -366,26 +422,35 @@ export class DummyNode {
             }
             // pre is reward
             const counter = this.minerCounterMap.get(bill.ownerId) || 0
-            if (counter == 0) {
+            /** 0: keep, [1, N-1] delete, N keep, [1,N-1] delete, */
+            if (counter === 0) {
                 // keep first
                 this.minerCounterMap.set(bill.ownerId, counter+1)
-            } else if (counter < 7200) {
+            } else /*if (counter < 100)*/ {
                 // do not keep in DB
-                this.minerCounterMap.set(bill.ownerId, counter+1)
-                // inst.destroy() has wrong condition.
-                let logIt = this.verbose ? console.log : false
-                await CfxBill.destroy({ where: {ownerId: pre.ownerId, epoch: pre.epoch,
-                        seq: {[Op.lte]:pre.seq}, type:REWARD},
-                    logging: logIt,
-                }).then(res=>{
-                    if(this.verbose) console.log(`delete pre reward, owner ${bill.ownerId
-                    } cur epoch ${bill.epoch} pre epoch ${pre.epoch} counter ${counter}`)
-                })
-            } else {
+                // this.minerCounterMap.set(bill.ownerId, counter+1)
+                // must not do deletion here, it will cause concurrent issues, counter will be mess up.
+                toBeDel.push(pre)
+            }/* else {
                 // keep one, and reset counter.
                 this.minerCounterMap.set(bill.ownerId, 1)
-            }
+            }*/
         }
+
+        let logIt = this.verbose ? console.log : false
+        Promise.all(toBeDel.map(async pre=>{
+            // inst.destroy() has wrong condition.
+            CfxBill.destroy({ where: {ownerId: pre.ownerId, epoch: pre.epoch,
+                    seq: {[Op.lte]:pre.seq}, type:REWARD, /*traceIndex: pre.traceIndex*/},
+                logging: logIt,
+            }).then(res=>{
+                if (res === 0) {
+                    // console.log(`delete fail, ${JSON.stringify(pre)}`)
+                }
+                if(this.verbose) console.log(`delete pre reward, owner ${pre.ownerId
+                } cur epoch ${epoch} pre epoch ${pre.epoch}`);
+            })
+        })).then()
     }
 }
 if (require.main === module) {
@@ -403,6 +468,7 @@ if (require.main === module) {
         return node.getEpochInDB()
     }).then(epochInDB=>{
         epoch = epochInDB + 1;
+        node.preFetchedTo = epoch + 10
         if (args0) {
             return node.loop(epoch)
         } else {
@@ -417,7 +483,40 @@ if (require.main === module) {
         // return CfxBill.sequelize.close()
     })
 }
+//
+export class NegativeCfxBill extends Model<ICfxBill> implements ICfxBill{
+    id:number;
+    ownerId:number; epoch:number; blockIndex:number; txIndex:number; traceIndex:number;
+    type:string; fromId:number; toId:number; diffDrip:number; balance:number;
+    seq:number;
+    static register(seq:Sequelize) {
+        NegativeCfxBill.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true, autoIncrement: true},
+            ownerId: {type: DataTypes.BIGINT({unsigned: true})},
+            epoch: {type: DataTypes.BIGINT({unsigned: true})},
+            seq: {type: DataTypes.INTEGER({unsigned: true})},
+            blockIndex: {type: DataTypes.BIGINT({unsigned: true})},
+            txIndex: {type: DataTypes.INTEGER({unsigned: true})},
+            traceIndex: {type: DataTypes.INTEGER({unsigned: true})},
+            type: {type: DataTypes.CHAR(8)},
+            fromId: {type: DataTypes.BIGINT({unsigned: true})},
+            toId: {type: DataTypes.BIGINT({unsigned: true})},
+            diffDrip: {type: DataTypes.DECIMAL(36, 0)},
+            balance: {type: DataTypes.DECIMAL(36, 0)},
+        },{
+            sequelize: seq,
+            timestamps: false,
+            tableName: 'cfx_bill_negative',
+            indexes:[
+                {name:'balance', fields:[
+                        {name: 'balance',},
+                    ]}
+            ]
+        })
+    }
+}
 export interface ICfxBill {
+    id?:number,
     ownerId:number, epoch:number, blockIndex:number, txIndex:number, traceIndex:number,
     type:string, fromId:number, toId:number, diffDrip:number, balance:number,
     seq:number;

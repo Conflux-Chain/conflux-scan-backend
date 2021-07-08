@@ -62,7 +62,7 @@ import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
-import {CfxBill, createV2CfxBillTable} from "./watcher/DummyNode";
+import {CfxBill, createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
 let conf
 export function createDB(config) {
     conf = config
@@ -123,6 +123,7 @@ export async function initPartialModel(sequelize) {
         createAddressCfxBillTable(sequelize),
         createV2CfxBillTable(sequelize),
     ])
+    NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)

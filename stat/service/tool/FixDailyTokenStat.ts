@@ -7,8 +7,8 @@ import {Token} from "../../model/Token";
 export async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.database)
-    await seq.sync({})
     await initModel(seq)
+    await seq.sync({})
     return config
 }
 export async function fixDate(hexId=0) {
