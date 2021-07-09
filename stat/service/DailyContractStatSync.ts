@@ -74,7 +74,7 @@ export class DailyContractStatSync {
 
         const addressId = contract.to;
         const blockTime = contract.blockTime;
-        if(blockTime < beginTime.getTime() / 1000){
+        if(blockTime >= endTime.getTime() / 1000){
             return undefined;
         }
 
