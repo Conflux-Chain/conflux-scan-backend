@@ -98,7 +98,9 @@ export class DummyNode {
             await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 8_0000_0000, 1)
         } else if (networkId === 1) {
             // cfxtest:aathrdjwhfsjzt88577vz42r4hkh41vmt68xu9h4vc
-            await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 50_0000_0000, 0)
+            await make('0x1e768d12395c8abfdedf7b1aeb0dd1d27d5e2a7f', 50_0000_0000, 0)
+            // cfxtest:aar8jzybzv0fhzreav49syxnzut8s0jt1a1pdeeuwb
+            await make('0x1be45681ac6c53d5a40475f7526bac1fe7590fb8', 50_0000_0000, 0)
         }
     }
     async fetchBlockDetail(hash) : Promise<any> {
@@ -608,3 +610,55 @@ export async function createV2CfxBillTable(seq:Sequelize) {
             process.exit(9)
         })
 }
+
+/**
+ select * from cfx_bill where balance < 0 and ownerId<>98 order by balance limit 10;
+ select * from cfx_bill order by epoch,seq limit 10;
+ select * from cfx_bill order by epoch desc,seq desc limit 10;
+ select * from cfx_bill where ownerId=93 order by epoch,seq limit 10;  // lending 0x852dedfe1e87ed3d898552797df500008bd5b0b4
+ select * from cfx_bill where ownerId=98 order by epoch,seq limit 10;  //zero
+ select * from cfx_bill where ownerId=991 order by epoch,seq limit 10;
+ select * from cfx_bill where ownerId=9197 order by epoch,seq limit 10;
+ select * from cfx_bill where ownerId=61380 order by epoch,seq limit 10;
+ select count(*) from cfx_bill where ownerId=61380 order by epoch,seq limit 10;
+ select * from cfx_bill where ownerId=55118 order by epoch,seq limit 10;
+ select * from cfx_bill where ownerId=61380 and balance <5e+18 order by epoch,seq limit 10;
+ select * from cfx_bill where epoch=1 order by epoch,seq limit 10;
+
+ select ownerId ,epoch  , seq  , blockIndex bi ,txIndex txI, traceIndex trI, type   , fromId , toId ,diffDrip , min(balance) as balance ,  balance/1e+18
+ select ownerId ,min(balance) as balance ,  min(balance/1000000000000000000) as cfx, min(concat('0x',hex)) as hex
+ from cfx_bill_negative join hex40 on cfx_bill_negative.ownerId=hex40.id
+ group by ownerId
+ order by balance  limit 12;
+
+ select count(distinct(ownerId)) from cfx_bill_negative where balance < -1e+18;
+
+ select ownerId ,epoch  , seq  , blockIndex bi ,txIndex txI, traceIndex trI, type   , fromId , hex  , diffDrip ,  balance/1e+18
+ from cfx_bill b join hex40 on b.toId=hex40.id
+ where ownerId=116884
+ order by balance  limit 10;
+
+ select sum(IF(fromId=702,-`value`,`value`)) from address_cfx_transfer where addressId=702 and epoch<=4113684;
+
+ select * from hex40 where hex=''
+ select id,concat('0x',hex) from hex40 where id=55118;
+ select * from hex40 where id=52060;
+ select * from hex40 where id=98;  // zero;
+ select * from hex40 where id=61380;  //  0x1b19a334b7ed9726b7dc90e31283fb88248980b6
+
+ select * from hex40 where hex=substring('0x17a18e4fd26ba60b7469a3a5ea259b33f594269a',3);
+ select * from hex40 where hex=substring('0x8d5adbcaf5714924830591586f05302bf87f74bd',3);
+ select * from hex40 where hex=substring('0x84404933832a6c7e01dfdf585be4b2debe1df830',3);
+
+ select * from full_miner_block
+ where minerId=1043 and epoch <= 232068
+ order by epoch , position limit 0,10;
+
+ select count(*) from block where minerId=1043 and epoch <= 232068;
+ select count(*) from full_miner_block where minerId=1043 and epoch <= 232068;
+ select count(*),sum(totalReward) from full_block where minerId=1043 and epoch <= 232068;
+ select epoch,position from full_block where minerId=1043 and epoch <= 232068 and totalReward=6720297649002959231;
+
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ truncate table cfx_bill;
+ */
