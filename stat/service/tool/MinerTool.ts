@@ -36,4 +36,3 @@ const args = process.argv.slice(2)
 const [start, end, cfxUrl, minerBase32] = args
 run(Number(start), Number(end), new Conflux({url: cfxUrl}), minerBase32).then()
 
-// node stat/dist/service/tool/MinerTool.js 187581 232068 http://47.242.92.109:12537  CFX:TYPE.USER:AAN4DDWT4KZ4PC5YRGV4N4VFXP39NFBGXJ0BNXSK1G
