@@ -29,14 +29,22 @@ export class RankService{
             setTimeout(()=>this.updateTxnCache(), 1000*3600)
         })
     }
+    /*
+     select h.hex, addressId, balance as value2, stakingBalance as value3, total as value4 from
+(select * from cfx_balance order by total desc limit 100) b
+         left join hex40 h on h.id = b.addressId
+           left join address_info ai on ai.id = h.id;
+     */
     async rankCfxBalance(order:string, limit, updateTxnCache=false) {
         const sql = ` 
-            select h.hex, addressId, balance as valueN, stakingBalance as value2, total as value3 from
-            (select * from cfx_balance order by ? desc limit ?) b
+            select h.hex, addressId, ${order}, balance as value2, stakingBalance as value3, total as value4 from
+            (select * from cfx_balance order by ${order} desc limit ?) b
             left join hex40 h on h.id = b.addressId
             left join address_info ai on ai.id = h.id
         `
-        const list = await CfxBalance.sequelize.query(sql, {type: QueryTypes.SELECT, replacements:[order, limit]})
+        const list = await CfxBalance.sequelize.query(sql, {type: QueryTypes.SELECT, replacements:[limit],
+            // logging: console.log, benchmark: true,
+        })
         if (updateTxnCache) {
             const hexIdSet = buildHexSet(undefined, list, 'addressId')
             // txn count
@@ -51,13 +59,18 @@ export class RankService{
                 arr.forEach(b => this.txnMap.set(b['addressId'], b))
             })
         } else {
-            list.forEach(r => r['value4'] = this.txnMap.get(r['addressId'])?.cnt || 0)
+            list.forEach(r => r['valueN'] = this.txnMap.get(r['addressId'])?.cnt || 0)
         }
         return list
     }
+    // 9999895641981116/5000000000000000*2
     async rankByCfx(order:string, limit, networkId) {
         const list = await this.rankCfxBalance(order, limit)
-        list.forEach((b,idx)=>b['rank'] = idx+1)
+        const totalCfx = networkId === 1029 ? 50_0000_0000 : 5000000000000000*2
+        list.forEach((b,idx)=>{
+            b['rank'] = idx+1
+            b['percent'] = b[order] / totalCfx * 100
+        })
         return this.fillInfo(list, networkId)
     }
     async top(type: string, limit: number = 10, networkId: number = 1029) : Promise<any> {
@@ -127,7 +140,7 @@ export class RankService{
             }
         }))
 
-        return {code: 0, total: list.length, list};
+        return {code: 0, total: list.length, list, msg:'v2'};
     }
 }
 
