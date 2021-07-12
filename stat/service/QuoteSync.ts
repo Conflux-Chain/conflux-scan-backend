@@ -156,7 +156,7 @@ export class QuoteSync {
   private async upsertQuote(quoteArray){
     quoteArray.map(async quote => {
       const address = quote.address;
-      const convertSymbol = quote.convertSymbol;
+      let convertSymbol = quote.convertSymbol;
       const dbQuote: TokenQuote = await TokenQuote.findOne({where:
         {[Op.and]: [{address},{convertSymbol}]}});
       if(dbQuote){
@@ -170,7 +170,8 @@ export class QuoteSync {
         const totalPrice = (quote.price && dbToken.totalSupply && Number.isInteger(dbToken.decimals))
             ? BigFixed(quote.price).mul(dbToken.totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
             : 0;
-        const newPrice = {[`totalPrice${quote.convertSymbol}`]: totalPrice, [`price${quote.convertSymbol}`]: quote.price, updatedAt: Date.now(), id: dbToken.id};
+        convertSymbol = "";
+        const newPrice = {[`totalPrice${convertSymbol}`]: totalPrice, [`price${convertSymbol}`]: quote.price, updatedAt: Date.now(), id: dbToken.id};
         await dbToken.update(newPrice, {where: {id: dbToken.id}});
       }
     });
