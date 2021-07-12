@@ -1,4 +1,4 @@
-import {DataTypes, Model, Transaction, Sequelize} from "sequelize";
+import {DataTypes, Model, Transaction, Sequelize, UniqueConstraintError} from "sequelize";
 
 export interface IKV {
     key: string;
@@ -69,6 +69,7 @@ export interface IPosition {
     pos:number
     active:boolean
 }
+export const POS_CFX_BILL = 'POS_CFX_BILL'
 export class Position extends Model<IPosition> implements IPosition {
     tag:string
     pos:number
@@ -80,6 +81,13 @@ export class Position extends Model<IPosition> implements IPosition {
             active: {type: DataTypes.BOOLEAN, defaultValue: true},
         },{
             sequelize: seq,
+            tableName: 'Positions'
+        })
+    }
+
+    public static async getPosDefault(tag: string, v: number) {
+        return this.getPosition(tag).then(res=>{
+            return res ? res.pos : v
         })
     }
     static async getPosition(tag:string) : Promise<Position> {
@@ -87,5 +95,16 @@ export class Position extends Model<IPosition> implements IPosition {
     }
     static async setPosition(tag:string, pos:number) {
         return Position.update({pos}, {where:{tag}, limit: 1})
+            .then(([cnt])=>{
+            if (cnt === 0) {
+                return Position.create({tag, pos, active: true}).catch(err=>{
+                    if (err instanceof UniqueConstraintError){
+                        // when pos is not changed ?
+                    } else {
+                        throw err
+                    }
+                })
+            }
+        })
     }
 }
