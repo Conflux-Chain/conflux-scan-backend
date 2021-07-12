@@ -64,7 +64,7 @@ export class DummyNode {
         console.log(tag, param, typeof res)
         return res
     }
-
+    minBalanceRecord:any = {balance:ZERO_BIGINT}
     async setupEpoch0() {
         await this.updateMaxEpochLimit()
         // @ts-ignore
@@ -210,8 +210,19 @@ export class DummyNode {
                 // traces for this tx. traces is prior to gas and storage in one epoch.
                 const transactionTraces = block.traces.transactionTraces;
                 for (const [traceIndex,{action,type}] of transactionTraces[txIndex].traces.entries()) {
-                    if (!action.value || action.callType === 'delegatecall') {
+                    if (!action.value
+                        || action.callType === 'none'
+                        || action.callType === 'callcode'
+                        || action.callType === 'delegatecall'
+                        || action.callType === 'staticcall'
+                    ) {
                         continue
+                    }
+                    // type is call, and only callType 'call' will transfer cfx.
+                    if (action.callType !=='call' && type === 'call') {
+                        console.log(`unknown call type ${action.callType} type ${type}, epoch ${epoch} block ${block.hash} tx ${txIndex}, trace ${traceIndex}`)
+                        process.exit(8)
+                        return
                     }
                     let tType = type
                     if (type === 'internal_transfer_action') {
@@ -223,6 +234,9 @@ export class DummyNode {
                         console.log(`unknown trace type ${type}, epoch ${epoch} block ${block.hash} tx ${txIndex}, trace ${traceIndex}`)
                         process.exit(8)
                         return
+                    }
+                    if (type === 'create' && receipt.contractCreated && !action.to) {
+                        action.to = receipt.contractCreated
                     }
                     if (action.from !== action.to) {
                         // if from eq to, then ignore, only care gas. other wise, the 'out' will cause negative result.
@@ -269,6 +283,9 @@ export class DummyNode {
                 // && b.ownerId === 991
             ) {
                 NegativeCfxBill.create(b)
+                if (b.balance < this.minBalanceRecord.balance) {
+                    this.minBalanceRecord = b
+                }
                 // console.log(`negative balance, owner ${b.ownerId}, epoch ${b.epoch
                 // } type ${b.type} block ${b.blockIndex} tx ${b.txIndex} diff ${new Drip(-b.diffDrip).toCFX()
                 // } balance ${new Drip(-b.balance).toCFX()}\n ${JSON.stringify(b)}`)
@@ -371,8 +388,13 @@ export class DummyNode {
             return CfxBill.bulkCreate(bills)
         }).then((bills)=> {
             if (!auto || epoch % 100 == 0) {
+                const now = Date.now()
+                const costMS = now - this.ms;
+                this.ms = now
+                const remainH = Math.ceil((this.stopAtEpoch - epoch) * costMS / 100 / 1000 / 3600)
                 console.log(`${new Date().toISOString()} process epoch ${epoch} finished, create bills ${bills.length
-                }, target epoch ${this.stopAtEpoch}, diff ${this.stopAtEpoch - epoch}`)
+                }, target epoch ${this.stopAtEpoch}, diff ${this.stopAtEpoch - epoch} ${remainH}H, min balance -${new Drip(-this.minBalanceRecord.balance).toCFX()
+                }CFX owner ${this.minBalanceRecord.ownerId||'Empty'}`)
                 this.updateMaxEpochLimit()
             }
             if (this.verbose) {
@@ -384,7 +406,7 @@ export class DummyNode {
             }
         })
     }
-
+    ms = Date.now()
     async updateMaxEpochLimit() {
         this.cfx.getEpochNumber('latest_confirmed').then(res=>{
             this.stopAtEpoch = res - 1000
