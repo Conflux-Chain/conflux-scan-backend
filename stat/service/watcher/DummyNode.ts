@@ -34,8 +34,6 @@ import {Model,Sequelize,Op,DataTypes} from "sequelize";
 // @ts-ignore
 import {Conflux, Drip, format} from "js-conflux-sdk";
 import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
-import {hex} from "../../test/GenData";
-import {AddressCfxBill, T_ADDRESS_CFX_BILL_SQL} from "../../model/CfxTransfer";
 import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";

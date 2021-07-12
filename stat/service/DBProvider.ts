@@ -48,7 +48,6 @@ import {
     createAddressCfxTransferTable,
     DailyCfxTxn,
     CfxTransferRowMark,
-    createAddressCfxBillTable
 } from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
@@ -123,7 +122,6 @@ export async function initPartialModel(sequelize) {
         createAddressErc1155TransferTable(sequelize),
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
-        createAddressCfxBillTable(sequelize),
         createV2CfxBillTable(sequelize),
     ])
     NegativeCfxBill.register(sequelize)
