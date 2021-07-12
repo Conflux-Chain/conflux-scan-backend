@@ -463,8 +463,8 @@ export class FullBlockService {
             reward.forEach(r=>{
                 tx.push(
                     FullBlock.update(
-                        {totalReward: r.totalReward},
-                        {where: {epoch, hash: r.blockHash}, limit: 1, transaction: dbTx})
+                        {totalReward: r["totalReward"]},
+                        {where: {epoch, hash: r["blockHash"]}, limit: 1, transaction: dbTx})
                         .then(([updated]) => updated)
                 )
             })
