@@ -43,7 +43,12 @@ import {
 import {Trace} from "../model/Trace";
 import {DailyToken, NftId, Token} from "../model/Token";
 import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
-import {CfxTransfer, createAddressCfxTransferTable, DailyCfxTxn, CfxTransferRowMark} from "../model/CfxTransfer";
+import {
+    CfxTransfer,
+    createAddressCfxTransferTable,
+    DailyCfxTxn,
+    CfxTransferRowMark,
+} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
@@ -59,6 +64,7 @@ import {ContractVerify} from "../model/ContractVerify";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
+import {CfxBill, createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
 let conf
 export function createDB(config) {
     conf = config
@@ -116,7 +122,9 @@ export async function initPartialModel(sequelize) {
         createAddressErc1155TransferTable(sequelize),
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
+        createV2CfxBillTable(sequelize),
     ])
+    NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)

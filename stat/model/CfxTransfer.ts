@@ -98,7 +98,7 @@ export function buildCfxTransferList2address(list:any[]) : IAddressCfxTransfer[]
     return result
 }
 
-function buildAddressCfxTransfer(row:any, addrId:number, pos:number) : any {
+export function buildAddressCfxTransfer(row:any, addrId:number, pos:number) : any {
     return {
         addressId: addrId, epoch: row.epoch, tracePos: pos, createdAt: row.createdAt,
         txHashId: row.txHashId, fromId: row.fromId, toId: row.toId,  value: row.value

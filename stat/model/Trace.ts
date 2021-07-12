@@ -1,8 +1,11 @@
 import {DataTypes, Model} from "sequelize";
 
+/**
+ * Note: txId may be wrong in some case (more than one tx in the same block)
+ */
 export interface ITrace{
     id?:number
-    txId?:number
+    txId?:number // may be wrong
     from:number
     to:number
     value:number
@@ -11,7 +14,7 @@ export interface ITrace{
 }
 export class Trace extends Model<ITrace> implements ITrace{
     id?:number
-    txId?:number
+    txId?:number // may be wrong
     from:number
     to:number
     value:number

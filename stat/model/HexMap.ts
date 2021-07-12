@@ -74,7 +74,9 @@ export class Hex40Map extends Model<HexMapAttributes> implements HexMapAttribute
 }
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 10 // 10 minutes
-
+export async function makeIdV(hex: string, dbTx: Transaction = undefined, p = undefined) : Promise<number>{
+    return makeId(hex, dbTx, p).then(res=>res.id)
+}
 // https://sequelize.org/master/class/lib/model.js~Model.html#static-method-findOrCreate
 export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = undefined} = {}) {
     if (hex === '0x0' || hex === undefined || hex === null) {
@@ -159,7 +161,7 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
     })
 }
 export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
-    arr.forEach(data=>{ data[idKey] = map.get(data[hexKey].substr(2)) || 0})
+    arr.forEach(data=>{ data[idKey] = map.get(data[hexKey]?.substr(2)) || 0})
 }
 export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) {
     const set = buildHexSet(undefined, arr, hexKey)
