@@ -2,7 +2,7 @@
 import {Conflux, format} from "js-conflux-sdk";
 import {Model, Op} from "sequelize";
 import {
-    Balance, Balance_ACGNFT, Balance_cAMP,
+    Balance, Balance_ACGNFT, Balance_ARTT, Balance_cAMP,
     Balance_cBAND, Balance_cBNB, Balance_cBTC,
     Balance_cCOMP,
     Balance_cDAI, Balance_cDF, Balance_cDPI,
@@ -128,7 +128,7 @@ export class BalanceWatcher{
             case 'EPIK-NFT':         ret = Balance_EPIK_NFT;    break;
             case 'POOLGO':         ret = Balance_POOLGO;    break;
             case 'POS':         ret = Balance_POS;    break;
-
+            case 'ARTT':         ret = Balance_ARTT;    break;
             default:
                 if (silent) {
                     return null

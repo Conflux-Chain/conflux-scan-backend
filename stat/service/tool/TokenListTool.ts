@@ -11,8 +11,8 @@ async function run() {
     let transferType = 'ERC1155'
     transferType = 'ERC20'
     // transferType = 'ERC721'
-    const is1155 = transferType === 'ERC1155'
-    const filter = ['POS','POOLGO']
+    // const is1155 = transferType === 'ERC1155'
+    const filter = ['ARTT']
     client.get(`${scanUrl}`)
         .query({
             fields: '',
