@@ -11,6 +11,8 @@ import {
 } from "../DailyTxnSync";
 import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
+import {RankService} from "../RankService";
+import {ContractService} from "../contract/ContractService";
 export async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.database)
@@ -68,12 +70,23 @@ async function fixParticipants() {
     }
     console.log(`done.`)
 }
+
+async function testRank() {
+    new ContractService('',1)
+    const svc = new RankService({})
+    await svc.rankByToken('daily_token','uniqueReceiver', 1, 10, 1029
+    ).then(()=>svc.rankByToken('daily_token','uniqueSender', 1, 10, 1029)
+    ).then(()=>svc.rankByToken('daily_token','participants', 1, 10, 1029)
+    ).then(()=>svc.rankByToken('daily_token','transferCount', 1, 10, 1029))
+}
 if (require.main === module) {
     const args = process.argv.slice(2)
     init().then(()=>{
         if (args[0] === 'participants') {
             // node stat/dist/service/tool/ participants
             return fixParticipants()
+        } else if (args[0] === 'test') {
+            return testRank()
         } else if (args[0] === 'amount') {
             if (args.length === 3) {
                 // node this amount 2021-05-13 1
