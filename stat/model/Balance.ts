@@ -295,3 +295,8 @@ export class Balance_POS extends Balance{
         Balance.register(seq, Balance_POS, 'balance_POS')
     }
 }
+export class Balance_ARTT extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_ARTT, 'balance_ARTT')
+    }
+}

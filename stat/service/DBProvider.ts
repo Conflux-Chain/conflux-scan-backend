@@ -13,7 +13,7 @@ import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {TokenQuote} from "../model/TokenQuote";
 import {
-    Balance_ACGNFT,
+    Balance_ACGNFT, Balance_ARTT,
     Balance_cAMP,
     Balance_cBAND, Balance_cBNB,
     Balance_cBTC,
@@ -210,7 +210,7 @@ export async function initModel(sequelize) {
     Balance_EPIK_NFT.register(sequelize);
     Balance_POOLGO.register(sequelize);
     Balance_POS.register(sequelize);
-
+    Balance_ARTT.register(sequelize);
 
     // erc1155
     Balance_conDragon.register(sequelize);
