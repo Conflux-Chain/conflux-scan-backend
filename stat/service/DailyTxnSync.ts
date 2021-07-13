@@ -219,13 +219,19 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         })
     }
     // daily participants
-    return calcDailyTokenParticipants(tokenHexId, model, start, end)
+    return calcDailyTokenParticipants(tokenHexId, tokenBean.type, start, end)
 }
-export async function calcDailyTokenParticipants(tokenHexId:number,model:any, start:Date, end:Date) {
-    const sql = `select count(*) as participants from (select fromId from ${model.getTableName()} where contractId=?
-            and createdAt between ? and ? union select toId from ${model.getTableName()} where contractId=?
-            and createdAt between ? and ?)`
-    const stat:DailyToken = (await model/*Erc20Transfer*/.sequelize.query(sql, {type:QueryTypes.SELECT,
+export async function calcDailyTokenParticipants(tokenHexId:number,type:string = '', start:Date, end:Date) {
+    let t:any = ''
+    if (type.includes('20')) t = Erc20Transfer.getTableName()
+    else if (type.includes('721')) t = Erc20Transfer.getTableName()
+    else if (type.includes('777')) t = Erc20Transfer.getTableName()
+    else if (type.includes('1155')) t = Erc20Transfer.getTableName()
+    else return
+    const sql = `select count(*) as participants from (select fromId from ${t} where contractId=?
+            and createdAt between ? and ? union select toId from ${t} where contractId=?
+            and createdAt between ? and ?) tmp`
+    const stat:DailyToken = (await DailyToken.sequelize.query(sql, {type:QueryTypes.SELECT,
         replacements:[
             tokenHexId, start, end,
             tokenHexId, start, end,

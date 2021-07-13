@@ -50,6 +50,7 @@ async function fixDateAmount(hexId=0) {
     console.log(`done.`)
 }
 
+// alter table daily_token add column participants bigint unsigned not null default 0;
 async function fixParticipants() {
     const tokenList = await Token.findAll()
     let dt = new Date('2021-07-01')
@@ -58,7 +59,10 @@ async function fixParticipants() {
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         for (const token of tokenList) {
-            await calcDailyTokenParticipants(token.hex40id, BalanceWatcher.mapModel(token.name), start, end)
+            const model = BalanceWatcher.mapModel(token.symbol, true);
+            if (model) {
+                await calcDailyTokenParticipants(token.hex40id, token.type, start, end)
+            }
         }
         dt.setDate(dt.getDate()+1)
     }
