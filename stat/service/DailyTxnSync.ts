@@ -212,10 +212,30 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
     // holder count
     const banModel = BalanceWatcher.mapModel(tokenBean.symbol, true)
     if (banModel) {
-        banModel.count({}).then(cnt=>{
+        banModel.count({}).then(cnt => {
             return DailyToken.update({holderCount: cnt}, {where: {hexId: tokenHexId, day: start}})
-        }).catch(err=>{
+        }).catch(err => {
             console.log(`update daily token holder fail ${tokenBean.hex40id}:`, err)
         })
     }
+    // daily participants
+    return calcDailyTokenParticipants(tokenHexId, model, start, end)
+}
+export async function calcDailyTokenParticipants(tokenHexId:number,model:any, start:Date, end:Date) {
+    const sql = `select count(*) as participants from (select fromId from ${model.getTableName()} where contractId=?
+            and createdAt between ? and ? union select toId from ${model.getTableName()} where contractId=?
+            and createdAt between ? and ?)`
+    const stat:DailyToken = (await model/*Erc20Transfer*/.sequelize.query(sql, {type:QueryTypes.SELECT,
+        replacements:[
+            tokenHexId, start, end,
+            tokenHexId, start, end,
+        ],
+        // logging: console.log
+    }))[0] as DailyToken
+    const cnt = stat?.participants || 0
+    return DailyToken.update({participants: cnt}, {where: {hexId: tokenHexId, day: start}})
+        .catch(err=>{
+            console.log(`update token participants fail, ${tokenHexId}, ${start.toISOString()} ${end.toISOString()}`, err)
+        })
+
 }
