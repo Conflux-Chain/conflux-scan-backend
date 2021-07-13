@@ -12,6 +12,7 @@ import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {TokenQuote} from "../model/TokenQuote";
+import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {
     Balance_ACGNFT, Balance_ARTT,
     Balance_cAMP,
@@ -155,6 +156,7 @@ export async function initPartialModel(sequelize) {
     KV.register(sequelize);
     Epoch.register(sequelize);
     ContractVerify.register(sequelize);
+    DailyBlockDataStat.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
