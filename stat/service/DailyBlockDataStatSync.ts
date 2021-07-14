@@ -6,6 +6,7 @@ import {fmtDtUTC} from "../model/Utils";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
+const moment = require('moment');
 
 export class DailyBlockDataStatSync{
     private sequelize: Sequelize;
@@ -18,54 +19,48 @@ export class DailyBlockDataStatSync{
 
     public async statDaily(statDay: Date): Promise<any>{
         const {beginTime, endTime} = calBeginEndTime(statDay);
-        console.log(`typeof beginTime----------------------------${fmtDtUTC(beginTime)}`)
-        console.log(`typeof endTime----------------------------${typeof endTime}`)
         const sqlBlock = `SELECT DATE_FORMAT(createdAt,'%Y-%m-%d %H:00:00') AS statTime, 
                        SUM(difficulty) AS difficultySum, COUNT(*) AS blockCount 
                      FROM full_block 
                      WHERE createdAt >= ? and createdAt < ?
                      GROUP BY statTime`;
         const blockStatList = await FullBlock.sequelize.query(sqlBlock, {type: QueryTypes.SELECT,
-            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)], logging: console.info });// time, difficultySum, blockCount
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)]/*, logging: console.info*/ });
         if(!blockStatList?.length){
             return [];
         }
-        console.log(`blockStatList----------------------------${JSON.stringify(blockStatList)}`)
         const sqlTx = `SELECT DATE_FORMAT(createdAt,'%Y-%m-%d %H:00:00') AS statTime, 
                         COUNT(*) AS txCount 
                       FROM full_tx 
                       WHERE createdAt >= ? and createdAt < ?
                       GROUP BY statTime`;
         const txStatList = await FullTransaction.sequelize.query(sqlTx, {type: QueryTypes.SELECT,
-            replacements: [beginTime, endTime], logging: console.info });// time, difficultySum, blockCount
-        console.log(`txStatList----------------------------${JSON.stringify(txStatList)}`)
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)]/*, logging: console.info*/ });
         const txStatMap = this.convertTxStatMap(txStatList);
-        console.log(`txStatMap----------------------------${JSON.stringify(txStatMap)}`)
 
-        const statArray = [];
+        const partialStatArray = [];
         let blockCountPerDay = 0;
         let txCountPerDay = 0;
         let difficultyPerDay = 0;
         for(const blockStat of blockStatList) {
                 if(blockStat !== undefined){
-                    const statTime = blockStat['statTime'];
+                    const statUTCTime = blockStat['statTime'];
                     const blockCount = blockStat['blockCount'];
-                    const txCount = txStatMap[statTime] || 0;
+                    const txCount = txStatMap[statUTCTime] || 0;
                     const difficultySum = blockStat['difficultySum'];
-                    console.log(`typeof blockCount----------------------------${typeof blockCount}`)
-                    console.log(`typeof difficultySum----------------------------${typeof difficultySum}`)
                     const blockTime = BigFixed(this.intervalHourInSec).div(BigFixed(blockCount));
                     const hashRate = BigFixed(difficultySum).div(BigFixed(this.intervalHourInSec));
                     const difficulty = BigFixed(difficultySum).div(BigFixed(blockCount));
                     const tps = BigFixed(txCount).div(BigFixed(this.intervalHourInSec));
-                    statArray.push({statTime, statType: '1h', blockCount, txCount, difficultySum,
+                    const statTime = this.dateFromUTCString(statUTCTime);
+                    partialStatArray.push({statTime, statType: '1h', blockCount, txCount, difficultySum,
                         blockTime, hashRate, difficulty, tps});
                     blockCountPerDay = blockCountPerDay +blockCount;
                     txCountPerDay = txCountPerDay + txCount;
                     difficultyPerDay = BigFixed(difficultyPerDay).add(BigFixed(difficultySum));
                 }
-            }
-        console.log(`statArrayPerHour----------------------------${JSON.stringify(statArray)}`)
+        }
+        const statArray = this.convertTotalStatArray(beginTime, partialStatArray);
 
         let hashRateInDay = 0;
         let difficultyInDay = 0;
@@ -76,7 +71,7 @@ export class DailyBlockDataStatSync{
                 .div(BigFixed(blockCountPerDay)));
         });
         const statInDay = {
-            statTime: fmtDtUTC(beginTime).slice(0, -11),
+            statTime: moment(beginTime).format('YYYY-MM-DD HH:mm:ss'),
             statType: '1d',
             blockCount: blockCountPerDay,
             txCount: txCountPerDay,
@@ -87,7 +82,7 @@ export class DailyBlockDataStatSync{
             tps: BigFixed(txCountPerDay).div(BigFixed(this.intervalDayInSec)),
         };
         statArray.push(statInDay);
-        console.log(`statArrayPerDay----------------------------${JSON.stringify(statArray)}`)
+        console.log(`dailyBlockDataStat,statDay:${fmtDtUTC(beginTime)},statArrayPerDay:${JSON.stringify(statArray)}`);
 
         await DailyBlockDataStat.bulkCreate(statArray);
         return Promise.resolve(statArray);
@@ -97,9 +92,9 @@ export class DailyBlockDataStatSync{
         const start = startDay || new Date('2020/10/29');
         const end = endDay || getYesterday(new Date());
         do{
-            console.log(`block data stat history at day:${start} start...`);
+            console.log(`block data stat history at day:${fmtDtUTC(start)} start...`);
             await this.statDaily(start);
-            console.log(`block data stat history at day:${start} end.`);
+            console.log(`block data stat history at day:${fmtDtUTC(start)} end.`);
             start.setDate(start.getDate() + 1)
         } while(start.getTime() <= end.getTime());
     }
@@ -125,5 +120,30 @@ export class DailyBlockDataStatSync{
             partialMap[(row['statTime'])] = row['txCount']
         });
         return partialMap;
+    }
+
+    public convertTotalStatArray(statDate, statArray){
+        const statMap = {};
+        statArray.forEach(stat => {statMap[stat.statTime] = stat;})
+
+        const totalStatArray = [];
+        lodash.range(24).forEach(i => {
+            const base = new Date(statDate);
+            const statTime = moment(base.setHours(base.getHours() + i)).format('YYYY-MM-DD HH:mm:ss');
+            const stat = statMap[statTime];
+            if(stat){
+                totalStatArray.push(stat);
+            } else{
+                totalStatArray.push({
+                    statTime, statType: '1h', blockCount: 0, txCount: 0, difficultySum: 0,
+                    blockTime: 0, hashRate: 0, difficulty: 0, tps: 0
+                });
+            }
+        });
+        return totalStatArray;
+    }
+
+    public dateFromUTCString(date: string){
+        return moment.utc(date, 'YYYY-MM-DD HH:mm:ss').local().format('YYYY-MM-DD HH:mm:ss');
     }
 }

@@ -38,10 +38,10 @@ export class DailyBlockDataStat extends Model<IDailyBlockDataStat> implements ID
             txCount: {type: DataTypes.DECIMAL(20,0), allowNull: false, defaultValue: 0},
             difficultySum: {type: DataTypes.DECIMAL(60,0), allowNull: false, defaultValue: 0},
 
-            blockTime: {type: DataTypes.DECIMAL(10,3), allowNull: false, defaultValue: 0},
+            blockTime: {type: DataTypes.DECIMAL(20,6), allowNull: false, defaultValue: 0},
+            tps: {type: DataTypes.DECIMAL(20,6), allowNull: false, defaultValue: 0},
             hashRate: {type: DataTypes.DECIMAL(60,3), allowNull: false, defaultValue: 0},
             difficulty: {type: DataTypes.DECIMAL(60,3), allowNull: false, defaultValue: 0},
-            tps: {type: DataTypes.DECIMAL(10,3), allowNull: false, defaultValue: 0},
         },{
             sequelize: sequelize,
             tableName: 'daily_block_data_stat',

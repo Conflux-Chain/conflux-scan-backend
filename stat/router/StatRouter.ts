@@ -342,6 +342,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const verifyResult = await statApp.siteVerify.verify(token, address, type, description, txn_hash);
         ctx.body = verifyResult;
     });
+
+    // block data stat list
+    router.get('/block/stat/list', async function (ctx) {
+        const {intervalType, skip, limit} = ctx.request.query
+        const page = await statApp.blockDataStatQuery.listStat(intervalType, skip? parseInt(skip): skip,
+            limit ? parseInt(limit): limit);
+        ctx.body = {code: 0, data: page};
+    })
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {
