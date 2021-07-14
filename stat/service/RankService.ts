@@ -10,6 +10,7 @@ import {CfxBalance} from "../model/Balance";
 import {Op} from "sequelize"
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {init} from "./tool/FixDailyTokenStat";
+import {DailyToken} from "../model/Token";
 
 export class RankService{
     private app: StatApp;
@@ -73,13 +74,46 @@ export class RankService{
         })
         return this.fillInfo(list, networkId)
     }
+    async rankByToken(table, field, span, limit, networkId) {
+        const startDate = new Date()
+        startDate.setHours(0,0,0,0)
+        startDate.setDate(startDate.getDate() - span)
+        const sql = `select valueN, h.hex from (select sum(${field}) as valueN,hexId from ${table} where day >= ? group by hexId order by valueN desc limit ?) b
+        left join hex40 h on h.id = b.hexId`
+        const list = await DailyToken.sequelize.query(sql, {type:QueryTypes.SELECT, replacements:[startDate, limit]})
+        return this.fillInfo(list, networkId)
+    }
     async top(type: string, limit: number = 10, networkId: number = 1029) : Promise<any> {
         if (type === 'rank_address_by_total_cfx') {
             return this.rankByCfx('total', limit, networkId)
         } else if (type === 'rank_address_by_cfx') {
-            return this.rankByCfx('balance', limit, networkId)}
-        else if (type === 'rank_address_by_staking') {
+            return this.rankByCfx('balance', limit, networkId)
+        } else if (type === 'rank_address_by_staking') {
             return this.rankByCfx('stakingBalance', limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_transfers_7d') {
+            return this.rankByToken('daily_token','transferCount', 7, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_transfers_3d') {
+            return this.rankByToken('daily_token','transferCount', 3, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_transfers_1d') {
+            return this.rankByToken('daily_token','transferCount', 1, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_receivers_7d') {
+            return this.rankByToken('daily_token','uniqueReceiver', 7, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_receivers_3d') {
+            return this.rankByToken('daily_token','uniqueReceiver', 3, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_receivers_1d') {
+            return this.rankByToken('daily_token','uniqueReceiver', 1, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_senders_7d') {
+            return this.rankByToken('daily_token','uniqueSender', 7, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_senders_3d') {
+            return this.rankByToken('daily_token','uniqueSender', 3, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_senders_1d') {
+            return this.rankByToken('daily_token','uniqueSender', 1, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_participants_7d') {
+            return this.rankByToken('daily_token','participants', 7, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_participants_3d') {
+            return this.rankByToken('daily_token','participants', 3, limit, networkId)
+        } else if (type === 'rank_contract_by_number_of_participants_1d') {
+            return this.rankByToken('daily_token','participants', 1, limit, networkId)
         }
         limit = pickNumber(limit, 10)
         const newLine = ''

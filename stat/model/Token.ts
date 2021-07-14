@@ -184,6 +184,7 @@ export interface IDailyToken {
     uniqueReceiver:number
     uniqueSender:number
     holderCount:number
+    participants:number
 }
 // stat per token
 export class DailyToken extends Model<IDailyToken> implements IDailyToken {
@@ -195,6 +196,7 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
     uniqueReceiver:number
     uniqueSender:number
     holderCount:number
+    participants:number
     static register(seq: Sequelize) {
         DailyToken.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
@@ -205,6 +207,7 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
             uniqueReceiver: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
             uniqueSender: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
             holderCount: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
+            participants: {type: DataTypes.BIGINT({unsigned:true}), allowNull: false, defaultValue: 0},
         },{
             tableName: T_DAILY_TOKEN,
             sequelize: seq,
