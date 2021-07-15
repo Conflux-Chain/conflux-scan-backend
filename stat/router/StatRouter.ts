@@ -198,7 +198,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 order:[['epoch','desc'],['seq','desc']], limit: 1, raw: true})
             if (cfxByEpoch) {
                 const epoch = await Epoch.findByPk(cfxByEpoch.epoch)
-                cfxByEpoch['dt'] = (epoch||{}).timestamp
+                cfxByEpoch['epoch_dt'] = (epoch||{}).timestamp
             }
         }
         let cfxByDt;
@@ -210,6 +210,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 order:[['epoch','desc'],['seq','desc']], limit: 1, raw: true})
             if (cfxByDt) {
                 cfxByDt['dt'] = d
+                const epoch = await Epoch.findByPk(cfxByDt.epoch)
+                cfxByEpoch['epoch_dt'] = (epoch||{}).timestamp
             }
         }
         ctx.body = {code: 0, cfxByEpoch, cfxByDt}
