@@ -196,6 +196,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             const epochNumber = Number(epoch)
             cfxByEpoch = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch:{[Op.lte]: epochNumber}},
                 order:[['epoch','desc'],['seq','desc']], limit: 1})
+            if (cfxByEpoch) {
+                const epoch = await Epoch.findByPk(cfxByEpoch.eoch)
+                cfxByEpoch['dt'] = (epoch||{}).timestamp
+            }
         }
         let cfxByDt;
         if (dt) {
@@ -204,6 +208,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             const number = nearestEpoch?.epoch || 0
             cfxByDt = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch: {[Op.lte]: number} },
                 order:[['epoch','desc'],['seq','desc']], limit: 1})
+            if (cfxByDt) {
+                cfxByDt['dt'] = d
+            }
         }
         ctx.body = {code: 0, cfxByEpoch, cfxByDt}
     })
