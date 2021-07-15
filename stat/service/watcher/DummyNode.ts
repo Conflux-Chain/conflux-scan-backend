@@ -362,7 +362,7 @@ export class DummyNode {
         const sql = partitions.map(r=>`select max(epoch) as epoch from cfx_bill partition(${r["PARTITION_NAME"]})`).join(' union ')
         console.log(`${new Date().toISOString()} begin find max epoch in db.`)
         // return CfxBill.findOne({order:[['epoch','desc']], limit: 1}).then(bill=>{bil
-        return CfxBill.sequelize.query(`select max(epoch) as epoch from (${sql}}) t`).then(bill=>{
+        return CfxBill.sequelize.query(`select max(epoch) as epoch from (${sql}) t`).then(bill=>{
             const ret = bill === null ? -1 : bill["epoch"];
             console.log(`${new Date().toISOString()} max epoch in db ${ret}`)
             return ret
