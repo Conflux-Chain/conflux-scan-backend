@@ -17,10 +17,15 @@ const NodeCache = require( "node-cache" );
 
 const cors = require('@koa/cors');
 import Application = require("koa");
-import {QueryTypes} from "sequelize";
+import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer, countRecentTokenTransferAccount} from "../service/DailyTxnSync";
 import {countRecentMiner} from "../service/BlockAndMinerSync";
+// @ts-ignore
+import {format} from "js-conflux-sdk"
+import {Hex40Map} from "../model/HexMap";
+import {Epoch} from "../model/Epoch";
+import {CfxBill} from "../service/watcher/DummyNode";
 
 const superagent = require('superagent');
 
@@ -172,6 +177,35 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const rank = statApp.rankService
         const {type, limit} = ctx.request.query || {type: 'cfxSend', limit: 10};
         ctx.body = await rank.top(type, parseInt(limit), StatApp.networkId)
+    })
+    //
+    router.get('/get-cfx-balance-at', async ctx=>{
+        const {dt, epoch, accountBase32} = ctx.request.query
+        if ( (dt === undefined && epoch === undefined) || accountBase32 === undefined) {
+            ctx.body = {code: 500, message: 'miss parameter', query: ctx.request.query}
+            return
+        }
+        const hex = format.hexAddress(accountBase32)
+        const hexBean = await Hex40Map.findOne({where:{hex: hex.substr(2)}})
+        if (hexBean === null) {
+            ctx.body = {code: 501, cfx: "0", message: 'not found'}
+            return
+        }
+        let cfxByEpoch;
+        if (epoch) {
+            const epochNumber = Number(epoch)
+            cfxByEpoch = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch:{[Op.lte]: epochNumber}},
+                order:[['epoch','desc'],['seq','desc']], limit: 1})
+        }
+        let cfxByDt;
+        if (dt) {
+            let d = new Date(`${dt} 23:59:59`)
+            const nearestEpoch = await Epoch.findOne({where:{timestamp:{[Op.lte]:d}}, order:[['timestamp','desc']], limit: 1})
+            const number = nearestEpoch?.epoch || 0
+            cfxByDt = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch: {[Op.lte]: number} },
+                order:[['epoch','desc'],['seq','desc']], limit: 1})
+        }
+        ctx.body = {code: 0, cfxByEpoch, cfxByDt}
     })
     // miner topN
     router.get('/miner/top-by-type', async (ctx)=>{
