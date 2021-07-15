@@ -33,7 +33,7 @@ const pLimit = require('p-limit');
 const limit = pLimit(1000);
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 50 // 50 minutes
-import {Model,Sequelize,Op,DataTypes} from "sequelize";
+import {Model,QueryTypes,Sequelize,Op,DataTypes} from "sequelize";
 // @ts-ignore
 import {Conflux, Drip, format} from "js-conflux-sdk";
 import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
@@ -357,10 +357,15 @@ export class DummyNode {
     }
 
     async getEpochInDB() {
-        console.log(`begin find max epoch in db.`)
-        return CfxBill.findOne({order:[['epoch','desc']], limit: 1}).then(bill=>{
-            console.log(`max epoch in db ${bill?.epoch || -1}`)
-            return bill === null ? -1 : bill.epoch
+        const partitions = await CfxBill.sequelize.query(`SELECT TABLE_NAME,PARTITION_NAME from INFORMATION_SCHEMA.PARTITIONS where TABLE_NAME='cfx_bill';`,
+            {type:QueryTypes.SELECT, raw:true})
+        const sql = partitions.map(r=>`select max(epoch) as epoch from cfx_bill partition(${r["PARTITION_NAME"]})`).join(' union ')
+        console.log(`${new Date().toISOString()} begin find max epoch in db.`)
+        // return CfxBill.findOne({order:[['epoch','desc']], limit: 1}).then(bill=>{bil
+        return CfxBill.sequelize.query(`select max(epoch) as epoch from (${sql}}) t`).then(bill=>{
+            const ret = bill === null ? -1 : bill["epoch"];
+            console.log(`${new Date().toISOString()} max epoch in db ${ret}`)
+            return ret
         })
     }
     async loop(epoch, auto=false) {
