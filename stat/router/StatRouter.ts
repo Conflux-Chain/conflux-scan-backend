@@ -197,7 +197,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             cfxByEpoch = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch:{[Op.lte]: epochNumber}},
                 order:[['epoch','desc'],['seq','desc']], limit: 1, raw: true})
             if (cfxByEpoch) {
-                const epoch = await Epoch.findByPk(cfxByEpoch.eoch)
+                const epoch = await Epoch.findByPk(cfxByEpoch.epoch)
                 cfxByEpoch['dt'] = (epoch||{}).timestamp
             }
         }
