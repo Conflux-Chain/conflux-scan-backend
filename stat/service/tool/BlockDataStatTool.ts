@@ -18,9 +18,14 @@ async function sync(startDay, endDay) {
     await blockDataStatTool.statHistory(startDay, endDay);
 }
 
+async function syncByHour() {
+    await blockDataStatTool.statByHour();
+}
+
 async function run(startDay, endDay) {
     await init();
     await sync(startDay, endDay);
+    // await syncByHour();
 }
 
 //              0       1

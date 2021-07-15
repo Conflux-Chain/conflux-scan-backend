@@ -29,3 +29,13 @@ export function getNextDelay(day: Date, intervalDay: number, intervalMin: number
     const delay = endMilliSec - beginMilliSec + intervalMin*60*1000;
     return delay;
 }
+
+export function getTimeByInterval(day: Date, intervalMin: number = undefined,
+                                  intervalHour: number = undefined,
+                                  intervalDay: number = undefined){
+    const time = new Date(day);
+    time.setMinutes(time.getMinutes() + (intervalMin ? intervalMin : 0));
+    time.setHours(time.getHours() + (intervalHour ? intervalHour : 0));
+    time.setDate(time.getDate() + (intervalDay ? intervalDay : 0));
+    return time;
+}

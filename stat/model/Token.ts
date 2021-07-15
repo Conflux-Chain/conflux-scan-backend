@@ -20,6 +20,7 @@ export interface IToken{
     quoteUrl?:string
     marketCapId?:number
     moonDexSymbol?:string
+    moonSwapSymbol?:string
     binanceSymbol?:string
     priceCNY?:number
     priceUSD?:number
@@ -56,6 +57,7 @@ export class Token extends Model<IToken> implements IToken{
     quoteUrl?:string
     marketCapId?:number
     moonDexSymbol?:string
+    moonSwapSymbol?:string
     binanceSymbol?:string
     priceCNY?:number
     priceUSD?:number
@@ -91,6 +93,7 @@ export class Token extends Model<IToken> implements IToken{
             quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
             marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
             moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
+            moonSwapSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
             binanceSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
             priceCNY: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             priceUSD: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
@@ -129,6 +132,7 @@ export class Token extends Model<IToken> implements IToken{
             quoteUrl:token.quoteUrl,
             marketCapId:token.marketCapId,
             moonDexSymbol:token.moonDexSymbol,
+            moonSwapSymbol:token.moonSwapSymbol,
             binanceSymbol:token.binanceSymbol,
             priceCNY:token.priceCNY,
             priceUSD:token.priceUSD,
