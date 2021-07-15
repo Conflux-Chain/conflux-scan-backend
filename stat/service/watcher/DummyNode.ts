@@ -371,6 +371,7 @@ export class DummyNode {
     async processOne(epoch, auto=false) {
         if (epoch >= this.stopAtEpoch) {
             await new Promise(r=>setTimeout(r, 5000))
+            await this.updateMaxEpochLimit()
             return
         }
         let base32idmapScope, preBillMapScope;
