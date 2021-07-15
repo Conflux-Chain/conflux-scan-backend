@@ -356,30 +356,14 @@ export class DummyNode {
         return base32idMap;
     }
 
-async getEpochInDB() {
-    console.log(`${new Date().toISOString()} begin find max epoch in db.`)
-    const partitions = await CfxBill.sequelize.query(`SELECT TABLE_NAME,PARTITION_NAME from INFORMATION_SCHEMA.PARTITIONS where TABLE_NAME='cfx_bill';`,
-            {type:QueryTypes.SELECT, raw:true})
-    const maxes = await Promise.all(partitions.map(async r=>{
-            return CfxBill.sequelize.query(`select max(epoch) as epoch from cfx_bill partition(${r["PARTITION_NAME"]})`).then(res=>{
-                return res[0]['epoch']
-            })
-        }))
-        const arr = maxes.filter(Boolean)
-        if (arr.length === 0) {
-            return -1
-        }
-        const max = Math.max(...arr);
-        console.log(`${new Date().toISOString()} max epoch in db ${max}`)
-        return max;
-        /*
-        const sql = partitions.map(r=>`select max(epoch) as epoch from cfx_bill partition(${r["PARTITION_NAME"]})`).join(' union ')
-        // return CfxBill.findOne({order:[['epoch','desc']], limit: 1}).then(bill=>{bil
-        return CfxBill.sequelize.query(`select max(epoch) as epoch from (${sql}) t`).then(bill=>{
-            const ret = bill === null ? -1 : bill[0]["epoch"];
+    async getEpochInDB() {
+        console.log(`${new Date().toISOString()} begin find max epoch in db.`)
+
+        return CfxBill.findOne({order:[['epoch','desc']]}).then(bill=>{
+            const ret = bill === null ? -1 : bill.epoch
             console.log(`${new Date().toISOString()} max epoch in db ${ret}`)
             return ret
-        })*/
+        })
     }
     async loop(epoch, auto=false) {
         return this.processOne(epoch, auto).then(()=>{
