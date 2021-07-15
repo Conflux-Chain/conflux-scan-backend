@@ -28,6 +28,9 @@ Bill struct:
     if (traceIndex === MINED_COUNT_AGGREGATE_SIZE) txIndex++, traceIndex = 0.
  */
 const NodeCache = require( "node-cache" );
+const pLimit = require('p-limit');
+
+const limit = pLimit(1000);
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 50 // 50 minutes
 import {Model,Sequelize,Op,DataTypes} from "sequelize";
@@ -108,9 +111,9 @@ export class DummyNode {
             this.cfx.getBlockByHash(hash, true).then(block=>{
                 return Promise.all(
                     block['transactions'].map(async tx=>{
-                        return this.cfx.getTransactionReceipt(tx.hash).then(receipt=>{
+                        return limit(()=>this.cfx.getTransactionReceipt(tx.hash).then(receipt=>{
                             tx.receipt = receipt
-                        })
+                        }))
                     })
                 ).then(()=>{
                     return block
