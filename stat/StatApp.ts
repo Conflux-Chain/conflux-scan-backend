@@ -35,6 +35,7 @@ import {DailyContractStatSync} from "./service/DailyContractStatSync";
 import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
 import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
+import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 
 export class StatApp{
@@ -68,6 +69,7 @@ export class StatApp{
     public contractStatQuery: DailyContractStatQuery;
     public contractRegisterSync: DailyContractRegisterSync
     public contractRegisterQuery: DailyContractRegisterQuery;
+    public blockDataStatSync: DailyBlockDataStatSync;
     public blockDataStatQuery: DailyBlockDataStatQuery;
     public tokenTool: TokenTool;
     public static networkId = 1029
@@ -140,6 +142,7 @@ export class StatApp{
         this.contractStatQuery = new DailyContractStatQuery();
         this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
         this.contractRegisterQuery = new DailyContractRegisterQuery();
+        this.blockDataStatSync = new DailyBlockDataStatSync(this.sequelize);
         this.blockDataStatQuery = new DailyBlockDataStatQuery();
         //
         if (this.config.syncBlock) {
@@ -189,6 +192,9 @@ export class StatApp{
         }
         if (this.config.syncContractRegisterCountDaily) {
             await this.contractRegisterSync.schedule(); // dailyContractRegister
+        }
+        if (this.config.syncBlockDataStatDaily) {
+            await this.blockDataStatSync.schedule(); // daily block data stat
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

@@ -69,6 +69,7 @@ export interface StatConfig{
 
     syncContractStatInfoDaily: boolean,
     syncContractRegisterCountDaily: boolean,
+    syncBlockDataStatDaily: boolean,
 }
 
 export interface Erc20WatchList{
