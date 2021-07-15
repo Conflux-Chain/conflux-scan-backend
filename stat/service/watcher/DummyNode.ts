@@ -73,7 +73,7 @@ export class DummyNode {
         // @ts-ignore
         const networkId = this.cfx.networkId;
         console.log(`network id ${networkId}`)
-        const anyOne = await CfxBill.findOne({})
+        const anyOne = await CfxBill.findOne({limit: 1})
         if (anyOne) {
             return
         }
@@ -357,7 +357,9 @@ export class DummyNode {
     }
 
     async getEpochInDB() {
+        console.log(`begin find max epoch in db.`)
         return CfxBill.findOne({order:[['epoch','desc']], limit: 1}).then(bill=>{
+            console.log(`max epoch in db ${bill?.epoch || -1}`)
             return bill === null ? -1 : bill.epoch
         })
     }
