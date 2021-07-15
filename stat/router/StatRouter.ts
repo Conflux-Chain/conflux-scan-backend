@@ -211,7 +211,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             if (cfxByDt) {
                 cfxByDt['dt'] = d
                 const epoch = await Epoch.findByPk(cfxByDt.epoch)
-                cfxByEpoch['epoch_dt'] = (epoch||{}).timestamp
+                cfxByDt['epoch_dt'] = (epoch||{}).timestamp
             }
         }
         ctx.body = {code: 0, cfxByEpoch, cfxByDt}
