@@ -73,11 +73,11 @@ async function fixParticipants() {
 
 async function testRank() {
     new ContractService('',1)
-    const svc = new RankService({})
-    await svc.rankByToken('daily_token','uniqueReceiver', 1, 10, 1029
-    ).then(()=>svc.rankByToken('daily_token','uniqueSender', 1, 10, 1029)
-    ).then(()=>svc.rankByToken('daily_token','participants', 1, 10, 1029)
-    ).then(()=>svc.rankByToken('daily_token','transferCount', 1, 10, 1029))
+    const svc = new RankService({tokenQuery:{list:()=>undefined}, tokenTool:{getToken:()=>{return {}}}})
+    await svc.rankByToken('daily_token','uniqueReceiver', 1, 10, 1029);
+    await svc.rankByToken('daily_token','uniqueSender', 1, 10, 1029);
+    await svc.rankByToken('daily_token','participants', 1, 10, 1029);
+    await svc.rankByToken('daily_token','transferCount', 1, 10, 1029);
 }
 if (require.main === module) {
     const args = process.argv.slice(2)
