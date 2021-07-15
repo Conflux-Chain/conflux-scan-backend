@@ -35,6 +35,7 @@ import {DailyContractStatSync} from "./service/DailyContractStatSync";
 import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
 import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
+import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 
 export class StatApp{
     public config: StatConfig;
@@ -67,6 +68,7 @@ export class StatApp{
     public contractStatQuery: DailyContractStatQuery;
     public contractRegisterSync: DailyContractRegisterSync
     public contractRegisterQuery: DailyContractRegisterQuery;
+    public blockDataStatQuery: DailyBlockDataStatQuery;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -138,6 +140,7 @@ export class StatApp{
         this.contractStatQuery = new DailyContractStatQuery();
         this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
         this.contractRegisterQuery = new DailyContractRegisterQuery();
+        this.blockDataStatQuery = new DailyBlockDataStatQuery();
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
