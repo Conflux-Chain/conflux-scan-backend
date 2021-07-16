@@ -30,7 +30,7 @@ export class QuoteSync {
 
   private async run() {
     const rawList = await Token.findAll({
-      attributes: [['base32','address'], 'name', 'symbol', 'marketCapId','moonDexSymbol','binanceSymbol'],
+      attributes: [['base32','address'], 'name', 'symbol', 'marketCapId','moonDexSymbol','binanceSymbol','moonSwapSymbol'],
     });
     const tokenList = rawList.map(row => row.toJSON());
     if(tokenList.length === 0) {
@@ -39,6 +39,7 @@ export class QuoteSync {
     await this.updateFromMarketCap(tokenList).catch((e) => console.log({ src: 'updateFromMarketCap', msg: e }));
     await this.updateFromMoonDex(tokenList).catch((e) => console.log({ src: 'updateFromMoonDex', msg: e }));
     await this.updateFromBinance(tokenList).catch((e) => console.log({ src: 'updateFromBinance', msg: e }));
+    await this.updateFromMoonSwap(tokenList).catch((e) => console.log({ src: 'updateFromMoonSwap', msg: e }));
   }
 
   private async updateFromMarketCap(tokenList) {
@@ -151,6 +152,39 @@ export class QuoteSync {
         });
     // console.log({ status: response.status, text: response.text }); // for debug
     return lodash.get(response, ['body', 'price']);
+  }
+
+  private async updateFromMoonSwap(tokenList) {
+    const tokenArray = tokenList?.filter((token) => token.moonSwapSymbol);
+    if (tokenArray.length === 0) {
+      return;
+    }
+
+    const quoteArray = await Promise.all(tokenArray.map(async ({ address, name, symbol }) => {
+      const quoteMap = await this.getFromMoonSwap() || {};
+      return {
+        address,
+        name,
+        symbol,
+        convertSymbol: 'USDT',
+        price: quoteMap[address] || null,
+      };
+    }));
+    await this.upsertQuote(quoteArray);
+  }
+
+  private async getFromMoonSwap() {
+    const {
+      app: { config },
+    } = this;
+
+    const response = await superagent.get('https://moonswap.fi/api/route/opt/swap/main/token-price');
+    console.log({ status: response.status, text: response.text }); // for debug
+    const data = lodash.get(response, ['body', 'data']);// TODO
+
+    const quoteMap = {};
+    data.forEach(item => quoteMap[item.contract_address] = item.price_usd);// TODO
+    return quoteMap;
   }
 
   private async upsertQuote(quoteArray){
