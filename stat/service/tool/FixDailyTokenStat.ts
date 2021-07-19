@@ -9,10 +9,13 @@ import {
     calcDailyTokenParticipants,
     DailyTxnSync
 } from "../DailyTxnSync";
+import {Op, Sequelize} from "sequelize"
 import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
+import {Balance_K} from "../../model/Balance";
+import {redisWrap, RedisWrap, TRANSFER_ADDRESS_Q, xLen} from "../RedisWrap";
 export async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.database)
@@ -79,12 +82,48 @@ async function testRank() {
     await svc.rankByToken('daily_token','participants', 1, 10, 1029);
     await svc.rankByToken('daily_token','transferCount', 1, 10, 1029);
 }
+async function checkTokenHolderTop(token: Token) {
+    const model = BalanceWatcher.mapModel(token.symbol, true)
+    if (!model) {
+        return;
+    }
+    const now = new Date()
+    now.setDate(now.getDate()-1)
+    const list = await model.findAll({order:[['balance','desc']], limit: 20, raw:true})
+    const arr = []
+    list.forEach(b=>{
+        const upAt:Date = b['updatedAt']
+        if (upAt.getTime() < now.getTime()) {
+            arr.push(b.addressId)
+        }
+    })
+    if (arr.length) {
+        await RedisWrap.sendStreamMessage(arr, TRANSFER_ADDRESS_Q)
+        console.log(`want update address ${arr.length} for token ${token.symbol} ${token.name} ${model.getTableName()} ${token.base32}`)
+    } else {
+        console.log(`nothing to update, token ${model.getTableName()}, top count ${list.length}`)
+    }
+}
+
+async function checkAllTokenHolderTop() {
+    const len1 = await xLen(TRANSFER_ADDRESS_Q)
+    const all = await Token.findAll({where: {symbol:{[Op.ne]:null}, fetchBalance: true}})
+    for (const token of all) {
+        await checkTokenHolderTop(token)
+    }
+    const len2 = await xLen(TRANSFER_ADDRESS_Q)
+    console.log(`transfer q len1 ${len1} len2 ${len2}`)
+}
 if (require.main === module) {
     const args = process.argv.slice(2)
-    init().then(()=>{
+    init().then((cfg)=> {
+        return RedisWrap.connect(cfg.redis)
+    }).then(()=>{
         if (args[0] === 'participants') {
             // node stat/dist/service/tool/ participants
             return fixParticipants()
+        } else if (args[0] === 'topTokens') {
+            return checkAllTokenHolderTop()
         } else if (args[0] === 'test') {
             return testRank()
         } else if (args[0] === 'amount') {
@@ -105,6 +144,7 @@ if (require.main === module) {
             return fixDate()
         }
     }).then(()=>{
+        redisWrap.client.end(false)
         DailyActiveAddress.sequelize.close().then()
     })
 }
