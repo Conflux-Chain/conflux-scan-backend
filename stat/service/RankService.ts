@@ -48,6 +48,9 @@ export class RankService{
         })
         if (updateTxnCache) {
             const hexIdSet = buildHexSet(undefined, list, 'addressId')
+            if (hexIdSet.size === 0) {
+                hexIdSet.add("-1");
+            }
             // txn count
             const hexIdArr = [...hexIdSet]
             const placeHolder = hexIdArr.map(i => '?').join(',')

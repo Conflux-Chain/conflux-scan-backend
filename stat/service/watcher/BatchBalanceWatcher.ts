@@ -10,6 +10,7 @@ import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
 import {RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q} from "../RedisWrap";
 import {Op} from 'sequelize'
+import {hex} from "../../test/GenData";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -68,13 +69,16 @@ export class BatchBalanceWatcher {
         }
     }
     async handleTokenTransferAddress(data:RedisStreamMessage[]) {
+        let count = 0
         for (const item of data) {
             const {message: ids} = item
             const hexList = await Hex40Map.findAll({where: {id:{[Op.in]: ids}}})
             for (const hexBean of hexList) {
                 await this.balanceOf('0x'+hexBean.hex, hexBean.id)
             }
+            count += hexList.length
         }
+        console.log(`batch balance watcher handleTokenTransferAddress count ${count}`)
         return RedisWrap.xDel(data)
     }
 
