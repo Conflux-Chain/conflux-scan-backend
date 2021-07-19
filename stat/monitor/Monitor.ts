@@ -1,5 +1,4 @@
 import { QueryTypes } from "sequelize";
-import {TopBatchIndex} from "../model/TopRecord";
 import {FullBlock} from "../model/FullBlock";
 const superagent = require('superagent')
 
@@ -32,35 +31,8 @@ export class Monitor{
         }
         setTimeout(repeat, 60*1000) // 1 minute
     }
-    async checkRankDelay() {
-        // 'rank_address_by_staking','rank_address_by_cfx','rank_address_by_total_cfx'
-        const sql = `select max(end_time) as endTime, type from batch_index where type like 'rank_address_by_%' group by type`
-        const maxEndTimeByTypeList:TopBatchIndex[] = await TopBatchIndex.sequelize.query(sql, {type:QueryTypes.SELECT})
-        const maxInfo = maxEndTimeByTypeList.map(row=>`${row.type} ${row.endTime.toISOString()}`).join('\n')
-        console.log(`max end time:\n ${maxInfo}`);
 
-        const now = new Date().getTime();
-        const daysAgo = now - 1000*3600*24*2//two days
-        const typesDelayed = maxEndTimeByTypeList.filter(row=>row.endTime.getTime() < daysAgo)
-        if (typesDelayed.length === 0) {
-            console.log(`no delay`);
-        } else {
-            this.alert(typesDelayed).then()
-        }
-        const that = this;
-        function repeat() {
-            that.checkRankDelay()
-        }
-        setTimeout(repeat, 3600*1000)
-    }
-    async alert(arr:TopBatchIndex[]) {
-        // const maxInfo = arr.map(row=>`${row.type} ${row.endTime.toISOString()}`).join('\n')
-        const maxInfo = arr.map(row=>`${row.type}`).join('\n');
-        const time = arr[0]?.endTime.toISOString();
-        const alertMsg = `type---\n${maxInfo}\non---${time}`
-        const msg = `${this.serverTag} Top rank delay:\n${maxInfo}`
-        dingMsg(msg, this.dingTalkToken).then()
-    }
+
 }
 export async function dingMsg(msg:string, dingTalkToken:string) {
     console.log(`pre send msg:${msg}`);

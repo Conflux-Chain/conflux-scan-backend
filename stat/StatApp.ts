@@ -171,9 +171,7 @@ export class StatApp{
         }
         if (this.config.checkRankDelay) {
             let monitor = new Monitor(this.config.dingTalkToken, this.config.serverTag);
-            monitor.checkRankDelay().then(()=>{
-                monitor.checkFullBlockSyncRunning().then()
-            })
+            monitor.checkFullBlockSyncRunning().then()
         }
         if (this.config.syncContractCreateCountDaily) {
             await this.contractCreateSync.schedule(this.config.syncContractCreateCountHistory); // dailyContractCreate
