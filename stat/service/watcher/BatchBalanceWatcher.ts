@@ -68,6 +68,7 @@ export class BatchBalanceWatcher {
             i++
         }
     }
+    logCount = 300
     async handleTokenTransferAddress(data:RedisStreamMessage[]) {
         let count = 0
         for (const item of data) {
@@ -78,7 +79,10 @@ export class BatchBalanceWatcher {
             }
             count += hexList.length
         }
-        console.log(`batch balance watcher handleTokenTransferAddress count ${count}`)
+        if (this.logCount > 0) {
+            console.log(`batch balance watcher handleTokenTransferAddress count ${count}`)
+            this.logCount --
+        }
         return RedisWrap.xDel(data)
     }
 
