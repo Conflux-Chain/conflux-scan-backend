@@ -38,7 +38,7 @@ async function iterAllTx(from) {
     return FullTransaction.sequelize.close()
 }
 const args = process.argv.slice(2)
-let from = Boolean(args[0])
+let from = args[0]
 let cfx:Conflux
 init().then((ccc)=>{
     cfx = new Conflux(ccc.conflux)
