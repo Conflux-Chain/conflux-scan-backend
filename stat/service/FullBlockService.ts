@@ -235,7 +235,7 @@ export class FullBlockService {
                     msg = msg.substr(0, LEN_txExecErrorMsg-4)
                 }
                 if (receipt["epochNumber"] != epoch) {
-                    console.log(`\n epoch doesn't match, ${epoch} ${hash} , receipt ${receipt["epochNumber"]}`)
+                    console.log(`\n epoch doesn't match, ${epoch} ${hash} , receipt ${receipt["epochNumber"]}\n`)
                     return null
                 }
                 return {epoch, blockPosition: blockPos, txPosition: txPos,

@@ -31,7 +31,7 @@ async function iterAllTx(from) {
         if (cnt === -1) {
             break;
         }
-        process.stdout.write(`\r\u001b[2K fixed count ${cnt}, to epoch ${from+batch}, will stop at ${stop}  $`)
+        process.stdout.write(`\r\u001b[2K fixed count ${cnt.toString().padStart(3,' ')}, to epoch ${from+batch}, will stop at ${stop}  $`)
         from += batch
     }
     console.log(`\n Done ${from}`)
