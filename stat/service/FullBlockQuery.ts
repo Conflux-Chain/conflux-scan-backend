@@ -1,7 +1,14 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
-import {FullBlock, FullTransaction, AddressTransactionIndex, pagingFullBlock, pagingFullTx} from "../model/FullBlock";
+import {
+    FullBlock,
+    FullTransaction,
+    AddressTransactionIndex,
+    pagingFullBlock,
+    pagingFullTx,
+    BlockPage
+} from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map} from "../model/HexMap";
@@ -46,6 +53,7 @@ export class FullBlockQuery {
         ];
         // where
         const conditionArray = [];
+        let paging:any|BlockPage = {}
         if(blockHash){
             conditionArray.push({hash: blockHash});
         }else if(minerId){
@@ -58,7 +66,8 @@ export class FullBlockQuery {
                 conditionArray.push({epoch: epochNumber});
             }
         } else{
-            const pagedCondition = await this.buildPagedBlockOptions(skip);
+            const {pagedCondition,blockPage} = await this.buildPagedBlockOptions(skip);
+            paging = blockPage
             if(pagedCondition.where) {
                 conditionArray.push(pagedCondition.where);
                 options.offset = pagedCondition.skip;
@@ -113,7 +122,8 @@ export class FullBlockQuery {
             count = page.count;
         } else{
             rawList = await FullBlock.findAll(options);
-            count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
+            // use the value when paging.
+            count = paging.calcTotal || await KV.getNumber(KEY_FULL_BLOCK_COUNT);
         }
         const list = [];
         if(rawList){
@@ -146,7 +156,7 @@ export class FullBlockQuery {
                 }
             })
         }
-        const result = {total: count ? count : 0, list};
+        const result = {total: count ? count : 0, list, paging};
         // logger?.info({src: `fullblockquery------------`, 'result': JSON.stringify(result)});
         return result;
     }
@@ -341,7 +351,7 @@ export class FullBlockQuery {
         return result;
     }
 
-    private async buildPagedBlockOptions(skip){
+    private async buildPagedBlockOptions(skip) : Promise<{blockPage:BlockPage, pagedCondition}>{
         const{ logger } = this.app;
 
         const pagedCondition: any = {};
@@ -367,7 +377,7 @@ export class FullBlockQuery {
             };
             pagedCondition.skip = blockPage.skip;
         }
-        return pagedCondition;
+        return {pagedCondition, blockPage};
     }
 
     private async buildPagedTxOptions(skip){
