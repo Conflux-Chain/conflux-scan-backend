@@ -402,6 +402,6 @@ export class FullBlockQuery {
             };
             pagedCondition.skip = txPage.skip;
         }
-        return pagedCondition;
+        return {pagedCondition, txPage};
     }
 }
