@@ -56,7 +56,14 @@ import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc11
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {Contract} from "../model/Contract";
-import {AddressTransactionIndex, BlockRowMark, FullBlock, FullTransaction, TxnRowMark} from "../model/FullBlock";
+import {
+    AddressTransactionIndex,
+    BlockRowMark,
+    FailedTx,
+    FullBlock,
+    FullTransaction,
+    TxnRowMark
+} from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
 import {DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
@@ -141,6 +148,7 @@ export async function initPartialModel(sequelize) {
     DailyCfxTxn.register(sequelize)
     DailyActiveAddress.register(sequelize)
     DailyToken.register(sequelize)
+    FailedTx.register(sequelize)
     // remove auto generated PK field since we use epoch-position as PK.
     FullBlock.register(sequelize);  FullBlock.removeAttribute('id')
     FullTransaction.register(sequelize);  FullTransaction.removeAttribute('id')

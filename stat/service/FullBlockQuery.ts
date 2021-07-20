@@ -7,7 +7,7 @@ import {
     AddressTransactionIndex,
     pagingFullBlock,
     pagingFullTx,
-    BlockPage, TxPage
+    BlockPage, TxPage, FailedTx
 } from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
@@ -278,6 +278,7 @@ export class FullBlockQuery {
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
             const contractHexIdSet = new Set<number>();
+            const failedQuery:Promise<FailedTx>[] = []
             rawList.forEach( row => {
                 txHashArray.push(row['hash']);
                 hex40IdSet.add(row['from']);
@@ -285,10 +286,16 @@ export class FullBlockQuery {
                 hex40IdSet.add(row['contractCreated']);
                 contractHexIdSet.add(row['to']);
                 list.push(row);
+                if (row['status']) {
+                    failedQuery.push(FailedTx.findOne({where:{
+                        epoch: row['epoch'], blockPosition: row['blockPosition'], txPosition:row['txPosition']
+                        }}))
+                }
             });
-            const hex40Array = await Hex40Map.findAll({
+            const [hex40Array,failedArr] = await Promise.all([
+                Hex40Map.findAll({
                 where: {id: { [Op.in]: Array.from(hex40IdSet)}},
-            })
+            }), Promise.all(failedQuery)])
             const hex40Map = new Map<number, string>()
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
@@ -307,6 +314,9 @@ export class FullBlockQuery {
             }
             // receipt
             const receiptInfoMap = new Map();
+            for (const b of failedArr.filter(Boolean)) {
+                // receiptInfoMap0.set(`${b.epoch}-${b.blockPosition}-${b.txPosition}`, b)
+            }
             const sdk = this?.app?.confluxSDK || this?.app?.cfx;
             await Promise.all(txHashArray.map(async (txHash) => {
                 if(sdk){

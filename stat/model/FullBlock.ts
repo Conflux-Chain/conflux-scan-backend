@@ -89,7 +89,41 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
         })
     }
 }
-
+export interface IFailedTx {
+    id?:number
+    epoch:number
+    blockPosition:number
+    txPosition:number
+    gasFee:number
+    txExecErrorMsg:string
+}
+export const LEN_txExecErrorMsg = 1024
+export class FailedTx extends Model<IFailedTx> implements IFailedTx{
+    id?:number
+    epoch:number
+    blockPosition:number
+    txPosition:number
+    gasFee:number
+    txExecErrorMsg:string
+    static register(seq:Sequelize) {
+        FailedTx.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, autoIncrement: true, primaryKey: true},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            blockPosition: {type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0}, // A 16 bit integer.
+            txPosition: {type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0}, // A 16 bit integer.
+            gasFee: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0}, // A 16 bit integer.
+            txExecErrorMsg: {type: DataTypes.STRING(LEN_txExecErrorMsg), allowNull: false, defaultValue: ''}, // A 16 bit integer.
+        },{
+            sequelize: seq,
+            tableName: 'tx_failed',
+            timestamps: false,
+            indexes: [
+                {name: 'idx_epoch_bp_tp', unique: true,
+                fields:['epoch','blockPosition','txPosition']}
+            ]
+        })
+    }
+}
 export interface IFullTransaction {
     epoch:number
     blockPosition:number
