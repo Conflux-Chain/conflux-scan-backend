@@ -105,12 +105,12 @@ export class StatApp{
         this.txnSync = new TxnSync(this, this.sequelize, this.config.conflux);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         this.traceSync = new BlockTraceSync(this.cfx)
+        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher)
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx)).schedule(this.config.cfxWatcherDelay).then()
+            this.batchBalanceWatcher.schedule().then()
+            this.batchBalanceWatcher.listenTransfer().then()
         }
-        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher)
-        this.batchBalanceWatcher.schedule().then()
-        this.batchBalanceWatcher.listenTransfer().then()
         this.config.erc20watchList.forEach(erc20=>{
             const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, {tokenType: erc20.tokenType})
             watcher.schedule(erc20.watchDelay)
@@ -171,9 +171,7 @@ export class StatApp{
         }
         if (this.config.checkRankDelay) {
             let monitor = new Monitor(this.config.dingTalkToken, this.config.serverTag);
-            monitor.checkRankDelay().then(()=>{
-                monitor.checkFullBlockSyncRunning().then()
-            })
+            monitor.checkFullBlockSyncRunning().then()
         }
         if (this.config.syncContractCreateCountDaily) {
             await this.contractCreateSync.schedule(this.config.syncContractCreateCountHistory); // dailyContractCreate

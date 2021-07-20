@@ -48,6 +48,9 @@ export class RankService{
         })
         if (updateTxnCache) {
             const hexIdSet = buildHexSet(undefined, list, 'addressId')
+            if (hexIdSet.size === 0) {
+                hexIdSet.add("-1");
+            }
             // txn count
             const hexIdArr = [...hexIdSet]
             const placeHolder = hexIdArr.map(i => '?').join(',')
@@ -114,6 +117,8 @@ export class RankService{
             return this.rankByToken('daily_token','participants', 3, limit, networkId)
         } else if (type === 'rank_contract_by_number_of_participants_1d') {
             return this.rankByToken('daily_token','participants', 1, limit, networkId)
+        } else {
+            return {code: 40400, message: 'no support.'}
         }
         limit = pickNumber(limit, 10)
         const newLine = ''

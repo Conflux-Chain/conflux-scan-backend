@@ -248,7 +248,10 @@ export class FullBlockService {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();
-            const popTx = await FullTransaction.findAll({where: {epoch: preEpoch}})
+            const [popTx,popBlockCount] = await Promise.all([
+                FullTransaction.findAll({where: {epoch: preEpoch}}),
+                FullBlock.count({where:{epoch: preEpoch}})
+            ])
             popTx.forEach(tx=>{
                 addresses.add(tx.fromId)
                 addresses.add(tx.toId)
@@ -260,7 +263,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
-                    this.diffCount(KEY_FULL_BLOCK_COUNT, -blockList.length, dbTx),
+                    this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                 ])
             })
