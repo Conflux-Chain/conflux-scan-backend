@@ -301,7 +301,7 @@ export async function pagingFullTx(skip:number) : Promise<TxPage> {
             txPosition: -1, skip:remainSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne?.id} // should found nothing.
     }
     return {id: nearestOne.id, epoch: nearestOne.epoch, blockPosition: nearestOne.blockPosition,
-        txPosition: nearestOne.txPosition, skip: remainSkip-1, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
+        txPosition: nearestOne.txPosition, skip: remainSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
 }
 export async function markTxPosition(count:number=1, maxEpoch:number = Infinity) {
     let maxOne:ITxnRowMark = await TxnRowMark.findOne({order:[["id","desc"]], limit: 1})
