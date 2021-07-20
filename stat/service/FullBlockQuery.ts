@@ -7,7 +7,7 @@ import {
     AddressTransactionIndex,
     pagingFullBlock,
     pagingFullTx,
-    BlockPage
+    BlockPage, TxPage
 } from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
@@ -199,6 +199,7 @@ export class FullBlockQuery {
         ];
         // where
         const conditionArray = [];
+        let txPage:any | TxPage = {}
         if(blockHash){
             const block = await FullBlock.findOne({
                 where: { hash: blockHash},
@@ -239,7 +240,8 @@ export class FullBlockQuery {
                 }
             //}
         } else{
-            const pagedCondition = await this.buildPagedTxOptions(skip);
+            const {pagedCondition, txPage: tp0} = await this.buildPagedTxOptions(skip);
+            txPage = tp0
             if(pagedCondition.where){
                 conditionArray.push(pagedCondition.where);
                 options.offset = pagedCondition.skip;
@@ -268,7 +270,7 @@ export class FullBlockQuery {
         } else{
             options.attributes.push('method');
             rawList = await FullTransaction.findAll(options);
-            count = await KV.getNumber(KEY_FULL_TX_COUNT);
+            count = txPage.calcTotal || await KV.getNumber(KEY_FULL_TX_COUNT);
         }
         const list = [];
         let extraInfo = {dataSource:'rdb'}
@@ -371,7 +373,7 @@ export class FullBlockQuery {
                     {epoch: {[Op.lt]: blockPage.epoch}},
                     {[Op.and]: [
                             {epoch: blockPage.epoch},
-                            {position: {[Op.lt]: blockPage.position}},
+                            {position: {[Op.lte]: blockPage.position}},
                         ]},
                 ]
             };
@@ -380,7 +382,7 @@ export class FullBlockQuery {
         return {pagedCondition, blockPage};
     }
 
-    private async buildPagedTxOptions(skip){
+    private async buildPagedTxOptions(skip) : Promise<{txPage:TxPage, pagedCondition}>{
         const pagedCondition: any = {};
         const txPage = await pagingFullTx(skip);
         if(txPage?.id !== Infinity){
@@ -394,7 +396,7 @@ export class FullBlockQuery {
                     {[Op.and]: [
                             {epoch: txPage.epoch},
                             {blockPosition: txPage.blockPosition},
-                            {txPosition: {[Op.lt]: txPage.txPosition}},
+                            {txPosition: {[Op.lte]: txPage.txPosition}},
                         ]},
                 ]
             };
