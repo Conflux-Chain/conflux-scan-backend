@@ -3,8 +3,11 @@ import {Op} from 'sequelize'
 import {FullBlockService} from "../FullBlockService";
 import {init} from "./FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
+const pLimit = require('p-limit');
+
+const limitR = pLimit(100);
 async function listFailedTx(epoch, range) {
-    return FullTransaction.findAll({where:{epoch:{[Op.between]:[epoch, epoch+range]}, status:{[Op.ne]:0}},})
+    return limitR(()=>FullTransaction.findAll({where:{epoch:{[Op.between]:[epoch, epoch+range]}, status:{[Op.ne]:0}},}))
 }
 async function patch(list:FullTransaction[]) {
     const tasks = []
