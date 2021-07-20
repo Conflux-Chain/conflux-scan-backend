@@ -1,16 +1,20 @@
-import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {QueryTypes} from "sequelize";
+import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
-import {getTimeByInterval} from "./tool/DateTool";
+import { getTimeByInterval } from "./tool/DateTool";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
 
 export class DailyBlockDataStatQuery {
-
     private intervalMinInSec: number = 60;
     public INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day'};
+    protected app;
+
+    constructor(app: any) {
+        this.app = app;
+    }
 
     async listStat(intervalType, skip: number = 0, limit: number = 27) {
         if(intervalType === this.INTERVAL_TYPE.hour ||

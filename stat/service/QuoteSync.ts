@@ -4,12 +4,22 @@ import {Op} from 'sequelize'
 const lodash = require('lodash');
 const superagent = require('superagent');
 const BigFixed = require('bigfixed');
+const abi = require('./abi/MoonswapRoute.json');
 
 export class QuoteSync {
-  protected app;
+  private app;
+  private cfx;
+  private moonSwapRouteAddress = 'cfx:acam64yj323zd4t1fhybxh3jsg7hu4012yz9kakxs9';
+  private wCFXAddress = "cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx";
+  private cETHAddress = "cfx:acdrf821t59y12b4guyzckyuw2xf1gfpj2ba0x4sj6";
+  private cUSDTAddress = "cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7";
+  private viaWCFXSet = new Set<string>(['cITF', 'cFLUX', 'TREA', 'YAO', 'POOLGO' ]);
+  private viaCETHSet = new Set<string>(['cFOR']);
+  private viaCETHUnilateralSet = new Set<string>(['cLEND']);
 
   constructor(app: any) {
     this.app = app;
+    this.cfx = app.cfx;
   }
 
   public async query({ address, convertSymbol='USDT' }) {
@@ -42,6 +52,7 @@ export class QuoteSync {
     await this.updateFromMoonSwap(tokenList).catch((e) => console.log({ src: 'updateFromMoonSwap', msg: e }));
   }
 
+  //======================================================================
   private async updateFromMarketCap(tokenList) {
     const {
       app: { config },
@@ -94,6 +105,7 @@ export class QuoteSync {
     return lodash.mapValues(response.body.data, (each) => each.quote[convert]);
   }
 
+  //======================================================================
   private async updateFromMoonDex(tokenList) {
     const tokenArray = tokenList?.filter((token) => token.moonDexSymbol);
     if (tokenArray.length === 0) {
@@ -121,6 +133,7 @@ export class QuoteSync {
     return lodash.get(response, ['body', 'data', 0]);
   }
 
+  //======================================================================
   private async updateFromBinance(tokenList) {
     const tokenArray = tokenList?.filter((token) => token.binanceSymbol);
     if (tokenArray.length === 0) {
@@ -154,6 +167,7 @@ export class QuoteSync {
     return lodash.get(response, ['body', 'price']);
   }
 
+  //======================================================================
   private async updateFromMoonSwap(tokenList) {
     const tokenArray = tokenList?.filter((token) => token.moonSwapSymbol);
     if (tokenArray.length === 0) {
@@ -161,7 +175,10 @@ export class QuoteSync {
     }
 
     const quoteArray = await Promise.all(tokenArray.map(async ({ address, name, symbol }) => {
-      const quoteMap = await this.getFromMoonSwap() || {};
+      const quoteMap = await this.getFromMoonSwapSite() || {};
+      if(quoteMap[address] === undefined){
+        quoteMap[address] = await this.getFromMoonSwapContract(symbol, address);
+      }
       return {
         address,
         name,
@@ -173,20 +190,43 @@ export class QuoteSync {
     await this.upsertQuote(quoteArray);
   }
 
-  private async getFromMoonSwap() {
+  private async getFromMoonSwapSite() {
     const {
       app: { config },
     } = this;
 
-    const response = await superagent.get('https://moonswap.fi/api/route/opt/swap/main/token-price');
-    console.log({ status: response.status, text: response.text }); // for debug
-    const data = lodash.get(response, ['body', 'data']);// TODO
-
     const quoteMap = {};
-    data.forEach(item => quoteMap[item.contract_address] = item.price_usd);// TODO
+    const response = await superagent.get('https://moonswap.fi/api/route/opt/swap/main/token-price');
+    // console.log({ status: response.status, text: response.text }); // for debug
+    const data = lodash.get(response, ['body', 'data']);
+    data.forEach(item => quoteMap[item.contract_address] = item.price_usd);
     return quoteMap;
   }
 
+
+  private async getFromMoonSwapContract(symbol = undefined, address = undefined){
+    const contract = this.cfx.Contract({ address : this.moonSwapRouteAddress, abi});
+
+    //cYAO-wCFX wCFX-cUSDT
+    //cFOR-cETH cETH-cUSDT
+    let price;
+    if(this.viaWCFXSet.has(symbol) || this.viaCETHSet.has(symbol)){
+      const viaAddress = this.viaWCFXSet.has(symbol) ? this.wCFXAddress : this.cETHAddress;
+      const ratio1 = await contract.getAmountsOut(100000, [address, viaAddress]);
+      const ratio2 = await contract.getAmountsOut(100000, [viaAddress, this.cUSDTAddress]);
+      price = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0]))).toNumber();
+    }
+    //cETH-cLEND cETH-cUSDT
+    if(this.viaCETHUnilateralSet.has(symbol)) {
+      const viaAddress = this.cETHAddress;
+      const ratio1 = await contract.getAmountsOut(100000, [viaAddress, address]);
+      const ratio2 = await contract.getAmountsOut(100000, [viaAddress, this.cUSDTAddress]);
+      price = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0]))).toNumber();
+    }
+    return price;
+  }
+
+  //======================================================================
   private async upsertQuote(quoteArray){
     quoteArray.map(async quote => {
       const address = quote.address;
