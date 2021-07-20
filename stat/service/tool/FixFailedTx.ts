@@ -26,7 +26,7 @@ async function iterAllTx(from) {
     const stop = await FullTransaction.max('epoch')
     const batch = 100
     while(from <= stop) {
-        const list = await listFailedTx(from, batch)
+        const list = await listFailedTx(from, batch-1)
         const cnt = await patch(list)
         if (cnt === -1) {
             break;
