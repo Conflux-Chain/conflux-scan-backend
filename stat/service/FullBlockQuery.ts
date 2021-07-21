@@ -185,6 +185,7 @@ export class FullBlockQuery {
         options.attributes = [
             ['epoch', 'epochNumber'],
             ['blockPosition', 'blockHash'],
+            'blockPosition',
             ['txPosition', 'transactionIndex'],
             'nonce',
             'hash',
@@ -288,8 +289,16 @@ export class FullBlockQuery {
                 list.push(row);
                 if (row['status']) {
                     failedQuery.push(FailedTx.findOne({where:{
-                        epoch: row['epoch'], blockPosition: row['blockPosition'], txPosition:row['txPosition']
-                        }}))
+                        epoch: row['epochNumber'], blockPosition: row['blockPosition'], txPosition:row['transactionIndex']
+                        }}).then(ft=>{
+                            if (ft) {
+                                row['gasFee'] = ft.gasFee;
+                                row['txExecErrorMsg'] = ft.txExecErrorMsg;
+                            } else {
+                                row['txExecErrorMsg'] = 'txExecErrorMsgNotFound'
+                            }
+                            return ft
+                    }))
                 }
             });
             const [hex40Array,failedArr] = await Promise.all([
@@ -312,18 +321,6 @@ export class FullBlockQuery {
                     contractInfoMap.set(contractInfo.hexId , { address: contractInfo.base32, name: contractInfo.name });
                 })
             }
-            // receipt
-            const receiptInfoMap = new Map();
-            for (const b of failedArr.filter(Boolean)) {
-                // receiptInfoMap0.set(`${b.epoch}-${b.blockPosition}-${b.txPosition}`, b)
-            }
-            const sdk = this?.app?.confluxSDK || this?.app?.cfx;
-            await Promise.all(txHashArray.map(async (txHash) => {
-                if(sdk){
-                    const receipt = await sdk.getTransactionReceipt(txHash);
-                    receiptInfoMap.set(txHash, {gasFee: receipt?.gasFee, txExecErrorMsg: receipt?.txExecErrorMsg});
-                }
-            }));
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
                 // fetch method, consider save it.
@@ -348,9 +345,6 @@ export class FullBlockQuery {
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
                 row['syncTimestamp'] = timestampInSec;
-                const receipt = receiptInfoMap.get(row.hash);
-                row['gasFee'] = receipt?.gasFee;
-                row['txExecErrorMsg'] = receipt?.txExecErrorMsg;
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
