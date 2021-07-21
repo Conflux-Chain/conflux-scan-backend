@@ -5,12 +5,12 @@ import {
     BLOCK_PAGE_MARK_SIZE,
     BlockRowMark,
     countNonMarkBlockRows,
-    countNonMarkTxRows,
+    countNonMarkTxRows, FailedTx,
     FullBlock,
     FullTransaction,
-    IBlockRowMark,
+    IBlockRowMark, IFailedTx,
     IFullBlock,
-    ITxnRowMark,
+    ITxnRowMark, LEN_txExecErrorMsg,
     markBlockPosition,
     markTxPosition,
     TxnRowMark
@@ -26,6 +26,7 @@ import {
     KV
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
+import {Epoch} from "../model/Epoch";
 
 
 // Do not care the value
@@ -58,6 +59,7 @@ export class FullBlockService {
     }
     // sync metrics end
     private previousPivotHash:string
+    public checkReOrg = true
 
     private async resetPreviousPivotHash(useWhichEpoch:number) {
         let maxAtDb = await FullBlock.findOne({
@@ -222,6 +224,26 @@ export class FullBlockService {
             return map;
         })
     }
+    async syncFailedTx(epoch, blockPos, txPos, hash) : Promise<IFailedTx|null> {
+        return FullBlockService.syncFailedTx0(epoch, blockPos, txPos, hash, this.cfx)
+    }
+    public static async syncFailedTx0(epoch, blockPos, txPos, hash, cfx:Conflux) : Promise<IFailedTx|null> {
+        return cfx.getTransactionReceipt(hash).then(receipt=>{
+            if (receipt) {
+                let msg = receipt["txExecErrorMsg"] || '';
+                if (msg.length >= LEN_txExecErrorMsg) {
+                    msg = msg.substr(0, LEN_txExecErrorMsg-4)
+                }
+                if (receipt["epochNumber"] != epoch) {
+                    console.log(`\n epoch doesn't match, ${epoch} ${hash} , receipt ${receipt["epochNumber"]}\n`)
+                    return null
+                }
+                return {epoch, blockPosition: blockPos, txPosition: txPos,
+                gasFee: receipt["gasFee"], txExecErrorMsg: msg}
+            }
+            return null
+        })
+    }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
         let veryBegin = start
@@ -244,7 +266,7 @@ export class FullBlockService {
         let message = "ok";
         // the last one is pivot block.
         let pivotBlock = blockList[blockList.length-1];
-        if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0) {
+        if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0 && this.checkReOrg) {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();
@@ -258,6 +280,7 @@ export class FullBlockService {
             })
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
+                    FailedTx.destroy({where:{epoch:preEpoch}}),
                     FullBlock.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
                     FullTransaction.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
                     AddressTransactionIndex.destroy({
@@ -304,10 +327,12 @@ export class FullBlockService {
         const hexMap = await this.buildHexIds(blockList, blockTime);
         const executedTxArr = []
         const txByAddressArr = []
+        const failedTxArr = []
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let pos = 0
             for (const txInfo of block.transactions) {
+                // status has value, fail (!0) or success (0) or genesis epoch.
                 if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
                     txInfo.fromId = hexMap.get(txInfo.from) || 0
                     txInfo.toId =  hexMap.get(txInfo.to) || 0
@@ -331,15 +356,20 @@ export class FullBlockService {
                     }
                     sumGasPrice += txInfo.gasPrice
                 }
+                if (txInfo.status) { // has value and is not zero: failed.
+                    failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo.blockPosition, txInfo.txPosition, txInfo.hash))
+                }
             }
             block.executedTxnCount = pos
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
+        const failedBeans = await Promise.all(failedTxArr)
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         let fixDupError = false
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
+                FailedTx.bulkCreate(failedBeans, {transaction: dbTx}),
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}).then(()=>metrics.saveAddrTxTime += Date.now() - start),

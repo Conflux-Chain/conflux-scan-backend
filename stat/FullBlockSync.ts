@@ -34,8 +34,11 @@ export async function run() {
 async function syncFullBlock(config:StatConfig) {
     let cfx = new Conflux(config.conflux);
     console.log(`Conflux ${config.conflux.url} network ${(await cfx.getStatus())['networkId']}`)
-    return new FullBlockService(cfx)
-        // .syncBlockByEpoch(0)
+    const fullBlockService = new FullBlockService(cfx);
+    //fullBlockService.checkReOrg = args.includes('ignoreReOrg')
+    return fullBlockService
+        // .syncBlockByEpoch(0)  //32420
+        //.syncBlockByEpoch(30924)  //32420
         .run(always)
         .then(()=>{
             if (!always) {

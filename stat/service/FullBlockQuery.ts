@@ -7,7 +7,7 @@ import {
     AddressTransactionIndex,
     pagingFullBlock,
     pagingFullTx,
-    BlockPage, TxPage
+    BlockPage, TxPage, FailedTx
 } from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
@@ -185,6 +185,7 @@ export class FullBlockQuery {
         options.attributes = [
             ['epoch', 'epochNumber'],
             ['blockPosition', 'blockHash'],
+            'blockPosition',
             ['txPosition', 'transactionIndex'],
             'nonce',
             'hash',
@@ -278,6 +279,7 @@ export class FullBlockQuery {
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
             const contractHexIdSet = new Set<number>();
+            const failedQuery:Promise<FailedTx>[] = []
             rawList.forEach( row => {
                 txHashArray.push(row['hash']);
                 hex40IdSet.add(row['from']);
@@ -285,10 +287,24 @@ export class FullBlockQuery {
                 hex40IdSet.add(row['contractCreated']);
                 contractHexIdSet.add(row['to']);
                 list.push(row);
+                if (row['status']) {
+                    failedQuery.push(FailedTx.findOne({where:{
+                        epoch: row['epochNumber'], blockPosition: row['blockPosition'], txPosition:row['transactionIndex']
+                        }}).then(ft=>{
+                            if (ft) {
+                                row['gasFee'] = ft.gasFee;
+                                row['txExecErrorMsg'] = ft.txExecErrorMsg;
+                            } else {
+                                row['txExecErrorMsg'] = 'txExecErrorMsgNotFound'
+                            }
+                            return ft
+                    }))
+                }
             });
-            const hex40Array = await Hex40Map.findAll({
+            const [hex40Array,failedArr] = await Promise.all([
+                Hex40Map.findAll({
                 where: {id: { [Op.in]: Array.from(hex40IdSet)}},
-            })
+            }), Promise.all(failedQuery)])
             const hex40Map = new Map<number, string>()
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
@@ -305,15 +321,6 @@ export class FullBlockQuery {
                     contractInfoMap.set(contractInfo.hexId , { address: contractInfo.base32, name: contractInfo.name });
                 })
             }
-            // receipt
-            const receiptInfoMap = new Map();
-            const sdk = this?.app?.confluxSDK || this?.app?.cfx;
-            await Promise.all(txHashArray.map(async (txHash) => {
-                if(sdk){
-                    const receipt = await sdk.getTransactionReceipt(txHash);
-                    receiptInfoMap.set(txHash, {gasFee: receipt?.gasFee, txExecErrorMsg: receipt?.txExecErrorMsg});
-                }
-            }));
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
                 // fetch method, consider save it.
@@ -338,9 +345,6 @@ export class FullBlockQuery {
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
                 row['syncTimestamp'] = timestampInSec;
-                const receipt = receiptInfoMap.get(row.hash);
-                row['gasFee'] = receipt?.gasFee;
-                row['txExecErrorMsg'] = receipt?.txExecErrorMsg;
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
