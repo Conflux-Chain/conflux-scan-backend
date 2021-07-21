@@ -35,6 +35,11 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             sendAddressIds(copies).catch(err=>{
                 console.log(`send address in transfer error:`, err)
             })
+            if (model === Erc1155Transfer || model === Erc721Transfer) {
+                nftService.saveIds(copies).then().catch(err=>{
+                    console.log(`save nft id failed`, err)
+                })
+            }
             return model.bulkCreate(copies)
                 .catch(err=>{
                     const epoch = copies[0].epoch
@@ -74,9 +79,12 @@ import {init} from "./service/tool/FixDailyTokenStat";
 import {dingMsg} from "./monitor/Monitor";
 import {popPartition} from "./model/ErcTransfer";
 import {StreamErrorLog} from "./model/ErrorLog";
+import {NftService} from "./service/NftService";
 let config:StatConfig
+let nftService:NftService
 async function run() {
     config = await init()
+    nftService = new NftService()
     RedisWrap.connect(config.redis).then(()=>{
         RedisWrap.listenStreamMessage(
             ERC20_TRANSFER_Q,

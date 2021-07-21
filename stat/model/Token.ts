@@ -151,12 +151,52 @@ export class Token extends Model<IToken> implements IToken{
         })
     }
 }
+export interface INftMint {
+    id?:number
+    contractId:number
+    tokenId:string
+    txHashId:number
+    createdAt:Date
+    toId: number
+    updatedAt:Date
+}
+export class NftMint extends Model<INftMint> implements INftMint {
+    id?:number
+    contractId:number
+    tokenId:string
+    txHashId:number
+    createdAt:Date
+    toId: number
+    updatedAt:Date
+    static register(seq:Sequelize) {
+        NftMint.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            tokenId: {type: DataTypes.STRING(78), allowNull: false, },
+            txHashId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            createdAt: {type: DataTypes.DATE, allowNull: false, },
+            toId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            updatedAt: {type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('now')},
+        },{
+            sequelize: seq,
+            tableName: 'nft_mint',
+            timestamps: false,
+            indexes: [
+                {name: 'idx_ctct_tid', fields:['contractId','tokenId'], unique: true},
+                {name: 'idx_ctct_update', fields:['contractId','updatedAt'], unique: true},
+            ]
+        })
+    }
+}
+
 // erc 1155 token id
 export interface INftId {
     id?:number,
     contractHexId:number,
     nftId: number
 }
+
+// Deprecated, nftId should be string as it's uint256.
 export class NftId extends Model<INftId> implements INftId {
     id?:number
     contractHexId:number
