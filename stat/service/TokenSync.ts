@@ -8,6 +8,7 @@ const addressSdk = require('js-conflux-sdk/src/util/address')
 const lodash = require('lodash');
 const superagent = require('superagent');
 import {KV, KEY_TOKEN_SYNC_BY_SCAN_SWITCH} from "../model/KV";
+import {addTokenCache} from "./tool/TokenTool";
 
 export class TokenSync{
     private app: StatApp;
@@ -46,11 +47,13 @@ export class TokenSync{
                     const t = lodash.assign(token, {type: token.transferType,
                         transfer: token.transferCount, updatedAt: Date.now()});
                     await dbToken.update(t, {where: {id: dbToken.id}});
+                    addTokenCache(t)
                 } else{
                     const hex40 = format.hexAddress(token.address);
                     const hexBean = await makeId(hex40);
                     const t = lodash.assign(token, {type: token.transferType,
                         transfer: token.transferCount, base32, hex40id: hexBean.id, holder: 0});
+                    // addTokenCache(t) are called inside add()
                     await Token.add(t);
                 }
             }
