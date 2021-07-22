@@ -12,8 +12,8 @@ export class DailyBlockDataStatQuery {
     public INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day'};
     protected app;
 
-    constructor(app: any) {
-        this.app = app;
+    constructor(backendApp: any) {
+        this.app = backendApp;
     }
 
     async listStat(intervalType, skip: number = 0, limit: number = 27) {

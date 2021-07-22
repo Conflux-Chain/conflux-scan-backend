@@ -143,7 +143,7 @@ export class StatApp{
         this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
         this.contractRegisterQuery = new DailyContractRegisterQuery();
         this.blockDataStatSync = new DailyBlockDataStatSync(this.sequelize);
-        this.blockDataStatQuery = new DailyBlockDataStatQuery();
+        this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
