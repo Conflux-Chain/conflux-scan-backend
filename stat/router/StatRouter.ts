@@ -1,3 +1,5 @@
+// @ts-ignore
+import {format} from "js-conflux-sdk"
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import {Context} from 'koa'
@@ -13,25 +15,24 @@ import {pickNumber} from "../model/Utils";
 import {DailyToken, NftId, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyCfxTxn, sumRecentCfxAmount, sumRecentCfxTxn} from "../model/CfxTransfer";
-const NodeCache = require( "node-cache" );
-
-const cors = require('@koa/cors');
 import Application = require("koa");
 import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer, countRecentTokenTransferAccount} from "../service/DailyTxnSync";
 import {countRecentMiner} from "../service/BlockAndMinerSync";
-// @ts-ignore
-import {format} from "js-conflux-sdk"
 import {Hex40Map} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
+import {NFTMap} from "../service/nftchecker/NFTInfo";
 
-const superagent = require('superagent');
+const NodeCache = require( "node-cache" );
+const cors = require('@koa/cors');
 
-export const ROUTER_PREFIX = '/stat'
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 10 // 10 minutes
+
+export const ROUTER_PREFIX = '/stat'
+
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = {
@@ -392,6 +393,29 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const page = await statApp.blockDataStatQuery.listStat(intervalType, skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
         ctx.body = {code: 0, data: page};
+    })
+
+    // nft preview
+    router.get('/nft/checker/preview', async function (ctx) {
+        const { contractAddress, tokenId} = ctx.request.query
+        const nftInfo = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: Number(tokenId)});
+        ctx.body = {code: 0, data: nftInfo};
+    })
+
+    // nft checker, get balances
+    router.get('/nft/checker/balance', async function (ctx) {
+        const {ownerAddress} = ctx.request.query
+        const nftContractAddresses = Object.values(NFTMap).map(nft => nft.address);
+        const balanceArray = await statApp.nftCheckerService.getNFTBalances(ownerAddress, nftContractAddresses);
+        ctx.body = {code: 0, data: balanceArray};
+    })
+
+    // nft checker, get tokens
+    router.get('/nft/check/token', async function (ctx) {
+        const {ownerAddress, contractAddress, skip, limit} = ctx.request.query
+        const tokens = await statApp.nftCheckerService.getNFTTokens(ownerAddress, contractAddress,
+            skip? parseInt(skip): skip, limit ? parseInt(limit): limit);
+        ctx.body = {code: 0, data: tokens};
     })
 }
 
