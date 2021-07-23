@@ -37,6 +37,8 @@ import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
 import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
+import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
+import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 
 export class StatApp{
     public config: StatConfig;
@@ -71,6 +73,8 @@ export class StatApp{
     public contractRegisterQuery: DailyContractRegisterQuery;
     public blockDataStatSync: DailyBlockDataStatSync;
     public blockDataStatQuery: DailyBlockDataStatQuery;
+    public nftPreviewService: NFTPreviewService;
+    public nftCheckerService: NFTCheckerService;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -144,6 +148,8 @@ export class StatApp{
         this.contractRegisterQuery = new DailyContractRegisterQuery();
         this.blockDataStatSync = new DailyBlockDataStatSync(this.sequelize);
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
+        this.nftPreviewService = new NFTPreviewService(this);
+        this.nftCheckerService = new NFTCheckerService(this);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
