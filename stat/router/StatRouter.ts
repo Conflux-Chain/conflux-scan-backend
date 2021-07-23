@@ -405,15 +405,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // nft checker, get balances
     router.get('/nft/checker/balance', async function (ctx) {
         const {ownerAddress} = ctx.request.query
-        const nftContractAddresses = Object.values(NFTMap).map(nft => nft.address);
-        const balanceArray = await statApp.nftCheckerService.getNFTBalances(ownerAddress, nftContractAddresses);
+        const balanceArray = await statApp.nftCheckerService.getNFTBalances(ownerAddress);
         ctx.body = {code: 0, data: balanceArray};
     })
 
     // nft checker, get tokens
-    router.get('/nft/check/token', async function (ctx) {
+    router.get('/nft/checker/token', async function (ctx) {
         const {ownerAddress, contractAddress, skip, limit} = ctx.request.query
-        const tokens = await statApp.nftCheckerService.getNFTTokens(ownerAddress, contractAddress,
+        const tokens = await statApp.nftCheckerService.getNFTTokens(ownerAddress, contractAddress, '',
             skip? parseInt(skip): skip, limit ? parseInt(limit): limit);
         ctx.body = {code: 0, data: tokens};
     })

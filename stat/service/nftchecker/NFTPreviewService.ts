@@ -1,8 +1,9 @@
 // get NFT cache info from localStorage
 import { NFTMap, NFTNames } from './NFTInfo';
-const superagent = require('superagent');
-const abi = require('../abi/Crc1155Core.json');
 import {toBase32} from "../tool/AddressTool";
+
+const superagent = require('superagent');
+const {abi} = require('../abi/Crc1155Core');
 
 export class NFTPreviewService {
     private app;
