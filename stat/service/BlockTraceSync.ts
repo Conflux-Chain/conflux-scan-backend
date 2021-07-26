@@ -6,6 +6,8 @@ import {Trace} from "../model/Trace";
 import {makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {EventBus} from "./watcher/EventBus";
+const pLimit = require('p-limit');
+const limit = pLimit(100);
 
 export class BlockTraceSync{
     protected cfx;
@@ -162,7 +164,7 @@ export class BlockTraceSync{
 
     public async parseTxLog(hash: string, blockTime: Date) {
         let hexCache = new Set<string>()
-        const { epochNumber, logs = [] } = await this.cfx.getTransactionReceipt(hash) || {};
+        const { epochNumber, logs = [] } = await limit(()=>this.cfx.getTransactionReceipt(hash)) || {};
         if (logs.length === 0) {
             return;
         }
