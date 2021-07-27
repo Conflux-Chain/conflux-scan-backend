@@ -2,11 +2,9 @@
 import {format} from 'js-conflux-sdk';
 import {Op} from 'sequelize';
 import {DailyToken, Token} from "../model/Token";
-const addressSdk = require('js-conflux-sdk/src/util/address')
 const lodash = require('lodash');
 import {decodeUtf8} from "./tool/StringTool";
 const {Hex40Map} = require("../model/HexMap");
-import {StatApp} from "../StatApp";
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
@@ -23,75 +21,56 @@ export class TokenQuery {
     }
 
     public async query(address, fields = undefined, currency = undefined) {
-        const {
-            app: { tokenTool, confluxSDK },
-        } = this;
+        const response = await this.list([address], fields, null, currency, null, null, 0, 1);
+        const token = (response.list)[0];
 
-        let base32 = toBase32(address);
-        const result = await this.list([base32], fields, null, currency, null, null, 0, 1);
-        const token = result?.list?.shift();
-        const isRegistered = token !== undefined;
-        const toolkit = tokenTool || confluxSDK;
-        const tokenInfo = await toolkit.getToken(base32);
-        let transferType;
-        let transferCount;
-        if(isRegistered === false){
-            const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(base32).substr(2) } });
-            const hex40id = hex40?.id;
-            if (hex40id) {
-                const transferInfo = await TokenQuery.getTransferType(hex40id);
-                transferType = transferInfo?.transferType;
-                transferCount = transferInfo?.transferCount || 0;
-            }
+        token.holderIncreasePercent = 0;
+        if(token.isRegistered){
+            const [increaseRatio] = await DailyToken.calcRecentIncrease(token.hex40id).catch((err)=>{ return [0] });
+            token.holderIncreasePercent = increaseRatio;
         }
-        const totalSupply = await toolkit.getTokenTotalSupply(base32);
-        let holderIncreasePercent = 0;
-        let holderIncreaseError;
-        if (address && token) {
-            // query token detail page, should has only one record
-            [holderIncreasePercent] = await DailyToken.calcRecentIncrease(token.hex40id).catch((err)=>{
-                holderIncreaseError = err.toLocaleString()
-                return [0]
-            })
-        }
-        return lodash.defaults(token, { address, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
-            decimals: tokenInfo.decimals, isRegistered, transferType, totalSupply , transferCount, holderIncreasePercent});
+
+        return token;
     }
 
     public async search(name, currency, skip: number = 0, limit: number = 10) {
         if(!name){
             return {total: 0, list: [], contractTotal: 0, contractList: []};
         }
-
         // fields
-        const options: any = {raw: true};
-        options.attributes = [['base32', 'address'],
+        const options: any = { offset: skip, limit, raw: true};
+        currency = '';// close fiat selection
+        let attributes: any = [['base32', 'address'],
             'name',
             'symbol',
             'decimals',
+            'granularity',
             'totalSupply',
             ['holder', 'holderCount'],
             ['transfer', 'transferCount'],
             ['type', 'transferType'],
             'icon',
             'price',
-            'quoteUrl',
             'totalPrice',
-            'priceCNY',
-            'priceUSD',
-            'priceGBP',
-            'priceKRW',
-            'priceRUB',
-            'priceEUR',
-            'totalPriceCNY',
-            'totalPriceUSD',
-            'totalPriceGBP',
-            'totalPriceKRW',
-            'totalPriceRUB',
-            'totalPriceEUR',
+            'quoteUrl',
         ];
+        if (currency.length) {
+            attributes.push('priceCNY');
+            attributes.push('priceUSD');
+            attributes.push('priceGBP');
+            attributes.push('priceKRW');
+            attributes.push('priceRUB');
+            attributes.push('priceEUR');
+            attributes.push('totalPriceCNY');
+            attributes.push('totalPriceUSD');
+            attributes.push('totalPriceGBP');
+            attributes.push('totalPriceKRW');
+            attributes.push('totalPriceRUB');
+            attributes.push('totalPriceEUR');
+        }
+        options.attributes = attributes;
 
-        // query
+        // where
         const query: any = {auditResult: true};
         if(name){
             const conditionArray = [];
@@ -101,18 +80,13 @@ export class TokenQuery {
         }
         options.where = query;
 
-        // order
+        // order by
         options.order = [['totalPrice', 'DESC'], ['createdAt', 'ASC']];
 
-        // page
-        options.offset = skip;
-        options.limit = limit;
-
-        // process
+        // query
         const page = await Token.findAndCountAll(options)
         const list = [];
         const addressSet = new Set<string>();
-        currency = '';
         if(page && page.rows){
             page.rows.forEach( row => {
                 row['price'] = row[`price${currency}`];
@@ -126,16 +100,16 @@ export class TokenQuery {
         }
 
         // query contract
-        const contractInfoArray = await Contract.findAll({
+        const contractArray = await Contract.findAll({
             attributes: ['base32', 'name', 'epoch', 'hex40id'],
-            where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], raw: true
+            where: {name: { [Op.like]: `%${name}%`}}, order: [['epoch', 'ASC']], offset: 0, limit: 10, raw: true
         });
-        const contractInfoMap = new Map();
-        contractInfoArray?.filter(item => !addressSet.has(item['base32'])).forEach(item=>{
-            contractInfoMap.set(item.hex40id , { address: item['base32'], name: item['name'], epoch: item['epoch'] });
+        const contractMap = new Map();
+        contractArray?.filter(item => !addressSet.has(item['base32'])).forEach(item=>{
+            contractMap.set(item.hex40id , { address: item['base32'], name: item['name'], epoch: item['epoch'] });
         })
         let contractList = [];
-        contractInfoMap?.forEach(value => contractList.push(value));
+        contractMap?.forEach(value => contractList.push(value));
         contractList = contractList.length > 10 ? contractList.slice(0, 10) : contractList;
 
         return { total: list.length, list, contractTotal: contractList.length, contractList };
@@ -143,17 +117,22 @@ export class TokenQuery {
 
     public async list(addressArray, fields, transferType = undefined, currency = undefined, orderBy = undefined,
                       reverse = undefined, skip: number = 0, limit: number = 10) {
-        const options: any = {};
+        const{ logger } = this.app;
+        const options: any = { offset: skip, limit, raw: true};
         // fields
         let attributes: any = [['base32', 'address'],
             'hex40id',
             'name',
             'symbol', 'fetchBalance',
             'decimals',
+            'granularity',
             'totalSupply','fetchBalance',
             ['holder', 'holderCount'],
             ['transfer', 'transferCount'],
-            ['type', 'transferType']
+            ['type', 'transferType'],
+            'price',
+            'totalPrice',
+            'quoteUrl',
         ];
         if(fields && fields.length>0) {
             if (!lodash.isArray(fields)) {
@@ -164,9 +143,6 @@ export class TokenQuery {
                 attributes.push('icon');
             }
             if (set.has('price')) {
-                attributes.push('price');
-                attributes.push('quoteUrl');
-                attributes.push('totalPrice');
                 attributes.push('priceCNY');
                 attributes.push('priceUSD');
                 attributes.push('priceGBP');
@@ -183,7 +159,7 @@ export class TokenQuery {
         }
         options.attributes = attributes;
 
-        // query
+        // where
         const query: any = {auditResult: true};
         if(transferType){
             query.type = transferType;
@@ -192,13 +168,11 @@ export class TokenQuery {
             if (!lodash.isArray(addressArray)) {
                 addressArray = [addressArray];
             }
+            addressArray = addressArray.map(item => toBase32(item));
             query.base32 = {[Op.in]: addressArray};
         }
         options.where = query;
 
-        // page
-        options.offset = skip;
-        options.limit = limit;
         // order by
         let order: any;
         currency = '';
@@ -222,42 +196,62 @@ export class TokenQuery {
             order.push(orderItem);
             options.order = order;
         }
+
+        //query
         const page = await Token.findAndCountAll(options)
-        const list = [];
+        let list = [];
         if(page && page.rows){
-            page.rows.forEach( item => {
-                const row = item.toJSON();
+            page.rows.forEach( row => {
                 row['price'] = row[`price${currency}`];
                 row['totalPrice'] = row[`totalPrice${currency}`];
                 if(row['icon']) {
                     row['icon'] = decodeUtf8(row['icon']);
                 }
                 row['transferType'] = (row['transferType'] || '').toUpperCase();
+                row['isRegistered'] = true;
                 list.push(row);
             });
         }
-        return { total: page?.count || 0, list };
-    }
 
-    public async listRegisterAddress() {
-        const{ logger } = this.app;
-
-        const options: any = {attributes: ['base32', 'hex40id'], where: {auditResult: true}, raw: true};
-        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, options: `${JSON.stringify(options)}`});
-        const tokenList = await Token.findAll(options)
-        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, tokenList: `${JSON.stringify(tokenList)}`});
-        const list = [];
-        if(tokenList){
-            tokenList.forEach( item => {
-                const hex40 = format.hexAddress(item.base32);
-                list.push(hex40);
-            });
+        // token unregistered
+        const registered = new Set(list.map(item => item.address));
+        const unregistered = addressArray.filter(item => !registered.has(item));
+        const unregisteredToken = await Promise.all(unregistered.map(item => this.getTokenUnregistered(item)));
+        if(unregisteredToken.length){
+            list = [...list, ...unregisteredToken];
         }
-        // logger?.info({src: `TokenQuery.listRegisterAddress.rdb`, list: `${JSON.stringify(list)}`});
+
         return { total: list.length, list };
     }
 
+    public async listAddress(where: object = {} ) {
+        const options: any = { attributes: ['base32', 'hex40id'], where: {auditResult: true}, raw: true };
+        if(where && Object.keys(where).length){
+            options.where = lodash.defaults(options.where, where);
+        }
+
+        const tokenArray = await Token.findAll(options)
+        const addressArray = tokenArray.map( item => item.base32);
+
+        return { total: addressArray.length, list: addressArray };
+    }
+
+    private async getTokenUnregistered(base32){
+        const {
+            app: { tokenTool, confluxSDK },
+        } = this;
+
+        const toolkit = tokenTool || confluxSDK;
+        const tokenBasic = await toolkit.getToken(base32);
+        const totalSupply = await toolkit.getTokenTotalSupply(base32);
+        const hex40 = await Hex40Map.findOne({ where: { hex: format.hexAddress(base32).substr(2) } });
+        const transferInfo = await TokenQuery.getTransferType(hex40?.id);
+        return lodash.defaults(tokenBasic, { totalSupply }, transferInfo,
+            { isRegistered: false, holderIncreasePercent: 0 });
+    }
+
     private static async getTransferType(addressId) {
+        if(addressId === undefined) return { transferCount: 0 };
         const [erc20Record, erc721Record, erc777Record, erc1155Record] = await Promise.all([
             Erc20Transfer.count({ where: { contractId: addressId }}),
             Erc721Transfer.count({ where: { contractId: addressId }}),

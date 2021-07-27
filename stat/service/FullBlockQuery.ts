@@ -216,7 +216,7 @@ export class FullBlockQuery {
             }
             if(opponentAddressId){
                 const conditionOpponent = {};
-                conditionOpponent[Op.or] = [{toId: opponentAddressId}, {fromId: opponentAddressId}];
+                conditionOpponent[Op.or] = [{toId: opponentAddressId}, {fromId: opponentAddressId}, {contractCreatedId: opponentAddressId}];
                 conditionArray.push(conditionOpponent);
             }
             if(transactionHash) {

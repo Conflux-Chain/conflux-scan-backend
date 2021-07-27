@@ -107,6 +107,11 @@ export abstract class TransferQueryBase {
         const queryOptions = this.buildQueryOptions({accountAddressId, addressId, minTimestamp, maxTimestamp, opponentAddressId,
             transactionHashId, tokenId, txType, skip, limit});
         queryOptions.attributes = this.buildQueryFields();
+        if(options.accountAddress !== undefined){
+            queryOptions.attributes.push( ['tracePos', 'transactionLogIndex'],);
+        } else{
+            queryOptions.attributes.push(['id', 'transactionLogIndex']);
+        }
 
         // query
         const page = await this.doQuery(options, queryOptions);
