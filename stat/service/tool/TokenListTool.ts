@@ -1,7 +1,6 @@
 // @ts-ignore
 import {Conflux, Provider, format} from "js-conflux-sdk";
 const superagent = require("superagent")
-const prefix = require( "superagent-prefix" )
 
 async function run() {
     const url = ''
@@ -9,10 +8,10 @@ async function run() {
     const scanUrl = 'https://confluxscan.io/stat/tokens/list'
     const client = superagent
     let transferType = 'ERC1155'
-    transferType = 'ERC20'
-    // transferType = 'ERC721'
+    // transferType = 'ERC20'
+    transferType = 'ERC721'
     // const is1155 = transferType === 'ERC1155'
-    const filter = ['ARTT']
+    const filter = ['CTN']
     client.get(`${scanUrl}`)
         .query({
             fields: '',
@@ -45,18 +44,6 @@ async function run() {
         list.forEach(token=>{
             console.log(`Balance_${token.symbol}.register(sequelize);`)
         })
-        console.log(`\n create table:`)
-        list.forEach(token=>{
-            console.log(`create table balance_${token.symbol}
-(
-    addressId bigint auto_increment
-        primary key,
-    balance   decimal(36, 18) default 0.000000000000000000 not null,
-    createdAt datetime                                     not null,
-    updatedAt datetime                                     not null
-);`)
-        })
-        // console.log('res:', res.body)
     });
 }
 run().then()

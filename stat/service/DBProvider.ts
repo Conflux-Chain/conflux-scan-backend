@@ -29,7 +29,7 @@ import {
     Balance_cMOON, Balance_cOKT, Balance_conDragon,
     Balance_CRCL_BTC_symbol,
     Balance_cSNX, Balance_csUSD,
-    Balance_cSWRV,
+    Balance_cSWRV, Balance_CTN,
     Balance_cUMA,
     Balance_cUSDC,
     Balance_cYFI,
@@ -228,6 +228,7 @@ export async function initModel(sequelize) {
     Balance_CG.register(sequelize);
     Balance_TD.register(sequelize);
     Balance_cFLUX.register(sequelize);
+    Balance_CTN.register(sequelize);
 
     NftId.register(sequelize)
     Trace.register(sequelize)
