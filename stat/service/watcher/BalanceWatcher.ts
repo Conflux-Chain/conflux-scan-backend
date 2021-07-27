@@ -11,7 +11,7 @@ import {
     Balance_cLEND,
     Balance_cLINK, Balance_cMBTM,
     Balance_cMOON, Balance_cOKT, Balance_conDragon,
-    Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_cUMA,
+    Balance_CRCL_BTC_symbol, Balance_cSNX, Balance_csUSD, Balance_cSWRV, Balance_CTN, Balance_cUMA,
     Balance_cUSDC, Balance_cYFI, Balance_cYFII, Balance_EPIK_NFT,
     Balance_FC, Balance_K, Balance_MNNFT, Balance_POOLGO, Balance_POS, Balance_TD, Balance_TREA, Balance_YAO,
     CfxBalance,
@@ -129,6 +129,7 @@ export class BalanceWatcher{
             case 'POOLGO':         ret = Balance_POOLGO;    break;
             case 'POS':         ret = Balance_POS;    break;
             case 'ARTT':         ret = Balance_ARTT;    break;
+            case 'CTN':         ret = Balance_CTN;    break;
             default:
                 if (silent) {
                     return null
