@@ -99,7 +99,7 @@ export class BlockAndMinerSync {
     group by minerId order by blockCount desc limit ${limit}`,{
             replacements: [fmtDtUTC(beginDt), fmtDtUTC(endDt), timeWindow, limit],
             type: QueryTypes.SELECT,
-                benchmark: true, logging: console.log
+                // benchmark: true, logging: console.log
         })
         list.forEach(item=>{
             // @ts-ignore
@@ -107,7 +107,7 @@ export class BlockAndMinerSync {
         })
         const allDifficulty = await MinerBlock.sum("difficultySum", {
             where: {beginTime: {[Op.gte]:beginDt}, endTime:{[Op.lte]:endDt}, timeWindow: timeWindow},
-            benchmark: true, logging: console.log
+            // benchmark: true, logging: console.log
         })
         return Promise.resolve({allDifficulty,list})
     }

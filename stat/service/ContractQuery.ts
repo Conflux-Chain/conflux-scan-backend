@@ -148,7 +148,7 @@ export class ContractQuery {
         const base32 = toBase32(address);
 
         const result = await ContractVerify.findOne({where: {base32, verifyResult: true}});
-        logger?.info({ src: `[${address}]stat verify request`, queryResult: `${JSON.stringify(result)}` });
+        //logger?.info({ src: `[${address}]stat verify request`, queryResult: `${JSON.stringify(result)}` });
         return result;
     }
 
@@ -168,7 +168,7 @@ export class ContractQuery {
             where: {verifyResult},
             order: [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]],
             offset: skip, limit, raw: true});
-        logger?.info({ src: `list stat verify request`, page: `${JSON.stringify(page)}` });
+        //logger?.info({ src: `list stat verify request`, page: `${JSON.stringify(page)}` });
         const list = page?.rows || [];
         for(const row of list) {
             row.optimization = row.optimization === 1;
@@ -176,7 +176,7 @@ export class ContractQuery {
             row.transactionCount = await AddressTransactionIndex.count({where: {addressId: row.hex40id}});
             row.balance = (await cfxSDK.getBalance(row.address)).toString();
         }
-        logger?.info({ src: `list stat verify request`, list: `${JSON.stringify(list)}` });
+        //logger?.info({ src: `list stat verify request`, list: `${JSON.stringify(list)}` });
 
         return  {total: list.length, list};;
     }

@@ -92,7 +92,7 @@ export class StatApp{
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
         StatApp.readonly = this.config.database.readonly
-        console.log(`conflux rpc ${this.config.conflux.url}, network id ${StatApp.networkId}`)
+        console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
         this.tokenTool = new TokenTool(this.cfx);
         // const logger = pino()
         this.sequelize = createDB(this.config.database);

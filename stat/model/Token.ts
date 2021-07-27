@@ -1,4 +1,5 @@
 import {Model,Sequelize,DataTypes} from "sequelize";
+import {addTokenCache} from "../service/tool/TokenTool";
 
 export interface IToken{
     id?:number
@@ -115,6 +116,7 @@ export class Token extends Model<IToken> implements IToken{
     }
 
     static async add(token: Token, dbTx = undefined): Promise<IToken> {
+        addTokenCache(token)
         return await Token.create({
             name:token.name,
             symbol:token.symbol,

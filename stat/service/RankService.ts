@@ -140,7 +140,7 @@ export class RankService{
         const list: any[] = await this.app.sequelize.query(sql, {
             replacements: [maxBatchId, limit],
             type: QueryTypes.SELECT,
-            benchmark: true, logging: console.log
+            // benchmark: true, logging: console.log
         })
         return this.fillInfo(list, networkId)
     }

@@ -63,7 +63,7 @@ export class TxnQuery{
             where: {
                 id: { [Op.in]: Array.from(hexIdSet)}
             },
-            logging: console.log,
+            // logging: console.log,
             benchmark: true
         })
         const hexIdMap = new Map<number, string>()

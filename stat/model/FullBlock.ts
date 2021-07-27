@@ -416,7 +416,7 @@ export async function countNonMarkBlockRows(maxOne: IBlockRowMark) {
                 }
             }
         },
-        logging: console.log
+        // logging: console.log
     })
     return nonMarkRows;
 }
