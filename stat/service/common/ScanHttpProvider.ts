@@ -1,5 +1,7 @@
 const HttpProvider = require("js-conflux-sdk/src/provider/HttpProvider")
 const superagent = require('superagent');
+const Agent = require('agentkeepalive');
+const agent = new Agent()
 const pLimit = require('p-limit');
 const limit = pLimit(1);
 export class ScanHttpProvider extends HttpProvider {
@@ -15,12 +17,14 @@ export class ScanHttpProvider extends HttpProvider {
         return limit(()=>this.request0(data))
     }
     async request0(data) {
+        // await new Promise(r=>setTimeout(r, 2000))
         this.times ++
-        this.methodTimes[data.method] = (this.methodTimes[data.method] || 0) + 1
-        console.log(` ----- ${this.tag}, total times ${this.times}: request rpc ${data.method
-        } x ${this.methodTimes[data.method]}, header `, this.headers)
+        // this.methodTimes[data.method] = (this.methodTimes[data.method] || 0) + 1
+        // console.log(` ----- ${this.tag}, total times ${this.times}: request rpc ${data.method
+        // } x ${this.methodTimes[data.method]}, header `, this.headers)
         const { body } = await superagent
             .post(this.url)
+            .agent(agent)
             .retry(this.retry)
             .set(this.headers)
             .send(data)
