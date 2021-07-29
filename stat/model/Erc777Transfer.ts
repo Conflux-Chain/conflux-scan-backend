@@ -30,7 +30,7 @@ const T_ADDRESS_ERC777_TRANSFER_SQL = `
 \tcontractId bigint not null,
 \tfromId bigint not null,
 \ttoId bigint not null,
-\tvalue decimal(36) not null,
+\tvalue decimal(36) not null,  
     primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
   KEY \`idx_datetime\` (\`createdAt\` DESC),
   KEY \`idx_epoch\` (\`epoch\` DESC)
@@ -38,7 +38,7 @@ const T_ADDRESS_ERC777_TRANSFER_SQL = `
 partition by hash (addressId)
    PARTITIONS 97;
 `
-
+// -- alter table address_erc777transfer modify `value` varchar(78) default '0';
 export async function createAddressErc777TransferTable(seq:Sequelize) {
     return createTable(seq, T_ADDRESS_ERC777_TRANSFER_SQL).then(()=>{
         return AddressErc777Transfer.register(seq)

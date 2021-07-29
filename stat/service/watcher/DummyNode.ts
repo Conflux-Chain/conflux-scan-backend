@@ -20,6 +20,8 @@ Bill struct:
  seq is the sequence in the epoch, used in `order by` when fetching the last record of one address.
  -
  */
+import {patchHttpProvider} from "../common/utils";
+
 /**
  Aggregate reward:
  if the previous record of the miner is also a reward, then aggregate.
@@ -27,10 +29,9 @@ Bill struct:
  We can save the total number of blocks one miner mined, split to txIndex and traceIndex.
     if (traceIndex === MINED_COUNT_AGGREGATE_SIZE) txIndex++, traceIndex = 0.
  */
-const NodeCache = require( "node-cache" );
 const pLimit = require('p-limit');
-
 const limit = pLimit(1000);
+const NodeCache = require( "node-cache" );
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 50 // 50 minutes
 import {Model,QueryTypes,Sequelize,Op,DataTypes} from "sequelize";
@@ -109,15 +110,16 @@ export class DummyNode {
         return await Promise.all([
             this.cfx.traceBlock(hash),//.then(res=>this.log('trace', hash, res)),
             this.cfx.getBlockByHash(hash, true).then(block=>{
-                return Promise.all(
-                    block['transactions'].map(async tx=>{
-                        return limit(()=>this.cfx.getTransactionReceipt(tx.hash).then(receipt=>{
-                            tx.receipt = receipt
-                        }))
-                    })
-                ).then(()=>{
-                    return block
-                })
+                return block;
+                // return Promise.all(
+                //     block['transactions'].map(async tx=>{
+                //         return limit(()=>this.cfx.getTransactionReceipt(tx.hash).then(receipt=>{
+                //             tx.receipt = receipt
+                //         }))
+                //     })
+                // ).then(()=>{
+                //     return block
+                // })
             }),
         ]).then( ([traces, block])=>{
             // @ts-ignore
@@ -147,7 +149,9 @@ export class DummyNode {
                 })
             }),
             this.cfx.getBlockRewardInfo(epoch),
-        ]).then(([blockList,rewardList])=>{
+            // @ts-ignore
+            this.cfx.getEpochReceipts(epoch),
+        ]).then(([blockList,rewardList, receipts])=>{
             // console.log(`fetch all done.`)
             blockList.forEach((blk,idx)=>{
                 blk.reward = rewardList[idx]
@@ -155,6 +159,7 @@ export class DummyNode {
                     throw new Error(`block miner doesn't match reward author.\n${
                         blk.miner}\n${blk.reward.author}`)
                 }
+                blk.transactions.forEach((tx, txIdx)=>tx.receipt = receipts[idx][txIdx])
             })
             return blockList
         }).then(res=>{
@@ -493,6 +498,7 @@ if (require.main === module) {
     let epoch;
     init().then(config=>{
         node.cfx = new Conflux(config.conflux)
+        patchHttpProvider(node.cfx, config.conflux, 'DummyNode')
         return node.setupEpoch0()
     }).then(res=>{
         return node.getEpochInDB()
@@ -655,6 +661,7 @@ export async function createV2CfxBillTable(seq:Sequelize) {
  select * from hex40 where hex=substring('0x17a18e4fd26ba60b7469a3a5ea259b33f594269a',3);
  select * from hex40 where hex=substring('0x8d5adbcaf5714924830591586f05302bf87f74bd',3);
  select * from hex40 where hex=substring('0x84404933832a6c7e01dfdf585be4b2debe1df830',3);
+ select * from hex40 where hex=substring('0x8eecac87012c8e25d1a5c27694ae3ddaf2b6572f',3);
 
  select * from full_miner_block
  where minerId=1043 and epoch <= 232068
