@@ -108,7 +108,7 @@ export class StatApp{
             console.log(`skip sync db schema.`)
         }
         this.rankService = new RankService(this)
-        this.txnSync = new TxnSync(this, this.sequelize, this.config.conflux);
+        this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         this.traceSync = new BlockTraceSync(this.cfx)
         this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher)
