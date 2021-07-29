@@ -3,7 +3,7 @@ const superagent = require('superagent');
 const Agent = require('agentkeepalive');
 const agent = new Agent()
 const pLimit = require('p-limit');
-const limit = pLimit(1);
+const limit = pLimit(1000); // could increase it when connection issues are fixed completely.
 export class ScanHttpProvider extends HttpProvider {
     tag: string
     times = 0
