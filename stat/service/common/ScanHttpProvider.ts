@@ -17,7 +17,7 @@ export class ScanHttpProvider extends HttpProvider {
         this.times ++
         this.methodTimes[data.method] = (this.methodTimes[data.method] || 0) + 1
         console.log(` ----- ${this.tag}, total times ${this.times}: request rpc ${data.method
-        } x ${this.methodTimes[data.method]}`)
+        } x ${this.methodTimes[data.method]}, header `, this.headers)
         const { body } = await superagent
             .post(this.url)
             .retry(this.retry)
