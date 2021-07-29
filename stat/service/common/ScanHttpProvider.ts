@@ -8,6 +8,7 @@ export class ScanHttpProvider extends HttpProvider {
     methodTimes = {}
     constructor(conf, tag) {
         super(conf);
+        // this.headers = {Connection: "keep-alive"}
         this.tag = tag
     }
     async request(data) {

@@ -110,15 +110,16 @@ export class DummyNode {
         return await Promise.all([
             this.cfx.traceBlock(hash),//.then(res=>this.log('trace', hash, res)),
             this.cfx.getBlockByHash(hash, true).then(block=>{
-                return Promise.all(
-                    block['transactions'].map(async tx=>{
-                        return limit(()=>this.cfx.getTransactionReceipt(tx.hash).then(receipt=>{
-                            tx.receipt = receipt
-                        }))
-                    })
-                ).then(()=>{
-                    return block
-                })
+                return block;
+                // return Promise.all(
+                //     block['transactions'].map(async tx=>{
+                //         return limit(()=>this.cfx.getTransactionReceipt(tx.hash).then(receipt=>{
+                //             tx.receipt = receipt
+                //         }))
+                //     })
+                // ).then(()=>{
+                //     return block
+                // })
             }),
         ]).then( ([traces, block])=>{
             // @ts-ignore
@@ -148,7 +149,9 @@ export class DummyNode {
                 })
             }),
             this.cfx.getBlockRewardInfo(epoch),
-        ]).then(([blockList,rewardList])=>{
+            // @ts-ignore
+            this.cfx.getEpochReceipts(epoch),
+        ]).then(([blockList,rewardList, receipts])=>{
             // console.log(`fetch all done.`)
             blockList.forEach((blk,idx)=>{
                 blk.reward = rewardList[idx]
@@ -156,6 +159,7 @@ export class DummyNode {
                     throw new Error(`block miner doesn't match reward author.\n${
                         blk.miner}\n${blk.reward.author}`)
                 }
+                blk.transactions.forEach((tx, txIdx)=>tx.receipt = receipts[idx][txIdx])
             })
             return blockList
         }).then(res=>{
