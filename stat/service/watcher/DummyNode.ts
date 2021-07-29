@@ -20,6 +20,8 @@ Bill struct:
  seq is the sequence in the epoch, used in `order by` when fetching the last record of one address.
  -
  */
+import {patchHttpProvider} from "../common/utils";
+
 /**
  Aggregate reward:
  if the previous record of the miner is also a reward, then aggregate.
@@ -493,6 +495,7 @@ if (require.main === module) {
     let epoch;
     init().then(config=>{
         node.cfx = new Conflux(config.conflux)
+        patchHttpProvider(node.cfx, config.conflux, 'DummyNode')
         return node.setupEpoch0()
     }).then(res=>{
         return node.getEpochInDB()
@@ -655,6 +658,7 @@ export async function createV2CfxBillTable(seq:Sequelize) {
  select * from hex40 where hex=substring('0x17a18e4fd26ba60b7469a3a5ea259b33f594269a',3);
  select * from hex40 where hex=substring('0x8d5adbcaf5714924830591586f05302bf87f74bd',3);
  select * from hex40 where hex=substring('0x84404933832a6c7e01dfdf585be4b2debe1df830',3);
+ select * from hex40 where hex=substring('0x8eecac87012c8e25d1a5c27694ae3ddaf2b6572f',3);
 
  select * from full_miner_block
  where minerId=1043 and epoch <= 232068

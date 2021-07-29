@@ -9,6 +9,7 @@ import {Stopwatch} from "./Stopwatch";
 import {StatApp} from "../StatApp";
 import {makeId as makeAddrId} from "../model/HexMap";
 import {ContractInfo} from "../model/ContractInfo";
+import {patchHttpProvider} from "./common/utils";
 const BigFixed = require('bigfixed');
 
 /**
@@ -24,6 +25,7 @@ export class TxnSync {
         this.app = app;
         this.sequelize = sequelize;
         this.cfx = new Conflux(cfx)
+        patchHttpProvider(this.cfx, cfx, 'TxnSync')
         this.rankCache = new Map<string, Object>()
         console.log(`conflux rpc url ${cfx.url}`)
         TxnSync.staticSequelize = sequelize;

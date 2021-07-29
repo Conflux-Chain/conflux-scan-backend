@@ -1,7 +1,21 @@
+const superagent = require('superagent');
+console.log(`----------------------- hack it  -------------`)
+function logSend(p, data) {
+    console.log(`request rpc ${data.method}`)
+    return p.originSend(data)
+}
+function keepAlivePost(url) {
+    // console.log(`============================`)
+    const p = superagent.originPost(url)
+    p.originSend = p.send;
+    p.send = (data)=>logSend(p, data);
+    return p.set('Connection', 'Keep-Alive');
+}
+superagent.originPost = superagent.post;
+superagent.post = keepAlivePost;
 import {StatApp} from "./StatApp";
 import {loadConfig} from "./config/StatConfig";
 import {register} from "./router/StatRouter";
-
 const Koa = require('koa');
 const app = new Koa();
 

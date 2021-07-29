@@ -39,6 +39,7 @@ import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
+import {patchHttpProvider} from "./service/common/utils";
 
 export class StatApp{
     public config: StatConfig;
@@ -87,6 +88,7 @@ export class StatApp{
     }
     public async init() {
         this.cfx = new Conflux({...this.config.conflux})
+        patchHttpProvider(this.cfx, this.config.conflux, 'StatApp')
         // @ts-ignore
         await this.cfx.updateNetworkId();
         const cfxStatus:any = await this.cfx.getStatus()

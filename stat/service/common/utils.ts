@@ -1,3 +1,6 @@
+import {Conflux} from "js-conflux-sdk";
+import {ScanHttpProvider} from "./ScanHttpProvider";
+
 export function removeLongData(obj) {
     if (Array.isArray(obj)) {
         obj.forEach(i=>removeLongData(i))
@@ -14,4 +17,9 @@ export function removeLongData(obj) {
             }
         })
     }
+}
+
+export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
+    // @ts-ignore
+    cfx.provider = new ScanHttpProvider(cfxConf, tag)
 }

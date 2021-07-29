@@ -4,6 +4,7 @@ import {Conflux} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
 import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "./model/KV";
+import {patchHttpProvider} from "./service/common/utils";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -23,7 +24,9 @@ export async function run() {
         console.log(`\n fillPropsBatch done. maxEpochInBlock ${maxEpochInBlock
         }, fixPos ${fixedPos}, ${fixedPos >= maxEpochInBlock ? 'ok, fixed' : 'need fix more.'}`);
     } else if(args[0] === 'reward') {
-        const cfx = new FullBlockService(new Conflux(config.conflux))
+        const conflux = new Conflux(config.conflux);
+        patchHttpProvider(conflux, config.conflux, 'FullBlockService-reward')
+        const cfx = new FullBlockService(conflux)
         await cfx.fillBlockRewardByPos()
     } else {
         await syncFullBlock(config)
@@ -33,6 +36,7 @@ export async function run() {
 
 async function syncFullBlock(config:StatConfig) {
     let cfx = new Conflux(config.conflux);
+    patchHttpProvider(cfx, config.conflux, 'syncFullBlock')
     console.log(`Conflux ${config.conflux.url} network ${(await cfx.getStatus())['networkId']}`)
     const fullBlockService = new FullBlockService(cfx);
     //fullBlockService.checkReOrg = args.includes('ignoreReOrg')
