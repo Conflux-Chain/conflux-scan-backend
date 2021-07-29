@@ -4,7 +4,7 @@ import {Op} from 'sequelize'
 const lodash = require('lodash');
 const superagent = require('superagent');
 const BigFixed = require('bigfixed');
-const abi = require('./abi/MoonswapRoute.json');
+const { abi } = require('./abi/MoonswapRoute');
 
 export class QuoteSync {
   private app;
