@@ -29,10 +29,9 @@ import {patchHttpProvider} from "../common/utils";
  We can save the total number of blocks one miner mined, split to txIndex and traceIndex.
     if (traceIndex === MINED_COUNT_AGGREGATE_SIZE) txIndex++, traceIndex = 0.
  */
-const NodeCache = require( "node-cache" );
 const pLimit = require('p-limit');
-
 const limit = pLimit(1000);
+const NodeCache = require( "node-cache" );
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 50 // 50 minutes
 import {Model,QueryTypes,Sequelize,Op,DataTypes} from "sequelize";
