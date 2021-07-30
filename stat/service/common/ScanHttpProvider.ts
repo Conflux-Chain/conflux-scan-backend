@@ -13,6 +13,9 @@ export class ScanHttpProvider extends HttpProvider {
         // this.headers = {Connection: "keep-alive"}
         this.tag = tag
     }
+    async requestBatch(dataArray) {
+        return this.request(dataArray)
+    }
     async request(data) {
         return limit(()=>this.request0(data))
     }
