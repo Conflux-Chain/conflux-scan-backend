@@ -3,6 +3,7 @@ import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {TransactionDB} from "./Transaction";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
+import {RedisWrap, TRANSFER_ADDRESS_Q} from "../service/RedisWrap";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {
@@ -366,6 +367,7 @@ async function buildFromToId(array, dt:Date) {
     })
     fillHexId(hexMap, array, 'from', 'fromId')
     fillHexId(hexMap, array, 'to', 'toId')
+    return hexSet
 }
 export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     if(!array?.length){
@@ -374,11 +376,15 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     const veryStart = Date.now()
     let templates = []
     let date = new Date(Number(seconds)*1000)
-    await Promise.all([
+    const [, idSet] = await Promise.all([
         batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'CfxTransfer', date)
             .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart}),
-        buildFromToId(array, date).then(()=>{metrics.makeIdMs2 += Date.now() - veryStart}),
+        buildFromToId(array, date).then((res)=>{
+            metrics.makeIdMs2 += Date.now() - veryStart
+            return res
+        }),
     ]);
+    RedisWrap.sendStreamMessage([...idSet], TRANSFER_ADDRESS_Q).catch()
     // must wait building id finished.
     for (const obj of array) {
         templates.push(buildCfxTransfer(obj, date))

@@ -94,6 +94,7 @@ async function run() {
             ERC1155_TRANSFER_Q,
             (data)=>handleTokenTransfer(Erc1155Transfer, AddressErc1155Transfer,data)
         );
+        // cfx transfer doesn't trigger this, it's saved directly to db.
         RedisWrap.listenStreamMessage(
             CFX_TRANSFER_Q,
             (data)=>handleTokenTransfer(CfxTransfer, AddressCfxTransfer,data)
