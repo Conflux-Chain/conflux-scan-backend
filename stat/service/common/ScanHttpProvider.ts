@@ -1,12 +1,12 @@
 const HttpProvider = require("js-conflux-sdk/src/provider/HttpProvider")
 const superagent = require('superagent');
 const Agent = require('agentkeepalive');
-const agent = new Agent()
 const pLimit = require('p-limit');
 const limit = pLimit(1000); // could increase it when connection issues are fixed completely.
 export class ScanHttpProvider extends HttpProvider {
     tag: string
     times = 0
+    agent = new Agent({maxSockets: 100,})
     methodTimes = {}
     constructor(conf, tag) {
         super(conf);
@@ -24,7 +24,7 @@ export class ScanHttpProvider extends HttpProvider {
         // } x ${this.methodTimes[data.method]}, header `, this.headers)
         const { body } = await superagent
             .post(this.url)
-            .agent(agent)
+            .agent(this.agent)
             .retry(this.retry)
             .set(this.headers)
             .send(data)

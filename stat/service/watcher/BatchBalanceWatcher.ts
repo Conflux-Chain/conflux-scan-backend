@@ -75,7 +75,10 @@ export class BatchBalanceWatcher {
             const {message: ids} = item
             const hexList = await Hex40Map.findAll({where: {id:{[Op.in]: ids}}})
             for (const hexBean of hexList) {
-                await this.balanceOf('0x'+hexBean.hex, hexBean.id)
+                await Promise.all([
+                    this.balanceOf('0x'+hexBean.hex, hexBean.id),
+                    this.cfxWatcher.queryBalance('0x'+hexBean.hex, hexBean.id)
+                    ])
             }
             count += hexList.length
         }

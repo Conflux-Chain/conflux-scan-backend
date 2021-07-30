@@ -17,18 +17,12 @@ const BigFixed = require('bigfixed');
  */
 export class TxnSync {
     private app: StatApp;
-    sequelize: Sequelize
-    static staticSequelize: Sequelize
     private cfx: Conflux;
     private rankCache: Map<string, Object>
-    constructor(app, sequelize, cfx:ConfluxOption) {
+    constructor(app:StatApp) {
         this.app = app;
-        this.sequelize = sequelize;
-        this.cfx = new Conflux(cfx)
-        patchHttpProvider(this.cfx, cfx, 'TxnSync')
+        this.cfx = app.cfx
         this.rankCache = new Map<string, Object>()
-        console.log(`conflux rpc url ${cfx.url}`)
-        TxnSync.staticSequelize = sequelize;
     }
 
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
@@ -66,7 +60,7 @@ export class TxnSync {
                 where blockTime between ? and ? and status = 0 group by ${group} order by value desc limit ?) t 
                 join hex40 on t.${group} = hex40.id `;
         // console.log('sql is: ', sql)
-        const list:any[] = await this.sequelize.query(sql, {
+        const list:any[] = await TransactionDB.sequelize.query(sql, {
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime), limit],
             type: QueryTypes.SELECT,
             // benchmark: true, logging: console.log
@@ -236,7 +230,7 @@ export class TxnSync {
         stopwatch.start('db transaction phase 0')
         let txOk = 'not executed';
         const txCount = allTx.length;
-        await TxnSync.staticSequelize.transaction(async (dbTx) => {
+        await TransactionDB.sequelize.transaction(async (dbTx) => {
             // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc#cfx_gettransactionbyhash
             stopwatch.start('db transaction phase 1')
             await TransactionDB.bulkCreate(txArr, {transaction: dbTx}

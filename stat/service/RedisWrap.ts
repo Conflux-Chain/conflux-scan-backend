@@ -97,6 +97,7 @@ export class RedisWrap{
     }
     static tick = 0
     // XADD testListenQ * message apple
+    // XADD TRANSFER_ADDRESS_Q * v1 [1]
     // XADD ERC20_TRANSFER_Q * v1 []
     static async listenStreamMessage(q:string,cb:(res:RedisStreamMessage[])=>Promise<any>, posFrom = 0) {
         // console.log(`listen on queue ${q}, tick ${RedisWrap.tick}`)

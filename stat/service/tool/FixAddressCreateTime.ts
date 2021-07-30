@@ -1,5 +1,4 @@
 import {Hex40Map} from "../../model/HexMap";
-import {Trace} from "../../model/Trace";
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 let fixed = 0
@@ -33,7 +32,7 @@ async function checkAddr(id: number) {
     if (hex40.createdAt !== null) {
         return;
     }
-    let minBlockTime:Date = await Trace.min('blockTime', {where: {to: id}});
+    let minBlockTime:Date = null;// should find from cfx bill or token transfer
     if (minBlockTime === null) {
         missing ++
         console.log(`min block time is null, id ${id}, hex 0x${hex40.hex}`)
