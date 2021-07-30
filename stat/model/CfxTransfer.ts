@@ -367,7 +367,7 @@ async function buildFromToId(array, dt:Date) {
     })
     fillHexId(hexMap, array, 'from', 'fromId')
     fillHexId(hexMap, array, 'to', 'toId')
-    return hexSet
+    return hexMap.values()
 }
 export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     if(!array?.length){
@@ -384,7 +384,9 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
             return res
         }),
     ]);
-    RedisWrap.sendStreamMessage([...idSet], TRANSFER_ADDRESS_Q).catch()
+    RedisWrap.sendStreamMessage([...idSet], TRANSFER_ADDRESS_Q).catch(err=>{
+        console.log(`send to TRANSFER_ADDRESS_Q fail, `, err)
+    })
     // must wait building id finished.
     for (const obj of array) {
         templates.push(buildCfxTransfer(obj, date))
