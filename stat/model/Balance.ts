@@ -305,3 +305,8 @@ export class Balance_CTN extends Balance{
         Balance.register(seq, Balance_CTN, 'balance_CTN')
     }
 }
+export class Balance_PHM_NFT extends Balance{
+static register(seq){
+        Balance.register(seq, Balance_PHM_NFT, 'balance_PHM_NFT')
+    }
+}
