@@ -8,7 +8,6 @@ import {RankService} from "./service/RankService";
 import {Conflux} from "js-conflux-sdk";
 import {TokenTool} from "./service/tool/TokenTool";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
-import {BlockTraceSync} from "./service/BlockTraceSync";
 import {BalanceService} from "./service/watcher/BalanceService";
 import {ContractService} from "./service/contract/ContractService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
@@ -48,7 +47,6 @@ export class StatApp{
     public balanceService: BalanceService;
     public rankService: RankService;
     public txnSync: TxnSync;
-    public traceSync: BlockTraceSync
     public cfx: Conflux;
     public contractService: ContractService;
     public batchBalanceWatcher: BatchBalanceWatcher;
@@ -110,7 +108,6 @@ export class StatApp{
         this.rankService = new RankService(this)
         this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
-        this.traceSync = new BlockTraceSync(this.cfx)
         this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher)
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx)).schedule(this.config.cfxWatcherDelay).then()
@@ -156,9 +153,6 @@ export class StatApp{
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
             await this.blockAndMinerSync.schedule(this.config.syncBlockDelay)
-        }
-        if (this.config.syncTrace) {
-            await this.traceSync.schedule(this.config.syncTraceDelay); // trace
         }
         if (this.config.syncTxn) {
             await this.txnSync.schedule(this.config.syncTxnDelay); // txn

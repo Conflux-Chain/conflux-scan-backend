@@ -41,7 +41,6 @@ import {
     USDTBalance,
     WCfxBalance
 } from "../model/Balance";
-import {Trace} from "../model/Trace";
 import {DailyToken, NftId, Token} from "../model/Token";
 import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {
@@ -231,7 +230,6 @@ export async function initModel(sequelize) {
     Balance_CTN.register(sequelize);
 
     NftId.register(sequelize)
-    Trace.register(sequelize)
     PivotSwitch.register(sequelize)
     TestTimezone.register(sequelize);
     DailyTransaction.register(sequelize);
