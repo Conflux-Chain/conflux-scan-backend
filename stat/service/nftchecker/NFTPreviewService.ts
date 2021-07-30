@@ -81,8 +81,17 @@ export class NFTPreviewService {
                 return this.getNFTImage({ address, tokenId, method: 'uris', needFetchJson: false,
                     imageUriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url });
             default:
-                // by 1155 spec
-                return await this.getNFTImage({ address, tokenId });
+                // try get image and name by 1155 spec
+                let result =  await this.getNFTImage({ address, tokenId });
+                if (result == null) {
+                    // try 721
+                    result = await this.getNFTImage({
+                        address: address,
+                        method: 'tokenURI',
+                        tokenId,
+                    });
+                }
+                return result;
         }
     };
 
