@@ -214,11 +214,13 @@ export class TokenQuery {
         }
 
         // token unregistered
-        const registered = new Set(list.map(item => item.address));
-        const unregistered = addressArray.filter(item => !registered.has(item));
-        const unregisteredToken = await Promise.all(unregistered.map(item => this.getTokenUnregistered(item)));
-        if(unregisteredToken.length){
-            list = [...list, ...unregisteredToken];
+        if(addressArray){
+            const registered = new Set(list.map(item => item.address));
+            const unregistered = addressArray.filter(item => !registered.has(item));
+            const unregisteredToken = await Promise.all(unregistered.map(item => this.getTokenUnregistered(item)));
+            if(unregisteredToken.length){
+                list = [...list, ...unregisteredToken];
+            }
         }
 
         return { total: list.length, list };
