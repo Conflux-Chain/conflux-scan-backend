@@ -327,7 +327,9 @@ export class BlockAndMinerSync {
         }
         let [blockList, rewardList] = await Promise.all([
             batchFetchBlock(this.cfx, hashes),
-            this.cfx.getBlockRewardInfo(minEpochNumber),
+            this.cfx.getBlockRewardInfo(minEpochNumber).then(arr=> {
+                return arr as any[]
+            }),
         ])
         if (rewardList.length < blockList.length) {
             return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward not ready.', epoch: minEpochNumber};
