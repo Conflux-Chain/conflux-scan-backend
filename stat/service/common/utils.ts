@@ -1,5 +1,5 @@
 import {Conflux} from "js-conflux-sdk";
-const format = require('js-conflux-sdk/util/format');
+const format = require('js-conflux-sdk/src/util/format');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 
 export function removeLongData(obj) {
