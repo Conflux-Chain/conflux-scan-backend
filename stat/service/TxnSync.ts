@@ -9,7 +9,7 @@ import {Stopwatch} from "./Stopwatch";
 import {StatApp} from "../StatApp";
 import {makeId as makeAddrId} from "../model/HexMap";
 import {ContractInfo} from "../model/ContractInfo";
-import {patchHttpProvider} from "./common/utils";
+import {batchFetchBlock, patchHttpProvider} from "./common/utils";
 const BigFixed = require('bigfixed');
 
 /**
@@ -185,14 +185,8 @@ export class TxnSync {
             await new Promise(resolve => setTimeout(resolve, 5000))
             return;
         }
-        stopwatch.start('getBlockByHash')
-        let id = 0;
-        const blockList: any[] = await this.cfx.provider.batch(blockHashes.map(hash=>{
-            return {
-                id: id++, "jsonrpc": "2.0", "method": "cfx_getBlockByHash",
-                params: [hash, true]
-            }
-        }));
+        stopwatch.start('get-BlockByHash')
+        const blockList: any[] = await batchFetchBlock(this.cfx, blockHashes, true, false)
         const allTx = []
         blockList.map(blk=>{
             blk.transactions.forEach(tx=>tx.blockTime = blk.timestamp)

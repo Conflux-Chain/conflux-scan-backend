@@ -9,6 +9,7 @@ import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Transaction} from "sequelize";
+import {batchFetchBlock} from "./common/utils";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -109,9 +110,7 @@ export class EpochSync extends SyncBase{
             }
             return [];
         });
-        const blockArray = await Promise.all(blockHashArray.map(async (hash) => {
-            return await cfx.getBlockByHash(hash, false)
-        }));
+        const blockArray = await batchFetchBlock(cfx,  blockHashArray, false)
         let minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
             const hex40 = format.hexAddress(block.miner);
             const blockDt = new Date(block.timestamp * 1000);

@@ -4,6 +4,7 @@ import {KEY_BLOCK_TRACE_CREATE_EPOCH, KV} from "../model/KV";
 import {makeId} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {fmtDtUTC} from "../model/Utils";
+import {batchFetchBlock, batchTraceBlock} from "./common/utils";
 const lodash = require('lodash');
 const CONST = require('./common/constant');
 
@@ -126,13 +127,13 @@ export class BlockTraceCreateSync{
 
     async getTraceArray(epochNumber) {
         let traceArray = [];
-        const blockArray = await this.getBlockArray(epochNumber);
-        await Promise.all(blockArray.map(async (block) => {
+        const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
+        blockArray.forEach((block, idx) => {
             if (!block.transactions.length) {
                 return;
             }
 
-            const blockTrace:any[] = await this.cfx.traceBlock(block.hash);
+            const blockTrace:any[] = traceArray2d[idx]
             if (!blockTrace) {
                 // console.error(`trace_create_contract no trace at block:${block.hash}`);
                 return traceArray;
@@ -157,16 +158,18 @@ export class BlockTraceCreateSync{
                     });
                     traceArray = [...traceArray, ...BlockTraceCreateSync.matchTrace(transactionTraceArray, transaction)];
                 });
-        }));
+        });
         return traceArray;
     }
 
-    private async getBlockArray(epochNumber) {
+    private async getBlockArray(epochNumber) : Promise<any[]> {
         const blockHashArray = await this.cfx.getBlocksByEpochNumber(epochNumber);
-        const blockArray = await Promise.all(blockHashArray.map(async (blockHash) => {
-            return this.cfx.getBlockByHash(blockHash, true);
-        }));
-        return blockArray.map((v) => this.parseBlock(v, true));
+        const [blockArray, traceArray] = await Promise.all([
+            batchFetchBlock(this.cfx, blockHashArray, true, false),
+            batchTraceBlock(this.cfx, blockHashArray),
+        ])
+        blockArray.map((v) => this.parseBlock(v, true));
+        return [blockArray, traceArray]
     }
 
     private parseBlock(block, detail = false) {

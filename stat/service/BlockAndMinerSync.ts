@@ -8,6 +8,7 @@ import {addUTCMinutes, calculateBeginTime, fmtDtUTC} from "../model/Utils";
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {getDBConf, getSumFunction} from "./DBProvider";
 import {StatApp} from "../StatApp";
+import {batchFetchBlock} from "./common/utils";
 
 const BigFixed = require('bigfixed');
 
@@ -324,12 +325,10 @@ export class BlockAndMinerSync {
             console.log(`fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, e)
             return;
         }
-        let blockList: any[] = await Promise.all(
-            hashes.map(hash=>{
-                return this.cfx.getBlockByHash(hash, true)
-            })
-        )
-        let rewardList: any[] = await this.cfx.getBlockRewardInfo(minEpochNumber);
+        let [blockList, rewardList] = await Promise.all([
+            batchFetchBlock(this.cfx, hashes),
+            this.cfx.getBlockRewardInfo(minEpochNumber),
+        ])
         if (rewardList.length < blockList.length) {
             return {code: BlockAndMinerSync.CODE_REWARD_NOT_READY, message: 'reward not ready.', epoch: minEpochNumber};
         }

@@ -20,7 +20,7 @@ Bill struct:
  seq is the sequence in the epoch, used in `order by` when fetching the last record of one address.
  -
  */
-import {patchHttpProvider} from "../common/utils";
+import {batchFetchBlock, batchTraceBlock, patchHttpProvider} from "../common/utils";
 
 /**
  Aggregate reward:
@@ -105,28 +105,6 @@ export class DummyNode {
             await make('0x1be45681ac6c53d5a40475f7526bac1fe7590fb8', 5000000000000000, 0)
         }
     }
-    async fetchBlockDetail(hash) : Promise<any> {
-        // console.log(`fetch detail `)
-        return await Promise.all([
-            this.cfx.traceBlock(hash),//.then(res=>this.log('trace', hash, res)),
-            this.cfx.getBlockByHash(hash, true).then(block=>{
-                return block;
-                // return Promise.all(
-                //     block['transactions'].map(async tx=>{
-                //         return limit(()=>this.cfx.getTransactionReceipt(tx.hash).then(receipt=>{
-                //             tx.receipt = receipt
-                //         }))
-                //     })
-                // ).then(()=>{
-                //     return block
-                // })
-            }),
-        ]).then( ([traces, block])=>{
-            // @ts-ignore
-            block.traces = traces
-            return block
-        })
-    }
     preFetchedTo = 0
     async fetchEpoch(epoch) {
         if (epoch+10 === this.preFetchedTo) {
@@ -140,12 +118,14 @@ export class DummyNode {
         return Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(async hashes=>{
                 // console.log(`hashes: \n ${hashes.join('\n')}`)
-                return Promise.all(
-                    hashes.map(async hash=>{
-                        return this.fetchBlockDetail(hash)//.then(res=>this.log('fetch done ', hash, res))
+                return Promise.all([
+                    batchFetchBlock(this.cfx, hashes),
+                    batchTraceBlock(this.cfx, hashes),
+                ]).then(([blkArr, traceArr])=>{
+                    blkArr.forEach((blk, idx)=>{
+                        blkArr[idx].traces = traceArr[idx]
                     })
-                ).then(blockDetailArray=>{
-                    return blockDetailArray
+                    return blkArr
                 })
             }),
             this.cfx.getBlockRewardInfo(epoch),
