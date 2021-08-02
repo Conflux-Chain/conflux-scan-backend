@@ -4,7 +4,7 @@ import {KEY_BLOCK_TRACE_CREATE_EPOCH, KV} from "../model/KV";
 import {makeId} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {fmtDtUTC} from "../model/Utils";
-import {batchFetchBlock, batchTraceBlock} from "./common/utils";
+import {batchBlockDetail, batchFetchBlock, batchTraceBlock} from "./common/utils";
 const lodash = require('lodash');
 const CONST = require('./common/constant');
 
@@ -164,10 +164,7 @@ export class BlockTraceCreateSync{
 
     private async getBlockArray(epochNumber) : Promise<any[]> {
         const blockHashArray = await this.cfx.getBlocksByEpochNumber(epochNumber);
-        const [blockArray, traceArray] = await Promise.all([
-            batchFetchBlock(this.cfx, blockHashArray, true, false),
-            batchTraceBlock(this.cfx, blockHashArray),
-        ])
+        const [blockArray, traceArray] = await batchBlockDetail(this.cfx, blockHashArray)
         blockArray.map((v) => this.parseBlock(v, true));
         return [blockArray, traceArray]
     }

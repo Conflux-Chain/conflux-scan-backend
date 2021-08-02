@@ -24,7 +24,25 @@ export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
     // @ts-ignore
     cfx.provider = new ScanHttpProvider(cfxConf, tag)
 }
-
+// batch fetch block detail, with transaction and trace.
+export function batchBlockDetail(cfx: Conflux, hashes: string[]) : Promise<[any[],any[]]> {
+    const rpcBlocks = hashes.map(hash=>{return {"method": "cfx_getBlockByHash","params": [hash, true]}});
+    const rpcTraces = hashes.map(hash=>{return {"method": "trace_block","params": [hash]}});
+    const rpcBoth = [...rpcBlocks, ...rpcTraces]
+    const len = hashes.length
+    return cfx.provider.batch(rpcBoth).then(arr=>{
+        const blocks = arr.slice(0, len)
+        formatBlock(blocks)
+        const traces = arr.slice(len)
+        formatTrace(traces)
+        return [blocks, traces]
+    })
+}
+function formatBlock(arr) {
+    arr.forEach((blk, idx)=>{
+        arr[idx] = format.block.$or(null)(blk);
+    })
+}
 export function batchFetchBlock(cfx:Conflux, hashes:string[],
                                 detail = true, doFormat = true) : Promise<any[]> {
     return cfx.provider.batch(
@@ -34,13 +52,18 @@ export function batchFetchBlock(cfx:Conflux, hashes:string[],
         })
     ).then(arr=>{
         if (doFormat) {
-            arr.forEach((blk, idx)=>{
-                arr[idx] = format.block.$or(null)(blk);
-            })
+            formatBlock(arr)
         }
         return arr
     })
 }
+
+function formatTrace(arr: (object | Error)[]) {
+    arr.forEach((t, idx) => {
+        arr[idx] = format.blockTraces(t);
+    })
+}
+
 export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
     return cfx.provider.batch(
         hashes.map(hash=>{
@@ -48,9 +71,7 @@ export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
                 params: [hash]}
         })
     ).then(arr=>{
-        arr.forEach((t, idx)=>{
-            arr[idx] = format.blockTraces(t);
-        })
+        formatTrace(arr);
         return arr
     })
 }

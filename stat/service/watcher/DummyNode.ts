@@ -20,7 +20,7 @@ Bill struct:
  seq is the sequence in the epoch, used in `order by` when fetching the last record of one address.
  -
  */
-import {batchFetchBlock, batchTraceBlock, patchHttpProvider} from "../common/utils";
+import {batchBlockDetail, batchFetchBlock, batchTraceBlock, patchHttpProvider} from "../common/utils";
 
 /**
  Aggregate reward:
@@ -118,10 +118,8 @@ export class DummyNode {
         return Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(async hashes=>{
                 // console.log(`hashes: \n ${hashes.join('\n')}`)
-                return Promise.all([
-                    batchFetchBlock(this.cfx, hashes),
-                    batchTraceBlock(this.cfx, hashes),
-                ]).then(([blkArr, traceArr])=>{
+                return batchBlockDetail(this.cfx, hashes)
+                .then(([blkArr, traceArr])=>{
                     blkArr.forEach((blk, idx)=>{
                         blkArr[idx].traces = traceArr[idx]
                     })
