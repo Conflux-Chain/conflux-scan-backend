@@ -6,7 +6,7 @@ import {
     RedisStreamMessage,
     RedisWrap, TRANSFER_ADDRESS_Q
 } from "./service/RedisWrap";
-import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "./model/Erc20Transfer";
+import {AddressErc20Transfer, build20transferList2address, Erc20Transfer, IErc20Transfer} from "./model/Erc20Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
@@ -51,6 +51,10 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                 return arr
             }).then(()=>{
                 return RedisWrap.xDel(data)
+            }).then(()=>{
+                checkTotalSupply(model, copies).catch(err=>{
+                    console.log(`checkTotalSupply fail:`, err)
+                })
             });
         })
     ).catch(err=>{
@@ -60,7 +64,37 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
         throw err;
     })
 }
-
+async function checkTotalSupply(model, copies:IErc20Transfer[]) {
+    if (model === Erc20Transfer || model === Erc721Transfer) {
+    } else {
+        return
+    }
+    const contractSet = new Set<number>()
+    copies.forEach(t=>{
+        if (t.fromId === zeroAddrId){
+            contractSet.add(t.fromId)
+        }
+        if (t.toId === zeroAddrId) {
+            contractSet.add(t.toId)
+        }
+    })
+    if (contractSet.size === 0) {
+        return
+    }
+    const tokenList = await Token.findAll({where:{
+            hex40id: { [Op.in]: [...contractSet]}
+        }})
+    for (const token of tokenList) {
+        const sup = await tokenTool.getTokenTotalSupply(token.base32)
+        if (sup === undefined) {
+            continue
+        }
+        const [cnt] = await Token.update({totalSupply: sup},{
+            where: {id: token.id}
+        })
+        console.log(`\n update total supply ${sup}, db updated ${cnt} for ${token.symbol}`)
+    }
+}
 async function sendAddressIds(arr:{fromId:number, toId:number}[]) {
     const set = new Set<number>()
     arr.forEach(item=>{
@@ -70,13 +104,30 @@ async function sendAddressIds(arr:{fromId:number, toId:number}[]) {
     return RedisWrap.sendStreamMessage([...set], TRANSFER_ADDRESS_Q)
 }
 
+async function setupZeroAddressId() {
+    const zeroHex = '0x'+'0'.padStart(40, '0')
+    zeroAddrId = await makeIdV(zeroHex)
+}
 import {init} from "./service/tool/FixDailyTokenStat";
 import {dingMsg} from "./monitor/Monitor";
 import {popPartition} from "./model/ErcTransfer";
 import {StreamErrorLog} from "./model/ErrorLog";
+import {Hex40Map, makeIdV} from "./model/HexMap";
+import {Conflux} from "js-conflux-sdk";
+import {patchHttpProvider} from "./service/common/utils";
+import {TokenTool} from "./service/tool/TokenTool";
+import {Token} from "./model/Token";
+import {Op} from "sequelize"
 let config:StatConfig
+let zeroAddrId = 0
+let cfx:Conflux
+let tokenTool:TokenTool
 async function run() {
     config = await init()
+    await setupZeroAddressId()
+    cfx = new Conflux(config.conflux)
+    patchHttpProvider(cfx, config.conflux)
+    tokenTool = new TokenTool(cfx)
     RedisWrap.connect(config.redis).then(()=>{
         RedisWrap.listenStreamMessage(
             ERC20_TRANSFER_Q,
