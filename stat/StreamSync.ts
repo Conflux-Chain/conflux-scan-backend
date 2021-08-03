@@ -65,12 +65,14 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
     })
 }
 async function checkTotalSupply(model, copies:IErc20Transfer[]) {
-    if (model === Erc20Transfer || model === Erc721Transfer) {
+    if (model === Erc20Transfer || model === Erc721Transfer ) {
     } else {
+        console.log(`not match ${model.getTableName()}`)
         return
     }
     const contractSet = new Set<number>()
     copies.forEach(t=>{
+        console.log(`from ${t.fromId} to ${t.toId}, zero ${zeroAddrId}`)
         if (t.fromId === zeroAddrId){
             contractSet.add(t.fromId)
         }
@@ -79,14 +81,17 @@ async function checkTotalSupply(model, copies:IErc20Transfer[]) {
         }
     })
     if (contractSet.size === 0) {
+        console.log(`zero contract set.`)
         return
     }
     const tokenList = await Token.findAll({where:{
             hex40id: { [Op.in]: [...contractSet]}
         }})
+    console.log(`token list length ${tokenList.length}`)
     for (const token of tokenList) {
         const sup = await tokenTool.getTokenTotalSupply(token.base32)
         if (sup === undefined) {
+            console.log(`supply undefined, ${token.symbol}`)
             continue
         }
         const [cnt] = await Token.update({totalSupply: sup},{
