@@ -24,6 +24,7 @@ import {TxnQuery} from "../service/TxnQuery";
 import {AddressErc20Transfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
 import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
+import {format} from "js-conflux-sdk";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -47,7 +48,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         const {hexId} = ctx.request.query
         let bean:Hex40Map
         if (hexId.toString().startsWith('cfx')) {
-            let hex = addressSdk.simplifyCfxAddress(hexId)
+            const hex = format.hexAddress(hexId)
             bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
         } else if (hexId.toString().startsWith('0x')) {
             bean = await Hex40Map.findOne({where: {hex: hexId.toString().substr(2)}})
