@@ -52,7 +52,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             }).then(()=>{
                 return RedisWrap.xDel(data)
             }).then(()=>{
-                checkTotalSupply(model, copies).catch(err=>{
+                checkTotalSupply(fullT, copies).catch(err=>{
                     console.log(`checkTotalSupply fail:`, err)
                 })
             });
