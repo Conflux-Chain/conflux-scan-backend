@@ -73,11 +73,8 @@ async function checkTotalSupply(model, copies:IErc20Transfer[]) {
     const contractSet = new Set<number>()
     copies.forEach(t=>{
         console.log(`from ${t.fromId} to ${t.toId}, zero ${zeroAddrId}`)
-        if (t.fromId === zeroAddrId){
-            contractSet.add(t.fromId)
-        }
-        if (t.toId === zeroAddrId) {
-            contractSet.add(t.toId)
+        if (t.fromId === zeroAddrId || t.toId === zeroAddrId){
+            contractSet.add(t.contractId)
         }
     })
     if (contractSet.size === 0) {
