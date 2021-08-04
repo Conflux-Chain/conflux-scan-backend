@@ -186,6 +186,8 @@ export class NftMint extends Model<INftMint> implements INftMint {
             indexes: [
                 {name: 'idx_ctct_tid', fields:['contractId','tokenId'], unique: true},
                 {name: 'idx_ctct_update', fields:['contractId','updatedAt'], },
+                {name: 'idx_ctct_toId_update', fields:['contractId','toId', 'updatedAt'], },
+                {name: 'idx_toId_update', fields:['toId', 'updatedAt'], },
             ]
         })
     }
