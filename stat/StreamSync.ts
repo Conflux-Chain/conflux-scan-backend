@@ -35,6 +35,11 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             sendAddressIds(copies).catch(err=>{
                 console.log(`send address in transfer error:`, err)
             })
+            if (fullT === Erc1155Transfer || fullT === Erc721Transfer) {
+                nftService.saveIds(copies).then().catch(err=>{
+                    console.log(`save nft id failed`, err)
+                })
+            }
             return model.bulkCreate(copies)
                 .catch(err=>{
                     const epoch = copies[0].epoch
@@ -120,12 +125,15 @@ import {patchHttpProvider} from "./service/common/utils";
 import {TokenTool} from "./service/tool/TokenTool";
 import {Token} from "./model/Token";
 import {Op} from "sequelize"
+import {NftService} from "./service/NftService";
 let config:StatConfig
+let nftService:NftService
 let zeroAddrId = 0
 let cfx:Conflux
 let tokenTool:TokenTool
 async function run() {
     config = await init()
+    nftService = new NftService()
     await setupZeroAddressId()
     cfx = new Conflux(config.conflux)
     patchHttpProvider(cfx, config.conflux)

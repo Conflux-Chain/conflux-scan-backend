@@ -64,7 +64,7 @@ import {
     USDTBalance,
     WCfxBalance
 } from "../model/Balance";
-import {DailyToken, NftId, Token} from "../model/Token";
+import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {
     CfxTransfer,
@@ -181,6 +181,7 @@ export async function initPartialModel(sequelize) {
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
     Token.register(sequelize);
+    NftMint.register(sequelize)
     TokenQuote.register(sequelize);
     StreamErrorLog.register(sequelize)
     KV.register(sequelize);

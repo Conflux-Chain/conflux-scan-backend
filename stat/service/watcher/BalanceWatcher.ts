@@ -179,7 +179,7 @@ export class BalanceWatcher{
         if (position == null) {
             await KV.create({key: this.addressPosKey, value: "0"})
         } else if (position.value === '-1') {
-            console.log(`reach max ${this.addressPosKey}, do not schedule.`)
+            // console.log(`reach max ${this.addressPosKey}, do not schedule.`)
             return;
         }
         //
