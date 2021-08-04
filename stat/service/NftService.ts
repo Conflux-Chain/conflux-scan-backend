@@ -52,6 +52,7 @@ export class NftService {
             if (result === -1) {
                 break;
             }
+            from += batch
             process.stdout.write(`\r\u001b[2K fixed count ${count}, to epoch ${from+batch-1}, will stop at ${stop}   $`)
         }
         console.log(`\n done ${from}, stop ${stop}`)
