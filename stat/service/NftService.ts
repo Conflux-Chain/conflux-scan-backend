@@ -21,7 +21,9 @@ export class NftService {
     async saveIds(list:any/*Erc721Transfer*/[]) {
         const beans:any[] = list.map(t=>{
             const b = {contractId: t.contractId, createdAt: t.createdAt,
-                toId: t.toId, tokenId: t.tokenId, txHashId: t.txHashId}
+                toId: t.toId, tokenId: t.tokenId, txHashId: t.txHashId,
+                updatedAt: t.createdAt,
+            }
             return b
         })
         return NftMint.bulkCreate(beans,{
