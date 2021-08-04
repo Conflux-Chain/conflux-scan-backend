@@ -27,6 +27,7 @@ import {
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
 import {Epoch} from "../model/Epoch";
+import {batchFetchBlock} from "./common/utils";
 
 
 // Do not care the value
@@ -187,11 +188,7 @@ export class FullBlockService {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
             }
         }
-        let blockList: any/*IFullBlock*/[] = (await Promise.all(
-            (hashes as []).map(hash=>{
-                return this.cfx.getBlockByHash(hash, true)
-            })
-        )) as IFullBlock[]
+        let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
         return {code: 0, message: 'ok', blockList, rewardList, latest_state}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {

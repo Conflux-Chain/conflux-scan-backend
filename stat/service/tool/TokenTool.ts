@@ -1,4 +1,7 @@
 import {Conflux} from "js-conflux-sdk";
+import {Token} from "../../model/Token";
+import {init} from "./FixDailyTokenStat";
+import {patchHttpProvider} from "../common/utils";
 const abi = require('./abi');
 const lodash = require('lodash');
 
@@ -10,7 +13,7 @@ export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base3
 }
 export class TokenTool {
     protected cfx;
-    protected contract;
+    contract;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.contract = cfx.Contract({abi});
@@ -68,4 +71,44 @@ export class TokenTool {
         }
         return undefined;
     }
+}
+
+async function updateTotalSupply() {
+    const cfg = await init()
+    const cfx = new Conflux(cfg.conflux)
+    console.log(`conflux: `, cfg.conflux)
+    patchHttpProvider(cfx, cfg.conflux)
+    const tool = new TokenTool(cfx)
+    async function repeat() {
+        const list = await Token.findAll({where: {auditResult: true,
+                // symbol:'PHM-NFT'
+        }})
+        for (const token of list) {
+            const sup = await tool.contract.totalSupply()
+                .call({to: token.base32}, undefined)
+                .then(BigInt)
+                .catch((err) => {
+                    if (!err.message.includes('Transaction')) {
+                        console.log(`totalSupply error:`, err)
+                    }
+                    return undefined
+                })
+            if (sup === undefined) {
+                continue
+            }
+            if (sup === BigInt(token.totalSupply)) {
+                continue
+            }
+            const [cnt] = await Token.update({totalSupply: sup},
+                {where: {id: token.id}});
+            console.log(`update from ${token.totalSupply} to ${sup}, affect ${cnt} ${token.base32}`)
+        }
+        setTimeout(repeat, 10_000)
+        console.log(`${new Date().toISOString()} updated ${list.length}`)
+    }
+    repeat().then()
+}
+
+if (module === require.main) {
+    updateTotalSupply().then()
 }

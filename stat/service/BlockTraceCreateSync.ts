@@ -4,6 +4,7 @@ import {KEY_BLOCK_TRACE_CREATE_EPOCH, KV} from "../model/KV";
 import {makeId} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {fmtDtUTC} from "../model/Utils";
+import {batchBlockDetail, batchFetchBlock, batchTraceBlock} from "./common/utils";
 const lodash = require('lodash');
 const CONST = require('./common/constant');
 
@@ -49,9 +50,8 @@ export class BlockTraceCreateSync{
             await new Promise(resolve => setTimeout(resolve, 1000))
         }
 
-        let isSuccess = false;
         try{
-            isSuccess = await this.syncByEpoch(curEpoch)
+            await this.syncByEpoch(curEpoch)
         }catch (e){
             const msg = `${e}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -63,14 +63,12 @@ export class BlockTraceCreateSync{
                 throw e;
             }
         }
-        if (isSuccess) {
-            await KV.update({value: curEpoch.toString()}, {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}})
-        }
     }
 
     private async syncByEpoch(epochNumber: number) : Promise<boolean>{
         const traceCreateArray = await this.getTraceCreateArray(epochNumber);
         const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined
+        const beans = []
         for (const trace of traceCreateArray) {
             const txHashId =  (await makeId(trace.transactionHash)).id;
             const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
@@ -85,12 +83,14 @@ export class BlockTraceCreateSync{
                 outcome: trace.outcome,
                 blockTime: trace.blockTime,
             };
-            await TraceCreateContract.create(toCreate)
-                .catch(error => {
-                    console.log(`trace_create_contract error at trace:${JSON.stringify(toCreate)}`, error);
-                    throw error;
-                });
+            beans.push(toCreate)
         }
+        await TraceCreateContract.sequelize.transaction(async dbTx=>{
+            await Promise.all([
+                TraceCreateContract.bulkCreate(beans, {transaction: dbTx}),
+                KV.update({value: epochNumber.toString()}, {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}}),
+            ])
+        })
         if (epochNumber % 100 === 0) {
             const count = traceCreateArray.length;
             console.log(`${fmtDtUTC(new Date())} insert ${count} trace_create_contract at epoch:${epochNumber}`)
@@ -126,13 +126,13 @@ export class BlockTraceCreateSync{
 
     async getTraceArray(epochNumber) {
         let traceArray = [];
-        const blockArray = await this.getBlockArray(epochNumber);
-        await Promise.all(blockArray.map(async (block) => {
+        const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
+        blockArray.forEach((block, idx) => {
             if (!block.transactions.length) {
                 return;
             }
 
-            const blockTrace:any[] = await this.cfx.traceBlock(block.hash);
+            const blockTrace:any[] = traceArray2d[idx]
             if (!blockTrace) {
                 // console.error(`trace_create_contract no trace at block:${block.hash}`);
                 return traceArray;
@@ -157,16 +157,15 @@ export class BlockTraceCreateSync{
                     });
                     traceArray = [...traceArray, ...BlockTraceCreateSync.matchTrace(transactionTraceArray, transaction)];
                 });
-        }));
+        });
         return traceArray;
     }
 
-    private async getBlockArray(epochNumber) {
+    private async getBlockArray(epochNumber) : Promise<any[]> {
         const blockHashArray = await this.cfx.getBlocksByEpochNumber(epochNumber);
-        const blockArray = await Promise.all(blockHashArray.map(async (blockHash) => {
-            return this.cfx.getBlockByHash(blockHash, true);
-        }));
-        return blockArray.map((v) => this.parseBlock(v, true));
+        const [blockArray, traceArray] = await batchBlockDetail(this.cfx, blockHashArray)
+        blockArray.map((v) => this.parseBlock(v, true));
+        return [blockArray, traceArray]
     }
 
     private parseBlock(block, detail = false) {
