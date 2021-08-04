@@ -129,7 +129,7 @@ export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
             case 'erc777': model = Erc777Transfer; break;
             case 'erc1155': model = Erc1155Transfer; break;
             default:
-                console.log(`unknown token type [${tokenBean.type}], ${tokenBean.base32}, ${tokenBean.symbol}`)
+                // console.log(`unknown token type [${tokenBean.type}], ${tokenBean.base32}, ${tokenBean.symbol}`)
                 return [null, tokenBean];
         }
         return [model, tokenBean]
