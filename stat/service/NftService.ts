@@ -1,6 +1,6 @@
 import {Op} from 'sequelize'
 import {Erc721Transfer} from "../model/Erc721Transfer";
-import {Hex40Map} from "../model/HexMap";
+import {Hex40Map, makeIdV} from "../model/HexMap";
 import {NftMint} from "../model/Token";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {init} from "./tool/FixDailyTokenStat";
@@ -10,9 +10,7 @@ export class NftService {
 
     async setup() {
         const hex = '0'.padStart(40, '0')
-        this.zeroAddrId = await Hex40Map.findOne({where:{hex}}).then(bean=>{
-            return bean?.id || -1
-        })
+        this.zeroAddrId = await makeIdV(hex)
         console.log(`setup zero addr id to ${this.zeroAddrId}`)
     }
 
