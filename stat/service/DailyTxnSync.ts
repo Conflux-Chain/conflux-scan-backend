@@ -172,7 +172,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     } while (preId > 0)
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
         .then(([cnt])=>{
-            process.stdout.write(`\r${CONST.CL}update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
+            // process.stdout.write(`\r${CONST.CL}update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
         })
 }
 export async  function calcDailyToken(dt:Date, tokenHexId:number) {

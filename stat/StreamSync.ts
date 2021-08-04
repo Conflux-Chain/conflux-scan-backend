@@ -35,7 +35,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             sendAddressIds(copies).catch(err=>{
                 console.log(`send address in transfer error:`, err)
             })
-            if (model === Erc1155Transfer || model === Erc721Transfer) {
+            if (fullT === Erc1155Transfer || fullT === Erc721Transfer) {
                 nftService.saveIds(copies).then().catch(err=>{
                     console.log(`save nft id failed`, err)
                 })
