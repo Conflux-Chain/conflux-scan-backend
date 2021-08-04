@@ -12,7 +12,7 @@ import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
 import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
-import {DailyToken, NftId, Token} from "../model/Token";
+import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyCfxTxn, sumRecentCfxAmount, sumRecentCfxTxn} from "../model/CfxTransfer";
 import Application = require("koa");
@@ -407,6 +407,23 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {ownerAddress} = ctx.request.query
         const balanceArray = await statApp.nftCheckerService.getNFTBalances(ownerAddress);
         ctx.body = {code: 0, data: balanceArray};
+    })
+
+    router.get('/nft/active-token-ids', async function (ctx) {
+        const {contractAddress, skip = 0, limit = 10} = ctx.request.query
+        const hex = format.hexAddress(contractAddress)
+        const hexBean = await Hex40Map.findOne({where:{hex: hex.substr(2)}})
+        if (hexBean === null) {
+            ctx.body = {code:0, data:{rows:[], count:0}, message: 'not found.'}
+            return
+        }
+        const page = await NftMint.findAndCountAll({
+            where: {contractId: hexBean.id},
+            order: [['updatedAt', 'desc']],
+            offset: parseInt(skip || 0),
+            limit: Math.min(parseInt(limit || 0), 100)
+        })
+        ctx.body = {code: 0, data: page, hexBean, hex}
     })
 
     // nft checker, get tokens
