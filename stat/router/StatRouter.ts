@@ -20,7 +20,7 @@ import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer, countRecentTokenTransferAccount} from "../service/DailyTxnSync";
 import {countRecentMiner} from "../service/BlockAndMinerSync";
-import {Hex40Map} from "../model/HexMap";
+import {buildHexSet, convert2base32map, fillHexId, hex40IdMap, Hex40Map, idHex40Map, mapProp} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {NFTMap} from "../service/nftchecker/NFTInfo";
@@ -421,8 +421,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             where: {contractId: hexBean.id},
             order: [['updatedAt', 'desc']],
             offset: parseInt(skip || 0),
-            limit: Math.min(parseInt(limit || 0), 100)
+            limit: Math.min(parseInt(limit || 0), 100),
+            raw: true,
         })
+        const hexIdSet = buildHexSet(undefined, page.rows,
+            'contractId', 'toId')
+        const map = await idHex40Map([...hexIdSet])
+        const base32map = convert2base32map(map)
+        mapProp(base32map, page.rows, 'contractId', 'contractBase32')
+        mapProp(base32map, page.rows, 'toId', 'toBase32')
         ctx.body = {code: 0, data: page, hexBean, hex}
     })
 
