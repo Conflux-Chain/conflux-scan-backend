@@ -223,7 +223,7 @@ export class TokenQuery {
             }
         }
 
-        return { total: list.length, list };
+        return { total: page?.count || 0, list };
     }
 
     public async listAddress(where: object = {} ) {
