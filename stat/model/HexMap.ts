@@ -116,6 +116,12 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     // console.info(`created ${created}`)
     return bean;
 }
+export async function findHexId(hex:string):Promise<number> {
+    if (hex.startsWith('0x')) {
+        hex = hex.substr(2)
+    }
+    return Hex40Map.findOne({where:{hex}}).then(res=>res?.id || null)
+}
 export function buildHexSet(hexSet:Set<string|number>, arr:any[], ...hexKey:string[]) : Set<any> {
     if (hexSet === undefined) {
         hexSet = new Set<string>()
@@ -238,6 +244,7 @@ export class AddressInfo extends Model<IAddressInfo> implements IAddressInfo {
 }
 
 export async function hex40IdMap(hex40Array: Array<string>): Promise<Map<string, number>> {
+    hex40Array = hex40Array.map(hex=>hex.startsWith('0x') ? hex.substr(2) : hex)
     const result = await Hex40Map.findAll({
         where: {hex: {[Op.in]: hex40Array}},
     })

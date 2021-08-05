@@ -1,9 +1,12 @@
-import {Op} from 'sequelize'
+import {Sequelize, Op} from 'sequelize'
 import {Erc721Transfer} from "../model/Erc721Transfer";
-import {Hex40Map, makeIdV} from "../model/HexMap";
+import {findHexId, hex40IdMap, Hex40Map, makeIdV} from "../model/HexMap";
 import {NftMint} from "../model/Token";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {init} from "./tool/FixDailyTokenStat";
+import {format} from "js-conflux-sdk";
+import {reverseMap} from "./common/utils";
+import {StatApp} from "../StatApp";
 
 export class NftService {
     zeroAddrId:number
@@ -59,6 +62,37 @@ export class NftService {
         }
         console.log(`\n done ${from}, stop ${stop}`)
     }
+}
+
+export async function getNftBalances(accountBase32:string, contractsBase32:string[]) {
+    console.log(`1`)
+    const accHexId = await findHexId(format.hexAddress(accountBase32))
+    console.log(`2`)
+    if (accHexId === null) {
+        return contractsBase32.map(b=>0) // zero array.
+    }
+    const cHexArr = contractsBase32.map(base32=>format.hexAddress(base32));
+    const hex2idMap = await hex40IdMap(cHexArr);
+    const cHexIds = [...hex2idMap.values()]
+    if (cHexIds.length === 0) {
+        return contractsBase32.map(b=>0) // zero array.
+    }
+    console.log(`acc id ${accHexId}, contracts [${cHexIds}]`)
+    const groupByContractList = await NftMint.findAll({
+        attributes: [
+            'contractId',
+            [Sequelize.fn('COUNT', Sequelize.col('*')), 'balance'],
+        ],
+        where: {contractId: {[Op.in]: cHexIds}, toId: accHexId},
+        group: ["contractId"], raw: true,
+        logging: console.log,
+    })
+    const id2hexMap = reverseMap(hex2idMap)
+    // fix base32
+    groupByContractList.forEach(bean=>{
+        bean['contractBase32'] = format.address('0x'+id2hexMap.get(bean.contractId), StatApp.networkId)
+    })
+    return groupByContractList
 }
 
 
