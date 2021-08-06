@@ -151,7 +151,7 @@ export class FullTransaction extends Model<IFullTransaction> implements IFullTra
     toId:number
     dripValue:number
     gasPrice:number
-    gas:number
+    gas:number // it's gasFee in receipt
     status: number
     contractCreatedId:number
     method?:string

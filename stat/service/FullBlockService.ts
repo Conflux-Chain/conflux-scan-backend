@@ -157,7 +157,7 @@ export class FullBlockService {
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()})
     }
     private async loadEpochData(minEpochNumber: number) {
-        const [rewardList, hashes, latest_state] = await Promise.all([
+        const [rewardList, hashes, latest_state, receipts] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -179,6 +179,8 @@ export class FullBlockService {
                 return []
             }),
             this.cfx.getEpochNumber('latest_state'),
+            // @ts-ignore
+            this.cfx.getEpochReceipts(epoch),
         ])
         if (latest_state < minEpochNumber) {
             return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
@@ -189,7 +191,43 @@ export class FullBlockService {
             }
         }
         let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
-        return {code: 0, message: 'ok', blockList, rewardList, latest_state}
+        // fill tx receipts to block-> tx
+        if (blockList.length !== receipts.length) {
+            const msg = `block list length ${blockList.length} mismatch receipts length ${receipts.length
+            } at epoch ${minEpochNumber}`;
+            console.log(msg)
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state}
+        }
+        let code = 0
+        let message = 'ok'
+        for (let idx = 0; idx < blockList.length; idx++){
+            let blk = blockList[idx];
+            if (blk.transactions.length !== receipts[idx].length) {
+                code = CODE_CONTINUE
+                message = `block's txs length ${blk.transactions.length} != ${receipts[idx].length
+                } at epoch ${minEpochNumber}, block index ${idx}`
+                console.log(message)
+                break;
+            }
+            for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
+                let tx = blk.transactions[txIdx];
+                tx.receipt = receipts[idx][txIdx]
+                // check consistency
+                if (tx.blockHash !== blk.hash
+                    || tx.receipt.transactionHash !== tx.hash
+                    || tx.receipt.blockHash !== blk.hash) {
+                    message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockhash
+                    } \n tx hash ${tx.hash}\n receipt tx hash ${tx.receipt.hash}\n receipt block hash ${tx.receipt.blockHash}`
+                    console.log(message)
+                    code = CODE_CONTINUE
+                    break;
+                }
+            }
+            if (code !== 0) {
+                break;
+            }
+        }
+        return {code, message, blockList, rewardList, latest_state}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -341,6 +379,7 @@ export class FullBlockService {
                     txInfo.dripValue = txInfo.value
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
                     txInfo.method = txInfo.data.substr(0, 10)
+                    txInfo.gas = txInfo.receipt.gasFee // save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId

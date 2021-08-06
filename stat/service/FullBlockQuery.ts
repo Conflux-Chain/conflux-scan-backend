@@ -193,7 +193,7 @@ export class FullBlockQuery {
             ['toId', 'to'],
             ['dripValue', 'value'],
             'gasPrice',
-            'gas',
+            ['gas', 'gasFee'],
             ['createdAt', 'timestamp'],
             'status',
             ['contractCreatedId', 'contractCreated'],
@@ -292,7 +292,6 @@ export class FullBlockQuery {
                         epoch: row['epochNumber'], blockPosition: row['blockPosition'], txPosition:row['transactionIndex']
                         }}).then(ft=>{
                             if (ft) {
-                                row['gasFee'] = ft.gasFee;
                                 row['txExecErrorMsg'] = ft.txExecErrorMsg;
                             } else {
                                 row['txExecErrorMsg'] = 'txExecErrorMsgNotFound'
@@ -321,15 +320,6 @@ export class FullBlockQuery {
                     contractInfoMap.set(contractInfo.hexId , { address: contractInfo.base32, name: contractInfo.name });
                 })
             }
-            // receipt
-            const receiptInfoMap = new Map();
-            const sdk = this?.app?.confluxSDK || this?.app?.cfx;
-            await Promise.all(txHashArray.map(async (txHash) => {
-                if(sdk){
-                    const receipt = await sdk.getTransactionReceipt(txHash);
-                    receiptInfoMap.set(txHash, {gasFee: receipt?.gasFee, txExecErrorMsg: receipt?.txExecErrorMsg});
-                }
-            }));
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
                 // fetch method, consider save it.
@@ -354,9 +344,6 @@ export class FullBlockQuery {
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
                 row['syncTimestamp'] = timestampInSec;
-                const receipt = receiptInfoMap.get(row.hash);
-                row['gasFee'] = receipt?.gasFee;
-                row['txExecErrorMsg'] = receipt?.txExecErrorMsg;
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })

@@ -9,7 +9,7 @@ CREATE TABLE `full_tx` (
   `toId` bigint unsigned NOT NULL,
   `dripValue` decimal(36,0) NOT NULL DEFAULT '0',
   `gasPrice` decimal(36,0) NOT NULL DEFAULT '0',
-  `gas` decimal(36,0) NOT NULL DEFAULT '0',
+  `gas` decimal(36,0) NOT NULL DEFAULT '0', -- it's gasFee
   `status` tinyint NOT NULL DEFAULT '0',
   `contractCreatedId` bigint unsigned NOT NULL,
   `method` char (10) null ,
