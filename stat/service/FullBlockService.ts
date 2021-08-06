@@ -180,7 +180,7 @@ export class FullBlockService {
             }),
             this.cfx.getEpochNumber('latest_state'),
             // @ts-ignore
-            this.cfx.getEpochReceipts(epoch),
+            this.cfx.getEpochReceipts(minEpochNumber),
         ])
         if (latest_state < minEpochNumber) {
             return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
@@ -259,25 +259,14 @@ export class FullBlockService {
             return map;
         })
     }
-    async syncFailedTx(epoch, blockPos, txPos, hash) : Promise<IFailedTx|null> {
-        return FullBlockService.syncFailedTx0(epoch, blockPos, txPos, hash, this.cfx)
-    }
-    public static async syncFailedTx0(epoch, blockPos, txPos, hash, cfx:Conflux) : Promise<IFailedTx|null> {
-        return cfx.getTransactionReceipt(hash).then(receipt=>{
-            if (receipt) {
-                let msg = receipt["txExecErrorMsg"] || '';
-                if (msg.length >= LEN_txExecErrorMsg) {
-                    msg = msg.substr(0, LEN_txExecErrorMsg-4)
-                }
-                if (receipt["epochNumber"] != epoch) {
-                    console.log(`\n epoch doesn't match, ${epoch} ${hash} , receipt ${receipt["epochNumber"]}\n`)
-                    return null
-                }
-                return {epoch, blockPosition: blockPos, txPosition: txPos,
-                gasFee: receipt["gasFee"], txExecErrorMsg: msg}
-            }
-            return null
-        })
+    async syncFailedTx(epoch, txInfo) : Promise<IFailedTx|null> {
+        const receipt = txInfo.receipt
+        let msg = receipt["txExecErrorMsg"] || '';
+        if (msg.length >= LEN_txExecErrorMsg) {
+            msg = msg.substr(0, LEN_txExecErrorMsg-4)
+        }
+        return {epoch, blockPosition: txInfo.blockPosition, txPosition: txInfo.txPosition,
+        gasFee: receipt["gasFee"], txExecErrorMsg: msg}
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
@@ -393,7 +382,7 @@ export class FullBlockService {
                     sumGasPrice += txInfo.gasPrice
                 }
                 if (txInfo.status) { // has value and is not zero: failed.
-                    failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo.blockPosition, txInfo.txPosition, txInfo.hash))
+                    failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo))
                 }
             }
             block.executedTxnCount = pos
