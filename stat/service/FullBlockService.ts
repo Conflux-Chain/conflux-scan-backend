@@ -94,7 +94,8 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again epoch ${maxEpoch+1
+                    }: ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
@@ -212,12 +213,16 @@ export class FullBlockService {
             for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
                 let tx = blk.transactions[txIdx];
                 tx.receipt = receipts[idx][txIdx]
+                if (tx.status === null || tx.status === undefined) {
+                    continue
+                }
                 // check consistency
                 if (tx.blockHash !== blk.hash
                     || tx.receipt.transactionHash !== tx.hash
                     || tx.receipt.blockHash !== blk.hash) {
-                    message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockhash
-                    } \n tx hash ${tx.hash}\n receipt tx hash ${tx.receipt.hash}\n receipt block hash ${tx.receipt.blockHash}`
+                    message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockHash
+                    } \n tx hash ${tx.hash}\n receipt tx hash ${tx.receipt.transactionHash
+                    }\n receipt block hash ${tx.receipt.blockHash}`
                     console.log(message)
                     code = CODE_CONTINUE
                     break;
