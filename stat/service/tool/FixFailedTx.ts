@@ -12,9 +12,9 @@ async function listFailedTx(epoch, range) {
 async function patch(list:FullTransaction[]) {
     const tasks = []
     for (const tx of list) {
-        tasks.push(limitR(()=>FullBlockService.syncFailedTx0(tx.epoch, tx.blockPosition, tx.txPosition, tx.hash, cfx).then(info=>{
-            if (info) return FailedTx.create(info)
-        })))
+        // tasks.push(limitR(()=>FullBlockService.syncFailedTx0(tx.epoch, tx.blockPosition, tx.txPosition, tx.hash, cfx).then(info=>{
+        //     if (info) return FailedTx.create(info)
+        // })))
     }
     const ret = await Promise.all(tasks).catch(err=>{
         console.log(`\n error:`, err)
