@@ -259,7 +259,7 @@ export class FullBlockService {
             return map;
         })
     }
-    async syncFailedTx(epoch, txInfo) : Promise<IFailedTx|null> {
+    syncFailedTx(epoch, txInfo) : IFailedTx {
         const receipt = txInfo.receipt
         let msg = receipt["txExecErrorMsg"] || '';
         if (msg.length >= LEN_txExecErrorMsg) {
@@ -388,7 +388,7 @@ export class FullBlockService {
             block.executedTxnCount = pos
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
-        const failedBeans = await Promise.all(failedTxArr)
+        const failedBeans = failedTxArr
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         let fixDupError = false
         //
