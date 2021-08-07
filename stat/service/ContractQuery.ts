@@ -8,6 +8,7 @@ import {AddressTransactionIndex} from "../model/FullBlock";
 import {toBase32} from "./tool/AddressTool";
 import {decodeUtf8} from "./tool/StringTool";
 import {makeId} from "../model/HexMap";
+import {Op} from "sequelize";
 
 const lodash = require('lodash');
 
@@ -28,14 +29,14 @@ export class ContractQuery {
 
         let base32 = toBase32(address);
         // logger?.info({src: `ContractQuery.query.rdb`, base32: `${JSON.stringify(base32)}`});
-        const result = await this.list(fields, 0, 1, base32);
+        const result = await this.list(fields, 0, 1, [base32]);
         // logger?.info({src: `ContractQuery.query.rdb`, result: `${JSON.stringify(result)}`});
         const contract = result?.list?.shift();
         // logger?.info({src: `ContractQuery.query.rdb`, contract: `${JSON.stringify(contract)}`});
         return contract || {};
     }
 
-    public async list(fields, skip: number = 0, limit: number = 10, address) {
+    public async list(fields, skip: number = 0, limit: number = 10, addressArray) {
         const options: any = {raw: true};
         // fields
         let attributes: any = [
@@ -63,8 +64,9 @@ export class ContractQuery {
 
         // query
         const query: any = {};
-        if(address){
-            query.base32 = address;
+        if(addressArray){
+            addressArray = addressArray.map(item => toBase32(item));
+            query.base32 = { [Op.in]: addressArray } ;
         }
         options.where = query;
 

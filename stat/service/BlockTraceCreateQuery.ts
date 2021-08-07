@@ -1,8 +1,9 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {Hex40Map, Hex64Map, idHex40Map, idHex64Map} from "../model/HexMap";
+import {Hex40Map, Hex64Map, idHex40Map, idHex64Map, hex40IdMap} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {Op} from "sequelize";
+const lodash = require('lodash');
 
 export class BlockTraceCreateQuery{
     protected app;
@@ -36,10 +37,22 @@ export class BlockTraceCreateQuery{
         };
     }
 
-    public async list({from, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, skip = 0,
+    public async list({addressArray, from, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, skip = 0,
                           limit = 10, reverse = false}) {
         const{ logger } = this.app;
         // parse para
+        let addressIdArray;
+        if(addressArray){
+            if (!lodash.isArray(addressArray)) {
+                addressArray = [addressArray];
+            }
+            addressArray = addressArray.map(item => format.hexAddress(item).substr(2));
+            const map = await hex40IdMap(addressArray);
+            addressIdArray = [...map.values()];
+        }
+        if(addressArray !== undefined && addressIdArray === undefined){
+            return {total: 0, list: []};
+        }
         let fromId;
         if(from){
             const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(from).substr(2)}})
@@ -58,6 +71,9 @@ export class BlockTraceCreateQuery{
         ];
         // where
         const conditionArray = [];
+        if(addressArray){
+            conditionArray.push({ to: { [Op.in]: addressIdArray } });
+        }
         if(from){
             conditionArray.push({from: fromId});
         }

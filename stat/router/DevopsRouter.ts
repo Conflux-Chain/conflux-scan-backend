@@ -24,6 +24,7 @@ import {TxnQuery} from "../service/TxnQuery";
 import {AddressErc20Transfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
 import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
+// @ts-ignore
 import {format} from "js-conflux-sdk";
 
 async function checkLocal(ctx: Context, next) {
