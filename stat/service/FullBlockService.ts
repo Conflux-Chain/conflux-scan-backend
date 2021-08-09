@@ -94,7 +94,8 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again: ${ret.message}`)
+                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again epoch ${maxEpoch+1
+                    }: ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
@@ -157,7 +158,7 @@ export class FullBlockService {
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()})
     }
     private async loadEpochData(minEpochNumber: number) {
-        const [rewardList, hashes, latest_state] = await Promise.all([
+        const [rewardList, hashes, latest_state, receipts] = await Promise.all([
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -179,6 +180,11 @@ export class FullBlockService {
                 return []
             }),
             this.cfx.getEpochNumber('latest_state'),
+            // @ts-ignore
+            this.cfx.getEpochReceipts(minEpochNumber).catch(err=>{
+                console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
+                return []
+            }),
         ])
         if (latest_state < minEpochNumber) {
             return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
@@ -189,7 +195,47 @@ export class FullBlockService {
             }
         }
         let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
-        return {code: 0, message: 'ok', blockList, rewardList, latest_state}
+        // fill tx receipts to block-> tx
+        if (blockList.length !== receipts.length) {
+            const msg = `block list length ${blockList.length} mismatch receipts length ${receipts.length
+            } at epoch ${minEpochNumber}`;
+            console.log(msg)
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state}
+        }
+        let code = 0
+        let message = 'ok'
+        for (let idx = 0; idx < blockList.length; idx++){
+            let blk = blockList[idx];
+            if (blk.transactions.length !== receipts[idx].length) {
+                code = CODE_CONTINUE
+                message = `block's txs length ${blk.transactions.length} != ${receipts[idx].length
+                } at epoch ${minEpochNumber}, block index ${idx}`
+                console.log(message)
+                break;
+            }
+            for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
+                let tx = blk.transactions[txIdx];
+                tx.receipt = receipts[idx][txIdx]
+                if (tx.status === null || tx.status === undefined) {
+                    continue
+                }
+                // check consistency
+                if (tx.blockHash !== blk.hash
+                    || tx.receipt.transactionHash !== tx.hash
+                    || tx.receipt.blockHash !== blk.hash) {
+                    message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockHash
+                    } \n tx hash ${tx.hash}\n receipt tx hash ${tx.receipt.transactionHash
+                    }\n receipt block hash ${tx.receipt.blockHash}`
+                    console.log(message)
+                    code = CODE_CONTINUE
+                    break;
+                }
+            }
+            if (code !== 0) {
+                break;
+            }
+        }
+        return {code, message, blockList, rewardList, latest_state}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -221,25 +267,14 @@ export class FullBlockService {
             return map;
         })
     }
-    async syncFailedTx(epoch, blockPos, txPos, hash) : Promise<IFailedTx|null> {
-        return FullBlockService.syncFailedTx0(epoch, blockPos, txPos, hash, this.cfx)
-    }
-    public static async syncFailedTx0(epoch, blockPos, txPos, hash, cfx:Conflux) : Promise<IFailedTx|null> {
-        return cfx.getTransactionReceipt(hash).then(receipt=>{
-            if (receipt) {
-                let msg = receipt["txExecErrorMsg"] || '';
-                if (msg.length >= LEN_txExecErrorMsg) {
-                    msg = msg.substr(0, LEN_txExecErrorMsg-4)
-                }
-                if (receipt["epochNumber"] != epoch) {
-                    console.log(`\n epoch doesn't match, ${epoch} ${hash} , receipt ${receipt["epochNumber"]}\n`)
-                    return null
-                }
-                return {epoch, blockPosition: blockPos, txPosition: txPos,
-                gasFee: receipt["gasFee"], txExecErrorMsg: msg}
-            }
-            return null
-        })
+    syncFailedTx(epoch, txInfo) : IFailedTx {
+        const receipt = txInfo.receipt
+        let msg = receipt["txExecErrorMsg"] || '';
+        if (msg.length >= LEN_txExecErrorMsg) {
+            msg = msg.substr(0, LEN_txExecErrorMsg-4)
+        }
+        return {epoch, blockPosition: txInfo.blockPosition, txPosition: txInfo.txPosition,
+        gasFee: receipt["gasFee"], txExecErrorMsg: msg}
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
@@ -341,6 +376,7 @@ export class FullBlockService {
                     txInfo.dripValue = txInfo.value
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
                     txInfo.method = txInfo.data.substr(0, 10)
+                    txInfo.gas = txInfo.receipt.gasFee // save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId
@@ -354,13 +390,13 @@ export class FullBlockService {
                     sumGasPrice += txInfo.gasPrice
                 }
                 if (txInfo.status) { // has value and is not zero: failed.
-                    failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo.blockPosition, txInfo.txPosition, txInfo.hash))
+                    failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo))
                 }
             }
             block.executedTxnCount = pos
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
-        const failedBeans = await Promise.all(failedTxArr)
+        const failedBeans = failedTxArr
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         let fixDupError = false
         //
