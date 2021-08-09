@@ -83,7 +83,7 @@ async function updateCustodianTokenFlag() {
         let trueCount = 0
         let testOne = ''
         for (const token of list) {
-            const is = await tool.contract.totalSupply()
+            const is = await tool.contract.isToken()
                 .call({to: token.base32}).catch(err => {
                     console.log(`call proxy contract fail, token ${token.base32}`, err)
                     return false

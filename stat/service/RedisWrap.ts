@@ -122,7 +122,8 @@ export class RedisWrap{
     }
 
     static async hGetAll(hash: string) {
-        return redisWrap.sendCommand('HGETALL', [hash]).then(arr=>{
+        return redisWrap.sendCommand('HGETALL', hash).then(arr=>{
+            console.log(`get all :`, arr)
             const map = {}
             for (let i = 0; i < arr.length; i += 2) {
                 map[arr[i]] = arr[i+1]
