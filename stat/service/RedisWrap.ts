@@ -125,7 +125,7 @@ export class RedisWrap{
         return redisWrap.sendCommand('hset', [hash, field, value.toString()])
     }
     static async hGet(hash: string, field: string, defaultV:string) : Promise<string>{
-        return redisWrap.sendCommand('hget', [field]).then(res=>{
+        return redisWrap.sendCommand('hget', [hash, field]).then(res=>{
             if (res === undefined || res === null) {
                 res = defaultV
             }
