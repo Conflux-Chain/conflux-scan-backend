@@ -164,12 +164,13 @@ export class TokenQuery {
         if(transferType){
             query.type = transferType;
         }
-        if(addressArray?.length){
+        if(addressArray){
             if (!lodash.isArray(addressArray)) {
                 addressArray = [addressArray];
             }
             addressArray = addressArray.map(item => toBase32(item));
             query.base32 = {[Op.in]: addressArray};
+            options.limit = addressArray.length;
         }
         options.where = query;
 
