@@ -122,7 +122,7 @@ export class RedisWrap{
     }
 
     static async hSet(hash: string, field: string, value:any) {
-        return redisWrap.sendCommand('hset', [field, value.toString()])
+        return redisWrap.sendCommand('hset', [hash, field, value.toString()])
     }
     static async hGet(hash: string, field: string, defaultV:string) : Promise<string>{
         return redisWrap.sendCommand('hget', [field]).then(res=>{
