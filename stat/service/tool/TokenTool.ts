@@ -73,12 +73,15 @@ export class TokenTool {
         return undefined;
     }
 }
-
+export async function isCustodianToken(base32:string) {
+    return RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, base32, '').then(Boolean)
+}
 async function updateCustodianTokenFlag() {
     const tool = await initTool()
     async function repeat() {
         const list = await Token.findAll({where: {auditResult: true,}});
         let trueCount = 0
+        let testOne = ''
         for (const token of list) {
             const is = await tool.contract.totalSupply()
                 .call({to: token.base32}).catch(err => {
@@ -86,10 +89,13 @@ async function updateCustodianTokenFlag() {
                     return false
                 })
             trueCount += is ? 1 : 0
-            await RedisWrap.hSet(HASH_CUSTODIAN_TOKEN, token.base32, is ? '1' : '')
+            if (is) {
+                testOne = token.base32
+            }
+            await RedisWrap.hSet(HASH_CUSTODIAN_TOKEN, token.base32, is ? '1' : '');
         }
         setTimeout(repeat, 10_000)
-        console.log(`set to true count ${trueCount}`)
+        console.log(`set to true count ${trueCount}, test get ${testOne}, ${await isCustodianToken(testOne)}`)
     }
     repeat().then()
 }
