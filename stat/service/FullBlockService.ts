@@ -181,7 +181,10 @@ export class FullBlockService {
             }),
             this.cfx.getEpochNumber('latest_state'),
             // @ts-ignore
-            this.cfx.getEpochReceipts(minEpochNumber),
+            this.cfx.getEpochReceipts(minEpochNumber).catch(err=>{
+                console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
+                return []
+            }),
         ])
         if (latest_state < minEpochNumber) {
             return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
