@@ -35,7 +35,20 @@ async function patch(list:FullTransaction[]) {
     }))
     for (const t of list) {
         const receipts = receiptsAllEpochMap.get(t.epoch)
-        const receipt = receipts[t.blockPosition][t.txPosition]
+        if (!receipts) {
+            console.log(`\n epoch receipts miss`, t)
+            continue
+        }
+        const blockRcps = receipts[t.blockPosition];
+        if (!blockRcps) {
+            console.log(`\n block receipts miss`, t)
+            continue
+        }
+        const receipt = blockRcps[t.txPosition];
+        if (!receipt) {
+            console.log(`\n tx receipts miss`, t)
+            continue
+        }
         await Promise.all([
             FullTransaction.update({gas: receipt.gasFee},{
                 where: {epoch: t.epoch, blockPosition: t.blockPosition, txPosition: t.txPosition},
@@ -54,7 +67,7 @@ async function patch(list:FullTransaction[]) {
                 where: {addressId: t.toId, epoch: t.epoch, blockPosition: t.blockPosition, txPosition: t.txPosition},
                 limit: 1,
             })
-        ])
+        ]);
     }
     return list.length
     // for (const tx of list) {
