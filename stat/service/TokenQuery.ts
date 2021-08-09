@@ -170,6 +170,7 @@ export class TokenQuery {
             }
             addressArray = addressArray.map(item => toBase32(item));
             query.base32 = {[Op.in]: addressArray};
+            options.skip = 0;
             options.limit = addressArray.length;
         }
         options.where = query;
