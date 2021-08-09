@@ -99,6 +99,7 @@ async function initTool() {
     const cfx = new Conflux(cfg.conflux)
     console.log(`conflux: `, cfg.conflux)
     patchHttpProvider(cfx, cfg.conflux)
+    await RedisWrap.connect(cfg.redis)
     const tool = new TokenTool(cfx)
     return tool;
 }
