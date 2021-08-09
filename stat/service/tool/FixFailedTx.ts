@@ -10,7 +10,7 @@ const pLimit = require('p-limit');
 const limitR = pLimit(100);
 async function listFailedTx(epoch, count) {
     return limitR(()=>FullTransaction.findAll({
-        where:{epoch:{[Op.gte]:epoch}, status:{[Op.ne]:0}},
+        where:{epoch:{[Op.gte]:epoch}},
         limit: count, order:[['epoch', 'asc'],['blockPosition','asc'],['txPosition', 'asc']]
     }))
 }
@@ -26,7 +26,6 @@ function remove_partial(arr:FullTransaction[]) : FullTransaction[] {
     return ret;
 }
 async function patch(list:FullTransaction[]) {
-    const tasks = []
     const set = new Set(list.map(t=>t.epoch))
     const epochs = [...set]
     const receiptsAllEpochMap = new Map()
@@ -41,6 +40,11 @@ async function patch(list:FullTransaction[]) {
             FullTransaction.update({gas: receipt.gasFee},{
                 where: {epoch: t.epoch, blockPosition: t.blockPosition, txPosition: t.txPosition},
                 limit: 1,
+                logging: t.epoch === 477 ? console.log : false
+            }).then(([cnt])=>{
+                if (t.epoch === 477) {
+                    console.log(`update affected ${cnt}\n`)
+                }
             }),
             AddressTransactionIndex.update({gas: receipt.gasFee}, {
                 where: {addressId: t.fromId, epoch: t.epoch, blockPosition: t.blockPosition, txPosition: t.txPosition},
@@ -72,7 +76,7 @@ async function iterAllTx(from) {
     const stop = await FullTransaction.max('epoch')
     const batch = 3000
     while(from <= stop) {
-        const list_all = await listFailedTx(from, batch-1)
+        const list_all = await listFailedTx(from, batch)
         const list = remove_partial(list_all)
         const cnt = await patch(list)
         if (cnt === 0) {
