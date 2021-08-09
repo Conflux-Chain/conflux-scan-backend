@@ -96,6 +96,7 @@ async function updateCustodianTokenFlag() {
         }
         setTimeout(repeat, 10_000)
         console.log(`set to true count ${trueCount}, test get ${testOne}, ${await isCustodianToken(testOne)}`)
+        console.log(`get all ${await RedisWrap.hGetAll(HASH_CUSTODIAN_TOKEN)}`)
     }
     repeat().then()
 }
