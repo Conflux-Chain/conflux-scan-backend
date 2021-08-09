@@ -76,6 +76,8 @@ export class TokenTool {
 export async function isCustodianToken(base32:string) {
     return RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, base32, '').then(Boolean)
 }
+// 0x890e3feac4a2c33d7594bc5be62e7970ef5481e0
+export const CUSTODIAN_PROXY_CONTRACT = 'cfx:aceu6t9m2wvpgtnzww8f13vstf2s8zeb6a4eja1756'
 async function updateCustodianTokenFlag() {
     const tool = await initTool()
     async function repeat() {
@@ -83,8 +85,8 @@ async function updateCustodianTokenFlag() {
         let trueCount = 0
         let testOne = ''
         for (const token of list) {
-            const is = await tool.contract.isToken()
-                .call({to: token.base32}).catch(err => {
+            const is = await tool.contract.isToken(token.base32)
+                .call({to: CUSTODIAN_PROXY_CONTRACT}).catch(err => {
                     console.log(`call proxy contract fail, token ${token.base32}`, err)
                     return false
                 })
