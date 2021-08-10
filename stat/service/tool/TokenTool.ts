@@ -3,7 +3,10 @@ import {Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {patchHttpProvider} from "../common/utils";
 import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
+import {decodeUtf8} from "./StringTool";
 const abi = require('./abi');
+const fs = require('fs');
+const path = require('path');
 const lodash = require('lodash');
 
 const NodeCache = require( "node-cache" );
@@ -103,6 +106,44 @@ async function updateCustodianTokenFlag() {
     repeat().then()
 }
 
+
+function base64ToPNG(token:Token, dir: string) {
+    if (!token.icon) {
+        console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
+        return
+    }
+    let raw_data = decodeUtf8(token.icon);
+    // console.log(`data [${raw_data.substr(0,64)}]`)
+    const data = raw_data.replace(/^data:image.*base64,/, '');
+    let imageType = '.png'
+    if (raw_data.includes('image/svg')) {
+        imageType = '.svg'
+    } else if (raw_data.includes('image/vnd.microsoft.icon')) {
+        imageType = '.icon'
+    } else if (raw_data.includes('image/png')) {
+    } else if (raw_data.includes('image/jpg')) {
+        imageType = '.jpg'
+    } else if (raw_data.includes('image/jpeg')) {
+        imageType = '.jpeg'
+    } else {
+        console.log(`unknown type ${raw_data.substr(0, 64)}`)
+        return
+    }
+    fs.writeFileSync(path.resolve(dir, `${token.base32}${imageType}`), data, 'base64');
+}
+
+async function buildImages() {
+    await init()
+    const public_dir = __dirname + '/../../../../public/stat/';
+    const dir = path.resolve(public_dir);
+    console.log(`will save at ${public_dir}\n${dir}`)
+    const list = await Token.findAll({where: {auditResult: true,}})
+    for (let i = 0; i < list.length; i++){
+        let token = list[i];
+        base64ToPNG(token, dir)
+    }
+    console.log(`done.`)
+}
 async function initTool() {
     const cfg = await init()
     const cfx = new Conflux(cfg.conflux)
@@ -130,7 +171,7 @@ async function updateTotalSupply() {
                     }
                     return undefined
                 })
-            if (sup === undefined) {
+            if (sup === undefined || sup === null) {
                 continue
             }
             if (sup === BigInt(token.totalSupply)) {
@@ -150,6 +191,10 @@ if (module === require.main) {
     const args = process.argv.slice(2)
     if (args[0] === 'custodian_token') {
         updateCustodianTokenFlag().then()
+    } else if (args[0] === 'build_images') {
+        buildImages().then(()=>{
+            Token.sequelize.close().then()
+        })
     } else {
         updateTotalSupply().then()
     }
