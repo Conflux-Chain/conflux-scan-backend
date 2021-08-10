@@ -133,6 +133,8 @@ async function base64ToPNG(token:Token, dir: string) {
     fs.writeFileSync(path.resolve(dir, filename), data, 'base64');
     await Token.update({iconUrl: `${filename}`}, {
         where: {id: token.id}
+    }).then(([cnt])=>{
+        console.log(`set icon url for ${token.symbol}, affect ${cnt}`)
     })
 }
 
