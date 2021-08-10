@@ -51,7 +51,7 @@ export class TokenQuery {
             ['holder', 'holderCount'],
             ['transfer', 'transferCount'],
             ['type', 'transferType'],
-            'icon',
+            ['iconUrl', 'icon'],
             'price',
             'totalPrice',
             'quoteUrl',
@@ -93,9 +93,6 @@ export class TokenQuery {
             page.rows.forEach( row => {
                 row['price'] = row[`price${currency}`];
                 row['totalPrice'] = row[`totalPrice${currency}`];
-                if(row['icon']) {
-                    row['icon'] = decodeUtf8(row['icon']);
-                }
                 list.push(row);
                 addressSet.add(row['address']);
             });
@@ -129,6 +126,7 @@ export class TokenQuery {
             'decimals',
             'granularity',
             'totalSupply','fetchBalance',
+            ['iconUrl','icon'],
             ['holder', 'holderCount'],
             ['transfer', 'transferCount'],
             ['type', 'transferType'],
@@ -141,9 +139,6 @@ export class TokenQuery {
                 fields = [fields];
             }
             const set = new Set(fields);
-            if (set.has('icon')) {
-                attributes.push('icon');
-            }
             if (set.has('price')) {
                 attributes.push('priceCNY');
                 attributes.push('priceUSD');
@@ -206,9 +201,6 @@ export class TokenQuery {
             page.rows.forEach( row => {
                 row['price'] = row[`price${currency}`];
                 row['totalPrice'] = row[`totalPrice${currency}`];
-                if(row['icon']) {
-                    row['icon'] = decodeUtf8(row['icon']);
-                }
                 row['transferType'] = (row['transferType'] || '').toUpperCase();
                 row['isRegistered'] = true;
                 list.push(row);
