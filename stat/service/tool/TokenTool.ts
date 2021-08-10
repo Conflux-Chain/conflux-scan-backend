@@ -107,7 +107,7 @@ async function updateCustodianTokenFlag() {
 }
 
 
-function base64ToPNG(token:Token, dir: string) {
+async function base64ToPNG(token:Token, dir: string) {
     if (!token.icon) {
         console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
         return
@@ -129,7 +129,11 @@ function base64ToPNG(token:Token, dir: string) {
         console.log(`unknown type ${raw_data.substr(0, 64)}`)
         return
     }
-    fs.writeFileSync(path.resolve(dir, `${token.base32}${imageType}`), data, 'base64');
+    const filename = `${token.base32}${imageType}`;
+    fs.writeFileSync(path.resolve(dir, filename), data, 'base64');
+    await Token.update({iconUrl: `${filename}`}, {
+        where: {id: token.id}
+    })
 }
 
 async function buildImages() {
@@ -140,7 +144,7 @@ async function buildImages() {
     const list = await Token.findAll({where: {auditResult: true,}})
     for (let i = 0; i < list.length; i++){
         let token = list[i];
-        base64ToPNG(token, dir)
+        await base64ToPNG(token, dir)
     }
     console.log(`done.`)
 }
