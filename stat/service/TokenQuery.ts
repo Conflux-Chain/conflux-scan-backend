@@ -7,6 +7,7 @@ import {decodeUtf8} from "./tool/StringTool";
 const {Hex40Map} = require("../model/HexMap");
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
+import {isCustodianToken} from "./tool/TokenTool";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -29,6 +30,7 @@ export class TokenQuery {
             const [increaseRatio] = await DailyToken.calcRecentIncrease(token.hex40id).catch((err)=>{ return [0] });
             token.holderIncreasePercent = increaseRatio;
         }
+        token.isCustodianToken = isCustodianToken(token.address)
 
         return token;
     }
