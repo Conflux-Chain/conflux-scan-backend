@@ -30,7 +30,7 @@ export class TokenQuery {
             const [increaseRatio] = await DailyToken.calcRecentIncrease(token.hex40id).catch((err)=>{ return [0] });
             token.holderIncreasePercent = increaseRatio;
         }
-        token.isCustodianToken = isCustodianToken(token.address)
+        token.isCustodianToken = await isCustodianToken(token.address)
 
         return token;
     }
