@@ -93,7 +93,7 @@ export class TokenQuery {
             page.rows.forEach( row => {
                 row['price'] = row[`price${currency}`];
                 row['totalPrice'] = row[`totalPrice${currency}`];
-                row['icon'] = row['iconUrl'] ? '/stat/' + row['iconUrl'] : undefined
+                row['icon'] = row['icon'] ? '/stat/' + row['icon'] : undefined
                 list.push(row);
                 addressSet.add(row['address']);
             });
@@ -204,7 +204,7 @@ export class TokenQuery {
                 row['totalPrice'] = row[`totalPrice${currency}`];
                 row['transferType'] = (row['transferType'] || '').toUpperCase();
                 row['isRegistered'] = true;
-                row['icon'] = row['iconUrl'] ? '/stat/' + row['iconUrl'] : undefined
+                row['icon'] = row['icon'] ? '/stat/' + row['icon'] : undefined
                 list.push(row);
             });
         }
