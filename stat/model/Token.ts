@@ -12,6 +12,7 @@ export interface IToken{
     auditResult?:boolean
     type?:string
     icon?:string
+    iconUrl?:string
     transfer?:number
     decimals?:number
     granularity?:number
@@ -49,6 +50,7 @@ export class Token extends Model<IToken> implements IToken{
     auditResult?:boolean
     type?:string
     icon?:string
+    iconUrl?:string
     transfer?:number
     decimals?:number
     granularity?:number
@@ -85,6 +87,7 @@ export class Token extends Model<IToken> implements IToken{
             auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
+            iconUrl: {type: DataTypes.STRING(128), allowNull: true, },
             transfer: {type: DataTypes.BIGINT, allowNull: true, },
             decimals: {type: DataTypes.BIGINT, allowNull: true, },
             granularity: {type: DataTypes.BIGINT, allowNull: true, },

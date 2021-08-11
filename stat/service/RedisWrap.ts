@@ -10,6 +10,9 @@ export const ERC721_TRANSFER_Q = 'ERC721_TRANSFER_Q'
 export const ERC777_TRANSFER_Q = 'ERC777_TRANSFER_Q'
 export const ERC1155_TRANSFER_Q = 'ERC1155_TRANSFER_Q'
 export const CFX_TRANSFER_Q = 'CFX_TRANSFER_Q'
+
+export const HASH_CUSTODIAN_TOKEN = 'CUSTODIAN_TOKEN'
+
 export class RedisWrap{
     getAsync:Function
     setAsync:Function
@@ -115,6 +118,21 @@ export class RedisWrap{
         }).catch(err=>{
             // stop listen
             console.log(`listenStreamMessage fail, queue [${q}]`, err)
+        })
+    }
+
+    static async hGetAll(hash: string) {
+        return redisWrap.sendCommand('HGETALL', [hash])
+    }
+    static async hSet(hash: string, field: string, value:any) {
+        return redisWrap.sendCommand('hset', [hash, field, value.toString()])
+    }
+    static async hGet(hash: string, field: string, defaultV:string) : Promise<string>{
+        return redisWrap.sendCommand('hget', [hash, field]).then(res=>{
+            if (res === undefined || res === null) {
+                res = defaultV
+            }
+            return res
         })
     }
     static async xDel(data:RedisStreamMessage[]) {
