@@ -389,11 +389,12 @@ export class DummyNode {
             }
             if (this.verbose) {
                 // sync check
-                return this.checkMiner(preBillMapScope, bills, epoch)
+                return this.checkMiner(preBillMapScope, bills, epoch).then(()=>bills)
             } else {
                 // async check
                 this.checkMiner(preBillMapScope, bills, epoch)
             }
+            return bills
         })
     }
     ms = Date.now()
