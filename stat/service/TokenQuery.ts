@@ -8,6 +8,7 @@ const {Hex40Map} = require("../model/HexMap");
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {isCustodianToken} from "./tool/TokenTool";
+import {ContractVerify} from "../model/ContractVerify";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -198,7 +199,12 @@ export class TokenQuery {
         }
 
         //query
-        const page = await Token.findAndCountAll(options)
+        const [page, verified] = await Promise.all([
+            Token.findAndCountAll(options),
+            ContractVerify.findAll({attributes:['base32'],
+                where: {verifyResult: true}
+            }).then(arr=>arr.map(t=>t.base32)).then(arr=>new Set(arr))
+        ])
         let list = [];
         if(page && page.rows){
             page.rows.forEach( row => {
@@ -207,6 +213,7 @@ export class TokenQuery {
                 row['transferType'] = (row['transferType'] || '').toUpperCase();
                 row['isRegistered'] = true;
                 row['icon'] = row['icon'] ? '/stat/' + row['icon'] : undefined
+                row['verified'] = verified.has(row['address'])
                 list.push(row);
             });
         }

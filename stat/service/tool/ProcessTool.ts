@@ -13,7 +13,7 @@ const lodash = require('lodash');
 //   running = false;
 // });
 process.on('unhandledRejection', (e) => {
-  console.error(`${new Date().toISOString()} the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
+  console.error(`${new Date().toISOString()} ProcessTool.ts, the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
   // running = false;
 });
 
