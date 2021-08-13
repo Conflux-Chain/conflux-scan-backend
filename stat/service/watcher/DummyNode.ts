@@ -535,7 +535,7 @@ export interface ICfxBill {
     type:string, fromId:number, toId:number, diffDrip:number, balance:number,
     seq:number;
 }
-const T_CFX_BILL = 'cfx_bill'
+const T_CFX_BILL = 'cfx_bill2'
 export class CfxBill extends Model<ICfxBill> implements ICfxBill{
     ownerId:number; epoch:number; blockIndex:number; txIndex:number; traceIndex:number;
     type:string; fromId:number; toId:number; diffDrip:number; balance:number;
@@ -569,7 +569,7 @@ export class CfxBill extends Model<ICfxBill> implements ICfxBill{
     }
 }
 const T_CFX_BILL_SQL = `
-create table if not exists cfx_bill
+create table if not exists ${T_CFX_BILL}
 (
 ownerId bigint unsigned not null,
 epoch bigint unsigned not null,
