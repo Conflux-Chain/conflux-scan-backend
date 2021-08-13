@@ -154,23 +154,41 @@ export class ContractQuery {
         return result;
     }
 
-    public async listVerify({skip = 0, limit = 10, reverse = true, verifyResult = true}) {
-        const{ logger, cfxSDK } = this.app;
-        const page = await ContractVerify.findAndCountAll({
-            attributes: [
-                'name',
-                'hex40id',
-                ['base32', 'address'],
-                'compiler',
-                'version',
-                ['optimizeFlag', 'optimization'],
-                ['optimizeRuns', 'runs'],
-                ['updatedAt', 'timestamp'],
-            ],
-            where: {verifyResult},
-            order: [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]],
-            offset: skip, limit, raw: true});
-        //logger?.info({ src: `list stat verify request`, page: `${JSON.stringify(page)}` });
+    public async listVerify({addressArray, skip = 0, limit = 10, reverse = true, verifyResult = true}) {
+        const{ cfxSDK } = this.app;
+        const options: any = { offset: skip, limit, raw: true};
+        // fields
+        let attributes: any = [
+            'name',
+            'hex40id',
+            ['base32', 'address'],
+            'compiler',
+            'version',
+            ['optimizeFlag', 'optimization'],
+            ['optimizeRuns', 'runs'],
+            ['updatedAt', 'timestamp'],
+        ];
+        options.attributes = attributes;
+
+        // where
+        const query: any = {verifyResult};
+        if(addressArray){
+            if (!lodash.isArray(addressArray)) {
+                addressArray = [addressArray];
+            }
+            addressArray = addressArray.map(item => toBase32(item));
+            query.base32 = {[Op.in]: addressArray};
+            options.skip = 0;
+            options.limit = addressArray.length;
+        }
+        options.where = query;
+
+        // order by
+        const order = [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]];
+        options.order = order;
+
+        //query
+        const page = await ContractVerify.findAndCountAll(options);
         const list = page?.rows || [];
         for(const row of list) {
             row.optimization = row.optimization === 1;
@@ -178,8 +196,7 @@ export class ContractQuery {
             row.transactionCount = await AddressTransactionIndex.count({where: {addressId: row.hex40id}});
             row.balance = (await cfxSDK.getBalance(row.address)).toString();
         }
-        //logger?.info({ src: `list stat verify request`, list: `${JSON.stringify(list)}` });
 
-        return  {total: list.length, list};;
+        return  {total: page?.count || 0, list};
     }
 }

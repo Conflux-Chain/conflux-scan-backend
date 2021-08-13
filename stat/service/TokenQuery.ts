@@ -162,12 +162,14 @@ export class TokenQuery {
         if(transferType){
             query.type = transferType;
         }
-        if(addressArray?.length){
+        if(addressArray){
             if (!lodash.isArray(addressArray)) {
                 addressArray = [addressArray];
             }
             addressArray = addressArray.map(item => toBase32(item));
             query.base32 = {[Op.in]: addressArray};
+            options.skip = 0;
+            options.limit = addressArray.length;
         }
         options.where = query;
 
@@ -210,6 +212,7 @@ export class TokenQuery {
         }
 
         // token unregistered
+        let total = page?.count || 0;
         if(addressArray){
             const registered = new Set(list.map(item => item.address));
             const unregistered = addressArray.filter(item => !registered.has(item));
@@ -217,9 +220,10 @@ export class TokenQuery {
             if(unregisteredToken.length){
                 list = [...list, ...unregisteredToken];
             }
+            total = list.length;
         }
 
-        return { total: page?.count || 0, list };
+        return { total, list };
     }
 
     public async listAddress(where: object = {} ) {
