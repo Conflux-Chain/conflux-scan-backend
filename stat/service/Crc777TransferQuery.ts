@@ -35,8 +35,7 @@ export class Crc777TransferQuery extends TransferQueryBase{
         }
         return await Erc777Transfer.findAndCountAll(queryOptions);
     }
-    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
-                              contractInfoMap: Map<number, object>, tokenInfoMap: Map<number, object>): Promise<any>{
+    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC777;
         return row;

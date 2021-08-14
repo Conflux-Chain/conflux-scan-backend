@@ -70,8 +70,7 @@ export abstract class TransferQueryBase {
     public abstract getTransferType(): string;
     public abstract buildQueryFields(): any;
     public abstract doQuery(options: any, queryOptions: any): Promise<any>;
-    public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
-                                       contractInfoMap: object, tokenInfoMap: object): Promise<any>;
+    public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>;
 
     public async listTransfer(options) {
         const{ logger } = this.app;
@@ -128,40 +127,15 @@ export abstract class TransferQueryBase {
             });
             const hex40Map = await idHex40Map(Array.from(hex40IdSet));
             const hex64Map = await idHex64Map(Array.from(hex64IdSet));
-            const contractHexIdArray = Array.from(hex40IdSet)
-                .filter(id => hex40Map.get(id)?.startsWith('8'));
-
-            // contract and token
-            const contractInfoMap = {};
-            const tokenInfoMap = {};
-            if(contractHexIdArray.length > 0){
-                const contractInfoArray = await ContractInfo.findAll({
-                    where: {hexId: { [Op.in]: contractHexIdArray}}, order: [['epoch', 'ASC']]
-                });
-                contractInfoArray?.forEach(contractInfo=>{
-                    contractInfoMap[contractInfo.hexId] = { address: contractInfo.base32, name: contractInfo.name };
-                })
-                const tokenInfoArray = await Token.findAll({
-                    attributes: ['base32', 'name', 'symbol'],
-                    where: {hex40id: { [Op.in]: contractHexIdArray}}
-                });
-                tokenInfoArray?.forEach(tokenInfo=>{
-                    tokenInfoMap[tokenInfo.hex40id] = { address: tokenInfo.base32, name: tokenInfo.name, symbol: tokenInfo.symbol };
-                })
-            }
 
             // fields mapping
             list.forEach(row=>{
-                row['fromContractInfo'] = contractInfoMap[row['from']];
-                row['toContractInfo'] = contractInfoMap[row['to']];
-                row['fromTokenInfo'] = tokenInfoMap[row['from']];
-                row['toTokenInfo'] = tokenInfoMap[row['to']];
                 row['transactionHash'] = `0x${hex64Map.get(row['transactionHash'])}`;
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
                 row['to'] = format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId);
                 row['timestamp'] = row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];
-                this.processQueryResult(row, hex40Map, hex64Map, contractInfoMap, tokenInfoMap);
+                this.processQueryResult(row, hex40Map, hex64Map);
             })
         }
         const result = {total: page?.count || 0, list};

@@ -278,14 +278,12 @@ export class FullBlockQuery {
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
-            const contractHexIdSet = new Set<number>();
             const failedQuery:Promise<FailedTx>[] = []
             rawList.forEach( row => {
                 txHashArray.push(row['hash']);
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['contractCreated']);
-                contractHexIdSet.add(row['to']);
                 list.push(row);
                 if (row['status']) {
                     failedQuery.push(FailedTx.findOne({where:{
@@ -300,6 +298,8 @@ export class FullBlockQuery {
                     }))
                 }
             });
+
+            // prepare hex map and fill exec-error-msg
             const [hex40Array,failedArr] = await Promise.all([
                 Hex40Map.findAll({
                 where: {id: { [Op.in]: Array.from(hex40IdSet)}},
@@ -308,18 +308,8 @@ export class FullBlockQuery {
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
-            // contract
-            const contractInfoMap = new Map();
-            const contractHexIdArray = Array.from(contractHexIdSet)
-                .filter(id => hex40Map.get(id)?.startsWith('8'));
-            if(contractHexIdArray.length > 0){
-                const contractInfoArray = await ContractInfo.findAll({
-                    where: {hexId: { [Op.in]: contractHexIdArray}}, order: [['epoch', 'ASC']]
-                });
-                contractInfoArray.forEach(contractInfo=>{
-                    contractInfoMap.set(contractInfo.hexId , { address: contractInfo.base32, name: contractInfo.name });
-                })
-            }
+
+            // prepare method map
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
                 // fetch method, consider save it.
@@ -327,9 +317,9 @@ export class FullBlockQuery {
                     attributes:['hash','method']})
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
+
             // fields mapping
             list.forEach(row=>{
-                row['contractInfo'] = contractInfoMap.get(row['to']);
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, true);
                 row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, true) : null;
                 if(hex40Map.get(row['contractCreated'])){
@@ -347,13 +337,13 @@ export class FullBlockQuery {
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
+
+            // method field mapping
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
             })
         }
-        const result = {total: count ? count : 0, list, extraInfo};
-        // logger?.info({src: `fullTransactionQuery------------`, 'result': JSON.stringify(result)});
-        return result;
+        return {total: count ? count : 0, list, extraInfo};
     }
 
     private async buildPagedBlockOptions(skip) : Promise<{blockPage:BlockPage, pagedCondition}>{

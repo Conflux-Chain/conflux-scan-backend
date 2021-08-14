@@ -4,7 +4,6 @@ import {pickNumber} from "../model/Utils";
 import {ADDR_INFO_STATE_OK, buildHexSet, Hex64Map, T_ADDRESS, T_ADDRESS_INFO} from "../model/HexMap";
 // @ts-ignore
 import {format} from 'js-conflux-sdk'
-import {ContractService} from "./contract/ContractService";
 import {StatApp} from "../StatApp";
 import {CfxBalance} from "../model/Balance";
 import {Op} from "sequelize"
@@ -146,38 +145,22 @@ export class RankService{
     }
     async fillInfo(list:any[], networkId) {
         const {
-            app: {tokenTool},
+            app: { contractQuery},
         } = this;
-        const addressSet = new Set<string>();
+
         list.forEach(r=>{
             r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null
             r.hex = `0x${r.hex}`
             r.base32address = format.address(r.hex, networkId)
-            if(!r.name){
-                r.name = ContractService.instance.getName(r.base32address)
-            }
-            if(!r.name &&  format.hexAddress(r.base32address).startsWith('0x8')){
-                addressSet.add(r.base32address);
-            }
         })
 
-        // add token info if contract name no exists
-        const tokenInfoMap = new Map();
-        if(addressSet.size > 0){
-            const page = await this.app.tokenQuery.list([...addressSet], ['icon']);
-            page?.list?.forEach(token => {
-                tokenInfoMap.set(token.address, {name: token.name, symbol: token.symbol, icon: token.icon});
-            });
-        }
-        await Promise.all( list.map( async r=>{
-            if(!r.name){
-                r.tokenInfo = tokenInfoMap.get(r.base32address) || {};
-            }
-            if(!r.name && !r.tokenInfo.name){
-                const tokenInfo = await tokenTool.getToken(r.base32address);
-                r.tokenInfo = {name: tokenInfo.name, symbol: tokenInfo.symbol} || {};
-            }
-        }))
+        const addressArray = list.map(item => item.base32address);
+        const contractBasic = await contractQuery.listBasic({addressArray});
+        list.forEach(item => {
+            item.tokenInfo = contractBasic.map[item.base32address]?.token || {};
+            item.contractInfo = contractBasic.map[item.base32address]?.contract || {};
+            item.name = item.contractInfo.name || item.tokenInfo.name;
+        });
 
         return {code: 0, total: list.length, list, msg:'v2'};
     }
