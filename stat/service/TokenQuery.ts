@@ -8,6 +8,7 @@ const {Hex40Map} = require("../model/HexMap");
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {isCustodianToken} from "./tool/TokenTool";
+import {ContractVerify} from "../model/ContractVerify";
 const {Erc20Transfer} = require("../model/Erc20Transfer");
 const {Erc721Transfer} = require("../model/Erc721Transfer");
 const {Erc777Transfer} = require("../model/Erc777Transfer");
@@ -162,12 +163,14 @@ export class TokenQuery {
         if(transferType){
             query.type = transferType;
         }
-        if(addressArray?.length){
+        if(addressArray){
             if (!lodash.isArray(addressArray)) {
                 addressArray = [addressArray];
             }
             addressArray = addressArray.map(item => toBase32(item));
             query.base32 = {[Op.in]: addressArray};
+            options.skip = 0;
+            options.limit = addressArray.length;
         }
         options.where = query;
 
@@ -196,7 +199,12 @@ export class TokenQuery {
         }
 
         //query
-        const page = await Token.findAndCountAll(options)
+        const [page, verified] = await Promise.all([
+            Token.findAndCountAll(options),
+            ContractVerify.findAll({attributes:['base32'],
+                where: {verifyResult: true}
+            }).then(arr=>arr.map(t=>t.base32)).then(arr=>new Set(arr))
+        ])
         let list = [];
         if(page && page.rows){
             page.rows.forEach( row => {
@@ -205,11 +213,13 @@ export class TokenQuery {
                 row['transferType'] = (row['transferType'] || '').toUpperCase();
                 row['isRegistered'] = true;
                 row['icon'] = row['icon'] ? '/stat/' + row['icon'] : undefined
+                row['verified'] = verified.has(row['address'])
                 list.push(row);
             });
         }
 
         // token unregistered
+        let total = page?.count || 0;
         if(addressArray){
             const registered = new Set(list.map(item => item.address));
             const unregistered = addressArray.filter(item => !registered.has(item));
@@ -217,9 +227,10 @@ export class TokenQuery {
             if(unregisteredToken.length){
                 list = [...list, ...unregisteredToken];
             }
+            total = list.length;
         }
 
-        return { total: page?.count || 0, list };
+        return { total, list };
     }
 
     public async listAddress(where: object = {} ) {
