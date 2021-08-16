@@ -33,22 +33,17 @@ async function processOne(epoch, dmNode:DummyNode) {
         idSet.add(t.fromId);
         idSet.add(t.toId);
     })
+    let logMsg = []
     let bills = await CfxBill.findAll({
         where: {ownerId:{[Op.in]:[...idSet]}, epoch, },
         order: [['epoch','asc'],['seq', 'asc']],
-        logging: console.log,
+        logging: (...args) => {logMsg = args}
     })
-    if (bills.length === 0) {
-        bills = await dmNode.processOne(epoch, false)
-        console.log(` fix epoch cfx bill ${epoch}, length ${bills.length}`)
-        if (bills.length === 0) {
-            console.log(` fix cfx bill fail with zero bill.`)
-            process.exit(9)
-            return
-        }
-    }
     //
-    const positiveBills = bills.filter(b=>b.diffDrip > 0 && (b.type === 'call' || b.type === 'transfer'))
+    const positiveBills = bills.filter(b=>b.diffDrip > 0 && (b.type === 'call'
+        || b.type === 'transfer'
+        || b.type === 'in_trans'
+    ))
     if (trans.length === positiveBills.length) {
         return
     }
@@ -85,6 +80,7 @@ async function processOne(epoch, dmNode:DummyNode) {
     } while (tIdx < trans.length)
     // should reach last positiveBills and last trans
     if (bIdx !== positiveBills.length || tIdx !== trans.length || keep !== positiveBills.length) {
+        console.log(`cfx bill query ${logMsg.join(';')}`)
         console.log(`will keep ${keep}, not reach end, bill ${bIdx}/${positiveBills.length}, trans ${tIdx}/${trans.length}`)
         process.exit(10)
     } else {
