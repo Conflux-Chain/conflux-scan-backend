@@ -9,6 +9,7 @@ import {toBase32} from "./tool/AddressTool";
 import {decodeUtf8} from "./tool/StringTool";
 import {makeId} from "../model/HexMap";
 import {Op} from "sequelize";
+import {StatApp} from "../StatApp";
 
 const lodash = require('lodash');
 
@@ -198,5 +199,57 @@ export class ContractQuery {
         }
 
         return  {total: page?.count || 0, list};
+    }
+
+    public async listBasic({ addressArray}) {
+        const {
+            app: { config, tokenQuery, service, tokenTool, confluxSDK },
+        } = this;
+
+        // remove repeat
+        addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address)))];
+        addressArray = addressArray.filter((address) => address?.startsWith('0x8'));
+        if (addressArray.length === 0) {
+            return { total: 0, map: {} };
+        }
+        const networkId = StatApp.networkId || this.app?.networkId;
+        addressArray = addressArray.map(address => format.address(address, networkId));
+
+        // init
+        const map = {};
+        addressArray.forEach((address) => { map[address] = {}; });
+
+        // query contract and token
+        const tokenService = tokenQuery || service.tokenRdb;
+        const [ verifyContractAddressSet, contractArray, tokenArray ] = await Promise.all([
+            this.listVerify({ addressArray })
+                .then(response => new Set(response.list.map(verifyInfo => verifyInfo.address))),
+            this.list(undefined, 0, addressArray.length, addressArray)
+                .then(response => response.list.map(announceInfo => {
+                    return { address: announceInfo.address, name: announceInfo.name };
+                })),
+            tokenService.list(addressArray, ['icon'], undefined, undefined, undefined, undefined, 0, addressArray.length)
+                .then(response => response.list),
+        ]);
+
+        // build response
+        contractArray.forEach((contract) => {
+            map[contract.address].contract = {
+                address: contract.address,
+                name: contract.name,
+                verify: { result: verifyContractAddressSet.has(contract.address) ? 1 : 0 },
+            };
+        });
+        tokenArray.forEach((token) => {
+            map[token.address].token = {
+                address: token.address,
+                name: token.name,
+                symbol: token.symbol,
+                icon: token.icon,
+                decimals: token.decimals
+            };
+        });
+
+        return { total: addressArray.length, map };
     }
 }

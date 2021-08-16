@@ -28,7 +28,7 @@ export class TxnSync {
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
                          networkId: number = 1029) {
         const {
-            app: { tokenQuery, tokenTool },
+            app: { contractQuery },
         } = this;
 
         limit = pickNumber(limit, 10)
@@ -72,7 +72,7 @@ export class TxnSync {
           : await TransactionDB.sum('value', sumOption)
         let rank = 1
         // const drip2cfx = 1e+18
-        const base32List = [];
+        const addressArray = [];
         list.forEach(tx=>{
             // tx.value = BigFixed(tx.value).div(BigFixed(drip2cfx))
             tx.percent = BigFixed(tx.value).div(BigFixed(sum)).mul(100)
@@ -80,38 +80,17 @@ export class TxnSync {
             tx.hex = `0x${tx.hex}`
             tx.base32 = this.base32(tx.hex, networkId)
             if(tx.hex.startsWith('0x8')){
-                base32List.push(tx.base32);
+                addressArray.push(tx.base32);
             }
         })
 
         // add contract info and token info
-        const tokenInfoMap = new Map();
-        const contractInfoMap = new Map();
-        if(base32List.length > 0){
-            const page = await tokenQuery.list(base32List, ['icon']);
-            page?.list?.forEach(token => {
-                tokenInfoMap.set(token.address, {name: token.name, symbol: token.symbol, icon: token.icon});
-            });
-            for(const base32 of base32List) {
-                if(!tokenInfoMap.has(base32)){
-                    const token = await tokenTool.getToken(base32);
-                    tokenInfoMap.set(base32, {name: token.name, symbol: token.symbol} || {});
-                }
-            }
-            const contractInfoArray = await ContractInfo.findAll({
-                where: {base32: { [Op.in]: base32List}}, order: [['epoch', 'ASC']], raw: true
-            });
-            contractInfoArray?.forEach(contractInfo=>{
-                contractInfoMap.set(contractInfo.base32 , { name: contractInfo.name });
-            })
-        }
+        const contractBasic = await contractQuery.listBasic({addressArray});
+        list.filter(item => item.hex.startsWith('0x8')).forEach(item => {
+            item.tokenInfo = contractBasic.map[item.base32]?.token || {};
+            item.contractInfo = contractBasic.map[item.base32]?.contract || {};
+        });
 
-        for(const row of list){
-            if(row.hex.startsWith('0x8')) {
-                row.tokenInfo = tokenInfoMap.get(row.base32) || {};
-                row.contractInfo = contractInfoMap.get(row.base32) || {};
-            }
-        }
         let finalRet = {
             code: 0, message: 'ok', list, sum, beginTime, endTime
         };

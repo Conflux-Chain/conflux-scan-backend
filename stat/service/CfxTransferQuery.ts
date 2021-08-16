@@ -44,8 +44,7 @@ export class CfxTransferQuery extends TransferQueryBase{
         return {count: count || 0, rows: rows || []};
     }
 
-    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
-                              contractInfoMap: Map<number, object>, tokenInfoMap: Map<number, object>): Promise<any>{
+    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
         row['transferType'] = CONST.TRANSFER_TYPE.CFX;
         return row;
     }

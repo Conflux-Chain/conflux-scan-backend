@@ -75,6 +75,17 @@ export class TokenTool {
         }
         return undefined;
     }
+
+    async isCustodianToken(address, custodianAddress, epochNumber) {
+        const cache = await RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, address, '').then(Boolean);
+        if (cache !== null && cache !== undefined) {
+            return cache;
+        }
+
+        return this.contract.isToken(address)
+            .call({ to: custodianAddress }, epochNumber)
+            .catch(() => undefined);
+    }
 }
 export async function isCustodianToken(base32:string) {
     return RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, base32, '').then(Boolean)
