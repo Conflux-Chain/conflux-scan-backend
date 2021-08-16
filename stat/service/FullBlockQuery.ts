@@ -222,24 +222,22 @@ export class FullBlockQuery {
             if(transactionHash) {
                 conditionArray.push({hash: transactionHash});
             }
-            //if(txType && accountAddressId){
-                if(txType === CONST.TX_TYPE.IN){
-                    conditionArray.push({toId: accountAddressId});
-                } else if(txType === CONST.TX_TYPE.OUT){
-                    conditionArray.push({fromId: accountAddressId});
-                } else if(txType === CONST.TX_TYPE.FAIL || status === CONST.TX_STATUS.FAILED){
-                    conditionArray.push({
-                        [Op.and]: [
-                            {[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]},
-                            {status: CONST.TX_STATUS.FAILED},
-                        ]
-                    });
-                } else if(txType === CONST.TX_TYPE.CREATE){
-                    conditionArray.push({contractCreatedId: {[Op.gt]: 0}});
-                } else{
-                    conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
-                }
-            //}
+            if(txType === CONST.TX_TYPE.IN){
+                conditionArray.push({toId: accountAddressId});
+            } else if(txType === CONST.TX_TYPE.OUT){
+                conditionArray.push({fromId: accountAddressId});
+            } else if(txType === CONST.TX_TYPE.FAIL || status === CONST.TX_STATUS.FAILED){
+                conditionArray.push({
+                    [Op.and]: [
+                        {[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]},
+                        {status: CONST.TX_STATUS.FAILED},
+                    ]
+                });
+            } else if(txType === CONST.TX_TYPE.CREATE){
+                conditionArray.push({contractCreatedId: {[Op.gt]: 0}});
+            } else{
+                conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
+            }
         } else{
             const {pagedCondition, txPage: tp0} = await this.buildPagedTxOptions(skip);
             txPage = tp0
