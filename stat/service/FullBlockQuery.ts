@@ -161,20 +161,25 @@ export class FullBlockQuery {
         return result;
     }
 
-    public async listTransaction({blockHash, accountAddress, minTimestamp, maxTimestamp, opponentAddress, transactionHash,
+    public async listTransaction({minEpochNumber, maxEpochNumber, nonce,
+                                     blockHash, transactionHash, minTimestamp, maxTimestamp,
+                                     accountAddress, fromAddress, toAddress, opponentAddress,
                                      txType, status, skip = 0, limit = 10}) {
         const{ logger } = this.app;
         // parse para
-        let accountAddressId;
-        let opponentAddressId;
-        if(accountAddress){
-            const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(accountAddress).substr(2)}})
-            accountAddressId = hex40?.id
-        }
-        if(opponentAddress){
-            const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(opponentAddress).substr(2)}})
-            opponentAddressId = hex40?.id
-        }
+        const addressMap = {};
+        await Promise.all([accountAddress, fromAddress, toAddress, opponentAddress]
+            .map(async ( address ) => {
+                if(address){
+                    const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(address).substr(2)}})
+                    addressMap[address] =  hex40?.id;
+                }
+            })
+        );
+        let accountAddressId = addressMap[accountAddress];
+        let fromAddressId = addressMap[fromAddress];
+        let toAddressId = addressMap[toAddress];
+        let opponentAddressId = addressMap[opponentAddress];
         // check if exist
         if((accountAddress !== undefined && accountAddressId === undefined)
             || (opponentAddress !== undefined && opponentAddressId === undefined)){
@@ -198,6 +203,9 @@ export class FullBlockQuery {
             'status',
             ['contractCreatedId', 'contractCreated'],
         ];
+        if(accountAddressId === undefined){
+            options.attributes.push('method');
+        }
         // where
         const conditionArray = [];
         let txPage:any | TxPage = {}
@@ -210,9 +218,22 @@ export class FullBlockQuery {
         }
         if(accountAddressId){
             conditionArray.push({addressId: accountAddressId});
+            if(minEpochNumber && maxEpochNumber){
+                conditionArray.push({ [Op.and]: [{epoch: { [Op.gte]: minEpochNumber}},
+                        {epoch: { [Op.lte]: maxEpochNumber}}]});
+            }
+            if(nonce){
+                conditionArray.push({nonce: nonce});
+            }
             if(minTimestamp && maxTimestamp) {
                 conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
                         {createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}}]});
+            }
+            if(fromAddressId){
+                conditionArray.push({fromId: fromAddressId});
+            }
+            if(toAddressId){
+                conditionArray.push({toId: toAddressId});
             }
             if(opponentAddressId){
                 const conditionOpponent = {};
@@ -262,12 +283,10 @@ export class FullBlockQuery {
             rawList = page?.rows;
             count = page?.count;
         } else if(blockHash){
-            options.attributes.push('method');
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
             count = page?.count;
         } else{
-            options.attributes.push('method');
             rawList = await FullTransaction.findAll(options);
             count = txPage.calcTotal || await KV.getNumber(KEY_FULL_TX_COUNT);
         }
