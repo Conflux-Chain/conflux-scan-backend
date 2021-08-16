@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "compile": "npx tsc -p ./stat",
+    "compile": "npx tsc -b ./stat/tsconfig.json",
+    "api-c": "npx tsc -b ./open-api",
     "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/dist/service/watcher/contract/",
     "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'",
     "start:tools": "tsc-watch -b ./tools --onSuccess 'node ./stat/dist/test/Dev.js'"
