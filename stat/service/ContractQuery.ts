@@ -205,6 +205,9 @@ export class ContractQuery {
         const {
             app: { config, tokenQuery, service, tokenTool, confluxSDK },
         } = this;
+        if(addressArray === undefined){
+            return {total: 0, map: {}}
+        }
 
         // remove repeat
         addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address)))];
