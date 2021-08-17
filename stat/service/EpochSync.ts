@@ -140,10 +140,13 @@ export class EpochSync extends SyncBase{
                 await Token.add(t, dbTx);
             }
             if (token.icon) {
-                const t = await Token.findOne({where: {base32: token.base32}});
-                base64ToPNG(t, dir).catch(err=>{
-                    console.log(`create token icon url fail: ${tokenDb.base32}`, err);
-                })
+                setTimeout(()=>{
+                    Token.findOne({where: {base32: token.base32}}).then(t=>{
+                        base64ToPNG(t, dir).catch(err=>{
+                            console.log(`create token icon url fail: ${tokenDb.base32}`, err);
+                        })
+                    })
+                }, 10_000)
             }
         }
         for (const contract of contractArray) {
