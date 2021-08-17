@@ -8,13 +8,6 @@ servers:
 paths:
   '/api/':
     get:
-      parameters:
-      responses:
-        default:
-          application/json:
-            schema:
-              type: object
-                properties:
-                  code: 'number'
-                  message: 'string'
+  '/api/list-account-transaction':
+    get:
   

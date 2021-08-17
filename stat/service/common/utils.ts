@@ -1,7 +1,23 @@
 import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
 import {ScanHttpProvider} from "./ScanHttpProvider";
-
+export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
+    return {
+        skip: intParam(obj, skipKey, 0),
+        limit: intParam(obj, limitKey, defaultLimit)
+    }
+}
+export function intParam(obj: object, key: string, defaultV: number) {
+    const v = obj[key]
+    if (v === undefined || v === null) {
+        return defaultV
+    }
+    try {
+        return parseInt(v);
+    } catch (e) {
+        return defaultV
+    }
+}
 export function removeLongData(obj) {
     if (Array.isArray(obj)) {
         obj.forEach(i=>removeLongData(i))
