@@ -188,6 +188,7 @@ export async function initPartialModel(sequelize) {
     Epoch.register(sequelize);
     ContractVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
+    CfxBalance.register(sequelize)
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
@@ -203,7 +204,6 @@ export async function initModel(sequelize) {
     WCfxBalance.register(sequelize)
     USDTBalance.register(sequelize)
     DexUSDTBalance.register(sequelize)
-    CfxBalance.register(sequelize)
 
     Balance_CRCL_BTC_symbol.register(sequelize);
     Balance_cMOON.register(sequelize);
