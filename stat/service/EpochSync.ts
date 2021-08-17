@@ -127,21 +127,21 @@ export class EpochSync extends SyncBase{
     private async saveAnnounceInfo(epochNumber, {tokenArray, contractArray}, dbTx: Transaction = undefined) {
         const {dir} = getImageDir();
         for (const token of tokenArray) {
-            let tokenDb: Token = await Token.findOne({where: {base32: token.base32},
+            const tokenDb: Token = await Token.findOne({where: {base32: token.base32},
                 transaction: dbTx, raw: true});
             if(tokenDb){
                 const updateInfo = lodash.defaults({}, {icon: token.icon, quoteUrl: token.quoteUrl,
                     marketCapId: token.marketCapId, moonDexSymbol: token.moonDexSymbol,
                     binanceSymbol: token.binanceSymbol, updatedAt: new Date()});
                 const t = lodash.assign(tokenDb, updateInfo);
-                tokenDb = t;
                 await Token.update(t, {where: {id: tokenDb.id}, transaction: dbTx});
             } else{
                 const t = lodash.assign(token, {holder: 0});
-                tokenDb = await Token.add(t, dbTx);
+                await Token.add(t, dbTx);
             }
             if (token.icon) {
-                base64ToPNG(tokenDb, dir).catch(err=>{
+                const t = await Token.findOne({where: {base32: token.base32}});
+                base64ToPNG(t, dir).catch(err=>{
                     console.log(`create token icon url fail: ${tokenDb.base32}`, err);
                 })
             }
