@@ -141,11 +141,12 @@ export class EpochSync extends SyncBase{
             }
             if (token.icon) {
                 setTimeout(()=>{
-                    Token.findOne({where: {base32: token.base32}}).then(t=>{
+                    Token.findOne({where: {base32: token.base32}, transaction: dbTx}).then(t=>{
                         base64ToPNG(t, dir).catch(err=>{
                             console.log(`create token icon url fail: ${tokenDb.base32}`, err);
                         })
                     })
+                    // avoid transaction over lap.
                 }, 10_000)
             }
         }
