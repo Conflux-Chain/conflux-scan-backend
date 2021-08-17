@@ -10,6 +10,7 @@ import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Transaction} from "sequelize";
 import {batchFetchBlock} from "./common/utils";
+import {base64ToPNG, getImageDir} from "./tool/TokenTool";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -124,18 +125,25 @@ export class EpochSync extends SyncBase{
 
     //--------------------- business method for announce ---------------------
     private async saveAnnounceInfo(epochNumber, {tokenArray, contractArray}, dbTx: Transaction = undefined) {
+        const {dir} = getImageDir();
         for (const token of tokenArray) {
-            const tokenDb: Token = await Token.findOne({where: {base32: token.base32},
+            let tokenDb: Token = await Token.findOne({where: {base32: token.base32},
                 transaction: dbTx, raw: true});
             if(tokenDb){
                 const updateInfo = lodash.defaults({}, {icon: token.icon, quoteUrl: token.quoteUrl,
                     marketCapId: token.marketCapId, moonDexSymbol: token.moonDexSymbol,
                     binanceSymbol: token.binanceSymbol, updatedAt: new Date()});
                 const t = lodash.assign(tokenDb, updateInfo);
+                tokenDb = t;
                 await Token.update(t, {where: {id: tokenDb.id}, transaction: dbTx});
             } else{
                 const t = lodash.assign(token, {holder: 0});
-                await Token.add(t, dbTx);
+                tokenDb = await Token.add(t, dbTx);
+            }
+            if (token.icon) {
+                base64ToPNG(tokenDb, dir).catch(err=>{
+                    console.log(`create token icon url fail: ${tokenDb.base32}`, err);
+                })
             }
         }
         for (const contract of contractArray) {

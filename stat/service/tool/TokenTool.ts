@@ -118,7 +118,7 @@ async function updateCustodianTokenFlag() {
 }
 
 
-async function base64ToPNG(token:Token, dir: string) {
+export async function base64ToPNG(token:Token, dir: string) {
     if (!token.icon) {
         console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
         return
@@ -149,10 +149,15 @@ async function base64ToPNG(token:Token, dir: string) {
     })
 }
 
-async function buildImages() {
-    await init()
+export function getImageDir() {
     const public_dir = __dirname + '/../../../../public/stat/';
     const dir = path.resolve(public_dir);
+    return {public_dir, dir};
+}
+
+async function buildImages() {
+    await init()
+    const {public_dir, dir} = getImageDir();
     console.log(`will save at ${public_dir}\n${dir}`)
     const list = await Token.findAll({where: {auditResult: true,}})
     for (let i = 0; i < list.length; i++){
@@ -208,11 +213,13 @@ if (module === require.main) {
     const args = process.argv.slice(2)
     if (args[0] === 'custodian_token') {
         updateCustodianTokenFlag().then()
+    } else if (args[0] === 'updateTotalSupply') {
+        updateTotalSupply().then()
     } else if (args[0] === 'build_images') {
         buildImages().then(()=>{
             Token.sequelize.close().then()
         })
     } else {
-        updateTotalSupply().then()
+        console.log(`Please use one of <updateTotalSupply|build_images|custodian_token>`)
     }
 }
