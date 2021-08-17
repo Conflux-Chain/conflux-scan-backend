@@ -140,7 +140,7 @@ export async function base64ToPNG(token:Token, dir: string) {
         console.log(`unknown type ${raw_data.substr(0, 64)}`)
         return
     }
-    const filename = `${token.base32}${imageType}`;
+    const filename = `${token.base32}.${Date.now()}${imageType}`;
     fs.writeFileSync(path.resolve(dir, filename), data, 'base64');
     await Token.update({iconUrl: `${filename}`}, {
         where: {id: token.id}
