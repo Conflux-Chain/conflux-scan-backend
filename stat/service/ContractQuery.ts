@@ -5,6 +5,7 @@ const {Contract} = require("../model/Contract");
 const {DailyContractStat} = require("../model/DailyContractStat");
 const {ContractVerify} = require("../model/ContractVerify");
 import {AddressTransactionIndex} from "../model/FullBlock";
+import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
 import {decodeUtf8} from "./tool/StringTool";
 import {makeId} from "../model/HexMap";
@@ -156,7 +157,6 @@ export class ContractQuery {
     }
 
     public async listVerify({addressArray, skip = 0, limit = 10, reverse = true, verifyResult = true}) {
-        const{ cfxSDK } = this.app;
         const options: any = { offset: skip, limit, raw: true};
         // fields
         let attributes: any = [
@@ -194,9 +194,13 @@ export class ContractQuery {
         for(const row of list) {
             row.optimization = row.optimization === 1;
             row.timestamp = row.timestamp.getTime() / 1000;
-            row.transactionCount = await AddressTransactionIndex.count({where: {addressId: row.hex40id}});
-            row.balance = (await cfxSDK.getBalance(row.address)).toString();
         }
+        await Promise.all(list.map(async contract =>{
+            const transactionCount = await AddressTransactionIndex.count({where: {addressId: contract.hex40id}});
+            const balance = await CfxBalance.findOne({where: {addressId: contract.hex40id}});
+            contract.transactionCount = transactionCount;
+            contract.balance = balance?.total || 0;
+        }));
 
         return  {total: page?.count || 0, list};
     }
