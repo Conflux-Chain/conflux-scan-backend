@@ -148,6 +148,27 @@ export const NFTMap = {
             zh: 'EpiK 知识徽章',
             en: 'EpiK Knowledge Badges',
         }},
+    // Conflux Name Service
+    confluxNameService: {
+        address: 'cfx:acdzztjdv0vcx2z2znt296y6sd4hujswean18n0gxy',
+        name: {
+            zh: 'Conflux Name Service',
+            en: 'Conflux Name Service',
+        }},
+    // Phantom NFT
+    phantomNFT: {
+        address: 'cfx:achxvyeac7b8xg9c6pns8wv9aazkscmahar72ugd49',
+        name: {
+            zh: 'Phantom NFT',
+            en: 'Phantom NFT',
+        }},
+    // Crypto Tech Night
+    cryptoTechNight: {
+        address: 'cfx:acerys7vb8cmngjtdeg50a8cj51bg66526vunkud2b',
+        name: {
+            zh: 'Crypto Tech Night',
+            en: 'Crypto Tech Night',
+        }},
     // TODO add nft
     // To commemorate the Conflux Network's success as the third-largest decentralized network in the world during the testing phase
     // minerNft: {
