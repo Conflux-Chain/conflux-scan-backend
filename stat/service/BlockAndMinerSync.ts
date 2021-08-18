@@ -9,6 +9,7 @@ import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {getDBConf, getSumFunction} from "./DBProvider";
 import {StatApp} from "../StatApp";
 import {batchFetchBlock} from "./common/utils";
+import {sleep} from "./tool/ProcessTool";
 
 const BigFixed = require('bigfixed');
 
@@ -316,6 +317,8 @@ export class BlockAndMinerSync {
         // @ts-ignore
         const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
         if (minEpochNumber > epochConfirmed) {
+            console.log(`not confirmed, ${minEpochNumber} > ${epochConfirmed}`)
+            await sleep(5000)
             return;
         }
         let hashes: string[];
