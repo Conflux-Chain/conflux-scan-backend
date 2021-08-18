@@ -43,7 +43,7 @@ export class BlockAndMinerSync {
             return;
         }
         let remote = await this.cfx.getEpochNumber();
-        const number = remote - 1000
+        const number = Math.max(remote - 1000, -1);
         await KV.create({key: KEY_MINER_EPOCH, value: number.toString()})
         console.log(`${fmtDtUTC(new Date())} init position at ${number}, remote epoch is ${number}`)
     }
