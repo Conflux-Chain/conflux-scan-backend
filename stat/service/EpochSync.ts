@@ -10,6 +10,7 @@ import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Transaction} from "sequelize";
 import {batchFetchBlock} from "./common/utils";
+import {base64ToPNG, getImageDir} from "./tool/TokenTool";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -124,6 +125,7 @@ export class EpochSync extends SyncBase{
 
     //--------------------- business method for announce ---------------------
     private async saveAnnounceInfo(epochNumber, {tokenArray, contractArray}, dbTx: Transaction = undefined) {
+        const {dir} = getImageDir();
         for (const token of tokenArray) {
             const tokenDb: Token = await Token.findOne({where: {base32: token.base32},
                 transaction: dbTx, raw: true});
@@ -136,6 +138,15 @@ export class EpochSync extends SyncBase{
             } else{
                 const t = lodash.assign(token, {holder: 0});
                 await Token.add(t, dbTx);
+            }
+            if (token.icon) {
+                const dbIcon = await Token.findOne({where: {base32: token.base32}, transaction: dbTx});
+                setTimeout(()=>{
+                    base64ToPNG(dbIcon, dir).catch(err=>{
+                        console.log(`create token icon url fail: ${tokenDb.base32}`, err);
+                    })
+                    // avoid transaction over lap.
+                }, 10_000)
             }
         }
         for (const contract of contractArray) {
