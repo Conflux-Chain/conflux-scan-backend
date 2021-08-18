@@ -515,6 +515,8 @@ export class FullBlockService {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
                     // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
                     // console.log(`latest_state ${latest}`)
+                } else if (msg.includes('Invalid parameters: epoch')){
+                    // come on !
                 } else {
                     console.log(`fillBlockReward get reward info fail at epoch ${epoch}: ${msg}`)
                 }
