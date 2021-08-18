@@ -156,7 +156,8 @@ export class ContractQuery {
         return result;
     }
 
-    public async listVerify({addressArray, skip = 0, limit = 10, reverse = true, verifyResult = true}) {
+    public async listVerify({addressArray, skip = 0, limit = 10, reverse = true,
+                                verifyResult = true, detail = false}) {
         const options: any = { offset: skip, limit, raw: true};
         // fields
         let attributes: any = [
@@ -195,12 +196,14 @@ export class ContractQuery {
             row.optimization = row.optimization === 1;
             row.timestamp = row.timestamp.getTime() / 1000;
         }
-        await Promise.all(list.map(async contract =>{
-            const transactionCount = await AddressTransactionIndex.count({where: {addressId: contract.hex40id}});
-            const balance = await CfxBalance.findOne({where: {addressId: contract.hex40id}});
-            contract.transactionCount = transactionCount;
-            contract.balance = balance?.total || 0;
-        }));
+        if(detail){
+            await Promise.all(list.map(async contract =>{
+                const transactionCount = await AddressTransactionIndex.count({where: {addressId: contract.hex40id}});
+                const balance = await CfxBalance.findOne({where: {addressId: contract.hex40id}});
+                contract.transactionCount = transactionCount;
+                contract.balance = balance?.total || 0;
+            }));
+        }
 
         return  {total: page?.count || 0, list};
     }

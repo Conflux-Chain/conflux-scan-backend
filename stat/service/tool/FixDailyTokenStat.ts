@@ -9,7 +9,7 @@ import {
     calcDailyTokenParticipants,
     DailyTxnSync
 } from "../DailyTxnSync";
-import {Op, Sequelize} from "sequelize"
+import {Op, Sequelize, Options} from "sequelize"
 import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
@@ -18,7 +18,7 @@ import {Balance_K} from "../../model/Balance";
 import {redisWrap, RedisWrap, TRANSFER_ADDRESS_Q, xLen} from "../RedisWrap";
 export async function init() {
     const config = loadConfig('Prod')
-    let seq = createDB(config.database)
+    let seq = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW as Options);//createDB(config.database)
     await initModel(seq)
     await seq.sync({})
     return config
