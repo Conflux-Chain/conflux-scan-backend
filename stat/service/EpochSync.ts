@@ -52,6 +52,24 @@ export class EpochSync extends SyncBase{
             await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             await this.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
         });
+
+        try{
+            const {tokenArray} = modelData.announceInfo;
+            const {dir} = getImageDir();
+            for (const token of tokenArray) {
+                if (token.icon) {
+                    const dbIcon = await Token.findOne({where: {base32: token.base32}});
+                    setTimeout(()=>{
+                        base64ToPNG(dbIcon, dir).catch(err=>{
+                            console.log(`epoch-sync.createTokenIcon url fail: ${token.base32}`, err);
+                        })
+                    }, 10_000)
+                }
+            }
+        } catch (e){
+            console.log(`epoch-sync.createTokenIcon url fail`, e);
+        }
+
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
         }
@@ -138,15 +156,6 @@ export class EpochSync extends SyncBase{
             } else{
                 const t = lodash.assign(token, {holder: 0});
                 await Token.add(t, dbTx);
-            }
-            if (token.icon) {
-                const dbIcon = await Token.findOne({where: {base32: token.base32}, transaction: dbTx});
-                setTimeout(()=>{
-                    base64ToPNG(dbIcon, dir).catch(err=>{
-                        console.log(`create token icon url fail: ${tokenDb.base32}`, err);
-                    })
-                    // avoid transaction over lap.
-                }, 10_000)
             }
         }
         for (const contract of contractArray) {
