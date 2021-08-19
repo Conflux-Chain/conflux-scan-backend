@@ -39,6 +39,7 @@ import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {patchHttpProvider} from "./service/common/utils";
+import {KV} from "./model/KV";
 
 export class StatApp{
     public config: StatConfig;
@@ -105,6 +106,7 @@ export class StatApp{
         } else {
             console.log(`skip sync db schema.`)
         }
+        KV.setupSwitch().then()
         this.rankService = new RankService(this)
         this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
