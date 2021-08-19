@@ -160,7 +160,7 @@ export class StatApp{
             await this.txnSync.schedule(this.config.syncTxnDelay); // txn
         }
         if (this.config.syncTxnCountDaily) {
-            await this.dailyTxnSync.schedule(this.config.syncTxnCountHistory); // dailyTxn
+            await this.dailyTxnSync.schedule(); // dailyTxn
             scheduleDailyActiveAddress()
                 .then(()=>{scheduleDailyTokenStat()})
         }
@@ -178,7 +178,7 @@ export class StatApp{
             monitor.checkFullBlockSyncRunning().then()
         }
         if (this.config.syncContractCreateCountDaily) {
-            await this.contractCreateSync.schedule(this.config.syncContractCreateCountHistory); // dailyContractCreate
+            await this.contractCreateSync.schedule(); // dailyContractCreate
         }
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote
