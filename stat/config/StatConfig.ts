@@ -12,6 +12,22 @@ export interface Database{
     syncSchema: boolean;
     readonly : boolean;
 }
+export interface DatabaseRW{
+    instanceName: string;
+    dialect: string;
+    port: number;
+    replication:Replication;
+    logging: boolean;
+}
+export interface Replication{
+    read: MySqlInstance[];
+    write: MySqlInstance;
+}
+export interface MySqlInstance{
+    host: string;
+    username: string;
+    password: string;
+}
 export interface RedisConf {
     host:string
     port:number,
@@ -70,6 +86,7 @@ export interface StatConfig{
     syncContractStatInfoDaily: boolean,
     syncContractRegisterCountDaily: boolean,
     syncBlockDataStatDaily: boolean,
+    databaseRW: DatabaseRW,
 }
 
 export interface Erc20WatchList{

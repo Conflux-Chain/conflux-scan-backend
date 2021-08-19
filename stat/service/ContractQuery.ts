@@ -156,7 +156,8 @@ export class ContractQuery {
         return result;
     }
 
-    public async listVerify({addressArray, skip = 0, limit = 10, reverse = true, verifyResult = true}) {
+    public async listVerify({addressArray, skip = 0, limit = 10, reverse = true,
+                                verifyResult = true, detail = false}) {
         const options: any = { offset: skip, limit, raw: true};
         // fields
         let attributes: any = [
@@ -195,12 +196,14 @@ export class ContractQuery {
             row.optimization = row.optimization === 1;
             row.timestamp = row.timestamp.getTime() / 1000;
         }
-        await Promise.all(list.map(async contract =>{
-            const transactionCount = await AddressTransactionIndex.count({where: {addressId: contract.hex40id}});
-            const balance = await CfxBalance.findOne({where: {addressId: contract.hex40id}});
-            contract.transactionCount = transactionCount;
-            contract.balance = balance?.total || 0;
-        }));
+        if(detail){
+            await Promise.all(list.map(async contract =>{
+                const transactionCount = await AddressTransactionIndex.count({where: {addressId: contract.hex40id}});
+                const balance = await CfxBalance.findOne({where: {addressId: contract.hex40id}});
+                contract.transactionCount = transactionCount;
+                contract.balance = balance?.total || 0;
+            }));
+        }
 
         return  {total: page?.count || 0, list};
     }
@@ -224,13 +227,13 @@ export class ContractQuery {
 
         // init
         const map = {};
-        addressArray.forEach((address) => { map[address] = {}; });
+        addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
 
         // query contract and token
         const tokenService = tokenQuery || service.tokenRdb;
         const [ verifyContractAddressSet, contractArray, tokenArray ] = await Promise.all([
             this.listVerify({ addressArray })
-                .then(response => new Set(response.list.map(verifyInfo => verifyInfo.address))),
+                .then(response => new Set<string>(response.list.map(verifyInfo => verifyInfo.address))),
             this.list(undefined, 0, addressArray.length, addressArray)
                 .then(response => response.list.map(announceInfo => {
                     return { address: announceInfo.address, name: announceInfo.name };
@@ -241,20 +244,23 @@ export class ContractQuery {
 
         // build response
         contractArray.forEach((contract) => {
-            map[contract.address].contract = {
-                address: contract.address,
+            map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
                 name: contract.name,
                 verify: { result: verifyContractAddressSet.has(contract.address) ? 1 : 0 },
-            };
+            });
+        });
+        verifyContractAddressSet.forEach((verifyContractAddress) => {
+            map[verifyContractAddress].contract = lodash.defaults(map[verifyContractAddress].contract, {
+                verify: { result: 1 },
+            });
         });
         tokenArray.forEach((token) => {
-            map[token.address].token = {
-                address: token.address,
+            map[token.address].token = lodash.defaults(map[token.address].token, {
                 name: token.name,
                 symbol: token.symbol,
                 icon: token.icon,
                 decimals: token.decimals
-            };
+            });
         });
 
         return { total: addressArray.length, map };
