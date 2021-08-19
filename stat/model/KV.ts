@@ -54,6 +54,24 @@ export class KV extends Model<IKV> implements IKV {
         })
     }
 
+    static async setupSwitch() {
+        const anyOne = await KV.findOne({})
+        if (anyOne) {
+            return
+        }
+        await KV.bulkCreate([
+            {key: KEY_ANNOUNCE_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_BLOCK_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_CONTRACT_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_EPOCH_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_TRANSFER_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_TX_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_BLOCK_DATA_STAT_RDB_SWITCH, value: 'true'},
+            {key: KEY_EVENT_LOG_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_TOKEN_SYNC_BY_SCAN_SWITCH, value: 'true'},
+        ]);
+    }
+
     static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined): Promise<[number, number]> {
         const oldValue = await KV.getNumber(key);
         if(isNaN(oldValue)) throw new Error(`no key:${key} in KV`);
