@@ -55,7 +55,7 @@ export class KV extends Model<IKV> implements IKV {
     }
 
     static async setupSwitch() {
-        const anyOne = await KV.findOne({})
+        const anyOne = await KV.findOne({where: {key: KEY_TX_QUERY_RDB_SWITCH}})
         if (anyOne) {
             return
         }
