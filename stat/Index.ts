@@ -1,6 +1,9 @@
 import {StatApp} from "./StatApp";
 import {loadConfig} from "./config/StatConfig";
 import {register} from "./router/StatRouter";
+import {KV} from "./model/KV";
+import {redisWrap} from "./service/RedisWrap";
+import {Server} from 'http'
 
 const Koa = require('koa');
 const app = new Koa();
@@ -34,7 +37,21 @@ export async function init() {
     const statApp = new StatApp(config);
     await statApp.init();
     register(app, statApp)
-    app.listen(config.port || 8087);
+    const server = app.listen(config.port || 8087);
+    regProcessHook(server)
 }
 
+function regProcessHook(server: Server) {
+    process.on('SIGINT', (signal) => {
+        console.log(`receive ${signal}`)
+        Promise.all([
+            KV.sequelize.close(),
+            redisWrap.client.end(false),
+            server.close(),
+        ]).then(()=>{
+            console.log(`server shutdown.`)
+            process.exit(0)
+        })
+    });
+}
 init().then()
