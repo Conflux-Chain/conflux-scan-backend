@@ -22,7 +22,7 @@ async function parseVerified() {
     for (let i = 0; i < list.length; i++){
         let v = list[i];
         const abi = JSON.parse(v.abi)
-        await saveAbiInfo(abi).then()
+        await saveAbiInfo(abi)
         console.log(`generate abi info for ${v.base32}`)
     }
 }

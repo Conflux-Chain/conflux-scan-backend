@@ -1,5 +1,5 @@
 -- https://dev.mysql.com/doc/refman/5.7/en/alter-table-partition-operations.html
-CREATE TABLE `address_tx` (
+CREATE TABLE if not exists `address_tx` (
   `addressId` bigint unsigned NOT NULL,
   `epoch` bigint unsigned NOT NULL,
   `blockPosition` smallint NOT NULL DEFAULT '0',
