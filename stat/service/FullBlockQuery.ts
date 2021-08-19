@@ -123,7 +123,10 @@ export class FullBlockQuery {
         } else{
             rawList = await FullBlock.findAll(options);
             // use the value when paging.
-            count = paging.calcTotal || await KV.getNumber(KEY_FULL_BLOCK_COUNT);
+            count = paging.calcTotal || 0
+            if (count < 0){
+                count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
+            }
         }
         const list = [];
         if(rawList){
