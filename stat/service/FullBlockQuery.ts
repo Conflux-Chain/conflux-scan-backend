@@ -269,7 +269,10 @@ export class FullBlockQuery {
         } else{
             options.attributes.push('method');
             rawList = await FullTransaction.findAll(options);
-            count = txPage.calcTotal || await KV.getNumber(KEY_FULL_TX_COUNT);
+            count = txPage.calcTotal || 0
+            if (count < 0) {
+                count = await KV.getNumber(KEY_FULL_TX_COUNT);
+            }
         }
         const list = [];
         let extraInfo = {dataSource:'rdb'}
