@@ -45,7 +45,7 @@ export class KV extends Model<IKV> implements IKV {
 
     static register(sequelize) {
         KV.init({
-            key: {type: DataTypes.CHAR(30), primaryKey: true},
+            key: {type: DataTypes.CHAR(64), primaryKey: true},
             value: DataTypes.CHAR(128)
         }, {
             sequelize,
