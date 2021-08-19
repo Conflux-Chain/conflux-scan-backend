@@ -20,7 +20,7 @@ export class DailyBlockDataStatSync{
     public async statByHour(): Promise<any>{
         // get time span
         const maxStat = await DailyBlockDataStat.findOne({where:{statType:'1h'}, order:[['statTime','desc']]});
-        const maxStatTime = maxStat.statTime;
+        const maxStatTime = maxStat?.statTime || getTimeByInterval(new Date(), -61);
         const nextBeginTime = getTimeByInterval(maxStatTime, 60);
         const nextEndTime = getTimeByInterval(maxStatTime, 60 * 2);
         const nextSafeTime = getTimeByInterval(maxStatTime, 60 * 2 + 3);
