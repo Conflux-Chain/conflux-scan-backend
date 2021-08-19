@@ -107,10 +107,11 @@ export abstract class SyncBase{
         const {
             app: { cfx, config },
         } = this;
+        const next = this.getNextEpochNumber()
 
         let traceEpochNumber = epochNumber;
-        if(traceEpochNumber === undefined){
-            traceEpochNumber = await this.getNextEpochNumber();
+        if(traceEpochNumber === undefined || traceEpochNumber <= next){
+            traceEpochNumber = next;
         }
 
         const that = this
