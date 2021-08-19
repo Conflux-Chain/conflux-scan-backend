@@ -141,11 +141,9 @@ export class TokenQuery {
                 fields = [fields];
             }
             const set = new Set(fields);
-            /*
-            if (set.has('icon')) {
-                attributes.push('icon');
-            }
-            */
+            // if (set.has('icon')) {
+            //     attributes.push('icon');
+            // }
             if (set.has('price')) {
                 attributes.push('priceCNY');
                 attributes.push('priceUSD');
@@ -217,11 +215,9 @@ export class TokenQuery {
                 row['totalPrice'] = row[`totalPrice${currency}`];
                 row['transferType'] = (row['transferType'] || '').toUpperCase();
                 row['isRegistered'] = true;
-                /*
-                if(row['icon']) {
-                    row['icon'] = decodeUtf8(row['icon']);
-                }
-                */
+                // if(row['icon']) {
+                //     row['icon'] = decodeUtf8(row['icon']);
+                // }
                 row['icon'] = row['icon'] ? '/stat/' + row['icon'] : undefined;
                 row['verified'] = verified.has(row['address']);
                 list.push(row);

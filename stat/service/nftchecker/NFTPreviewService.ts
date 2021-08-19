@@ -226,7 +226,7 @@ export class NFTPreviewService {
                     return null;
             }
         } catch (e) {
-            console.error(e);
+            // console.error(e);
             return null;
         }
     };
@@ -273,7 +273,7 @@ export class NFTPreviewService {
 
             return { imageMinHeight: minHeight, imageUri, imageName, errorMessage: meta.error };
         } catch (e) {
-            console.error(e);
+            // console.error(e);
             return null;
         }
     };
