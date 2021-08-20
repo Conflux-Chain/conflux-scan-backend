@@ -203,8 +203,8 @@ export class DailyBlockDataStatSync{
             const base = new Date(statDate);
             const statTime = new Date(base.setHours(base.getHours() + i));
             const stat = statMap[fmtDtUTC(statTime).substr(0,19)];
-            stat.statTime = statTime;
             if(stat){
+                stat.statTime = statTime;
                 totalStatArray.push(stat);
             } else{
                 totalStatArray.push({
