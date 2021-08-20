@@ -124,8 +124,8 @@ export class DailyBlockDataStatSync{
                     const tps = BigFixed(txCount).div(BigFixed(this.intervalHourInSec));
                     partialStatArray.push({statTime, statType: '1h', blockCount, txCount, difficultySum,
                         blockTime, hashRate, difficulty, tps});
-                    blockCountPerDay = blockCountPerDay +blockCount;
-                    txCountPerDay = txCountPerDay + txCount;
+                    blockCountPerDay = BigFixed(blockCountPerDay).add(BigFixed(blockCount));
+                    txCountPerDay = BigFixed(txCountPerDay).add(BigFixed(txCount));
                     difficultyPerDay = BigFixed(difficultyPerDay).add(BigFixed(difficultySum));
                 }
         }
