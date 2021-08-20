@@ -5,10 +5,13 @@ const app = new Koa();
 import {loadConfig, StatConfig} from "../stat/config/StatConfig";
 import {patchHttpProvider} from "../stat/service/common/utils";
 import {StatApp} from "../stat/StatApp";
-import {createDB} from "../stat/service/DBProvider";
+import {createDB, initModel} from "../stat/service/DBProvider";
 import {RedisWrap} from "../stat/service/RedisWrap";
 import {register} from "./router/ApiRouter";
 import {FullBlockQuery} from "../stat/service/FullBlockQuery";
+import {Crc20TransferQuery} from "../stat/service/Crc20TransferQuery";
+import {Crc721TransferQuery} from "../stat/service/Crc721TransferQuery";
+import {Crc1155TransferQuery} from "../stat/service/Crc1155TransferQuery";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -20,6 +23,9 @@ export function getApiService() {
 }
 export class ApiService {
     fullBlockQuery: FullBlockQuery
+    crc20transferQuery: Crc20TransferQuery
+    crc721transferQuery: Crc721TransferQuery
+    crc1155transferQuery: Crc1155TransferQuery
     logger: any
 }
 
@@ -81,14 +87,20 @@ export class ApiServer {
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
         StatApp.readonly = config.database.readonly
-        createDB(config.database)
+        const sequelize = createDB(config.database)
+        await initModel(sequelize)
+        await sequelize.sync({})
         await RedisWrap.connect(config.redis)
         apiService = new ApiService()
-        apiService.fullBlockQuery = new FullBlockQuery({})
+        const apiApp = {networkId:cfxStatus.networkId};
+        apiService.fullBlockQuery = new FullBlockQuery(apiApp)
+        apiService.crc20transferQuery = new Crc20TransferQuery(apiApp)
+        apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
+        apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
         apiService.logger = logger
         // test
-        logger.info(`simple message`, 1)
-        logger.error('what about the error ?', new Error('here is error msg'))
+        // logger.info(`simple message`, 1)
+        // logger.error('what about the error ?', new Error('here is error msg'))
     }
 }
 

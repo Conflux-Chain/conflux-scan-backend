@@ -133,7 +133,7 @@ export abstract class TransferQueryBase {
             || (to !== undefined && toAddressId === undefined)
             || (opponentAddress !== undefined && opponentAddressId === undefined
             || (tokenArray !== undefined && tokenAddressIdArray?.length === 0))){
-            return {total: 0, list: []};
+            return {total: 0, list: [], accountId: accountAddressId, contractId: addressId};
         }
 
         // queryOptions
@@ -176,12 +176,16 @@ export abstract class TransferQueryBase {
                 this.processQueryResult(row, hex40Map, hex64Map);
             })
         }
-        const result = {total: page?.count || 0, list};
+        const result = {total: page?.count || 0, list, accountId: accountAddressId, contractId: addressId};
         return result;
     }
 
     public abstract doQueryAccountAddress(options: any, queryOptions: any): Promise<any>;
 
+    /**
+     * address: contract address
+     * @param options
+     */
     public async listAccountAddress(options) {
         const {address, skip = 0, limit = 10} = options;
 
@@ -189,10 +193,13 @@ export abstract class TransferQueryBase {
         const addressMap = await hex40IdMap([addressHex]);
         const addressId = addressMap?.get(addressHex);
         if(address !== undefined && addressId === undefined){
-            return {total: 0, list: []};
+            return {total: 0, list: [], addressId, addressHex};
         }
 
-        const queryOptions: any = {where: {contractId: addressId}, offset: skip, limit, raw: true};
+        const queryOptions: any = {where: {contractId: addressId},
+            offset: skip, limit, raw: true,
+            //logging: console.log,
+        };
         const page = await this.doQueryAccountAddress(options, queryOptions);
         let list ;
         if(page?.rows){
@@ -203,6 +210,6 @@ export abstract class TransferQueryBase {
             const hex40Map = await idHex40Map(Array.from(hex40IdSet));
             list = [...hex40Map.values()];
         }
-        return {total: list?.length || 0, list: list || []};
+        return {total: list?.length || 0, list: list || [], addressId, addressHex};
     }
 }

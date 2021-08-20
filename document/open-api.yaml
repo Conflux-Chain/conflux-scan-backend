@@ -10,4 +10,10 @@ paths:
     get:
   '/api/list-account-transaction':
     get:
-  
+  '/api/list-account-transfer20':
+    get:
+  '/api/list-account-transfer721':
+    get:
+  '/api/list-account-transfer1155':
+    get:
+
