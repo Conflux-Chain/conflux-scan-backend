@@ -4,18 +4,63 @@ info:
   description: Conslux Scan Open Api
   version: 1.0.0
 servers:
-  - url: 'http://localhost:8087'
+  - url: 'http://testnet-scanapi.confluxnetwork.org'
+  - url: 'http://localhost:8087/open'
 paths:
-  '/api/':
+  '/':
     get:
-  '/api/list-account-transaction':
+      parameters: []
+      responses:
+        200:
+          description: 'Welcome of Conflux scan open api.'
+          content:
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/Welcome'
+  '/transaction/account':
+    description: 'Transaction of an account.',
     get:
-  '/api/list-account-transfer20':
+      parameters:
+#        - $ref: "#/components/parameters/accountParam"
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+  '/transfer20/account':
     get:
-  '/api/list-account-transfer721':
+  '/transfer721/account':
     get:
-  '/api/list-account-transfer1155':
+  '/transfer1155/account':
     get:
-  '/api/list-account-assert':
+  '/account/assert':
     get:
+components:
+  schemas:
+    Welcome:
+      type: object
+      properties:
+        code:
+          type: integer
+    TransactionList:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+  parameters:
+    accountParam:      # Can be referenced via '#/components/parameters/offsetParam'
+      name: account
+      in: query
+      description: 'account/address'
+      required: true
+      schema:
+        type: string
+        example: 'cfx:aakcj5jhr4v24zuj5tukj2z2uy8gges1e2fzajsf7w'
 
+
+
+#https://swagger.io/docs/specification/components/:
