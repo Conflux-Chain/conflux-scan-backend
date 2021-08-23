@@ -22,8 +22,8 @@ function skipLimit(obj) {
     return pageParam(obj, 'skip', 'limit', 10)
 }
 
-async function root(ctx) {
-    ctx.body = {code: 0, message: 'Conflux Scan Open Api 0.1'}
+async function root(ctx, tag) {
+    ctx.body = {code: 0, message: `Conflux Scan Open Api 0.1 ${tag}`}
 }
 
 function setBody(ctx, data: any, code = 0, message = 'ok') {
@@ -140,7 +140,9 @@ export async function register(app: Koa, apiServer: ApiServer) {
     app.use(middleware)
     addSwagger(app, router, prefix)
 
-    router.get('/', root)
+    router.get('/', async (ctx)=>{
+        return root(ctx, apiServer.config.serverTag)
+    })
     router.get('/transaction/account', listAccountTransaction)
     router.get('/transfer20/account', listAccountTransfer20)
     router.get('/transfer721/account', listAccountTransfer721)
