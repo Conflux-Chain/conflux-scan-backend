@@ -4,9 +4,8 @@ info:
   description: Conslux Scan Open Api
   version: 1.0.0
 servers:
+  - url: 'https://scanapi-testnet.confluxnetwork.org/'
   - url: 'http://localhost:8087/open'
-  - url: 'https://baidu.com'
-  - url: 'http://testnet-scanapi.confluxnetwork.org'
 paths:
   '/':
     get:
