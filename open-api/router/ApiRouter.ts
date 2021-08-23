@@ -70,13 +70,13 @@ async function listAccountTransaction(ctx) {
  */
 async function listAccountTransfer20(ctx) {
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,startEpoch,endEpoch,startTimestamp,endTimestamp,sort,contractAddress} = ctx.request.query;
+    const {account: base32,startEpoch,endEpoch,startTimestamp,endTimestamp,sort,contract} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
     const page = await getApiService().crc20transferQuery.listTransfer(
-        {accountAddress:base32, address: contractAddress, skip, limit}
+        {accountAddress:base32, address: contract, skip, limit}
     );
     setBody(ctx, page)
 }
@@ -116,7 +116,24 @@ async function listAccountTransfer1155(ctx) {
     page['hexId'] = hexId
     setBody(ctx, page)
 }
-
+function addSwagger(app: Koa, router: Router<any, {}>, prefix) {
+    const docPath = `${prefix}/doc`
+    let apiDef = '/open-api.yaml';
+    const pwd = path.resolve('.')
+    console.log(`pwd is ${pwd}`)
+    const spec = yamljs.load('./document/open-api.yaml');
+    app.use(
+        koaSwagger({
+            routePrefix: docPath,
+            oauthOptions: {},
+            swaggerOptions: {
+                // url: `${prefix}${apiDef}`,
+                title: 'open-api-doc',
+                spec
+            },
+        }),
+    );
+}
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
     app.use(async (ctx, next) => {
@@ -148,22 +165,4 @@ export async function register(app: Koa, apiServer: ApiServer) {
     router.get('/transfer721/account', listAccountTransfer721)
     router.get('/transfer1155/account', listAccountTransfer1155)
     router.get('/account/assert', listAccountAssert)
-}
-function addSwagger(app: Koa, router: Router<any, {}>, prefix) {
-    const docPath = `${prefix}/doc`
-    let apiDef = '/open-api.yaml';
-    const pwd = path.resolve('.')
-    console.log(`pwd is ${pwd}`)
-    const spec = yamljs.load('./document/open-api.yaml');
-    app.use(
-        koaSwagger({
-            routePrefix: docPath,
-            oauthOptions: {},
-            swaggerOptions: {
-                // url: `${prefix}${apiDef}`,
-                title: 'open-api-doc',
-                spec
-            },
-        }),
-    );
 }

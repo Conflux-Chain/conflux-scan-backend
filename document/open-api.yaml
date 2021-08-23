@@ -18,8 +18,14 @@ paths:
                 $ref: '#/components/schemas/Welcome'
   /transaction/account:
     get:
+      description: "Get transactions associated with an account. A transaction with 'from' or 'to' equals to specified account
+      is considered as 'associate'. Parameters 'from' and 'to' are [or] logic."
       parameters:
         - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
       responses:
         200:
           description: ''
@@ -32,6 +38,9 @@ paths:
     get:
       parameters:
         - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
       responses:
         200:
           description: ''
@@ -44,6 +53,9 @@ paths:
     get:
       parameters:
         - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
       responses:
         200:
           description: ''
@@ -56,6 +68,9 @@ paths:
     get:
       parameters:
         - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
       responses:
         200:
           description: ''
@@ -266,17 +281,64 @@ components:
                   "contractCreated":
                     type: string
                   "method":
-                  type: string
+                    type: string
   parameters:
-    account:      # Can be referenced via '#/components/parameters/offsetParam'
+    account:
       name: account
       in: query
-      description: 'account/address'
+      description: "account/address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
       required: true
       schema:
         type: string
-        example: 'cfx:aakcj5jhr4v24zuj5tukj2z2uy8gges1e2fzajsf7w'
-
-
+        example: ''
+    from:
+      name: from
+      in: query
+      description: "account/address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      required: false
+      schema:
+        type: string
+        example: ''
+    to:
+      name: to
+      in: query
+      description: "account/address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      required: false
+      schema:
+        type: string
+        example: ''
+    skipParam:
+      name: skip
+      in: query
+      description: "Skip how many records, usually it's pageSize * (pageNumber - 1)"
+      required: false
+      schema:
+        type: integer
+        default: 0
+        maximum: 10000
+    limitParam:
+      name: limit
+      in: query
+      description: "How many records in one page"
+      required: false
+      schema:
+        type: integer
+        maximum: 100
+        default: 10
+    contractParam:
+      name: contract
+      in: query
+      description: "contract/address, on testnet, it's like cfxtest:acepe88unk7fvs18436178up33hb4zkuf62a9dk1gv,
+      on mainnet it's like cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7"
+      required: true
+      schema:
+        type: string
+        example: ''
+externalDocs:
+  description: 'Goto conflux scan'
+  url: 'https://confluxscan.io'
 
 #https://swagger.io/docs/specification/components/:
