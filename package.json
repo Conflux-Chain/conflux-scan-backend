@@ -33,7 +33,9 @@
     "pino": "^6.10.0",
     "redis": "^3.1.2",
     "sequelize": "^6.3.5",
-    "superagent": "5.1.0"
+    "superagent": "5.1.0",
+    "winston-daily-rotate-file": "4.5.5",
+    "winston": "3.3.3"
   },
   "devDependencies": {
     "@types/ali-oss": "6.0.10",
