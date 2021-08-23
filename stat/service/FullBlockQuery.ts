@@ -155,7 +155,9 @@ export class FullBlockQuery {
     public async listTransaction({minEpochNumber, maxEpochNumber, blockHash, transactionHash,
                                      nonce, minTimestamp, maxTimestamp,
                                      accountAddress, from, to, opponentAddress,
-                                     txType, status, skip = 0, limit = 10}) {
+                                     txType, status, skip = 0, limit = 10,
+                                     verboseAddress = true,
+    }) {
         const{ logger } = this.app;
         // parse para
         const addressMap = {};
@@ -335,8 +337,8 @@ export class FullBlockQuery {
 
             // fields mapping
             list.forEach(row=>{
-                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, true);
-                row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, true) : null;
+                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
+                row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, verboseAddress) : null;
                 if(hex40Map.get(row['contractCreated'])){
                     row['contractCreated'] = format.address(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId, true);
                 }

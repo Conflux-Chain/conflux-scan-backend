@@ -54,7 +54,13 @@ async function listAccountTransaction(ctx) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
-    const page = await getApiService().fullBlockQuery.listTransaction({accountAddress: base32, skip, limit});
+    const page = await getApiService().fullBlockQuery.listTransaction({accountAddress: base32, skip, limit,
+        verboseAddress: false
+    });
+    page.list?.forEach(tx=>{
+        delete tx.syncTimestamp
+    })
+    delete page.extraInfo
     setBody(ctx, page)
 }
 
