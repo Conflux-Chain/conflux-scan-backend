@@ -10,6 +10,7 @@ import {
 } from "../common/Def";
 import {KnownError} from "../common/RestTool";
 import {base32id} from "../service/OpenTxService";
+import {BalanceService} from "../../stat/service/watcher/BalanceService";
 
 const cors = require('@koa/cors');
 
@@ -25,6 +26,19 @@ function setBody(ctx, data: any, code = 0, message = 'ok') {
     ctx.body = {code, message, data}
 }
 
+/**
+ * Query asserts hold by one account/address.
+ * @param ctx
+ */
+async function listAccountAssert(ctx) {
+    const {address: base32} = ctx.request.query;
+    if (!Boolean(base32)) {
+        setBody(ctx, ctx.request.query, CODE_ACCOUNT_ADDRESS_ABSENT, CODE_ACCOUNT_ADDRESS_ABSENT_MSG+":address")
+        return
+    }
+    const asserts = await BalanceService.listAccountBalanceInner(base32)
+    setBody(ctx, asserts)
+}
 /**
  * query transactions of one account(address)
  * @param ctx
@@ -118,4 +132,5 @@ export async function register(app: Koa, apiServer: ApiServer) {
     router.get('/list-account-transfer20', listAccountTransfer20)
     router.get('/list-account-transfer721', listAccountTransfer721)
     router.get('/list-account-transfer1155', listAccountTransfer1155)
+    router.get('/list-account-assert', listAccountAssert)
 }

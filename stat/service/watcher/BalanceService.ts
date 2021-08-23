@@ -183,34 +183,50 @@ export class BalanceService {
         return ret;
     }
 
-    async listAccountBalance(base32: string, tokenType: string) : Promise<any[]>{
+    static async listAccountBalance(base32: string, tokenType: string = null) : Promise<any[]>{
+        return this.listAccountBalanceInner(base32, tokenType).then(res=>{
+            return res.list
+        })
+    }
+    static async listAccountBalanceInner(base32: string, tokenType: string = undefined) :
+        Promise<{ candidate?: number; list: any[]; message?: string }>{
         const hex = format.hexAddress(base32)
-        const accountBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
-        if (accountBean === null) {
-            return []
+        if (hex === '0x0000000000000000000000000000000000000000') {
+            return {list:[], message: 'Can not query for zero address.'}
         }
-        const tokenList = await Token.findAll({where: {type: tokenType, fetchBalance: true}});
+        const accountBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
+        if (accountBean === null) {
+            return {list:[], message: 'account not found:'+hex}
+        }
+        const conditions = {}
+        if (tokenType) {
+            conditions['type'] = tokenType
+        }
+        const tokenList = await Token.findAll({
+            attributes: {
+                exclude: ['icon']
+            },
+            logging: console.log,
+            where: {...conditions, fetchBalance: true}
+        });
         const contracts = tokenList.map(t=>t.base32);
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []
         lodash.zip(tokenList, banList).forEach(
             ([token,ban], idx) => {
-                let upperCase = token.type.toUpperCase();
-                if (upperCase !== 'ERC721' || upperCase !== 'ERC1155') {
-                    ban = Number(ban) / Number(token.decimals || 18)
-                }
                 ban && resultList.push({
                     name: token.name,
+                    decimals: token.decimals,
                     symbol: token.symbol,
                     base32: token.base32,
                     tokenHex40id: token.hex40id,
-                    icon: token.icon ? decodeUtf8(token.icon) : token.icon,
+                    icon: token.iconUrl,
                     type: token.type,
                     balance: ban,
                 })
             }
         )
-        return resultList
+        return {list:resultList, candidate: tokenList.length}
     }
     async getHolderCount(base32: string) : Promise<number> {
         const token = await Token.findOne({where: {base32: base32}})

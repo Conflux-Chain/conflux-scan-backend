@@ -12,6 +12,7 @@ import {FullBlockQuery} from "../stat/service/FullBlockQuery";
 import {Crc20TransferQuery} from "../stat/service/Crc20TransferQuery";
 import {Crc721TransferQuery} from "../stat/service/Crc721TransferQuery";
 import {Crc1155TransferQuery} from "../stat/service/Crc1155TransferQuery";
+import {BatchBalanceWatcher} from "../stat/service/watcher/BatchBalanceWatcher";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -98,6 +99,7 @@ export class ApiServer {
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
         apiService.logger = logger
+        new BatchBalanceWatcher(this.cfx, [], null)
         // test
         // logger.info(`simple message`, 1)
         // logger.error('what about the error ?', new Error('here is error msg'))

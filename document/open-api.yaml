@@ -16,4 +16,6 @@ paths:
     get:
   '/api/list-account-transfer1155':
     get:
+  '/api/list-account-assert':
+    get:
 
