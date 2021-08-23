@@ -35,7 +35,8 @@
     "sequelize": "^6.3.5",
     "superagent": "5.1.0",
     "winston-daily-rotate-file": "4.5.5",
-    "winston": "3.3.3"
+    "winston": "3.3.3",
+    "yamljs": "0.3.0"
   },
   "devDependencies": {
     "@types/koa": "2.11.6",
