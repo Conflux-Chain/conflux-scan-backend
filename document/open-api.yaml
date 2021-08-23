@@ -29,6 +29,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/TransactionList"
   '/transfer20/account':
+    description: 'Get erc20 transfer records of an account'
     get:
       parameters:
         - $ref: '#/components/parameters/account'
@@ -38,13 +39,43 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/TransactionList"
+                $ref: "#/components/schemas/Transfer20List"
   '/transfer721/account':
+    description: 'Get erc721 transfer records of an account'
     get:
+      parameters:
+        - $ref: '#/components/parameters/account'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Transfer721List"
   '/transfer1155/account':
+    description: 'Get erc1155 transfer records of an account'
     get:
+      parameters:
+        - $ref: '#/components/parameters/account'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Transfer1155List"
   '/account/assert':
+    description: 'Get asserts hold by an account. Some tokens will not show up for some reasons'
     get:
+      parameters:
+        - $ref: '#/components/parameters/account'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AssertsOfAccount"
 components:
   schemas:
     Welcome:
@@ -54,21 +85,126 @@ components:
           type: integer
         message:
           type: string
-    TransferList:
+    AssertsOfAccount:
       type: object
-        properties:
-          code:
-            type: integer
-          message:
-            type: string
-          data:
-            type: array
-            items:
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+                type: array
+                items:
+                  properties:
+                    name:
+                      description: 'Name of the token'
+                      type: string
+                    symbol:
+                      description: 'symbol of the token'
+                      type: string
+                    decimals:
+                      description: 'Decimals of the token, if has'
+                      type: integer
+                    base32:
+                      description: 'Address of the token'
+                      type: integer
+                      example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
+                    icon:
+                      description: 'Icon url.'
+                      type: string
+                      example: 'http://confluxscan.io/stat/cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx..svg'
+                    balance:
+                      description: 'Balance of the account of one token, not divided by decimals of the token.'
+                      type: 'string'
+    Transfer20List:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  epochNumber:
+                    type: integer
+                  transactionHash:
+                    type: string
+                  "from":
+                    example: 'cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk'
+                    type: string
+                  "to":
+                    type: string
+                  "value":
+                    type: string
+                  timestamp:
+                    type: integer
+                  transactionLogIndex:
+                    type: integer
+                  transferType:
+                    type: string
+                    example: 'ERC20'
+    Transfer721List:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  epochNumber:
+                    type: integer
+                  transactionHash:
+                    type: string
+                  "from":
+                    type: string
+                  "to":
+                    type: string
+                  "tokenId":
+                    type: string
+                  timestamp:
+                    type: integer
+                  transactionLogIndex:
+                    type: integer
+                  transferType:
+                    type: string
+                    example: 'ERC721'
+    Transfer1155List:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
               properties:
                 epochNumber:
                   type: integer
-                  format: int64
-                "transactionHash":
+                transactionHash:
                   type: string
                 "from":
                   type: string
@@ -76,15 +212,15 @@ components:
                   type: string
                 "value":
                   type: string
-                "address":
+                "tokenId":
                   type: string
-                "timestamp":
+                timestamp:
                   type: integer
-                "transactionLogIndex":
+                transactionLogIndex:
                   type: integer
-                "transferType":
+                transferType:
                   type: string
-                  example: 'ERC20'
+                  example: 'ERC1155'
     TransactionList:
       type: object
       properties:
@@ -93,40 +229,45 @@ components:
         message:
           type: string
         data:
-          type: array
-          items:
-            properties:
-              epochNumber:
-                type: integer
-                format: int64
-              "blockHash":
-                type: string
-              "blockPosition":
-                type: integer
-              "transactionIndex":
-                type: integer
-              "nonce":
-                type: integer
-              "hash":
-                type: string
-              "from":
-                type: string
-              "to":
-                type: string
-              "value":
-                type: string
-              "gasPrice":
-                type: string
-              "gasFee":
-                type: string
-              "timestamp":
-                type: number
-              "status":
-                type: integer
-              "contractCreated":
-                type: string
-              "method":
-                type: string
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  epochNumber:
+                    type: integer
+                  "blockHash":
+                    type: string
+                  "blockPosition":
+                    type: integer
+                  "transactionIndex":
+                    type: integer
+                  "nonce":
+                    type: integer
+                  "hash":
+                    description: 'transaction hash'
+                    type: string
+                  "from":
+                    type: string
+                  "to":
+                    type: string
+                  "value":
+                    type: string
+                  "gasPrice":
+                    type: string
+                  "gasFee":
+                    type: string
+                  "timestamp":
+                    type: number
+                  "status":
+                    type: integer
+                  "contractCreated":
+                    type: string
+                  "method":
+                  type: string
   parameters:
     account:      # Can be referenced via '#/components/parameters/offsetParam'
       name: account
