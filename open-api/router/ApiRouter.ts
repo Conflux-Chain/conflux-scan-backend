@@ -123,7 +123,7 @@ export async function register(app: Koa, apiServer: ApiServer) {
             getApiService().logger.error(`api error ${ctx.request.url}`, err)
         })
     })
-    const router = new Router({prefix: '/api'})
+    const router = new Router({prefix: '/open'})
     let middleware = router.routes();
     app.use(middleware)
 
