@@ -1,5 +1,5 @@
 import {Token} from "../model/Token";
-import {TokenQuote} from "../model/TokenQuote";
+import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {Op} from 'sequelize'
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -23,7 +23,7 @@ export class QuoteSync {
   }
 
   public async query({ address, convertSymbol='USDT' }) {
-    return await TokenQuote.findOne({where: {[Op.and]: [{address},{convertSymbol}]}});
+    return await TokenQuoteTrack.findOne({where: {[Op.and]: [{address},{convertSymbol}]}});
   }
 
   public async schedule(delay: number = 1000 * 60 * 60) {
@@ -231,13 +231,13 @@ export class QuoteSync {
     quoteArray.map(async quote => {
       const address = quote.address;
       let convertSymbol = quote.convertSymbol;
-      const dbQuote: TokenQuote = await TokenQuote.findOne({where:
+      const dbQuote: TokenQuoteTrack = await TokenQuoteTrack.findOne({where:
         {[Op.and]: [{address},{convertSymbol}]}});
       if(dbQuote){
         const q = lodash.assign(quote, { updatedAt: Date.now() });
         await dbQuote.update(q, {where: {id: dbQuote.id}});
       } else{
-        await TokenQuote.add(quote);
+        await TokenQuoteTrack.add(quote);
       }
       const dbToken: Token = await Token.findOne({where: {base32: address}});
       if(dbToken){

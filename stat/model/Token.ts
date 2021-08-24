@@ -83,7 +83,7 @@ export class Token extends Model<IToken> implements IToken{
             holder: {type: DataTypes.BIGINT, allowNull: false, },
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             hex40id: {type: DataTypes.BIGINT, allowNull: false, },
-            fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true},
+            fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
