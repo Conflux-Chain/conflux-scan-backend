@@ -15,6 +15,10 @@ info:
       <td><a target='_blank' href='https://testnet.confluxscan.io'>https://testnet.confluxscan.io</a></td>
     </tr>
   </table>
+  Notes:<br/>
+  <li>Timestamp is in seconds format.</li>
+  <li>Maximum 'skip' is 10,000 when paging.</li>
+  <li>Maximum 'limit' is 100 when paging.</li>
   "
   version: 1.0.0
 servers:
@@ -310,12 +314,12 @@ components:
                 properties:
                   epochNumber:
                     type: integer
-                  "blockHash":
-                    type: string
                   "blockPosition":
                     type: integer
+                    description: "One epoch may have multiple blocks. It's the position of current block in all blocks."
                   "transactionIndex":
                     type: integer
+                    description: "One block may have multiple transactions. It's the position of this transaction in all transactions."
                   "nonce":
                     type: integer
                   "hash":
@@ -332,6 +336,7 @@ components:
                   "gasFee":
                     type: string
                   "timestamp":
+                    description: "Timestamp in seconds. "
                     type: number
                   "status":
                     type: integer

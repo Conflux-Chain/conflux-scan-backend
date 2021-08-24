@@ -58,6 +58,7 @@ async function listAccountTransaction(ctx) {
     });
     page.list?.forEach(tx=>{
         delete tx.syncTimestamp
+        delete tx.blockHash
     })
     delete page.extraInfo
     setBody(ctx, page)
@@ -117,7 +118,7 @@ async function listAccountTransfer1155(ctx) {
 }
 function addSwagger(app: Koa, router: Router<any, {}>, prefix) {
     const docPath = `${prefix}/doc`
-    let apiDef = '/open-api.yaml';
+    // let apiDef = '/open-api.yaml';
     const pwd = path.resolve('.')
     console.log(`pwd is ${pwd}`)
     const spec = yamljs.load('./document/open-api.yaml');
