@@ -1,7 +1,13 @@
 openapi: 3.0.0
 info:
-  title: Conslux Scan Open Api
-  description: Conslux Scan Open Api
+  title: Conflux Scan Open Api
+  description: "Conflux Scan Open Api. <br/>
+  <a target='_BLANK' href='https://api.confluxscan.io'>Mainnet Production</a> |
+  <a target='_BLANK' href='https://api-testnet.confluxscan.io'>Testnet Production</a> <br/>
+  <a target='_BLANK' href='https://scanapi-scantest.confluxnetwork.org'>Testnet Development</a> |
+  <a target='_BLANK' href='https://scanapi-testnet.confluxnetwork.org'>Mainnet Development</a> <br/>
+  <a target='_BLANK' href='http://localhost:8087/open'>Local</a>
+  "
   version: 1.0.0
 servers:
   - url: 'https://api.confluxscan.io'
@@ -222,26 +228,26 @@ components:
             list:
               type: array
               items:
-              properties:
-                epochNumber:
-                  type: integer
-                transactionHash:
-                  type: string
-                "from":
-                  type: string
-                "to":
-                  type: string
-                "value":
-                  type: string
-                "tokenId":
-                  type: string
-                timestamp:
-                  type: integer
-                transactionLogIndex:
-                  type: integer
-                transferType:
-                  type: string
-                  example: 'ERC1155'
+                properties:
+                  epochNumber:
+                    type: integer
+                  transactionHash:
+                    type: string
+                  "from":
+                    type: string
+                  "to":
+                    type: string
+                  "value":
+                    type: string
+                  "tokenId":
+                    type: string
+                  timestamp:
+                    type: integer
+                  transactionLogIndex:
+                    type: integer
+                  transferType:
+                    type: string
+                    example: 'ERC1155'
     TransactionList:
       type: object
       properties:
