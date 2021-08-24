@@ -10,18 +10,16 @@ info:
   "
   version: 1.0.0
 servers:
-  - url: 'https://api.confluxscan.io'
-    description: 'mainnet, production'
-  - url: 'https://api-testnet.confluxscan.io'
-    description: 'testnet, production'
-  - url: 'https://scanapi-scantest.confluxnetwork.org'
-    description: 'mainnet, development'
-  - url: 'https://scanapi-testnet.confluxnetwork.org'
-    description: 'testnet, development'
+  - url: ''
+    description: 'This server'
   - url: 'http://localhost:8087/open'
+    description: 'Local server'
 paths:
   '/':
+    description: 'Test connections.'
     get:
+      tags:
+        - 'Developer tools'
       responses:
         200:
           description: 'Welcome of Conflux scan open api.'
@@ -31,6 +29,8 @@ paths:
                 $ref: '#/components/schemas/Welcome'
   /transaction/account:
     get:
+      tags:
+        - 'Transaction'
       description: "Get transactions associated with an account. A transaction with 'from' or 'to' equals to specified account
       is considered as 'associate'. Parameters 'from' and 'to' are [or] logic."
       parameters:
@@ -49,6 +49,8 @@ paths:
   '/transfer20/account':
     description: 'Get erc20 transfer records of an account'
     get:
+      tags:
+        - 'ERC20 transfer'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -64,6 +66,8 @@ paths:
   '/transfer721/account':
     description: 'Get erc721 transfer records of an account'
     get:
+      tags:
+        - 'ERC721 transfer'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -79,6 +83,8 @@ paths:
   '/transfer1155/account':
     description: 'Get erc1155 transfer records of an account'
     get:
+      tags:
+        - 'ERC1155 transfer'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -94,6 +100,8 @@ paths:
   '/account/assert':
     description: 'Get asserts hold by an account. Some tokens will not show up for some reasons'
     get:
+      tags:
+        - 'Account'
       parameters:
         - $ref: '#/components/parameters/account'
       responses:
