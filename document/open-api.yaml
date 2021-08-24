@@ -4,7 +4,14 @@ info:
   description: Conslux Scan Open Api
   version: 1.0.0
 servers:
-  - url: 'https://scanapi-testnet.confluxnetwork.org/'
+  - url: 'https://api.confluxscan.io'
+    description: 'mainnet, production'
+  - url: 'https://api-testnet.confluxscan.io'
+    description: 'testnet, production'
+  - url: 'https://scanapi-scantest.confluxnetwork.org'
+    description: 'mainnet, development'
+  - url: 'https://scanapi-testnet.confluxnetwork.org'
+    description: 'testnet, development'
   - url: 'http://localhost:8087/open'
 paths:
   '/':
