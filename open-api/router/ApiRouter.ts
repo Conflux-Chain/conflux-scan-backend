@@ -48,13 +48,13 @@ async function listAccountAssert(ctx) {
  */
 async function listAccountTransaction(ctx) {
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,startEpoch,endEpoch,startTimestamp,endTimestamp,sort} = ctx.request.query;
+    const {account: base32,minEpochNumber,maxEpochNumber,minTimestamp,maxTimestamp,from, to, sort} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
     const page = await getApiService().fullBlockQuery.listTransaction({accountAddress: base32, skip, limit,
-        verboseAddress: false
+        verboseAddress: false, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort
     });
     page.list?.forEach(tx=>{
         delete tx.syncTimestamp
@@ -69,13 +69,13 @@ async function listAccountTransaction(ctx) {
  */
 async function listAccountTransfer20(ctx) {
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,startEpoch,endEpoch,startTimestamp,endTimestamp,sort,contract} = ctx.request.query;
+    const {account: base32,minEpochNumber,maxEpochNumber,minTimestamp,maxTimestamp,from, to, sort,contract} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
     const page = await getApiService().crc20transferQuery.listTransfer(
-        {accountAddress:base32, address: contract, skip, limit}
+        {accountAddress:base32, address: contract, skip, limit, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
     );
     setBody(ctx, page)
 }
@@ -86,13 +86,14 @@ async function listAccountTransfer20(ctx) {
  */
 async function listAccountTransfer721(ctx) {
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,startEpoch,endEpoch,startTimestamp,endTimestamp,sort,contractAddress,tokenId} = ctx.request.query;
+    const {account: base32,minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to,sort,contract,tokenId} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
     const page = await getApiService().crc721transferQuery.listTransfer(
-        {accountAddress:base32, address:contractAddress, skip, limit, tokenId}
+        {accountAddress:base32, address:contract, skip, limit, tokenId,
+            minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
     );
     setBody(ctx, page)
 }
@@ -103,16 +104,15 @@ async function listAccountTransfer721(ctx) {
  */
 async function listAccountTransfer1155(ctx) {
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,startEpoch,endEpoch,startTimestamp,endTimestamp,sort,contractAddress,tokenId} = ctx.request.query;
+    const {account: base32,minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort,contract,tokenId} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
-    const hexId = await base32id(base32)
     const page = await getApiService().crc1155transferQuery.listTransfer(
-        {accountAddress:base32, address:contractAddress, skip, limit, tokenId}
+        {accountAddress:base32, address:contract, skip, limit, tokenId,
+            minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
     );
-    page['hexId'] = hexId
     setBody(ctx, page)
 }
 function addSwagger(app: Koa, router: Router<any, {}>, prefix) {

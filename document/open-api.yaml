@@ -1,12 +1,20 @@
 openapi: 3.0.0
 info:
   title: Conflux Scan Open Api
-  description: "Conflux Scan Open Api. <br/>
-  <a target='_BLANK' href='https://api.confluxscan.io/doc'>Mainnet Production</a> |
-  <a target='_BLANK' href='https://api-testnet.confluxscan.io/doc'>Testnet Production</a> <br/>
-  <a target='_BLANK' href='https://scanapi-scantest.confluxnetwork.org/doc'>Testnet Development</a> |
-  <a target='_BLANK' href='https://scanapi-testnet.confluxnetwork.org/doc'>Mainnet Development</a> <br/>
-  <a target='_BLANK' href='http://localhost:8087/open/doc'>Local</a>
+  description: "Use any http client to fetch data from Conflux Scan under mainnet or testnet.<br/>
+  <table>
+    <tr>
+      <td>Api host</td><td>Net</td><td>Mode</td><td>Scan</td>
+    </tr>
+    <tr>
+      <td><a href='https://api.confluxscan.io/doc'>https://api.confluxscan.io</a></td><td>Mainnet</td><td>Production</td>
+      <td><a target='_blank' href='https://confluxscan.io'>https://confluxscan.io</a></td>
+    </tr>
+    <tr>
+      <td><a href='https://api-testnet.confluxscan.io/doc'>https://api-testnet.confluxscan.io</a></td><td>Testnet</td><td>Production</td>
+      <td><a target='_blank' href='https://testnet.confluxscan.io'>https://testnet.confluxscan.io</a></td>
+    </tr>
+  </table>
   "
   version: 1.0.0
 servers:
@@ -16,10 +24,10 @@ servers:
     description: 'Local server'
 paths:
   '/':
-    description: 'Test connections.'
     get:
       tags:
         - 'Developer tools'
+      description: 'Test the network works correctly.'
       responses:
         200:
           description: 'Welcome of Conflux scan open api.'
@@ -37,8 +45,13 @@ paths:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
-#        - $ref: '#/components/parameters/from'
-#        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
       responses:
         200:
           description: ''
@@ -47,8 +60,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/TransactionList"
   '/transfer20/account':
-    description: 'Get erc20 transfer records of an account'
     get:
+      description: 'Get erc20 transfer records of an account.'
       tags:
         - 'ERC20 transfer'
       parameters:
@@ -56,6 +69,12 @@ paths:
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
       responses:
         200:
           description: ''
@@ -73,6 +92,13 @@ paths:
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/tokenIdParam'
       responses:
         200:
           description: ''
@@ -90,6 +116,13 @@ paths:
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/tokenIdParam'
       responses:
         200:
           description: ''
@@ -334,7 +367,7 @@ components:
     skipParam:
       name: skip
       in: query
-      description: "Skip how many records, usually it's pageSize * (pageNumber - 1)"
+      description: "Skip how many records, usually it's pageSize * (pageNumber - 1). Maximum 10000."
       required: false
       schema:
         type: integer
@@ -343,7 +376,7 @@ components:
     limitParam:
       name: limit
       in: query
-      description: "How many records in one page"
+      description: "How many records in one page. Maximum 100."
       required: false
       schema:
         type: integer
@@ -354,12 +387,53 @@ components:
       in: query
       description: "contract/address, on testnet, it's like cfxtest:acepe88unk7fvs18436178up33hb4zkuf62a9dk1gv,
       on mainnet it's like cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7"
-      required: true
+      required: false
       schema:
         type: string
         example: ''
+    minEpochNumberParam:
+      name: minEpochNumber
+      in: query
+      required: false
+      schema:
+        type: integer
+    maxEpochNumberParam:
+      name: minEpochNumber
+      in: query
+      required: false
+      schema:
+        type: integer
+    minTimestampParam:
+      description: 'Timestamp in seconds'
+      name: minTimestamp
+      in: query
+      required: false
+      schema:
+        type: integer
+    maxTimestampParam:
+      description: 'Timestamp in seconds'
+      name: maxTimestamp
+      in: query
+      required: false
+      schema:
+        type: integer
+    tokenIdParam:
+      description: "Token id. It's uint256 in solidity. Using string here."
+      name: maxTimestamp
+      in: query
+      required: false
+      schema:
+        type: string
+    sortParam:
+      description: "Sort in DESC or ASC order."
+      name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'DESC'
 externalDocs:
-  description: 'Goto conflux scan'
-  url: 'https://confluxscan.io'
+  description: 'Conflux JSON RPC Docs'
+  url: 'https://developer.confluxnetwork.org/docs/conflux-doc/docs/json_rpc'
 
 #https://swagger.io/docs/specification/components/:

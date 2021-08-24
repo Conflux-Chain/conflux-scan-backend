@@ -156,8 +156,9 @@ export class FullBlockQuery {
                                      nonce = undefined, minTimestamp = undefined, maxTimestamp = undefined,
                                      accountAddress = undefined, from = undefined, to = undefined, opponentAddress = undefined,
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
-                                     verboseAddress = true,
+                                     verboseAddress = true, sort = 'DESC'
     }) {
+        sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // parse para
         const addressMap = {};
@@ -274,7 +275,7 @@ export class FullBlockQuery {
             options.where = {[Op.and]: conditionArray};
         }
         // order
-        options.order = [['epoch', 'DESC'], ['blockPosition', 'DESC'], ['txPosition', 'DESC']];
+        options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
         // query
         let rawList;
         let count;

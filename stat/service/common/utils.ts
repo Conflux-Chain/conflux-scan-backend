@@ -2,10 +2,17 @@ import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
-    return {
+    const param = {
         skip: intParam(obj, skipKey, 0),
         limit: intParam(obj, limitKey, defaultLimit)
+    };
+    if (param.skip > 10000) {
+        throw new Error('Parameter <skip> exceeds 10000')
     }
+    if (param.limit > 100) {
+        throw new Error('Parameter <limit> exceeds 100')
+    }
+    return param
 }
 export function intParam(obj: object, key: string, defaultV: number) {
     const v = obj[key]
