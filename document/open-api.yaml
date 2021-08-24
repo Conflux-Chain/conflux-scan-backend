@@ -24,8 +24,8 @@ paths:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/from'
-        - $ref: '#/components/parameters/to'
+#        - $ref: '#/components/parameters/from'
+#        - $ref: '#/components/parameters/to'
       responses:
         200:
           description: ''

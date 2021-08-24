@@ -12,7 +12,6 @@ import {KnownError} from "../common/RestTool";
 import {base32id} from "../service/OpenTxService";
 import {BalanceService} from "../../stat/service/watcher/BalanceService";
 import {koaSwagger} from "koa2-swagger-ui";
-import ApiDef from "../../stat/router/ApiDef";
 import * as path from "path";
 const yamljs = require('yamljs');
 
