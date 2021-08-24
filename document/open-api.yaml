@@ -75,6 +75,7 @@ paths:
         - $ref: '#/components/parameters/maxEpochNumberParam'
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
       responses:
         200:
           description: ''
@@ -99,6 +100,7 @@ paths:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/sortParam'
       responses:
         200:
           description: ''
@@ -123,6 +125,7 @@ paths:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/sortParam'
       responses:
         200:
           description: ''
@@ -425,7 +428,7 @@ components:
       schema:
         type: string
     sortParam:
-      description: "Sort in DESC or ASC order."
+      description: "Sort in DESC or ASC order. If sort by customized filed is not supported, epoch and other time sequence fields are used."
       name: sort
       in: query
       required: false

@@ -14,7 +14,8 @@ export abstract class TransferQueryBase {
     private buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
                                   minTimestamp, maxTimestamp,
                                   accountAddressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-                                  tokenId, txType, skip, limit}){
+                                  tokenId, txType, skip, limit, sort='DESC'}){
+        sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // page
         const queryOptions: any = {offset: skip, limit, raw: true};
@@ -73,12 +74,12 @@ export abstract class TransferQueryBase {
             queryOptions.where[Op.and] = conditionArray;
         }
         // order
-        queryOptions.order = [['epoch', 'DESC']];
+        queryOptions.order = [['epoch', sort]];
         if(accountAddressId !== undefined){
-            queryOptions.order.push(['tracePos', 'DESC']);
+            queryOptions.order.push(['tracePos', sort]);
         }
         if(tokenAddressIdArray.length){
-            queryOptions.order.push(['createdAt', 'DESC']);
+            queryOptions.order.push(['createdAt', sort]);
         }
 
         return queryOptions;
@@ -94,7 +95,7 @@ export abstract class TransferQueryBase {
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, from, to, opponentAddress, tokenArray,
-            tokenId, txType , status, skip = 0, limit = 10} = options;
+            tokenId, txType , status, skip = 0, limit = 10, sort} = options;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
@@ -141,7 +142,7 @@ export abstract class TransferQueryBase {
             minEpochNumber, maxEpochNumber, transactionHashId,
             minTimestamp, maxTimestamp,
             accountAddressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-            tokenId, txType, skip, limit
+            tokenId, txType, skip, limit, sort
         });
         queryOptions.attributes = this.buildQueryFields();
         if(options.accountAddress !== undefined){
