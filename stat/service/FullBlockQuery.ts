@@ -152,10 +152,10 @@ export class FullBlockQuery {
         const result = {total: count ? count : 0, list, paging};
         return result;
     }
-    public async listTransaction({minEpochNumber, maxEpochNumber, blockHash, transactionHash,
-                                     nonce, minTimestamp, maxTimestamp,
-                                     accountAddress, from, to, opponentAddress,
-                                     txType, status, skip = 0, limit = 10,
+    public async listTransaction({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined, transactionHash = undefined,
+                                     nonce = undefined, minTimestamp = undefined, maxTimestamp = undefined,
+                                     accountAddress = undefined, from = undefined, to = undefined, opponentAddress = undefined,
+                                     txType = undefined, status = undefined, skip = 0, limit = 10,
                                      verboseAddress = true,
     }) {
         const{ logger } = this.app;

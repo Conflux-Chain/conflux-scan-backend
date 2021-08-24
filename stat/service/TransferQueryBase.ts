@@ -133,7 +133,7 @@ export abstract class TransferQueryBase {
             || (to !== undefined && toAddressId === undefined)
             || (opponentAddress !== undefined && opponentAddressId === undefined
             || (tokenArray !== undefined && tokenAddressIdArray?.length === 0))){
-            return {total: 0, list: [], accountId: accountAddressId, contractId: addressId};
+            return {total: 0, list: [], accountId: accountAddressId};
         }
 
         // queryOptions
@@ -176,7 +176,7 @@ export abstract class TransferQueryBase {
                 this.processQueryResult(row, hex40Map, hex64Map);
             })
         }
-        const result = {total: page?.count || 0, list, accountId: accountAddressId, contractId: addressId};
+        const result = {total: page?.count || 0, list, accountId: accountAddressId};
         return result;
     }
 

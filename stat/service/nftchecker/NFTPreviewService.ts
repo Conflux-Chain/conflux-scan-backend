@@ -262,7 +262,7 @@ export class NFTPreviewService {
             }
             if (needFetchJson) {
                 let url = jsonUriFormatter ? jsonUriFormatter(meta)
-                    : meta.indexOf('{id}') > -1 ? meta.replace('{id}', BigInt(tokenId).toString(16)) : meta;
+                    : meta.indexOf('{id}') > -1 ? meta.replace('{id}', tokenId.toString(16)) : meta;
                 const response = await superagent.get(url);
                 meta = JSON.parse(response.text);
             }
