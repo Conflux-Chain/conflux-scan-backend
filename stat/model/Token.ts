@@ -118,7 +118,7 @@ export class Token extends Model<IToken> implements IToken{
         })
     }
 
-    static async add(token: Token, dbTx = undefined): Promise<IToken> {
+    static async add(token: Token, dbTx = undefined): Promise<Token> {
         addTokenCache(token)
         return await Token.create({
             name:token.name,

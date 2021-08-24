@@ -20,7 +20,7 @@ export class NFTPreviewService {
         tokenId,
     }: {
         contractAddress: string;
-        tokenId: string | number;
+        tokenId: BigInt;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
         switch (address) {
@@ -102,7 +102,7 @@ export class NFTPreviewService {
          meta,
     }: {
          address: string;
-         tokenId?: string | number;
+         tokenId?: BigInt;
          meta?: any;
     }) {
         try {
@@ -226,7 +226,7 @@ export class NFTPreviewService {
                     return null;
             }
         } catch (e) {
-            console.error(e);
+            // console.error(e);
             return null;
         }
     };
@@ -241,7 +241,7 @@ export class NFTPreviewService {
          imageUriFormatter,
     }: {
          address: string;
-         tokenId: string | number;
+         tokenId: BigInt;
          method?: string;
          minHeight?: number;
          needFetchJson?: boolean;
@@ -262,7 +262,7 @@ export class NFTPreviewService {
             }
             if (needFetchJson) {
                 let url = jsonUriFormatter ? jsonUriFormatter(meta)
-                    : meta.indexOf('{id}') > -1 ? meta.replace('{id}', Number(tokenId).toString(16)) : meta;
+                    : meta.indexOf('{id}') > -1 ? meta.replace('{id}', BigInt(tokenId).toString(16)) : meta;
                 const response = await superagent.get(url);
                 meta = JSON.parse(response.text);
             }
@@ -271,9 +271,9 @@ export class NFTPreviewService {
             const imageName = await this.getNFTName({address, tokenId, meta}) || {};
             this.setNFTCacheInfo({ address, tokenId, imageUri, imageName });
 
-            return { imageMinHeight: minHeight, imageUri, imageName };
+            return { imageMinHeight: minHeight, imageUri, imageName, errorMessage: meta.error };
         } catch (e) {
-            console.error(e);
+            // console.error(e);
             return null;
         }
     };
@@ -283,7 +283,7 @@ export class NFTPreviewService {
         tokenId,
     }: {
         address: string;
-        tokenId: string | number;
+        tokenId: BigInt;
     }) {
         const key = `${address}-${tokenId}`;
         const nftJson = this.localStorage.get(key);
@@ -306,7 +306,7 @@ export class NFTPreviewService {
         imageName,
     }: {
         address: string;
-        tokenId: string | number;
+        tokenId: BigInt;
         imageUri?: string;
         imageName?: any;
     }) {
@@ -323,4 +323,5 @@ export type NFTInfoType = {
     imageMinHeight: number;
     imageUri: string;
     imageName: any;
+    errorMessage?: any;
 } | null;
