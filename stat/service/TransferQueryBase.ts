@@ -2,8 +2,6 @@
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
-import {ContractInfo} from "../model/ContractInfo";
-import {Token} from "../model/Token";
 const CONST = require('./common/constant');
 
 export abstract class TransferQueryBase {
@@ -13,7 +11,9 @@ export abstract class TransferQueryBase {
         this.app = app;
     }
 
-    private buildQueryOptions({accountAddressId, addressId, minTimestamp, maxTimestamp, opponentAddressId, transactionHashId,
+    private buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
+                                  minTimestamp, maxTimestamp,
+                                  accountAddressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
                                   tokenId, txType, skip, limit}){
         const{ logger } = this.app;
         // page
@@ -23,12 +23,29 @@ export abstract class TransferQueryBase {
         if(accountAddressId){
             conditionArray.push({addressId: accountAddressId});
         }
-        if(addressId){
-            conditionArray.push({contractId: addressId});
+        if(tokenAddressIdArray.length){
+            conditionArray.push({contractId: {[Op.in]: tokenAddressIdArray}});
         }
-        if(minTimestamp && maxTimestamp) {
-            conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
-                    {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
+        if(minEpochNumber) {
+            conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
+        }
+        if(maxEpochNumber) {
+            conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
+        }
+        if(minTimestamp) {
+            conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
+        }
+        if(maxTimestamp) {
+            conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
+        }
+        if(fromAddressId !== undefined && toAddressId === undefined) {
+            conditionArray.push({fromId: fromAddressId});
+        }
+        if(toAddressId !== undefined && fromAddressId === undefined) {
+            conditionArray.push({toId: toAddressId});
+        }
+        if(fromAddressId !== undefined &&  toAddressId !== undefined) {
+            conditionArray.push({[Op.or]: [{fromId: fromAddressId}, {toId: toAddressId}]});
         }
         if(opponentAddressId){
             conditionArray.push({[Op.or]: [{toId: opponentAddressId}, {fromId: opponentAddressId}]});
@@ -39,12 +56,12 @@ export abstract class TransferQueryBase {
         if(tokenId) {
             conditionArray.push({tokenId: tokenId.toString()});
         }
-        if(txType && accountAddressId){
-            if(txType === CONST.TX_TYPE.IN){
+        if(accountAddressId) {
+            if (txType === CONST.TX_TYPE.IN) {
                 conditionArray.push({toId: accountAddressId});
-            } else if(txType === CONST.TX_TYPE.OUT){
+            } else if (txType === CONST.TX_TYPE.OUT) {
                 conditionArray.push({fromId: accountAddressId});
-            } else{
+            } else {
                 conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
         }
@@ -60,7 +77,7 @@ export abstract class TransferQueryBase {
         if(accountAddressId !== undefined){
             queryOptions.order.push(['tracePos', 'DESC']);
         }
-        if(addressId !== undefined){
+        if(tokenAddressIdArray.length){
             queryOptions.order.push(['createdAt', 'DESC']);
         }
 
@@ -74,37 +91,58 @@ export abstract class TransferQueryBase {
 
     public async listTransfer(options) {
         const{ logger } = this.app;
-        const {accountAddress, address, minTimestamp, maxTimestamp, opponentAddress, transactionHash, tokenId,
-            txType , status, skip = 0, limit = 10} = options;
-
-        // parameter
+        const {minEpochNumber, maxEpochNumber, transactionHash,
+            minTimestamp, maxTimestamp,
+            accountAddress, from, to, opponentAddress, tokenArray,
+            tokenId, txType , status, skip = 0, limit = 10} = options;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
-        const accountAddressHex = accountAddress && format.hexAddress(accountAddress).substr(2);
-        const addressHex = address && format.hexAddress(address).substr(2);
-        const opponentAddressHex = opponentAddress && format.hexAddress(opponentAddress).substr(2);
-        const addressArray = [accountAddressHex, addressHex, opponentAddressHex].filter(Boolean);
-        const addressMap = addressArray?.length > 0 ? await hex40IdMap(addressArray) : undefined;
-        const accountAddressId = addressMap?.get(accountAddressHex);
-        const addressId = addressMap?.get(addressHex);
-        const opponentAddressId = addressMap?.get(opponentAddressHex);
+
+        // parameter
+        const addressMap = {};
+        await Promise.all([accountAddress, from, to, opponentAddress]
+            .map(async ( address ) => {
+                if(address){
+                    const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(address).substr(2)}})
+                    addressMap[address] =  hex40?.id;
+                }
+            })
+        );
+        const accountAddressId = addressMap[accountAddress];
+        const fromAddressId = addressMap[from];
+        const toAddressId = addressMap[to];
+        const opponentAddressId = addressMap[opponentAddress];
         let transactionHashId;
         if(transactionHash){
             const hex64 = await Hex64Map.findOne({where: {hex: transactionHash.substr(2)}});
             transactionHashId = hex64?.id;
         }
+        const tokenAddressIdArray = [];
+        if(tokenArray?.length){
+            const hex40Array = tokenArray.map((address) => format.hexAddress(address).substr(2));
+            const hex40RecordArray = await Hex40Map.findAll({where: {hex: {[Op.in]: hex40Array}}})
+            hex40RecordArray.forEach(row => {
+                tokenAddressIdArray.push(row.id);
+            });
+        }
 
         // check if address exist
         if((accountAddress !== undefined && accountAddressId === undefined)
-            || (address !== undefined && addressId === undefined)
-            || (opponentAddress !== undefined && opponentAddressId === undefined)){
+            || (from !== undefined && fromAddressId === undefined)
+            || (to !== undefined && toAddressId === undefined)
+            || (opponentAddress !== undefined && opponentAddressId === undefined
+            || (tokenArray !== undefined && tokenAddressIdArray?.length === 0))){
             return {total: 0, list: []};
         }
 
         // queryOptions
-        const queryOptions = this.buildQueryOptions({accountAddressId, addressId, minTimestamp, maxTimestamp, opponentAddressId,
-            transactionHashId, tokenId, txType, skip, limit});
+        const queryOptions = this.buildQueryOptions({
+            minEpochNumber, maxEpochNumber, transactionHashId,
+            minTimestamp, maxTimestamp,
+            accountAddressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
+            tokenId, txType, skip, limit
+        });
         queryOptions.attributes = this.buildQueryFields();
         if(options.accountAddress !== undefined){
             queryOptions.attributes.push( ['tracePos', 'transactionLogIndex'],);

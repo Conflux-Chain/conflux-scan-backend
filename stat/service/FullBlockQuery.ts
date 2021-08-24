@@ -11,7 +11,7 @@ import {
 } from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
-import {Hex40Map} from "../model/HexMap";
+import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 const CONST = require('./common/constant');
 
@@ -22,7 +22,8 @@ export class FullBlockQuery {
         this.app = app;
     }
 
-    public async listBlock({epochNumber, blockHash, minTimestamp, maxTimestamp, miner, skip = 0, limit = 10}) {
+    public async listBlock({minEpochNumber, maxEpochNumber, blockHash, minTimestamp, maxTimestamp,
+                               miner, skip = 0, limit = 10}) {
         const{ logger } = this.app;
         // parse para
         let minerId;
@@ -54,16 +55,25 @@ export class FullBlockQuery {
         // where
         const conditionArray = [];
         let paging:any|BlockPage = {}
-        if(blockHash){
-            conditionArray.push({hash: blockHash});
-        }else if(minerId){
-            conditionArray.push({minerId});
-            if(minTimestamp && maxTimestamp) {
-                conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
-                        {createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}}]});
+        if(minEpochNumber !== undefined ||  maxEpochNumber !== undefined ||  blockHash !== undefined
+            || minerId !== undefined || minTimestamp !== undefined || maxTimestamp !== undefined){
+            if(minEpochNumber){
+                conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
             }
-            if(epochNumber){
-                conditionArray.push({epoch: epochNumber});
+            if(maxEpochNumber){
+                conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
+            }
+            if(blockHash){
+                conditionArray.push({hash: blockHash});
+            }
+            if(minerId) {
+                conditionArray.push({minerId});
+            }
+            if(minTimestamp) {
+                conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
+            }
+            if(maxTimestamp) {
+                conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
             }
         } else{
             const {pagedCondition,blockPage} = await this.buildPagedBlockOptions(skip);
@@ -86,14 +96,6 @@ export class FullBlockQuery {
         let count;
         if(blockHash){
             rawList = await FullBlock.findAll(options);
-            rawList = rawList?.filter(row => {
-                let valid = true;
-                const timestamp = new Date(row['timestamp']).getTime();
-                if(epochNumber) valid = valid && (row['epochNumber'] === epochNumber);
-                if(minTimestamp) valid = valid && (timestamp >= minTimestamp * 1000);
-                if(maxTimestamp) valid = valid && (timestamp <= maxTimestamp * 1000);
-                return valid;
-            });
             count = rawList?.length;
         }else if(minerId){
             const minerOptions = {...options};
@@ -122,12 +124,12 @@ export class FullBlockQuery {
             count = page.count;
         } else{
             rawList = await FullBlock.findAll(options);
-            // use the value when paging.
             count = paging.calcTotal || 0
             if (count < 0){
                 count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
             }
         }
+        // fields mapping
         const list = [];
         if(rawList){
             const hex40IdSet = new Set<number>();
@@ -135,16 +137,7 @@ export class FullBlockQuery {
                 hex40IdSet.add(row['miner']);
                 list.push(row);
             });
-            const hex40Array = await Hex40Map.findAll({
-                where: {
-                    id: { [Op.in]: Array.from(hex40IdSet)}
-                },
-            })
-            const hex40Map = new Map<number, string>()
-            hex40Array.forEach(hex40=>{
-                hex40Map.set(hex40.id, hex40.hex)
-            })
-            // fields mapping
+            const hex40Map = await idHex40Map(Array.from(hex40IdSet));
             list.forEach(row=>{
                 const minerId = row['miner'];
                 if(minerId && hex40Map.get(minerId)){
@@ -160,24 +153,27 @@ export class FullBlockQuery {
             })
         }
         const result = {total: count ? count : 0, list, paging};
-        // logger?.info({src: `fullblockquery------------`, 'result': JSON.stringify(result)});
         return result;
     }
-
-    public async listTransaction({blockHash, accountAddress, minTimestamp, maxTimestamp, opponentAddress, transactionHash,
+    public async listTransaction({minEpochNumber, maxEpochNumber, blockHash, transactionHash,
+                                     nonce, minTimestamp, maxTimestamp,
+                                     accountAddress, from, to, opponentAddress,
                                      txType, status, skip = 0, limit = 10}) {
         const{ logger } = this.app;
         // parse para
-        let accountAddressId;
-        let opponentAddressId;
-        if(accountAddress){
-            const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(accountAddress).substr(2)}})
-            accountAddressId = hex40?.id
-        }
-        if(opponentAddress){
-            const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(opponentAddress).substr(2)}})
-            opponentAddressId = hex40?.id
-        }
+        const addressMap = {};
+        await Promise.all([accountAddress, from, to, opponentAddress]
+            .map(async ( address ) => {
+                if(address){
+                    const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(address).substr(2)}})
+                    addressMap[address] =  hex40?.id;
+                }
+            })
+        );
+        let accountAddressId = addressMap[accountAddress];
+        let fromAddressId = addressMap[from];
+        let toAddressId = addressMap[to];
+        let opponentAddressId = addressMap[opponentAddress];
         // check if exist
         if((accountAddress !== undefined && accountAddressId === undefined)
             || (opponentAddress !== undefined && opponentAddressId === undefined)){
@@ -201,6 +197,9 @@ export class FullBlockQuery {
             'status',
             ['contractCreatedId', 'contractCreated'],
         ];
+        if(accountAddressId === undefined){
+            options.attributes.push('method');
+        }
         // where
         const conditionArray = [];
         let txPage:any | TxPage = {}
@@ -213,9 +212,29 @@ export class FullBlockQuery {
         }
         if(accountAddressId){
             conditionArray.push({addressId: accountAddressId});
-            if(minTimestamp && maxTimestamp) {
-                conditionArray.push({ [Op.and]: [{createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}},
-                        {createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}}]});
+            if(minEpochNumber){
+                conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
+            }
+            if(maxEpochNumber){
+                conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
+            }
+            if(nonce){
+                conditionArray.push({nonce: nonce});
+            }
+            if(minTimestamp) {
+                conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
+            }
+            if(maxTimestamp) {
+                conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
+            }
+            if(fromAddressId !== undefined && toAddressId === undefined){
+                conditionArray.push({fromId: fromAddressId});
+            }
+            if(toAddressId !== undefined && fromAddressId === undefined){
+                conditionArray.push({toId: toAddressId});
+            }
+            if(fromAddressId !== undefined &&  toAddressId !== undefined){
+                conditionArray.push({[Op.or]: [{fromId: fromAddressId}, {toId: toAddressId}]});
             }
             if(opponentAddressId){
                 const conditionOpponent = {};
@@ -265,12 +284,10 @@ export class FullBlockQuery {
             rawList = page?.rows;
             count = page?.count;
         } else if(blockHash){
-            options.attributes.push('method');
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
             count = page?.count;
         } else{
-            options.attributes.push('method');
             rawList = await FullTransaction.findAll(options);
             count = txPage.calcTotal || 0
             if (count < 0) {
