@@ -90,7 +90,7 @@ export class ApiServer {
         StatApp.readonly = config.database.readonly
         const sequelize = createDB(config.database)
         await initModel(sequelize)
-        await sequelize.sync({})
+        // await sequelize.sync({})
         await RedisWrap.connect(config.redis)
         apiService = new ApiService()
         const apiApp = {networkId:cfxStatus.networkId};
