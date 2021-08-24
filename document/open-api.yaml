@@ -2,11 +2,11 @@ openapi: 3.0.0
 info:
   title: Conflux Scan Open Api
   description: "Conflux Scan Open Api. <br/>
-  <a target='_BLANK' href='https://api.confluxscan.io'>Mainnet Production</a> |
-  <a target='_BLANK' href='https://api-testnet.confluxscan.io'>Testnet Production</a> <br/>
-  <a target='_BLANK' href='https://scanapi-scantest.confluxnetwork.org'>Testnet Development</a> |
-  <a target='_BLANK' href='https://scanapi-testnet.confluxnetwork.org'>Mainnet Development</a> <br/>
-  <a target='_BLANK' href='http://localhost:8087/open'>Local</a>
+  <a target='_BLANK' href='https://api.confluxscan.io/doc'>Mainnet Production</a> |
+  <a target='_BLANK' href='https://api-testnet.confluxscan.io/doc'>Testnet Production</a> <br/>
+  <a target='_BLANK' href='https://scanapi-scantest.confluxnetwork.org/doc'>Testnet Development</a> |
+  <a target='_BLANK' href='https://scanapi-testnet.confluxnetwork.org/doc'>Mainnet Development</a> <br/>
+  <a target='_BLANK' href='http://localhost:8087/open/doc'>Local</a>
   "
   version: 1.0.0
 servers:
