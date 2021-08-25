@@ -16,9 +16,18 @@ export function setRateControlDB(db0) {
 function getDB() {
     return db;
 }
+export async function executionTime(ctx, next) {
+    const start = Date.now()
+    return next().finally(()=>{
+        ctx.set('executionTime', Date.now() - start)
+    })
+}
 export async function rateControl(ctx, next) {
+    // https://www.npmjs.com/package/ratelimiter
     const ip = requestIp.getClientIp(ctx.request)
-    const limit = new Limiter({ id: ip, db: getDB() });
+    // duration - of limit in milliseconds [3600000]
+    const max = 100, duration = 10_000
+    const limit = new Limiter({ id: ip, db: getDB(), max, duration });
     const res = ctx
     await new Promise(resolve => {
         limit.get(function(err, limit){
@@ -29,7 +38,8 @@ export async function rateControl(ctx, next) {
 
             res.set('X-RateLimit-Limit', limit.total);
             res.set('X-RateLimit-Remaining', limit.remaining - 1);
-            res.set('X-RateLimit-Reset', limit.reset);
+            res.set('X-RateLimit-Max', max);
+            res.set('X-RateLimit-Duration', duration);
 
             // all good
             // debug('remaining %s/%s %s', limit.remaining - 1, limit.total, id);
@@ -40,9 +50,10 @@ export async function rateControl(ctx, next) {
 
             // not good
             const delta = (limit.reset * 1000) - Date.now() | 0;
-            const after = limit.reset - (Date.now() / 1000) | 0;
-            res.set('Retry-After', after);
-            ctx.body = { code: CODE_RATE_LIMITED, message: `Rate limit exceeded, retry in ${delta}`  };
+            // const after = limit.reset - (Date.now() / 1000) | 0;
+            res.set('Retry-After-ms', delta);
+            ctx.body = { code: CODE_RATE_LIMITED, message: `Rate limit exceeded, retry in ${delta}ms`, retryAfterMs: delta  };
+            resolve(CODE_RATE_LIMITED)
         });
     })
 

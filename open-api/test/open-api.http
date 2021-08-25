@@ -1,3 +1,5 @@
+GET localhost:8087/open/version
+###
 GET localhost:8087/api/list-account-transaction?address=cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp
 ###
 GET localhost:8087/api/list-account-transaction?address=CFX:TYPE.USER:AATFDV8WDFUW8BKCAD0108APN5EZK1DA0Y8MSREF2N

@@ -6,13 +6,14 @@ import {loadConfig, StatConfig} from "../stat/config/StatConfig";
 import {patchHttpProvider} from "../stat/service/common/utils";
 import {StatApp} from "../stat/StatApp";
 import {createDB, initModel} from "../stat/service/DBProvider";
-import {RedisWrap} from "../stat/service/RedisWrap";
+import {redisWrap, RedisWrap} from "../stat/service/RedisWrap";
 import {register} from "./router/ApiRouter";
 import {FullBlockQuery} from "../stat/service/FullBlockQuery";
 import {Crc20TransferQuery} from "../stat/service/Crc20TransferQuery";
 import {Crc721TransferQuery} from "../stat/service/Crc721TransferQuery";
 import {Crc1155TransferQuery} from "../stat/service/Crc1155TransferQuery";
 import {BatchBalanceWatcher} from "../stat/service/watcher/BatchBalanceWatcher";
+import {setRateControlDB} from "./router/middleware";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -92,6 +93,7 @@ export class ApiServer {
         await initModel(sequelize)
         // await sequelize.sync({})
         await RedisWrap.connect(config.redis)
+        setRateControlDB(redisWrap.client)
         apiService = new ApiService()
         const apiApp = {networkId:cfxStatus.networkId};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)

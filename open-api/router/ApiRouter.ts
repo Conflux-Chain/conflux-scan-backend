@@ -6,7 +6,7 @@ import {
     CODE_PARAMETER_ABSENT_MSG,
 } from "../common/Def";
 import {BalanceService} from "../../stat/service/watcher/BalanceService";
-import {addSwagger, handleException, rateControl, setBody} from "./middleware";
+import {addSwagger, executionTime, handleException, rateControl, setBody} from "./middleware";
 import {listTransfer} from "../service/OpenTransferService";
 import {skipLimit} from "../../stat/service/common/utils";
 
@@ -87,6 +87,7 @@ async function listAccountTransfer1155(ctx) {
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
     app.use(rateControl)
+    app.use(executionTime)
     app.use(handleException)
     const prefix = '/open';
     getApiService().logger.info(`url prefix: ${prefix}`)
