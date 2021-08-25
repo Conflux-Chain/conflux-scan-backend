@@ -206,7 +206,7 @@ export class BalanceService {
             attributes: {
                 exclude: ['icon']
             },
-            logging: console.log,
+            // logging: console.log,
             where: {...conditions, fetchBalance: true}
         });
         const contracts = tokenList.map(t=>t.base32);

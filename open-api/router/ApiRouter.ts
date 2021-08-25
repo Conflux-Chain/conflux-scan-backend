@@ -9,6 +9,7 @@ import {BalanceService} from "../../stat/service/watcher/BalanceService";
 import {addSwagger, executionTime, handleException, rateControl, setBody} from "./middleware";
 import {listTransfer, polishTransferList} from "../service/OpenTransferService";
 import {skipLimit} from "../../stat/service/common/utils";
+import {polishAssertList} from "../service/OpenAccountService";
 
 const cors = require('@koa/cors');
 
@@ -22,12 +23,13 @@ async function root(ctx, tag) {
  */
 async function listAccountAssets(ctx) {
     const {account: base32} = ctx.request.query;
-    if (!Boolean(base32)) {
-        setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
-        return
-    }
-    const asserts = await BalanceService.listAccountBalanceInner(base32)
-    setBody(ctx, asserts)
+    // if (!Boolean(base32)) {
+    //     setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
+    //     return
+    // }
+    const assets = await BalanceService.listAccountBalanceInner(base32)
+    polishAssertList(assets)
+    setBody(ctx, assets)
 }
 /**
  * query transactions of one account(address)
