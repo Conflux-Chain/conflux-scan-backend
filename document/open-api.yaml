@@ -446,11 +446,11 @@ components:
           - incoming
     addressInfoParam:
       description: "Whether to obtain the detailed information of the address appearing in the returned result."
-      name: sort
+      name: addressInfo
       in: query
       required: false
       schema:
-        type: bool
+        type: boolean
         default: false
     sortParam:
       description: "Sort in DESC or ASC order. If sorting by custom filed is not supported, epoch and other time sequence fields are applied"

@@ -19,7 +19,7 @@ export function polishTransferList(page) {
 export async function listTransfer(ctx, service) {
     const {skip, limit} = skipLimit(ctx.request.query)
     // token id is not used in crc20transfer.
-    const {account: base32,minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to,sort,contract,tokenId} = ctx.request.query;
+    const {account: base32,minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to,sort,contract,tokenId, addressInfo} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
@@ -29,6 +29,6 @@ export async function listTransfer(ctx, service) {
             minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
     );
     polishTransferList(page)
-    await polishContract(page)
+    await polishContract(page, addressInfo)
     setBody(ctx, page)
 }

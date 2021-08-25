@@ -1,7 +1,10 @@
 import {getApiService} from "../ApiServer";
 
-export async function polishContract(page) {
-    const contract = new Set<string>()
+export async function polishContract(page, addressInfo) {
+    if ('true' !== addressInfo) {
+        return
+    }
+    const contract = new Set<string>();
     function add(row, key) {
         const address = row[key];
         if (address && address.substr(address.indexOf(':')).startsWith(':ac')) {
