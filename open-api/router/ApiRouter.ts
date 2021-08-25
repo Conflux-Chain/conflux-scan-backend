@@ -87,8 +87,8 @@ async function listAccountTransfer1155(ctx) {
 
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
-    app.use(rateControl)
     app.use(executionTime)
+    app.use(rateControl)
     app.use(handleException)
     const prefix = '/open';
     getApiService().logger.info(`url prefix: ${prefix}`)
