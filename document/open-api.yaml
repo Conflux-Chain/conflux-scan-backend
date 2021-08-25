@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Conflux Scan Open Api
-  description: "Use any http client to fetch data from Conflux Scan under mainnet or testnet.<br/>
+  description: "Use any http client to fetch data from the ConfluxScan mainnet or testnet.<br/>
   <table>
     <tr>
       <td>Api host</td><td>Net</td><td>Mode</td><td>Scan</td>
@@ -141,7 +141,7 @@ paths:
                 $ref: "#/components/schemas/Transfer1155List"
   '/account/assets':
     get:
-      description: 'Get asserts hold by an account. Some tokens will not show up for some reasons'
+      description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
       tags:
         - 'Account'
       parameters:
@@ -175,29 +175,29 @@ components:
           type: object
           properties:
             list:
-                type: array
-                items:
-                  properties:
-                    name:
-                      description: 'Name of the token.'
-                      type: string
-                    symbol:
-                      description: 'symbol of the token.'
-                      type: string
-                    decimals:
-                      description: 'Decimals of the token, optional.'
-                      type: integer
-                    contract:
-                      description: 'Contract address of the token.'
-                      type: string
-                      example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
-                    icon:
-                      description: 'Icon url.'
-                      type: string
-                      example: 'http://confluxscan.io/stat/cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx..svg'
-                    amount:
-                      description: 'Balance of the account of one token, not divided by decimals of the token.'
-                      type: 'string'
+              type: array
+              items:
+                properties:
+                  name:
+                    description: 'Name of the token.'
+                    type: string
+                  symbol:
+                    description: 'Symbol of the token.'
+                    type: string
+                  decimals:
+                    description: 'Decimal of the token, optional.'
+                    type: integer
+                  contract:
+                    description: 'Contract address of the token.'
+                    type: string
+                    example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
+                  icon:
+                    description: 'Icon url.'
+                    type: string
+                    example: 'http://confluxscan.io/stat/cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx..svg'
+                  amount:
+                    description: 'The token balance of an account, the string is not divided by the token decimal.'
+                    type: 'string'
     Transfer20List:
       type: object
       properties:
@@ -366,7 +366,7 @@ components:
     skipParam:
       name: skip
       in: query
-      description: "Skip how many records, usually it's pageSize * (pageNumber - 1). Maximum 10000."
+      description: "The number of skipped records, usually it's pageSize * (pageNumber - 1). Maximum 10000."
       required: false
       schema:
         type: integer
@@ -375,7 +375,7 @@ components:
     limitParam:
       name: limit
       in: query
-      description: "How many records in one page. Maximum 100."
+      description: "The number of records displayed on the page. Maximum 100."
       required: false
       schema:
         type: integer
@@ -417,7 +417,7 @@ components:
       schema:
         type: integer
     nonceParam:
-      description: 'Nonce used in transaction.'
+      description: 'Nonce used in a transaction.'
       name: nonce
       in: query
       required: false
@@ -441,7 +441,7 @@ components:
           - outgoing
           - incoming
     sortParam:
-      description: "Sort in DESC or ASC order. If sort by customized filed is not supported, epoch and other time sequence fields are used."
+      description: "Sort in DESC or ASC order. If sorting by custom filed is not supported, epoch and other time sequence fields are applied"
       name: sort
       in: query
       required: false
