@@ -208,7 +208,12 @@ export class ContractQuery {
         return  {total: page?.count || 0, list};
     }
 
-    public async listBasic({ addressArray}) {
+    /**
+     *
+     * @param addressArray
+     * @param iconUrl, if true, use icon url instead of icon(base64).
+     */
+    public async listBasic({ addressArray, iconUrl = false}) {
         const {
             app: { config, tokenQuery, service, tokenTool, confluxSDK },
         } = this;
@@ -238,7 +243,7 @@ export class ContractQuery {
                 .then(response => response.list.map(announceInfo => {
                     return { address: announceInfo.address, name: announceInfo.name };
                 })),
-            tokenService.list(addressArray, ['icon'], undefined, undefined, undefined, undefined, 0, addressArray.length)
+            tokenService.list(addressArray, iconUrl ? [] : ['icon'], undefined, undefined, undefined, undefined, 0, addressArray.length)
                 .then(response => response.list),
         ]);
 

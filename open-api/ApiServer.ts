@@ -14,6 +14,9 @@ import {Crc721TransferQuery} from "../stat/service/Crc721TransferQuery";
 import {Crc1155TransferQuery} from "../stat/service/Crc1155TransferQuery";
 import {BatchBalanceWatcher} from "../stat/service/watcher/BatchBalanceWatcher";
 import {setRateControlDB} from "./router/middleware";
+import {ContractQuery} from "../stat/service/ContractQuery";
+import {TokenQuery} from "../stat/service/TokenQuery";
+import {TokenTool} from "../stat/service/tool/TokenTool";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -24,11 +27,13 @@ export function getApiService() {
     return apiService
 }
 export class ApiService {
+    contractQuery: ContractQuery
     fullBlockQuery: FullBlockQuery
     crc20transferQuery: Crc20TransferQuery
     crc721transferQuery: Crc721TransferQuery
     crc1155transferQuery: Crc1155TransferQuery
     logger: any
+    tokenQuery: TokenQuery;
 }
 
 export function createLogger(tag) {
@@ -100,6 +105,9 @@ export class ApiServer {
         apiService.crc20transferQuery = new Crc20TransferQuery(apiApp)
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
+        const tokenTool = new TokenTool(this.cfx)
+        apiService.tokenQuery = new TokenQuery({tokenTool})
+        apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery})
         apiService.logger = logger
         new BatchBalanceWatcher(this.cfx, [], null)
         // test

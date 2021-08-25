@@ -126,6 +126,7 @@ export class TokenQuery {
             'name',
             'symbol', 'fetchBalance',
             'decimals',
+            'iconUrl',
             'granularity',
             'iconUrl',
             'totalSupply','fetchBalance',

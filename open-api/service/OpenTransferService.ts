@@ -1,6 +1,7 @@
 import {setBody} from "../router/middleware";
 import {CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG} from "../common/Def";
 import {skipLimit} from "../../stat/service/common/utils";
+import {polishContract} from "./OpenContractService";
 
 export function polishTransferList(page) {
     page?.list?.forEach(row=>{
@@ -12,19 +13,22 @@ export function polishTransferList(page) {
         delete row.address
         delete row.value
     })
+    delete page?.accountId
 }
 
 export async function listTransfer(ctx, service) {
     const {skip, limit} = skipLimit(ctx.request.query)
+    // token id is not used in crc20transfer.
     const {account: base32,minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to,sort,contract,tokenId} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
     const page = await service.listTransfer(
-        {accountAddress:base32, address:contract, skip, limit, tokenId,
+        {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, tokenId,
             minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
     );
     polishTransferList(page)
+    await polishContract(page)
     setBody(ctx, page)
 }

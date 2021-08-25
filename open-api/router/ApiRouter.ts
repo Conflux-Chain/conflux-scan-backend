@@ -10,6 +10,7 @@ import {addSwagger, executionTime, handleException, rateControl, setBody} from "
 import {listTransfer, polishTransferList} from "../service/OpenTransferService";
 import {skipLimit} from "../../stat/service/common/utils";
 import {polishAssertList} from "../service/OpenAccountService";
+import {polishContract} from "../service/OpenContractService";
 
 const cors = require('@koa/cors');
 
@@ -45,11 +46,12 @@ async function listAccountTransaction(ctx) {
     const page = await getApiService().fullBlockQuery.listTransaction({accountAddress: base32, skip, limit,
         verboseAddress: false, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort, nonce, txType
     });
-    page.list?.forEach(tx=>{
+    page?.list?.forEach(tx=>{
         delete tx.syncTimestamp
         delete tx.blockHash
     })
     delete page.extraInfo
+    await polishContract(page)
     setBody(ctx, page)
 }
 
@@ -58,17 +60,7 @@ async function listAccountTransaction(ctx) {
  * @param ctx
  */
 async function listAccountTransfer20(ctx) {
-    const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,minEpochNumber,maxEpochNumber,minTimestamp,maxTimestamp,from, to, sort,contract} = ctx.request.query;
-    if (!Boolean(base32)) {
-        setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
-        return
-    }
-    const page = await getApiService().crc20transferQuery.listTransfer(
-        {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
-    );
-    polishTransferList(page)
-    setBody(ctx, page)
+    return listTransfer(ctx, getApiService().crc20transferQuery)
 }
 
 /**
