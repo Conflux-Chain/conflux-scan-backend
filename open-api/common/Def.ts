@@ -1,3 +1,4 @@
+export const CODE_RATE_LIMITED = 429
 export const CODE_PARAMETER_ABSENT = 501
 export const CODE_PARAMETER_ABSENT_MSG = 'Parameter absent:'
 export const CODE_PARAMETER_ERROR = 510

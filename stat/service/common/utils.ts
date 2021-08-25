@@ -14,6 +14,11 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
     }
     return param
 }
+
+export function skipLimit(obj) {
+    return pageParam(obj, 'skip', 'limit', 10)
+}
+
 export function intParam(obj: object, key: string, defaultV: number) {
     const v = obj[key]
     if (v === undefined || v === null) {

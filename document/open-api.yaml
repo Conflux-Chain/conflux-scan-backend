@@ -20,26 +20,26 @@ info:
   <li>Maximum 'skip' is 10,000 when paging.</li>
   <li>Maximum 'limit' is 100 when paging.</li>
   "
-  version: 1.0.0
+  version: 0.0.1
 servers:
   - url: ''
     description: 'This server'
   - url: 'http://localhost:8087/open'
     description: 'Local server'
 paths:
-  '/':
+  '/version':
     get:
       tags:
-        - 'Developer tools'
-      description: 'Test the network works correctly.'
+        - 'Server Info'
+      description: 'Get server version.'
       responses:
         200:
-          description: 'Welcome of Conflux scan open api.'
+          description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Welcome'
-  /transaction/account:
+                $ref: '#/components/schemas/Version'
+  /account/transactions:
     get:
       tags:
         - 'Transaction'
@@ -55,6 +55,8 @@ paths:
         - $ref: '#/components/parameters/maxEpochNumberParam'
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/nonceParam'
+        - $ref: '#/components/parameters/txTypeParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -63,11 +65,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TransactionList"
-  '/transfer20/account':
+  '/account/crc20/transfers':
     get:
-      description: 'Get erc20 transfer records of an account.'
+      description: 'Get crc20 transfer records of an account.'
       tags:
-        - 'ERC20 transfer'
+        - 'Account'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -87,11 +89,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer20List"
-  '/transfer721/account':
-    description: 'Get erc721 transfer records of an account'
+  '/account/crc721/transfers':
+    description: 'Get crc721 transfer records of an account'
     get:
       tags:
-        - 'ERC721 transfer'
+        - 'Account'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -112,11 +114,11 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer721List"
-  '/transfer1155/account':
-    description: 'Get erc1155 transfer records of an account'
+  '/account/crc1155/transfers':
+    description: 'Get crc1155 transfer records of an account'
     get:
       tags:
-        - 'ERC1155 transfer'
+        - 'Account'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -137,7 +139,7 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer1155List"
-  '/account/assert':
+  '/account/assets':
     get:
       description: 'Get asserts hold by an account. Some tokens will not show up for some reasons'
       tags:
@@ -150,17 +152,19 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/AssertsOfAccount"
+                $ref: "#/components/schemas/AssetsOfAccount"
 components:
   schemas:
-    Welcome:
+    Version:
       type: object
       properties:
         code:
           type: integer
         message:
           type: string
-    AssertsOfAccount:
+        version:
+          type: string
+    AssetsOfAccount:
       type: object
       properties:
         code:
@@ -412,26 +416,43 @@ components:
       schema:
         type: integer
     minTimestampParam:
-      description: 'Timestamp in seconds'
+      description: 'Timestamp in seconds.'
       name: minTimestamp
       in: query
       required: false
       schema:
         type: integer
     maxTimestampParam:
-      description: 'Timestamp in seconds'
+      description: 'Timestamp in seconds.'
       name: maxTimestamp
+      in: query
+      required: false
+      schema:
+        type: integer
+    nonceParam:
+      description: 'Nonce used in transaction.'
+      name: nonce
       in: query
       required: false
       schema:
         type: integer
     tokenIdParam:
       description: "Token id. It's uint256 in solidity. Using string here."
-      name: maxTimestamp
+      name: tokenId
       in: query
       required: false
       schema:
         type: string
+    txTypeParam:
+      description: "Transaction type, incoming or outgoing."
+      name: txType
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - outgoing
+          - incoming
     sortParam:
       description: "Sort in DESC or ASC order. If sort by customized filed is not supported, epoch and other time sequence fields are used."
       name: sort
