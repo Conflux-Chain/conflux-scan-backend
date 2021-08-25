@@ -19,7 +19,7 @@ function getDB() {
 export async function executionTime(ctx, next) {
     const start = Date.now()
     return next().finally(()=>{
-        ctx.set('executionTime', Date.now() - start)
+        ctx.set('execution-time', Date.now() - start)
     })
 }
 export async function rateControl(ctx, next) {
