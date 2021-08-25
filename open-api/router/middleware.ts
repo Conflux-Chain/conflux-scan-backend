@@ -68,7 +68,6 @@ export async function handleException(ctx, next) {
             return
         }
         setBody(ctx, undefined, 500, err.toString())
-        console.log((typeof err))
         getApiService().logger.error(`api error ${ctx.request.url}`, err)
     })
 }

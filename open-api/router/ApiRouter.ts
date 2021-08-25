@@ -7,7 +7,7 @@ import {
 } from "../common/Def";
 import {BalanceService} from "../../stat/service/watcher/BalanceService";
 import {addSwagger, executionTime, handleException, rateControl, setBody} from "./middleware";
-import {listTransfer} from "../service/OpenTransferService";
+import {listTransfer, polishTransferList} from "../service/OpenTransferService";
 import {skipLimit} from "../../stat/service/common/utils";
 
 const cors = require('@koa/cors');
@@ -63,8 +63,9 @@ async function listAccountTransfer20(ctx) {
         return
     }
     const page = await getApiService().crc20transferQuery.listTransfer(
-        {accountAddress:base32, tokenArray: [contract], skip, limit, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
+        {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
     );
+    polishTransferList(page)
     setBody(ctx, page)
 }
 
