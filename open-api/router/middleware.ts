@@ -38,7 +38,6 @@ export async function rateControl(ctx, next) {
 
             res.set('X-RateLimit-Limit', limit.total);
             res.set('X-RateLimit-Remaining', limit.remaining - 1);
-            res.set('X-RateLimit-Max', max);
             res.set('X-RateLimit-Duration', duration);
 
             // all good
