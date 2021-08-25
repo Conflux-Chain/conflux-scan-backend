@@ -179,23 +179,23 @@ components:
                 items:
                   properties:
                     name:
-                      description: 'Name of the token'
+                      description: 'Name of the token.'
                       type: string
                     symbol:
-                      description: 'symbol of the token'
+                      description: 'symbol of the token.'
                       type: string
                     decimals:
-                      description: 'Decimals of the token, if has'
+                      description: 'Decimals of the token, optional.'
                       type: integer
-                    base32:
-                      description: 'Address of the token'
-                      type: integer
+                    contract:
+                      description: 'Contract address of the token.'
+                      type: string
                       example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
                     icon:
                       description: 'Icon url.'
                       type: string
                       example: 'http://confluxscan.io/stat/cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx..svg'
-                    balance:
+                    amount:
                       description: 'Balance of the account of one token, not divided by decimals of the token.'
                       type: 'string'
     Transfer20List:
@@ -223,15 +223,10 @@ components:
                     type: string
                   "to":
                     type: string
-                  "value":
+                  "amount":
                     type: string
                   timestamp:
                     type: integer
-                  transactionLogIndex:
-                    type: integer
-                  transferType:
-                    type: string
-                    example: 'ERC20'
     Transfer721List:
       type: object
       properties:
@@ -260,11 +255,6 @@ components:
                     type: string
                   timestamp:
                     type: integer
-                  transactionLogIndex:
-                    type: integer
-                  transferType:
-                    type: string
-                    example: 'ERC721'
     Transfer1155List:
       type: object
       properties:
@@ -289,17 +279,12 @@ components:
                     type: string
                   "to":
                     type: string
-                  "value":
+                  "amount":
                     type: string
                   "tokenId":
                     type: string
                   timestamp:
                     type: integer
-                  transactionLogIndex:
-                    type: integer
-                  transferType:
-                    type: string
-                    example: 'ERC1155'
     TransactionList:
       type: object
       properties:
@@ -335,6 +320,7 @@ components:
                     type: string
                   "value":
                     type: string
+                    description: 'Amount of cfx, in drip.'
                   "gasPrice":
                     type: string
                   "gasFee":
@@ -348,6 +334,7 @@ components:
                     type: string
                   "method":
                     type: string
+                    description: 'method id or method name.'
   parameters:
     account:
       name: account
