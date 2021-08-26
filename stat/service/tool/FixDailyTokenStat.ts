@@ -19,7 +19,7 @@ import {redisWrap, RedisWrap, TRANSFER_ADDRESS_Q, xLen} from "../RedisWrap";
 export async function init() {
     const config = loadConfig('Prod')
     // let seq = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW as Options);//createDB(config.database)
-    let seq = new Sequelize(config.database)
+    let seq = createDB(config.database)
     await initModel(seq)
     await seq.sync({})
     return config
