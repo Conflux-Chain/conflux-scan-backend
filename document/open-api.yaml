@@ -57,7 +57,7 @@ paths:
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/nonceParam'
         - $ref: '#/components/parameters/txTypeParam'
-        - $ref: '#/components/parameters/needAddressInfoParam'
+#        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -82,7 +82,7 @@ paths:
         - $ref: '#/components/parameters/maxEpochNumberParam'
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/needAddressInfoParam'
+#        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -108,7 +108,7 @@ paths:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/needAddressInfoParam'
+#        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -134,7 +134,7 @@ paths:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/needAddressInfoParam'
+#        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:

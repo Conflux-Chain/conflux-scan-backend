@@ -2,7 +2,7 @@ import {getApiService} from "../ApiServer";
 
 export async function polishContract(page, needAddressInfo) {
     if ('true' !== needAddressInfo) {
-        return
+        // return // always true.
     }
     const contract = new Set<string>();
     function add(row, key) {
