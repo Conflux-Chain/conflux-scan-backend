@@ -38,7 +38,7 @@ async function listAccountAssets(ctx) {
  */
 async function listAccountTransaction(ctx) {
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,minEpochNumber,maxEpochNumber,minTimestamp,maxTimestamp,from, to, sort, nonce, txType, addressInfo} = ctx.request.query;
+    const {account: base32,minEpochNumber,maxEpochNumber,minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
@@ -51,7 +51,7 @@ async function listAccountTransaction(ctx) {
         delete tx.blockHash
     })
     delete page.extraInfo
-    await polishContract(page, addressInfo)
+    await polishContract(page, needAddressInfo)
     setBody(ctx, page)
 }
 

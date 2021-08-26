@@ -1,7 +1,7 @@
 import {getApiService} from "../ApiServer";
 
-export async function polishContract(page, addressInfo) {
-    if ('true' !== addressInfo) {
+export async function polishContract(page, needAddressInfo) {
+    if ('true' !== needAddressInfo) {
         return
     }
     const contract = new Set<string>();

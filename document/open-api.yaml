@@ -57,7 +57,7 @@ paths:
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/nonceParam'
         - $ref: '#/components/parameters/txTypeParam'
-        - $ref: '#/components/parameters/addressInfoParam'
+        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -82,7 +82,7 @@ paths:
         - $ref: '#/components/parameters/maxEpochNumberParam'
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/addressInfoParam'
+        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -108,7 +108,7 @@ paths:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/addressInfoParam'
+        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -134,7 +134,7 @@ paths:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/addressInfoParam'
+        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
         200:
@@ -444,9 +444,9 @@ components:
         enum:
           - outgoing
           - incoming
-    addressInfoParam:
+    needAddressInfoParam:
       description: "Whether to obtain the detailed information of the address appearing in the returned result."
-      name: addressInfo
+      name: needAddressInfo
       in: query
       required: false
       schema:
