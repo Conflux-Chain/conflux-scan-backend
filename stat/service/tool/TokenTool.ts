@@ -153,7 +153,7 @@ export function getImageDir() {
     return {public_dir, dir};
 }
 
-export async function uploadOssAndSaveUrl(token:Token, uploadResult) {
+export async function saveOssUrl(token:Token, uploadResult) {
     if (!uploadResult) {
         return ;
     }
@@ -175,7 +175,7 @@ async function buildImages() {
         let token = list[i];
         const {absPath, filename} = await base64ToPNG(token, dir) || {}
         const uploadResult = await uploadOss(absPath, filename)
-        await uploadOssAndSaveUrl(token, uploadResult)
+        await saveOssUrl(token, uploadResult)
     }
     console.log(`done.`)
 }
@@ -257,7 +257,7 @@ export async function initOss(conf) {
         process.exit(1)
     });
 }
-async function uploadOss(srcFile, ossFilename) {
+export async function uploadOss(srcFile, ossFilename) {
     if (!srcFile || !ossFilename) {
         return undefined
     }

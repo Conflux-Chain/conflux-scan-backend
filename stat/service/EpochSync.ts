@@ -10,7 +10,7 @@ import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Transaction} from "sequelize";
 import {batchFetchBlock} from "./common/utils";
-import {base64ToPNG, getImageDir, uploadOssAndSaveUrl} from "./tool/TokenTool";
+import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -60,8 +60,10 @@ export class EpochSync extends SyncBase{
                 if (token.icon) {
                     const dbIcon = await Token.findOne({where: {base32: token.base32}});
                     setTimeout(()=>{
-                        base64ToPNG(dbIcon, dir).then(res=>{
-                            return uploadOssAndSaveUrl(dbIcon, res)
+                        base64ToPNG(dbIcon, dir).then(({absPath, filename})=>{
+                            return uploadOss(absPath, filename)
+                        }).then(res=>{
+                            return saveOssUrl(dbIcon, res)
                         }).catch(err=>{
                             console.log(`epoch-sync.create one TokenIcon url fail: ${token.base32}`, err);
                         })
