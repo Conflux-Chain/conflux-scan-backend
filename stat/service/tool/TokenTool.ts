@@ -153,7 +153,10 @@ export function getImageDir() {
     return {public_dir, dir};
 }
 
-export async function uploadOssAndSaveUrl(token:Token, uploadResult) {
+export async function saveOssUrl(token:Token, uploadResult) {
+    if (!uploadResult) {
+        return ;
+    }
     const ossUrl = uploadResult.url;
     console.log(`upload result:`, ossUrl)
     return Token.update({iconUrl: `${ossUrl}`}, {
@@ -172,7 +175,7 @@ async function buildImages() {
         let token = list[i];
         const {absPath, filename} = await base64ToPNG(token, dir) || {}
         const uploadResult = await uploadOss(absPath, filename)
-        await uploadOssAndSaveUrl(token, uploadResult)
+        await saveOssUrl(token, uploadResult)
     }
     console.log(`done.`)
 }
@@ -223,7 +226,6 @@ function createOssClient(accessId, accessKey, bucket) {
     const client = new oss({
         accessKeyId: accessId,
         accessKeySecret: accessKey,
-        port: 80,
         bucket,
         // oss-cn-hongkong-internal.aliyuncs.com
         // host: 'oss-cn-hongkong.aliyuncs.com',
@@ -255,8 +257,11 @@ export async function initOss(conf) {
         process.exit(1)
     });
 }
-async function uploadOss(srcFile, ossFilename) {
-    const {accessId, accessKey, bucket, prefix} = ossConf
+export async function uploadOss(srcFile, ossFilename) {
+    if (!srcFile || !ossFilename) {
+        return undefined
+    }
+    const {accessId, accessKey, bucket, prefix} = ossConf;
     // const bucket0 = await checkOssBucket(accessId, accessKey, bucket)
     const oss = createOssClient(accessId, accessKey, bucket)
     const subPathOnOss = `${prefix||'dev'}/${ossFilename}`;
