@@ -61,15 +61,15 @@ export class EpochSync extends SyncBase{
                     const dbIcon = await Token.findOne({where: {base32: token.base32}});
                     setTimeout(()=>{
                         base64ToPNG(dbIcon, dir).then(res=>{
-                            return uploadOssAndSaveUrl(token, res)
+                            return uploadOssAndSaveUrl(dbIcon, res)
                         }).catch(err=>{
-                            console.log(`epoch-sync.createTokenIcon url fail: ${token.base32}`, err);
+                            console.log(`epoch-sync.create one TokenIcon url fail: ${token.base32}`, err);
                         })
                     }, 10_000)
                 }
             }
         } catch (e){
-            console.log(`epoch-sync.createTokenIcon url fail`, e);
+            console.log(`epoch-sync, createTokenIcon url fail`, e);
         }
 
         if (epochNumber % 100 === 0) {
