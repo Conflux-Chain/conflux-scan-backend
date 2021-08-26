@@ -94,7 +94,7 @@ export class TokenQuery {
             page.rows.forEach( row => {
                 row['price'] = row[`price${currency}`];
                 row['totalPrice'] = row[`totalPrice${currency}`];
-                row['icon'] = row['icon'] ? '/stat/' + row['icon'] : undefined
+                // row['icon'] = row['icon'] ? '/stat/' + row['icon'] : undefined ;; // it's oss url.
                 list.push(row);
                 addressSet.add(row['address']);
             });

@@ -4,6 +4,7 @@ import {init} from "./FixDailyTokenStat";
 import {patchHttpProvider} from "../common/utils";
 import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
+import oss = require('ali-oss');
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
@@ -141,12 +142,9 @@ export async function base64ToPNG(token:Token, dir: string) {
         return
     }
     const filename = `${token.base32}${imageType}`;
-    fs.writeFileSync(path.resolve(dir, filename), data, 'base64');
-    await Token.update({iconUrl: `${filename}`}, {
-        where: {id: token.id}
-    }).then(([cnt])=>{
-        console.log(`set icon url for ${token.symbol}, affect ${cnt}`)
-    })
+    const absPath = path.resolve(dir, filename);
+    fs.writeFileSync(absPath, data, 'base64');
+    return {absPath, filename}
 }
 
 export function getImageDir() {
@@ -156,13 +154,22 @@ export function getImageDir() {
 }
 
 async function buildImages() {
-    await init()
+    const config = await init()
+    await initOss(config.oss)
     const {public_dir, dir} = getImageDir();
     console.log(`will save at ${public_dir}\n${dir}`)
     const list = await Token.findAll({where: {auditResult: true,}})
     for (let i = 0; i < list.length; i++){
         let token = list[i];
-        await base64ToPNG(token, dir)
+        const {absPath, filename} = await base64ToPNG(token, dir) || {}
+        const uploadResult = await uploadOss(absPath, filename)
+        const ossUrl = uploadResult.url;
+        console.log(`upload result:`, ossUrl)
+        await Token.update({iconUrl: `${ossUrl}`}, {
+            where: {id: token.id}
+        }).then(([cnt])=>{
+            console.log(`set icon url for ${token.symbol}, affect ${cnt}`)
+        })
     }
     console.log(`done.`)
 }
@@ -209,6 +216,53 @@ async function updateTotalSupply() {
     repeat().then()
 }
 
+function createOssClient(accessId, accessKey, bucket) {
+    const client = new oss({
+        accessKeyId: accessId,
+        accessKeySecret: accessKey,
+        port: 80,
+        bucket,
+        // oss-cn-hongkong-internal.aliyuncs.com
+        // host: 'oss-cn-hongkong.aliyuncs.com',
+        region: 'oss-cn-hongkong',
+    });
+    // client._timeout = 5000
+    return client;
+}
+
+async function checkOssBucket(accessId, accessKey, bucket) {
+    const client = createOssClient(accessId, accessKey, bucket);
+    const result = await client.getBucketInfo(bucket).catch(err=>{
+        throw err
+    })
+    console.log(`get oss bucket info result :`, result.bucket.ExtranetEndpoint, result.bucket.Location)
+}
+let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: ''}
+export async function initOss(conf) {
+    ossConf = conf
+    const {accessId, accessKey, bucket} = ossConf
+    if (!accessId) {
+        console.log(`oss not configured.`)
+        return
+    }
+    console.log(`init oss, bucket ${bucket}`)
+    return checkOssBucket(accessId, accessKey, bucket).then(res=>{
+    }).catch(err=>{
+        console.log(`check oss bucket fail: `, err)
+        process.exit(1)
+    });
+}
+async function uploadOss(srcFile, ossFilename) {
+    const {accessId, accessKey, bucket, prefix} = ossConf
+    // const bucket0 = await checkOssBucket(accessId, accessKey, bucket)
+    const oss = createOssClient(accessId, accessKey, bucket)
+    const subPathOnOss = `${prefix||'dev'}/${ossFilename}`;
+    return oss.put(subPathOnOss, srcFile).then(res=>{
+        console.log(`upload to oss success, ${subPathOnOss}`)
+        return res
+    })
+}
+
 if (module === require.main) {
     const args = process.argv.slice(2)
     if (args[0] === 'custodian_token') {
@@ -220,6 +274,6 @@ if (module === require.main) {
             Token.sequelize.close().then()
         })
     } else {
-        console.log(`Please use one of <updateTotalSupply|build_images|custodian_token>`)
+        console.log(`Please use one of <updateTotalSupply | build_images | custodian_token>`)
     }
 }
