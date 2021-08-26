@@ -34,8 +34,15 @@ export interface RedisConf {
     db:number,
     pwd:string
 }
+export interface OssConf {
+    accessId: string
+    accessKey: string
+    bucket: string
+    prefix: string // mainnet testnet dev stress pos
+}
 export interface StatConfig{
     redis: RedisConf
+    oss: OssConf
     dingTalkToken: string;
     syncBlockDelay: number;
     syncTxnDelay: number;

@@ -6,7 +6,7 @@ import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";
 import {Conflux} from "js-conflux-sdk";
-import {TokenTool} from "./service/tool/TokenTool";
+import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
 import {BalanceService} from "./service/watcher/BalanceService";
 import {ContractService} from "./service/contract/ContractService";
@@ -98,8 +98,11 @@ export class StatApp{
         // const logger = pino()
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
-        await this.initRedis();
-        await initModel(sequelize);
+        await Promise.all([
+            this.initRedis(),
+            initModel(sequelize),
+            initOss(this.config.oss)
+        ])
         if (this.config.database.syncSchema) {
             console.log(`sync model begin.`)
             await sequelize.sync({});
