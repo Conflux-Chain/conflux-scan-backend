@@ -8,18 +8,20 @@
     "compile": "npx tsc -p ./stat",
     "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/dist/service/watcher/contract/",
     "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'",
-    "start:tools": "tsc-watch -p ./tools --onSuccess 'node ./tools/dist/Tools.js'"
+    "start:tools": "tsc-watch -b ./tools --onSuccess 'node ./stat/dist/test/Dev.js'"
   },
   "dependencies": {
     "@koa/cors": "^3.1.0",
     "@types/koa-bodyparser": "^4.3.0",
     "agentkeepalive": "^4.1.4",
+    "ali-oss": "~6.16.0",
     "bigfixed": "0.0.2",
     "js-conflux-sdk": "1.6.9",
     "koa": "^2.13.1",
     "koa-bodyparser": "^4.3.0",
     "koa-helmet": "6.0.0",
     "koa-router": "^10.0.0",
+    "koa-static": "5.0.0",
     "koa2-swagger-ui": "^5.0.5",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
