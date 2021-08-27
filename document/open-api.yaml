@@ -24,8 +24,8 @@ info:
 servers:
   - url: ''
     description: 'This server'
-  - url: 'http://localhost:8087/open'
-    description: 'Local server'
+#  - url: 'http://localhost:8087/open'
+#    description: 'Local server'
 paths:
   '/version':
     get:
