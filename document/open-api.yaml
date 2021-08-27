@@ -384,7 +384,7 @@ components:
     account:
       name: account
       in: query
-      description: "account/address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
       on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
       required: true
       schema:
@@ -393,7 +393,7 @@ components:
     from:
       name: from
       in: query
-      description: "account/address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
       on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
       required: false
       schema:
@@ -402,7 +402,7 @@ components:
     to:
       name: to
       in: query
-      description: "account/address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
       on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
       required: false
       schema:
@@ -429,7 +429,7 @@ components:
     contractParam:
       name: contract
       in: query
-      description: "contract/address, on testnet, it's like cfxtest:acepe88unk7fvs18436178up33hb4zkuf62a9dk1gv,
+      description: "Contract address, on testnet, it's like cfxtest:acepe88unk7fvs18436178up33hb4zkuf62a9dk1gv,
       on mainnet it's like cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7"
       required: false
       schema:
