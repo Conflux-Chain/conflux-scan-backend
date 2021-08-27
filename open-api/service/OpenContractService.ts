@@ -22,10 +22,17 @@ export async function polishContract(page, needAddressInfo) {
     const basicInfo = await getApiService().contractQuery.listBasic({addressArray:[...contract], iconUrl: true})
     const map = basicInfo.map
     Object.keys(map).forEach(k=>{
-        delete map[k].contract?.address
-        delete map[k].token?.address
-        removeEmptyKey(map[k], 'contract')
-        removeEmptyKey(map[k], 'token')
+        map[k] = map[k].token
+        if (map[k].contract?.verify?.result) {
+            map[k].verifed = true
+        }
+        if (map[k].tokenType) {
+            map[k].tokenType = map[k].tokenType.replace('ERC', 'CRC')
+        }
+        delete map[k].contract
+        delete map[k].token
+        // removeEmptyKey(map[k], 'contract')
+        // removeEmptyKey(map[k], 'token')
         // removeEmptyKey(map, k)  // keep address, help debugging.
     })
     page.addressInfo = basicInfo.map

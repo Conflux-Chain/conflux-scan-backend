@@ -95,11 +95,15 @@ export async function register(app: Koa, apiServer: ApiServer) {
         return root(ctx, apiServer.config.serverTag)
     })
     router.get('/version', (ctx)=>{
-        ctx.body = {code: 0, message: 'ok', version: '0.0.1'}
+        ctx.body = {code: 0, message: 'ok',
+            data: {
+                version: '0.0.1'
+            }
+        }
     })
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/crc20/transfers', listAccountTransfer20)
     router.get('/account/crc721/transfers', listAccountTransfer721)
     router.get('/account/crc1155/transfers', listAccountTransfer1155)
-    router.get('/account/assets', listAccountAssets)
+    router.get('/account/tokens', listAccountAssets)
 }

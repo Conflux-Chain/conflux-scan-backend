@@ -55,8 +55,8 @@ paths:
         - $ref: '#/components/parameters/maxEpochNumberParam'
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/nonceParam'
-        - $ref: '#/components/parameters/txTypeParam'
+#        - $ref: '#/components/parameters/nonceParam'
+#        - $ref: '#/components/parameters/txTypeParam'
 #        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
       responses:
@@ -143,7 +143,7 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer1155List"
-  '/account/assets':
+  '/account/tokens':
     get:
       description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
       tags:
@@ -198,6 +198,8 @@ components:
                 type: string
               decimals:
                 type: integer
+              tokenType:
+                type: string
     AssetsOfAccount:
       type: object
       properties:
