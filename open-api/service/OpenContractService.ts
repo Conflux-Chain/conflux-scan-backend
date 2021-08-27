@@ -1,4 +1,5 @@
 import {getApiService} from "../ApiServer";
+import {fixIconUrl} from "./OpenAccountService";
 
 export async function polishContract(page, needAddressInfo) {
     if ('true' !== needAddressInfo) {
@@ -22,14 +23,20 @@ export async function polishContract(page, needAddressInfo) {
     const basicInfo = await getApiService().contractQuery.listBasic({addressArray:[...contract], iconUrl: true})
     const map = basicInfo.map
     Object.keys(map).forEach(k=>{
-        map[k] = map[k].token
-        if (map[k].contract?.verify?.result) {
-            map[k].verifed = true
+        const contract = map[k].contract
+        const token = map[k].token || {}
+        if (contract?.verify?.result) {
+            token.verifed = true
         }
-        if (map[k].tokenType) {
-            map[k].tokenType = map[k].tokenType.replace('ERC', 'CRC')
+        if (!token.name && contract?.name) {
+            token.name = contract.name
         }
-        delete map[k].address
+        if (token.tokenType) {
+            token.tokenType = map[k].tokenType.replace('ERC', 'CRC')
+        }
+        delete token.address
+        fixIconUrl(token)
+        map[k] = token
         // delete map[k].contract
         // delete map[k].token
         // removeEmptyKey(map[k], 'contract')
