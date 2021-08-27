@@ -220,7 +220,7 @@ export class BalanceService {
                     symbol: token.symbol,
                     base32: token.base32,
                     tokenHex40id: token.hex40id,
-                    icon: token.iconUrl,
+                    iconUrl: token.iconUrl,
                     type: token.type,
                     balance: ban,
                 })
