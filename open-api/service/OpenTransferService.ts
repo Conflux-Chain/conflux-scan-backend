@@ -7,6 +7,8 @@ export function polishTransferList(page) {
     page?.list?.forEach(row=>{
         row.contract = row.address
         row.amount = row.value
+        delete row.blockPosition
+        delete row.transactionIndex
         delete row.transactionLogIndex
         delete row.syncTimestamp
         delete row.transferType

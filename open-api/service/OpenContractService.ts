@@ -32,11 +32,11 @@ export async function polishContract(page, needAddressInfo) {
             token.name = contract.name
         }
         if (token.tokenType) {
-            token.tokenType = map[k].tokenType.replace('ERC', 'CRC')
+            token.tokenType = token.tokenType.replace('ERC', 'CRC')
         }
-        delete token.address
-        fixIconUrl(token)
+        fixIconUrl(token, 'address')
         map[k] = token
+        delete token.address
         // delete map[k].contract
         // delete map[k].token
         // removeEmptyKey(map[k], 'contract')
