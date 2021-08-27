@@ -262,6 +262,8 @@ components:
                     type: string
                   timestamp:
                     type: integer
+            addressInfo:
+              $ref: '#/components/schemas/AddressInfo'
     Transfer721List:
       type: object
       properties:
@@ -290,6 +292,8 @@ components:
                     type: string
                   timestamp:
                     type: integer
+            addressInfo:
+              $ref: '#/components/schemas/AddressInfo'
     Transfer1155List:
       type: object
       properties:
@@ -372,6 +376,8 @@ components:
                   "method":
                     type: string
                     description: 'method id or method name.'
+            addressInfo:
+              $ref: '#/components/schemas/AddressInfo'
   parameters:
     account:
       name: account
