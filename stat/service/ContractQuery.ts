@@ -265,7 +265,7 @@ export class ContractQuery {
                 symbol: token.symbol,
                 icon: token.icon,
                 iconUrl: token.iconUrl,
-                decimals: token.decimals || 0,
+                decimals: token.decimals,
                 tokenType: token.transferType,
             });
         });
