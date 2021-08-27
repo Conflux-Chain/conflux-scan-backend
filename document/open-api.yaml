@@ -168,6 +168,36 @@ components:
           type: string
         version:
           type: string
+    AddressInfo:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          contract:
+            description: 'Contract information, optional. Fields are optional, too.'
+            type: object
+            properties:
+              name:
+                type: string
+              verify:
+                description: 'Verification information.'
+                type: object
+                properties:
+                  result:
+                    description: '0 for not verified; 1 for verified.'
+                    type: integer
+          token:
+            description: 'Token information, optional. Fields are optional, too.'
+            type: object
+            properties:
+              name:
+                type: string
+              symbol:
+                type: string
+              iconUrl:
+                type: string
+              decimals:
+                type: integer
     AssetsOfAccount:
       type: object
       properties:
@@ -188,6 +218,7 @@ components:
                   symbol:
                     description: 'Symbol of the token.'
                     type: string
+                    example: 'CRC20'
                   decimals:
                     description: 'Decimal of the token, optional.'
                     type: integer
@@ -195,10 +226,10 @@ components:
                     description: 'Contract address of the token.'
                     type: string
                     example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
-                  icon:
+                  iconUrl:
                     description: 'Icon url.'
                     type: string
-                    example: 'http://confluxscan.io/stat/cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx..svg'
+                    example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/cfxtest%3Aachkx35n7vngfxgrm7akemk3ftzy47t61yk5nn270s.svg'
                   amount:
                     description: 'The token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
@@ -289,6 +320,8 @@ components:
                     type: string
                   timestamp:
                     type: integer
+            addressInfo:
+              $ref: '#/components/schemas/AddressInfo'
     TransactionList:
       type: object
       properties:
