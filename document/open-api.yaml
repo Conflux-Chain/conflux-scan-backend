@@ -166,40 +166,26 @@ components:
           type: integer
         message:
           type: string
-        version:
-          type: string
+        data:
+          type: object
+          properties:
+            version:
+              type: string
     AddressInfo:
       type: object
       additionalProperties:
         type: object
         properties:
-          contract:
-            description: 'Contract information, optional. Fields are optional, too.'
-            type: object
-            properties:
-              name:
-                type: string
-              verify:
-                description: 'Verification information.'
-                type: object
-                properties:
-                  result:
-                    description: '0 for not verified; 1 for verified.'
-                    type: integer
-          token:
-            description: 'Token information, optional. Fields are optional, too.'
-            type: object
-            properties:
-              name:
-                type: string
-              symbol:
-                type: string
-              iconUrl:
-                type: string
-              decimals:
-                type: integer
-              tokenType:
-                type: string
+          name:
+            type: string
+          symbol:
+            type: string
+          iconUrl:
+            type: string
+          decimals:
+            type: integer
+          tokenType:
+            type: string
     AssetsOfAccount:
       type: object
       properties:
