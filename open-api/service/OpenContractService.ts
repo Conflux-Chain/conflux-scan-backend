@@ -29,8 +29,9 @@ export async function polishContract(page, needAddressInfo) {
         if (map[k].tokenType) {
             map[k].tokenType = map[k].tokenType.replace('ERC', 'CRC')
         }
-        delete map[k].contract
-        delete map[k].token
+        delete map[k].address
+        // delete map[k].contract
+        // delete map[k].token
         // removeEmptyKey(map[k], 'contract')
         // removeEmptyKey(map[k], 'token')
         // removeEmptyKey(map, k)  // keep address, help debugging.
