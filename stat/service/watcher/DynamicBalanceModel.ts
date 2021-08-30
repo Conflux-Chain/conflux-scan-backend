@@ -14,7 +14,9 @@ export class DynamicBalanceModel {
             where: {contractId: this.contractId}
         })
     }
-
+    getTableName() {
+        return 'token_balance'
+    }
     async destroy({where0 = {}, ...rest} = {}) {
         return TokenBalance.destroy({
             where: {contractId: this.contractId, ...where0},
