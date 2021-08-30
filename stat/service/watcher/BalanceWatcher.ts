@@ -36,7 +36,7 @@ import {
     Balance_cUMA,
     Balance_cUSDC,
     Balance_cYFI,
-    Balance_cYFII,
+    Balance_cYFII, Balance_DAN,
     Balance_EPIK_NFT,
     Balance_FC,
     Balance_K,
@@ -165,6 +165,7 @@ export class BalanceWatcher{
             case 'ARTT':         ret = Balance_ARTT;    break;
             case 'CTN':         ret = Balance_CTN;    break;
             case 'PHM-NFT':         ret = Balance_PHM_NFT;    break;
+            case 'DAN':         ret = Balance_DAN;    break;
             default:
                 if (contractId > -1) {
                     return new DynamicBalanceModel(contractId)

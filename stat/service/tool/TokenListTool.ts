@@ -8,10 +8,10 @@ async function run() {
     const scanUrl = 'https://confluxscan.io/stat/tokens/list'
     const client = superagent
     let transferType = 'ERC1155'
-    // transferType = 'ERC20'
-    transferType = 'ERC721'
+    transferType = 'ERC20'
+    // transferType = 'ERC721'
     // const is1155 = transferType === 'ERC1155'
-    const filter = ['PHM-NFT']
+    const filter = ['DAN']
     client.get(`${scanUrl}`)
         .query({
             fields: '',

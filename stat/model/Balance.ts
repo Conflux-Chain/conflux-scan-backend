@@ -352,3 +352,8 @@ static register(seq){
         Balance.register(seq, Balance_PHM_NFT, 'balance_PHM_NFT')
     }
 }
+export class Balance_DAN extends Balance{
+    static register(seq){
+        Balance.register(seq, Balance_DAN, 'balance_DAN')
+    }
+}
