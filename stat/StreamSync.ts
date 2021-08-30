@@ -178,6 +178,7 @@ import {NftService} from "./service/NftService";
 import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
 import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
+import {StatApp} from "./StatApp";
 let config:StatConfig
 let nftService:NftService
 let zeroAddrId = 0
@@ -191,6 +192,8 @@ async function run() {
     await cfx.updateNetworkId()
     patchHttpProvider(cfx, config.conflux)
     // init contract
+    // @ts-ignore
+    StatApp.networkId = (await cfx.getStatus()).networkId
     new BatchBalanceWatcher(cfx,[],null)
     tokenTool = new TokenTool(cfx)
     RedisWrap.connect(config.redis).then(()=>{
