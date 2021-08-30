@@ -7,11 +7,11 @@ info:
       <td>Api host</td><td>Net</td><td>Mode</td><td>Scan</td>
     </tr>
     <tr>
-      <td><a href='https://api.confluxscan.io/doc'>https://api.confluxscan.io</a></td><td>Mainnet</td><td>Production</td>
+      <td><a href='https://api.confluxscan.net/doc'>https://api.confluxscan.net</a></td><td>Mainnet</td><td>Production</td>
       <td><a target='_blank' href='https://confluxscan.io'>https://confluxscan.io</a></td>
     </tr>
     <tr>
-      <td><a href='https://api-testnet.confluxscan.io/doc'>https://api-testnet.confluxscan.io</a></td><td>Testnet</td><td>Production</td>
+      <td><a href='https://api-testnet.confluxscan.net/doc'>https://api-testnet.confluxscan.net</a></td><td>Testnet</td><td>Production</td>
       <td><a target='_blank' href='https://testnet.confluxscan.io'>https://testnet.confluxscan.io</a></td>
     </tr>
   </table>
