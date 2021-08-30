@@ -55,7 +55,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                     throw err
                 })
             .then(arr=>{
-                process.stdout.write(`\r\u001b[2K ${new Date().toISOString()} bulk create transfer ${model.getTableName()} ${arr.length}    `)
+                console.log(` ${new Date().toISOString()} bulk create transfer ${model.getTableName()} ${arr.length}    `)
                 return arr
             }).then(()=>{
                 return RedisWrap.xDel(data)
@@ -188,6 +188,7 @@ async function run() {
     nftService = new NftService()
     await setupZeroAddressId()
     cfx = new Conflux(config.conflux)
+    await cfx.updateNetworkId()
     patchHttpProvider(cfx, config.conflux)
     // init contract
     new BatchBalanceWatcher(cfx,[],null)
