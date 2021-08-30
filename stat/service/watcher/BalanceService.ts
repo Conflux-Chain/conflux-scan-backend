@@ -131,7 +131,7 @@ export class BalanceService {
 
         const token = await Token.findOne({where: {base32: base32}})
         if (token == null) {
-            return {total: 0, list:[], message: 'token not found '+base32, code: 404}
+            // return {total: 0, list:[], message: 'token not found '+base32, code: 404}
         }
         let table = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
         if (table == null) {

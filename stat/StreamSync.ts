@@ -142,8 +142,16 @@ async function handleTokenTransferWithContract(mapContract2addressSet: Map<numbe
             continue
         }
         const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
-        const banList = await BatchBalanceWatcher.allTokenContract.getBalances(addressArr, `0x${contractHex}`)
+        const contractHex40 = `0x${contractHex}`;
+        let banList: any;
+        try {
+            banList = await BatchBalanceWatcher.allTokenContract.getBalances(addressArr, contractHex40);
+        } catch (e) {
+            console.log(` call balance utils contract fail, ${addressArr}, ${contractHex40}`, e)
+            continue
+        }
         console.log(` \n balance list:`, banList)
+        console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
         const model = new DynamicBalanceModel(contractId)
         let i = 0
         const tasks = []
@@ -194,7 +202,16 @@ async function run() {
     // init contract
     // @ts-ignore
     StatApp.networkId = (await cfx.getStatus()).networkId
+    console.log(` network id ${StatApp.networkId}`)
     new BatchBalanceWatcher(cfx,[],null)
+    if (args[0] === 'test') {
+        const addr = ['','']
+        const contract = ''
+        const list = await BatchBalanceWatcher.allTokenContract.getBalances(addr, contract)
+        console.log(` balance list is `, list)
+        return
+    }
+    //
     tokenTool = new TokenTool(cfx)
     RedisWrap.connect(config.redis).then(()=>{
         RedisWrap.listenStreamMessage(
@@ -222,4 +239,5 @@ async function run() {
 
     })
 }
+const args = process.argv.slice(2)
 run().then()
