@@ -95,7 +95,7 @@ export class BalanceService {
         //
         let table: typeof Balance;
         try {
-            table = BalanceWatcher.mapModel(token.name);
+            table = BalanceWatcher.mapModel(token.name, false, tokenBean.hex40id);
         } catch (err) {
             console.log(`table not found for ${token.name}`)
             return;

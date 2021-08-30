@@ -65,7 +65,7 @@ async function fixParticipants() {
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         for (const token of tokenList) {
-            const model = BalanceWatcher.mapModel(token.symbol, true);
+            const model = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
             if (model) {
                 await calcDailyTokenParticipants(token.hex40id, token.type, start, end)
             }
@@ -84,7 +84,7 @@ async function testRank() {
     await svc.rankByToken('daily_token','transferCount', 1, 10, 1029);
 }
 async function checkTokenHolderTop(token: Token) {
-    const model = BalanceWatcher.mapModel(token.symbol, true)
+    const model = BalanceWatcher.mapModel(token.symbol, true, token.hex40id)
     if (!model) {
         return;
     }

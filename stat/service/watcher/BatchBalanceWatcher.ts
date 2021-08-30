@@ -63,7 +63,7 @@ export class BatchBalanceWatcher {
         // console.log(`BatchBalanceWatcher , balance list length ${banList.length}`)
         let i = 0
         for (const erc20 of this.erc20list) {
-            let model = BalanceWatcher.mapModel(erc20.name)
+            let model = BalanceWatcher.mapModel(erc20.name)  // by configuration, will be deprecated.
             let id = hexId || (await makeId(userAddr)).id
             await BalanceWatcher.saveModel(model, id, banList[i], !(erc20.tokenType||'').includes('1155'), this.fraction)
             i++

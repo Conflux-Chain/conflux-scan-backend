@@ -95,7 +95,7 @@ export class BalanceWatcher{
         this.contractAddress = contractAddr
         this.cfx = cfx;
         this.tokenType = config.tokenType || 'NotSet'
-        this.model = BalanceWatcher.mapModel(name)
+        this.model = BalanceWatcher.mapModel(name) // by configuration, will be deprecated.
         this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
         if (contractAddr) {
             const {abi, bytecode} = require('./contract/miniERC20.json');
