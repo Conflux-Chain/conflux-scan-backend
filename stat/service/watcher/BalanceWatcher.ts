@@ -61,6 +61,7 @@ import {hex} from "../../test/GenData";
 import {NftId} from "../../model/Token";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {StatApp} from "../../StatApp";
+import {DynamicBalanceModel} from "./DynamicBalanceModel";
 const BigFixed = require('bigfixed');
 const superagent = require("superagent")
 const NodeCache = require( "node-cache" );
@@ -107,7 +108,7 @@ export class BalanceWatcher{
         }
     }
 
-    static mapModel(name:string, silent:boolean = false, contractId: number = -1): typeof Balance{
+    static mapModel(name:string, silent:boolean = false, contractId: number = -1)/*: typeof Balance | DynamicBalanceModel*/{
         let ret;
         switch (name) {
             case 'WCFX':
@@ -165,6 +166,9 @@ export class BalanceWatcher{
             case 'CTN':         ret = Balance_CTN;    break;
             case 'PHM-NFT':         ret = Balance_PHM_NFT;    break;
             default:
+                if (contractId > -1) {
+                    return new DynamicBalanceModel(contractId)
+                }
                 if (silent) {
                     return null
                 }
