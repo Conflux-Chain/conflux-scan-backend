@@ -1,11 +1,16 @@
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {Hex40Map} from "../../model/HexMap";
+import {Hex40Map, makeId} from "../../model/HexMap";
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
 import {TokenTool} from "./TokenTool";
+import {Erc20Transfer} from "../../model/Erc20Transfer";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {TokenAutoDetect} from "../../model/TokenAutoDetect";
 const lodash = require('lodash');
+const CONST = require('../common/constant');
 
 let seq;
 let cfx;
@@ -27,34 +32,66 @@ async function init() {
 }
 
 async function detect(id) {
-    const traceCreate = await TraceCreateContract.findOne({where: {id} });
+    const traceCreate = await TraceCreateContract.findOne({where: {id}, raw: true });
     if (traceCreate === null) {
-        return;
+        return undefined;
+    }
+    const hex40 = await Hex40Map.findByPk(traceCreate.to)
+    if(!hex40){
+        return undefined;
     }
 
-    const hex40 = await Hex40Map.findByPk(traceCreate.to)
+    const hex40id = hex40.id;
     const hex = `0x${hex40.hex}`;
     const base32 = format.address(hex, networkId);
-    const[isCrc721, isCrc1155] = await Promise.all([
+    const [ transfer20, transfer721, transfer1155 ] = await Promise.all([
+        Erc20Transfer.findOne({ where: { contractId: hex40.id }}),
+        Erc721Transfer.findOne({ where: { contractId: hex40.id }}),
+        Erc1155Transfer.findOne({ where: { contractId: hex40.id }}),
+    ]);
+    let transferType;
+    if(transfer20?.id) {
+        transferType = CONST.TRANSFER_TYPE.ERC20;
+    }
+    if(transfer721?.id){
+        transferType = CONST.TRANSFER_TYPE.ERC721;
+    }
+    if(transfer1155?.id){
+        transferType = CONST.TRANSFER_TYPE.ERC1155;
+    }
+    if(transferType === undefined){
+        return undefined;
+    }
+
+    const[totalSupply, tokenInfo, erc721Interface, erc1155Interface] = await Promise.all([
+        tokenTool.getTokenTotalSupply(base32),
+        tokenTool.getToken(base32),
         tokenTool.supportsInterface(base32, interfaceIdCrc721),
         tokenTool.supportsInterface(base32, interfaceIdCrc1155)
     ]);
-
-    let tokenType;
-    if(isCrc721 === true){
-        tokenType = 'CRC721';
-    }
-    if(isCrc1155 === true){
-        tokenType = 'CRC1155';
-    }
-    if(tokenType === undefined){
-        return;
+    if((transferType === CONST.TRANSFER_TYPE.ERC721 && erc721Interface === false) ||
+        (transferType === CONST.TRANSFER_TYPE.ERC1155 && erc1155Interface === false)){
+        return undefined;
     }
 
-    const totalSupply = await tokenTool.getTokenTotalSupply(base32);
-    const tokenInfo = await tokenTool.getToken(base32);
-    const token = lodash.defaults({}, tokenInfo, {totalSupply}, {type: tokenType});
+    const token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
+        decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
+        type: transferType, transfer: 0, holder: 0, auditResult: true, fetchBalance: true });
     return token;
+}
+
+async function save(tokenArray) {
+    try {
+        for (const token of tokenArray) {
+            try{
+                await TokenAutoDetect.upsert(token);
+            }catch (e) {
+                console.log(`autoDetectTokenTool fail,token:${JSON.stringify(token)}`, e);
+            }
+        }
+    } catch (e) {
+        console.log(`autoDetectTokenTool fail`, e);
+    }
 }
 
 async function close(){
@@ -63,29 +100,39 @@ async function close(){
 
 async function run(round = 10) {
     await init();
+
     let minId:number = await TraceCreateContract.min('id');
     let maxId:number = await TraceCreateContract.max('id');
-    console.log(`round:${round}\n minId:${minId}\n maxId:${maxId}`);
+    console.log(`autoDetectTokenTool start...\nround:${round}\nminId:${minId}\nmaxId:${maxId}`);
     let roundCounter = 0
-    const nft721TokenArray = [];
-    const nft1155TokenArray = [];
+    const erc20TokenArray = [];
+    const erc721TokenArray = [];
+    const erc1155TokenArray = [];
     while (roundCounter < round && minId<=maxId) {
         const token = await detect(minId++);
         if(token === undefined){
             continue;
         }
-        if(token.type === 'CRC721'){
-            nft721TokenArray.push(token);
-            console.log(`CRC721:${JSON.stringify(token)}\n`);
+        if(token.type === CONST.TRANSFER_TYPE.ERC20){
+            erc20TokenArray.push(token);
         }
-        if(token.type === 'CRC1155'){
-            nft1155TokenArray.push(token);
-            console.log(`CRC1155:${JSON.stringify(token)}\n`);
+        if(token.type === CONST.TRANSFER_TYPE.ERC721){
+            erc721TokenArray.push(token);
+            console.log(`ERC721:${JSON.stringify(token)}\n`);
+        }
+        if(token.type === CONST.TRANSFER_TYPE.ERC1155){
+            erc1155TokenArray.push(token);
+            console.log(`ERC1155:${JSON.stringify(token)}\n`);
         }
         roundCounter++
     }
+
+    await save(erc20TokenArray);
+    await save(erc721TokenArray);
+    await save(erc1155TokenArray);
+
+    console.log(`autoDetectTokenTool completed...\nerc20TokenArray:${erc20TokenArray.length}\nerc721TokenArray:${erc721TokenArray.length}\nerc1155TokenArray:${erc1155TokenArray.length}`);
     await close();
-    console.log(`nft721TokenArray:${nft721TokenArray.length}\n nft1155TokenArray:${nft1155TokenArray.length}`);
 }
 
 const args = process.argv.slice(2);
@@ -93,5 +140,4 @@ networkId = Number(args[0]);
 if(args[1]){
     round = Number(args[1]);
 }
-
 run(round).then();
