@@ -42,7 +42,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                 })
             }
             return model.bulkCreate(copies, {
-                updateOnDuplicate:["createdAt"],
+                updateOnDuplicate:["createdAt", 'epoch'],
             })
                 .catch(err=>{
                     const epoch = copies[0].epoch
@@ -67,7 +67,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
         })
     ).catch(err=>{
         const info = data.map(msg=>msg.messageId).join(',')
-        console.log(`handle transfer message fail: ${data[0].stream} ${info}.`)
+        console.log(`\n handle transfer message fail: ${data[0].stream} ${info}.`)
         dingMsg(`[${config.serverTag}] handle transfer message fail: ${data[0].stream}: ${err}`, config.dingTalkToken)
         throw err;
     })
