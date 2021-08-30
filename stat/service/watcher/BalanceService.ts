@@ -77,20 +77,40 @@ export class BalanceService {
     }
 
     async run() {
+        const confIds = [-1]
+        const tasks = []
         this.tokens.forEach(t=>{
-            this.updateToken(t)
+            tasks.push(
+                this.updateTokenByConf(t).then(res=>{
+                    if (res) {
+                        confIds.push(res.id)
+                    }
+                })
+            )
         })
+        await Promise.all(tasks)
+        const list = await Token.findAll({
+            where: {type: {[Op.ne]: ''}, name: {[Op.ne]: ''}, symbol: {[Op.ne]: ''},
+                // skip configured token.
+                id: {[Op.notIn]: confIds}}
+        })
+        for (let i = 0; i < list.length; i++){
+            let t = list[i];
+            await this.updateToken(t)
+        }
     }
 
-    public async updateToken(token: Erc20WatchList) {
+    public async updateToken(tokenBean: Token) {
+        //
+        let table = BalanceWatcher.mapModel('', true, tokenBean.hex40id);
+        let holder = await table.count({})
+        await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
+    }
+    public async updateTokenByConf(token: Erc20WatchList) {
         const hexBean = await makeId(token.address) //Hex40Map.findOne({where: {hex: token.address.substr(2)}})
         let tokenBean:Token = await Token.findOne({where: {hex40id: hexBean.id}});
         if (tokenBean == null) {
-            tokenBean = await Token.create({
-                base32: format.address(token.address, this.networkId),
-                hex40id: hexBean.id, holder: 0,
-                symbol: token.name
-            })
+            return
         }
         //
         let table: typeof Balance;
@@ -102,8 +122,8 @@ export class BalanceService {
         }
         let holder = await table.count({})
         await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
+        return tokenBean
     }
-
     async rankHolder(base32: any, skip: any, limit: any) {
         const {
             app: { tokenTool },
