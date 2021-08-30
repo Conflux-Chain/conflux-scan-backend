@@ -42,7 +42,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                 })
             }
             return model.bulkCreate(copies, {
-                updateOnDuplicate:["value"],
+                updateOnDuplicate:["createdAt"],
             })
                 .catch(err=>{
                     const epoch = copies[0].epoch
