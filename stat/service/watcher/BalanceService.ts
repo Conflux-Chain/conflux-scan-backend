@@ -4,7 +4,7 @@ const lodash = require('lodash');
 import {Balance} from "../../model/Balance";
 import {Token, TOKEN_ERC_1155} from "../../model/Token";
 import {Erc20WatchList} from "../../config/StatConfig";
-import {Hex40Map, makeId} from "../../model/HexMap";
+import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {Contract} from "../../model/Contract";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
@@ -129,9 +129,11 @@ export class BalanceService {
             app: { tokenTool },
         } = this;
 
-        const token = await Token.findOne({where: {base32: base32}})
+        let token = await Token.findOne({where: {base32: base32}})
         if (token == null) {
             // return {total: 0, list:[], message: 'token not found '+base32, code: 404}
+            // @ts-ignore
+            token = {hex40id: await getAddrId(base32), symbol: ''}
         }
         let table = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
         if (table == null) {
