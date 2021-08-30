@@ -58,7 +58,7 @@ import {
     Balance_TD,
     Balance_TREA,
     Balance_YAO,
-    CfxBalance,
+    CfxBalance, createTokenBalanceTable,
     DexCfxBalance,
     DexUSDTBalance,
     USDTBalance,
@@ -153,6 +153,7 @@ export async function initPartialModel(sequelize) {
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
         createV2CfxBillTable(sequelize),
+        createTokenBalanceTable(sequelize),
     ])
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
