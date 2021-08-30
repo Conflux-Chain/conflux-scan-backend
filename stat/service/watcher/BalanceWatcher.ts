@@ -107,7 +107,7 @@ export class BalanceWatcher{
         }
     }
 
-    static mapModel(name:string, silent:boolean = false): typeof Balance{
+    static mapModel(name:string, silent:boolean = false, contractId: number = -1): typeof Balance{
         let ret;
         switch (name) {
             case 'WCFX':

@@ -4,13 +4,14 @@ import {abi} from "./contract/BatchBalanceOf";
 import {EventBus} from "./EventBus";
 import {Erc20WatchList, RedisConf} from "../../config/StatConfig";
 import {BalanceWatcher, CfxWatcher} from "./BalanceWatcher";
-import {Hex40Map, makeId} from "../../model/HexMap";
+import {Hex40Map, idHex40Map, makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
-import {RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q} from "../RedisWrap";
+import {RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q, } from "../RedisWrap";
 import {Op} from 'sequelize'
 import {hex} from "../../test/GenData";
+import {DynamicBalanceModel} from "./DynamicBalanceModel";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'

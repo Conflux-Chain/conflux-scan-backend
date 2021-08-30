@@ -113,7 +113,7 @@ export class BalanceService {
         if (token == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 404}
         }
-        let table = BalanceWatcher.mapModel(token.symbol);
+        let table = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
         if (table == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 6404}
         }
