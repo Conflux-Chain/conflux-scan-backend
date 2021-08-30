@@ -47,7 +47,7 @@ import {
     Balance_cUMA,
     Balance_cUSDC,
     Balance_cYFI,
-    Balance_cYFII,
+    Balance_cYFII, Balance_DAN,
     Balance_EPIK_NFT,
     Balance_FC,
     Balance_K,
@@ -249,6 +249,7 @@ export async function initModel(sequelize) {
     Balance_cFLUX.register(sequelize);
     Balance_CTN.register(sequelize);
     Balance_PHM_NFT.register(sequelize);
+    Balance_DAN.register(sequelize);
 
     NftId.register(sequelize)
     PivotSwitch.register(sequelize)
