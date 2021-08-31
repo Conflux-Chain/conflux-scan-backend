@@ -4,7 +4,7 @@ const lodash = require('lodash');
 import {Balance} from "../../model/Balance";
 import {Token, TOKEN_ERC_1155} from "../../model/Token";
 import {Erc20WatchList} from "../../config/StatConfig";
-import {Hex40Map, makeId} from "../../model/HexMap";
+import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {Contract} from "../../model/Contract";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
@@ -77,43 +77,65 @@ export class BalanceService {
     }
 
     async run() {
+        const confIds = [-1]
+        const tasks = []
         this.tokens.forEach(t=>{
-            this.updateToken(t)
+            tasks.push(
+                this.updateTokenByConf(t).then(res=>{
+                    if (res) {
+                        confIds.push(res.id)
+                    }
+                })
+            )
         })
+        await Promise.all(tasks)
+        const list = await Token.findAll({
+            where: {type: {[Op.ne]: ''}, name: {[Op.ne]: ''}, symbol: {[Op.ne]: ''},
+                // skip configured token.
+                id: {[Op.notIn]: confIds}}
+        })
+        for (let i = 0; i < list.length; i++){
+            let t = list[i];
+            await this.updateToken(t)
+        }
     }
 
-    public async updateToken(token: Erc20WatchList) {
+    public async updateToken(tokenBean: Token) {
+        //
+        let table = BalanceWatcher.mapModel('', true, tokenBean.hex40id);
+        let holder = await table.count({})
+        await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
+    }
+    public async updateTokenByConf(token: Erc20WatchList) {
         const hexBean = await makeId(token.address) //Hex40Map.findOne({where: {hex: token.address.substr(2)}})
         let tokenBean:Token = await Token.findOne({where: {hex40id: hexBean.id}});
         if (tokenBean == null) {
-            tokenBean = await Token.create({
-                base32: format.address(token.address, this.networkId),
-                hex40id: hexBean.id, holder: 0,
-                symbol: token.name
-            })
+            return
         }
         //
         let table: typeof Balance;
         try {
-            table = BalanceWatcher.mapModel(token.name);
+            table = BalanceWatcher.mapModel(token.name, false, tokenBean.hex40id);
         } catch (err) {
             console.log(`table not found for ${token.name}`)
             return;
         }
         let holder = await table.count({})
         await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
+        return tokenBean
     }
-
     async rankHolder(base32: any, skip: any, limit: any) {
         const {
             app: { tokenTool },
         } = this;
 
-        const token = await Token.findOne({where: {base32: base32}})
+        let token = await Token.findOne({where: {base32: base32}})
         if (token == null) {
-            return {total: 0, list:[], message: 'token not found '+base32, code: 404}
+            // return {total: 0, list:[], message: 'token not found '+base32, code: 404}
+            // @ts-ignore
+            token = {hex40id: await getAddrId(base32), symbol: ''}
         }
-        let table = BalanceWatcher.mapModel(token.symbol);
+        let table = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
         if (table == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 6404}
         }

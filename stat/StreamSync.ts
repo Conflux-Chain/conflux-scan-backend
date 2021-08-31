@@ -18,6 +18,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
     const list:any[] = data.map(msg=>msg.message)
     return Promise.all(
         list.map(transferArr=>{
+            // console.log(`receive message: `, transferArr)
             if (transferArr.action === 'pop') {
                 return popPartition(transferArr.epoch, fullT, model).then(()=>{
                     return RedisWrap.xDel(data)
@@ -40,7 +41,9 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                     console.log(`save nft id failed`, err)
                 })
             }
-            return model.bulkCreate(copies)
+            return model.bulkCreate(copies, {
+                updateOnDuplicate:["createdAt", 'epoch'],
+            })
                 .catch(err=>{
                     const epoch = copies[0].epoch
                     if (err instanceof UniqueConstraintError) {
@@ -52,7 +55,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                     throw err
                 })
             .then(arr=>{
-                process.stdout.write(`\r\u001b[2K ${new Date().toISOString()} bulk create transfer ${model.getTableName()} ${arr.length}    `)
+                console.log(` ${new Date().toISOString()} bulk create transfer ${model.getTableName()} ${arr.length}    `)
                 return arr
             }).then(()=>{
                 return RedisWrap.xDel(data)
@@ -64,7 +67,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
         })
     ).catch(err=>{
         const info = data.map(msg=>msg.messageId).join(',')
-        console.log(`handle transfer message fail: ${data[0].stream} ${info}.`)
+        console.log(`\n handle transfer message fail: ${data[0].stream} ${info}.`)
         dingMsg(`[${config.serverTag}] handle transfer message fail: ${data[0].stream}: ${err}`, config.dingTalkToken)
         throw err;
     })
@@ -102,15 +105,69 @@ async function checkTotalSupply(model, copies:IErc20Transfer[]) {
         console.log(`\n update total supply ${sup}, db updated ${cnt} for ${token.symbol}`)
     }
 }
-async function sendAddressIds(arr:{fromId:number, toId:number}[]) {
+async function sendAddressIds(arr:{fromId:number, toId:number, contractId:number}[]) {
     const set = new Set<number>()
+    // key: contract id, value: set of address id
+    const addressAndContractIdMap = new Map<number,Set<number>>()
     arr.forEach(item=>{
         set.add(item.fromId)
         set.add(item.toId)
+        let adSet = addressAndContractIdMap.get(item.contractId)
+        if (!adSet) {
+           adSet = new Set<number>()
+            addressAndContractIdMap.set(item.contractId, adSet)
+        }
+        adSet.add(item.fromId)
+        adSet.add(item.toId)
     })
-    return RedisWrap.sendStreamMessage([...set], TRANSFER_ADDRESS_Q)
+    return RedisWrap.sendStreamMessage([...set], TRANSFER_ADDRESS_Q).then(()=>{
+        handleTokenTransferWithContract(addressAndContractIdMap).then()
+    })
 }
-
+// xlen ERC20_TRANSFER_Q
+//   XADD ERC20_TRANSFER_Q  * v1 '[{"contractId":16,"fromId":3,"toId":4,"txHashId":0,"value":1,"epoch":0, "createdAt":"2021-01-01 11:22:33", "updatedAt":"2021-01-01 11:22:33"}]'
+let logCount = 0
+async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>) {
+    for (const contractId of mapContract2addressSet.keys()) {
+        const addressIds = [...mapContract2addressSet.get(contractId)]
+        const id2hexMap = await idHex40Map([contractId, ...addressIds])
+        const contractHex = id2hexMap.get(contractId)
+        if (!contractHex) {
+            console.log(`\n handleTokenTransferWithContract, contract hex not found, id ${contractId}`)
+            continue
+        }
+        const existsAddrArr = addressIds.filter(id=>id2hexMap.get(id))
+        if (!existsAddrArr.length) {
+            console.log(`\n addresses are empty, original ids ${addressIds.join(',')}`)
+            continue
+        }
+        const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
+        const contractHex40 = `0x${contractHex}`;
+        let banList: any;
+        try {
+            banList = await BatchBalanceWatcher.allTokenContract.getBalances(addressArr, contractHex40);
+        } catch (e) {
+            console.log(` call balance utils contract fail, ${addressArr}, ${contractHex40}`, e)
+            continue
+        }
+        console.log(` \n balance list:`, banList)
+        console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
+        const model = new DynamicBalanceModel(contractId)
+        let i = 0
+        const tasks = []
+        for (const addr of existsAddrArr) {
+            const t = BalanceWatcher.saveModel(model, existsAddrArr[i], banList[i], false, 0)
+            tasks.push(t)
+            i++
+        }
+        await Promise.all(tasks)
+        if (logCount < 100) {
+            logCount++
+            console.log(`\n save balances of contract ${contractId}, count ${existsAddrArr.length
+            }, original addresses length: ${addressIds.length}, balance list length ${banList.length}`)
+        }
+    }
+}
 async function setupZeroAddressId() {
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
@@ -119,13 +176,17 @@ import {init} from "./service/tool/FixDailyTokenStat";
 import {dingMsg} from "./monitor/Monitor";
 import {popPartition} from "./model/ErcTransfer";
 import {StreamErrorLog} from "./model/ErrorLog";
-import {Hex40Map, makeIdV} from "./model/HexMap";
+import {Hex40Map, idHex40Map, makeIdV} from "./model/HexMap";
 import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "./service/common/utils";
 import {TokenTool} from "./service/tool/TokenTool";
 import {Token} from "./model/Token";
 import {Op} from "sequelize"
 import {NftService} from "./service/NftService";
+import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
+import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
+import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
+import {StatApp} from "./StatApp";
 let config:StatConfig
 let nftService:NftService
 let zeroAddrId = 0
@@ -136,7 +197,21 @@ async function run() {
     nftService = new NftService()
     await setupZeroAddressId()
     cfx = new Conflux(config.conflux)
+    await cfx.updateNetworkId()
     patchHttpProvider(cfx, config.conflux)
+    // init contract
+    // @ts-ignore
+    StatApp.networkId = (await cfx.getStatus()).networkId
+    console.log(` network id ${StatApp.networkId}`)
+    new BatchBalanceWatcher(cfx,[],null)
+    if (args[0] === 'test') {
+        const addr = ['','']
+        const contract = ''
+        const list = await BatchBalanceWatcher.allTokenContract.getBalances(addr, contract)
+        console.log(` balance list is `, list)
+        return
+    }
+    //
     tokenTool = new TokenTool(cfx)
     RedisWrap.connect(config.redis).then(()=>{
         RedisWrap.listenStreamMessage(
@@ -164,4 +239,5 @@ async function run() {
 
     })
 }
+const args = process.argv.slice(2)
 run().then()

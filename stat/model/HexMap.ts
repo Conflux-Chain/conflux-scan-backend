@@ -1,6 +1,7 @@
-import {Sequelize, DataTypes, Model, Transaction, Op} from "sequelize";
+import {Sequelize, DataTypes, Model, Transaction, Op, where} from "sequelize";
 import {incDailyAddressCount} from "./StatAddress";
 import {delLock, waitLock} from "./Lock";
+import {format} from "js-conflux-sdk";
 const NodeCache = require( "node-cache" );
 
 /**
@@ -113,6 +114,20 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
     dbCache.set(hex, bean, cacheTtl)
     // console.info(`created ${created}`)
     return bean;
+}
+export async function getAddrId(addr:string) {
+    if (!addr) {
+        return -1
+    }
+    if (addr.startsWith('0x')) {
+    } else if (addr.startsWith('cfx') || addr.startsWith('net')){
+        addr = format.hexAddress(addr)
+    }
+    return Hex40Map.findOne({
+        where: {hex: addr.substr(2)}
+    }).then(res=>{
+        return res?.id
+    })
 }
 export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<string> {
     if (hexSet === undefined) {

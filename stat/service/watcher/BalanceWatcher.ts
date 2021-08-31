@@ -61,6 +61,7 @@ import {hex} from "../../test/GenData";
 import {NftId} from "../../model/Token";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {StatApp} from "../../StatApp";
+import {DynamicBalanceModel} from "./DynamicBalanceModel";
 const BigFixed = require('bigfixed');
 const superagent = require("superagent")
 const NodeCache = require( "node-cache" );
@@ -94,7 +95,7 @@ export class BalanceWatcher{
         this.contractAddress = contractAddr
         this.cfx = cfx;
         this.tokenType = config.tokenType || 'NotSet'
-        this.model = BalanceWatcher.mapModel(name)
+        this.model = BalanceWatcher.mapModel(name) // by configuration, will be deprecated.
         this.addressPosKey = KEY_BALANCE_POS_PREFIX + this.name;
         if (contractAddr) {
             const {abi, bytecode} = require('./contract/miniERC20.json');
@@ -107,7 +108,7 @@ export class BalanceWatcher{
         }
     }
 
-    static mapModel(name:string, silent:boolean = false): typeof Balance{
+    static mapModel(name:string, silent:boolean = false, contractId: number = -1)/*: typeof Balance | DynamicBalanceModel*/{
         let ret;
         switch (name) {
             case 'WCFX':
@@ -166,6 +167,9 @@ export class BalanceWatcher{
             case 'PHM-NFT':         ret = Balance_PHM_NFT;    break;
             case 'DAN':         ret = Balance_DAN;    break;
             default:
+                if (contractId > -1) {
+                    return new DynamicBalanceModel(contractId)
+                }
                 if (silent) {
                     return null
                 }
