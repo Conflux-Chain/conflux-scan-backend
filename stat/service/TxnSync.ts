@@ -10,6 +10,7 @@ import {StatApp} from "../StatApp";
 import {makeId as makeAddrId} from "../model/HexMap";
 import {ContractInfo} from "../model/ContractInfo";
 import {batchFetchBlock, patchHttpProvider} from "./common/utils";
+import {sleep} from "./tool/ProcessTool";
 const BigFixed = require('bigfixed');
 
 /**
@@ -134,10 +135,19 @@ export class TxnSync {
         console.log(`sync tx with delay ${delay}`)
         const that = this;
         async function repeat() {
+            let fullNodeDown = ''
             await that.run().catch(err=>{
+                if (err.message.includes('ECONNREFUSED')) {
+                    fullNodeDown = err.message
+                    return
+                }
                 console.log(`sync tx fail: `, err)
             });
-            setTimeout(repeat, delay)
+            if (fullNodeDown) {
+                console.log(`full node down: ${fullNodeDown}`)
+                await sleep(10_000)
+            }
+            setTimeout(repeat, delay);
         }
         repeat().then()
         this.scheduleCache()

@@ -9,6 +9,7 @@ import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {getDBConf, getSumFunction} from "./DBProvider";
 import {StatApp} from "../StatApp";
 import {batchFetchBlock} from "./common/utils";
+import {sleep} from "./tool/ProcessTool";
 
 const BigFixed = require('bigfixed');
 
@@ -43,7 +44,7 @@ export class BlockAndMinerSync {
             return;
         }
         let remote = await this.cfx.getEpochNumber();
-        const number = remote - 1000
+        const number = Math.max(remote - 1000, -1);
         await KV.create({key: KEY_MINER_EPOCH, value: number.toString()})
         console.log(`${fmtDtUTC(new Date())} init position at ${number}, remote epoch is ${number}`)
     }
@@ -316,6 +317,8 @@ export class BlockAndMinerSync {
         // @ts-ignore
         const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
         if (minEpochNumber > epochConfirmed) {
+            console.log(`not confirmed, ${minEpochNumber} > ${epochConfirmed}`)
+            await sleep(5000)
             return;
         }
         let hashes: string[];

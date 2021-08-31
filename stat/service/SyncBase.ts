@@ -107,16 +107,17 @@ export abstract class SyncBase{
         const {
             app: { cfx, config },
         } = this;
+        const next = this.getNextEpochNumber()
 
         let traceEpochNumber = epochNumber;
-        if(traceEpochNumber === undefined){
-            traceEpochNumber = await this.getNextEpochNumber();
+        if(traceEpochNumber === undefined || traceEpochNumber <= next){
+            traceEpochNumber = next;
         }
 
         const that = this
         async function repeat() {
             const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
-            if (traceEpochNumber <= stateEpochNumber - config.preload) {
+            if (traceEpochNumber <= stateEpochNumber - (config.preload || 4)) {
                 traceEpochNumber = await that.syncForward(traceEpochNumber);
                 setTimeout(repeat, 0)
             } else {

@@ -382,6 +382,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     });
     // get creat trace
     router.post('/recaptcha/siteverify', async function (ctx) {
+        //@ts-ignore
         const {token, address, type, description, txn_hash} = ctx.request.body;
         const verifyResult = await statApp.siteVerify.verify(token, address, type, description, txn_hash);
         ctx.body = verifyResult;

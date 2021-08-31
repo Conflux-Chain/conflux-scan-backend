@@ -79,11 +79,8 @@ import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {Contract} from "../model/Contract";
 import {
-    AddressTransactionIndex,
-    BlockRowMark,
+    BlockRowMark, createAddressTxTable, createFullBlockTable, createFullTransactionTable,
     FailedTx,
-    FullBlock,
-    FullTransaction,
     TxnRowMark
 } from "../model/FullBlock";
 import {DailyContractCreate} from "../model/DailyContractCreate";
@@ -156,6 +153,9 @@ export async function initPartialModel(sequelize) {
         createFullMinerBlockTable(sequelize),
         createV2CfxBillTable(sequelize),
         createTokenBalanceTable(sequelize),
+        createFullBlockTable(sequelize),
+        createFullTransactionTable(sequelize),
+        createAddressTxTable(sequelize),
     ])
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
@@ -174,10 +174,6 @@ export async function initPartialModel(sequelize) {
     DailyActiveAddress.register(sequelize)
     DailyToken.register(sequelize)
     FailedTx.register(sequelize)
-    // remove auto generated PK field since we use epoch-position as PK.
-    FullBlock.register(sequelize);  FullBlock.removeAttribute('id')
-    FullTransaction.register(sequelize);  FullTransaction.removeAttribute('id')
-    AddressTransactionIndex.register(sequelize);  AddressTransactionIndex.removeAttribute('id')
     AddressStat.register(sequelize)
     ContractInfo.register(sequelize)
     Contract.register(sequelize)

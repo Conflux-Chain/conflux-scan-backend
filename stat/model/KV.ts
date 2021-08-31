@@ -46,13 +46,30 @@ export class KV extends Model<IKV> implements IKV {
 
     static register(sequelize) {
         KV.init({
-            key: {type: DataTypes.CHAR(30), primaryKey: true},
+            key: {type: DataTypes.CHAR(64), primaryKey: true},
             value: DataTypes.CHAR(128)
         }, {
             sequelize,
             tableName: 'config',
             timestamps: false
         })
+    }
+
+    static async setupSwitch() {
+        const anyOne = await KV.findOne({where: {key: KEY_TX_QUERY_RDB_SWITCH}})
+        if (anyOne) {
+            return
+        }
+        await KV.bulkCreate([
+            {key: KEY_ANNOUNCE_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_BLOCK_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_CONTRACT_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_EPOCH_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_TRANSFER_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_TX_QUERY_RDB_SWITCH, value: 'true'},
+            {key: KEY_BLOCK_DATA_STAT_RDB_SWITCH, value: 'true'},
+            {key: KEY_EVENT_LOG_QUERY_RDB_SWITCH, value: 'true'},
+        ]);
     }
 
     static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined): Promise<[number, number]> {
