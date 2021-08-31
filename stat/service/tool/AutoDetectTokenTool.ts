@@ -17,6 +17,7 @@ let cfx;
 let networkId;
 let tokenTool;
 let round;
+let saveType;
 const interfaceIdCrc721 = [0x80, 0xac, 0x58, 0xcd];
 const interfaceIdCrc1155 = [0xd9, 0xb6, 0x7a, 0x26];
 
@@ -74,9 +75,12 @@ async function detect(id) {
         return undefined;
     }
 
-    const token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
+    let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
         decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
-        type: transferType, transfer: 0, holder: 0, auditResult: true, fetchBalance: true });
+        type: transferType, transfer: 0, holder: 0});
+
+    const auditResult = token.name !== undefined && token.symbol !== undefined;
+    token = lodash.defaults(token, {auditResult, fetchBalance: true });
     return token;
 }
 
@@ -127,9 +131,15 @@ async function run(round = 10) {
         roundCounter++
     }
 
-    await save(erc20TokenArray);
-    await save(erc721TokenArray);
-    await save(erc1155TokenArray);
+    if(saveType === 1){
+        await save(erc20TokenArray);
+    }
+    if(saveType === 2) {
+        await save(erc721TokenArray);
+    }
+    if(saveType === 3) {
+        await save(erc1155TokenArray);
+    }
 
     console.log(`autoDetectTokenTool completed...\nerc20TokenArray:${erc20TokenArray.length}\nerc721TokenArray:${erc721TokenArray.length}\nerc1155TokenArray:${erc1155TokenArray.length}`);
     await close();
@@ -139,5 +149,8 @@ const args = process.argv.slice(2);
 networkId = Number(args[0]);
 if(args[1]){
     round = Number(args[1]);
+}
+if(args[2]){
+    saveType = Number(args[2]);
 }
 run(round).then();

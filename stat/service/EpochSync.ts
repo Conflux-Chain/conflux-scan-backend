@@ -307,9 +307,12 @@ export class EpochSync extends SyncBase{
             return undefined;
         }
 
-        const token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
+        let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
             decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
-            type: transferType, transfer: 0, holder: 0, auditResult: true, fetchBalance: true });
+            type: transferType, transfer: 0, holder: 0 });
+        const auditResult = token.name !== undefined && token.symbol !== undefined
+            && token.type !== transferType === CONST.TRANSFER_TYPE.ERC20;
+        token = lodash.defaults(token, {auditResult, fetchBalance: true });
         return token;
     }
 
