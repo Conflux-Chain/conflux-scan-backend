@@ -3,6 +3,7 @@
 
 
 import {Op, Sequelize, DataTypes, Model} from "sequelize";
+import {createTable} from "../service/DBProvider";
 
 export interface IFullBlock {
     epoch: number;
@@ -20,7 +21,44 @@ export interface IFullBlock {
     executedTxnCount:number;
     pivot: boolean;
 }
+const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
+                              \`epoch\` bigint unsigned NOT NULL,
+                              \`position\` smallint NOT NULL DEFAULT '0',
+                              \`createdAt\` datetime NOT NULL,
+                              \`txCount\` int NOT NULL DEFAULT '0',
+                              \`executedTxnCount\` int NOT NULL DEFAULT '0',
+                              \`pivot\` tinyint(1) NOT NULL DEFAULT '0',
+                              \`difficulty\` bigint unsigned NOT NULL DEFAULT '0',
+                              \`minerId\` bigint unsigned NOT NULL,
+                              \`hash\` char(66) DEFAULT '',
+                              \`totalReward\` decimal(36,0) NOT NULL DEFAULT '0',
+                              \`txFee\` decimal(36,0) NOT NULL DEFAULT '0',
+                              \`avgGasPrice\` decimal(36,0) NOT NULL DEFAULT '0',
+                              \`gasLimit\` decimal(36,0) NOT NULL DEFAULT '0',
+                              \`gasUsed\` decimal(36,0) NOT NULL DEFAULT '0',
+                              primary key  (\`epoch\` desc, \`position\` desc),
+                              KEY \`idx_block_time\` (\`createdAt\` DESC),
+                              KEY \`block_hash\` (\`hash\`(10))
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4
+partition by range (epoch) (
+    PARTITION p1 VALUES LESS THAN (10000000/*1Kw*/),
+    PARTITION p2 VALUES LESS THAN (20000000/*2Kw*/),
+    PARTITION p3 VALUES LESS THAN (30000000/*3Kw*/),
+    PARTITION p4 VALUES LESS THAN (40000000/*3Kw*/),
+    PARTITION p5 VALUES LESS THAN (50000000/*3Kw*/)
+    );`
 
+export async function createFullBlockTable(seq:Sequelize) {
+    return createTable(seq, FULL_BLOCK_SQL)
+        .then(()=>{
+            return FullBlock.register(seq)
+        }).then(()=>{
+            FullBlock.removeAttribute("id")
+        }).catch(err=>{
+            console.log(`createFullMinerBlockTable fail, sql ${FULL_BLOCK_SQL}:`, err)
+            process.exit(9)
+        })
+}
 export class FullBlock extends Model<IFullBlock> implements IFullBlock {
     epoch: number;
     createdAt: Date;
@@ -139,6 +177,81 @@ export interface IFullTransaction {
     status: number
     contractCreatedId:number
     method?:string
+}
+const fullTxSql = `
+CREATE TABLE if not exists \`full_tx\` (
+  \`epoch\` bigint unsigned NOT NULL,
+  \`blockPosition\` smallint NOT NULL DEFAULT '0',
+  \`txPosition\` smallint NOT NULL DEFAULT '0',
+  \`createdAt\` datetime NOT NULL,
+  \`hash\` char(66) DEFAULT '',
+  \`fromId\` bigint unsigned NOT NULL,
+  \`nonce\` bigint unsigned NOT NULL,
+  \`toId\` bigint unsigned NOT NULL,
+  \`dripValue\` decimal(36,0) NOT NULL DEFAULT '0',
+  \`gasPrice\` decimal(36,0) NOT NULL DEFAULT '0',
+  \`gas\` decimal(36,0) NOT NULL DEFAULT '0', -- it's gasFee
+  \`status\` tinyint NOT NULL DEFAULT '0',
+  \`contractCreatedId\` bigint unsigned NOT NULL,
+  \`method\` char (10) null ,
+  primary key  (\`epoch\` desc, \`blockPosition\` desc, \`txPosition\` desc),
+  KEY \`idx_block_time\` (\`createdAt\` DESC),
+  KEY \`idx_hash\` (\`hash\`(10))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+partition by range (epoch)(
+    PARTITION p1 VALUES LESS THAN (10000000/*1Kw*/),
+    PARTITION p2 VALUES LESS THAN (20000000/*2Kw*/),
+    PARTITION p3 VALUES LESS THAN (30000000/*3Kw*/),
+        PARTITION p4 VALUES LESS THAN (40000000/*4Kw*/),
+    PARTITION p5 VALUES LESS THAN (50000000/*5Kw*/)
+);
+`
+
+const addrTxSql = `
+CREATE TABLE if not exists \`address_tx\` (
+  \`addressId\` bigint unsigned NOT NULL,
+  \`epoch\` bigint unsigned NOT NULL,
+  \`blockPosition\` smallint NOT NULL DEFAULT '0',
+  \`txPosition\` smallint NOT NULL DEFAULT '0',
+  \`createdAt\` datetime NOT NULL,
+  \`hash\` char(66) DEFAULT '',
+  \`fromId\` bigint unsigned NOT NULL,
+  \`nonce\` bigint unsigned NOT NULL,
+  \`toId\` bigint unsigned NOT NULL,
+  \`dripValue\` decimal(36,0) NOT NULL DEFAULT '0',
+  \`gasPrice\` decimal(36,0) NOT NULL DEFAULT '0',
+  \`gas\` decimal(36,0) NOT NULL DEFAULT '0',
+  \`status\` tinyint NOT NULL DEFAULT '0',
+  \`contractCreatedId\` bigint unsigned NOT NULL,
+  primary key  (\`addressId\` desc,\`epoch\` desc, \`blockPosition\` desc, \`txPosition\` desc),
+  KEY \`idx_block_time\` (\`createdAt\` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+partition by hash (addressId)
+   PARTITIONS 13;
+`
+
+export async function createAddressTxTable(seq:Sequelize) {
+    return createTable(seq, addrTxSql)
+        .then(()=>{
+            return AddressTransactionIndex.register(seq)
+        }).then(()=>{
+            AddressTransactionIndex.removeAttribute("id")
+        }).catch(err=>{
+            console.log(`createFullMinerBlockTable fail, sql ${addrTxSql}:`, err)
+            process.exit(9)
+        })
+}
+
+export async function createFullTransactionTable(seq:Sequelize) {
+    return createTable(seq, fullTxSql)
+        .then(()=>{
+            return FullTransaction.register(seq)
+        }).then(()=>{
+            FullTransaction.removeAttribute("id")
+        }).catch(err=>{
+            console.log(`createFullMinerBlockTable fail, sql ${fullTxSql}:`, err)
+            process.exit(9)
+        })
 }
 export class FullTransaction extends Model<IFullTransaction> implements IFullTransaction {
     epoch:number

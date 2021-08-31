@@ -39,6 +39,7 @@ import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {patchHttpProvider} from "./service/common/utils";
+import {KV} from "./model/KV";
 
 export class StatApp{
     public config: StatConfig;
@@ -108,6 +109,7 @@ export class StatApp{
         } else {
             console.log(`skip sync db schema.`)
         }
+        KV.setupSwitch().then()
         this.rankService = new RankService(this)
         this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
@@ -161,7 +163,7 @@ export class StatApp{
             await this.txnSync.schedule(this.config.syncTxnDelay); // txn
         }
         if (this.config.syncTxnCountDaily) {
-            await this.dailyTxnSync.schedule(this.config.syncTxnCountHistory); // dailyTxn
+            await this.dailyTxnSync.schedule(); // dailyTxn
             scheduleDailyActiveAddress()
                 .then(()=>{scheduleDailyTokenStat()})
         }
@@ -176,7 +178,7 @@ export class StatApp{
             monitor.checkFullBlockSyncRunning().then()
         }
         if (this.config.syncContractCreateCountDaily) {
-            await this.contractCreateSync.schedule(this.config.syncContractCreateCountHistory); // dailyContractCreate
+            await this.contractCreateSync.schedule(); // dailyContractCreate
         }
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote

@@ -20,7 +20,7 @@ export class DailyBlockDataStatSync{
     public async statByHour(): Promise<any>{
         // get time span
         const maxStat = await DailyBlockDataStat.findOne({where:{statType:'1h'}, order:[['statTime','desc']]});
-        const maxStatTime = maxStat.statTime;
+        const maxStatTime = maxStat?.statTime || getTimeByInterval(new Date(), -61);
         const nextBeginTime = getTimeByInterval(maxStatTime, 60);
         const nextEndTime = getTimeByInterval(maxStatTime, 60 * 2);
         const nextSafeTime = getTimeByInterval(maxStatTime, 60 * 2 + 3);
@@ -124,8 +124,8 @@ export class DailyBlockDataStatSync{
                     const tps = BigFixed(txCount).div(BigFixed(this.intervalHourInSec));
                     partialStatArray.push({statTime, statType: '1h', blockCount, txCount, difficultySum,
                         blockTime, hashRate, difficulty, tps});
-                    blockCountPerDay = blockCountPerDay +blockCount;
-                    txCountPerDay = txCountPerDay + txCount;
+                    blockCountPerDay = BigFixed(blockCountPerDay).add(BigFixed(blockCount));
+                    txCountPerDay = BigFixed(txCountPerDay).add(BigFixed(txCount));
                     difficultyPerDay = BigFixed(difficultyPerDay).add(BigFixed(difficultySum));
                 }
         }
@@ -203,8 +203,8 @@ export class DailyBlockDataStatSync{
             const base = new Date(statDate);
             const statTime = new Date(base.setHours(base.getHours() + i));
             const stat = statMap[fmtDtUTC(statTime).substr(0,19)];
-            stat.statTime = statTime;
             if(stat){
+                stat.statTime = statTime;
                 totalStatArray.push(stat);
             } else{
                 totalStatArray.push({
