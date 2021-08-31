@@ -12,6 +12,9 @@ import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {Transaction} from "sequelize";
 import {batchFetchBlock} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
+import {Erc20Transfer} from "../model/Erc20Transfer";
+import {Erc721Transfer} from "../model/Erc721Transfer";
+import {Erc1155Transfer} from "../model/Erc1155Transfer";
 const lodash = require('lodash');
 const zlib = require('zlib');
 const CONST = require('./common/constant');
@@ -20,10 +23,12 @@ export class EpochSync extends SyncBase{
     protected app;
     private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     private erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
+    private whiteListErc20;
 
     constructor(app: StatApp) {
         super(app);
         this.app = app;
+        this.initWhiteListErc20();
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -62,7 +67,9 @@ export class EpochSync extends SyncBase{
         const tokenArray = modelData.tokenArray;
         for(const token of tokenArray){
             try{
-                await TokenAutoDetect.upsert(token);
+                if(token.type !== CONST.TRANSFER_TYPE.ERC20){ // auto detect erc721 and erc1155
+                    await Token.upsert(token);
+                }
             }catch (e) {
                 console.log(`epoch-sync.createTokensAutoDetected fail,token:${JSON.stringify(token)}`, e);
             }
@@ -295,6 +302,11 @@ export class EpochSync extends SyncBase{
         } = this;
 
         const hex40id = (await makeId(hexAddress)).id;
+        const tokenDb = await Token.findOne({where: {hex40id}, raw: true});
+        if(tokenDb && tokenDb.type){
+            return undefined;
+        }
+
         const base32 = format.address(hexAddress, StatApp.networkId);
         const [ totalSupply, tokenInfo, erc721Interface, erc1155Interface ] = await Promise.all([
             tokenTool.getTokenTotalSupply(base32),
@@ -309,11 +321,62 @@ export class EpochSync extends SyncBase{
 
         let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
             decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
-            type: transferType, transfer: 0, holder: 0 });
+            type: transferType});
+        const transferCount = await this.countTransfer(hex40id, transferType);
         const auditResult = token.name !== undefined && token.symbol !== undefined
-            && token.type !== transferType === CONST.TRANSFER_TYPE.ERC20;
-        token = lodash.defaults(token, {auditResult, fetchBalance: true });
+            && (this.whiteListErc20.has(token.base32) || token.type !== CONST.TRANSFER_TYPE.ERC20);
+        token = lodash.defaults(token, {transfer: transferCount,  auditResult, fetchBalance: true });
         return token;
+    }
+
+    private async countTransfer(addressId, transferType) {
+        if(transferType === CONST.TRANSFER_TYPE.ERC20)
+            return 0; //Erc20Transfer.count({ where: { contractId: addressId }});
+        if(transferType === CONST.TRANSFER_TYPE.ERC721)
+            return Erc721Transfer.count({ where: { contractId: addressId }});
+        if(transferType === CONST.TRANSFER_TYPE.ERC1155)
+            return Erc1155Transfer.count({ where: { contractId: addressId }});
+    }
+
+    private initWhiteListErc20(){
+        this.whiteListErc20 = new Set<string>([
+            'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx',
+            'cfx:acbgx6fr4erywfs1u8jysdjkdyw697386ykw31nddj',
+            'cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7',
+            'cfx:achcuvuasx3t8zcumtwuf35y51sksewvca0h0hj71a',
+            'cfx:acdrf821t59y12b4guyzckyuw2xf1gfpj2ba0x4sj6',
+            'cfx:achc8nxj7r451c223m18w2dwjnmhkd6rxawrvkvsy2',
+            'cfx:acd3fhs4u0yzx7kpzrujhj15yg63st2z6athmtka95',
+            'cfx:aca13suyk7mbgxw9y3wbjn9vd136swu6s21tg67xmb',
+            'cfx:acff13n54n4t02cy6uc8xfdxrf4enanr5jh6vy761g',
+            'cfx:acc1uh4ftd4jhser99uk8nk8unkbz8ykmyxt0n27v5',
+            'cfx:accuj4mt4kmnhzr1b3xe653n63694tc0cjuzkj5t94',
+            'cfx:accedvremfhmym60f9u4nghb8utxcgbtb2acewunwh',
+            'cfx:acbyc3ahvctpx5cabfw6n1s9fv40trur6ydbu1zr4x',
+            'cfx:acbb225r9wc7a2kt1dz9gw0tuv5v1kgdjuh5akdh3t',
+            'cfx:acfezfepc4wuxj2fmfya1w9kwjutk7wtaudbz0k6dj',
+            'cfx:acc3hzr7e570ccnrb91wgufwcs6a171jvuax68krfm',
+            'cfx:accxdrf7c3vntwyyhj8ws8mcatd433k8sjvrjbx39r',
+            'cfx:acdkf73rh2ewwm3hbwddd00wy3v3fyau3ew61jbrbj',
+            'cfx:acdcap62vh2km00y4fh117ngz8jauj19g618km65m6',
+            'cfx:ach3cmt7wze9tkhxctkdzfsaf0azcppgvpfwfdzmku',
+            'cfx:acamc98zc1a93ap8u9xaruc2kefpd6mpy6089w6yv0',
+            'cfx:acg797d4c6v007y46hj1juk7z0ac86m04uc13n4bcg',
+            'cfx:achj7swfxkg634hcvg70ttywtgyn2w619jxscmjdp3',
+            'cfx:acc8599utu7nayj50w393eycznhv4e23g2ys6xmvf5',
+            'cfx:acdkyd8tmezzs6cvmfwtpkg7y9k8cnhdapfcganwt9',
+            'cfx:acekx06rp1bcdkup1ubr2vw77tsrw81ysy0d3n7x5s',
+            'cfx:acgbjtsmfpex2mbn97dsygtkfrt952sp0psmh8pnvz',
+            'cfx:acczy0zs2fu03pnx0w1u19pkprsm6r50spkz7eg4c3',
+            'cfx:ace09320r53kxk8tx07wz1mx5dwhcaumk2etx52tt6',
+            'cfx:acdz7hfvku8fm0j8k065urs2n59k0e33npbjtyp2bv',
+            'cfx:acb9wkgbefcja9rkpds5ve4cm5643jmebae7xjzz8f',
+            'cfx:acaucwuza1nm7wfj1bwkjttz7b0eh4ak7ur7fue1dy',
+            'cfx:acbvymbs1ck1gve4yzubavvj7my5h7b8yutaagrsrx',
+            'cfx:acc8ya1f2a2bfphxg5ax7a8h29k47d5xsebxfj24nd',
+            'cfx:achgfs1uu8drfvy8ju05grkwgct9pfdckym9pc15dc',
+            'cfx:acbyzcbfpymaz43rr6s1gtx0fb08guj88uzc05rchf',
+        ]);
     }
 
     // -------------------------------- event log -------------------------------
