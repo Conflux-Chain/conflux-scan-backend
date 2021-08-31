@@ -302,6 +302,11 @@ export class EpochSync extends SyncBase{
         } = this;
 
         const hex40id = (await makeId(hexAddress)).id;
+        const tokenDb = await Token.findOne({where: {hex40id}, raw: true});
+        if(tokenDb && tokenDb.type){
+            return undefined;
+        }
+
         const base32 = format.address(hexAddress, StatApp.networkId);
         const [ totalSupply, tokenInfo, erc721Interface, erc1155Interface ] = await Promise.all([
             tokenTool.getTokenTotalSupply(base32),
@@ -320,7 +325,7 @@ export class EpochSync extends SyncBase{
         const transferCount = await this.countTransfer(hex40id, transferType);
         const auditResult = token.name !== undefined && token.symbol !== undefined
             && (this.whiteListErc20.has(token.base32) || token.type !== CONST.TRANSFER_TYPE.ERC20);
-        token = lodash.defaults(token, {transfer: transferCount, holder: 0,  auditResult, fetchBalance: true });
+        token = lodash.defaults(token, {transfer: transferCount,  auditResult, fetchBalance: true });
         return token;
     }
 

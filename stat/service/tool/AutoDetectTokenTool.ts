@@ -82,7 +82,7 @@ async function detect(id) {
     const transferCount = await countTransfer(hex40id, transferType);
     const auditResult = token.name !== undefined && token.symbol !== undefined
         && token.type !== CONST.TRANSFER_TYPE.ERC20;
-    token = lodash.defaults(token, {transfer: transferCount, holder: 0, auditResult, fetchBalance: true });
+    token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: true });
     return token;
 }
 
