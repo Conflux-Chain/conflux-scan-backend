@@ -69,7 +69,6 @@ export class KV extends Model<IKV> implements IKV {
             {key: KEY_TX_QUERY_RDB_SWITCH, value: 'true'},
             {key: KEY_BLOCK_DATA_STAT_RDB_SWITCH, value: 'true'},
             {key: KEY_EVENT_LOG_QUERY_RDB_SWITCH, value: 'true'},
-            {key: KEY_TOKEN_SYNC_BY_SCAN_SWITCH, value: 'true'},
         ]);
     }
 
