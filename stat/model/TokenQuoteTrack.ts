@@ -1,6 +1,6 @@
 import {Model,Sequelize,DataTypes} from "sequelize";
 
-export interface ITokenQuote{
+export interface ITokenQuoteTrack{
     id?:number
     address:string
     name?:string
@@ -9,7 +9,7 @@ export interface ITokenQuote{
     price?:number
 }
 
-export class TokenQuote extends Model<ITokenQuote> implements ITokenQuote{
+export class TokenQuoteTrack extends Model<ITokenQuoteTrack> implements ITokenQuoteTrack{
     id?:number
     address:string
     name?:string
@@ -18,7 +18,7 @@ export class TokenQuote extends Model<ITokenQuote> implements ITokenQuote{
     price?:number
 
     static register(seq:Sequelize) {
-        TokenQuote.init({
+        TokenQuoteTrack.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             address: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             name: {type: DataTypes.CHAR(64), allowNull: false, defaultValue: ''},
@@ -32,8 +32,8 @@ export class TokenQuote extends Model<ITokenQuote> implements ITokenQuote{
         })
     }
 
-    static async add(tokenQuote: TokenQuote, dbTx = undefined): Promise<ITokenQuote> {
-        return await TokenQuote.create({
+    static async add(tokenQuote: TokenQuoteTrack, dbTx = undefined): Promise<ITokenQuoteTrack> {
+        return await TokenQuoteTrack.create({
             address:tokenQuote.address,
             name:tokenQuote.name,
             symbol:tokenQuote.symbol,

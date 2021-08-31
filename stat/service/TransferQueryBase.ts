@@ -13,7 +13,7 @@ export abstract class TransferQueryBase {
 
     private buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
                                   minTimestamp, maxTimestamp,
-                                  accountAddressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
+                                  accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
                                   tokenId, txType, skip, limit}){
         const{ logger } = this.app;
         // page
@@ -22,6 +22,9 @@ export abstract class TransferQueryBase {
         const conditionArray = [];
         if(accountAddressId){
             conditionArray.push({addressId: accountAddressId});
+        }
+        if(addressId){
+            conditionArray.push({contractId: addressId});
         }
         if(tokenAddressIdArray.length){
             conditionArray.push({contractId: {[Op.in]: tokenAddressIdArray}});
@@ -93,7 +96,7 @@ export abstract class TransferQueryBase {
         const{ logger } = this.app;
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
-            accountAddress, from, to, opponentAddress, tokenArray,
+            accountAddress, address, from, to, opponentAddress, tokenArray,
             tokenId, txType , status, skip = 0, limit = 10} = options;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
@@ -101,7 +104,7 @@ export abstract class TransferQueryBase {
 
         // parameter
         const addressMap = {};
-        await Promise.all([accountAddress, from, to, opponentAddress]
+        await Promise.all([accountAddress, address, from, to, opponentAddress]
             .map(async ( address ) => {
                 if(address){
                     const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(address).substr(2)}})
@@ -110,6 +113,7 @@ export abstract class TransferQueryBase {
             })
         );
         const accountAddressId = addressMap[accountAddress];
+        const addressId = addressMap[address];
         const fromAddressId = addressMap[from];
         const toAddressId = addressMap[to];
         const opponentAddressId = addressMap[opponentAddress];
@@ -129,6 +133,7 @@ export abstract class TransferQueryBase {
 
         // check if address exist
         if((accountAddress !== undefined && accountAddressId === undefined)
+            || (address !== undefined && addressId === undefined)
             || (from !== undefined && fromAddressId === undefined)
             || (to !== undefined && toAddressId === undefined)
             || (opponentAddress !== undefined && opponentAddressId === undefined
@@ -140,7 +145,7 @@ export abstract class TransferQueryBase {
         const queryOptions = this.buildQueryOptions({
             minEpochNumber, maxEpochNumber, transactionHashId,
             minTimestamp, maxTimestamp,
-            accountAddressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
+            accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
             tokenId, txType, skip, limit
         });
         queryOptions.attributes = this.buildQueryFields();

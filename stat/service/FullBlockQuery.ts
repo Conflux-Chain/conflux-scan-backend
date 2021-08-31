@@ -218,7 +218,7 @@ export class FullBlockQuery {
             if(maxEpochNumber){
                 conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
             }
-            if(nonce){
+            if(Number.isInteger(nonce)){
                 conditionArray.push({nonce: nonce});
             }
             if(minTimestamp) {
