@@ -50,7 +50,6 @@ export abstract class TransferQueryBase {
         if(fromAddressId !== undefined &&  toAddressId !== undefined) {
             conditionArray.push({[Op.or]: [{fromId: fromAddressId}, {toId: toAddressId}]});
         }
-        logger.error({src: `debug-transfer-------------------`, fromAddressId: `${fromAddressId}`, toAddressId: `${toAddressId}`});
         if(opponentAddressId){
             conditionArray.push({[Op.or]: [{toId: opponentAddressId}, {fromId: opponentAddressId}]});
         }
@@ -99,10 +98,6 @@ export abstract class TransferQueryBase {
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
             tokenId, txType , status, skip = 0, limit = 10} = options;
-        logger.error({src: `debug-transfer---addressMap----------------`, accountAddress: `${accountAddress}`});
-        logger.error({src: `debug-transfer---addressMap----------------`, address: `${address}`});
-        logger.error({src: `debug-transfer---addressMap----------------`, from: `${from}`});
-        logger.error({src: `debug-transfer---addressMap----------------`, to: `${to}`});
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
@@ -117,7 +112,6 @@ export abstract class TransferQueryBase {
                 }
             })
         );
-        logger.error({src: `debug-transfer---addressMap----------------`, addressMap: `${JSON.stringify(addressMap)}`});
         const accountAddressId = addressMap[accountAddress];
         const addressId = addressMap[address];
         const fromAddressId = addressMap[from];
