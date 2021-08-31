@@ -8,14 +8,18 @@ import {makeId} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
+import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {Transaction} from "sequelize";
 import {batchFetchBlock} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 const lodash = require('lodash');
 const zlib = require('zlib');
+const CONST = require('./common/constant');
 
 export class EpochSync extends SyncBase{
     protected app;
+    private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
+    private erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
 
     constructor(app: StatApp) {
         super(app);
@@ -26,11 +30,13 @@ export class EpochSync extends SyncBase{
     async getData(epochNumber): Promise<SyncData> {
         const epoch = await this.getEpoch(epochNumber);
         const minerBlockArray = await this.getMinerBlockArray(epochNumber);
-        const announceInfo = await this.getAnnounceInfo(epochNumber);
+        const groupedLogs = await this.getLogsGrouped(epochNumber);
+        const announceInfo = await this.getAnnounceInfo(epochNumber, groupedLogs.announcementArray);
+        const tokenArray = await this.getTokensAutoDetected(groupedLogs);
         const syncData = {
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
-            modelData: {epoch, minerBlockArray, announceInfo},
+            modelData: {epoch, minerBlockArray, announceInfo, tokenArray},
         };
         return syncData;
     }
@@ -52,6 +58,15 @@ export class EpochSync extends SyncBase{
             await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             await this.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
         });
+
+        const tokenArray = modelData.tokenArray;
+        for(const token of tokenArray){
+            try{
+                await TokenAutoDetect.upsert(token);
+            }catch (e) {
+                console.log(`epoch-sync.createTokensAutoDetected fail,token:${JSON.stringify(token)}`, e);
+            }
+        }
 
         try{
             const {tokenArray} = modelData.announceInfo;
@@ -177,14 +192,14 @@ export class EpochSync extends SyncBase{
         }
     }
 
-    private async getAnnounceInfo(epochNumber) {
+    private async getAnnounceInfo(epochNumber, announceArray) {
         const {
             app: { tokenTool },
         } = this;
 
         let tokenMap = {};
         let contractMap = {};
-        const announceArray = await this.getAnnounceArray(epochNumber);
+        // const announceArray = await this.getAnnounceArray(epochNumber);
         for(const announce of announceArray) {
             const key = Buffer.from(announce.key, 'base64').toString();
             const params = key.split('/');
@@ -241,13 +256,94 @@ export class EpochSync extends SyncBase{
         return map;
     }
 
-    private async getAnnounceArray(epochNumber) {
+    // ----------------------- business method for token ------------------------
+    private async getTokensAutoDetected({ epochNumber, transfer20Array, transfer721Array, transfer1155Array }) {
+        let tokenArray = [];
+        try{
+            const [crc20AddressArray, crc721AddressArray, crc1155AddressArray]  = await Promise.all([
+                [... new Set(transfer20Array.map(item => item.address).filter(Boolean))],
+                [... new Set(transfer721Array.map(item => item.address).filter(Boolean))],
+                [... new Set(transfer1155Array.map(item => item.address).filter(Boolean))]
+            ]);
+            if(crc20AddressArray.length){
+                tokenArray = [...tokenArray, ...await this.getTokens(crc20AddressArray, CONST.TRANSFER_TYPE.ERC20)];
+            }
+            if(crc721AddressArray.length){
+                tokenArray = [...tokenArray, ...await this.getTokens(crc721AddressArray, CONST.TRANSFER_TYPE.ERC721)];
+            }
+            if(crc1155AddressArray.length){
+                tokenArray = [...tokenArray, ...await this.getTokens(crc1155AddressArray, CONST.TRANSFER_TYPE.ERC1155)];
+            }
+        }catch (e){
+            console.log(`epoch-sync.getTokensAutoDetected fail`, e);
+        }
+        return tokenArray;
+    }
+
+    private async getTokens(hexAddressArray, transferType){
+        const tokenArray = [];
+        for(const hex40 of hexAddressArray){
+            const token = await this.getToken(hex40, transferType);
+            token && tokenArray.push(token);
+        }
+        return tokenArray;
+    }
+
+    private async getToken(hexAddress, transferType){
+        const {
+            app: { tokenTool },
+        } = this;
+
+        const hex40id = (await makeId(hexAddress)).id;
+        const base32 = format.address(hexAddress, StatApp.networkId);
+        const [ totalSupply, tokenInfo, erc721Interface, erc1155Interface ] = await Promise.all([
+            tokenTool.getTokenTotalSupply(base32),
+            tokenTool.getToken(base32),
+            tokenTool.supportsInterface(base32, this.erc721Interface),
+            tokenTool.supportsInterface(base32, this.erc1155Interface),
+        ]);
+        if((transferType === CONST.TRANSFER_TYPE.ERC721 && erc721Interface === false) ||
+            (transferType === CONST.TRANSFER_TYPE.ERC1155 && erc1155Interface === false)){
+            return undefined;
+        }
+
+        let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
+            decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
+            type: transferType, transfer: 0, holder: 0 });
+        const auditResult = token.name !== undefined && token.symbol !== undefined
+            && token.type !== transferType === CONST.TRANSFER_TYPE.ERC20;
+        token = lodash.defaults(token, {auditResult, fetchBalance: true });
+        return token;
+    }
+
+    // -------------------------------- event log -------------------------------
+    private async getLogsGrouped(epochNumber) {
         const {
             app: { tokenTool },
         } = this;
 
         const eventLogArray = await this.getLogs(epochNumber);
-        return eventLogArray.map((eventLog) => tokenTool.decodeAnnounce(eventLog)).filter(Boolean);
+        const groupedLogs = {
+            epochNumber,
+            transfer20Array: [],
+            transfer721Array: [],
+            transfer1155Array: [],
+            announcementArray: [],
+        };
+
+        for(const eventLog of eventLogArray) {
+            const [transfer20, transfer721, transfer1155, announcement] = await Promise.all([
+                tokenTool.decodeERC20Transfer(eventLog),
+                tokenTool.decodeERC721Transfer(eventLog),
+                tokenTool.decodeERC1155TransferArray(eventLog),
+                tokenTool.decodeAnnounce(eventLog),
+            ]);
+            if(transfer20) {groupedLogs.transfer20Array.push(transfer20);}
+            if(transfer721) {groupedLogs.transfer721Array.push(transfer721);}
+            if(transfer1155) {groupedLogs.transfer1155Array.push(transfer1155);}
+            if(announcement) {groupedLogs.announcementArray.push(announcement);}
+        }
+        return groupedLogs;
     }
 
     private async getLogs(epochNumber) {

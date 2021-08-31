@@ -77,6 +77,71 @@ export class TokenTool {
         return undefined;
     }
 
+    decodeERC20Transfer(eventLog = {}) {
+        try {
+            const tuple = this.contract.Transfer.decodeLog(eventLog);
+            return { ...eventLog, ...tuple.toObject() };
+        } catch (e) {
+            // pass
+        }
+
+        return undefined;
+    }
+
+    decodeERC721Transfer(eventLog = {}) {
+        // @ts-ignore
+        const { topics = [], data = '0x' } = eventLog;
+
+        // ERC721: Transfer(address indexed from, address indexed to, uint256 indexed value)
+        if (topics[0] === this.contract.Transfer.signature && topics.length === 4 && data.length === 2) {
+            return {
+                ...eventLog,
+                from: `0x${topics[1].slice(-40)}`,
+                to: `0x${topics[2].slice(-40)}`,
+                tokenId: BigInt(topics[3]),
+            };
+        }
+
+        return undefined;
+    }
+
+    decodeERC777Transfer(eventLog = {}) {
+        try {
+            const tuple = this.contract.Sent.decodeLog(eventLog);
+            return { ...eventLog, ...tuple.toObject() };
+        } catch (e) {
+            // pass
+        }
+
+        return undefined;
+    }
+
+    decodeERC1155TransferArray(eventLog = {}) {
+        try {
+            const tuple = this.contract.TransferBatch.decodeLog(eventLog);
+            return lodash.zip(tuple.tokenIdArray, tuple.valueArray)
+                .map(([tokenId, value], batchIndex) => ({ ...eventLog, ...tuple.toObject(), tokenId, value, batchIndex }))
+                .filter((each) => each.tokenId !== undefined && each.value !== undefined);
+        } catch (e) {
+            // pass
+        }
+
+        try {
+            const tuple = this.contract.TransferSingle.decodeLog(eventLog);
+            return [{ ...eventLog, ...tuple.toObject(), batchIndex: 0 }];
+        } catch (e) {
+            // pass
+        }
+
+        return [];
+    }
+
+    async supportsInterface(address, interfaceId, epochNumber = undefined) {
+        return this.contract.supportsInterface(interfaceId)
+            .call({to: address}, epochNumber)
+            .catch(() => undefined);
+    }
+
     async isCustodianToken(address, custodianAddress, epochNumber) {
         const cache = await RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, address, '').then(Boolean);
         if (cache !== null && cache !== undefined) {
