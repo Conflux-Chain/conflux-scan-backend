@@ -76,7 +76,7 @@ export class TxnSync {
         const addressArray = [];
         list.forEach(tx=>{
             // tx.value = BigFixed(tx.value).div(BigFixed(drip2cfx))
-            tx.percent = BigFixed(tx.value).div(BigFixed(sum)).mul(100)
+            tx.percent = BigFixed(tx.value).div(BigFixed(sum||1)).mul(100)
             tx.rank = rank++
             tx.hex = `0x${tx.hex}`
             tx.base32 = this.base32(tx.hex, networkId)
