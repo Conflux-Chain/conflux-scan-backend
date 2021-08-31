@@ -18,6 +18,7 @@ let networkId;
 let tokenTool;
 let round;
 let saveType;
+let tokenSymbol;
 const interfaceIdCrc721 = [0x80, 0xac, 0x58, 0xcd];
 const interfaceIdCrc1155 = [0xd9, 0xb6, 0x7a, 0x26];
 
@@ -77,24 +78,37 @@ async function detect(id) {
 
     let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
         decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
-        type: transferType, transfer: 0, holder: 0});
-
-    const auditResult = token.name !== undefined && token.symbol !== undefined;
-    token = lodash.defaults(token, {auditResult, fetchBalance: true });
+        type: transferType});
+    const transferCount = await countTransfer(hex40id, transferType);
+    const auditResult = token.name !== undefined && token.symbol !== undefined
+        && token.type !== CONST.TRANSFER_TYPE.ERC20;
+    token = lodash.defaults(token, {transfer: transferCount, holder: 0, auditResult, fetchBalance: true });
     return token;
 }
 
+async function countTransfer(addressId, transferType) {
+    if(transferType === CONST.TRANSFER_TYPE.ERC20)
+        return  Erc20Transfer.count({ where: { contractId: addressId }});
+    if(transferType === CONST.TRANSFER_TYPE.ERC721)
+        return Erc721Transfer.count({ where: { contractId: addressId }});
+    if(transferType === CONST.TRANSFER_TYPE.ERC1155)
+        return Erc1155Transfer.count({ where: { contractId: addressId }});
+}
+
 async function save(tokenArray) {
-    try {
-        for (const token of tokenArray) {
-            try{
+    for (const token of tokenArray) {
+        try{
+            if(tokenSymbol !== undefined) {
+                if(tokenSymbol === token.symbol){
+                    await TokenAutoDetect.upsert(token);
+                    return;
+                }
+            } else {
                 await TokenAutoDetect.upsert(token);
-            }catch (e) {
-                console.log(`autoDetectTokenTool fail,token:${JSON.stringify(token)}`, e);
             }
+        }catch (e) {
+            console.log(`autoDetectTokenTool fail,token:${JSON.stringify(token)}`, e);
         }
-    } catch (e) {
-        console.log(`autoDetectTokenTool fail`, e);
     }
 }
 
@@ -153,4 +167,8 @@ if(args[1]){
 if(args[2]){
     saveType = Number(args[2]);
 }
+if(args[3]){
+    tokenSymbol = args[3];
+}
+console.log(`params======networkId:${networkId}======round:${round}======saveType:${saveType}======tokenSymbol:${tokenSymbol}======tokenSymbol.TYPE:${typeof tokenSymbol}`);
 run(round).then();
