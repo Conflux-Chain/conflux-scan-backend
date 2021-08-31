@@ -4,6 +4,7 @@ import { makeId } from "../../model/HexMap";
 import { StatApp } from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
 import { TxnQuery } from "../TxnQuery";
+import {ContractVerify} from "../../model/ContractVerify";
 const superagent = require("superagent")
 const zlib = require('zlib');
 
@@ -15,11 +16,22 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 }
+
+async function parseVerified() {
+    const list = await ContractVerify.findAll({where: {verifyResult: true}})
+    for (let i = 0; i < list.length; i++){
+        let v = list[i];
+        const abi = JSON.parse(v.abi)
+        await saveAbiInfo(abi)
+        console.log(`generate abi info for ${v.base32}`)
+    }
+}
 async function run() {
     await init();
-    await doIt();
+    // await doItFromScan();
+    await parseVerified()
 }
-async function doIt() {
+async function doItFromScan() {
     const resp = await superagent.get(`${scanSyncApiUrl}/announce-db-info`).timeout(10_000)
     let {min,max} = resp.body
     console.log(`min ${min} max ${max}`);

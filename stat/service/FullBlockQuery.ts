@@ -124,7 +124,10 @@ export class FullBlockQuery {
             count = page.count;
         } else{
             rawList = await FullBlock.findAll(options);
-            count = paging.calcTotal || await KV.getNumber(KEY_FULL_BLOCK_COUNT);
+            count = paging.calcTotal || 0
+            if (count < 0){
+                count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
+            }
         }
         // fields mapping
         const list = [];
@@ -286,7 +289,10 @@ export class FullBlockQuery {
             count = page?.count;
         } else{
             rawList = await FullTransaction.findAll(options);
-            count = txPage.calcTotal || await KV.getNumber(KEY_FULL_TX_COUNT);
+            count = txPage.calcTotal || 0
+            if (count < 0) {
+                count = await KV.getNumber(KEY_FULL_TX_COUNT);
+            }
         }
         const list = [];
         let extraInfo = {dataSource:'rdb'}

@@ -165,8 +165,10 @@ export class FullBlockService {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
                     // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
                     // console.log(`latest_state ${latest}`)
+                } else if (msg.includes('Invalid parameters: epoch')){
+                    // try again
                 } else {
-                    console.log(`get reward info fail at epoch ${minEpochNumber}: ${msg}`)
+                    console.log(`loadEpochData: get reward info fail at epoch ${minEpochNumber}: ${msg}`)
                 }
                 return [];
             }),
@@ -181,7 +183,13 @@ export class FullBlockService {
             }),
             this.cfx.getEpochNumber('latest_state'),
             // @ts-ignore
-            this.cfx.getEpochReceipts(minEpochNumber).catch(err=>{
+            this.cfx.getEpochReceipts(minEpochNumber).then(res=>{
+                if (res === null && minEpochNumber === 0) {
+                    console.log(`epoch 0 with null receipts.`)
+                    res = []
+                }
+                return res;
+            }).catch(err=>{
                 console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
                 return []
             }),
@@ -196,7 +204,7 @@ export class FullBlockService {
         }
         let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
         // fill tx receipts to block-> tx
-        if (blockList.length !== receipts.length) {
+        if (blockList.length !== receipts.length && minEpochNumber !== 0) {
             const msg = `block list length ${blockList.length} mismatch receipts length ${receipts.length
             } at epoch ${minEpochNumber}`;
             console.log(msg)
@@ -206,7 +214,8 @@ export class FullBlockService {
         let message = 'ok'
         for (let idx = 0; idx < blockList.length; idx++){
             let blk = blockList[idx];
-            if (blk.transactions.length !== receipts[idx].length) {
+            if (minEpochNumber === 0) {
+            } else if (blk.transactions.length !== receipts[idx].length) {
                 code = CODE_CONTINUE
                 message = `block's txs length ${blk.transactions.length} != ${receipts[idx].length
                 } at epoch ${minEpochNumber}, block index ${idx}`
@@ -215,12 +224,13 @@ export class FullBlockService {
             }
             for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
                 let tx = blk.transactions[txIdx];
-                tx.receipt = receipts[idx][txIdx]
+                tx.receipt = (receipts[idx]||[])[txIdx] || {}
                 if (tx.status === null || tx.status === undefined) {
                     continue
                 }
                 // check consistency
-                if (tx.blockHash !== blk.hash
+                if (minEpochNumber !== 0) {
+                } else if (tx.blockHash !== blk.hash
                     || tx.receipt.transactionHash !== tx.hash
                     || tx.receipt.blockHash !== blk.hash) {
                     message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockHash
@@ -376,7 +386,7 @@ export class FullBlockService {
                     txInfo.dripValue = txInfo.value
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
                     txInfo.method = txInfo.data.substr(0, 10)
-                    txInfo.gas = txInfo.receipt.gasFee // save gasFee.
+                    txInfo.gas = txInfo.receipt?.gasFee || 0// save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId
@@ -507,6 +517,8 @@ export class FullBlockService {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
                     // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
                     // console.log(`latest_state ${latest}`)
+                } else if (msg.includes('Invalid parameters: epoch')){
+                    // come on !
                 } else {
                     console.log(`fillBlockReward get reward info fail at epoch ${epoch}: ${msg}`)
                 }
