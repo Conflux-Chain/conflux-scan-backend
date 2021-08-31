@@ -11,7 +11,7 @@ import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {TraceCreateContract} from "../model/TraceCreateContract";
-import {TokenQuote} from "../model/TokenQuote";
+import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {
     Balance_ACGNFT,
@@ -91,6 +91,8 @@ import {DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {DailyContractRegister} from "../model/DailyContractRegister";
 import {ContractVerify} from "../model/ContractVerify";
+import {TokenAutoDetect} from "../model/TokenAutoDetect";
+import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
@@ -182,13 +184,14 @@ export async function initPartialModel(sequelize) {
     TraceCreateContract.register(sequelize)
     Token.register(sequelize);
     NftMint.register(sequelize)
-    TokenQuote.register(sequelize);
+    TokenQuoteTrack.register(sequelize);
     StreamErrorLog.register(sequelize)
     KV.register(sequelize);
     Epoch.register(sequelize);
     ContractVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
-    CfxBalance.register(sequelize)
+    CfxBalance.register(sequelize);
+    TokenSecurityAudit.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
@@ -263,6 +266,7 @@ export async function initModel(sequelize) {
     DailyContractCreate.register(sequelize);
     DailyContractStat.register(sequelize);
     DailyContractRegister.register(sequelize);
+    TokenAutoDetect.register(sequelize);
 }
 
 export function createMySql(dbConf) {

@@ -2,17 +2,20 @@
 import {format} from 'js-conflux-sdk';
 import {Op} from 'sequelize';
 import {DailyToken, Token} from "../model/Token";
-const lodash = require('lodash');
 import {decodeUtf8} from "./tool/StringTool";
-const {Hex40Map} = require("../model/HexMap");
+import {Hex40Map} from "../model/HexMap";
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {isCustodianToken} from "./tool/TokenTool";
 import {ContractVerify} from "../model/ContractVerify";
-const {Erc20Transfer} = require("../model/Erc20Transfer");
-const {Erc721Transfer} = require("../model/Erc721Transfer");
-const {Erc777Transfer} = require("../model/Erc777Transfer");
-const {Erc1155Transfer} = require("../model/Erc1155Transfer");
+import {makeId} from "../model/HexMap";
+import {Erc20Transfer} from "../model/Erc20Transfer";
+import {Erc721Transfer} from "../model/Erc721Transfer";
+import {Erc777Transfer} from "../model/Erc777Transfer";
+import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
+
+const lodash = require('lodash');
 const CONST = require('./common/constant');
 
 export class TokenQuery {
@@ -58,18 +61,18 @@ export class TokenQuery {
             'quoteUrl',
         ];
         if (currency.length) {
-            attributes.push('priceCNY');
-            attributes.push('priceUSD');
-            attributes.push('priceGBP');
-            attributes.push('priceKRW');
-            attributes.push('priceRUB');
-            attributes.push('priceEUR');
-            attributes.push('totalPriceCNY');
-            attributes.push('totalPriceUSD');
-            attributes.push('totalPriceGBP');
-            attributes.push('totalPriceKRW');
-            attributes.push('totalPriceRUB');
-            attributes.push('totalPriceEUR');
+            // attributes.push('priceCNY');
+            // attributes.push('priceUSD');
+            // attributes.push('priceGBP');
+            // attributes.push('priceKRW');
+            // attributes.push('priceRUB');
+            // attributes.push('priceEUR');
+            // attributes.push('totalPriceCNY');
+            // attributes.push('totalPriceUSD');
+            // attributes.push('totalPriceGBP');
+            // attributes.push('totalPriceKRW');
+            // attributes.push('totalPriceRUB');
+            // attributes.push('totalPriceEUR');
         }
         options.attributes = attributes;
 
@@ -146,18 +149,18 @@ export class TokenQuery {
                 attributes.push('icon');
             }
             if (set.has('price')) {
-                attributes.push('priceCNY');
-                attributes.push('priceUSD');
-                attributes.push('priceGBP');
-                attributes.push('priceKRW');
-                attributes.push('priceRUB');
-                attributes.push('priceEUR');
-                attributes.push('totalPriceCNY');
-                attributes.push('totalPriceUSD');
-                attributes.push('totalPriceGBP');
-                attributes.push('totalPriceKRW');
-                attributes.push('totalPriceRUB');
-                attributes.push('totalPriceEUR');
+                // attributes.push('priceCNY');
+                // attributes.push('priceUSD');
+                // attributes.push('priceGBP');
+                // attributes.push('priceKRW');
+                // attributes.push('priceRUB');
+                // attributes.push('priceEUR');
+                // attributes.push('totalPriceCNY');
+                // attributes.push('totalPriceUSD');
+                // attributes.push('totalPriceGBP');
+                // attributes.push('totalPriceKRW');
+                // attributes.push('totalPriceRUB');
+                // attributes.push('totalPriceEUR');
             }
         }
         options.attributes = attributes;
@@ -237,11 +240,38 @@ export class TokenQuery {
             total = list.length;
         }
 
+        // add security audit
+        const listAddressArray = list.map(item => item.address);
+        if(listAddressArray?.length){
+            const securityAuditArray = await TokenSecurityAudit.findAll({ where: {base32:{[Op.in]: listAddressArray}}});
+            const securityAuditMap = lodash.keyBy(securityAuditArray, 'base32');
+            list.forEach(item => {
+                const securityAudit = securityAuditMap[item.address];
+                item.securityAudit = {
+                    verify: securityAudit?.verify ? 1 : 0,
+                    audit: securityAudit?.audit ? 1 : 0,
+                    sponsor: securityAudit?.sponsor ? 1 : 0,
+                    zeroAdmin: securityAudit?.zeroAdmin ? 1 : 0,
+                    cex:{
+                        binance: securityAudit?.cexBinance,
+                        huobi: securityAudit?.cexHuobi,
+                        okex: securityAudit?.cexOKEx,
+                    },
+                    dex:{
+                        moonswap: securityAudit?.dexMoonSwap,
+                    },
+                    track:{
+                        coinMarketCap: securityAudit?.trackCoinMarketCap,
+                    }
+                };
+            });
+        }
+
         return { total, list };
     }
 
     public async listAddress(where: object = {} ) {
-        const options: any = { attributes: ['base32', 'hex40id'], where: {auditResult: true}, raw: true };
+        const options: any = { attributes: ['base32', 'hex40id'], raw: true };
         if(where && Object.keys(where).length){
             options.where = lodash.defaults(options.where, where);
         }
@@ -278,5 +308,25 @@ export class TokenQuery {
         if(erc721Record) return {transferType: CONST.TRANSFER_TYPE.ERC721, transferCount: erc721Record};
         if(erc777Record) return {transferType: CONST.TRANSFER_TYPE.ERC777, transferCount: erc777Record};
         if(erc1155Record) return {transferType: CONST.TRANSFER_TYPE.ERC1155, transferCount: erc1155Record};
+    }
+
+    public async audit({address, verify, audit, sponsor, zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap,
+                           trackCoinMarketCap}): Promise<boolean> {
+        const{ logger } = this.app;
+        const base32 = toBase32(address);
+        const hex40id = (await makeId(address)).id;
+
+        const securityAuditDb: TokenSecurityAudit = await TokenSecurityAudit.findOne({where: {base32}, raw: true});
+        let sa = lodash.defaults({}, {hex40id, base32, verify, audit, sponsor, zeroAdmin, cexBinance, cexHuobi,
+            cexOKEx, dexMoonSwap, trackCoinMarketCap});
+        if(securityAuditDb){
+            sa = lodash.assign(securityAuditDb, sa, {updatedAt: new Date()});
+            await TokenSecurityAudit.update(sa, {where: {id: securityAuditDb.id}});
+        } else{
+            await TokenSecurityAudit.add(sa);
+        }
+
+        logger?.info({ src: `[${address}]stat audit`, auditResult: `${JSON.stringify(sa)}` });
+        return Promise.resolve(true);
     }
 }

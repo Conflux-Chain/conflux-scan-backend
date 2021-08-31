@@ -155,4 +155,23 @@ module.exports = [
       { type: 'address', name: 'manager', indexed: true },
     ],
   }, // 1820
+  {
+    inputs:[
+      {
+        internalType:'bytes4',
+        name:'interfaceId',
+        type:'bytes4'
+      }
+    ],
+    name:'supportsInterface',
+    outputs:[
+      {
+        internalType:'bool',
+        name:'',
+        type:'bool'
+      }
+    ],
+    stateMutability:'view',
+    type:'function'
+  }, // 165
 ];

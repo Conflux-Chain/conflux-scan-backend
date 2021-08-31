@@ -16,7 +16,6 @@ import {DailyTxnSync, scheduleDailyTokenStat} from "./service/DailyTxnSync";
 import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
-import {TokenSync} from "./service/TokenSync";
 import {TokenQuery} from "./service/TokenQuery";
 import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
@@ -38,6 +37,7 @@ import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
+import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {patchHttpProvider} from "./service/common/utils";
 
 export class StatApp{
@@ -55,7 +55,6 @@ export class StatApp{
     public dailyTxnQuery: DailyTxnQuery;
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
-    public tokenSync: TokenSync;
     public tokenQuery: TokenQuery;
     public traceCreateSync: BlockTraceCreateSync
     public traceCreateQuery: BlockTraceCreateQuery;
@@ -74,6 +73,7 @@ export class StatApp{
     public blockDataStatQuery: DailyBlockDataStatQuery;
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
+    public tokenSecurityAuditSync: TokenSecurityAuditSync;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -133,7 +133,6 @@ export class StatApp{
         this.dailyTxnQuery = new DailyTxnQuery();
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
-        this.tokenSync = new TokenSync(this);
         this.tokenQuery = new TokenQuery(this);
         this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
@@ -152,6 +151,7 @@ export class StatApp{
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this);
+        this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -167,9 +167,6 @@ export class StatApp{
         }
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
-        }
-        if (this.config.syncToken) {
-            await this.tokenSync.schedule(); // token from scan
         }
         if (this.config.syncTraceCreateContract) {
             await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
@@ -198,6 +195,9 @@ export class StatApp{
         }
         if (this.config.syncBlockDataStatDaily) {
             await this.blockDataStatSync.schedule(); // daily block data stat
+        }
+        if (this.config.syncTokenSecurityAudit) {
+            await this.tokenSecurityAuditSync.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
