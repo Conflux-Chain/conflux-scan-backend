@@ -10,11 +10,12 @@ import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {Transaction} from "sequelize";
-import {batchFetchBlock} from "./common/utils";
+import {batchBlockDetail, batchFetchBlock} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {TraceCreateContract} from "../model/TraceCreateContract";
 const lodash = require('lodash');
 const zlib = require('zlib');
 const CONST = require('./common/constant');
@@ -35,13 +36,14 @@ export class EpochSync extends SyncBase{
     async getData(epochNumber): Promise<SyncData> {
         const epoch = await this.getEpoch(epochNumber);
         const minerBlockArray = await this.getMinerBlockArray(epochNumber);
-        const groupedLogs = await this.getLogsGrouped(epochNumber);
-        const announceInfo = await this.getAnnounceInfo(epochNumber, groupedLogs.announcementArray);
-        const tokenArray = await this.getTokensAutoDetected(groupedLogs);
+        const eventLogInfo = await this.getLogsGrouped(epochNumber);
+        const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
+        const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
+        const traceCreateArray = await  this.getTraceCreateArrayDB(epochNumber);
         const syncData = {
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
-            modelData: {epoch, minerBlockArray, announceInfo, tokenArray},
+            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray},
         };
         return syncData;
     }
@@ -62,6 +64,7 @@ export class EpochSync extends SyncBase{
             await Epoch.add(modelData.epoch, dbTx);
             await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             await this.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
+            await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
         });
 
         const tokenArray = modelData.tokenArray;
@@ -106,7 +109,8 @@ export class EpochSync extends SyncBase{
         await Epoch.sequelize.transaction(async (dbTx) => {
             const epochDel = await Epoch.destroy({where:{epoch: epochNumber}, transaction: dbTx});
             const minerBlockDel = await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
-            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}`)
+            const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
+            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}, traceCreateDel:${traceCreateDel}`);
         });
     }
 
@@ -432,5 +436,176 @@ export class EpochSync extends SyncBase{
         eventLog.address = format.hexAddress(eventLog.address);
         eventLog.transactionLogIndex = Number(eventLog.transactionLogIndex);
         return eventLog;
+    }
+
+    // ------------------------------ trace create ------------------------------
+    private async getTraceCreateArrayDB(epochNumber) {
+        const traceCreateArray = await this.getTraceCreateArray(epochNumber);
+        const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined;
+
+        const traceCreateArrayDB = []
+        for (const trace of traceCreateArray) {
+            const txHashId =  (await makeId(trace.transactionHash)).id;
+            const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
+            const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
+            const toCreate = {
+                epochNumber: trace.epochNumber,
+                txHashId,
+                traceIndex: trace.transactionTraceIndex,
+                from,
+                to,
+                value: trace.value,
+                outcome: trace.outcome,
+                blockTime: trace.blockTime,
+            };
+            traceCreateArrayDB.push(toCreate)
+        }
+        return traceCreateArrayDB;
+    }
+
+    private async getTraceCreateArray(epochNumber) {
+        const traceArray = await this.getTraceArray(epochNumber);
+        // filter
+        const createTraceArray = [];
+        traceArray.forEach((trace) => {
+            if (trace.status === CONST.TX_STATUS.SUCCESS && trace.type === CONST.TRACE_TYPE.CREATE) {
+                /**
+                 * create:{from,gas,init,value}
+                 * create_result:{addr,gasLeft,outcome,returnData}
+                 */
+                createTraceArray.push({
+                    epochNumber: trace.epochNumber,
+                    transactionHash: trace.transactionHash,
+                    transactionTraceIndex: trace.transactionTraceIndex,
+                    type: trace.type,
+                    from: trace.action.from,
+                    to: trace.action.to,
+                    value: trace.action.value,
+                    outcome: trace.action.outcome,
+                    blockTime: trace.blockTime,
+                });
+            }
+        });
+        return createTraceArray;
+    }
+
+    private async getTraceArray(epochNumber) {
+        let traceArray = [];
+        const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
+        blockArray.forEach((block, idx) => {
+            if (!block.transactions.length) {
+                return;
+            }
+
+            const blockTrace:any[] = traceArray2d[idx]
+            if (!blockTrace) {
+                // no trace at block
+                return traceArray;
+            }
+
+            //assemble traces
+            // @ts-ignore
+            lodash.zip(block.transactions, blockTrace.transactionTraces)
+                .forEach(([transaction, transactionTracesItem], transactionIndex) => {
+                    const transactionTraceArray = [];
+                    transactionTracesItem.traces.forEach((trace, transactionTraceIndex) => {
+                        transactionTraceArray.push({
+                            epochNumber: block.epochNumber,
+                            blockHash: block.hash,
+                            blockTime: block.timestamp,
+                            transactionHash: transaction.hash,
+                            transactionIndex,
+                            transactionTraceIndex,
+                            status: transaction.status,
+                            ...EpochSync.parseTrace(trace),
+                        });
+                    });
+                    traceArray = [...traceArray, ...EpochSync.matchTrace(transactionTraceArray, transaction)];
+                });
+        });
+        return traceArray;
+    }
+
+    private async getBlockArray(epochNumber) : Promise<any[]> {
+        const {
+            app: { cfx },
+        } = this;
+
+        const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber);
+        const [blockArray, traceArray] = await batchBlockDetail(cfx, blockHashArray);
+        blockArray.map((v) => EpochSync.parseBlock(v, true));
+        return [blockArray, traceArray];
+    }
+
+    private static parseBlock(block, detail = false) {
+        if (block.epochNumber) {
+            block.epochNumber = Number(block.epochNumber);
+        }
+        block.timestamp = Number(block.timestamp);
+        if (detail) {
+            block.transactions.forEach((transaction) => {
+                transaction.from = format.hexAddress(transaction.from);
+                if (transaction.to) {
+                    transaction.to = format.hexAddress(transaction.to);
+                }
+                if (transaction.contractCreated) {
+                    transaction.contractCreated = format.hexAddress(transaction.contractCreated);
+                }
+                if (transaction.status) {
+                    transaction.status = Number(transaction.status);
+                }
+                transaction.gasPrice = BigInt(transaction.gasPrice || 0);
+            });
+        }
+        return block;
+    }
+
+    private static parseTrace(trace) {
+        if (trace.action.from) {
+            trace.action.from = format.hexAddress(trace.action.from);
+        }
+        if (trace.action.value) {
+            trace.action.value = BigInt(trace.action.value);
+        }
+        if (trace.action.to) {
+            trace.action.to = format.hexAddress(trace.action.to);
+        }
+        if (trace.action.addr) {
+            trace.action.addr = format.hexAddress(trace.action.addr);
+        }
+        if (trace.action.input) {
+            trace.action.input = '';
+        }
+        if (trace.action.init) {
+            trace.action.init = '';
+        }
+        return trace;
+    }
+
+    private static matchTrace(transactionTraceArray, transaction){
+        if (!transactionTraceArray.length) {
+            return[];
+        }
+
+        const stack = [];
+        for(let i = 0; i < transactionTraceArray.length; i++){
+            const nextTrace = transactionTraceArray[i];
+            if(nextTrace.type !== CONST.TRACE_TYPE.CREATE && nextTrace.type !== CONST.TRACE_TYPE.CREATE_RESULT){
+                continue;
+            }
+            if(nextTrace.type === CONST.TRACE_TYPE.CREATE){
+                stack.push(i);
+            }
+            if(nextTrace.type === CONST.TRACE_TYPE.CREATE_RESULT){
+                const creatTraceIndex = stack.pop();
+                transactionTraceArray[creatTraceIndex].action.to = nextTrace.action.addr;
+                transactionTraceArray[creatTraceIndex].action.outcome = nextTrace.action.outcome;
+            }
+        }
+        if(stack.length > 0){
+            const creatTraceIndex = stack.pop();
+            transactionTraceArray[creatTraceIndex].action.to = transaction.contractCreated;
+        }
+        return transactionTraceArray;
     }
 }
