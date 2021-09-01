@@ -21,11 +21,11 @@ function mySort(a, b) {
 async function processOne(epoch, dmNode:DummyNode) {
     // check cfx_transfer by epoch,
     // if all records appears in cfx bill, it's ok
-    // if all records miss in cfx bill, then cfx bill is in-correct, fix cfx bill, then check again.
     const trans = await CfxTransfer.findAll({
         where: {epoch, fromId: {[Op.ne]:col('toId')}}, order: [['id','asc']]
     })
     if (trans.length === 0) {
+        process.stdout.write(`  \r\u001b[2K  empty transfer at epoch ${epoch}   `)
         return
     }
     const idSet = new Set<number>();
@@ -39,12 +39,13 @@ async function processOne(epoch, dmNode:DummyNode) {
         order: [['epoch','asc'],['seq', 'asc']],
         logging: (...args) => {logMsg = args}
     })
-    //
+    // full cfx transfer records are position ones. Bills contain both side records, filter positive ones.
     const positiveBills = bills.filter(b=>b.diffDrip > 0 && (b.type === 'call'
         || b.type === 'transfer'
         || b.type === 'in_trans'
     ))
     if (trans.length === positiveBills.length) {
+        process.stdout.write(`  \r\u001b[2K  length matches at epoch ${epoch}   `)
         return
     }
     positiveBills.sort(mySort);
