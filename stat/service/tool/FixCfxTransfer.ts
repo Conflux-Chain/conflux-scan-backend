@@ -1,7 +1,7 @@
 // cfx transfer contains in-correct records, caused by mis-understand of trace.action.callType like delegate call
 // Delegate call doesn't has real cfx transfer but has value > 0
 
-import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
+import {AddressCfxTransfer, BakCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {CfxBill, DummyNode} from "../watcher/DummyNode";
 import {Op, col} from 'sequelize'
 import {init} from "./FixDailyTokenStat";
@@ -35,7 +35,7 @@ async function processOne(epoch, dmNode:DummyNode) {
     })
     let logMsg = []
     let bills = await CfxBill.findAll({
-        where: {ownerId:{[Op.in]:[...idSet]}, epoch, },
+        where: {ownerId:{[Op.in]:[...idSet]}, epoch, diffDrip: {[Op.gt]: 0}},
         order: [['epoch','asc'],['seq', 'asc']],
         logging: (...args) => {logMsg = args}
     })
@@ -43,6 +43,7 @@ async function processOne(epoch, dmNode:DummyNode) {
     const positiveBills = bills.filter(b=>b.diffDrip > 0 && (b.type === 'call'
         || b.type === 'transfer'
         || b.type === 'in_trans'
+        || b.type === 'create'
     ))
     if (trans.length === positiveBills.length) {
         process.stdout.write(`  \r\u001b[2K  length matches at epoch ${epoch}   `)
@@ -66,11 +67,13 @@ async function processOne(epoch, dmNode:DummyNode) {
         if (!del){
             console.log(`will del main ${tr.id}, both side : from ${tr.fromId} to ${tr.toId} epoch ${epoch}, value ${tr.value}`)
             tIdx ++
+            await BakCfxTransfer.create(tr)
         } else {
             console.log(`real del main ${tr.id}, both side : ${tr.fromId}, ${tr.toId} epoch ${epoch}, value ${tr.value}`)
             tIdx ++
             // delete cfx_transfer
             await Promise.all([
+                BakCfxTransfer.create(tr),
                 CfxTransfer.destroy({where: {id: tr.id}}),
                 AddressCfxTransfer.destroy({where:{
                     addressId: {[Op.in]:[tr.fromId, tr.toId]},
@@ -112,3 +115,8 @@ if (require.main === module) {
         return CfxBill.sequelize.close()
     })
 }
+/*
+
+select * from cfx_transfer where epoch=446084;
+select * from cfx_bill where ownerId in(2924,845445) and epoch=446084 and diffDrip > 0;
+ */
