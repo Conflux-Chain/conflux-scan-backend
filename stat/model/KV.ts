@@ -5,6 +5,7 @@ export interface IKV {
     value: string
 }
 export const SCAN_UTIL_CONTRACT = 'SCAN_UTIL_CONTRACT'
+export const ANNOUNCEMENT_CONTRACT = 'ANNOUNCEMENT_CONTRACT'
 export const KEY_FULL_BLOCK_COUNT = "FULL_BLOCK_COUNT"
 export const KEY_FULL_TX_COUNT = "FULL_TX_COUNT"
 export const KEY_FULL_CFX_TRANSFER_COUNT = "FULL_CFX_TRANSFER_COUNT"
@@ -68,6 +69,7 @@ export class KV extends Model<IKV> implements IKV {
         }
         await KV.bulkCreate([
             {key: SCAN_UTIL_CONTRACT, value: ''},
+            {key: ANNOUNCEMENT_CONTRACT, value: ''},
             {key: KEY_ANNOUNCE_QUERY_RDB_SWITCH, value: 'true'},
             {key: KEY_BLOCK_QUERY_RDB_SWITCH, value: 'true'},
             {key: KEY_CONTRACT_QUERY_RDB_SWITCH, value: 'true'},
