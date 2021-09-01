@@ -41,17 +41,22 @@ export async function init() {
     regProcessHook(server)
 }
 
-function regProcessHook(server: Server) {
-    process.on('SIGINT', (signal) => {
+function exitOnSignal(server: Server) {
+    return (signal) => {
         console.log(`receive ${signal}`)
         Promise.all([
             KV.sequelize.close(),
             redisWrap.client.end(false),
             server.close(),
-        ]).then(()=>{
+        ]).then(() => {
             console.log(`server shutdown.`)
             process.exit(0)
         })
-    });
+    };
+}
+
+function regProcessHook(server: Server) {
+    process.on('SIGINT', exitOnSignal(server));
+    process.on('SIGTERM', exitOnSignal(server));
 }
 init().then()
