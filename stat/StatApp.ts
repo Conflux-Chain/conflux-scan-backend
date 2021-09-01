@@ -115,7 +115,7 @@ export class StatApp{
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx)).schedule(this.config.cfxWatcherDelay).then()
-            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher)
+            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher, await BatchBalanceWatcher.getUtilContractAddr())
             this.batchBalanceWatcher.schedule().then()
             this.batchBalanceWatcher.listenTransfer().then()
         }

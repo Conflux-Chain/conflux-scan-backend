@@ -12,6 +12,7 @@ import {RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q, } from "../RedisWrap"
 import {Op} from 'sequelize'
 import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
+import {KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -25,12 +26,15 @@ export class BatchBalanceWatcher {
     private readonly erc20list: Erc20WatchList[];
     fraction = BigInt(1e+18)
     private readonly cfxWatcher:CfxWatcher
-    constructor( cfx:Conflux, erc20List:Erc20WatchList[], cfxWatcher:CfxWatcher) {
+    constructor( cfx:Conflux, erc20List:Erc20WatchList[], cfxWatcher:CfxWatcher, utilContract: string) {
+        if (!utilContract) {
+            console.log(` scan util contract should be an address. Got [${utilContract}]`)
+            process.exit(9)
+        }
         this.cfx = cfx;
         this.cfxWatcher = cfxWatcher;
         // @ts-ignore
         BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
-        const utilContract = StatApp.networkId === 1 ? TESTNET_UTIL_CONTRACT : MAINNET_UTIL_CONTRACT
         // @ts-ignore
         BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
         this.tokenList = erc20List.map(erc20=>erc20.address)
@@ -40,7 +44,8 @@ export class BatchBalanceWatcher {
 
     public static async getUtilContractAddr() {
         // use config in DB ?
-        const utilContract = StatApp.networkId === 1 ? TESTNET_UTIL_CONTRACT : MAINNET_UTIL_CONTRACT
+        const utilContract = StatApp.networkId === 1 ? TESTNET_UTIL_CONTRACT :
+            StatApp.networkId === 1029 ? MAINNET_UTIL_CONTRACT : (await KV.getString(SCAN_UTIL_CONTRACT, ''))
         return utilContract;
     }
     public async balanceOf(userAddr, hexId:number = 0) {
