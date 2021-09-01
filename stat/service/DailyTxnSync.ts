@@ -161,7 +161,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
                 preId = -1 // stop while
             }
             process.stdout.write(`\r${CONST.CL} token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
-                } transfer records:${list.length}`)
+                } transfer records:${list.length}  `)
         }).catch(err=>{
             console.log(`query transfer fail: ${sql}`, err)
             preId = -1
@@ -207,7 +207,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
              })
         }
     // holder count
-    const banModel = BalanceWatcher.mapModel(tokenBean.symbol, true)
+    const banModel = BalanceWatcher.mapModel(tokenBean.symbol, true, tokenBean.hex40id)
     if (banModel) {
         banModel.count({}).then(cnt => {
             return DailyToken.update({holderCount: cnt}, {where: {hexId: tokenHexId, day: start}})

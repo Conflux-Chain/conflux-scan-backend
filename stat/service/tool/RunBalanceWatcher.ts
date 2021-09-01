@@ -2,13 +2,16 @@ import {init} from "./FixDailyTokenStat";
 import {BalanceWatcher, Erc20Watcher} from "../watcher/BalanceWatcher";
 import {Conflux} from "js-conflux-sdk";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
+import {StatApp} from "../../StatApp";
 
 async function run() {
     init().then(async (config)=>{
         const cfx = new Conflux(config.conflux)
         // @ts-ignore
         await cfx.updateNetworkId()
-        const w = new BatchBalanceWatcher(cfx, config.erc20watchList, null)
+        // @ts-ignore
+        StatApp.networkId = (await cfx.getStatus()).networkId
+        const w = new BatchBalanceWatcher(cfx, config.erc20watchList, null, await BatchBalanceWatcher.getUtilContractAddr())
         config.erc20watchList.forEach(token=>{
             BatchBalanceWatcher.getBalances(config.erc20watchList[0].address, [token.address])
                 .then(()=>{

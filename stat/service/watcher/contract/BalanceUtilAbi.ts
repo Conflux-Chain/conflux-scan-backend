@@ -19,7 +19,9 @@ export const BALANCE_UTIL_ABI = [{
     "stateMutability": "view",
     "type": "function"
 }, {
-    "inputs": [{"internalType": "address[]", "name": "accounts", "type": "address[]"}, {
+    "inputs": [
+        {"internalType": "address[]", "name": "accounts", "type": "address[]"},
+        {
         "internalType": "address",
         "name": "token",
         "type": "address"
