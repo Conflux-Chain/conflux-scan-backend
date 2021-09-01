@@ -107,7 +107,11 @@ export abstract class SyncBase{
         const {
             app: { cfx, config },
         } = this;
-        const next = this.getNextEpochNumber()
+        if (!Number.isInteger(config.preload)) {
+            console.log(` SyncBase uses default preload value: 16.`)
+            config.preload = 16
+        }
+        const next = await this.getNextEpochNumber();
 
         let traceEpochNumber = epochNumber;
         if(traceEpochNumber === undefined || traceEpochNumber <= next){
@@ -117,7 +121,7 @@ export abstract class SyncBase{
         const that = this
         async function repeat() {
             const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
-            if (traceEpochNumber <= stateEpochNumber - (config.preload || 4)) {
+            if (traceEpochNumber <= stateEpochNumber - (config.preload)) {
                 traceEpochNumber = await that.syncForward(traceEpochNumber);
                 setTimeout(repeat, 0)
             } else {
