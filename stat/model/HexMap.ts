@@ -1,4 +1,4 @@
-import {Sequelize, DataTypes, Model, Transaction, Op, where} from "sequelize";
+import {Sequelize, DataTypes, Model, Transaction, Op} from "sequelize";
 import {incDailyAddressCount} from "./StatAddress";
 import {delLock, waitLock} from "./Lock";
 import {format} from "js-conflux-sdk";
