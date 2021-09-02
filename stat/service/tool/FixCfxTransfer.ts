@@ -82,7 +82,20 @@ async function processOne(epoch, dmNode:DummyNode) {
             process.exit(9)
         }
     } else {
-        console.log(`map is not unique,`, billMap)
+        console.log(`map is not unique,`)
+        // try to find out the bad ones
+        const wantBadCount = trans.length - positiveBills.length
+        const badOnes = []
+        trans.forEach(t=>{
+            const key = [t.fromId, t.toId, t.value].join('-')
+            if (!billMap.has(key)) {
+                badOnes.push(t)
+            }
+        })
+        if (badOnes.length === wantBadCount) {
+            await BakCfxTransfer.bulkCreate(badOnes)
+            return
+        }
         //
         positiveBills.sort(mySort);
         trans.sort(mySort)
@@ -152,6 +165,19 @@ if (require.main === module) {
         return CfxBill.sequelize.close()
     })
 }
+/*
+
+select * from cfx_transfer where epoch=10173721;
+select * from cfx_bill where ownerId in(12133,1624472,93,15) and epoch=10173721 and diffDrip > 0;
+
+select * from bak_cfx_transfer order by epoch desc limit 5;
+delete from bak_cfx_transfer where epoch = 14827453;
+
+select distinct(fromId) , 'from' as who from bak_cfx_transfer
+union
+select distinct(toId) , 'to' as who from bak_cfx_transfer
+;
+ */
 /*
 
 select * from cfx_transfer where epoch=1804929;
