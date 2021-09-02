@@ -12,6 +12,7 @@ async function run() {
         }
         // console.log(`abi info:`, body)
         for (const row of body?.list) {
+            //@ts-ignore
             await AbiInfo.create(row, {ignoreDuplicates: true})
         }
         await AbiInfo.bulkCreate(body.list, {

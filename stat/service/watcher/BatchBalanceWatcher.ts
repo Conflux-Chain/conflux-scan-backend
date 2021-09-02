@@ -26,7 +26,7 @@ export class BatchBalanceWatcher {
     private readonly erc20list: Erc20WatchList[];
     fraction = BigInt(1e+18)
     private readonly cfxWatcher:CfxWatcher
-    constructor( cfx:Conflux, erc20List:Erc20WatchList[], cfxWatcher:CfxWatcher, utilContract: string) {
+    constructor( cfx:Conflux, erc20List:Erc20WatchList[], cfxWatcher:CfxWatcher, utilContract: string | null) {
         if (!utilContract) {
             console.log(` scan util contract should be an address. Got [${utilContract}]`)
             process.exit(9)
