@@ -130,6 +130,7 @@ const waitUpdateTransferTokens = {
 }
 function scheduleTransferUpdater() {
     function repeat() {
+        console.log(` updater works `)
         const ids = waitUpdateTransferTokens.hex40ids
         waitUpdateTransferTokens.hex40ids = new Set<number>()
         updateTokenTransferCount(ids.keys(), true).then(()=>{
