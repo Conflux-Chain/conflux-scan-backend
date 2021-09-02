@@ -122,11 +122,73 @@ async function sendAddressIds(arr:{fromId:number, toId:number, contractId:number
     })
     return RedisWrap.sendStreamMessage([...set], TRANSFER_ADDRESS_Q).then(()=>{
         handleTokenTransferWithContract(addressAndContractIdMap).then()
+        updateTokenTransferCount(addressAndContractIdMap.keys()).then()
+    })
+}
+const waitUpdateTransferTokens = {
+    hex40ids: new Set<number>()
+}
+function scheduleTransferUpdater() {
+    function repeat() {
+        const ids = waitUpdateTransferTokens.hex40ids
+        waitUpdateTransferTokens.hex40ids = new Set<number>()
+        updateTokenTransferCount(ids.keys(), true).then(()=>{
+            setTimeout(repeat, 60_000_0)
+        })
+    }
+    repeat()
+}
+const tableMap = {
+    'ERC20': Erc20Transfer,
+    'ERC721': Erc721Transfer,
+    'ERC1155': Erc1155Transfer,
+}
+async function updateTokenTransferCount(contractIds: IterableIterator<number>, force = false) {
+    const tokens = await Token.findAll({
+        where: {hex40id: {[Op.in]: [...contractIds]}, type: {[Op.ne]: ''}, auditResult: true},
+        attributes: {
+            include: ['hex40id', 'transfer', 'base32']
+        }
+    })
+    for (const t of tokens) {
+        if (!t.type) {
+            continue
+        }
+        const preTransfer = t.transfer || 0
+        if (force || preTransfer < 10_000) {
+            // update immediately
+            updateTransferCountReal(t).then()
+        } else {
+            waitUpdateTransferTokens.hex40ids.add(t.hex40id)
+        }
+    }
+}
+async function updateTransferCountReal(t: Token) {
+    if (!t) {
+        return
+    }
+    const table = tableMap[t.type]
+    if (!table) {
+        return
+    }
+    Erc20Transfer.count({
+        where: {contractId: t.hex40id}
+    }).then(cnt=>{
+        return Token.update({transfer: cnt}, {
+            where: {id: t.id}
+        })
+    }).then(()=>{
+        console.log(` update transfer count of token ${t.base32}`)
     })
 }
 // xlen ERC20_TRANSFER_Q
 //   XADD ERC20_TRANSFER_Q  * v1 '[{"contractId":16,"fromId":3,"toId":4,"txHashId":0,"value":1,"epoch":0, "createdAt":"2021-01-01 11:22:33", "updatedAt":"2021-01-01 11:22:33"}]'
 let logCount = 0
+
+/**
+ * Automatically generate holder count for token.
+ * @param mapContract2addressSet
+ */
 async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>) {
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
@@ -236,7 +298,7 @@ async function run() {
             (data)=>handleTokenTransfer(CfxTransfer, AddressCfxTransfer,data)
         );
     }).then(()=>{
-
+        return scheduleTransferUpdater()
     })
 }
 const args = process.argv.slice(2)
