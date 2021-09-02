@@ -21,8 +21,10 @@ function mySort(a, b) {
 async function processOne(epoch, dmNode:DummyNode) {
     // check cfx_transfer by epoch,
     // if all records appears in cfx bill, it's ok
-    const trans = await CfxTransfer.findAll({
-        where: {epoch, fromId: {[Op.ne]:col('toId')}}, order: [['id','asc']]
+    let transferLogs = []
+    let trans = await CfxTransfer.findAll({
+        where: {epoch, fromId: {[Op.ne]:col('toId')}}, order: [['id','asc']],
+        raw: true, logging: (...args) => {transferLogs = args}
     })
     if (trans.length === 0) {
         process.stdout.write(`  \r\u001b[2K  empty transfer at epoch ${epoch}   `)
@@ -35,7 +37,7 @@ async function processOne(epoch, dmNode:DummyNode) {
     })
     let logMsg = []
     let bills = await CfxBill.findAll({
-        where: {ownerId:{[Op.in]:[...idSet]}, epoch, diffDrip: {[Op.gt]: 0}},
+        where: {ownerId:{[Op.in]:[...idSet]}, epoch, diffDrip: {[Op.gt]: 0}, type: {[Op.notIn]:['reward']}},
         order: [['epoch','asc'],['seq', 'asc']],
         logging: (...args) => {logMsg = args}
     })
@@ -49,8 +51,42 @@ async function processOne(epoch, dmNode:DummyNode) {
         process.stdout.write(`  \r\u001b[2K  length matches at epoch ${epoch}   `)
         return
     }
-    positiveBills.sort(mySort);
-    trans.sort(mySort)
+    // use map
+    const billMap = new Map<string, CfxBill>()
+    positiveBills.forEach(b=>{
+        billMap.set([b.fromId,b.toId,b.diffDrip].join('-'), b)
+    })
+    if (billMap.size === positiveBills.length) {
+        // all bill is unique.
+        const matchedTrans = []
+        const missedTrans = []
+        trans.forEach(t=>{
+            const key = [t.fromId, t.toId, t.value].join('-')
+            if (billMap.has(key)) {
+                matchedTrans.push(t)
+            } else {
+                missedTrans.push(t)
+            }
+        })
+        if (matchedTrans.length === positiveBills.length) {
+            // good
+            await BakCfxTransfer.bulkCreate(missedTrans)
+            if (del) {
+                // todo
+            }
+            return
+        } else {
+            console.log(`matched more.`)
+            console.log(`cfx bill query ${logMsg.join(';  ')}`)
+            console.log(`transfer query query ${transferLogs.join(';  ')}`)
+            process.exit(9)
+        }
+    } else {
+        console.log(`map is not unique,`, billMap)
+        //
+        positiveBills.sort(mySort);
+        trans.sort(mySort)
+    }
     // match
     let bIdx = 0; let tIdx = 0
     let keep = 0
@@ -85,6 +121,7 @@ async function processOne(epoch, dmNode:DummyNode) {
     // should reach last positiveBills and last trans
     if (bIdx !== positiveBills.length || tIdx !== trans.length || keep !== positiveBills.length) {
         console.log(`cfx bill query ${logMsg.join(';')}`)
+        console.log(`transfer query query ${transferLogs.join(';')}`)
         console.log(`will keep ${keep}, not reach end, bill ${bIdx}/${positiveBills.length}, trans ${tIdx}/${trans.length}`)
         process.exit(10)
     } else {
@@ -117,6 +154,11 @@ if (require.main === module) {
 }
 /*
 
-select * from cfx_transfer where epoch=446084;
-select * from cfx_bill where ownerId in(2924,845445) and epoch=446084 and diffDrip > 0;
+select * from cfx_transfer where epoch=1804929;
+select * from cfx_bill where ownerId in(12133,1624472,93,15) and epoch=1804929 and diffDrip > 0;
+
+select distinct(fromId) , 'from' as who from bak_cfx_transfer
+union
+select distinct(toId) , 'to' as who from bak_cfx_transfer
+;
  */
