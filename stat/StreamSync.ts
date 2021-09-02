@@ -172,7 +172,7 @@ async function updateTransferCountReal(t: Token) {
     if (!table) {
         return
     }
-    Erc20Transfer.count({
+    table.count({
         where: {contractId: t.hex40id}
     }).then(cnt=>{
         return Token.update({transfer: cnt}, {
