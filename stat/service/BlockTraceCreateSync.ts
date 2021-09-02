@@ -88,7 +88,8 @@ export class BlockTraceCreateSync{
         await TraceCreateContract.sequelize.transaction(async dbTx=>{
             await Promise.all([
                 TraceCreateContract.bulkCreate(beans, {transaction: dbTx}),
-                KV.update({value: epochNumber.toString()}, {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}}),
+                KV.update({value: epochNumber.toString()},
+                    {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}, transaction: dbTx}),
             ])
         })
         if (epochNumber % 100 === 0) {
