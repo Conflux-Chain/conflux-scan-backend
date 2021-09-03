@@ -160,29 +160,33 @@ async function doDeletion(epoch=0) {
             break;
         }
         const list = await BakCfxTransfer.findAll({
-            where: {epoch: min}
+            where: {epoch: min}, raw: true,
         })
         for (const r of list) {
+            const delResult = await CfxTransfer.destroy({
+                where: {id: r.id}
+            })
+            if (!delResult) {
+                console.log(`\n deletion fail, result ${delResult}`)
+                process.exit(8)
+            }
+            process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${delResult}  `)
             const associateResult = await AddressCfxTransfer.destroy({
                 where: {addressId: {[Op.in]:[r.fromId, r.toId]}, epoch: r.epoch, fromId: r.fromId, toId: r.toId,
                     createdAt: r.createdAt, value: r.value, txHashId: r.txHashId
                 }
             })
             const wantCnt = r.fromId === r.toId ? 1 : 2
-            if (associateResult !== wantCnt) {
+            if (associateResult === list.length * 2) {
+                // it's ok.
+            } else if (associateResult !== wantCnt) {
                 console.log(`\n del fail, associate result ${associateResult} !== ${wantCnt}, `, r)
                 process.exit(9)
             }
-            process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${associateResult}  `)
-
-            // const delResult = await CfxTransfer.destroy({
-            //     where: {id: r.id}
-            // })
-            // if (!delResult) {
-            //     console.log(`\n deletion fail, result ${delResult}`)
-            //     process.exit(8)
-            // }
-            // process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${delResult}  `)
+            process.stdout.write(`   delete id ${r.id}, epoch ${r.epoch}, result ${associateResult}  `)
+            if (associateResult === list.length * 2) {
+                break;
+            }
         }
         epoch = min as number;
     } while (true)
@@ -222,7 +226,7 @@ select distinct(toId) , 'to' as who from bak_cfx_transfer
 /*
 
 select * from cfx_transfer where epoch=3859051;
-select * from bak_cfx_transfer where epoch=21587940;
+select * from bak_cfx_transfer where epoch=3859051;
 select * from bak_cfx_transfer order by epoch desc limit 5;
 select * from cfx_bill where ownerId in(5795,99886,93,15) and epoch=3859051 and diffDrip > 0;
 
