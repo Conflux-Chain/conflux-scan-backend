@@ -122,6 +122,9 @@ export class FullBlockQuery {
                 return fullBlockMap[`${row['epoch']}-${row['position']}`];
             }).filter(Boolean);
             count = page.count;
+        } else if(minEpochNumber !== undefined &&  maxEpochNumber !== undefined &&  minEpochNumber === maxEpochNumber){
+            rawList = await FullBlock.findAll(options);
+            count = rawList?.length || 0;
         } else{
             rawList = await FullBlock.findAll(options);
             count = paging.calcTotal || 0
