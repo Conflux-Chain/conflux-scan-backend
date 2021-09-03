@@ -177,14 +177,14 @@ async function doDeletion(epoch=0) {
                 }
             })
             const wantCnt = r.fromId === r.toId ? 1 : 2
-            if (associateResult === wantCnt * 2) {
+            if (associateResult === wantCnt * 2 || associateResult === 0) {
                 // it's ok.
             } else if (associateResult !== wantCnt) {
                 console.log(`\n del fail, associate result ${associateResult} !== ${wantCnt}, `, r)
                 process.exit(9)
             }
             process.stdout.write(`   delete id ${r.id}, epoch ${r.epoch}, result ${associateResult}  `)
-            if (associateResult === list.length * 2) {
+            if (associateResult === list.length * 2 || associateResult === 0) {
                 break;
             }
         }
