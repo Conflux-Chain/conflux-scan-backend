@@ -150,7 +150,7 @@ async function loop(from, dmNode:DummyNode) {
     console.log(`${new Date().toISOString()}, done, stop at ${stop}`)
 }
 
-async function doDeletion() {
+async function doDeletion(partition=undefined) {
     let epoch = 0;
     do {
         const min = await BakCfxTransfer.min('epoch', {
@@ -163,14 +163,26 @@ async function doDeletion() {
             where: {epoch: min}
         })
         for (const r of list) {
-            const delResult = await CfxTransfer.destroy({
-                where: {id: r.id}
+            const associateResult = await AddressCfxTransfer.destroy({
+                where: {addressId: {[Op.in]:[r.fromId, r.toId]}, epoch: r.epoch, fromId: r.fromId, toId: r.toId,
+                    createdAt: r.createdAt, value: r.value, txHashId: r.txHashId
+                }
             })
-            if (!delResult) {
-                console.log(`\n deletion fail, result ${delResult}`)
-                process.exit(8)
+            const wantCnt = r.fromId === r.toId ? 1 : 2
+            if (associateResult !== wantCnt) {
+                console.log(` del fail, associate result ${associateResult} !== ${wantCnt}, `, r)
+                process.exit(9)
             }
-            process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${delResult}  `)
+            process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${associateResult}  `)
+
+            // const delResult = await CfxTransfer.destroy({
+            //     where: {id: r.id}
+            // })
+            // if (!delResult) {
+            //     console.log(`\n deletion fail, result ${delResult}`)
+            //     process.exit(8)
+            // }
+            // process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${delResult}  `)
         }
         epoch = min as number;
     } while (true)
@@ -185,6 +197,8 @@ if (require.main === module) {
         const dmNode = new DummyNode(cfx)
         if (args.includes('delete')) {
             return doDeletion();
+        } else if (args.includes('delete-partition')) {
+            return doDeletion('partition');
         } else if (args.includes('loop')) {
             return loop(from, dmNode)
         } else {
