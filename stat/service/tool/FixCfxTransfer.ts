@@ -149,6 +149,33 @@ async function loop(from, dmNode:DummyNode) {
     }
     console.log(`${new Date().toISOString()}, done, stop at ${stop}`)
 }
+
+async function doDeletion() {
+    let epoch = 0;
+    do {
+        const min = await BakCfxTransfer.min('epoch', {
+            where: {epoch: {[Op.gt]: epoch}}
+        })
+        if (!min) {
+            break;
+        }
+        const list = await BakCfxTransfer.findAll({
+            where: {epoch: min}
+        })
+        for (const r of list) {
+            const delResult = await CfxTransfer.destroy({
+                where: {id: r.id}
+            })
+            if (!delResult) {
+                console.log(`\n deletion fail, result ${delResult}`)
+                process.exit(8)
+            }
+            process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${delResult}  `)
+        }
+        epoch = min as number;
+    } while (true)
+    console.log(` \n done.`)
+}
 if (require.main === module) {
     const args = process.argv.slice(2)
     const from = Number(args[0])
@@ -156,7 +183,9 @@ if (require.main === module) {
         const cfx = new Conflux(cfg.conflux)
         patchHttpProvider(cfx, cfg.conflux)
         const dmNode = new DummyNode(cfx)
-        if (args.includes('loop')) {
+        if (args.includes('delete')) {
+            return doDeletion();
+        } else if (args.includes('loop')) {
             return loop(from, dmNode)
         } else {
             return processOne(from, dmNode)
@@ -171,7 +200,7 @@ select * from cfx_transfer where epoch=10173721;
 select * from cfx_bill where ownerId in(12133,1624472,93,15) and epoch=10173721 and diffDrip > 0;
 
 select * from bak_cfx_transfer order by epoch desc limit 5;
-delete from bak_cfx_transfer where epoch = 14827453;
+delete from bak_cfx_transfer where epoch = 11259237;
 
 select distinct(fromId) , 'from' as who from bak_cfx_transfer
 union
@@ -180,11 +209,19 @@ select distinct(toId) , 'to' as who from bak_cfx_transfer
  */
 /*
 
-select * from cfx_transfer where epoch=1804929;
+select * from cfx_transfer where epoch=21587940;
+select * from bak_cfx_transfer where epoch=21587940;
+select * from bak_cfx_transfer order by epoch desc limit 5;
 select * from cfx_bill where ownerId in(12133,1624472,93,15) and epoch=1804929 and diffDrip > 0;
 
-select distinct(fromId) , 'from' as who from bak_cfx_transfer
+select t.*, hex40.hex from
+(select count(*) as cnt, fromId as id, 'from' as who from bak_cfx_transfer group by fromId
 union
-select distinct(toId) , 'to' as who from bak_cfx_transfer
+select count(*) as cnt, toId as id, 'to' as who from bak_cfx_transfer group by toId
+) t left join hex40 on t.id = hex40.id
+where hex40.hex like '1%'
 ;
+
+bad case:
+https://confluxscan.io/address/cfx:acfgmctw40vy2a608uey5g9t32b8m4kp1268zwhrh1?limit=10&reverse=true&skip=0&tab=transfers-CFX&transactionHash=0x3fa4207b5d84bb82660040fa833dab9fec9c091ca44fe0a526cc0782249a5514&txType=outgoing
  */
