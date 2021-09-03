@@ -150,8 +150,8 @@ async function loop(from, dmNode:DummyNode) {
     console.log(`${new Date().toISOString()}, done, stop at ${stop}`)
 }
 
-async function doDeletion(partition=undefined) {
-    let epoch = 0;
+async function doDeletion(epoch=0) {
+    // next will be greater than epoch paramter.
     do {
         const min = await BakCfxTransfer.min('epoch', {
             where: {epoch: {[Op.gt]: epoch}}
@@ -170,7 +170,7 @@ async function doDeletion(partition=undefined) {
             })
             const wantCnt = r.fromId === r.toId ? 1 : 2
             if (associateResult !== wantCnt) {
-                console.log(` del fail, associate result ${associateResult} !== ${wantCnt}, `, r)
+                console.log(`\n del fail, associate result ${associateResult} !== ${wantCnt}, `, r)
                 process.exit(9)
             }
             process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${associateResult}  `)
@@ -196,9 +196,7 @@ if (require.main === module) {
         patchHttpProvider(cfx, cfg.conflux)
         const dmNode = new DummyNode(cfx)
         if (args.includes('delete')) {
-            return doDeletion();
-        } else if (args.includes('delete-partition')) {
-            return doDeletion('partition');
+            return doDeletion(from);
         } else if (args.includes('loop')) {
             return loop(from, dmNode)
         } else {
@@ -223,10 +221,10 @@ select distinct(toId) , 'to' as who from bak_cfx_transfer
  */
 /*
 
-select * from cfx_transfer where epoch=21587940;
+select * from cfx_transfer where epoch=3859051;
 select * from bak_cfx_transfer where epoch=21587940;
 select * from bak_cfx_transfer order by epoch desc limit 5;
-select * from cfx_bill where ownerId in(12133,1624472,93,15) and epoch=1804929 and diffDrip > 0;
+select * from cfx_bill where ownerId in(5795,99886,93,15) and epoch=3859051 and diffDrip > 0;
 
 select t.*, hex40.hex from
 (select count(*) as cnt, fromId as id, 'from' as who from bak_cfx_transfer group by fromId
