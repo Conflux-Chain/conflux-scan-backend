@@ -17,6 +17,7 @@ async function fixCfx(watcher: CfxWatcher) {
     await watchCfx('balance', watcher)
     await watchCfx('stakingBalance', watcher)
     await watchCfx('total', watcher)
+    console.log(` done.`)
 }
 
 init().then(config=>{
