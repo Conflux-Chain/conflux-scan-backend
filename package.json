@@ -33,6 +33,7 @@
     "node-cache": "5.1.2",
     "p-limit": "~2.3.0",
     "pino": "^6.10.0",
+    "prom-client": "13.2.0",
     "ratelimiter": "~3.4.1",
     "redis": "^3.1.2",
     "request-ip": "^2.1.3",
