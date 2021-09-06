@@ -80,11 +80,13 @@ export async function handleException(ctx, next) {
 export function setBody(ctx, data: any, code = 0, message = 'ok') {
     ctx.body = {code, message, data}
 }
+// https://swaggerstats.io/guide/conf.html#options
 export function addSwagger(app: Koa, prefix) {
     // metrics
     app.use(e2k(swStats.getMiddleware({
         // swaggerSpec:spec,
-        uriPath: `${prefix}/swagger-stats`
+        uriPath: `${prefix}/swagger-stats`,
+        hostname: '', // Prevent exposure of server ip
         // basePath: prefix,
     })));
     const docPath = `${prefix}/doc`
