@@ -97,6 +97,7 @@ export async function register(app: Koa, apiServer: ApiServer) {
     router.get('/', async (ctx)=>{
         return root(ctx, apiServer.config.serverTag)
     })
+    router.get('/favicon.ico', (ctx) => ctx.status = 204/*No Content*/);
     router.get('/version', (ctx)=>{
         ctx.body = {code: 0, message: 'ok',
             data: {
