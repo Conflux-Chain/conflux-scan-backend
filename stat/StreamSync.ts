@@ -190,7 +190,7 @@ let logCount = 0
  * Automatically generate holder count for token.
  * @param mapContract2addressSet
  */
-async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>) {
+export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>) {
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
@@ -303,4 +303,6 @@ async function run() {
     })
 }
 const args = process.argv.slice(2)
-run().then()
+if (require.main === module) {
+    run().then()
+}
