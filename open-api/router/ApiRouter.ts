@@ -88,11 +88,11 @@ export async function register(app: Koa, apiServer: ApiServer) {
     // app.use(rateControl)
     app.use(handleException)
     const prefix = '/open';
+    addSwagger(app, prefix)
     getApiService().logger.info(`url prefix: ${prefix}`)
     const router = new Router({prefix: prefix})
     let middleware = router.routes();
     app.use(middleware)
-    addSwagger(app, router, prefix)
 
     router.get('/', async (ctx)=>{
         return root(ctx, apiServer.config.serverTag)

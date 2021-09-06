@@ -7,6 +7,8 @@ import * as path from "path";
 const yamljs = require('yamljs');
 import {koaSwagger} from "koa2-swagger-ui";
 import {InvalidParamError} from "../../stat/service/common/utils";
+const swStats = require('swagger-stats');
+const e2k = require('express-to-koa');
 
 const requestIp = require('request-ip');
 const Limiter = require('ratelimiter')
@@ -78,7 +80,13 @@ export async function handleException(ctx, next) {
 export function setBody(ctx, data: any, code = 0, message = 'ok') {
     ctx.body = {code, message, data}
 }
-export function addSwagger(app: Koa, router: Router<any, {}>, prefix) {
+export function addSwagger(app: Koa, prefix) {
+    // metrics
+    app.use(e2k(swStats.getMiddleware({
+        // swaggerSpec:spec,
+        uriPath: `${prefix}/swagger-stats`
+        // basePath: prefix,
+    })));
     const docPath = `${prefix}/doc`
     // let apiDef = '/open-api.yaml';
     const pwd = path.resolve('.')
