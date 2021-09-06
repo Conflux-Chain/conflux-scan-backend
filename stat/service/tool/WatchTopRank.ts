@@ -10,7 +10,7 @@ async function watchCfx(col, watcher: CfxWatcher) {
     })
     for (const row of byBal) {
         const hex = await Hex40Map.findByPk(row.addressId)
-        await watcher.queryBalance(`0x${hex}`, row.addressId)
+        await watcher.queryBalance(`0x${hex.hex}`, row.addressId)
     }
 }
 async function fixCfx(watcher: CfxWatcher) {
