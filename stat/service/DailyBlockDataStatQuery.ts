@@ -20,12 +20,12 @@ export class DailyBlockDataStatQuery {
         if(intervalType === this.INTERVAL_TYPE.hour ||
             intervalType === this.INTERVAL_TYPE.day){
             const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
-            const sql = `SELECT statTime, blockTime, tps, hashrate, difficulty FROM daily_block_data_stat 
+            const sql = `SELECT statTime, blockTime, tps, hashrate as hashRate, difficulty FROM daily_block_data_stat 
                         WHERE statType = '${type}' ORDER BY statTime DESC LIMIT ?, ?`
             const statList = await DailyBlockDataStat.sequelize.query(sql, {type: QueryTypes.SELECT,
                 replacements: [skip, limit]/*, logging: console.info*/ });
             let list = statList.map(item => {
-                item['timestamp'] = (item['statTime']).getTime() / 1000
+                item['timestamp'] = String((item['statTime']).getTime() / 1000);
                 return item;
             });
             list = lodash.orderBy(list, 'timestamp', 'asc');
@@ -65,7 +65,7 @@ export class DailyBlockDataStatQuery {
                 const tps = BigFixed(txCount).div(BigFixed(interval));
                 const date = new Date(statTime);
                 statArray.push({statTime: date, blockTime, hashRate, difficulty, tps,
-                    timestamp: date.getTime() / 1000 });
+                    timestamp: String(date.getTime() / 1000) });
             }
         }
         const list = lodash.orderBy(statArray, 'timestamp', 'asc');

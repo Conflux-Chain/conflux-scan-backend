@@ -10,8 +10,8 @@ const moment = require('moment');
 
 export class DailyBlockDataStatSync{
     private sequelize: Sequelize;
-    private intervalHourInSec: number = 3600;
-    private intervalDayInSec: number = 86400;
+    private intervalHourInSec = BigFixed(3600);
+    private intervalDayInSec = BigFixed(86400);
 
     constructor(sequelize: Sequelize) {
         this.sequelize = sequelize;
@@ -20,7 +20,11 @@ export class DailyBlockDataStatSync{
     public async statByHour(): Promise<any>{
         // get time span
         const maxStat = await DailyBlockDataStat.findOne({where:{statType:'1h'}, order:[['statTime','desc']]});
-        const maxStatTime = maxStat?.statTime || getTimeByInterval(new Date(), -61);
+        let maxStatTime = maxStat?.statTime;
+        if(maxStatTime === undefined){
+            maxStatTime = new Date(' 2020-10-28 16:00:00');
+            await this.initFirstStat(maxStatTime);
+        }
         const nextBeginTime = getTimeByInterval(maxStatTime, 60);
         const nextEndTime = getTimeByInterval(maxStatTime, 60 * 2);
         const nextSafeTime = getTimeByInterval(maxStatTime, 60 * 2 + 3);
@@ -38,13 +42,13 @@ export class DailyBlockDataStatSync{
         const txStat = await FullTransaction.sequelize.query(txSql, {type: QueryTypes.SELECT,
             replacements: [fmtDtUTC(nextBeginTime), fmtDtUTC(nextEndTime)], raw: true/*, logging: console.info*/ });
         const statTime = nextBeginTime;
-        const difficultySum = blockStat[0]['difficultySum'];
-        const blockCount = blockStat[0]['blockCount'];
-        const txCount = txStat[0]['txCount'] || 0;
-        const difficulty = BigFixed(difficultySum).div(BigFixed(blockCount));
-        const blockTime = BigFixed(this.intervalHourInSec).div(BigFixed(blockCount));
-        const hashRate = BigFixed(difficultySum).div(BigFixed(this.intervalHourInSec));
-        const tps = BigFixed(txCount).div(BigFixed(this.intervalHourInSec));
+        const difficultySum = BigFixed(blockStat[0]['difficultySum'] || 0);
+        const blockCount = BigFixed(blockStat[0]['blockCount']);
+        const txCount = BigFixed(txStat[0]['txCount']);
+        const difficulty = blockCount.isZero() ? BigFixed(0) : difficultySum.div(blockCount);
+        const blockTime = blockCount.isZero() ? BigFixed(0) : this.intervalHourInSec.div(blockCount);
+        const hashRate = difficultySum.div(this.intervalHourInSec);
+        const tps = txCount.div(this.intervalHourInSec);
         const statArray = [{statTime, statType: '1h', difficultySum, blockCount, txCount,
             difficulty, blockTime, hashRate, tps}];
 
@@ -57,24 +61,25 @@ export class DailyBlockDataStatSync{
             const statList = await DailyBlockDataStat.sequelize.query(statSql, {type: QueryTypes.SELECT,
                 replacements: [fmtDtUTC(beginTimeInDay), fmtDtUTC(endTimeInDay)], raw: true/*, logging: console.info*/ });
             statList.push(statArray[0]);
-            let blockCountPerDay = 0;
-            let txCountPerDay = 0;
-            let difficultyPerDay = 0;
+            let blockCountPerDay = BigFixed(0);
+            let txCountPerDay = BigFixed(0);
+            let difficultyPerDay = BigFixed(0);
             lodash.forEach(statList, stat => {
-                blockCountPerDay = blockCountPerDay +stat['blockCount'];
-                txCountPerDay = txCountPerDay + stat['txCount'];
-                difficultyPerDay = BigFixed(difficultyPerDay).add(BigFixed(stat['difficultySum']));
+                blockCountPerDay = blockCountPerDay.add(BigFixed(stat['blockCount']));
+                txCountPerDay = txCountPerDay.add(BigFixed(stat['txCount']));
+                difficultyPerDay = difficultyPerDay.add(BigFixed(stat['difficultySum']));
             });
 
             // build daily record
-            let difficulty = 0;
-            let hashRate = 0;
-            const blockTime = BigFixed(this.intervalDayInSec).div(BigFixed(blockCountPerDay));
-            const tps = BigFixed(txCountPerDay).div(BigFixed(this.intervalDayInSec));
+            let difficulty = BigFixed(0);
+            let hashRate = BigFixed(0);
+            const blockTime = blockCountPerDay.isZero() ? BigFixed(0) : this.intervalDayInSec.div(blockCountPerDay);
+            const tps = txCountPerDay.div(this.intervalDayInSec);
             const statTime = beginTimeInDay;
             lodash.forEach(statList, stat => {
-                difficulty = BigFixed(difficulty).add(BigFixed(stat['difficultySum']).div(BigFixed(blockCountPerDay)));
-                hashRate =  BigFixed(hashRate).add(BigFixed(stat['difficultySum']).div(BigFixed(this.intervalDayInSec)));
+                difficulty = blockCountPerDay.isZero() ? BigFixed(0)
+                    : difficulty.add(BigFixed(stat['difficultySum']).div(blockCountPerDay));
+                hashRate = hashRate.add(BigFixed(stat['difficultySum']).div(this.intervalDayInSec));
             });
             const statInDay = {statTime, statType: '1d', difficultySum:  difficultyPerDay, blockCount: blockCountPerDay,
                 txCount: txCountPerDay, difficulty, hashRate, blockTime, tps};
@@ -109,36 +114,35 @@ export class DailyBlockDataStatSync{
 
         // data per hour
         const partialStatArray = [];
-        let blockCountPerDay = 0;
-        let txCountPerDay = 0;
-        let difficultyPerDay = 0;
+        let blockCountPerDay = BigFixed(0);
+        let txCountPerDay = BigFixed(0);
+        let difficultyPerDay = BigFixed(0);
         for(const blockStat of blockStatList) {
                 if(blockStat !== undefined){
                     const statTime = blockStat['statTime'];
-                    const blockCount = blockStat['blockCount'];
-                    const txCount = txStatMap[statTime] || 0;
-                    const difficultySum = blockStat['difficultySum'];
-                    const blockTime = BigFixed(this.intervalHourInSec).div(BigFixed(blockCount));
-                    const hashRate = BigFixed(difficultySum).div(BigFixed(this.intervalHourInSec));
-                    const difficulty = BigFixed(difficultySum).div(BigFixed(blockCount));
-                    const tps = BigFixed(txCount).div(BigFixed(this.intervalHourInSec));
+                    const blockCount = BigFixed(blockStat['blockCount']);
+                    const txCount = BigFixed(txStatMap[statTime] || 0);
+                    const difficultySum = BigFixed(blockStat['difficultySum'] || 0);
+                    const blockTime = blockCount.isZero() ? BigFixed(0) : this.intervalHourInSec.div(blockCount);
+                    const hashRate = difficultySum.div(this.intervalHourInSec);
+                    const difficulty = blockCount.isZero() ? BigFixed(0) : difficultySum.div(blockCount);
+                    const tps = txCount.div(this.intervalHourInSec);
                     partialStatArray.push({statTime, statType: '1h', blockCount, txCount, difficultySum,
                         blockTime, hashRate, difficulty, tps});
-                    blockCountPerDay = BigFixed(blockCountPerDay).add(BigFixed(blockCount));
-                    txCountPerDay = BigFixed(txCountPerDay).add(BigFixed(txCount));
-                    difficultyPerDay = BigFixed(difficultyPerDay).add(BigFixed(difficultySum));
+                    blockCountPerDay = blockCountPerDay.add(blockCount);
+                    txCountPerDay = txCountPerDay.add(txCount);
+                    difficultyPerDay = difficultyPerDay.add(difficultySum);
                 }
         }
         const statArray = this.convertTotalStatArray(beginTime, partialStatArray);
 
         // data per day
-        let hashRateInDay = 0;
-        let difficultyInDay = 0;
+        let hashRateInDay = BigFixed(0);
+        let difficultyInDay = BigFixed(0);
         lodash.forEach(blockStatList, blockStat => {
-            hashRateInDay = BigFixed(hashRateInDay).add(BigFixed(blockStat['difficultySum'])
-                .div(BigFixed(this.intervalDayInSec)));
-            difficultyInDay = BigFixed(difficultyInDay).add(BigFixed(blockStat['difficultySum'])
-                .div(BigFixed(blockCountPerDay)));
+            hashRateInDay = hashRateInDay.add(BigFixed(blockStat['difficultySum'] || 0).div(this.intervalDayInSec));
+            difficultyInDay = blockCountPerDay.isZero() ? BigFixed(0)
+                : difficultyInDay.add(BigFixed(blockStat['difficultySum'] || 0).div(blockCountPerDay));
         });
         const statInDay = {
             statTime: beginTime,
@@ -146,10 +150,10 @@ export class DailyBlockDataStatSync{
             blockCount: blockCountPerDay,
             txCount: txCountPerDay,
             difficultySum:  difficultyPerDay,
-            blockTime: BigFixed(this.intervalDayInSec).div(BigFixed(blockCountPerDay)),
+            blockTime: blockCountPerDay.isZero() ? BigFixed(0) : this.intervalDayInSec.div(blockCountPerDay),
             hashRate: hashRateInDay,
             difficulty: difficultyInDay,
-            tps: BigFixed(txCountPerDay).div(BigFixed(this.intervalDayInSec)),
+            tps: txCountPerDay.div(this.intervalDayInSec),
         };
         statArray.push(statInDay);
 
@@ -214,5 +218,19 @@ export class DailyBlockDataStatSync{
             }
         });
         return totalStatArray;
+    }
+
+    private async initFirstStat(firstStatTime){
+        const firstStat = lodash.defaults({},
+            {statTime: firstStatTime,
+            statType: '1h',
+            blockCount: 0,
+            txCount: 0,
+            difficultySum:  0,
+            blockTime:0,
+            hashRate: 0,
+            difficulty: 0,
+            tps: 0});
+        await DailyBlockDataStat.add(firstStat);
     }
 }
