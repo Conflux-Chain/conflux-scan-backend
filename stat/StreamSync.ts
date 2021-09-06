@@ -212,7 +212,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             banList = await BatchBalanceWatcher.allTokenContract.getBalances(addressArr, contractHex40);
         } catch (e) {
             console.log(` call balance utils contract fail, [${
-                addressArr.map(addr=>format.address(addr, StatApp.networkId)).map(s=>`'${s}'`).join(',')
+                addressArr.map(addr=>format.address(addr, StatApp.networkId)).map(s=>`"${s}"`).join(',')
             }], contract ${format.address(contractHex40, StatApp.networkId)}`, e)
             continue
         }
