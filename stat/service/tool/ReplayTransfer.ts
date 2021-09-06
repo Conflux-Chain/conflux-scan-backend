@@ -3,6 +3,10 @@ import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Op} from 'sequelize'
 import {handleTokenTransferWithContract} from "../../StreamSync";
 import {init} from "./FixDailyTokenStat";
+import {Conflux} from "js-conflux-sdk";
+import {patchHttpProvider} from "../common/utils";
+import {StatApp} from "../../StatApp";
+import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 
 const args = process.argv.slice(2)
 const from = parseInt(args[0])
@@ -33,6 +37,18 @@ async function loop(from) {
     } while (true)
     console.log(` done, max ${maxId}`)
 }
-init().then(()=>{
+async function setup(config){
+    const cfx = new Conflux(config.conflux)
+    await cfx.updateNetworkId()
+    patchHttpProvider(cfx, config.conflux)
+    // init contract
+    // @ts-ignore
+    StatApp.networkId = (await cfx.getStatus()).networkId
+    console.log(` network id ${StatApp.networkId}`)
+    new BatchBalanceWatcher(cfx,[],null, await BatchBalanceWatcher.getUtilContractAddr())
+}
+init().then((config)=> {
+    return setup(config)
+}).then(()=>{
     loop(from).then()
 })
