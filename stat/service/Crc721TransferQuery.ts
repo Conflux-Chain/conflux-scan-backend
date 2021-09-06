@@ -16,7 +16,7 @@ export class Crc721TransferQuery extends TransferQueryBase{
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC721;
     }
-    public buildQueryFields(): any{
+    public buildQueryFields({txType}): any{
         return  [
             ['epoch', 'epochNumber'],
             ['txHashId', 'transactionHash'],

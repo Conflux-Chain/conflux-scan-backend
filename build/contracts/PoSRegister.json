@@ -1,0 +1,2033 @@
+{
+  "contractName": "PoSRegister",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "votePower",
+          "type": "uint64"
+        }
+      ],
+      "name": "IncreaseStake",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "blsPubKey",
+          "type": "bytes"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "vrfPubKey",
+          "type": "bytes"
+        }
+      ],
+      "name": "Register",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        }
+      ],
+      "name": "Retire",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "indentifier",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "votePower",
+          "type": "uint64"
+        },
+        {
+          "internalType": "bytes",
+          "name": "blsPubKey",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "vrfPubKey",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes[2]",
+          "name": "blsPubKeyProof",
+          "type": "bytes[2]"
+        }
+      ],
+      "name": "register",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "votePower",
+          "type": "uint64"
+        }
+      ],
+      "name": "increaseStake",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "retire",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getVotes",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        }
+      ],
+      "name": "identifierToAddress",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "addr",
+          "type": "address"
+        }
+      ],
+      "name": "addressToIdentifier",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.7.4+commit.3f05b770\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"votePower\",\"type\":\"uint64\"}],\"name\":\"IncreaseStake\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"blsPubKey\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"vrfPubKey\",\"type\":\"bytes\"}],\"name\":\"Register\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"}],\"name\":\"Retire\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"addressToIdentifier\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"}],\"name\":\"getVotes\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"}],\"name\":\"identifierToAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"votePower\",\"type\":\"uint64\"}],\"name\":\"increaseStake\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"indentifier\",\"type\":\"bytes32\"},{\"internalType\":\"uint64\",\"name\":\"votePower\",\"type\":\"uint64\"},{\"internalType\":\"bytes\",\"name\":\"blsPubKey\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"vrfPubKey\",\"type\":\"bytes\"},{\"internalType\":\"bytes[2]\",\"name\":\"blsPubKeyProof\",\"type\":\"bytes[2]\"}],\"name\":\"register\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"retire\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"events\":{\"IncreaseStake(bytes32,uint64)\":{\"details\":\"increaseStake \\u51fd\\u6570\\u6267\\u884c\\u6210\\u529f\\u65f6\\u4ea7\\u751f\\u4e00\\u4e2a IncreaseStake \\u4e8b\\u4ef6\"},\"Register(bytes32,bytes,bytes)\":{\"details\":\"register \\u51fd\\u6570\\u6267\\u884c\\u6210\\u529f\\u65f6\\u4ea7\\u751f\\u4e00\\u4e2a Register \\u4e8b\\u4ef6\"},\"Retire(bytes32)\":{\"details\":\"retire \\u51fd\\u6570\\u6267\\u884c\\u6210\\u529f\\u65f6\\u4ea7\\u751f\\u4e00\\u4e2a Retire \\u4e8b\\u4ef6\"}},\"kind\":\"dev\",\"methods\":{\"addressToIdentifier(address)\":{\"details\":\"\\u67e5\\u8be2\\u7ed9\\u5b9a PoW \\u5730\\u5740\\u7ed1\\u5b9a\\u7684 PoS \\u5730\\u5740\",\"params\":{\"addr\":\"PoW \\u5730\\u5740\"}},\"getVotes(bytes32)\":{\"details\":\"\\u67e5\\u8be2\\u7ed9\\u5b9a PoS \\u8d26\\u6237\\u9501\\u4ed3\\u60c5\\u51b5\\uff0c\\u8fd4\\u56de\\\"\\u603b\\u62b5\\u62bc\\u7968\\u6570\\\"\\u548c\\\"\\u5df2\\u89e3\\u9501\\u7968\\u6570\\\"\",\"params\":{\"identifier\":\"PoS \\u5730\\u5740\"}},\"identifierToAddress(bytes32)\":{\"details\":\"\\u67e5\\u8be2\\u7ed9\\u5b9a PoS \\u8d26\\u6237\\u7ed1\\u5b9a\\u7684 PoW \\u5730\\u5740\",\"params\":{\"identifier\":\"PoS \\u5730\\u5740\"}},\"increaseStake(uint64)\":{\"details\":\"\\u4e3a msg.sender \\u7ed1\\u5b9a\\u7684\\u8d26\\u6237\\u8ffd\\u52a0\\u6295\\u7968\\u6743\",\"params\":{\"votePower\":\"\\u6ce8\\u518c\\u7968\\u6570\"}},\"register(bytes32,uint64,bytes,bytes,bytes[2])\":{\"details\":\"\\u6ce8\\u518c PoS \\u8d26\\u6237\",\"params\":{\"blsPubKey\":\"BLS \\u516c\\u94a5\",\"blsPubKeyProof\":\"BLS \\u516c\\u94a5\\u7684\\u5408\\u6cd5\\u6027\\u8bc1\\u660e\\uff0c\\u7528\\u4e8e\\u9632\\u6b62\\u67d0\\u7c7b\\u653b\\u51fb\\uff0cconflux-rust \\u5168\\u8282\\u70b9\\u751f\\u6210\",\"indentifier\":\"\\u88ab\\u6ce8\\u518c\\u8d26\\u6237\\u7684 PoS \\u5730\\u5740\",\"votePower\":\"\\u6ce8\\u518c\\u7968\\u6570\",\"vrfPubKey\":\"VRF \\u516c\\u94a5\"}},\"retire()\":{\"details\":\"\\u4e3a msg.sender \\u89e3\\u9501\\u5168\\u90e8 PoS \\u7968\\u6570\"}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/PoSRegister.sol\":\"PoSRegister\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/PoSRegister.sol\":{\"keccak256\":\"0x07111b59f4eca21f49fc4010e54974c3a9997da44091705cc4d489e13e761401\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://1c3d8fd50f74787c12d7f5c17ab2a1e1ed19acb2dc5608a0423e6c23c0221b1e\",\"dweb:/ipfs/QmYnMYHGqjNF1PywHE9LK59UxyNQxei9ttuztrhF2dpSXQ\"]}},\"version\":1}",
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [],
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "// SPDX-License-Identifier: MIT\r\npragma solidity >=0.5.0;\r\npragma experimental ABIEncoderV2;\r\n\r\ninterface PoSRegister {\r\n/**\r\n * @dev 注册 PoS 账户\r\n * @param indentifier 被注册账户的 PoS 地址\r\n * @param votePower 注册票数\r\n * @param blsPubKey BLS 公钥\r\n * @param vrfPubKey VRF 公钥\r\n * @param blsPubKeyProof BLS 公钥的合法性证明，用于防止某类攻击，conflux-rust 全节点生成\r\n */\r\nfunction register(bytes32 indentifier, uint64 votePower, bytes calldata blsPubKey, bytes calldata vrfPubKey, bytes[2] calldata blsPubKeyProof) external;\r\n\r\n/**\r\n * @dev 为 msg.sender 绑定的账户追加投票权\r\n * @param votePower 注册票数\r\n */\r\nfunction increaseStake(uint64 votePower) external;\r\n\r\n/**\r\n * @dev 为 msg.sender 解锁全部 PoS 票数\r\n */\r\nfunction retire() external;\r\n\r\n/**\r\n * @dev 查询给定 PoS 账户锁仓情况，返回\"总抵押票数\"和\"已解锁票数\"\r\n * @param identifier PoS 地址\r\n */\r\nfunction getVotes(bytes32 identifier) external view returns (uint, uint);\r\n\r\n/**\r\n * @dev 查询给定 PoS 账户绑定的 PoW 地址\r\n * @param identifier PoS 地址\r\n */\r\nfunction identifierToAddress(bytes32 identifier) external view returns (address);\r\n\r\n/**\r\n * @dev 查询给定 PoW 地址绑定的 PoS 地址\r\n * @param addr PoW 地址\r\n */\r\nfunction addressToIdentifier(address addr) external view returns (bytes32);\r\n\r\n/**\r\n * @dev register 函数执行成功时产生一个 Register 事件\r\n */\r\nevent Register(bytes32 indexed identifier, bytes blsPubKey, bytes vrfPubKey);\r\n\r\n/**\r\n * @dev increaseStake 函数执行成功时产生一个 IncreaseStake 事件\r\n */\r\nevent IncreaseStake(bytes32 indexed identifier, uint64 votePower);\r\n\r\n/**\r\n * @dev retire 函数执行成功时产生一个 Retire 事件\r\n */\r\nevent Retire(bytes32 indexed identifier);\r\n}",
+  "sourcePath": "/Users/wangzhenting/IdeaProjects/conflux-scan-statistics/contracts/PoSRegister.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/PoSRegister.sol",
+    "exportedSymbols": {
+      "PoSRegister": [
+        76
+      ]
+    },
+    "id": 77,
+    "license": "MIT",
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 1,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.5",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "33:24:0"
+      },
+      {
+        "id": 2,
+        "literals": [
+          "experimental",
+          "ABIEncoderV2"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "59:33:0"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "fullyImplemented": false,
+        "id": 76,
+        "linearizedBaseContracts": [
+          76
+        ],
+        "name": "PoSRegister",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "documentation": {
+              "id": 3,
+              "nodeType": "StructuredDocumentation",
+              "src": "121:299:0",
+              "text": " @dev 注册 PoS 账户\n @param indentifier 被注册账户的 PoS 地址\n @param votePower 注册票数\n @param blsPubKey BLS 公钥\n @param vrfPubKey VRF 公钥\n @param blsPubKeyProof BLS 公钥的合法性证明，用于防止某类攻击，conflux-rust 全节点生成"
+            },
+            "functionSelector": "e335b451",
+            "id": 18,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "register",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 16,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 5,
+                  "mutability": "mutable",
+                  "name": "indentifier",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "440:19:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 4,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "440:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 7,
+                  "mutability": "mutable",
+                  "name": "votePower",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "461:16:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  },
+                  "typeName": {
+                    "id": 6,
+                    "name": "uint64",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "461:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint64",
+                      "typeString": "uint64"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 9,
+                  "mutability": "mutable",
+                  "name": "blsPubKey",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "479:24:0",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_calldata_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 8,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "479:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 11,
+                  "mutability": "mutable",
+                  "name": "vrfPubKey",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "505:24:0",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_calldata_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 10,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "505:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 15,
+                  "mutability": "mutable",
+                  "name": "blsPubKeyProof",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "531:32:0",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_calldata_ptr_$2_calldata_ptr",
+                    "typeString": "bytes[2]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 12,
+                      "name": "bytes",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "531:5:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      }
+                    },
+                    "id": 14,
+                    "length": {
+                      "hexValue": "32",
+                      "id": 13,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "number",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "537:1:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_rational_2_by_1",
+                        "typeString": "int_const 2"
+                      },
+                      "value": "2"
+                    },
+                    "nodeType": "ArrayTypeName",
+                    "src": "531:8:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes_storage_$2_storage_ptr",
+                      "typeString": "bytes[2]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "439:125:0"
+            },
+            "returnParameters": {
+              "id": 17,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "573:0:0"
+            },
+            "scope": 76,
+            "src": "422:152:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "documentation": {
+              "id": 19,
+              "nodeType": "StructuredDocumentation",
+              "src": "578:97:0",
+              "text": " @dev 为 msg.sender 绑定的账户追加投票权\n @param votePower 注册票数"
+            },
+            "functionSelector": "09fecf7f",
+            "id": 24,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "increaseStake",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 22,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 21,
+                  "mutability": "mutable",
+                  "name": "votePower",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 24,
+                  "src": "700:16:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  },
+                  "typeName": {
+                    "id": 20,
+                    "name": "uint64",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "700:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint64",
+                      "typeString": "uint64"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "699:18:0"
+            },
+            "returnParameters": {
+              "id": 23,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "726:0:0"
+            },
+            "scope": 76,
+            "src": "677:50:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "documentation": {
+              "id": 25,
+              "nodeType": "StructuredDocumentation",
+              "src": "731:56:0",
+              "text": " @dev 为 msg.sender 解锁全部 PoS 票数"
+            },
+            "functionSelector": "a4874d77",
+            "id": 28,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "retire",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 26,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "804:2:0"
+            },
+            "returnParameters": {
+              "id": 27,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "815:0:0"
+            },
+            "scope": 76,
+            "src": "789:27:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "documentation": {
+              "id": 29,
+              "nodeType": "StructuredDocumentation",
+              "src": "820:132:0",
+              "text": " @dev 查询给定 PoS 账户锁仓情况，返回\"总抵押票数\"和\"已解锁票数\"\n @param identifier PoS 地址"
+            },
+            "functionSelector": "4c051100",
+            "id": 38,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getVotes",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 32,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 31,
+                  "mutability": "mutable",
+                  "name": "identifier",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 38,
+                  "src": "972:18:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 30,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "972:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "971:20:0"
+            },
+            "returnParameters": {
+              "id": 37,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 34,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 38,
+                  "src": "1015:4:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 33,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1015:4:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 36,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 38,
+                  "src": "1021:4:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 35,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1021:4:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1014:12:0"
+            },
+            "scope": 76,
+            "src": "954:73:0",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "documentation": {
+              "id": 39,
+              "nodeType": "StructuredDocumentation",
+              "src": "1031:94:0",
+              "text": " @dev 查询给定 PoS 账户绑定的 PoW 地址\n @param identifier PoS 地址"
+            },
+            "functionSelector": "e9e4aa46",
+            "id": 46,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "identifierToAddress",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 42,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 41,
+                  "mutability": "mutable",
+                  "name": "identifier",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 46,
+                  "src": "1156:18:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 40,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1156:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1155:20:0"
+            },
+            "returnParameters": {
+              "id": 45,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 44,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 46,
+                  "src": "1199:7:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 43,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1199:7:0",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1198:9:0"
+            },
+            "scope": 76,
+            "src": "1127:81:0",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "documentation": {
+              "id": 47,
+              "nodeType": "StructuredDocumentation",
+              "src": "1212:88:0",
+              "text": " @dev 查询给定 PoW 地址绑定的 PoS 地址\n @param addr PoW 地址"
+            },
+            "functionSelector": "6a06ea96",
+            "id": 54,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "addressToIdentifier",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 50,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 49,
+                  "mutability": "mutable",
+                  "name": "addr",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 54,
+                  "src": "1331:12:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 48,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1331:7:0",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1330:14:0"
+            },
+            "returnParameters": {
+              "id": 53,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 52,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 54,
+                  "src": "1368:7:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 51,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1368:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1367:9:0"
+            },
+            "scope": 76,
+            "src": "1302:75:0",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "anonymous": false,
+            "documentation": {
+              "id": 55,
+              "nodeType": "StructuredDocumentation",
+              "src": "1381:76:0",
+              "text": " @dev register 函数执行成功时产生一个 Register 事件"
+            },
+            "id": 63,
+            "name": "Register",
+            "nodeType": "EventDefinition",
+            "parameters": {
+              "id": 62,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 57,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "identifier",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 63,
+                  "src": "1474:26:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 56,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1474:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 59,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "blsPubKey",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 63,
+                  "src": "1502:15:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_memory_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 58,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1502:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 61,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "vrfPubKey",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 63,
+                  "src": "1519:15:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_memory_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 60,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1519:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1473:62:0"
+            },
+            "src": "1459:77:0"
+          },
+          {
+            "anonymous": false,
+            "documentation": {
+              "id": 64,
+              "nodeType": "StructuredDocumentation",
+              "src": "1540:86:0",
+              "text": " @dev increaseStake 函数执行成功时产生一个 IncreaseStake 事件"
+            },
+            "id": 70,
+            "name": "IncreaseStake",
+            "nodeType": "EventDefinition",
+            "parameters": {
+              "id": 69,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 66,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "identifier",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 70,
+                  "src": "1648:26:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 65,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1648:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 68,
+                  "indexed": false,
+                  "mutability": "mutable",
+                  "name": "votePower",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 70,
+                  "src": "1676:16:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  },
+                  "typeName": {
+                    "id": 67,
+                    "name": "uint64",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1676:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint64",
+                      "typeString": "uint64"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1647:46:0"
+            },
+            "src": "1628:66:0"
+          },
+          {
+            "anonymous": false,
+            "documentation": {
+              "id": 71,
+              "nodeType": "StructuredDocumentation",
+              "src": "1698:72:0",
+              "text": " @dev retire 函数执行成功时产生一个 Retire 事件"
+            },
+            "id": 75,
+            "name": "Retire",
+            "nodeType": "EventDefinition",
+            "parameters": {
+              "id": 74,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 73,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "identifier",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 75,
+                  "src": "1785:26:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 72,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1785:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1784:28:0"
+            },
+            "src": "1772:41:0"
+          }
+        ],
+        "scope": 77,
+        "src": "96:1720:0"
+      }
+    ],
+    "src": "33:1783:0"
+  },
+  "legacyAST": {
+    "attributes": {
+      "absolutePath": "project:/contracts/PoSRegister.sol",
+      "exportedSymbols": {
+        "PoSRegister": [
+          76
+        ]
+      },
+      "license": "MIT"
+    },
+    "children": [
+      {
+        "attributes": {
+          "literals": [
+            "solidity",
+            ">=",
+            "0.5",
+            ".0"
+          ]
+        },
+        "id": 1,
+        "name": "PragmaDirective",
+        "src": "33:24:0"
+      },
+      {
+        "attributes": {
+          "literals": [
+            "experimental",
+            "ABIEncoderV2"
+          ]
+        },
+        "id": 2,
+        "name": "PragmaDirective",
+        "src": "59:33:0"
+      },
+      {
+        "attributes": {
+          "abstract": false,
+          "baseContracts": [
+            null
+          ],
+          "contractDependencies": [
+            null
+          ],
+          "contractKind": "interface",
+          "fullyImplemented": false,
+          "linearizedBaseContracts": [
+            76
+          ],
+          "name": "PoSRegister",
+          "scope": 77
+        },
+        "children": [
+          {
+            "attributes": {
+              "functionSelector": "e335b451",
+              "implemented": false,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "register",
+              "scope": 76,
+              "stateMutability": "nonpayable",
+              "virtual": false,
+              "visibility": "external"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev 注册 PoS 账户\n @param indentifier 被注册账户的 PoS 地址\n @param votePower 注册票数\n @param blsPubKey BLS 公钥\n @param vrfPubKey VRF 公钥\n @param blsPubKeyProof BLS 公钥的合法性证明，用于防止某类攻击，conflux-rust 全节点生成"
+                },
+                "id": 3,
+                "name": "StructuredDocumentation",
+                "src": "121:299:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "indentifier",
+                      "scope": 18,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 4,
+                        "name": "ElementaryTypeName",
+                        "src": "440:7:0"
+                      }
+                    ],
+                    "id": 5,
+                    "name": "VariableDeclaration",
+                    "src": "440:19:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "votePower",
+                      "scope": 18,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint64",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint64",
+                          "type": "uint64"
+                        },
+                        "id": 6,
+                        "name": "ElementaryTypeName",
+                        "src": "461:6:0"
+                      }
+                    ],
+                    "id": 7,
+                    "name": "VariableDeclaration",
+                    "src": "461:16:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "blsPubKey",
+                      "scope": 18,
+                      "stateVariable": false,
+                      "storageLocation": "calldata",
+                      "type": "bytes",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes",
+                          "type": "bytes"
+                        },
+                        "id": 8,
+                        "name": "ElementaryTypeName",
+                        "src": "479:5:0"
+                      }
+                    ],
+                    "id": 9,
+                    "name": "VariableDeclaration",
+                    "src": "479:24:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "vrfPubKey",
+                      "scope": 18,
+                      "stateVariable": false,
+                      "storageLocation": "calldata",
+                      "type": "bytes",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes",
+                          "type": "bytes"
+                        },
+                        "id": 10,
+                        "name": "ElementaryTypeName",
+                        "src": "505:5:0"
+                      }
+                    ],
+                    "id": 11,
+                    "name": "VariableDeclaration",
+                    "src": "505:24:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "blsPubKeyProof",
+                      "scope": 18,
+                      "stateVariable": false,
+                      "storageLocation": "calldata",
+                      "type": "bytes[2]",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "type": "bytes[2]"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "name": "bytes",
+                              "type": "bytes"
+                            },
+                            "id": 12,
+                            "name": "ElementaryTypeName",
+                            "src": "531:5:0"
+                          },
+                          {
+                            "attributes": {
+                              "hexvalue": "32",
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "token": "number",
+                              "type": "int_const 2",
+                              "value": "2"
+                            },
+                            "id": 13,
+                            "name": "Literal",
+                            "src": "537:1:0"
+                          }
+                        ],
+                        "id": 14,
+                        "name": "ArrayTypeName",
+                        "src": "531:8:0"
+                      }
+                    ],
+                    "id": 15,
+                    "name": "VariableDeclaration",
+                    "src": "531:32:0"
+                  }
+                ],
+                "id": 16,
+                "name": "ParameterList",
+                "src": "439:125:0"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 17,
+                "name": "ParameterList",
+                "src": "573:0:0"
+              }
+            ],
+            "id": 18,
+            "name": "FunctionDefinition",
+            "src": "422:152:0"
+          },
+          {
+            "attributes": {
+              "functionSelector": "09fecf7f",
+              "implemented": false,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "increaseStake",
+              "scope": 76,
+              "stateMutability": "nonpayable",
+              "virtual": false,
+              "visibility": "external"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev 为 msg.sender 绑定的账户追加投票权\n @param votePower 注册票数"
+                },
+                "id": 19,
+                "name": "StructuredDocumentation",
+                "src": "578:97:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "votePower",
+                      "scope": 24,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint64",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint64",
+                          "type": "uint64"
+                        },
+                        "id": 20,
+                        "name": "ElementaryTypeName",
+                        "src": "700:6:0"
+                      }
+                    ],
+                    "id": 21,
+                    "name": "VariableDeclaration",
+                    "src": "700:16:0"
+                  }
+                ],
+                "id": 22,
+                "name": "ParameterList",
+                "src": "699:18:0"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 23,
+                "name": "ParameterList",
+                "src": "726:0:0"
+              }
+            ],
+            "id": 24,
+            "name": "FunctionDefinition",
+            "src": "677:50:0"
+          },
+          {
+            "attributes": {
+              "functionSelector": "a4874d77",
+              "implemented": false,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "retire",
+              "scope": 76,
+              "stateMutability": "nonpayable",
+              "virtual": false,
+              "visibility": "external"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev 为 msg.sender 解锁全部 PoS 票数"
+                },
+                "id": 25,
+                "name": "StructuredDocumentation",
+                "src": "731:56:0"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 26,
+                "name": "ParameterList",
+                "src": "804:2:0"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 27,
+                "name": "ParameterList",
+                "src": "815:0:0"
+              }
+            ],
+            "id": 28,
+            "name": "FunctionDefinition",
+            "src": "789:27:0"
+          },
+          {
+            "attributes": {
+              "functionSelector": "4c051100",
+              "implemented": false,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "getVotes",
+              "scope": 76,
+              "stateMutability": "view",
+              "virtual": false,
+              "visibility": "external"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev 查询给定 PoS 账户锁仓情况，返回\"总抵押票数\"和\"已解锁票数\"\n @param identifier PoS 地址"
+                },
+                "id": 29,
+                "name": "StructuredDocumentation",
+                "src": "820:132:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "identifier",
+                      "scope": 38,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 30,
+                        "name": "ElementaryTypeName",
+                        "src": "972:7:0"
+                      }
+                    ],
+                    "id": 31,
+                    "name": "VariableDeclaration",
+                    "src": "972:18:0"
+                  }
+                ],
+                "id": 32,
+                "name": "ParameterList",
+                "src": "971:20:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "scope": 38,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 33,
+                        "name": "ElementaryTypeName",
+                        "src": "1015:4:0"
+                      }
+                    ],
+                    "id": 34,
+                    "name": "VariableDeclaration",
+                    "src": "1015:4:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "scope": 38,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 35,
+                        "name": "ElementaryTypeName",
+                        "src": "1021:4:0"
+                      }
+                    ],
+                    "id": 36,
+                    "name": "VariableDeclaration",
+                    "src": "1021:4:0"
+                  }
+                ],
+                "id": 37,
+                "name": "ParameterList",
+                "src": "1014:12:0"
+              }
+            ],
+            "id": 38,
+            "name": "FunctionDefinition",
+            "src": "954:73:0"
+          },
+          {
+            "attributes": {
+              "functionSelector": "e9e4aa46",
+              "implemented": false,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "identifierToAddress",
+              "scope": 76,
+              "stateMutability": "view",
+              "virtual": false,
+              "visibility": "external"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev 查询给定 PoS 账户绑定的 PoW 地址\n @param identifier PoS 地址"
+                },
+                "id": 39,
+                "name": "StructuredDocumentation",
+                "src": "1031:94:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "identifier",
+                      "scope": 46,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 40,
+                        "name": "ElementaryTypeName",
+                        "src": "1156:7:0"
+                      }
+                    ],
+                    "id": 41,
+                    "name": "VariableDeclaration",
+                    "src": "1156:18:0"
+                  }
+                ],
+                "id": 42,
+                "name": "ParameterList",
+                "src": "1155:20:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "scope": 46,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "stateMutability": "nonpayable",
+                          "type": "address"
+                        },
+                        "id": 43,
+                        "name": "ElementaryTypeName",
+                        "src": "1199:7:0"
+                      }
+                    ],
+                    "id": 44,
+                    "name": "VariableDeclaration",
+                    "src": "1199:7:0"
+                  }
+                ],
+                "id": 45,
+                "name": "ParameterList",
+                "src": "1198:9:0"
+              }
+            ],
+            "id": 46,
+            "name": "FunctionDefinition",
+            "src": "1127:81:0"
+          },
+          {
+            "attributes": {
+              "functionSelector": "6a06ea96",
+              "implemented": false,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "addressToIdentifier",
+              "scope": 76,
+              "stateMutability": "view",
+              "virtual": false,
+              "visibility": "external"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev 查询给定 PoW 地址绑定的 PoS 地址\n @param addr PoW 地址"
+                },
+                "id": 47,
+                "name": "StructuredDocumentation",
+                "src": "1212:88:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "addr",
+                      "scope": 54,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "stateMutability": "nonpayable",
+                          "type": "address"
+                        },
+                        "id": 48,
+                        "name": "ElementaryTypeName",
+                        "src": "1331:7:0"
+                      }
+                    ],
+                    "id": 49,
+                    "name": "VariableDeclaration",
+                    "src": "1331:12:0"
+                  }
+                ],
+                "id": 50,
+                "name": "ParameterList",
+                "src": "1330:14:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "scope": 54,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 51,
+                        "name": "ElementaryTypeName",
+                        "src": "1368:7:0"
+                      }
+                    ],
+                    "id": 52,
+                    "name": "VariableDeclaration",
+                    "src": "1368:7:0"
+                  }
+                ],
+                "id": 53,
+                "name": "ParameterList",
+                "src": "1367:9:0"
+              }
+            ],
+            "id": 54,
+            "name": "FunctionDefinition",
+            "src": "1302:75:0"
+          },
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "Register"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev register 函数执行成功时产生一个 Register 事件"
+                },
+                "id": 55,
+                "name": "StructuredDocumentation",
+                "src": "1381:76:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "mutability": "mutable",
+                      "name": "identifier",
+                      "scope": 63,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 56,
+                        "name": "ElementaryTypeName",
+                        "src": "1474:7:0"
+                      }
+                    ],
+                    "id": 57,
+                    "name": "VariableDeclaration",
+                    "src": "1474:26:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": false,
+                      "mutability": "mutable",
+                      "name": "blsPubKey",
+                      "scope": 63,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes",
+                          "type": "bytes"
+                        },
+                        "id": 58,
+                        "name": "ElementaryTypeName",
+                        "src": "1502:5:0"
+                      }
+                    ],
+                    "id": 59,
+                    "name": "VariableDeclaration",
+                    "src": "1502:15:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": false,
+                      "mutability": "mutable",
+                      "name": "vrfPubKey",
+                      "scope": 63,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes",
+                          "type": "bytes"
+                        },
+                        "id": 60,
+                        "name": "ElementaryTypeName",
+                        "src": "1519:5:0"
+                      }
+                    ],
+                    "id": 61,
+                    "name": "VariableDeclaration",
+                    "src": "1519:15:0"
+                  }
+                ],
+                "id": 62,
+                "name": "ParameterList",
+                "src": "1473:62:0"
+              }
+            ],
+            "id": 63,
+            "name": "EventDefinition",
+            "src": "1459:77:0"
+          },
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "IncreaseStake"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev increaseStake 函数执行成功时产生一个 IncreaseStake 事件"
+                },
+                "id": 64,
+                "name": "StructuredDocumentation",
+                "src": "1540:86:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "mutability": "mutable",
+                      "name": "identifier",
+                      "scope": 70,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 65,
+                        "name": "ElementaryTypeName",
+                        "src": "1648:7:0"
+                      }
+                    ],
+                    "id": 66,
+                    "name": "VariableDeclaration",
+                    "src": "1648:26:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": false,
+                      "mutability": "mutable",
+                      "name": "votePower",
+                      "scope": 70,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint64",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint64",
+                          "type": "uint64"
+                        },
+                        "id": 67,
+                        "name": "ElementaryTypeName",
+                        "src": "1676:6:0"
+                      }
+                    ],
+                    "id": 68,
+                    "name": "VariableDeclaration",
+                    "src": "1676:16:0"
+                  }
+                ],
+                "id": 69,
+                "name": "ParameterList",
+                "src": "1647:46:0"
+              }
+            ],
+            "id": 70,
+            "name": "EventDefinition",
+            "src": "1628:66:0"
+          },
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "Retire"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev retire 函数执行成功时产生一个 Retire 事件"
+                },
+                "id": 71,
+                "name": "StructuredDocumentation",
+                "src": "1698:72:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "mutability": "mutable",
+                      "name": "identifier",
+                      "scope": 75,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 72,
+                        "name": "ElementaryTypeName",
+                        "src": "1785:7:0"
+                      }
+                    ],
+                    "id": 73,
+                    "name": "VariableDeclaration",
+                    "src": "1785:26:0"
+                  }
+                ],
+                "id": 74,
+                "name": "ParameterList",
+                "src": "1784:28:0"
+              }
+            ],
+            "id": 75,
+            "name": "EventDefinition",
+            "src": "1772:41:0"
+          }
+        ],
+        "id": 76,
+        "name": "ContractDefinition",
+        "src": "96:1720:0"
+      }
+    ],
+    "id": 77,
+    "name": "SourceUnit",
+    "src": "33:1783:0"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.7.4+commit.3f05b770.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.1",
+  "updatedAt": "2021-09-07T06:19:38.870Z",
+  "devdoc": {
+    "events": {
+      "IncreaseStake(bytes32,uint64)": {
+        "details": "increaseStake 函数执行成功时产生一个 IncreaseStake 事件"
+      },
+      "Register(bytes32,bytes,bytes)": {
+        "details": "register 函数执行成功时产生一个 Register 事件"
+      },
+      "Retire(bytes32)": {
+        "details": "retire 函数执行成功时产生一个 Retire 事件"
+      }
+    },
+    "kind": "dev",
+    "methods": {
+      "addressToIdentifier(address)": {
+        "details": "查询给定 PoW 地址绑定的 PoS 地址",
+        "params": {
+          "addr": "PoW 地址"
+        }
+      },
+      "getVotes(bytes32)": {
+        "details": "查询给定 PoS 账户锁仓情况，返回\"总抵押票数\"和\"已解锁票数\"",
+        "params": {
+          "identifier": "PoS 地址"
+        }
+      },
+      "identifierToAddress(bytes32)": {
+        "details": "查询给定 PoS 账户绑定的 PoW 地址",
+        "params": {
+          "identifier": "PoS 地址"
+        }
+      },
+      "increaseStake(uint64)": {
+        "details": "为 msg.sender 绑定的账户追加投票权",
+        "params": {
+          "votePower": "注册票数"
+        }
+      },
+      "register(bytes32,uint64,bytes,bytes,bytes[2])": {
+        "details": "注册 PoS 账户",
+        "params": {
+          "blsPubKey": "BLS 公钥",
+          "blsPubKeyProof": "BLS 公钥的合法性证明，用于防止某类攻击，conflux-rust 全节点生成",
+          "indentifier": "被注册账户的 PoS 地址",
+          "votePower": "注册票数",
+          "vrfPubKey": "VRF 公钥"
+        }
+      },
+      "retire()": {
+        "details": "为 msg.sender 解锁全部 PoS 票数"
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}

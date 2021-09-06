@@ -16,7 +16,7 @@ export class Crc1155TransferQuery extends TransferQueryBase{
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC1155;
     }
-    public buildQueryFields(): any{
+    public buildQueryFields({txType}): any{
         return [
             ['epoch', 'epochNumber'],
             ['txHashId', 'transactionHash'],

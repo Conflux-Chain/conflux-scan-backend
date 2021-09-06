@@ -85,9 +85,6 @@ export class ContractQuery {
                 if(row['sourceCode']) {
                     row['sourceCode'] = row['sourceCode'];
                 }
-                if(row['icon']) {
-                    row['icon'] = decodeUtf8(row['icon']);
-                }
                 list.push(row);
             });
         }

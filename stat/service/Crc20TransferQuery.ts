@@ -15,7 +15,7 @@ export class Crc20TransferQuery extends TransferQueryBase{
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC20;
     }
-    public buildQueryFields(): any{
+    public buildQueryFields({txType}): any{
         return [
             ['epoch', 'epochNumber'],
             ['txHashId', 'transactionHash'],
