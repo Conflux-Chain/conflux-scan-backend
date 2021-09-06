@@ -190,7 +190,7 @@ let logCount = 0
  * Automatically generate holder count for token.
  * @param mapContract2addressSet
  */
-export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>) {
+export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, showLog = true) {
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
@@ -213,8 +213,8 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             console.log(` call balance utils contract fail, ${addressArr}, ${contractHex40}`, e)
             continue
         }
-        console.log(` \n balance list:`, banList)
-        console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
+        showLog && console.log(` \n balance list:`, banList)
+        showLog && console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
         const model = new DynamicBalanceModel(contractId)
         let i = 0
         const tasks = []
@@ -224,7 +224,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             i++
         }
         await Promise.all(tasks)
-        if (logCount < 100) {
+        if (showLog && logCount < 100) {
             logCount++
             console.log(`\n save balances of contract ${contractId}, count ${existsAddrArr.length
             }, original addresses length: ${addressIds.length}, balance list length ${banList.length}`)

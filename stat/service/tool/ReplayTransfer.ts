@@ -29,13 +29,13 @@ async function loop(from) {
             set.add(t.toId)
         }
         await handleTokenTransferWithContract(map)
-        process.stdout.write(`\r\u001b[2K id ${from}, max ${maxId}     ` )
+        process.stdout.write(`\r\u001b[2K replay: id ${from}, max ${maxId}     ` )
         from += batch
         if (from >= maxId) {
             break;
         }
     } while (true)
-    console.log(` done, max ${maxId}`)
+    console.log(` replay: done, max ${maxId}`)
 }
 async function setup(config){
     const cfx = new Conflux(config.conflux)
