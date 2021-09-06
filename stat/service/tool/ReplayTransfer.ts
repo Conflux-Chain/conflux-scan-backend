@@ -28,7 +28,7 @@ async function loop(from) {
             set.add(t.fromId)
             set.add(t.toId)
         }
-        await handleTokenTransferWithContract(map)
+        await handleTokenTransferWithContract(map, false)
         process.stdout.write(`\r\u001b[2K replay: id ${from}, max ${maxId}     ` )
         from += batch
         if (from >= maxId) {
