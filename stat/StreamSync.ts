@@ -12,6 +12,7 @@ import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressCfxTransfer, CfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
 import {UniqueConstraintError} from "sequelize"
+import {format} from 'js-conflux-sdk'
 
 async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
     // console.log(`handleTokenTransfer `, data.length)
@@ -210,7 +211,9 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         try {
             banList = await BatchBalanceWatcher.allTokenContract.getBalances(addressArr, contractHex40);
         } catch (e) {
-            console.log(` call balance utils contract fail, ${addressArr}, ${contractHex40}`, e)
+            console.log(` call balance utils contract fail, [${
+                addressArr.map(addr=>format.address(addr, StatApp.networkId)).map(s=>`'${s}'`).join(',')
+            }], contract ${format.address(contractHex40, StatApp.networkId)}`, e)
             continue
         }
         showLog && console.log(` \n balance list:`, banList)
