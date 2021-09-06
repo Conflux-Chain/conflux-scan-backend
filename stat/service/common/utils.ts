@@ -1,5 +1,6 @@
 import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
+const {isValidCfxAddress} = require('js-conflux-sdk/src/util/address');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
     const param = {
@@ -18,16 +19,47 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
 export function skipLimit(obj) {
     return pageParam(obj, 'skip', 'limit', 10)
 }
-
+export class InvalidParamError extends Error{}
 export function intParam(obj: object, key: string, defaultV: number) {
     const v = obj[key]
     if (v === undefined || v === null) {
         return defaultV
     }
+    let number: number;
     try {
-        return parseInt(v);
+        number = parseInt(v);
     } catch (e) {
         return defaultV
+    }
+    if (isNaN(number)) {
+        throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]`)
+    }
+    return number;
+}
+export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
+    for (const k of keys) {
+        const v = obj[k];
+        if (v === undefined || v === null) {
+            continue
+        }
+        if (isNaN(parseInt(v))) {
+            throw new InvalidParamError(`Invalid parameter ${k} with value [${v}].`)
+        }
+    }
+}
+export function mustBeAddressParamIfPresent(obj, ...keys:string[]) {
+    for(const k of keys) {
+        const v = obj[k];
+        if (v === undefined || v === null) {
+            continue
+        }
+        if (/0x[0-9a-fA-F]{40}/.test(v)) {
+            continue // hex 40
+        }
+        if (isValidCfxAddress(v)) {
+            continue
+        }
+        throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}].`);
     }
 }
 export function removeLongData(obj) {

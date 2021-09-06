@@ -6,6 +6,7 @@ import * as Router from "koa-router";
 import * as path from "path";
 const yamljs = require('yamljs');
 import {koaSwagger} from "koa2-swagger-ui";
+import {InvalidParamError} from "../../stat/service/common/utils";
 
 const requestIp = require('request-ip');
 const Limiter = require('ratelimiter')
@@ -64,6 +65,10 @@ export async function handleException(ctx, next) {
         }
         if (err.message.includes('path="", not match "hex40"')) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG)
+            return
+        }
+        if (err instanceof InvalidParamError) {
+            setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, err.message)
             return
         }
         setBody(ctx, undefined, 500, err.toString())
