@@ -86,7 +86,7 @@ export function addSwagger(app: Koa, prefix) {
     app.use(e2k(swStats.getMiddleware({
         // swaggerSpec:spec,
         uriPath: `${prefix}/swagger-stats`,
-        hostname: '', // Prevent exposure of server ip
+        hostname: 'OpenApi', // Prevent exposure of server ip
         // basePath: prefix,
     })));
     const docPath = `${prefix}/doc`
