@@ -277,6 +277,47 @@ export interface ICfxTransfer {
     toId: number
     value: number
 }
+// ======================== fix backup
+export interface IBakCfxTransfer {
+    id?: number
+    epoch: number
+    createdAt: Date
+    txHashId: number
+    fromId: number
+    toId: number
+    value: number
+}
+export class BakCfxTransfer extends Model<IBakCfxTransfer> implements IBakCfxTransfer {
+    id?: number
+    epoch: number
+    createdAt: Date
+    txHashId: number
+    fromId: number
+    toId: number
+    value: number
+    static register(seq) {
+        BakCfxTransfer.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+            value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
+        }, {
+            sequelize: seq,
+            updatedAt: false,
+            tableName: 'bak_cfx_transfer',
+            indexes: [
+                {
+                    name: 'idx_epoch',
+                    fields: [{name: 'epoch', order: "DESC"}]
+                },
+            ],
+        })
+    }
+}
+// ======================== fix backup , end
 export const T_CFX_TRANSFER = 'cfx_transfer'
 export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
     id?: number
