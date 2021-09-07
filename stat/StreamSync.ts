@@ -12,6 +12,7 @@ import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressCfxTransfer, CfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
 import {UniqueConstraintError} from "sequelize"
+import {format} from 'js-conflux-sdk'
 
 async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
     // console.log(`handleTokenTransfer `, data.length)
@@ -190,7 +191,7 @@ let logCount = 0
  * Automatically generate holder count for token.
  * @param mapContract2addressSet
  */
-async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>) {
+export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, showLog = true) {
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
@@ -210,11 +211,13 @@ async function handleTokenTransferWithContract(mapContract2addressSet: Map<numbe
         try {
             banList = await BatchBalanceWatcher.allTokenContract.getBalances(addressArr, contractHex40);
         } catch (e) {
-            console.log(` call balance utils contract fail, ${addressArr}, ${contractHex40}`, e)
+            console.log(` call balance utils contract fail, [${
+                addressArr.map(addr=>format.address(addr, StatApp.networkId)).map(s=>`"${s}"`).join(',')
+            }], contract ${format.address(contractHex40, StatApp.networkId)}`, e)
             continue
         }
-        console.log(` \n balance list:`, banList)
-        console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
+        showLog && console.log(` \n balance list:`, banList)
+        showLog && console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
         const model = new DynamicBalanceModel(contractId)
         let i = 0
         const tasks = []
@@ -224,7 +227,7 @@ async function handleTokenTransferWithContract(mapContract2addressSet: Map<numbe
             i++
         }
         await Promise.all(tasks)
-        if (logCount < 100) {
+        if (showLog && logCount < 100) {
             logCount++
             console.log(`\n save balances of contract ${contractId}, count ${existsAddrArr.length
             }, original addresses length: ${addressIds.length}, balance list length ${banList.length}`)
@@ -303,4 +306,6 @@ async function run() {
     })
 }
 const args = process.argv.slice(2)
-run().then()
+if (require.main === module) {
+    run().then()
+}

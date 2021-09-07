@@ -17,16 +17,17 @@ export class DynamicBalanceModel {
     getTableName() {
         return 'token_balance'
     }
-    async destroy({where0 = {}, ...rest} = {}) {
+    async destroy({where = {}, ...rest} = {}) {
         return TokenBalance.destroy({
-            where: {contractId: this.contractId, ...where0},
+            where: {contractId: this.contractId, ...where},
+            // logging: console.log,
             ...rest,
         })
     }
 
-    async findAll({where0 = {}, ...rest} = {}) {
+    async findAll({where = {}, ...rest} = {}) {
         return TokenBalance.findAll({
-            where: {contractId: this.contractId, ...where0},
+            where: {contractId: this.contractId, ...where},
             ...rest,
         })
     }
