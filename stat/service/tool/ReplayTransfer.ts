@@ -29,7 +29,7 @@ async function loop(from) {
             set.add(t.toId)
         }
         await handleTokenTransferWithContract(map, false)
-        process.stdout.write(`\r\u001b[2K replay: id ${from}, max ${maxId}     ` )
+        process.stderr.write(`\r\u001b[2K replay: id ${from}, max ${maxId} , ${from * 100 / Number(maxId)}%    ` )
         from += batch
         if (from >= maxId) {
             break;
