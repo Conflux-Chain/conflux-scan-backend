@@ -70,7 +70,7 @@ import {
     CfxTransfer,
     createAddressCfxTransferTable,
     DailyCfxTxn,
-    CfxTransferRowMark,
+    CfxTransferRowMark, BakCfxTransfer,
 } from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
@@ -170,6 +170,7 @@ export async function initPartialModel(sequelize) {
     Erc1155Transfer.register(sequelize)
     DailyTokenTxn.register(sequelize)
     CfxTransfer.register(sequelize)
+    BakCfxTransfer.register(sequelize)
     DailyCfxTxn.register(sequelize)
     DailyActiveAddress.register(sequelize)
     DailyToken.register(sequelize)
