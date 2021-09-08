@@ -8,9 +8,15 @@ import {
 import {BalanceService} from "../../stat/service/watcher/BalanceService";
 import {addSwagger, executionTime, handleException, rateControl, setBody} from "./middleware";
 import {listTransfer, polishTransferList} from "../service/OpenTransferService";
-import {mustBeAddressParamIfPresent, mustBeIntParamIfPresent, skipLimit} from "../../stat/service/common/utils";
+import {
+    mustBeAddressParamIfPresent,
+    mustBeEnumParamIfPresent,
+    mustBeIntParamIfPresent,
+    skipLimit
+} from "../../stat/service/common/utils";
 import {polishAssertList} from "../service/OpenAccountService";
 import {polishContract} from "../service/OpenContractService";
+import {StatApp} from "../../stat/StatApp";
 
 const cors = require('@koa/cors');
 
@@ -23,7 +29,8 @@ async function root(ctx, tag) {
  * @param ctx
  */
 async function listAccountAssets(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, 'account')
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account')
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     const {account: base32} = ctx.request.query;
     // if (!Boolean(base32)) {
     //     setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
@@ -39,7 +46,8 @@ async function listAccountAssets(ctx) {
  */
 async function listAccountTransaction(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber','minTimestamp','maxTimestamp')
-    mustBeAddressParamIfPresent(ctx.request.query, 'from','to','account')
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account')
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     const {skip, limit} = skipLimit(ctx.request.query)
     const {account: base32,minEpochNumber,maxEpochNumber,minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo} = ctx.request.query;
     if (!Boolean(base32)) {

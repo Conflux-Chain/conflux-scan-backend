@@ -1,6 +1,6 @@
 import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
-const {isValidCfxAddress} = require('js-conflux-sdk/src/util/address');
+const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
     const param = {
@@ -25,6 +25,9 @@ export function intParam(obj: object, key: string, defaultV: number) {
     if (v === undefined || v === null) {
         return defaultV
     }
+    if (!/^[0-9]+$/.test(v)) {
+        throw new InvalidParamError(`Invalid parameter [${key}] with value[${v}]`)
+    }
     let number: number;
     try {
         number = parseInt(v);
@@ -42,12 +45,30 @@ export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
         if (v === undefined || v === null) {
             continue
         }
-        if (isNaN(parseInt(v))) {
-            throw new InvalidParamError(`Invalid parameter ${k} with value [${v}].`)
+        if (!/^[0-9]+$/.test(v)) {
+            throw new InvalidParamError(`Invalid parameter [${k}] with value [${v}].`)
+        }
+        if (/imestamp/.test(k)) {
+            let dt = new Date(v * 1000)
+            const tm = dt.getTime();
+            if (isNaN(tm) || dt.getFullYear() > 3000) {
+                throw new InvalidParamError(`Invalid timestamp parameter (in second format) [${k}] with value [${v}].`)
+            }
         }
     }
 }
-export function mustBeAddressParamIfPresent(obj, ...keys:string[]) {
+export function mustBeEnumParamIfPresent(obj, key: string, options:string[]) {
+    const v = obj[key]
+    if (v === undefined || v === null) {
+        return
+    }
+    const has = options.includes(v)
+    if (has) {
+        return
+    }
+    throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
+}
+export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
     for(const k of keys) {
         const v = obj[k];
         if (v === undefined || v === null) {
@@ -57,7 +78,10 @@ export function mustBeAddressParamIfPresent(obj, ...keys:string[]) {
             continue // hex 40
         }
         if (isValidCfxAddress(v)) {
-            continue
+            const addr = decodeCfxAddress(v)
+            if (addr.netId === netId) {
+                continue
+            }
         }
         throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}].`);
     }
