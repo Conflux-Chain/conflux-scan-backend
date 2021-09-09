@@ -1,84 +1,74 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {Hex40Map} from "../model/HexMap";
-const {Contract} = require("../model/Contract");
-const {DailyContractStat} = require("../model/DailyContractStat");
-const {ContractVerify} = require("../model/ContractVerify");
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
-import {decodeUtf8} from "./tool/StringTool";
 import {makeId} from "../model/HexMap";
 import {Op} from "sequelize";
 import {StatApp} from "../StatApp";
 
 const lodash = require('lodash');
+const {Contract} = require("../model/Contract");
+const {ContractVerify} = require("../model/ContractVerify");
 
 export class ContractQuery {
     protected app: any;
-    public addressNameMap: Map<string, any>
 
     constructor(app: any) {
         this.app = app;
     }
 
-    public async count(name) {
+    public async count({name}) {
         return Contract.count({where: {name}});
     }
 
-    public async query(address, fields = undefined) {
-        const{ logger } = this.app;
-
+    public async query({address, fields = undefined}) {
         let base32 = toBase32(address);
-        // logger?.info({src: `ContractQuery.query.rdb`, base32: `${JSON.stringify(base32)}`});
-        const result = await this.list(fields, 0, 1, [base32]);
-        // logger?.info({src: `ContractQuery.query.rdb`, result: `${JSON.stringify(result)}`});
-        const contract = result?.list?.shift();
-        // logger?.info({src: `ContractQuery.query.rdb`, contract: `${JSON.stringify(contract)}`});
-        return contract || {};
+        const response = await this.list({addressArray: [base32], fields});
+        return (response.list)[0] || {};
     }
 
-    public async list(fields, skip: number = 0, limit: number = 10, addressArray) {
+    public async list({addressArray, fields, skip= 0, limit= 10}: {
+        addressArray?: string[], fields?: string[], skip?: number, limit?: number
+    }) {
         const options: any = {raw: true};
         // fields
         let attributes: any = [
-            ['base32', 'address'],
             'hex40id',
+            ['base32', 'address'],
             'name',
             'website',
         ];
-        if(fields && fields.length>0){
-            if(!lodash.isArray(fields)){
-                fields = [fields];
-            }
-            const set = new Set(fields);
-            if(set.has('abi')){
-                attributes.push('abi');
-            }
-            if(set.has('sourceCode')){
-                attributes.push('sourceCode');
-            }
-            if(set.has('icon')){
-                attributes.push('icon');
-            }
+        if (lodash.includes(fields, 'abi')) {
+            attributes.push('abi');
+        }
+        if (lodash.includes(fields, 'sourceCode')) {
+            attributes.push('sourceCode');
         }
         options.attributes = attributes;
-
-        // query
-        const query: any = {};
-        if(addressArray){
+        // where
+        const where: any = {};
+        if(addressArray?.length){
             addressArray = addressArray.map(item => toBase32(item));
-            query.base32 = { [Op.in]: addressArray } ;
+            where.base32 = { [Op.in]: addressArray } ;
         }
-        options.where = query;
-
-        // page
-        options.offset = skip;
-        options.limit = limit;
-        const page = await Contract.findAndCountAll(options)
+        options.where = where;
+        // query
+        let rawList;
+        let count;
+        if (addressArray) {
+            rawList = await Contract.findAll(options);
+            count = rawList?.length || 0;
+        } else{
+            options.offset = skip;
+            options.limit = limit;
+            const page = await Contract.findAndCountAll(options)
+            rawList = page?.rows;
+            count = page?.count;
+        }
         const list = [];
-        if(page && page.rows){
-            page.rows.forEach( row => {
+        if(rawList){
+            rawList.forEach( row => {
                 if(row['abi']) {
                     row['abi'] = row['abi'];
                 }
@@ -88,20 +78,16 @@ export class ContractQuery {
                 list.push(row);
             });
         }
-        return { total: page?.count || 0, list };
+
+        return { total: count || 0, list };
     }
 
-    public async listRegisterAddress() {
-        const options: any = {attributes: ['base32', 'hex40id'], raw: true};
-        const tokenList = await Contract.findAll(options)
-        const list = [];
-        if(tokenList){
-            tokenList.forEach( item => {
-                const hex40 = format.hexAddress(item.base32);
-                list.push(hex40);
-            });
-        }
-        return { total: list.length, list };
+    public async listAddress() {
+        const options: any = {attributes: ['base32'], raw: true};
+        const contractArray = await Contract.findAll(options)
+
+        const addressArray = contractArray.map(item => format.hexAddress(item.base32));
+        return {total: addressArray.length, list: addressArray};
     }
 
     public async addVerify({name, address, compiler, version, optimizeFlag, optimizeRuns, license, verifyResult, similarity}) {
@@ -145,19 +131,15 @@ export class ContractQuery {
     }
 
     public async queryVerify({address}) {
-        const{ logger } = this.app;
         const base32 = toBase32(address);
-
-        const result = await ContractVerify.findOne({where: {base32, verifyResult: true}});
-        //logger?.info({ src: `[${address}]stat verify request`, queryResult: `${JSON.stringify(result)}` });
-        return result;
+        return ContractVerify.findOne({where: {base32, verifyResult: true}});
     }
 
     public async listVerify({addressArray, skip = 0, limit = 10, reverse = true,
                                 verifyResult = true, detail = false}) {
         const options: any = { offset: skip, limit, raw: true};
         // fields
-        let attributes: any = [
+        options.attributes = [
             'name',
             'hex40id',
             ['base32', 'address'],
@@ -167,7 +149,6 @@ export class ContractQuery {
             ['optimizeRuns', 'runs'],
             ['updatedAt', 'timestamp'],
         ];
-        options.attributes = attributes;
 
         // where
         const query: any = {verifyResult};
@@ -183,8 +164,7 @@ export class ContractQuery {
         options.where = query;
 
         // order by
-        const order = [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]];
-        options.order = order;
+        options.order = [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]];
 
         //query
         const page = await ContractVerify.findAndCountAll(options);
@@ -205,17 +185,16 @@ export class ContractQuery {
         return  {total: page?.count || 0, list};
     }
 
-    public async listBasic({ addressArray}) {
+    public async listBasic({ addressArray = []}: {
+        addressArray?: string[]
+    }) {
         const {
-            app: { config, tokenQuery, service, tokenTool, confluxSDK },
+            app: { tokenQuery, service },
         } = this;
-        if(addressArray === undefined){
-            return {total: 0, map: {}}
-        }
 
         // remove repeat
-        addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address)))];
-        addressArray = addressArray.filter((address) => address?.startsWith('0x8'));
+        addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address))
+            .filter((address) => address?.startsWith('0x8') || address?.startsWith('0x08')))];
         if (addressArray.length === 0) {
             return { total: 0, map: {} };
         }
@@ -228,26 +207,22 @@ export class ContractQuery {
 
         // query contract and token
         const tokenService = tokenQuery || service.tokenRdb;
-        const [ verifyContractAddressSet, contractArray, tokenArray ] = await Promise.all([
-            this.listVerify({ addressArray })
-                .then(response => new Set<string>(response.list.map(verifyInfo => verifyInfo.address))),
-            this.list(undefined, 0, addressArray.length, addressArray)
-                .then(response => response.list.map(announceInfo => {
-                    return { address: announceInfo.address, name: announceInfo.name };
-                })),
-            tokenService.list(addressArray, ['icon'], undefined, undefined, undefined, undefined, 0, addressArray.length)
-                .then(response => response.list),
+        const [ contractArray, verifiedArray, tokenArray ] = await Promise.all([
+            this.list({ addressArray }).then(response => response.list.map(contract => {
+                    return { address: contract.address, name: contract.name }})),
+            this.listVerify({ addressArray }).then(response => response.list.map(verified => verified.address)),
+            tokenService.list({addressArray}).then(response => response.list),
         ]);
 
         // build response
         contractArray.forEach((contract) => {
             map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
                 name: contract.name,
-                verify: { result: verifyContractAddressSet.has(contract.address) ? 1 : 0 },
+                verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
             });
         });
-        verifyContractAddressSet.forEach((verifyContractAddress) => {
-            map[verifyContractAddress].contract = lodash.defaults(map[verifyContractAddress].contract, {
+        verifiedArray.forEach((verifiedAddress) => {
+            map[verifiedAddress].contract = lodash.defaults(map[verifiedAddress].contract, {
                 verify: { result: 1 },
             });
         });
@@ -256,6 +231,7 @@ export class ContractQuery {
                 name: token.name,
                 symbol: token.symbol,
                 icon: token.icon,
+                iconUrl: token.iconUrl,
                 decimals: token.decimals
             });
         });
