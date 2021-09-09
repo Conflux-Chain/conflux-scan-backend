@@ -77,20 +77,16 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
         if (/0x[0-9a-fA-F]{40}/.test(v)) {
             continue // hex 40
         }
-        if (isValidCfxAddress(v)) {
-            const addr = decodeCfxAddress(v)
-            if (addr.netId !== netId) {
-                throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
-            }
-            if (/contract/.test(k)) {
-                if (addr.type === 'contract') {
-                    continue
-                }
-                throw new InvalidParamError(`Invalid contract parameter [${k}] with value [${v}], it's not a contract address.`);
-            }
-            continue
+        if (!isValidCfxAddress(v)) {
+            throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}].`);
         }
-        throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}].`);
+        const addr = decodeCfxAddress(v)
+        if (addr.netId !== netId) {
+            throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
+        }
+        if (/contract/.test(k) && addr.type !== 'contract') {
+            throw new InvalidParamError(`Invalid contract parameter [${k}] with value [${v}], it's not a contract address.`);
+        }
     }
 }
 export function removeLongData(obj) {
