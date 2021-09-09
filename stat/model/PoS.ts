@@ -55,26 +55,32 @@ export interface IPosAccount {
     hex: string
     signCount: number
     mineCount: number
+    powBase32: string
 }
 export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     id: number
     hex: string
     signCount: number
     mineCount: number
+    powBase32: string // not unique
     static register(seq: Sequelize) {
         PosAccount.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
             hex: {type: DataTypes.STRING(66), unique: true},
             signCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
             mineCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            powBase32: {type: DataTypes.STRING(128)},
         }, {
             sequelize: seq,
             tableName: 'pos_account',
-            timestamps: false
+            timestamps: false,
+            indexes: [
+                {name: 'idx_pow_base32', fields:['powBase32'],}
+            ]
         })
     }
     static lock = false
-    static async make(hex:string) : Promise<number>{
+    static async make(hex:string, createdFn = (id)=>{}) : Promise<number>{
         // TODO use some cache.
         do {
             if (PosAccount.lock) {
@@ -91,12 +97,14 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             const next = isNaN(max) ? 1 : max + 1
             const newOne = await PosAccount.create({
                 id: next, signCount: 0, mineCount: 0,
+                powBase32: '',
                 hex
             }).catch(err=>{
                 return undefined
             })
             PosAccount.lock = false
             if (newOne) {
+                createdFn(next)
                 return next
             }
         } while (true)

@@ -3,18 +3,23 @@ import {sleep} from "../tool/ProcessTool";
 import {IPosAccountBlock, PosAccount, PosAccountBlock, PosBlock} from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
 import {QueryTypes} from "sequelize";
+import {abi as posAbi} from "../abi/PosRegister"
 
 export class PosSync {
     private cfx: Conflux;
     private position: number;
     private latestBlockNumber: 0;
+    private posContract: any;
     constructor(cfx: Conflux) {
         this.cfx = cfx;
     }
     async init() {
+        await this.cfx.updateNetworkId();
         const max = await PosBlock.max('height')
         this.position = isNaN(Number(max)) ? 1 : Number(max) + 1
         console.log(` db max is ${max}, next position is `, this.position)
+        const posContractAddr = '0x0888000000000000000000000000000000000005'
+        this.posContract = this.cfx.Contract({abi:posAbi, address: posContractAddr})
     }
     async updateLatestBlockNumber() {
         const st = await this.cfx["pos"].getStatus()
@@ -23,7 +28,7 @@ export class PosSync {
     }
     async run() {
         if (this.position < this.latestBlockNumber) {
-            const code = await this.sync(this.position)
+            await this.sync(this.position)
             this.position += 1
             setTimeout(()=>this.run(), 0)
         } else {
@@ -89,7 +94,16 @@ export class PosSync {
         console.log(`pos sync block:`, blockNumber)
     }
     async saveAccount(hex:string) {
-        return PosAccount.make(hex)
+        return PosAccount.make(hex, (id)=>{
+            this.patchCreatedAccount(id, hex)
+        })
+    }
+    async patchCreatedAccount(id, hex) {
+        const info = await this.posContract.identifierToAddress(hex)
+        // console.log(` identifierToAddress ${hex}, got `, info)
+        return PosAccount.update({powBase32: info}, {
+            where: {id: id}
+        })
     }
 }
 if (require.main === module) {
@@ -107,6 +121,7 @@ if (require.main === module) {
             // console.log(` pos block `, res)
         })
         // cfx['pos'].getAccount('0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055').then(console.log)
+        // posSync.patchCreatedAccount(0, '0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055')
         return posSync.run()
     })
 }
