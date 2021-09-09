@@ -11,7 +11,7 @@ export abstract class TransferQueryBase {
         this.app = app;
     }
 
-    private buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
+    public buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
                                   minTimestamp, maxTimestamp,
                                   accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
                                   tokenId, txType, skip, limit}){
@@ -88,7 +88,7 @@ export abstract class TransferQueryBase {
     }
 
     public abstract getTransferType(): string;
-    public abstract buildQueryFields(): any;
+    public abstract buildQueryFields({txType}): any;
     public abstract doQuery(options: any, queryOptions: any): Promise<any>;
     public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>;
 
@@ -148,8 +148,10 @@ export abstract class TransferQueryBase {
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
             tokenId, txType, skip, limit
         });
-        queryOptions.attributes = this.buildQueryFields();
-        if(options.accountAddress !== undefined){
+        queryOptions.attributes = this.buildQueryFields({txType});
+        if(options.txType === CONST.TX_TYPE.CREATE){
+            queryOptions.attributes.push( ['traceIndex', 'transactionLogIndex'],);
+        } else if(options.accountAddress !== undefined){
             queryOptions.attributes.push( ['tracePos', 'transactionLogIndex'],);
         } else{
             queryOptions.attributes.push(['id', 'transactionLogIndex']);
@@ -176,7 +178,8 @@ export abstract class TransferQueryBase {
                 row['transactionHash'] = `0x${hex64Map.get(row['transactionHash'])}`;
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
                 row['to'] = format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId);
-                row['timestamp'] = row['timestamp'].getTime() / 1000;
+                row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
+                    : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];
                 this.processQueryResult(row, hex40Map, hex64Map);
             })

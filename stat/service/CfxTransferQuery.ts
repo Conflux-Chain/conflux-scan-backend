@@ -1,5 +1,6 @@
 import {CfxTransfer, pagingFullCfxTransfer, AddressCfxTransfer} from "../model/CfxTransfer";
 import {TransferQueryBase} from "./TransferQueryBase";
+import {TraceCreateContract} from "../model/TraceCreateContract";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "../model/KV";
 import {Op} from "sequelize";
 const CONST = require('./common/constant');
@@ -16,7 +17,66 @@ export class CfxTransferQuery extends TransferQueryBase{
         return CONST.TRANSFER_TYPE.CFX;
     }
 
-    public buildQueryFields(): any{
+    public buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
+                                 minTimestamp, maxTimestamp,
+                                 accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
+                                 tokenId, txType, skip, limit}){
+        const{ logger } = this.app;
+        if(txType === CONST.TX_TYPE.CREATE){
+            // page
+            const queryOptions: any = {offset: skip, limit, raw: true};
+            // condition
+            const conditionArray = [];
+            conditionArray.push({from: accountAddressId});
+            conditionArray.push({value: { [Op.gt]: 0}});
+            if(transactionHashId) {
+                conditionArray.push({txHashId: transactionHashId});
+            }
+            if(fromAddressId !== undefined) {
+                conditionArray.push({from: fromAddressId});
+            }
+            if(minEpochNumber) {
+                conditionArray.push({epochNumber: { [Op.gte]: minEpochNumber}});
+            }
+            if(maxEpochNumber) {
+                conditionArray.push({epochNumber: { [Op.lte]: maxEpochNumber}});
+            }
+            if(minTimestamp) {
+                conditionArray.push({blockTime: { [Op.gte]: minTimestamp}});
+            }
+            if(maxTimestamp) {
+                conditionArray.push({blockTime: { [Op.lt]: maxTimestamp}});
+            }
+            if(conditionArray.length === 1){
+                queryOptions.where = conditionArray[0];
+            }
+            if(conditionArray.length > 1){
+                queryOptions.where = {};
+                queryOptions.where[Op.and] = conditionArray;
+            }
+            // order
+            queryOptions.order = [['epochNumber', 'DESC'],['id', 'DESC']];
+            return queryOptions;
+        }
+
+       return super.buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
+            minTimestamp, maxTimestamp,
+            accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
+            tokenId, txType, skip, limit});
+    }
+
+    public buildQueryFields({accountAddressId, txType}): any{
+        if(txType === CONST.TX_TYPE.CREATE){
+            return [
+                'epochNumber',
+                ['txHashId', 'transactionHash'],
+                'from',
+                'to',
+                'value',
+                ['blockTime', 'timestamp'],
+            ];
+        }
+
         return [
             ['epoch', 'epochNumber'],
             ['txHashId', 'transactionHash'],
@@ -30,6 +90,9 @@ export class CfxTransferQuery extends TransferQueryBase{
     public async doQuery(options: any, queryOptions: any): Promise<any>{
         const{ logger } = this.app;
 
+        if(options.txType === CONST.TX_TYPE.CREATE){
+            return await TraceCreateContract.findAndCountAll(queryOptions);
+        }
         if(options.accountAddress !== undefined){
             return await AddressCfxTransfer.findAndCountAll(queryOptions);
         }

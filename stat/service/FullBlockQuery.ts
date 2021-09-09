@@ -344,10 +344,10 @@ export class FullBlockQuery {
 
             // fields mapping
             list.forEach(row=>{
-                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, true);
-                row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, true) : null;
+                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
+                row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : null;
                 if(hex40Map.get(row['contractCreated'])){
-                    row['contractCreated'] = format.address(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId, true);
+                    row['contractCreated'] = format.address(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId);
                 }
                 if(row['contractCreated'] === 0){
                     row['contractCreated'] = null;

@@ -42,7 +42,7 @@ export class DailyBlockDataStatQuery {
         const blockStatList = await FullBlock.sequelize.query(sqlBlock, {type: QueryTypes.SELECT,
             replacements: [fmtDtUTC(beginTime)]/*, logging: console.info*/ });
         if(!blockStatList?.length){
-            return [];
+            return {total: 0, list: []};
         }
 
         const sqlTx = `SELECT COUNT(*) AS txCount, DATE_FORMAT(createdAt, '%Y-%m-%d %H:%i:00') AS statTime
