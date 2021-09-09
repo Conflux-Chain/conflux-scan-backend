@@ -26,7 +26,7 @@ export function polishTransferList(page) {
 
 export async function listTransfer(ctx, service) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber','minTimestamp','maxTimestamp')
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account')
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account', 'contract')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     const {skip, limit} = skipLimit(ctx.request.query)
     // token id is not used in crc20transfer.

@@ -79,9 +79,16 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
         }
         if (isValidCfxAddress(v)) {
             const addr = decodeCfxAddress(v)
-            if (addr.netId === netId) {
-                continue
+            if (addr.netId !== netId) {
+                throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
             }
+            if (/contract/.test(k)) {
+                if (addr.type === 'contract') {
+                    continue
+                }
+                throw new InvalidParamError(`Invalid contract parameter [${k}] with value [${v}], it's not a contract address.`);
+            }
+            continue
         }
         throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}].`);
     }

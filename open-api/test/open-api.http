@@ -8,5 +8,7 @@ GET localhost:8087/open/account/crc20/transfers?account=cfx:aajj1b1gm7k51mhzm80c
 ###
 GET localhost:8087/open/account/crc721/transfers?account=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk
 ###
-GET localhost:8087/open/account/crc1155/transfers?account=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk&minTimestamp=96310900189
+GET localhost:8087/open/account/crc1155/transfers?account=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk&minTimestamp=9631090&contract=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk
+###
+GET localhost:8087/open/account/crc1155/transfers?account=net8888:acawb8w9rx5tf4411akpe8ynf5pt87vmp63cy8fea1
 ###

@@ -225,7 +225,7 @@ export class FullBlockQuery {
                 conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
             }
             if(maxTimestamp) {
-                conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
+                conditionArray.push({createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}});
             }
             if(fromAddressId !== undefined && toAddressId === undefined){
                 conditionArray.push({fromId: fromAddressId});
