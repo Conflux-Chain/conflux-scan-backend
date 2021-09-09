@@ -40,6 +40,7 @@ import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {patchHttpProvider} from "./service/common/utils";
 import {KV} from "./model/KV";
+import {PosQuery} from "./service/pos/PosQuery";
 
 export class StatApp{
     public config: StatConfig;
@@ -53,6 +54,7 @@ export class StatApp{
     public batchBalanceWatcher: BatchBalanceWatcher;
     public cfxWatcher:CfxWatcher;
     public dailyTxnSync: DailyTxnSync;
+    public posQuery: PosQuery
     public dailyTxnQuery: DailyTxnQuery;
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
@@ -133,6 +135,7 @@ export class StatApp{
         //
         this.dailyTxnSync = new DailyTxnSync(this.sequelize);
         this.dailyTxnQuery = new DailyTxnQuery();
+        this.posQuery = new PosQuery();
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);

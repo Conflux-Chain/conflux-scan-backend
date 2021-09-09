@@ -24,6 +24,7 @@ import {Hex40Map} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {NFTMap} from "../service/nftchecker/NFTInfo";
+import {registerPosRouter} from "./PosRouter";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -468,6 +469,7 @@ export function register(app:Koa, statApp: StatApp) {
         }
     })
     addRoute(router, statApp);
+    registerPosRouter(router, statApp)
 
     const trusted = [
         "'self'",
