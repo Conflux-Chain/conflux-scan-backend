@@ -82,18 +82,18 @@ export function setBody(ctx, data: any, code = 0, message = 'ok') {
 }
 // https://swaggerstats.io/guide/conf.html#options
 export function addSwagger(app: Koa, prefix) {
+    const spec = yamljs.load('./document/open-api.yaml');
     // metrics
     app.use(e2k(swStats.getMiddleware({
-        // swaggerSpec:spec,
+        swaggerSpec:spec,
         uriPath: `${prefix}/swagger-stats`,
         hostname: 'OpenApi', // Prevent exposure of server ip
-        // basePath: prefix,
+        basePath: prefix,
     })));
     const docPath = `${prefix}/doc`
     // let apiDef = '/open-api.yaml';
     const pwd = path.resolve('.')
-    console.log(`pwd is ${pwd}`)
-    const spec = yamljs.load('./document/open-api.yaml');
+    // console.log(`pwd is ${pwd}`)
     app.use(
         koaSwagger({
             routePrefix: docPath,
