@@ -94,6 +94,7 @@ import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
 import {CfxBill, createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
+import {PosAccount, PosAccountBlock, PosBlock} from "../model/PoS";
 let conf
 export function createDB(config) {
     conf = config
@@ -265,6 +266,9 @@ export async function initModel(sequelize) {
     DailyContractStat.register(sequelize);
     DailyContractRegister.register(sequelize);
     TokenAutoDetect.register(sequelize);
+    PosBlock.register(sequelize);
+    PosAccount.register(sequelize);
+    PosAccountBlock.register(sequelize)
 }
 
 export function createMySql(dbConf) {

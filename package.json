@@ -16,7 +16,7 @@
     "agentkeepalive": "^4.1.4",
     "ali-oss": "~6.16.0",
     "bigfixed": "0.0.2",
-    "js-conflux-sdk": "1.6.9",
+    "js-conflux-sdk": "next",
     "koa": "2.13.1",
     "koa-bodyparser": "^4.3.0",
     "koa-helmet": "6.0.0",
