@@ -134,6 +134,70 @@ export class PosAccountBlock extends Model<IPosAccountBlock> implements IPosAcco
         })
     }
 }
+export interface IPosRegister {
+    id?: number,
+    epoch: number
+    // blockHash: string
+    txHash: string
+    // txIdx: number
+    // logIdx: number
+    powBase32: string
+    // createdAt: Date
+    //
+    identifier: string
+    votePower?: number // uint64 , when increasing stake
+    blsPubKey?: string
+    vrfPubKey?: string
+    retire?: boolean
+}
+export class PosRegister extends Model<IPosRegister> implements IPosRegister {
+    id?: number
+    epoch: number
+    // blockHash: string
+    txHash: string
+    // txIdx: number
+    // logIdx: number
+    powBase32: string
+    // createdAt: Date
+    //
+    identifier: string
+    votePower?: number // uint64 , when increasing stake
+
+    blsPubKey?: string // when creating
+    vrfPubKey?: string // when creating
+    retire?: boolean // when retiring
+    static register(seq:Sequelize) {
+        PosRegister.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            // blockHash: {type: DataTypes.CHAR(4), allowNull: false},
+            txHash: {type: DataTypes.CHAR(66), allowNull: false},
+            // txIdx: {type: DataTypes.INTEGER, allowNull: false},
+            // logIdx: {type: DataTypes.INTEGER, allowNull: false},
+            powBase32: {type: DataTypes.STRING(128), allowNull: true, defaultValue: ''},
+            // createdAt: {type: DataTypes.DATE, allowNull: false},
+            identifier: {type: DataTypes.STRING(128), allowNull: false},
+            votePower: {type: DataTypes.DECIMAL(64,0), allowNull: false, defaultValue: 0},
+
+            blsPubKey: {type: DataTypes.STRING(128), allowNull: false, defaultValue: ''},
+            vrfPubKey: {type: DataTypes.STRING(128), allowNull: false, defaultValue: ''},
+            retire: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+        }, {
+            sequelize: seq, tableName: 'pos_register',
+            timestamps: false,
+            indexes: [
+                // {name: 'idx_epoch', fields:['epoch']},
+                //
+                {name: 'uk_status_change', unique: true, fields:['epoch','identifier','votePower','retire']},
+                {name: 'idx_powBase32', fields:['powBase32']}
+            ]
+        })
+    }
+}
+
+//
+
+//
 export interface IPosTransaction {
     type: number
     fromId: number
