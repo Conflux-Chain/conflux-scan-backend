@@ -135,7 +135,7 @@ export class StatApp{
         //
         this.dailyTxnSync = new DailyTxnSync(this.sequelize);
         this.dailyTxnQuery = new DailyTxnQuery();
-        this.posQuery = new PosQuery();
+        this.posQuery = new PosQuery(this.cfx);
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);

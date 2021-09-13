@@ -4,11 +4,10 @@ import {IPosRegister, PosBlock, PosRegister} from "../../model/PoS";
 import {abi as posAbi} from "../abi/PoSRegister";
 import {patchHttpProvider, removeLongData} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
+import {POW_EPOCH_FOR_POS_Q, RedisStreamMessage, RedisWrap} from "../RedisWrap";
 
 export class PowSidePosSync {
     private cfx: Conflux;
-    private position: number;
-    private latestBlockNumber: 0;
     private posContract: any;
     private posContractAddr: string;
     constructor(cfx: Conflux) {
@@ -17,11 +16,29 @@ export class PowSidePosSync {
     async init() {
         await this.cfx.updateNetworkId();
         console.log(` PowSidePosSync network id ${this.cfx['networkId']}`)
-        const max = await PosRegister.max('epoch')
-        this.position = isNaN(Number(max)) ? 1 : Number(max) + 1
-        console.log(` PowSidePosSync db max epoch is ${max}, next position is `, this.position)
         this.posContractAddr = '0x0888000000000000000000000000000000000005'
-        this.posContract = this.cfx.Contract({abi:posAbi, address: this.posContractAddr})
+        this.posContract = this.cfx.Contract({abi: posAbi, address: this.posContractAddr})
+    }
+    // XADD POW_EPOCH_FOR_POS_Q * v1 '{"action":"pop", "epoch":0}'
+    async listen() {
+        RedisWrap.listenStreamMessage(POW_EPOCH_FOR_POS_Q, (data)=>{
+            return this.listenPowEpoch(data)
+        }).then()
+        console.log(` listen on queue : ${POW_EPOCH_FOR_POS_Q}`)
+    }
+    async listenPowEpoch(data:RedisStreamMessage[]) {
+        const list:any[] = data.map(msg=>msg.message)
+        for (const msg of list) {
+            if (msg.action === 'pop') {
+                await PosRegister.destroy({
+                    where: {epoch: msg.epoch}
+                })
+                console.log(` PosRegister pop: ${msg.epoch} `)
+            } else {
+                await this.sync(msg.epoch)
+            }
+        }
+        return RedisWrap.xDel(data)
     }
     async sync(epoch) {
         const filter = {
@@ -67,9 +84,7 @@ export class PowSidePosSync {
             ])
         })
     }
-    async pop(epoch) {
 
-    }
     async testRetire(account:string) {
         return this.posContract.retire().sendTransaction({
             from: account
@@ -83,7 +98,9 @@ if (module===require.main) {
     const args = process.argv.slice(2)
     const url = args[0]
     init().then(cfg=>{
-        const cfx = new Conflux({url: url||cfg.conflux.url})
+        const cfxUrl = url || cfg.conflux.url;
+        console.log(` use cfx ${cfxUrl}`)
+        const cfx = new Conflux({url: cfxUrl})
         const sync = new PowSidePosSync(cfx)
         sync.init().then(()=>{
             if (args.includes('retire')) {
@@ -92,8 +109,18 @@ if (module===require.main) {
                 return sync.testRetire(randomAccount.toString()).then(res=>{
                     console.log(` retire tx:`, res)
                 })
+            } else if (args.includes('listen')) {
+                return RedisWrap.connect(cfg.redis).then(()=>{
+                    return sync.listen()
+                }).then(()=>{
+                    // never resolve, just hangup.
+                    return new Promise(resolve => {})
+                })
+            } else if (args.includes('single')) {
+                return sync.sync(parseInt(args[0]));//131752)
+            } else {
+                console.log(` supported action < retire | listen | single >`)
             }
-            return sync.sync(131752)
         }).then(()=>{
             return PosRegister.sequelize.close()
         })

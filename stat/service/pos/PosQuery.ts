@@ -1,8 +1,26 @@
 import {PosAccount} from "../../model/PoS";
 import {col, fn} from 'sequelize'
+import {Conflux} from "js-conflux-sdk";
 
 // noinspection CommaExpressionJS
 export class PosQuery {
+    private cfx: Conflux;
+
+    constructor(cfx:Conflux) {
+        this.cfx = cfx
+    }
+    async posInfo() {
+        const [st, posAccountCount] = await Promise.all([
+            this.cfx['pos'].getStatus(),
+            PosAccount.count({}),
+        ])
+        return {
+            posBlockNumber: st.blockNumber,
+            posPivotDecision: st.pivotDecision,
+            posEpoch: st.epoch,
+            posAccountCount,
+        }
+    }
     async listPosAccount({sortBy = 'id', sort = 'DESC', skip = 0, limit = 10,
                              groupByPowAddress=false}) {
         if (groupByPowAddress) {
