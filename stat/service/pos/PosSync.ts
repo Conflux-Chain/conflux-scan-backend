@@ -3,7 +3,8 @@ import {sleep} from "../tool/ProcessTool";
 import {IPosAccountBlock, PosAccount, PosAccountBlock, PosBlock} from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
 import {QueryTypes} from "sequelize";
-import {abi as posAbi} from "../abi/PosRegister"
+// import {abi as posAbi} from "../abi/PosRegister"
+const {abi: posAbi} = require("../abi/PoSRegister")
 
 export class PosSync {
     private cfx: Conflux;
