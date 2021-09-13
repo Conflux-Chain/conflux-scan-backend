@@ -67,9 +67,10 @@ export class EpochSync extends SyncBase{
         const tokenArray = modelData.tokenArray;
         for(const token of tokenArray){
             try{
-                if(StatApp.networkId !== 1029){ // not update main net
+                // not update erc20 on main net
+                // if(!(StatApp.networkId === 1029 && token.type === CONST.TRANSFER_TYPE.ERC20)){
                     await Token.upsert(token);
-                }
+                // }
             }catch (e) {
                 console.log(`epoch-sync.createTokensAutoDetected fail,token:${JSON.stringify(token)}`, e);
             }
@@ -323,9 +324,9 @@ export class EpochSync extends SyncBase{
         let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
             decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
             type: transferType});
-        const transferCount = await this.countTransfer(hex40id, transferType);
+        const transferCount = (await this.countTransfer(hex40id, transferType)) || 1;
         const auditResult = token.name !== undefined && token.symbol !== undefined;
-        token = lodash.defaults(token, {transfer: transferCount,  auditResult, fetchBalance: true });
+        token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult });
         return token;
     }
 

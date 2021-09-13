@@ -65,7 +65,7 @@ export class BlockTraceCreateSync{
         }
     }
 
-    private async syncByEpoch(epochNumber: number) : Promise<boolean>{
+    public async syncByEpoch(epochNumber: number) : Promise<boolean>{
         const traceCreateArray = await this.getTraceCreateArray(epochNumber);
         const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined
         const beans = []
@@ -88,14 +88,14 @@ export class BlockTraceCreateSync{
         await TraceCreateContract.sequelize.transaction(async dbTx=>{
             await Promise.all([
                 TraceCreateContract.bulkCreate(beans, {transaction: dbTx}),
-                KV.update({value: epochNumber.toString()},
-                    {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}, transaction: dbTx}),
+                // KV.update({value: epochNumber.toString()},
+                //     {where: {key: KEY_BLOCK_TRACE_CREATE_EPOCH}, transaction: dbTx}),
             ])
         })
-        if (epochNumber % 100 === 0) {
-            const count = traceCreateArray.length;
-            console.log(`${fmtDtUTC(new Date())} insert ${count} trace_create_contract at epoch:${epochNumber}`)
-        }
+        // if (epochNumber % 100 === 0) {
+        //     const count = traceCreateArray.length;
+        //     console.log(`${fmtDtUTC(new Date())} insert ${count} trace_create_contract at epoch:${epochNumber}`)
+        // }
         return true;
     }
 

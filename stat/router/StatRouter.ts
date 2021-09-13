@@ -75,9 +75,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             from ${T_DAILY_TOKEN_TXN} group by day order by day desc limit ?`
         const list = await statApp.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements:[limit]}
-            ).catch(err=>{
-                console.log(`${ctx.request.url} fail:`, err)
-            })
+        ).catch(err=>{
+            console.log(`${ctx.request.url} fail:`, err)
+        })
         ctx.body = {code:0, list}
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
@@ -89,29 +89,29 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
     })
     router.get('/tokens/by-address', async (ctx)=>{
-        const {fields, currency, address} = ctx.request.query;
-        const result = await statApp.tokenQuery.query(address,fields, currency);
+        const {address} = ctx.request.query;
+        const result = await statApp.tokenQuery.query({address});
         ctx.body = result || {};
     })
 
     router.get('/contract/by-address', async (ctx)=>{
         const {fields, address} = ctx.request.query;
         console.log(`fields---------${JSON.stringify(fields)},address---------------${address}`)
-        const result = await statApp.contractQuery.query(address,fields);
+        const result = await statApp.contractQuery.query({address,fields});
         ctx.body = result || {};
     })
 
     router.get('/contract/registered/name', async (ctx)=>{
         const {name} = ctx.request.query;
-        const total = await statApp.contractQuery.count(name);
+        const total = await statApp.contractQuery.count({name});
         ctx.body = {name, registered: total} || {};
     })
 
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
-            const {fields, transferType, currency, orderBy, reverse, skip, limit, addressArray} = ctx.request.query;
-            const result = await statApp.tokenQuery.list(addressArray, fields, transferType, currency, orderBy, reverse,
-                skip? parseInt(skip): skip, limit ? parseInt(limit): limit);
+            const {addressArray, transferType, fields, orderBy, reverse, skip, limit} = ctx.request.query;
+            const result = await statApp.tokenQuery.list({addressArray, transferType, fields, orderBy, reverse,
+                skip: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
             ctx.body = result;
             r('ok')
         }).catch(err=>{
@@ -128,9 +128,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // token by name
     router.get('/tokens/name', async (ctx)=>{
         await new Promise(async r=>{
-            const {name, currency, skip, limit} = ctx.request.query;
-            const result = await statApp.tokenQuery.search(name, currency, skip? parseInt(skip): skip,
-                limit ? parseInt(limit): limit);
+            const {name} = ctx.request.query;
+            const result = await statApp.tokenQuery.list({name});
             ctx.body = result;
             r('ok')
         }).catch(err=>{
@@ -276,7 +275,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/daily-token-stat', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const base32 = ctx.request.query.base32 || ''
-        const token = await Token.findOne({where: {base32: base32}, attributes:{exclude:['icon']}})
+        const token = await Token.findOne({
+            attributes: ['name', 'symbol', 'decimals', 'granularity', 'totalSupply', 'type'],
+            where: {base32: base32}
+        });
         if (!token) {
             ctx.body = {code: 404, message: `token not found ${base32}`}
             return
@@ -453,7 +455,7 @@ function addSwagger(app: Application, router: Router<any, {}>) {
         ctx.body = ApiDef
     })
     // router.use((ctx,next)=>{
-        // ctx.set("script-src 'self'", 'sha256-bLIba9y02h2X9/32+3oS/4EmGe/+1HjpiNUBsaTTIGY=')
+    // ctx.set("script-src 'self'", 'sha256-bLIba9y02h2X9/32+3oS/4EmGe/+1HjpiNUBsaTTIGY=')
     // })
 }
 
