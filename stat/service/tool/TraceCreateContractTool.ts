@@ -43,8 +43,8 @@ async function run() {
     if(type === 2) {
         result = await cfx.traceTransaction(hash);
     }
-    if(type === 3){
-
+    if(type === 3){//epoch=41696044
+        await service.syncByEpoch(epochNumber);
     }
     if(type === 4){
         await checkTraceCreate();

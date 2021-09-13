@@ -3,27 +3,22 @@ import {addTokenCache} from "../service/tool/TokenTool";
 
 export interface IToken{
     id?:number
-    symbol:string
-    name?:string
-    holder:number
-    base32:string
+    // basic info
     hex40id:number
-    fetchBalance?:boolean
-    auditResult?:boolean
-    type?:string
-    icon?:string
-    iconUrl?:string
-    transfer?:number
+    base32:string
+    name?:string
+    symbol?:string
     decimals?:number
     granularity?:number
     totalSupply?:number
+    // advance info
+    type?:string
+    transfer?:number
+    holder?:number
+    // price info
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    marketCapId?:number
-    moonDexSymbol?:string
-    moonSwapSymbol?:string
-    binanceSymbol?:string
     priceCNY?:number
     priceUSD?:number
     priceGBP?:number
@@ -36,32 +31,37 @@ export interface IToken{
     totalPriceKRW?:number
     totalPriceRUB?:number
     totalPriceEUR?:number
+    marketCapId?:number
+    moonDexSymbol?:string
+    moonSwapSymbol?:string
+    binanceSymbol?:string
+    // extra info
+    icon?:string
+    iconUrl?:string
+    auditResult?:boolean
+    fetchBalance?:boolean
+    portalSupport?:boolean
 }
 
 export const TOKEN_ERC_1155 = 'erc1155'
 export class Token extends Model<IToken> implements IToken{
     id?:number
+    // basic info
+    hex40id:number
+    base32:string
     name?:string
     symbol:string
-    holder:number
-    base32:string
-    hex40id:number
-    fetchBalance?:boolean
-    auditResult?:boolean
-    type?:string
-    icon?:string
-    iconUrl?:string
-    transfer?:number
     decimals?:number
     granularity?:number
     totalSupply?:number
+    // advance info
+    type?:string
+    transfer?:number
+    holder:number
+    // price info
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    marketCapId?:number
-    moonDexSymbol?:string
-    moonSwapSymbol?:string
-    binanceSymbol?:string
     priceCNY?:number
     priceUSD?:number
     priceGBP?:number
@@ -74,31 +74,36 @@ export class Token extends Model<IToken> implements IToken{
     totalPriceKRW?:number
     totalPriceRUB?:number
     totalPriceEUR?:number
+    marketCapId?:number
+    moonDexSymbol?:string
+    moonSwapSymbol?:string
+    binanceSymbol?:string
+    // extra info
+    icon?:string
+    iconUrl?:string
+    auditResult?:boolean
+    fetchBalance?:boolean
+    portalSupport?:boolean
 
     static register(seq:Sequelize) {
         Token.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
-            symbol: {type: DataTypes.CHAR(64), allowNull: true },
-            name: {type: DataTypes.CHAR(64), allowNull: true},
-            holder: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
-            base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
+            // basic info
             hex40id: {type: DataTypes.BIGINT, allowNull: false, },
-            fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
-            icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
-            iconUrl: {type: DataTypes.STRING(128), allowNull: true, },
-            transfer: {type: DataTypes.BIGINT, allowNull: true, },
+            base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
+            name: {type: DataTypes.CHAR(64), allowNull: true},
+            symbol: {type: DataTypes.CHAR(64), allowNull: true },
             decimals: {type: DataTypes.BIGINT, allowNull: true, },
             granularity: {type: DataTypes.BIGINT, allowNull: true, },
             totalSupply: {type: DataTypes.DECIMAL(36, 0), allowNull: true, },
+            // advance info
+            type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
+            transfer: {type: DataTypes.BIGINT, allowNull: true, },
+            holder: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+            // price info
             price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
-            marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
-            moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
-            moonSwapSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
-            binanceSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
             priceCNY: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             priceUSD: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             priceGBP: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
@@ -111,6 +116,16 @@ export class Token extends Model<IToken> implements IToken{
             totalPriceKRW:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPriceRUB:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPriceEUR:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
+            marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
+            moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
+            moonSwapSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
+            binanceSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
+            // extra info
+            icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
+            iconUrl: {type: DataTypes.STRING(128), allowNull: true, },
+            auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            portalSupport: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
             tableName: 'token',
             sequelize: seq,
@@ -121,24 +136,22 @@ export class Token extends Model<IToken> implements IToken{
     static async add(token: Token, dbTx = undefined): Promise<Token> {
         addTokenCache(token)
         return await Token.create({
+            // basic info
+            hex40id:token.hex40id,
+            base32:token.base32,
             name:token.name,
             symbol:token.symbol,
-            holder:token.holder,
-            base32:token.base32,
-            hex40id:token.hex40id,
-            type:token.type,
-            icon:token.icon,
-            transfer:token.transfer,
             decimals:token.decimals,
             granularity:token.granularity,
             totalSupply: token.totalSupply?Number(token.totalSupply):token.totalSupply,
+            // advance info
+            type:token.type,
+            transfer:token.transfer,
+            holder:token.holder,
+            // price info
             price:token.price,
             totalPrice:token.totalPrice,
             quoteUrl:token.quoteUrl,
-            marketCapId:token.marketCapId,
-            moonDexSymbol:token.moonDexSymbol,
-            moonSwapSymbol:token.moonSwapSymbol,
-            binanceSymbol:token.binanceSymbol,
             priceCNY:token.priceCNY,
             priceUSD:token.priceUSD,
             priceGBP:token.priceGBP,
@@ -151,6 +164,12 @@ export class Token extends Model<IToken> implements IToken{
             totalPriceKRW:token.totalPriceKRW,
             totalPriceRUB:token.totalPriceRUB,
             totalPriceEUR:token.totalPriceEUR,
+            marketCapId:token.marketCapId,
+            moonDexSymbol:token.moonDexSymbol,
+            moonSwapSymbol:token.moonSwapSymbol,
+            binanceSymbol:token.binanceSymbol,
+            // extra info
+            icon:token.icon,
         }, {
             transaction: dbTx
         })

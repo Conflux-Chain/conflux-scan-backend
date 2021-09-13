@@ -174,7 +174,7 @@ export class BalanceService {
         });
         const tokenInfoMap = new Map();
         if(addressSet.size > 0){
-            const page = await this.app.tokenQuery.list([...addressSet], ['icon']);
+            const page = await this.app.tokenQuery.list({addressArray: [...addressSet]});
             page?.list?.forEach(token => {
                 tokenInfoMap.set(token.address, {name: token.name, symbol: token.symbol, icon: token.icon});
             });
