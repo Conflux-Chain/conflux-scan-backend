@@ -9,6 +9,7 @@ import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenAutoDetect} from "../../model/TokenAutoDetect";
+import {Token} from "../../model/Token";
 const lodash = require('lodash');
 const CONST = require('../common/constant');
 
@@ -79,10 +80,9 @@ async function detect(id) {
     let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
         decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
         type: transferType});
-    const transferCount = await countTransfer(hex40id, transferType);
-    const auditResult = token.name !== undefined && token.symbol !== undefined
-        && token.type !== CONST.TRANSFER_TYPE.ERC20;
-    token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: true });
+    const transferCount = (await countTransfer(hex40id, transferType)) || 1;
+    const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
+    token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult });
     return token;
 }
 
@@ -104,8 +104,12 @@ async function save(tokenArray) {
                     return;
                 }
             } else {
-                await TokenAutoDetect.upsert(token);
+                const dbToken = await TokenAutoDetect.findOne({where: {base32: token.base32}});
+                if(!dbToken){
+                    await TokenAutoDetect.upsert(token);
+                }
             }
+            console.log(`autoDetectTokenTool upsert token:${JSON.stringify(token)}`);
         }catch (e) {
             console.log(`autoDetectTokenTool fail,token:${JSON.stringify(token)}`, e);
         }
@@ -136,11 +140,9 @@ async function run(round = 10) {
         }
         if(token.type === CONST.TRANSFER_TYPE.ERC721){
             erc721TokenArray.push(token);
-            console.log(`ERC721:${JSON.stringify(token)}\n`);
         }
         if(token.type === CONST.TRANSFER_TYPE.ERC1155){
             erc1155TokenArray.push(token);
-            console.log(`ERC1155:${JSON.stringify(token)}\n`);
         }
         roundCounter++
     }

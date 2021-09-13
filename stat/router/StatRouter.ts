@@ -408,7 +408,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // nft checker, get balances
     router.get('/nft/checker/balance', async function (ctx) {
         const {ownerAddress} = ctx.request.query
-        const balanceArray = await statApp.nftCheckerService.getNFTBalances(ownerAddress);
+        const balanceArray = await statApp.nftCheckerService.getNFTBalances({ownerAddress});
         ctx.body = {code: 0, data: balanceArray};
     })
 
@@ -432,8 +432,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // nft checker, get tokens
     router.get('/nft/checker/token', async function (ctx) {
         const {ownerAddress, contractAddress, skip, limit} = ctx.request.query
-        const tokens = await statApp.nftCheckerService.getNFTTokens(ownerAddress, contractAddress, '',
-            skip? parseInt(skip): skip, limit ? parseInt(limit): limit);
+        const tokens = await statApp.nftCheckerService.getNFTTokens({ownerAddress, contractAddress,
+            offset: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
         ctx.body = {code: 0, data: tokens};
     })
 }
