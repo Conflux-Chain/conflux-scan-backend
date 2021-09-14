@@ -75,3 +75,16 @@ export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
         return arr
     })
 }
+export function list2map(arr:any[], key:string) {
+    const ret = new Map<any,any>()
+    arr.forEach(t=>ret.set(t[key], t))
+    return ret;
+}
+// reverse to v,k
+export function reverseMap(map:Map<any, any>) {
+    const ret = new Map<any, any>()
+    for(const k of map.keys()){
+        ret.set(map.get(k), k)
+    }
+    return ret;
+}
