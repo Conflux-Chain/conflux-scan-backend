@@ -64,7 +64,7 @@ export class NFTCheckerService {
         try {
             return this.contract.getBalances( ownerAddress, contractAddresses );
         } catch (e) {
-            console.error(e);
+            console.error(`getNFTBalances, ownerAddress:${ownerAddress}, contractAddresses:${contractAddresses}`, e);
             return null;
         }
     };
@@ -79,7 +79,7 @@ export class NFTCheckerService {
             console.info(`ownerAddress:${ownerAddress}, contractAddress:${contractAddress}, offset:${offset}, limit:${limit}`)
             return this.contract.getTokens( contractAddress, ownerAddress, offset, limit );
         } catch (e) {
-            console.error(e);
+            console.error(`getNFTTokens, ownerAddress:${ownerAddress}, contractAddress:${contractAddress}`, e);
             return null;
         }
     };
