@@ -9,9 +9,11 @@ import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenAutoDetect} from "../../model/TokenAutoDetect";
-import {Token} from "../../model/Token";
+import {IToken, Token} from "../../model/Token";
 const lodash = require('lodash');
 const CONST = require('../common/constant');
+import {TokenQuery} from "../TokenQuery";
+import {StatApp} from "../../StatApp";
 
 let seq;
 let cfx;
@@ -22,6 +24,7 @@ let saveType;
 let tokenSymbol;
 const interfaceIdCrc721 = [0x80, 0xac, 0x58, 0xcd];
 const interfaceIdCrc1155 = [0xd9, 0xb6, 0x7a, 0x26];
+let service;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -32,6 +35,9 @@ async function init() {
 
     cfx = new Conflux({...config.conflux})
     tokenTool = new TokenTool(cfx);
+
+    const app = {cfx, sequelize: seq};
+    service = new TokenQuery(app);
 }
 
 async function detect(id) {
@@ -120,49 +126,56 @@ async function close(){
     Hex40Map.sequelize.close().then();
 }
 
+async function test(){
+    const result = await service.listLatest({accountAddress: '', type: 'ERC20'});
+    console.log(`listAddressLatest result:${JSON.stringify(result)}`);
+}
+
 async function run(round = 10) {
     await init();
 
-    let minId:number = await TraceCreateContract.min('id');
-    let maxId:number = await TraceCreateContract.max('id');
-    console.log(`autoDetectTokenTool start...\nround:${round}\nminId:${minId}\nmaxId:${maxId}`);
-    let roundCounter = 0
-    const erc20TokenArray = [];
-    const erc721TokenArray = [];
-    const erc1155TokenArray = [];
-    while (roundCounter < round && minId<=maxId) {
-        const token = await detect(minId++);
-        if(token === undefined){
-            continue;
-        }
-        if(token.type === CONST.TRANSFER_TYPE.ERC20){
-            erc20TokenArray.push(token);
-        }
-        if(token.type === CONST.TRANSFER_TYPE.ERC721){
-            erc721TokenArray.push(token);
-        }
-        if(token.type === CONST.TRANSFER_TYPE.ERC1155){
-            erc1155TokenArray.push(token);
-        }
-        roundCounter++
-    }
+    // let minId:number = await TraceCreateContract.min('id');
+    // let maxId:number = await TraceCreateContract.max('id');
+    // console.log(`autoDetectTokenTool start...\nround:${round}\nminId:${minId}\nmaxId:${maxId}`);
+    // let roundCounter = 0
+    // const erc20TokenArray = [];
+    // const erc721TokenArray = [];
+    // const erc1155TokenArray = [];
+    // while (roundCounter < round && minId<=maxId) {
+    //     const token = await detect(minId++);
+    //     if(token === undefined){
+    //         continue;
+    //     }
+    //     if(token.type === CONST.TRANSFER_TYPE.ERC20){
+    //         erc20TokenArray.push(token);
+    //     }
+    //     if(token.type === CONST.TRANSFER_TYPE.ERC721){
+    //         erc721TokenArray.push(token);
+    //     }
+    //     if(token.type === CONST.TRANSFER_TYPE.ERC1155){
+    //         erc1155TokenArray.push(token);
+    //     }
+    //     roundCounter++
+    // }
+    //
+    // if(saveType === 1){
+    //     await save(erc20TokenArray);
+    // }
+    // if(saveType === 2) {
+    //     await save(erc721TokenArray);
+    // }
+    // if(saveType === 3) {
+    //     await save(erc1155TokenArray);
+    // }
 
-    if(saveType === 1){
-        await save(erc20TokenArray);
-    }
-    if(saveType === 2) {
-        await save(erc721TokenArray);
-    }
-    if(saveType === 3) {
-        await save(erc1155TokenArray);
-    }
-
-    console.log(`autoDetectTokenTool completed...\nerc20TokenArray:${erc20TokenArray.length}\nerc721TokenArray:${erc721TokenArray.length}\nerc1155TokenArray:${erc1155TokenArray.length}`);
+    // console.log(`autoDetectTokenTool completed...\nerc20TokenArray:${erc20TokenArray.length}\nerc721TokenArray:${erc721TokenArray.length}\nerc1155TokenArray:${erc1155TokenArray.length}`);
+    await test();
     await close();
 }
 
 const args = process.argv.slice(2);
 networkId = Number(args[0]);
+StatApp.networkId = networkId;
 if(args[1]){
     round = Number(args[1]);
 }

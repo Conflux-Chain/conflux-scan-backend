@@ -19,6 +19,13 @@ const lodash = require('lodash');
 const zlib = require('zlib');
 const CONST = require('./common/constant');
 
+const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
+const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'quoteUrl', 'marketCapId', 'moonDexSymbol', 'binanceSymbol'];
+const FIELDS_TOKEN = [...['hex40id', 'base32'], ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
+
+const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
+const FIELDS_CONTRACT = [...['hex40id', 'base32'], ...FIELDS_CONTRACT_REGISTER];
+
 export class EpochSync extends SyncBase{
     protected app;
     private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
@@ -37,12 +44,11 @@ export class EpochSync extends SyncBase{
         const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
         const traceCreateArray = await  this.getTraceCreateArrayDB(epochNumber);
-        const syncData = {
+        return {
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
             modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray},
         };
-        return syncData;
     }
 
     async validate(epochNumber, modelData) {
@@ -57,23 +63,25 @@ export class EpochSync extends SyncBase{
     }
 
     async save(epochNumber, modelData) {
+        const { tokenQuery } = this.app;
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Epoch.add(modelData.epoch, dbTx);
             await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
-            await this.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
+            await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
             await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
         });
 
         const tokenArray = modelData.tokenArray;
         for(const token of tokenArray){
-            try{
-                // not update erc20 on main net
-                // if(!(StatApp.networkId === 1029 && token.type === CONST.TRANSFER_TYPE.ERC20)){
-                    await Token.upsert(token);
-                // }
-            }catch (e) {
-                console.log(`epoch-sync.createTokensAutoDetected fail,token:${JSON.stringify(token)}`, e);
-            }
+            await Token.upsert(token).catch(e => console.log(`epoch-sync.detect, token:${JSON.stringify(token)}`, e));
+        }
+
+        const addressArray = [
+            ...modelData.announceInfo.tokenArray.map(item => item.base32),
+            ...modelData.tokenArray.map(item => item.base32)
+        ];
+        for(const address of addressArray){
+            await tokenQuery.audit({address}).catch(e => console.log(`epoch-sync.audit, address:${address}`, e));
         }
 
         try{
@@ -170,34 +178,14 @@ export class EpochSync extends SyncBase{
     }
 
     //--------------------- business method for announce ---------------------
-    private async saveAnnounceInfo(epochNumber, {tokenArray, contractArray}, dbTx: Transaction = undefined) {
-        const {dir} = getImageDir();
+    private static async saveAnnounceInfo(epochNumber, {tokenArray, contractArray}, dbTx: Transaction = undefined) {
         for (const token of tokenArray) {
-            const tokenDb: Token = await Token.findOne({where: {base32: token.base32},
-                transaction: dbTx, raw: true});
-            if(tokenDb){
-                const updateInfo = lodash.defaults({}, {icon: token.icon, quoteUrl: token.quoteUrl,
-                    marketCapId: token.marketCapId, moonDexSymbol: token.moonDexSymbol,
-                    binanceSymbol: token.binanceSymbol, updatedAt: new Date()});
-                const t = lodash.assign(tokenDb, updateInfo);
-                await Token.update(t, {where: {id: tokenDb.id}, transaction: dbTx});
-            } else{
-                const t = lodash.assign(token, {holder: 0});
-                await Token.add(t, dbTx);
-            }
+            let t = lodash.defaults({updatedAt: new Date()}, lodash.pick(token, FIELDS_TOKEN));
+            await Token.upsert(t, { transaction:dbTx });
         }
         for (const contract of contractArray) {
-            const contractDb: Contract = await Contract.findOne({where: {base32: contract.base32},
-                transaction: dbTx, raw: true});
-            if(contractDb){
-                const updateInfo = lodash.defaults({}, {epoch: epochNumber, name: contract.name, website: contract.website,
-                    abi: contract.abi, sourceCode: contract.sourceCode, icon: contract.icon, updatedAt: new Date()});
-                const c = lodash.assign(contractDb, updateInfo);
-                await Contract.update(c, {where: {id: contractDb.id}, transaction: dbTx});
-            } else{
-                const c = lodash.assign(contract, {epoch: epochNumber});
-                await Contract.add(c, dbTx);
-            }
+            let c = lodash.defaults({epoch: epochNumber, updatedAt: new Date()}, lodash.pick(contract, FIELDS_CONTRACT));
+            await Contract.upsert(c, { transaction:dbTx });
         }
     }
 
@@ -208,16 +196,14 @@ export class EpochSync extends SyncBase{
 
         let tokenMap = {};
         let contractMap = {};
-        // const announceArray = await this.getAnnounceArray(epochNumber);
         for(const announce of announceArray) {
             const key = Buffer.from(announce.key, 'base64').toString();
             const params = key.split('/');
-            console.log(`announcement------epoch:${epochNumber}------${params}`);
             if(params[0] === 'token') {
-                EpochSync.parseAnnounce(params, announce, tokenMap);
+                EpochSync.parseAnnounce(epochNumber, params, announce, tokenMap);
             }
             if(params[0] === 'contract') {
-                EpochSync.parseAnnounce(params, announce, contractMap);
+                EpochSync.parseAnnounce(epochNumber, params, announce, contractMap);
             }
         }
 
@@ -245,20 +231,22 @@ export class EpochSync extends SyncBase{
         return {tokenArray, contractArray};
     }
 
-    private static parseAnnounce(params, announce, map){
+    private static parseAnnounce(epochNumber, params, announce, map){
         if(params[1] === 'list'){
             const [ , , hex] = params;
             map[hex] = map[hex] || {};
+            console.log(`announce---epoch:${epochNumber}---${params}`);
         } else{
             const [ , hex, field] = params;
+            const isBlob = (field === 'abi' || field === 'sourceCode' || field === 'icon');
             const item = map[hex] || {};
-            item[field] = (field === 'abi' || field === 'sourceCode' || field === 'icon')
-                ? Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString()
+            item[field] = isBlob ? Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString()
                 : Buffer.from(announce.value, 'base64').toString();
 
             if (field === 'name' && item[field].length >= 256) {
                 item[field] = item[field].substr(0, 256);
             }
+            console.log(`announce---epoch:${epochNumber}---${params}---${isBlob ? (item[field])?.length : item[field]}`);
 
             map[hex] = item;
         }
@@ -266,7 +254,7 @@ export class EpochSync extends SyncBase{
     }
 
     // ----------------------- business method for token ------------------------
-    private async getTokensAutoDetected({ epochNumber, transfer20Array, transfer721Array, transfer1155Array }) {
+    private async getTokensAutoDetected({ transfer20Array, transfer721Array, transfer1155Array }) {
         let tokenArray = [];
         try{
             const [crc20AddressArray, crc721AddressArray, crc1155AddressArray]  = await Promise.all([
@@ -324,13 +312,13 @@ export class EpochSync extends SyncBase{
         let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
             decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
             type: transferType});
-        const transferCount = (await this.countTransfer(hex40id, transferType)) || 1;
+        const transferCount = (await EpochSync.countTransfer(hex40id, transferType)) || 1;
         const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
         token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult });
         return token;
     }
 
-    private async countTransfer(addressId, transferType) {
+    private static async countTransfer(addressId, transferType) {
         if(transferType === CONST.TRANSFER_TYPE.ERC20)
             return Erc20Transfer.count({ where: { contractId: addressId }});
         if(transferType === CONST.TRANSFER_TYPE.ERC721)
