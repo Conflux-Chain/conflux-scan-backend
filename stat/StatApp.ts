@@ -96,7 +96,7 @@ export class StatApp{
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
         this.tokenTool = new TokenTool(this.cfx);
         // const logger = pino()
-        this.sequelize = createDB(this.config.database);
+        this.sequelize = createDB(this.config.databaseRW);
         const {sequelize} = this;
         await Promise.all([
             this.initRedis(),

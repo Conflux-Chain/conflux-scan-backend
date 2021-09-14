@@ -269,16 +269,18 @@ export async function initModel(sequelize) {
 
 export function createMySql(dbConf) {
     console.log(`create mysql ${dbConf.host}`)
-    return new Sequelize(dbConf.database,
-        dbConf.user,
-        dbConf.pwd, {
-        host: dbConf.host, port: dbConf.port,
-        dialect: 'mysql', /* one of 'mysql' | 'mariadb' | 'postgres' | 'mssql' */
-        // logging: console.log,            // default true
-            logging: false,
-        // timezone: '+08:00', // default UTC
-        // dialectOptions: {
-        //   useUTC: false,
-        // },
-    });
+    // return new Sequelize(dbConf.database,
+    //     dbConf.user,
+    //     dbConf.pwd, {
+    //     host: dbConf.host, port: dbConf.port,
+    //     dialect: 'mysql', /* one of 'mysql' | 'mariadb' | 'postgres' | 'mssql' */
+    //     // logging: console.log,            // default true
+    //         logging: false,
+    //     // timezone: '+08:00', // default UTC
+    //     // dialectOptions: {
+    //     //   useUTC: false,
+    //     // },
+    // });
+
+    return new Sequelize(dbConf.instanceName, null, null, dbConf);
 }
