@@ -120,7 +120,7 @@ export async function listRecentNftOfAccount(accountBase32:string,contractBase32
         where['contractId'] = contractId
     }
     const list = await NftMint.findAll({
-        where: where, limit: 100,
+        where: where, limit: 100, raw: true,
         order: [['updatedAt','DESC']]
     })
     const hexIdSet = buildHexSet(undefined, list,
