@@ -1,6 +1,15 @@
 import {Sequelize, Op} from 'sequelize'
 import {Erc721Transfer} from "../model/Erc721Transfer";
-import {getAddrId, hex40IdMap, Hex40Map, makeIdV} from "../model/HexMap";
+import {
+    buildHexSet,
+    convert2base32map,
+    getAddrId,
+    hex40IdMap,
+    Hex40Map,
+    idHex40Map,
+    makeIdV,
+    mapProp
+} from "../model/HexMap";
 import {NftMint, Token} from "../model/Token";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {init} from "./tool/FixDailyTokenStat";
@@ -110,10 +119,16 @@ export async function listRecentNftOfAccount(accountBase32:string,contractBase32
     if (contractId) {
         where['contractId'] = contractId
     }
-    return NftMint.findAll({
+    const list = await NftMint.findAll({
         where: where, limit: 100,
         order: [['updatedAt','DESC']]
     })
+    const hexIdSet = buildHexSet(undefined, list,
+        'contractId')
+    const map = await idHex40Map([...hexIdSet])
+    const base32map = convert2base32map(map)
+    mapProp(base32map, list, 'contractId', 'contractBase32')
+    return list;
 }
 export async function getNftBalances(accountBase32:string, contractsBase32:string[]) {
     const accHexId = await getAddrId(format.hexAddress(accountBase32))
