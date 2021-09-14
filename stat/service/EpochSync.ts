@@ -325,7 +325,7 @@ export class EpochSync extends SyncBase{
             decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
             type: transferType});
         const transferCount = (await this.countTransfer(hex40id, transferType)) || 1;
-        const auditResult = token.name !== undefined && token.symbol !== undefined;
+        const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
         token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult });
         return token;
     }
