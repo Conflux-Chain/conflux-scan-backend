@@ -130,7 +130,7 @@ export async function getAddrId(addr:string) {
         return res?.id
     })
 }
-export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<string> {
+export function buildHexSet(hexSet:Set<string>, arr:any[], ...hexKey:string[]) : Set<string> {
     if (hexSet === undefined) {
         hexSet = new Set<string>()
     }

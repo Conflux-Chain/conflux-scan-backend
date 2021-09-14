@@ -24,6 +24,7 @@ import {buildHexSet, convert2base32map, fillHexId, hex40IdMap, Hex40Map, idHex40
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {NFTMap} from "../service/nftchecker/NFTInfo";
+import {listRecentNftOfAccount} from "../service/NftService";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -404,7 +405,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const nftInfo = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: BigInt(tokenId)});
         ctx.body = {code: 0, data: nftInfo};
     })
-
+    router.get('/nft/checker/list-recent-of-account', async (ctx)=>{
+        const {account,contract} = ctx.request.query;
+        const list = await listRecentNftOfAccount(account,contract)
+        ctx.body = {code: 0, data: {list}}
+    })
     // nft checker, get balances
     router.get('/nft/checker/balance', async function (ctx) {
         const {ownerAddress} = ctx.request.query
@@ -427,12 +432,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             limit: Math.min(parseInt(limit || 0), 100),
             raw: true,
         })
+        /*
         const hexIdSet = buildHexSet(undefined, page.rows,
             'contractId', 'toId')
         const map = await idHex40Map([...hexIdSet])
         const base32map = convert2base32map(map)
         mapProp(base32map, page.rows, 'contractId', 'contractBase32')
         mapProp(base32map, page.rows, 'toId', 'toBase32')
+         */
         ctx.body = {code: 0, data: page, hexBean, hex}
     })
 

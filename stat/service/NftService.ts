@@ -1,6 +1,6 @@
 import {Sequelize, Op} from 'sequelize'
 import {Erc721Transfer} from "../model/Erc721Transfer";
-import {findHexId, hex40IdMap, Hex40Map, makeIdV} from "../model/HexMap";
+import {getAddrId, hex40IdMap, Hex40Map, makeIdV} from "../model/HexMap";
 import {NftMint, Token} from "../model/Token";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {init} from "./tool/FixDailyTokenStat";
@@ -65,7 +65,7 @@ export class NftService {
 }
 
 export async function getRegisterNftBalances(accountBase32: string) : Promise<Map<string, number>>{
-    const accHexId = await findHexId(format.hexAddress(accountBase32))
+    const accHexId = await getAddrId(format.hexAddress(accountBase32))
     const nftTokenList = await Token.findAll({
         attributes:['base32','hex40id'],
         where:{type: {[Op.in]:['ERC721', 'ERC1155']}}
@@ -95,9 +95,28 @@ async function countAccountNft(cHexIds: number[], accHexId: number) {
     })
     return groupByContractList;
 }
-
+export async function listRecentNftOfAccount(accountBase32:string,contractBase32:string) {
+    const [accHexId,contractId] = await Promise.all([
+        getAddrId(format.hexAddress(accountBase32)),
+        new Promise(resolve => {
+            if (contractBase32) {
+                getAddrId(format.hexAddress(contractBase32)).then(resolve)
+            }else {
+                resolve(false)
+            }
+        })
+    ])
+    const where = {toId: accHexId};
+    if (contractId) {
+        where['contractId'] = contractId
+    }
+    return NftMint.findAll({
+        where: where, limit: 100,
+        order: [['updatedAt','DESC']]
+    })
+}
 export async function getNftBalances(accountBase32:string, contractsBase32:string[]) {
-    const accHexId = await findHexId(format.hexAddress(accountBase32))
+    const accHexId = await getAddrId(format.hexAddress(accountBase32))
     if (accHexId === null) {
         return contractsBase32.map(b=>0) // zero array.
     }
