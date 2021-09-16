@@ -2,6 +2,7 @@ import {init} from "./FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 import {Token} from "../../model/Token";
+import {StatApp} from "../../StatApp";
 
 async function run() {
     init().then(async (config)=>{
@@ -9,6 +10,8 @@ async function run() {
         // @ts-ignore
         await cfx.updateNetworkId()
         // init contract
+        StatApp.networkId = cfx['networkId']
+        console.log(` net work id ${StatApp.networkId}, util contract ${ await BatchBalanceWatcher.getUtilContractAddr()}`)
         const w = new BatchBalanceWatcher(cfx, config.erc20watchList, null)
         const list = await Token.findAll({
             where: {auditResult: true, fetchBalance: true},
@@ -22,7 +25,7 @@ async function run() {
                     console.log(`token balance ok ${token.base32} ${token.name} ${token.symbol}`)
                 })
                 .catch(err=>{
-                    console.log(`token balance ======= fail ${token.base32} ${token.name} ${token.symbol}`)
+                    console.log(`token balance ======= fail ${token.base32} ${token.name} ${token.symbol}, ${err.message}`)
                 })
         }
     })
