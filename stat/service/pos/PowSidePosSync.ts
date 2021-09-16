@@ -1,0 +1,133 @@
+// Sync pos things that happen on pow side.
+import {Conflux} from "js-conflux-sdk";
+import {IPosRegister, PosBlock, PosRegister} from "../../model/PoS";
+import {abi as posAbi} from "../abi/PoSRegister";
+import {patchHttpProvider, removeLongData} from "../common/utils";
+import {init} from "../tool/FixDailyTokenStat";
+import {POW_EPOCH_FOR_POS_Q, RedisStreamMessage, RedisWrap} from "../RedisWrap";
+
+export class PowSidePosSync {
+    private cfx: Conflux;
+    private posContract: any;
+    private posContractAddr: string;
+    constructor(cfx: Conflux) {
+        this.cfx = cfx;
+    }
+    async init() {
+        await this.cfx.updateNetworkId();
+        console.log(` PowSidePosSync network id ${this.cfx['networkId']}`)
+        this.posContractAddr = '0x0888000000000000000000000000000000000005'
+        this.posContract = this.cfx.Contract({abi: posAbi, address: this.posContractAddr})
+    }
+    // XADD POW_EPOCH_FOR_POS_Q * v1 '{"action":"pop", "epoch":0}'
+    async listen() {
+        RedisWrap.listenStreamMessage(POW_EPOCH_FOR_POS_Q, (data)=>{
+            return this.listenPowEpoch(data)
+        }).then()
+        console.log(` listen on queue : ${POW_EPOCH_FOR_POS_Q}`)
+    }
+    async listenPowEpoch(data:RedisStreamMessage[]) {
+        const list:any[] = data.map(msg=>msg.message)
+        for (const msg of list) {
+            if (msg.action === 'pop') {
+                await PosRegister.destroy({
+                    where: {epoch: msg.epoch}
+                })
+                console.log(` PosRegister pop: ${msg.epoch} `)
+            } else {
+                await this.sync(msg.epoch)
+            }
+        }
+        return RedisWrap.xDel(data)
+    }
+    async sync(epoch) {
+        const filter = {
+            fromEpoch:epoch, toEpoch: epoch,
+            address: this.posContractAddr,
+        };
+        const logs = await this.cfx.getLogs(filter).catch(err=>{
+            if (err.message.includes('expected a numbers with less than largest epoch number')) {
+                return []
+            }
+            throw err
+        })
+        console.log( `logs count ${logs.length}, epoch ${epoch}`)
+        const registerArr:IPosRegister[] = []
+        // const registerArr:IPosRegister[] = []
+        for (const log of logs) {
+            // this.posContractAddr.Register
+            const bean:IPosRegister = {
+                epoch,
+                txHash: log['transactionHash'],
+                powBase32: '', identifier: ''
+            }
+            if (log["topics"][0]?.startsWith('0xf3c')) {//IncreaseStake
+                const decoded = this.posContract.IncreaseStake.decodeLog(log).toObject()
+                // console.log(' decoded:', decoded.toObject())
+                bean.identifier = decoded.identifier
+                bean.votePower = decoded.votePower
+            } else if (log["topics"][0]?.startsWith('0xfa22')) {//Register
+                const decoded = this.posContract.Register.decodeLog(log)
+                const obj = decoded.toObject();
+                bean.identifier = decoded.identifier
+                bean.blsPubKey = obj['blsPubKey'].toString('hex')
+                bean.vrfPubKey = obj['vrfPubKey'].toString('hex')
+                // console.log(' decoded:', obj)
+            } else {//retire
+                const decoded = this.posContract.Retire.decodeLog(log)
+                // const obj = decoded.toObject();
+                bean.identifier = decoded.identifier
+                bean.retire = true
+            }
+            registerArr.push(bean)
+            // removeLongData(log)
+            // console.log(` log is `, log)
+        }
+        await PosRegister.sequelize.transaction(async tx=>{
+            await Promise.all([
+                PosRegister.bulkCreate(registerArr),
+            ])
+        })
+    }
+
+    async testRetire(account:string) {
+        return this.posContract.retire().sendTransaction({
+            from: account
+        }).executed().then(res=>{
+            return removeLongData(res)
+        })
+    }
+}
+
+if (module===require.main) {
+    const args = process.argv.slice(2)
+    const url = args[0]
+    init().then(cfg=>{
+        const cfxUrl = url || cfg.conflux.url;
+        console.log(` use cfx ${cfxUrl}`)
+        const cfx = new Conflux({url: cfxUrl})
+        const sync = new PowSidePosSync(cfx)
+        sync.init().then(()=>{
+            if (args.includes('retire')) {
+                const privateKey = args.filter(s=>s.startsWith('0x'))
+                const randomAccount = cfx.wallet.addRandom()
+                return sync.testRetire(randomAccount.toString()).then(res=>{
+                    console.log(` retire tx:`, res)
+                })
+            } else if (args.includes('listen')) {
+                return RedisWrap.connect(cfg.redis).then(()=>{
+                    return sync.listen()
+                }).then(()=>{
+                    // never resolve, just hangup.
+                    return new Promise(resolve => {})
+                })
+            } else if (args.includes('single')) {
+                return sync.sync(parseInt(args[0]));//131752)
+            } else {
+                console.log(` supported action < retire | listen | single >`)
+            }
+        }).then(()=>{
+            return PosRegister.sequelize.close()
+        })
+    })
+}

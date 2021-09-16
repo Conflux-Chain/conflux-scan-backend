@@ -28,6 +28,7 @@ import {
 import {PreloadMap} from "./SyncBase";
 import {Epoch} from "../model/Epoch";
 import {batchFetchBlock} from "./common/utils";
+import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 
 
 // Do not care the value
@@ -330,6 +331,7 @@ export class FullBlockService {
                         transaction: dbTx}),
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
+                    RedisWrap.sendStreamMessage({action:'pop', epoch: preEpoch}, POW_EPOCH_FOR_POS_Q)
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -418,6 +420,7 @@ export class FullBlockService {
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
+                RedisWrap.sendStreamMessage({action:'push', epoch: minEpochNumber}, POW_EPOCH_FOR_POS_Q),
             ])
         }).then(async ()=>{
             let now = Date.now()
