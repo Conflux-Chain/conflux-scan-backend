@@ -45,7 +45,12 @@ export class PowSidePosSync {
             fromEpoch:epoch, toEpoch: epoch,
             address: this.posContractAddr,
         };
-        const logs = await this.cfx.getLogs(filter)
+        const logs = await this.cfx.getLogs(filter).catch(err=>{
+            if (err.message.includes('expected a numbers with less than largest epoch number')) {
+                return []
+            }
+            throw err
+        })
         console.log( `logs count ${logs.length}, epoch ${epoch}`)
         const registerArr:IPosRegister[] = []
         // const registerArr:IPosRegister[] = []
