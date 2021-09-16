@@ -5,6 +5,7 @@ import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
 import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "./model/KV";
 import {patchHttpProvider} from "./service/common/utils";
+import {RedisWrap} from "./service/RedisWrap";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -38,6 +39,7 @@ async function syncFullBlock(config:StatConfig) {
     let cfx = new Conflux(config.conflux);
     patchHttpProvider(cfx, config.conflux, 'syncFullBlock')
     console.log(`Conflux ${config.conflux.url} network ${(await cfx.getStatus())['networkId']}`)
+    await RedisWrap.connect(config.redis)
     const fullBlockService = new FullBlockService(cfx);
     //fullBlockService.checkReOrg = args.includes('ignoreReOrg')
     return fullBlockService
