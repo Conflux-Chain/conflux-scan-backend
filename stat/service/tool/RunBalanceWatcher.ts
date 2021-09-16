@@ -1,5 +1,4 @@
 import {init} from "./FixDailyTokenStat";
-import {BalanceWatcher, Erc20Watcher} from "../watcher/BalanceWatcher";
 import {Conflux} from "js-conflux-sdk";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 import {Token} from "../../model/Token";
