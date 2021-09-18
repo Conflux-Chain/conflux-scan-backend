@@ -1,21 +1,23 @@
 // @ts-ignore
 import {format} from 'js-conflux-sdk';
-import {Op} from 'sequelize';
+import {Op, QueryTypes, Sequelize} from 'sequelize';
 import {DailyToken, Token} from "../model/Token";
 import {decodeUtf8} from "./tool/StringTool";
-import {Hex40Map} from "../model/HexMap";
+import {Hex40Map, makeId} from "../model/HexMap";
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {ContractVerify} from "../model/ContractVerify";
-import {makeId} from "../model/HexMap";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
+import {TokenBalance} from "../model/Balance";
+import {StatApp} from "../StatApp";
 
 const lodash = require('lodash');
 const CONST = require('./common/constant');
+const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
 
 export class TokenQuery {
     protected app: any;
@@ -46,18 +48,18 @@ export class TokenQuery {
         let attributes: any = ['hex40id', ['base32', 'address'],
             'name', 'symbol', 'decimals', 'granularity', 'totalSupply',
             ['type', 'transferType'], ['holder', 'holderCount'], ['transfer', 'transferCount'],
-            'price', 'totalPrice', 'quoteUrl', 'iconUrl', 'fetchBalance'];
+            'price', 'totalPrice', 'quoteUrl', 'iconUrl', 'website', 'securityCredits'];
         if (lodash.includes(fields, 'icon')) {
             attributes.push('icon');
         }
         options.attributes = attributes;
         // where
         const where: any = {auditResult: true};
-        if (addressArray?.length) {
+        if (name) {
+            where[Op.or] = [{name: {[Op.like]: `%${name}%`}}, {symbol: {[Op.like]: `%${name}%`}}];
+        } else if (addressArray?.length) {
             addressArray = addressArray.map(item => toBase32(item));
             where.base32 = {[Op.in]: addressArray};
-        }  if (name) {
-            where[Op.or] = [{name: {[Op.like]: `%${name}%`}}, {symbol: {[Op.like]: `%${name}%`}}];
         } else {
             if (transferType) {
                 where.type = transferType;
@@ -65,22 +67,21 @@ export class TokenQuery {
         }
         options.where = where;
         // order
-        if(name){
+        if (name) {
             options.order = [['totalPrice', 'DESC'], ['createdAt', 'ASC']];
-        } else if (orderBy) {
-            if (orderBy === 'transferCount') {
-                orderBy = 'transfer';
+        } else if (addressArray?.length) {// NO-OP
+        } else {
+            if (orderBy) {
+                const rev = reverse === 'true' ? 'DESC' : 'ASC';
+                if (orderBy === 'totalPrice')
+                    options.order = [Sequelize.fn('ISNULL', Sequelize.col('totalPrice')),
+                        ['totalPrice', rev], ['securityCredits', rev], ['transfer', rev]];
+                if (orderBy === 'securityCredits') options.order = [['securityCredits', rev], ['transfer', rev]];
+                if (orderBy === 'transferCount') options.order = [['transfer', rev]];
+                if (orderBy === 'price')
+                    options.order = [Sequelize.fn('ISNULL', Sequelize.col('price')), ['price', rev]];
+                if (orderBy === 'holderCount') options.order = [['holder', rev]];
             }
-            if (orderBy === 'holderCount') {
-                orderBy = 'holder';
-            }
-            if (orderBy === 'price') {
-                orderBy = `price`;
-            }
-            if (orderBy === 'totalPrice') {
-                orderBy = `totalPrice`;
-            }
-            options.order = [[orderBy, reverse === 'true' ? 'DESC' : 'ASC']];
         }
         //query
         let rawList;
@@ -115,19 +116,19 @@ export class TokenQuery {
         }
         // add additional info
         let contractList;
-        if (addressArray) {// add unregistered tokens
+        if(name){// add contracts for unmatched token
+            const where: any = {name: {[Op.like]: `%${name}%`}};
+            if(registeredTokens?.length) where.base32 = {[Op.notIn]: registeredTokens};
+            contractList = await Contract.findAll({ offset: 0, limit: 10, raw: true,
+                attributes: [['base32', 'address'], 'name', 'epoch'], where, order: [['epoch', 'ASC']]
+            });
+        } else if (addressArray) {// add unregistered tokens
             const unregisteredTokens = addressArray.filter(address => !lodash.includes(registeredTokens, address));
             const tokens = await Promise.all(unregisteredTokens.map(item => this.getTokenInfo(item)));
             if (tokens?.length) {
                 list = [...list, ...tokens];
             }
             count = list.length;
-        } else if(name){// add contracts for unmatched token
-            const where: any = {name: {[Op.like]: `%${name}%`}};
-            if(registeredTokens?.length) where.base32 = {[Op.notIn]: registeredTokens};
-            contractList = await Contract.findAll({ offset: 0, limit: 10, raw: true,
-                attributes: [['base32', 'address'], 'name', 'epoch'], where, order: [['epoch', 'ASC']]
-            });
         }
         // add security audit
         await this.getAuditInfo(list);
@@ -135,37 +136,89 @@ export class TokenQuery {
         return {total: count, list, contractTotal: contractList?.length, contractList};
     }
 
-    public async listAddress(where: object = {}) {
-        const options: any = {attributes: ['base32'], raw: true};
-        if (where && Object.keys(where).length) {
-            options.where = lodash.defaults(options.where, where);
+    public async listLatest({accountAddress, transferType, latestTransfer = 10000}
+       : {accountAddress: string, transferType: string, latestTransfer?: number
+    }){
+        const {
+            app: {sequelize},
+        } = this;
+
+        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(accountAddress).substr(2)}});
+        if(!hex40) return [];
+        const addressId = hex40?.id
+        let tableName;
+        if(transferType === CONST.TRANSFER_TYPE.ERC20){
+            tableName = 'address_erc20_transfer';
+        } else if(transferType === CONST.TRANSFER_TYPE.ERC721){
+            tableName = 'address_erc721transfer';
+        } else if(transferType === CONST.TRANSFER_TYPE.ERC1155){
+            tableName = 'address_erc1155transfer';
+        } else {
+            return [];
+        }
+        if(latestTransfer <= 0 || latestTransfer > 10000) return [];
+
+        const sql = `select hex from hex40 where id in (select distinct(contractId) from ( select contractId 
+            from ${tableName} where addressId = ${addressId} order by createdAt desc limit ${latestTransfer}) tmp);`;
+        const list = await sequelize.query(sql, {type: QueryTypes.SELECT, logging: console.log });
+        const addressArray = list.map(item=> format.address(`0x${item.hex}`, StatApp.networkId));
+
+        const response = await this.list({addressArray});
+        let tokenArray = response.list.map(token => lodash.pick(token, ['address', 'name', 'symbol', 'iconUrl']));
+        tokenArray = lodash.sortBy(tokenArray, item => lodash.toUpper(item.name));
+        return {total: response.total, list: tokenArray};
+    }
+
+    public async listAddress({ accountAddress, where = {}
+    }:{
+        accountAddress: string, where?: object
+    }) {
+        let tokenArray;
+        const options: any = { attributes: ['base32'], where: { auditResult: true }, raw: true };
+
+        if(accountAddress){
+            const hex40 = await Hex40Map.findOne({where:{hex:format.hexAddress(accountAddress).substr(2)}});
+            if(!hex40) return { total: 0, list: [] };
+            const balanceArray = await TokenBalance.findAll({attributes: ['contractId'], where: {addressId: hex40.id}});
+            const contractArray = balanceArray.map(balance => balance.contractId);
+            if(contractArray.length === 0) return { total: 0, list: [] };
+            where = {hex40id: {[Op.in]: contractArray}};
         }
 
-        const tokenArray = await Token.findAll(options)
+        options.where = lodash.defaults(options.where, where);
+        tokenArray = await Token.findAll(options);
         const addressArray = tokenArray.map(item => item.base32);
 
         return {total: addressArray.length, list: addressArray};
     }
 
-    public async audit({
-       address, verify, audit, sponsor, zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
-    }): Promise<boolean> {
-        const base32 = toBase32(address);
-        const hex40id = (await makeId(address)).id;
+    public async audit({address, audit, sponsor, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap,
+        blackList = false
+    }: { address: string, audit?: boolean, sponsor?: boolean, cexBinance?: string, cexHuobi?: string, cexOKEx?: string,
+        dexMoonSwap?: string, trackCoinMarketCap?: string, blackList?: boolean
+    }): Promise<object> {
+        try {
+            const base32 = toBase32(address);
+            const token = await Token.findOne({attributes: ['id', 'hex40id'], where: {base32}});
+            if(!token){
+                return Promise.resolve({code: 9999, msg: `token:${base32} not exist`});
+            }
 
-        const securityAuditDb: TokenSecurityAudit = await TokenSecurityAudit.findOne({where: {base32}, raw: true});
-        let sa = lodash.defaults({}, {
-            hex40id, base32, verify, audit, sponsor, zeroAdmin, cexBinance, cexHuobi,
-            cexOKEx, dexMoonSwap, trackCoinMarketCap
-        });
-        if (securityAuditDb) {
-            sa = lodash.assign(securityAuditDb, sa, {updatedAt: new Date()});
-            await TokenSecurityAudit.update(sa, {where: {id: securityAuditDb.id}});
-        } else {
-            await TokenSecurityAudit.add(sa);
+            const { zeroAdmin, verify } = await this.getAuditBasic(base32);
+            const a = lodash.defaults({updatedAt: new Date()}, { hex40id: token.hex40id, base32, verify, audit, sponsor,
+                zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
+            });
+            await TokenSecurityAudit.upsert(a);
+
+            const securityCredits = await this.calSecurityCredits(base32);
+            const t = blackList ? { securityCredits, auditResult: !blackList } : { securityCredits };
+            await Token.update(t,{where: {id: token.id}});
+
+            return Promise.resolve({code: 0, msg: `token:${address} audit success`});
+        } catch (e) {
+            console.log(`token-audit fail, address:${address}`, e);
+            return Promise.resolve({code: 9999, msg: `token:${address} audit fail`});
         }
-
-        return Promise.resolve(true);
     }
 
     private async getTokenInfo(base32) {
@@ -202,6 +255,17 @@ export class TokenQuery {
         if (erc1155Count) return {transferType: CONST.TRANSFER_TYPE.ERC1155, transferCount: erc1155Count};
     }
 
+    private async getAuditBasic(base32): Promise<{ zeroAdmin: boolean, verify: boolean }>{
+        const { cfx } = this.app;
+        const account = await cfx.getAccount(base32);
+        const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS) ? true : false;
+
+        const verifyInfo =  await ContractVerify.findOne({where: {base32, verifyResult: true}});
+        const verify = verifyInfo?.verifyResult ? true : false;
+
+        return Promise.resolve({zeroAdmin, verify});
+    }
+
     private async getAuditInfo(tokenArray) {
         const addressArray = tokenArray?.map(item => item.address);
         if (!addressArray?.length) {
@@ -229,5 +293,24 @@ export class TokenQuery {
                 }
             };
         });
+    }
+
+    private async calSecurityCredits(base32): Promise<number> {
+        const auditDb = await TokenSecurityAudit.findOne({where: {base32}, raw: true});
+        const {
+            verify, audit, sponsor, zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
+        } = auditDb;
+
+        const auditCreditArray = [verify, audit, sponsor, zeroAdmin];
+        const cexCreditArray = [cexBinance, cexHuobi, cexOKEx];
+        const dexCreditArray = [dexMoonSwap];
+        const trackCreditArray = [trackCoinMarketCap];
+
+        let credits = 0;
+        credits = credits + auditCreditArray.filter(Boolean).length;
+        credits = credits + (cexCreditArray.filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0);
+        credits = credits + (dexCreditArray.filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0);
+        credits = credits + (trackCreditArray.filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0);
+        return Promise.resolve(credits);
     }
 }

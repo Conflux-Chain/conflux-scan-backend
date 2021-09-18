@@ -111,9 +111,22 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/tokens/list', async (ctx)=>{
         await new Promise(async r=>{
-            const {addressArray, transferType, fields, orderBy, reverse, skip, limit} = ctx.request.query;
-            const result = await statApp.tokenQuery.list({addressArray, transferType, fields, orderBy, reverse,
+            const {transferType, fields, orderBy, reverse, skip, limit} = ctx.request.query;
+            const result = await statApp.tokenQuery.list({transferType, fields, orderBy, reverse,
                 skip: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
+            ctx.body = result;
+            r('ok')
+        }).catch(err=>{
+            ctx.body = {
+                code: 500,
+                message: `${err}`
+            }
+        })
+    })
+    router.get('/tokens/list/latest', async (ctx)=>{
+        await new Promise(async r=>{
+            const {accountAddress, transferType} = ctx.request.query;
+            const result = await statApp.tokenQuery.listLatest({accountAddress, transferType});
             ctx.body = result;
             r('ok')
         }).catch(err=>{

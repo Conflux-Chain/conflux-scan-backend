@@ -230,9 +230,10 @@ export class ContractQuery {
             map[token.address].token = lodash.defaults(map[token.address].token, {
                 name: token.name,
                 symbol: token.symbol,
+                decimals: token.decimals,
                 icon: token.icon,
                 iconUrl: token.iconUrl,
-                decimals: token.decimals
+                website: token.website,
             });
         });
 

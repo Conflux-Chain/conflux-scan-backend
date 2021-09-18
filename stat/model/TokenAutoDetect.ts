@@ -18,18 +18,6 @@ export interface ITokenAutoDetect{
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    priceCNY?:number
-    priceUSD?:number
-    priceGBP?:number
-    priceKRW?:number
-    priceRUB?:number
-    priceEUR?:number
-    totalPriceCNY?:number
-    totalPriceUSD?:number
-    totalPriceGBP?:number
-    totalPriceKRW?:number
-    totalPriceRUB?:number
-    totalPriceEUR?:number
     marketCapId?:number
     moonDexSymbol?:string
     moonSwapSymbol?:string
@@ -59,18 +47,6 @@ export class TokenAutoDetect extends Model<ITokenAutoDetect> implements ITokenAu
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    priceCNY?:number
-    priceUSD?:number
-    priceGBP?:number
-    priceKRW?:number
-    priceRUB?:number
-    priceEUR?:number
-    totalPriceCNY?:number
-    totalPriceUSD?:number
-    totalPriceGBP?:number
-    totalPriceKRW?:number
-    totalPriceRUB?:number
-    totalPriceEUR?:number
     marketCapId?:number
     moonDexSymbol?:string
     moonSwapSymbol?:string
@@ -100,18 +76,6 @@ export class TokenAutoDetect extends Model<ITokenAutoDetect> implements ITokenAu
             price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
-            priceCNY: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            priceUSD: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            priceGBP: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            priceKRW: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            priceRUB: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            priceEUR: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            totalPriceCNY:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            totalPriceUSD:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            totalPriceGBP:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            totalPriceKRW:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            totalPriceRUB:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            totalPriceEUR:{type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
             moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
             moonSwapSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
@@ -146,18 +110,6 @@ export class TokenAutoDetect extends Model<ITokenAutoDetect> implements ITokenAu
             price:token.price,
             totalPrice:token.totalPrice,
             quoteUrl:token.quoteUrl,
-            priceCNY:token.priceCNY,
-            priceUSD:token.priceUSD,
-            priceGBP:token.priceGBP,
-            priceKRW:token.priceKRW,
-            priceRUB:token.priceRUB,
-            priceEUR:token.priceEUR,
-            totalPriceCNY:token.totalPriceCNY,
-            totalPriceUSD:token.totalPriceUSD,
-            totalPriceGBP:token.totalPriceGBP,
-            totalPriceKRW:token.totalPriceKRW,
-            totalPriceRUB:token.totalPriceRUB,
-            totalPriceEUR:token.totalPriceEUR,
             marketCapId:token.marketCapId,
             moonDexSymbol:token.moonDexSymbol,
             moonSwapSymbol:token.moonSwapSymbol,
