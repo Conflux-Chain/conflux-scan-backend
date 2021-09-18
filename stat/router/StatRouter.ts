@@ -25,6 +25,7 @@ import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {NFTMap} from "../service/nftchecker/NFTInfo";
 import {registerPosRouter} from "./PosRouter";
+import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -491,5 +492,6 @@ export function register(app:Koa, statApp: StatApp) {
     app.use(middleware)
     addSwagger(app, router)
     addDevopsRouter(router, statApp)
+    addConfluxConsortiumNFTRouter(router, statApp)
     console.log('router registered.')
 }
