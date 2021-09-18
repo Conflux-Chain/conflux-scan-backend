@@ -13,7 +13,7 @@ export class QuoteSync {
   private wCFXAddress = "cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx";
   private cETHAddress = "cfx:acdrf821t59y12b4guyzckyuw2xf1gfpj2ba0x4sj6";
   private cUSDTAddress = "cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7";
-  private viaWCFXSet = new Set<string>(['cITF', 'cFLUX', 'TREA', 'YAO', 'POOLGO' ]);
+  private viaWCFXSet = new Set<string>(['cITF', 'cFLUX', 'TREA', 'YAO', 'POOLGO', 'DAN']);
   private viaCETHSet = new Set<string>(['cFOR']);
   private viaCETHUnilateralSet = new Set<string>(['cLEND']);
 
@@ -229,24 +229,21 @@ export class QuoteSync {
   //======================================================================
   private async upsertQuote(quoteArray){
     quoteArray.map(async quote => {
-      const address = quote.address;
-      let convertSymbol = quote.convertSymbol;
-      const dbQuote: TokenQuoteTrack = await TokenQuoteTrack.findOne({where:
-        {[Op.and]: [{address},{convertSymbol}]}});
+      const { address, convertSymbol, price } = quote;
+      const dbQuote: TokenQuoteTrack = await TokenQuoteTrack.findOne({where: {address, convertSymbol}});
       if(dbQuote){
-        const q = lodash.assign(quote, { updatedAt: Date.now() });
-        await dbQuote.update(q, {where: {id: dbQuote.id}});
+        await dbQuote.update(lodash.assign(quote, { updatedAt: Date.now() }), {where: {id: dbQuote.id}});
       } else{
         await TokenQuoteTrack.add(quote);
       }
+
       const dbToken: Token = await Token.findOne({where: {base32: address}});
       if(dbToken){
-        const totalPrice = (quote.price && dbToken.totalSupply && Number.isInteger(dbToken.decimals))
-            ? BigFixed(quote.price).mul(dbToken.totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
-            : 0;
-        convertSymbol = "";
-        const newPrice = {[`totalPrice${convertSymbol}`]: totalPrice, [`price${convertSymbol}`]: quote.price, updatedAt: Date.now(), id: dbToken.id};
-        await dbToken.update(newPrice, {where: {id: dbToken.id}});
+        let totalPrice = (price && dbToken.totalSupply && Number.isInteger(dbToken.decimals))
+            ? BigFixed(price).mul(dbToken.totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
+            : null;
+        totalPrice = totalPrice === 0 ? null : totalPrice;
+        await dbToken.update({ price, totalPrice, updatedAt: Date.now()}, {where: {id: dbToken.id}});
       }
     });
   }
