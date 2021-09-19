@@ -2,6 +2,7 @@
 import { NFTMap, NFTNames } from './NFTInfo';
 import {toBase32} from "../tool/AddressTool";
 
+const lodash = require('lodash');
 const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
 
@@ -256,20 +257,33 @@ export class NFTPreviewService {
 
             const contract = await this.cfx.Contract({ abi, address });
             let meta = await contract[method](tokenId);
-            try {
-                meta = JSON.parse(meta);
-            } catch (e){
-            }
-            if (needFetchJson) {
-                let url = jsonUriFormatter ? jsonUriFormatter(meta)
-                    //@ts-ignore
-                    : meta.indexOf('{id}') > -1 ? meta.replace('{id}', BigInt(tokenId).toString(16)) : meta;
-                const response = await superagent.get(url);
-                meta = JSON.parse(response.text);
-            }
 
-            const imageUri = imageUriFormatter ? imageUriFormatter(meta) : needFetchJson ? meta.image : meta;
-            const imageName = await this.getNFTName({address, tokenId, meta}) || {};
+            let imageUri;
+            let imageName;
+            if((typeof meta === 'string') && meta.startsWith('data:application/json;base64')){
+                try {
+                    meta = Buffer.from(meta.substr(29), 'base64').toString();
+                    meta = JSON.parse(meta);
+                    imageUri = meta.image;
+                    imageName = await this.getNFTName({address, tokenId, meta}) || {};
+                } catch (e){
+                    console.error(`nft preview encoded base64`,  e);
+                }
+            } else{
+                try {
+                    meta = JSON.parse(meta);
+                } catch (e){
+                }
+                if (needFetchJson) {
+                    let url = jsonUriFormatter ? jsonUriFormatter(meta)
+                        //@ts-ignore
+                        : meta.indexOf('{id}') > -1 ? meta.replace('{id}', BigInt(tokenId).toString(16)) : meta;
+                    const response = await superagent.get(url);
+                    meta = JSON.parse(response.text);
+                }
+                imageUri = imageUriFormatter ? imageUriFormatter(meta) : needFetchJson ? meta.image : meta;
+                imageName = await this.getNFTName({address, tokenId, meta}) || {};
+            }
             this.setNFTCacheInfo({ address, tokenId, imageUri, imageName });
 
             return { imageMinHeight: minHeight, imageUri, imageName, errorMessage: meta.error };
