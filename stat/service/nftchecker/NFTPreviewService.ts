@@ -5,11 +5,10 @@ import {toBase32} from "../tool/AddressTool";
 const lodash = require('lodash');
 const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
-
+const {put,get, clear} = require('./MetaInfoCache')
 export class NFTPreviewService {
     private app;
     private cfx;
-    private localStorage = new Map();
 
     constructor(app: any) {
         this.app = app;
@@ -300,14 +299,13 @@ export class NFTPreviewService {
         address: string;
         tokenId: BigInt;
     }) {
-        const key = `${address}-${tokenId}`;
-        const nftJson = this.localStorage.get(key);
+        const nftJson = get(address, tokenId)
         if (nftJson) {
             const nftObj = JSON.parse(nftJson);
             if (nftObj.timeout > +new Date()) {
                 return nftObj;
             } else {
-                this.localStorage.delete(key);
+                clear(address, tokenId)
                 return null;
             }
         }
@@ -327,8 +325,7 @@ export class NFTPreviewService {
     }) {
         const key = `${address}-${tokenId}`;
         if (imageUri) {
-            this.localStorage.delete(key);
-            this.localStorage.set(key,
+            put(address, tokenId,
                 JSON.stringify({address, tokenId, imageUri, imageName, timeout: +new Date() + 1000 * 60 * 60}));
         }
     };
