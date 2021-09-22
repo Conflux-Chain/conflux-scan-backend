@@ -29,16 +29,16 @@ export abstract class TransferQueryBase {
         if(tokenAddressIdArray.length){
             conditionArray.push({contractId: {[Op.in]: tokenAddressIdArray}});
         }
-        if(minEpochNumber) {
+        if(minEpochNumber !== undefined) {
             conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
         }
-        if(maxEpochNumber) {
+        if(maxEpochNumber !== undefined) {
             conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
         }
-        if(minTimestamp) {
+        if(minTimestamp !== undefined) {
             conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
         }
-        if(maxTimestamp) {
+        if(maxTimestamp !== undefined) {
             conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
         }
         if(fromAddressId !== undefined && toAddressId === undefined) {
