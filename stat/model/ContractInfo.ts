@@ -100,7 +100,7 @@ export async function saveAbiInfo(abi:any) {
             arr.push(template)
         }
     }
-    AbiInfo.bulkCreate(arr, {
+    return AbiInfo.bulkCreate(arr, {
         updateOnDuplicate:['updatedAt']
     }).then(arr=>{
         console.log(`save abi info: ${arr.length}`)
