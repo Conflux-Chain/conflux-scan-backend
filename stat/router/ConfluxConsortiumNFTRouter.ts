@@ -14,6 +14,7 @@ export function addConfluxConsortiumNFTRouter(router: Router<any, {}>, statApp: 
     })
     router.get('/clear-nft-meta-cache', async (ctx)=>{
         const {base32, tokenId} = ctx.request.query
+        console.log(` clear-nft-meta-cache, ${base32} [${tokenId}]`)
         let bi = tokenId ? BigInt(tokenId) : undefined
 
         const removed = clear(base32, bi)

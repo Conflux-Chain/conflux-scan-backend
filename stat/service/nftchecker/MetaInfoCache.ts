@@ -17,12 +17,15 @@ export function get(addr, tokenId) {
 export function clear(addr, tokenId) {
     let subMap = mainMap.get(addr)
     if (!subMap) {
+        console.log(` sub map not present `)
         return false
     }
     if (tokenId) {
+        console.log(` delete by [${tokenId}]`)
         return subMap.delete(tokenId)
     } else {
         subMap.clear()
+        console.log(` clear all `)
         return true
     }
 }
