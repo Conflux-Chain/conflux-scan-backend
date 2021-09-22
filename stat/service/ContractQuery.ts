@@ -6,6 +6,7 @@ import {toBase32} from "./tool/AddressTool";
 import {makeId} from "../model/HexMap";
 import {Op} from "sequelize";
 import {StatApp} from "../StatApp";
+import {saveAbiInfo} from "../model/ContractInfo";
 
 const lodash = require('lodash');
 const {Contract} = require("../model/Contract");
@@ -107,6 +108,12 @@ export class ContractQuery {
         verify.verifyResult = verifyResult;
         verify.similarity = similarity;
         const result = await ContractVerify.add(verify);
+        try {
+            const abi = JSON.parse(verify.abi)
+            saveAbiInfo(abi).then()
+        } catch (e) {
+            console.log(` error, save abi info, ${verify.base32}`, e)
+        }
         logger?.info({ src: `[${address}]stat verify request`, addResult: `${JSON.stringify(result)}` });
         return result;
     }
