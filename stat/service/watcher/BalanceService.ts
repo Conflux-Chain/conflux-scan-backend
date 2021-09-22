@@ -9,7 +9,7 @@ import {Contract} from "../../model/Contract";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
-import {Op, cast} from "sequelize";
+import {Op, cast, col} from "sequelize";
 import {ContractService} from "../contract/ContractService";
 import {base32toVerbose} from "../tool/AddressTool";
 const BigFixed = require('bigfixed');
@@ -145,7 +145,7 @@ export class BalanceService {
         }
         const list = await table.findAll({
             // max decimal 65 // https://dev.mysql.com/doc/refman/5.7/en/fixed-point-types.html
-            order:[[cast("balance", 'Decimal(60)'),"desc"]],
+            order:[[cast(col("balance"), 'Decimal(60)'),"desc"]],
             offset: skip, limit
         })
         const hexList = await Hex40Map.findAll({where: {id: {[Op.in]:list.map(h=>h.addressId)}}})
