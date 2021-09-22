@@ -57,10 +57,10 @@ export class FullBlockQuery {
         let paging:any|BlockPage = {}
         if(minEpochNumber !== undefined ||  maxEpochNumber !== undefined ||  blockHash !== undefined
             || minerId !== undefined || minTimestamp !== undefined || maxTimestamp !== undefined){
-            if(minEpochNumber){
+            if(minEpochNumber !== undefined){
                 conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
             }
-            if(maxEpochNumber){
+            if(maxEpochNumber !== undefined){
                 conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
             }
             if(blockHash){
