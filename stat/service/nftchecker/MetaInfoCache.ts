@@ -20,7 +20,7 @@ export function clear(addr, tokenId) {
         console.log(` sub map not present `)
         return false
     }
-    if (tokenId) {
+    if (tokenId !== null && tokenId !== undefined) {
         console.log(` delete by [${tokenId}]`)
         return subMap.delete(tokenId)
     } else {
