@@ -170,19 +170,31 @@ export class TokenQuery {
     }
 
     public async listAddress({ accountAddress, where = {}
-    }:{
-        accountAddress: string, where?: object
+    }:{ accountAddress: string, where?: object
     }) {
+        const {
+            app: {sequelize},
+        } = this;
+
         let tokenArray;
         const options: any = { attributes: ['base32'], where: { auditResult: true }, raw: true };
-
         if(accountAddress){
             const hex40 = await Hex40Map.findOne({where:{hex:format.hexAddress(accountAddress).substr(2)}});
             if(!hex40) return { total: 0, list: [] };
-            const balanceArray = await TokenBalance.findAll({attributes: ['contractId'], where: {addressId: hex40.id}});
-            const contractArray = balanceArray.map(balance => balance.contractId);
-            if(contractArray.length === 0) return { total: 0, list: [] };
-            where = {hex40id: {[Op.in]: contractArray}};
+            const addressId = hex40.id;
+
+            const hexIdArray = [];
+            await TokenBalance.findAll({attributes: ['contractId'], where: {addressId}})
+                .then(balanceArray => balanceArray?.forEach(balance => hexIdArray.push(balance.contractId)));
+            await Promise.all(['address_erc20_transfer', 'address_erc721transfer', 'address_erc1155transfer']
+                .map(tableName => {
+                    sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
+                        where addressId = ${addressId} order by createdAt desc limit 1000) tmp;`,
+                        {type: QueryTypes.SELECT, logging: console.log})
+                        .then(transfers => transfers?.forEach(transfer => hexIdArray.push(transfer.contractId)));
+                }));
+            if(hexIdArray.length === 0) return { total: 0, list: [] };
+            where = {hex40id: {[Op.in]: hexIdArray}};
         }
 
         options.where = lodash.defaults(options.where, where);
