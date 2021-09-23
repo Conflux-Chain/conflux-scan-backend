@@ -5,6 +5,7 @@ import {patchHttpProvider} from "../common/utils";
 import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
+import {StatApp} from "../../StatApp";
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
@@ -253,7 +254,9 @@ async function initTool() {
     const tool = new TokenTool(cfx)
     return tool;
 }
-
+async function checkTokenFetchBalance() {
+    const tool = await initTool()
+}
 async function updateTotalSupply() {
     const tool = await initTool();
 
@@ -342,6 +345,8 @@ if (module === require.main) {
         updateCustodianTokenFlag().then()
     } else if (args[0] === 'updateTotalSupply') {
         updateTotalSupply().then()
+    } else if (args[0] === 'checkTokenFetchBalance') {
+        checkTokenFetchBalance().then()
     } else if (args[0] === 'build_images') {
         buildImages().then(()=>{
             Token.sequelize.close().then()

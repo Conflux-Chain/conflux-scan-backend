@@ -192,8 +192,13 @@ export class ContractQuery {
         return  {total: page?.count || 0, list};
     }
 
-    public async listBasic({ addressArray = []}: {
-        addressArray?: string[]
+    /**
+     *
+     * @param addressArray
+     * @param iconUrl, if true, use icon url instead of icon(base64).
+     */
+    public async listBasic({ addressArray = [], iconUrl = false}: {
+        addressArray?: string[], iconUrl?: boolean
     }) {
         const {
             app: { tokenQuery, service },
@@ -218,6 +223,7 @@ export class ContractQuery {
             this.list({ addressArray }).then(response => response.list.map(contract => {
                     return { address: contract.address, name: contract.name }})),
             this.listVerify({ addressArray }).then(response => response.list.map(verified => verified.address)),
+            // , iconUrl ? [] : ['icon'] to parameters below.
             tokenService.list({addressArray}).then(response => response.list),
         ]);
 
@@ -241,6 +247,7 @@ export class ContractQuery {
                 icon: token.icon,
                 iconUrl: token.iconUrl,
                 website: token.website,
+                tokenType: token.transferType,
             });
         });
 

@@ -1,0 +1,16 @@
+GET localhost:8087/open/version
+###
+GET localhost:8087/open/
+###
+GET localhost:8087/open/account/transactions?account=cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp
+###
+GET localhost:8087/open/account/transactions?account=CFX:TYPE.USER:AATFDV8WDFUW8BKCAD0108APN5EZK1DA0Y8MSREF2N&addressInfo=true
+###
+GET localhost:8087/open/account/crc20/transfers?account=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk
+###
+GET localhost:8087/open/account/crc721/transfers?account=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk
+###
+GET localhost:8087/open/account/crc1155/transfers?account=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk&minTimestamp=9631090&contract=cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk
+###
+GET localhost:8087/open/account/crc1155/transfers?account=net8888:acawb8w9rx5tf4411akpe8ynf5pt87vmp63cy8fea1
+###

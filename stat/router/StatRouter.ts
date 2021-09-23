@@ -26,6 +26,7 @@ import {CfxBill} from "../service/watcher/DummyNode";
 import {NFTMap} from "../service/nftchecker/NFTInfo";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
+import {BalanceService} from "../service/watcher/BalanceService";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -48,7 +49,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/account-token-balance', async(ctx) => {
         const {base32, tokenType} = ctx.request.query
-        const list = await statApp.balanceService.listAccountBalance(base32, tokenType)
+        const list = await BalanceService.listAccountBalance(base32, tokenType)
         ctx.body = {code: 0, list}
     })
     router.get('/tokens/nft-token-id-count', async (ctx)=>{
