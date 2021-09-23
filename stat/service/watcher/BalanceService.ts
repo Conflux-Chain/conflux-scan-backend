@@ -207,7 +207,9 @@ export class BalanceService {
                 exclude: ['icon']
             },
             // logging: console.log,
-            where: {...conditions, auditResult: true, fetchBalance: true, type: {[Op.ne]:''}}
+            where: {...conditions, auditResult: true, fetchBalance: true, type: {[Op.ne]:''},
+                holder: {[Op.gt]: 10}
+            }
         });
         const contracts = tokenList.map(t=>t.base32);
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
