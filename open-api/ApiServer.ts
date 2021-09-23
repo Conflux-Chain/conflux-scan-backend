@@ -94,7 +94,7 @@ export class ApiServer {
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
         StatApp.readonly = config.database.readonly
-        const sequelize = createDB(config.database)
+        const sequelize = createDB(config.databaseRW)
         await initModel(sequelize)
         // await sequelize.sync({})
         await RedisWrap.connect(config.redis)
