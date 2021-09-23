@@ -292,6 +292,7 @@ function createOssClient(accessId, accessKey, bucket) {
         accessKeyId: accessId,
         accessKeySecret: accessKey,
         bucket,
+        secure: true,
         // oss-cn-hongkong-internal.aliyuncs.com
         // host: 'oss-cn-hongkong.aliyuncs.com',
         region: 'oss-cn-hongkong',
