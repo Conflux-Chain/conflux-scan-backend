@@ -229,8 +229,11 @@ export class BalanceService {
         if (tokenType) {
             conditions['type'] = tokenType
         }
-        const tokenList = await TokenQuery.listAddress({accountAddress:base32})
-        const contracts = tokenList.list
+        const contracts = await TokenQuery.listAddress({accountAddress:base32}).then(obj=>{return obj.list})
+        const tokenList = await Token.findAll({where: {
+            auditResult: true, fetchBalance: true, name: {[Op.ne]:''}, base32: {[Op.in]:contracts}
+        }
+        });
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []
         lodash.zip(tokenList, banList).forEach(
@@ -247,7 +250,7 @@ export class BalanceService {
                 })
             }
         )
-        return {list:resultList, candidate: tokenList.list.length}
+        return {list:resultList, candidate: tokenList.length}
     }
     async getHolderCount(base32: string) : Promise<number> {
         const token = await Token.findOne({where: {base32: base32}})
