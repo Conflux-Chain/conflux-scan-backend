@@ -69,10 +69,10 @@ export class FullBlockQuery {
             if(minerId) {
                 conditionArray.push({minerId});
             }
-            if(minTimestamp) {
+            if(minTimestamp !== undefined) {
                 conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
             }
-            if(maxTimestamp) {
+            if(maxTimestamp !== undefined) {
                 conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
             }
         } else{
@@ -215,19 +215,19 @@ export class FullBlockQuery {
         }
         if(accountAddressId){
             conditionArray.push({addressId: accountAddressId});
-            if(minEpochNumber){
+            if(minEpochNumber !== undefined){
                 conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
             }
-            if(maxEpochNumber){
+            if(maxEpochNumber !== undefined){
                 conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
             }
             if(Number.isInteger(nonce)){
                 conditionArray.push({nonce: nonce});
             }
-            if(minTimestamp) {
+            if(minTimestamp !== undefined) {
                 conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
             }
-            if(maxTimestamp) {
+            if(maxTimestamp !== undefined) {
                 conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
             }
             if(fromAddressId !== undefined && toAddressId === undefined){

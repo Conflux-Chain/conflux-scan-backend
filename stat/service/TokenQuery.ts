@@ -7,10 +7,10 @@ import {Hex40Map, makeId} from "../model/HexMap";
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {ContractVerify} from "../model/ContractVerify";
-import {Erc20Transfer} from "../model/Erc20Transfer";
-import {Erc721Transfer} from "../model/Erc721Transfer";
+import {Erc20Transfer, T_ADDRESS_ERC20TRANSFER} from "../model/Erc20Transfer";
+import {Erc721Transfer, T_ADDRESS_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
-import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {Erc1155Transfer, T_ADDRESS_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {TokenBalance} from "../model/Balance";
 import {StatApp} from "../StatApp";
@@ -148,11 +148,11 @@ export class TokenQuery {
         const addressId = hex40?.id
         let tableName;
         if(transferType === CONST.TRANSFER_TYPE.ERC20){
-            tableName = 'address_erc20_transfer';
+            tableName = T_ADDRESS_ERC20TRANSFER;
         } else if(transferType === CONST.TRANSFER_TYPE.ERC721){
-            tableName = 'address_erc721transfer';
+            tableName = T_ADDRESS_ERC721_TRANSFER;
         } else if(transferType === CONST.TRANSFER_TYPE.ERC1155){
-            tableName = 'address_erc1155transfer';
+            tableName = T_ADDRESS_ERC1155_TRANSFER;
         } else {
             return [];
         }
@@ -170,8 +170,8 @@ export class TokenQuery {
     }
 
     public async listAddress({ accountAddress, where = {}
-    }:{ accountAddress: string, where?: object
-    }) {
+    } : { accountAddress?: string, where?: object
+    } = {}) {
         const {
             app: {sequelize},
         } = this;
@@ -186,10 +186,10 @@ export class TokenQuery {
             const hexIdArray = [];
             await TokenBalance.findAll({attributes: ['contractId'], where: {addressId}})
                 .then(balanceArray => balanceArray?.forEach(balance => hexIdArray.push(balance.contractId)));
-            await Promise.all(['address_erc20_transfer', 'address_erc721transfer', 'address_erc1155transfer']
+            await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
                 .map(tableName => {
                     sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
-                        where addressId = ${addressId} order by createdAt desc limit 1000) tmp;`,
+                        where addressId = ${addressId} order by createdAt desc limit 10) tmp;`,
                         {type: QueryTypes.SELECT, logging: console.log})
                         .then(transfers => transfers?.forEach(transfer => hexIdArray.push(transfer.contractId)));
                 }));
@@ -313,7 +313,7 @@ export class TokenQuery {
             verify, audit, sponsor, zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
         } = auditDb;
 
-        const auditCreditArray = [verify, audit, sponsor, zeroAdmin];
+        const auditCreditArray = [verify, audit/*, sponsor*/, zeroAdmin];
         const cexCreditArray = [cexBinance, cexHuobi, cexOKEx];
         const dexCreditArray = [dexMoonSwap];
         const trackCreditArray = [trackCoinMarketCap];
