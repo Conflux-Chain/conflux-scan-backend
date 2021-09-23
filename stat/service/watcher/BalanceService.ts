@@ -15,6 +15,7 @@ import {base32toVerbose} from "../tool/AddressTool";
 const BigFixed = require('bigfixed');
 import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
+import {getApiService} from "../../../open-api/ApiServer";
 
 export class BalanceService {
     private app: StatApp;
@@ -228,16 +229,8 @@ export class BalanceService {
         if (tokenType) {
             conditions['type'] = tokenType
         }
-        const tokenList = await Token.findAll({
-            attributes: {
-                exclude: ['icon']
-            },
-            // logging: console.log,
-            where: {...conditions, auditResult: true, fetchBalance: true, type: {[Op.ne]:''},
-                holder: {[Op.gt]: 10}
-            }
-        });
-        const contracts = tokenList.map(t=>t.base32);
+        const tokenList = await getApiService().tokenQuery.listAddress({accountAddress:base32})
+        const contracts = tokenList.list
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []
         lodash.zip(tokenList, banList).forEach(
@@ -254,7 +247,7 @@ export class BalanceService {
                 })
             }
         )
-        return {list:resultList, candidate: tokenList.length}
+        return {list:resultList, candidate: tokenList.list.length}
     }
     async getHolderCount(base32: string) : Promise<number> {
         const token = await Token.findOne({where: {base32: base32}})

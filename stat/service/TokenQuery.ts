@@ -189,7 +189,7 @@ export class TokenQuery {
             await Promise.all(['address_erc20_transfer', 'address_erc721transfer', 'address_erc1155transfer']
                 .map(tableName => {
                     sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
-                        where addressId = ${addressId} order by createdAt desc limit 1000) tmp;`,
+                        where addressId = ${addressId} order by createdAt desc limit 10) tmp;`,
                         {type: QueryTypes.SELECT, logging: console.log})
                         .then(transfers => transfers?.forEach(transfer => hexIdArray.push(transfer.contractId)));
                 }));
