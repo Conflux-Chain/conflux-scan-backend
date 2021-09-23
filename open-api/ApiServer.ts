@@ -109,7 +109,7 @@ export class ApiServer {
         apiService.tokenQuery = new TokenQuery({tokenTool})
         apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery})
         apiService.logger = logger
-        new BatchBalanceWatcher(this.cfx, [], null)
+        new BatchBalanceWatcher(this.cfx, [], null, await BatchBalanceWatcher.getUtilContractAddr())
         // test
         // logger.info(`simple message`, 1)
         // logger.error('what about the error ?', new Error('here is error msg'))

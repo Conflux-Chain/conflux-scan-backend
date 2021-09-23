@@ -243,7 +243,7 @@ export class QuoteSync {
             ? BigFixed(price).mul(dbToken.totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
             : null;
         totalPrice = totalPrice === 0 ? null : totalPrice;
-        await dbToken.update({ price, totalPrice, updatedAt: Date.now()}, {where: {id: dbToken.id}});
+        await Token.update({ price, totalPrice, updatedAt: new Date()}, {where: {id: dbToken.id}});
       }
     });
   }

@@ -15,7 +15,7 @@ import {base32toVerbose} from "../tool/AddressTool";
 const BigFixed = require('bigfixed');
 import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
-import {getApiService} from "../../../open-api/ApiServer";
+import {TokenQuery} from "../TokenQuery";
 
 export class BalanceService {
     private app: StatApp;
@@ -229,7 +229,7 @@ export class BalanceService {
         if (tokenType) {
             conditions['type'] = tokenType
         }
-        const tokenList = await getApiService().tokenQuery.listAddress({accountAddress:base32})
+        const tokenList = await TokenQuery.listAddress({accountAddress:base32})
         const contracts = tokenList.list
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []

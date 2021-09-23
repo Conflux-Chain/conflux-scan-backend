@@ -1,4 +1,5 @@
 {
+  "include": ["**/*"],
   "compilerOptions": {
     "rootDir": "../",
     "module": "commonjs",
