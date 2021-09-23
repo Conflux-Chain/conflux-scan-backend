@@ -164,7 +164,9 @@ export class TokenQuery {
         const addressArray = list.map(item=> format.address(`0x${item.hex}`, StatApp.networkId));
 
         const response = await this.list({addressArray});
-        let tokenArray = response.list.map(token => lodash.pick(token, ['address', 'name', 'symbol', 'iconUrl']));
+        let tokenArray = response.list
+            .filter(token => (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0))
+            .map(token => lodash.pick(token, ['address', 'name', 'symbol', 'iconUrl']));
         tokenArray = lodash.sortBy(tokenArray, item => lodash.toUpper(item.name));
         return {total: response.total, list: tokenArray};
     }
