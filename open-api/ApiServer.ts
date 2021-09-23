@@ -17,6 +17,7 @@ import {setRateControlDB} from "./router/middleware";
 import {ContractQuery} from "../stat/service/ContractQuery";
 import {TokenQuery} from "../stat/service/TokenQuery";
 import {TokenTool} from "../stat/service/tool/TokenTool";
+import {CfxTransferQuery} from "../stat/service/CfxTransferQuery";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -30,6 +31,7 @@ export class ApiService {
     contractQuery: ContractQuery
     fullBlockQuery: FullBlockQuery
     crc20transferQuery: Crc20TransferQuery
+    cfxTransferQuery: CfxTransferQuery
     crc721transferQuery: Crc721TransferQuery
     crc1155transferQuery: Crc1155TransferQuery
     logger: any
@@ -103,6 +105,7 @@ export class ApiServer {
         const apiApp = {networkId:cfxStatus.networkId};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)
         apiService.crc20transferQuery = new Crc20TransferQuery(apiApp)
+        apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
         const tokenTool = new TokenTool(this.cfx)

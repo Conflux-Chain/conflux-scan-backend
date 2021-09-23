@@ -65,7 +65,9 @@ async function listAccountTransaction(ctx) {
     await polishContract(page, needAddressInfo)
     setBody(ctx, page)
 }
-
+async function listAccountCfxTransfer(ctx) {
+    return listTransfer(ctx, getApiService().cfxTransferQuery)
+}
 /**
  * Query crc20 transfer of one account(address)
  * @param ctx
@@ -114,6 +116,7 @@ export async function register(app: Koa, apiServer: ApiServer) {
         }
     })
     router.get('/account/transactions', listAccountTransaction)
+    router.get('/account/cfx/transfers', listAccountCfxTransfer)
     router.get('/account/crc20/transfers', listAccountTransfer20)
     router.get('/account/crc721/transfers', listAccountTransfer721)
     router.get('/account/crc1155/transfers', listAccountTransfer1155)
