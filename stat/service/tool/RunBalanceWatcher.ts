@@ -11,8 +11,9 @@ async function run() {
         await cfx.updateNetworkId()
         // init contract
         StatApp.networkId = cfx['networkId']
-        console.log(` net work id ${StatApp.networkId}, util contract ${ await BatchBalanceWatcher.getUtilContractAddr()}`)
-        const w = new BatchBalanceWatcher(cfx, config.erc20watchList, null)
+        let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
+        console.log(` net work id ${StatApp.networkId}, util contract ${ utilContract}`)
+        const w = new BatchBalanceWatcher(cfx, config.erc20watchList, null, utilContract)
         const list = await Token.findAll({
             where: {auditResult: true, fetchBalance: true},
             attributes: {
