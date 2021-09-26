@@ -73,7 +73,7 @@ export class PowSidePosSync {
                 bean.blsPubKey = obj['blsPubKey'].toString('hex')
                 bean.vrfPubKey = obj['vrfPubKey'].toString('hex')
                 // console.log(' decoded:', obj)
-            } else if (log["topics"][0]?.startsWith('0xe13f3e895')) {//retire
+            } else if (log["topics"][0]?.startsWith('0xcacdde07b9b')) {//retire
                 // 0xe13f3e895baf53075eec116787300f2ebbf62420db8a58dede6aea2d084a71b7
                 let decoded: any;
                 try {
@@ -87,7 +87,8 @@ export class PowSidePosSync {
                 bean.retire = true
             } else {
                 console.log(` unexpected topic, at epoch ${epoch}, topic ${log["topics"][0]}`)
-                continue
+                // continue
+                process.exit(9)
             }
             registerArr.push(bean)
             // removeLongData(log)
@@ -132,7 +133,7 @@ if (module===require.main) {
                     return new Promise(resolve => {})
                 })
             } else if (args.includes('single')) {
-                return sync.sync(parseInt(args[0]));//131752)
+                return sync.sync(parseInt(args[1]));//131752)
             } else {
                 console.log(` supported action < retire | listen | single >`)
             }
