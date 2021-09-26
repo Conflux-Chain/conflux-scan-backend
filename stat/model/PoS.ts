@@ -202,11 +202,32 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
 
 //
 export interface IPosTransaction {
-    type: number
+    number: number, // it's pk.
+    blockNumber: number,
     fromId: number
-    chainId: number
-    expirationTimestamp: number
+    type: string
+    status: string
     // payload
+}
+export class PosTransaction extends Model<IPosTransaction> implements IPosTransaction {
+    number: number // it's pk.
+    blockNumber: number
+    fromId: number
+    type: string
+    status: string
+    static register(seq:Sequelize) {
+        PosTransaction.init({
+            number: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            blockNumber: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
+            fromId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
+            type: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
+            status: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
+        }, {
+            sequelize: seq,
+            tableName: 'pos_tx',
+            updatedAt: false,
+        })
+    }
 }
 export interface IPosCommittee {
     id?: number
@@ -233,6 +254,7 @@ export class PosCommittee extends Model<IPosCommittee> implements IPosCommittee{
         }, {
             sequelize: seq,
             tableName: 'pos_committee',
+            updatedAt: false,
         })
     }
 }
@@ -263,7 +285,8 @@ export class PosCommitteeNode extends Model<IPosCommitteeNode> implements IPosCo
                 name: 'idx_accountId', fields: ['accountId']
             }, {
                 name: 'idx_block_n', fields: ['blockNumber']
-            }]
+            }],
+            updatedAt: false,
         })
     }
 }

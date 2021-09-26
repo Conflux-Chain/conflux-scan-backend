@@ -1,6 +1,14 @@
 import {Conflux} from "js-conflux-sdk";
 import {sleep} from "../tool/ProcessTool";
-import {IPosAccountBlock, PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosCommitteeNode} from "../../model/PoS";
+import {
+    IPosAccountBlock,
+    PosAccount,
+    PosAccountBlock,
+    PosBlock,
+    PosCommittee,
+    PosCommitteeNode,
+    PosTransaction
+} from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
 import {json, QueryTypes} from "sequelize";
 // import {abi as posAbi} from "../abi/PosRegister"
@@ -190,6 +198,28 @@ export class PosSync {
         // console.log(` committee info of block number ${blockNumber.toString().padStart(8, ' ')}: `, JSON.stringify(info, ))
         return info
     }
+    async repeatSyncTx() {
+        let next = await PosTransaction.max('number').then(res=>{
+            return Number.isNaN(res) ? 1 : (Number(res) + 1)
+        })
+        const that = this
+        async function repeat() {
+            const tx = await that.cfx['pos'].getTransactionByNumber(next)
+            if (tx === null) {
+                setTimeout(repeat, 10_000)
+            } else {
+                const accountId = await that.saveAccount(tx.from)
+                await PosTransaction.create({
+                    blockNumber: 0, // FIXME
+                    fromId: accountId, number: next, status: tx.status, type: tx.type
+                })
+                console.log(` save tx ${next}`)
+                next += 1
+                setTimeout(repeat, 0)
+            }
+        }
+        repeat().then()
+    }
     async test() {
         console.log(`===================== pos test ========`)
         // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
@@ -199,7 +229,8 @@ export class PosSync {
         // await this.getCommittee(1).catch(console.log)
         // await this.getCommittee(st.latestVoted).catch(console.log)
         // await this.getCommittee(st.pivotDecision).catch(console.log)
-        await this.syncCommittee()
+        // await this.syncCommittee()
+        await this.repeatSyncTx()
     }
 }
 if (require.main === module) {
@@ -223,6 +254,7 @@ if (require.main === module) {
         return Promise.all([
             posSync.run(),
             posSync.repeatFetchCommittee(),
+            posSync.repeatSyncTx(),
         ])
     }).then(()=>{
 
