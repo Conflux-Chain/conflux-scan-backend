@@ -115,9 +115,10 @@ export class StatApp{
         this.rankService = new RankService(this)
         this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
+        const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx)).schedule(this.config.cfxWatcherDelay).then()
-            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher, await BatchBalanceWatcher.getUtilContractAddr())
+            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher, utilContract)
             this.batchBalanceWatcher.schedule().then()
             this.batchBalanceWatcher.listenTransfer().then()
         }
@@ -155,7 +156,7 @@ export class StatApp{
         this.blockDataStatSync = new DailyBlockDataStatSync(this.sequelize);
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         this.nftPreviewService = new NFTPreviewService(this);
-        this.nftCheckerService = new NFTCheckerService(this);
+        this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
         //
         if (this.config.syncBlock) {
