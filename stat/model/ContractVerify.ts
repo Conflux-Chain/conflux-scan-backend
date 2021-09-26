@@ -7,6 +7,7 @@ export interface IContractVerify{
     name:string
     compiler?:string
     version?:string
+    constructorArgs?:string
     sourceCode?:string
     abi?:string
     optimizeFlag?:boolean
@@ -14,6 +15,9 @@ export interface IContractVerify{
     license?:string
     verifyResult?:boolean
     similarity?:number
+    proxy?:boolean
+    implementation?:string
+    proxyPattern?:string
 }
 
 export class ContractVerify extends Model<IContractVerify> implements IContractVerify{
@@ -23,6 +27,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     name:string
     compiler?:string
     version?:string
+    constructorArgs?:string
     sourceCode?:string
     abi?:string
     optimizeFlag?:boolean
@@ -30,6 +35,9 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     license?:string
     verifyResult?:boolean
     similarity?:number
+    proxy?:boolean
+    implementation?:string
+    proxyPattern?:string
 
     static register(seq:Sequelize) {
         ContractVerify.init({
@@ -40,6 +48,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name: {type: DataTypes.CHAR(255), allowNull: false},
             compiler: {type: DataTypes.CHAR(255), allowNull: true},
             version: {type: DataTypes.CHAR(255), allowNull: true},
+            constructorArgs: {type: DataTypes.TEXT, allowNull: true, },
             sourceCode: {type: DataTypes.TEXT, allowNull: true, },
             abi: {type: DataTypes.TEXT, allowNull: true, },
             optimizeFlag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
@@ -48,6 +57,10 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
 
             verifyResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             similarity: {type: DataTypes.DECIMAL(10, 9), allowNull: true, },
+
+            proxy: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            implementation: {type: DataTypes.CHAR(64), allowNull: true},
+            proxyPattern: {type: DataTypes.CHAR(64), allowNull: true},
         },{
             tableName: 'contract_verify',
             sequelize: seq,
@@ -63,6 +76,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name:contract.name,
             compiler:contract.compiler,
             version:contract.version,
+            constructorArgs: contract.constructorArgs,
             sourceCode:contract.sourceCode,
             abi:contract.abi,
             optimizeFlag:contract.optimizeFlag,
@@ -71,6 +85,10 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
 
             verifyResult:contract.verifyResult,
             similarity:contract.similarity,
+
+            proxy:contract.proxy,
+            implementation:contract.implementation,
+            proxyPattern:contract.proxyPattern,
         }, {
             transaction: dbTx
         })
