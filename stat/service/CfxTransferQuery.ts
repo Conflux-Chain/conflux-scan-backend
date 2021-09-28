@@ -45,7 +45,7 @@ export class CfxTransferQuery extends TransferQueryBase{
                 conditionArray.push({blockTime: { [Op.gte]: minTimestamp}});
             }
             if(maxTimestamp) {
-                conditionArray.push({blockTime: { [Op.lt]: maxTimestamp}});
+                conditionArray.push({blockTime: { [Op.lte]: maxTimestamp}});
             }
             if(conditionArray.length === 1){
                 queryOptions.where = conditionArray[0];
