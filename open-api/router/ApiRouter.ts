@@ -40,6 +40,21 @@ async function listAccountAssets(ctx) {
     polishAssertList(assets)
     setBody(ctx, assets)
 }
+async function getChainStatus(ctx) {
+    const {skip,limit} = skipLimit(ctx.request.query)
+    if (skip > 60) {
+        throw new Error('Parameter <skip> exceeds 60')
+    }
+    if (limit > 60) {
+        throw new Error('Parameter <limit> exceeds 60')
+    }
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day'])
+    const {intervalType, sort} = ctx.request.query
+    const page = await getApiService().dailyBlockDataStatQuery.listStat(intervalType, skip, limit,
+        (sort || 'desc').toLowerCase())
+    setBody(ctx, page)
+}
 /**
  * query transactions of one account(address)
  * @param ctx
@@ -115,6 +130,9 @@ export async function register(app: Koa, apiServer: ApiServer) {
             }
         }
     })
+    //
+    router.get('/chain/status', getChainStatus)
+    //
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)
     router.get('/account/crc20/transfers', listAccountTransfer20)

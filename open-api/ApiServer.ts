@@ -18,6 +18,7 @@ import {ContractQuery} from "../stat/service/ContractQuery";
 import {TokenQuery} from "../stat/service/TokenQuery";
 import {TokenTool} from "../stat/service/tool/TokenTool";
 import {CfxTransferQuery} from "../stat/service/CfxTransferQuery";
+import {DailyBlockDataStatQuery} from "../stat/service/DailyBlockDataStatQuery";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -34,6 +35,7 @@ export class ApiService {
     cfxTransferQuery: CfxTransferQuery
     crc721transferQuery: Crc721TransferQuery
     crc1155transferQuery: Crc1155TransferQuery
+    dailyBlockDataStatQuery: DailyBlockDataStatQuery
     logger: any
     tokenQuery: TokenQuery;
 }
@@ -108,6 +110,7 @@ export class ApiServer {
         apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
+        apiService.dailyBlockDataStatQuery = new DailyBlockDataStatQuery(apiApp)
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenQuery = new TokenQuery({tokenTool})
         apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery})

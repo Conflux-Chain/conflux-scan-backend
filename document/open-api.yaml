@@ -39,6 +39,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Version'
+  /chain/status:
+    get:
+      tags:
+        - 'Chain'
+      description: "Get status of the chain."
+      parameters:
+        - $ref: '#/components/parameters/sortParam'
+        - description: "Indicator calculation period, should be one of minute, hour or day."
+          name: intervalType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - min
+              - hour
+              - day
+        - name: skip
+          in: query
+          description: "The number of skipped records, usually it's pageSize * (pageNumber - 1). Maximum 60."
+          required: false
+          schema:
+            type: integer
+            default: 0
+            maximum: 60
+        - name: limit
+          in: query
+          description: "The number of records displayed on the page. Maximum 60."
+          required: false
+          schema:
+            type: integer
+            maximum: 60
+            default: 10
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ChainStatus"
   /account/transactions:
     get:
       tags:
@@ -369,6 +409,40 @@ components:
                     type: integer
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
+    ChainStatus:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  blockTime:
+                    type: string
+                    description: ''
+                  tps:
+                    type: string
+                    description: ''
+                  hashRate:
+                    type: string
+                    description: ''
+                  difficulty:
+                    type: string
+                    description: ''
+                  timestamp:
+                    type: string
+                    description: 'Statistics time, in seconds.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time'
     TransactionList:
       type: object
       properties:

@@ -82,7 +82,9 @@ export function setBody(ctx, data: any, code = 0, message = 'ok') {
 }
 // https://swaggerstats.io/guide/conf.html#options
 export function addSwagger(app: Koa, prefix) {
+    console.log(` loading open-api.yaml`)
     const spec = yamljs.load('./document/open-api.yaml');
+    console.log(` loading open-api.yaml done`)
     // metrics
     app.use(e2k(swStats.getMiddleware({
         swaggerSpec:spec,

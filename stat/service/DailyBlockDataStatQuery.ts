@@ -16,7 +16,7 @@ export class DailyBlockDataStatQuery {
         this.app = backendApp;
     }
 
-    async listStat(intervalType, skip: number = 0, limit: number = 27) {
+    async listStat(intervalType, skip: number = 0, limit: number = 27, sort='asc') {
         if(intervalType === this.INTERVAL_TYPE.hour ||
             intervalType === this.INTERVAL_TYPE.day){
             const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
@@ -28,7 +28,7 @@ export class DailyBlockDataStatQuery {
                 item['timestamp'] = String((item['statTime']).getTime() / 1000);
                 return item;
             });
-            list = lodash.orderBy(list, 'timestamp', 'asc');
+            list = lodash.orderBy(list, 'timestamp', sort);
             const total = await DailyBlockDataStat.count({where: {statType: type}});
             return {total, list};
         }
@@ -68,7 +68,7 @@ export class DailyBlockDataStatQuery {
                     timestamp: String(date.getTime() / 1000) });
             }
         }
-        const list = lodash.orderBy(statArray, 'timestamp', 'asc');
+        const list = lodash.orderBy(statArray, 'timestamp', sort);
         return {total: limit - 1, list};
     }
 
