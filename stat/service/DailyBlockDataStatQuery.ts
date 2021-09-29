@@ -69,7 +69,7 @@ export class DailyBlockDataStatQuery {
             }
         }
         const list = lodash.orderBy(statArray, 'timestamp', sort);
-        return {total: limit - 1, list};
+        return {total: limit, list};
     }
 
     public convertTxStatMap(partialList){
