@@ -44,7 +44,7 @@ paths:
       tags:
         - 'Chain'
       description: "Get status of the chain within ${limit} ${intervalType}. When limit is 1
-      , the result may be empty because the latest record may have not been produced."
+      , the result may be empty because the latest record may have not been produced. So minimum is 2."
       parameters:
         - $ref: '#/components/parameters/sortParam'
         - description: "Indicator calculation period, should be one of minute, hour or day."
@@ -67,7 +67,7 @@ paths:
             maximum: 60
         - name: limit
           in: query
-          description: "The number of records displayed on the page. Maximum 60."
+          description: "The number of records displayed on the page. Maximum 60. Minimum 2"
           required: false
           schema:
             type: integer
