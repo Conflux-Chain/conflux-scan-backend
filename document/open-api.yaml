@@ -44,7 +44,7 @@ paths:
       tags:
         - 'Chain'
       description: "Get status of the chain within ${limit} ${intervalType}. When limit is 1
- , the result may be empty because the latest record may have not been produced."
+      , the result may be empty because the latest record may have not been produced."
       parameters:
         - $ref: '#/components/parameters/sortParam'
         - description: "Indicator calculation period, should be one of minute, hour or day."
