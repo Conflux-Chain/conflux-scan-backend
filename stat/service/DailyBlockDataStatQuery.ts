@@ -52,6 +52,11 @@ export class DailyBlockDataStatQuery {
                 attributes: ['statTime','blockTime',['hashrate','hashRate'], 'difficulty'],
                 where, offset: skip, limit, order: [['statTime', sort]], raw: true
             })
+            page.rows.forEach(row=>{
+                // fix date format
+                // @ts-ignore
+                row['statTime'] = row['statTime'].toISOString().replace('T', ' ').substr(0, 19)
+            })
             return {total: page.count, list: page.rows, intervalType}
         }
         // calculate real time within minutes.
@@ -76,7 +81,7 @@ export class DailyBlockDataStatQuery {
             delete row['difficultySum']
         })
         if (list.length > limit) {
-            list = list.pop()
+            list.pop()
         }
         return {total: list.length, list, intervalType}
     }
