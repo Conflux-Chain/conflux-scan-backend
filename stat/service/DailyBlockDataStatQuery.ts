@@ -56,7 +56,7 @@ export class DailyBlockDataStatQuery {
         }
         // calculate real time within minutes.
         console.log(` real time calculate `)
-        const list:any[] = await FullBlock.findAll({
+        let list:any[] = await FullBlock.findAll({
             attributes: [
                     [fn('count', col('*')), 'blockCount'],
                     [fn('sum', col('difficulty')), 'difficultySum'],
@@ -76,7 +76,7 @@ export class DailyBlockDataStatQuery {
             delete row['difficultySum']
         })
         if (list.length > limit) {
-            delete list[list.length - 1]
+            list = list.slice(0, limit)
         }
         return {total: list.length, list, intervalType}
     }
