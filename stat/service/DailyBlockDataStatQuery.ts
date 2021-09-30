@@ -75,6 +75,9 @@ export class DailyBlockDataStatQuery {
             delete row['blockCount']
             delete row['difficultySum']
         })
+        if (list.length > limit) {
+            delete list[list.length - 1]
+        }
         return {total: list.length, list, intervalType}
     }
 
