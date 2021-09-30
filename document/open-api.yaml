@@ -439,9 +439,9 @@ components:
                   difficulty:
                     type: string
                     description: ''
-                  timestamp:
-                    type: string
-                    description: 'Statistics time, in seconds.'
+#                  timestamp:
+#                    type: string
+#                    description: 'Statistics time, in seconds.'
                   statTime:
                     type: string
                     description: 'Statistics time, UTC.'
