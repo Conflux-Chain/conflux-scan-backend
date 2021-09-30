@@ -49,7 +49,7 @@ export class DailyBlockDataStatQuery {
             const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
             where['statType'] = type
             const page = await DailyBlockDataStat.findAndCountAll({
-                attributes: {exclude: ['tps'], include: ['statTime','blockTime',['hashrate','hashRate'], 'difficulty']},
+                attributes: ['statTime','blockTime',['hashrate','hashRate'], 'difficulty'],
                 where, offset: skip, limit, order: [['statTime', sort]], raw: true
             })
             return {total: page.count, list: page.rows, intervalType}
@@ -72,6 +72,8 @@ export class DailyBlockDataStatQuery {
             row['blockTime'] = BigFixed(interval).div(BigFixed(blockCount));
             row['hashRate'] = BigFixed(difficultySum).div(BigFixed(interval));
             row['difficulty'] = BigFixed(difficultySum).div(BigFixed(blockCount));
+            delete row['blockCount']
+            delete row['difficultySum']
         })
         return {total: list.length, list, intervalType}
     }

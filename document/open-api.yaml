@@ -83,7 +83,7 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/ChainStatus"
+                $ref: "#/components/schemas/MiningStat"
   /account/transactions:
     get:
       tags:
@@ -414,7 +414,7 @@ components:
                     type: integer
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
-    ChainStatus:
+    MiningStat:
       type: object
       properties:
         code:
@@ -433,9 +433,6 @@ components:
                   blockTime:
                     type: string
                     description: ''
-                  tps:
-                    type: string
-                    description: ''
                   hashRate:
                     type: string
                     description: ''
@@ -447,7 +444,7 @@ components:
                     description: 'Statistics time, in seconds.'
                   statTime:
                     type: string
-                    description: 'Statistics time'
+                    description: 'Statistics time, UTC.'
     TransactionList:
       type: object
       properties:
