@@ -1,4 +1,4 @@
-import {QueryTypes} from "sequelize";
+import {QueryTypes, Op, fn, col} from "sequelize";
 import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
@@ -16,7 +16,67 @@ export class DailyBlockDataStatQuery {
         this.app = backendApp;
     }
 
-    async listStat(intervalType, skip: number = 0, limit: number = 27, sort='asc') {
+    async listMiningStat({intervalType = 'hour', skip = 0, limit = 27, sort='asc', minTimestamp = undefined
+                             , maxTimestamp = undefined}) {
+        let timeCol = 'statTime'
+        if (intervalType === this.INTERVAL_TYPE.min) {
+            timeCol = 'createdAt'
+            if (maxTimestamp === undefined) {
+                maxTimestamp = Math.round(Date.now() / 1000)
+            }
+            if (minTimestamp === undefined) {
+                minTimestamp = maxTimestamp - 60 * limit
+            }
+            if (maxTimestamp - minTimestamp > 3600) {
+                throw new Error(`Time scope exceeds 60 minutes under minute interval.`)
+            }
+        }
+        //
+        const where = {  }
+        const range = []
+        if (minTimestamp !== undefined) {
+            range.push({[timeCol]: {[Op.gte]: new Date(minTimestamp*1000)}})
+        }
+        if (maxTimestamp !== undefined) {
+            range.push({[timeCol]: {[Op.lte]: new Date(maxTimestamp*1000)}})
+        }
+        if (range.length) {
+            where[Op.and] = range
+        }
+        if(intervalType === this.INTERVAL_TYPE.hour ||
+            intervalType === this.INTERVAL_TYPE.day) {
+            console.log(` fetch from db `)
+            const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
+            where['statType'] = type
+            const page = await DailyBlockDataStat.findAndCountAll({
+                attributes: {exclude: ['tps'], include: ['statTime','blockTime',['hashrate','hashRate'], 'difficulty']},
+                where, offset: skip, limit, order: [['statTime', sort]], raw: true
+            })
+            return {total: page.count, list: page.rows, intervalType}
+        }
+        // calculate real time within minutes.
+        console.log(` real time calculate `)
+        const list:any[] = await FullBlock.findAll({
+            attributes: [
+                    [fn('count', col('*')), 'blockCount'],
+                    [fn('sum', col('difficulty')), 'difficultySum'],
+                    [fn('DATE_FORMAT', col('createdAt'), '%Y-%m-%d %H:%i:00'), 'statTime'],
+            ],
+            where, raw: true,
+            group: 'statTime', order: [[col('statTime'), sort]],
+            logging: console.log,
+        })
+        const interval = this.intervalMinInSec;
+        list.forEach(row=>{
+            const {blockCount, difficultySum} = row
+            row['blockTime'] = BigFixed(interval).div(BigFixed(blockCount));
+            row['hashRate'] = BigFixed(difficultySum).div(BigFixed(interval));
+            row['difficulty'] = BigFixed(difficultySum).div(BigFixed(blockCount));
+        })
+        return {total: list.length, list, intervalType}
+    }
+
+    async listStat(intervalType, skip: number = 0, limit: number = 27) {
         if(intervalType === this.INTERVAL_TYPE.hour ||
             intervalType === this.INTERVAL_TYPE.day){
             const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
@@ -28,7 +88,7 @@ export class DailyBlockDataStatQuery {
                 item['timestamp'] = String((item['statTime']).getTime() / 1000);
                 return item;
             });
-            list = lodash.orderBy(list, 'timestamp', sort);
+            list = lodash.orderBy(list, 'timestamp', 'asc');
             const total = await DailyBlockDataStat.count({where: {statType: type}});
             return {total, list};
         }
@@ -68,8 +128,8 @@ export class DailyBlockDataStatQuery {
                     timestamp: String(date.getTime() / 1000) });
             }
         }
-        const list = lodash.orderBy(statArray, 'timestamp', sort);
-        return {total: limit, list};
+        const list = lodash.orderBy(statArray, 'timestamp', 'asc');
+        return {total: limit - 1, list};
     }
 
     public convertTxStatMap(partialList){

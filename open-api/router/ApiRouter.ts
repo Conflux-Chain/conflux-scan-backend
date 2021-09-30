@@ -40,7 +40,7 @@ async function listAccountAssets(ctx) {
     polishAssertList(assets)
     setBody(ctx, assets)
 }
-async function getChainStatus(ctx) {
+async function listMiningStat(ctx) {
     const {skip,limit} = skipLimit(ctx.request.query)
     if (skip > 60) {
         throw new Error('Parameter <skip> exceeds 60')
@@ -48,11 +48,15 @@ async function getChainStatus(ctx) {
     if (limit > 60) {
         throw new Error('Parameter <limit> exceeds 60')
     }
+    if (limit < 2) {
+        throw new Error('Parameter <limit> should >= 2')
+    }
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day'])
     const {intervalType, sort} = ctx.request.query
-    const page = await getApiService().dailyBlockDataStatQuery.listStat(intervalType, skip, limit,
-        (sort || 'desc').toLowerCase())
+    const page = await getApiService().dailyBlockDataStatQuery.listMiningStat({intervalType, skip, limit,
+        sort:(sort || 'desc').toLowerCase()})
     setBody(ctx, page)
 }
 /**
@@ -131,7 +135,7 @@ export async function register(app: Koa, apiServer: ApiServer) {
         }
     })
     //
-    router.get('/chain/status', getChainStatus)
+    router.get('/statistics/mining', listMiningStat)
     //
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)

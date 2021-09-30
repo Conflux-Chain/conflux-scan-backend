@@ -39,15 +39,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Version'
-  /chain/status:
+  /statistics/mining:
     get:
       tags:
-        - 'Chain'
-      description: "Get status of the chain within ${limit} ${intervalType}. When limit is 1
-      , the result may be empty because the latest record may have not been produced. So minimum is 2."
+        - 'statistics'
+      description: "Get statistics of mining within ${limit} ${intervalType}. When limit is 1
+      , the result may be empty because the latest record may have not been produced. So minimum limit is 2."
       parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/sortParam'
-        - description: "Indicator calculation period, should be one of minute, hour or day."
+        - description: "Indicator calculation period, should be one of min(minute), hour or day. Default is hour."
           name: intervalType
           in: query
           required: false
@@ -59,7 +61,8 @@ paths:
               - day
         - name: skip
           in: query
-          description: "The number of skipped records, usually it's pageSize * (pageNumber - 1). Maximum 60."
+          description: "The number of skipped records, usually it's pageSize * (pageNumber - 1). Maximum 60.
+          Doesn't take effect when interval type is 'min'."
           required: false
           schema:
             type: integer

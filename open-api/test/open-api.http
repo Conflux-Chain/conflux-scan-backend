@@ -2,7 +2,7 @@ GET localhost:8087/open/version
 ###
 GET localhost:8087/open/
 ###
-GET localhost:8087/open/chain/status?limit=2
+GET localhost:8087/open/statistics/mining?intervalType=day
 ###
 GET localhost:8087/open/account/transactions?account=cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp
 ###
