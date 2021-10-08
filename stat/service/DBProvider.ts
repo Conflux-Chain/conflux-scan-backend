@@ -94,7 +94,15 @@ import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
 import {CfxBill, createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
-import {PosAccount, PosAccountBlock, PosBlock, PosRegister} from "../model/PoS";
+import {
+    PosAccount,
+    PosAccountBlock,
+    PosBlock,
+    PosCommittee,
+    PosCommitteeNode,
+    PosRegister,
+    PosTransaction
+} from "../model/PoS";
 let conf
 export function createDB(config) {
     conf = config
@@ -269,6 +277,9 @@ export async function initModel(sequelize) {
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);
     PosAccountBlock.register(sequelize)
+    PosCommittee.register(sequelize)
+    PosCommitteeNode.register(sequelize)
+    PosTransaction.register(sequelize)
     PosRegister.register(sequelize)
 }
 
