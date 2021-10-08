@@ -12,10 +12,10 @@ export class NFTCheckerService {
     private cfx;
     private readonly contract;
 
-    constructor(app: any) {
+    constructor(app: any, utilContractAddr = undefined) {
         this.app = app;
         this.cfx = app.cfx;
-        this.contract = this.cfx.Contract({abi, address: this.scanUtilContractAddress});
+        this.contract = this.cfx.Contract({abi, address: utilContractAddr || this.scanUtilContractAddress});
     }
 
     public async getNFTBalances({ownerAddress}) {

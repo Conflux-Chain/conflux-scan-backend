@@ -41,7 +41,7 @@ export class TokenSecurityAuditSync{
             await that.audit(now).catch(err=>{
                 console.log(`token_security_audit_sync fail: `, err);
             });
-            const delay = 1000 * 60 * 60; // interval is 1 hour
+            const delay = 1000 * 60 * 60 * 24; // interval is 24 hour
             setTimeout(repeat, delay);
         }
 

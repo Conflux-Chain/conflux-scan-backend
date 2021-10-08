@@ -9,7 +9,7 @@ import {RedisWrap} from "./service/RedisWrap";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
-    let seq = createDB(config.database)
+    let seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
     if (args[0] === 'fix') {

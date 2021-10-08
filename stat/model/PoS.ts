@@ -80,6 +80,7 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
         })
     }
     static lock = false
+    static printLog = false
     static async make(hex:string, createdFn = (id)=>{}) : Promise<number>{
         // TODO use some cache.
         do {
@@ -91,6 +92,7 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             const has = await PosAccount.findOne({where: {hex}})
             if (has) {
                 PosAccount.lock = false
+                PosAccount.printLog && console.log(` account exists: ${has.id}`)
                 return has.id
             }
             const max = Number(await PosAccount.max('id'))
@@ -104,6 +106,7 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             })
             PosAccount.lock = false
             if (newOne) {
+                PosAccount.printLog && console.log(` account created: ${next}`)
                 createdFn(next)
                 return next
             }
@@ -199,16 +202,93 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
 
 //
 export interface IPosTransaction {
-    type: number
+    number: number, // it's pk.
+    blockNumber: number,
     fromId: number
-    chainId: number
-    expirationTimestamp: number
+    type: string
+    status: string
     // payload
 }
-export interface IPosCouncil {
+export class PosTransaction extends Model<IPosTransaction> implements IPosTransaction {
+    number: number // it's pk.
+    blockNumber: number
+    fromId: number
+    type: string
+    status: string
+    static register(seq:Sequelize) {
+        PosTransaction.init({
+            number: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            blockNumber: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
+            fromId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
+            type: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
+            status: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
+        }, {
+            sequelize: seq,
+            tableName: 'pos_tx',
+            updatedAt: false,
+        })
+    }
+}
+export interface IPosCommittee {
+    id?: number
+    epochNumber: number
+    blockNumber: number
     totalVotingPower: number
     quorumVotingPower: number
+    nodesCount: number
     // committees: string[]
+}
+export class PosCommittee extends Model<IPosCommittee> implements IPosCommittee{
+    blockNumber: number // primary key
+    epochNumber: number
+    totalVotingPower: number
+    quorumVotingPower: number
+    nodesCount: number
+    static register(seq:Sequelize) {
+        PosCommittee.init({
+            blockNumber: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
+            epochNumber: {type: DataTypes.BIGINT({unsigned: true}), },
+            totalVotingPower: {type: DataTypes.BIGINT({unsigned: true}), },
+            quorumVotingPower: {type: DataTypes.BIGINT({unsigned: true}), },
+            nodesCount: {type: DataTypes.INTEGER({unsigned: true}), allowNull: false},
+        }, {
+            sequelize: seq,
+            tableName: 'pos_committee',
+            updatedAt: false,
+        })
+    }
+}
+export interface IPosCommitteeNode {
+    id?: number
+    epochNumber: number
+    blockNumber: number
+    accountId: number
+    votingPower: number
+}
+export class PosCommitteeNode extends Model<IPosCommitteeNode> implements IPosCommitteeNode {
+    id?: number
+    epochNumber: number
+    blockNumber: number
+    accountId: number
+    votingPower: number
+    static register(seq:Sequelize) {
+        PosCommitteeNode.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            accountId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            epochNumber: {type: DataTypes.BIGINT({unsigned: true}), },
+            blockNumber: {type: DataTypes.BIGINT({unsigned: true}), },
+            votingPower: {type: DataTypes.BIGINT({unsigned: true}), },
+        }, {
+            sequelize: seq,
+            tableName: 'pos_committee_node',
+            indexes: [{
+                name: 'idx_accountId', fields: ['accountId']
+            }, {
+                name: 'idx_block_n', fields: ['blockNumber']
+            }],
+            updatedAt: false,
+        })
+    }
 }
 export interface PosAccount {
     addressHex: string
