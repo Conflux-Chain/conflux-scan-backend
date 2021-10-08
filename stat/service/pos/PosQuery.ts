@@ -18,11 +18,11 @@ export class PosQuery {
             this.cfx.getPoSEconomics(),
         ])
         return {
-            latestCommitted: st.latestCommitted,
-            latestVoted: st.latestVoted,
-            posPivotDecision: st.pivotDecision,
-            posEpoch: st.epoch,
-            posAccountCount,
+            latestCommitted: (st.latestCommitted || '0').toString(),
+            latestVoted: (st.latestVoted || '0').toString(),
+            posPivotDecision: st.pivotDecision?.toString() || '0',
+            posEpoch: st.epoch?.toString() || '0',
+            posAccountCount: posAccountCount?.toString() || '0',
             distributablePosInterest: posEconomics.distributablePosInterest.toString(),
             lastDistributeBlock: posEconomics.lastDistributeBlock.toString(),
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
