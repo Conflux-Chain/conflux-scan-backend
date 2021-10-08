@@ -26,15 +26,21 @@ export class PosSync {
         await this.cfx.updateNetworkId();
         const max = await PosBlock.max('height')
         this.position = isNaN(Number(max)) ? 1 : Number(max) + 1
-        console.log(` db max is ${max}, next position is `, this.position)
+        console.log(`PosBlock db max is ${max}, next position is `, this.position)
         const posContractAddr = '0x0888000000000000000000000000000000000005'
         this.posContract = this.cfx.Contract({abi:posAbi, address: posContractAddr})
     }
     async updateLatestBlockNumber() {
-        const st = await this.cfx["pos"].getStatus()
+        let st: Object;
+        try {
+            st = await this.cfx["pos"].getStatus();
+        } catch (e) {
+            console.log(` get status fail:`, e)
+            return
+        }
         // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
-        console.log(` status : ${JSON.stringify(st)}`)
-        this.latestBlockNumber = st.latestVoted;
+        // console.log(` status : ${JSON.stringify(st)}`)
+        this.latestBlockNumber = st["latestVoted"];
         console.log(` update latestBlockNumber to ${this.latestBlockNumber}`)
     }
     async run() {

@@ -11,11 +11,13 @@ export class PosQuery {
     }
     async posInfo() {
         const [st, posAccountCount] = await Promise.all([
+            // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx['pos'].getStatus(),
             PosAccount.count({}),
         ])
         return {
-            posBlockNumber: st.blockNumber,
+            latestCommitted: st.latestCommitted,
+            latestVoted: st.latestVoted,
             posPivotDecision: st.pivotDecision,
             posEpoch: st.epoch,
             posAccountCount,

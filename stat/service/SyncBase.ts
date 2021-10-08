@@ -71,7 +71,7 @@ export abstract class SyncBase{
             syncCode = await this.saveForward(epochNumber, data);
         } catch (error) {
             console.error(`sync_base sync forward error, epoch:${epochNumber}`, error);
-            throw error;
+            throw error;  //ECONNREFUSED
         }
 
         if(syncCode === SyncCode.SUCCESS){
