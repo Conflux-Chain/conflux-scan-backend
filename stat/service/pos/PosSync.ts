@@ -234,10 +234,10 @@ export class PosSync {
         }
         repeat().then()
     }
-    async repeatSyncRewards() {
+    async repeatSyncRewards(rewardStartAt: number) {
         const that = this
         let nextEpoch = await PosReward.findOne({order:[['id','desc']]}).then(res=>{
-            return res === null ? 1 : res.epoch + 1
+            return res === null ? rewardStartAt : res.epoch + 1
         })
         async function repeat() {
             try {
@@ -330,6 +330,7 @@ export class PosSync {
 if (require.main === module) {
     const args = process.argv.slice(2)
     const url = args[0]
+    const rewardStartAt = args[1] ? parseInt(args[1]) : 200_000
     const cfx = new Conflux({url})
     const posSync = new PosSync(cfx);
     init().then(()=> {
@@ -349,7 +350,7 @@ if (require.main === module) {
             posSync.run(),
             posSync.repeatFetchCommittee(),
             posSync.repeatSyncTx(),
-            posSync.repeatSyncRewards(),
+            posSync.repeatSyncRewards(rewardStartAt),
         ])
     }).then(()=>{
 
