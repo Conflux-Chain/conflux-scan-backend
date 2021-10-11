@@ -359,7 +359,7 @@ if (require.main === module) {
             posSync.run(),
             posSync.repeatFetchCommittee(),
             posSync.repeatSyncTx(),
-            posSync.repeatSyncRewards(rewardStartAt),
+            posSync.repeatSyncRewards(rewardStartAtPow),
         ])
     }).then(()=>{
 
