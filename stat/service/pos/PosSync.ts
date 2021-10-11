@@ -235,9 +235,10 @@ export class PosSync {
         repeat().then()
     }
     async repeatSyncRewards(rewardStartAt: number) {
+        const rewardStartAtPos = await this.computeRewardStartAt(rewardStartAt)
         const that = this
         let nextEpoch = await PosReward.findOne({order:[['id','desc']]}).then(res=>{
-            return res === null ? rewardStartAt : res.epoch + 1
+            return res === null ? rewardStartAtPos : res.epoch + 1
         })
         async function repeat() {
             try {
@@ -307,6 +308,9 @@ export class PosSync {
         // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
         const st = await this.cfx["pos"].getStatus()
         console.log(` status ${JSON.stringify(st)}`)
+        const powBlock = await this.cfx.getBlockByEpochNumber(199);
+        console.log(` pow block detail: `, powBlock)
+        console.log(` pos block detail: `, await this.cfx['pos'].getBlockByHash(powBlock["posReference"]))
         // await this.getCommittee(st.latestCommitted).catch(console.log)
         // await this.getCommittee(1).catch(console.log)
         // await this.getCommittee(st.latestVoted).catch(console.log)
@@ -315,7 +319,7 @@ export class PosSync {
         // await this.repeatSyncTx()
         // @ts-ignore
         // console.log(`getPoSEconomics: `,await this.cfx.getPoSEconomics());
-        for (let i=0; i<5000; i++) {
+        for (let i=0; i<0; i++) {
             const rewardInfo = await this.cfx['pos'].getRewardsByEpoch(i);
             if (rewardInfo === null) {
                 process.stdout.write('\r\u001b[2K null at '+i)
@@ -326,13 +330,18 @@ export class PosSync {
         // console.log(`getAccount: `,await this.cfx.getAccount('net8888:aakyb6jws3f2x7hr3ap3gwc3rjznj4r9eebeccmwvz'));
 
     }
+    async computeRewardStartAt(powEpoch:number) {
+        const powBlock = await this.cfx.getBlockByEpochNumber(powEpoch)
+        const posBlock = await this.cfx['pos'].getBlockByHash(powBlock['posReference'])
+        return posBlock.epoch
+    }
 }
 if (require.main === module) {
     const args = process.argv.slice(2)
     const url = args[0]
-    const rewardStartAt = args[1] ? parseInt(args[1]) : 200_000
     const cfx = new Conflux({url})
     const posSync = new PosSync(cfx);
+    const rewardStartAtPow = args[1] ? parseInt(args[1]) : 200_000
     init().then(()=> {
         return posSync.init()
     }).then(()=>{
