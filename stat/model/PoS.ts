@@ -56,6 +56,7 @@ export interface IPosAccount {
     signCount: number
     mineCount: number
     powBase32: string
+    totalReward: number
 }
 export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     id: number
@@ -63,6 +64,7 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     signCount: number
     mineCount: number
     powBase32: string // not unique
+    totalReward: number
     static register(seq: Sequelize) {
         PosAccount.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
@@ -70,12 +72,14 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             signCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
             mineCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
             powBase32: {type: DataTypes.STRING(128)},
+            totalReward: {type: DataTypes.DECIMAL(56, 0), defaultValue: 0},
         }, {
             sequelize: seq,
             tableName: 'pos_account',
             timestamps: false,
             indexes: [
-                {name: 'idx_pow_base32', fields:['powBase32'],}
+                {name: 'idx_pow_base32', fields:['powBase32'],},
+                {name: 'idx_pos_hex', fields:['hex'],}
             ]
         })
     }
@@ -100,7 +104,7 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             const newOne = await PosAccount.create({
                 id: next, signCount: 0, mineCount: 0,
                 powBase32: '',
-                hex
+                hex, totalReward: 0,
             }).catch(err=>{
                 return undefined
             })
@@ -111,6 +115,36 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
                 return next
             }
         } while (true)
+    }
+}
+export interface IPosReward {
+    id:number
+    accountId:number
+    epoch:number
+    reward:number
+    createdAt:Date
+}
+export class PosReward extends Model<IPosReward> implements IPosReward {
+    id:number
+    accountId:number
+    epoch:number
+    reward:number
+    createdAt:Date
+    static register(seq:Sequelize) {
+        PosReward.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            accountId: {type: DataTypes.BIGINT({unsigned: true})},
+            reward: {type: DataTypes.DECIMAL(36, 0)},
+            createdAt: {type: DataTypes.DATE()},
+            epoch: {type: DataTypes.BIGINT({unsigned: true})},
+        }, {
+            sequelize: seq,
+            tableName: 'pos_reward',
+            timestamps: false,
+            indexes: [
+                {name: 'idx_accountId_epoch', fields:['accountId', 'epoch'], unique: true},
+            ]
+        })
     }
 }
 export interface IPosAccountBlock {
@@ -207,6 +241,7 @@ export interface IPosTransaction {
     fromId: number
     type: string
     status: string
+    createdAt: Date
     // payload
 }
 export class PosTransaction extends Model<IPosTransaction> implements IPosTransaction {
@@ -215,6 +250,7 @@ export class PosTransaction extends Model<IPosTransaction> implements IPosTransa
     fromId: number
     type: string
     status: string
+    createdAt: Date
     static register(seq:Sequelize) {
         PosTransaction.init({
             number: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
@@ -222,10 +258,11 @@ export class PosTransaction extends Model<IPosTransaction> implements IPosTransa
             fromId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             type: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
             status: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
+            createdAt: {type: DataTypes.DATE(), allowNull: false},
         }, {
             sequelize: seq,
             tableName: 'pos_tx',
-            updatedAt: false,
+            timestamps: false,
         })
     }
 }
