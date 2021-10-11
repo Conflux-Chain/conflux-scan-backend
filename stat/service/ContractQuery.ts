@@ -3,12 +3,13 @@ import {format} from "js-conflux-sdk";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
-import {makeId} from "../model/HexMap";
+import {Hex40Map, makeId} from "../model/HexMap";
 import {Op} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 
 const lodash = require('lodash');
+const CONST = require('./common/constant');
 const {Contract} = require("../model/Contract");
 const {ContractVerify} = require("../model/ContractVerify");
 
@@ -118,7 +119,7 @@ export class ContractQuery {
         return result;
     }
 
-    public async updateVerify({id, address, version, sourceCode, abi, verifyResult, similarity}) {
+    public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult, similarity}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
 
@@ -127,19 +128,40 @@ export class ContractQuery {
             logger?.error({ src: `[${address}]stat verify request`, updateError: `record.base32 not equals ${base32}` });
         }
 
-        const updateInfo = lodash.defaults({}, {verifyResult, similarity, version, updatedAt: new Date()});
+        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, updatedAt: new Date()});
         let updateVerify = lodash.assign(dbVerify, updateInfo);
         if(verifyResult){
-            updateVerify = lodash.assign(updateInfo, {sourceCode, abi});
+            const proxyInfo = await this.queryImplementation(base32)
+                .catch((e) => logger.error({ src: 'updateVerify', msg: e.toString() }));
+            updateVerify = lodash.assign(updateInfo, {sourceCode, abi}, proxyInfo);
         }
         const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
         logger?.info({ src: `[${address}]stat verify request`, updateResult: `${JSON.stringify(result)}` });
+
         return result;
     }
 
     public async queryVerify({address}) {
+        const{ logger } = this.app;
         const base32 = toBase32(address);
-        return ContractVerify.findOne({where: {base32, verifyResult: true}});
+
+        let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true});
+        if(verified !== null){
+            const proxyInfo = await this.queryImplementation(base32)
+                .catch((e) => logger.error({ src: 'queryVerify', msg: e.toString() }));
+            if(proxyInfo?.implementation){
+                verified.implementation = proxyInfo.implementation;
+            }
+        }
+
+        // extra info
+        if(verified?.implementation){
+            let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.implementation,
+                    verifyResult: true}, raw: true});
+            verified.implementationVerified = verifiedInfo != null ? true : false;
+        }
+
+        return verified;
     }
 
     public async listVerify({addressArray, skip = 0, limit = 10, reverse = true,
@@ -147,28 +169,32 @@ export class ContractQuery {
         const options: any = { offset: skip, limit, raw: true};
         // fields
         options.attributes = [
+            'id',
             'name',
             'hex40id',
             ['base32', 'address'],
             'compiler',
             'version',
+            'constructorArgs',
+            'sourceCode',
             ['optimizeFlag', 'optimization'],
             ['optimizeRuns', 'runs'],
+            'license',
             ['updatedAt', 'timestamp'],
         ];
 
         // where
-        const query: any = {verifyResult};
+        const where: any = { verifyResult };
         if(addressArray){
             if (!lodash.isArray(addressArray)) {
                 addressArray = [addressArray];
             }
             addressArray = addressArray.map(item => toBase32(item));
-            query.base32 = {[Op.in]: addressArray};
-            options.skip = 0;
+            where.base32 = {[Op.in]: addressArray};
+            options.offset = 0;
             options.limit = addressArray.length;
         }
-        options.where = query;
+        options.where = where;
 
         // order by
         options.order = [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]];
@@ -245,5 +271,19 @@ export class ContractQuery {
         });
 
         return { total: addressArray.length, map };
+    }
+
+    private async queryImplementation(base32){
+        const{ cfx, cfxSDK } = this.app;
+        const sdk = cfxSDK || cfx;
+        let result = { proxy: false };
+
+        const implementation = await sdk.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT);
+        if(implementation === null) return result;
+        const hex40 = await Hex40Map.findOne({where: {hex: implementation.substr(26)}, raw: true});
+        if(hex40 === null) return result;
+        const address = format.address(`0x${hex40.hex}`, this.app?.networkId);
+
+        return lodash.assign(result, {proxy: true, implementation: address, proxyPattern: "OpenZeppelin's Unstructured Storage"});
     }
 }
