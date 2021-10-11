@@ -10,17 +10,22 @@ export class PosQuery {
         this.cfx = cfx
     }
     async posInfo() {
-        const [st, posAccountCount] = await Promise.all([
+        const [st, posAccountCount, posEconomics] = await Promise.all([
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx['pos'].getStatus(),
             PosAccount.count({}),
+            // @ts-ignore
+            this.cfx.getPoSEconomics(),
         ])
         return {
-            latestCommitted: st.latestCommitted,
-            latestVoted: st.latestVoted,
-            posPivotDecision: st.pivotDecision,
-            posEpoch: st.epoch,
-            posAccountCount,
+            latestCommitted: (st.latestCommitted || '0').toString(),
+            latestVoted: (st.latestVoted || '0').toString(),
+            posPivotDecision: st.pivotDecision?.toString() || '0',
+            posEpoch: st.epoch?.toString() || '0',
+            posAccountCount: posAccountCount?.toString() || '0',
+            distributablePosInterest: posEconomics.distributablePosInterest.toString(),
+            lastDistributeBlock: posEconomics.lastDistributeBlock.toString(),
+            totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
         }
     }
     async listPosAccount({sortBy = 'id', sort = 'DESC', skip = 0, limit = 10,

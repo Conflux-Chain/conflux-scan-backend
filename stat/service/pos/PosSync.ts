@@ -1,16 +1,16 @@
 import {Conflux} from "js-conflux-sdk";
 import {sleep} from "../tool/ProcessTool";
 import {
-    IPosAccountBlock,
+    IPosAccountBlock, IPosReward,
     PosAccount,
     PosAccountBlock,
     PosBlock,
     PosCommittee,
-    PosCommitteeNode,
+    PosCommitteeNode, PosReward,
     PosTransaction
 } from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
-import {json, QueryTypes} from "sequelize";
+import {fn, col, Op, QueryTypes} from "sequelize";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -143,12 +143,15 @@ export class PosSync {
     // =======
     repeatFetchCommittee() {
         const that = this
-        function repeat() {
-            that.syncCommittee().then(()=>{
-                setTimeout(()=>repeat(), 10_000)
-            })
+        async function repeat() {
+            try {
+                await that.syncCommittee()
+            }catch(e){
+                console.log(` pos syncCommittee fail:`, e)
+            }
+            setTimeout(()=>repeat(), 10_000)
         }
-        repeat()
+        repeat().then()
     }
     async syncCommittee() {
         const [status, next] = await Promise.all([
@@ -210,14 +213,19 @@ export class PosSync {
         })
         const that = this
         async function repeat() {
-            const tx = await that.cfx['pos'].getTransactionByNumber(next)
+            const tx = await that.cfx['pos'].getTransactionByNumber(next).catch(err=>{
+                console.log(` getTransactionByNumber fail, ${next}:`, err)
+                return null
+            })
             if (tx === null) {
                 setTimeout(repeat, 10_000)
             } else {
                 const accountId = await that.saveAccount(tx.from)
+                const dt = new Date(tx.timestamp/1000)
                 await PosTransaction.create({
                     blockNumber: 0, // FIXME
-                    fromId: accountId, number: next, status: tx.status, type: tx.type
+                    fromId: accountId, number: next, status: tx.status, type: tx.type,
+                    createdAt: dt,
                 })
                 console.log(` save tx ${next}`)
                 next += 1
@@ -226,17 +234,106 @@ export class PosSync {
         }
         repeat().then()
     }
+    async repeatSyncRewards(rewardStartAt: number) {
+        const rewardStartAtPos = await this.computeRewardStartAt(rewardStartAt)
+        const that = this
+        let nextEpoch = await PosReward.findOne({order:[['id','desc']]}).then(res=>{
+            return res === null ? rewardStartAtPos : res.epoch + 1
+        })
+        async function repeat() {
+            try {
+                const inc = await that.syncRewardByEpoch(nextEpoch)
+                nextEpoch += inc
+            } catch (e) {
+                console.log(` error sync pos reward at epoch ${nextEpoch}:`, e)
+                await sleep(5_000)
+            }
+            setTimeout(repeat, 0)
+        }
+        repeat().then()
+    }
+    async syncRewardByEpoch(epoch:number) {
+        const rewardInfo = await this.cfx['pos'].getRewardsByEpoch(epoch)
+        if (rewardInfo === null) {
+            console.log(` reward is null at epoch ${epoch}`)
+            await sleep(5_000)
+            return 0
+        }
+        const accountRewards = rewardInfo.accountRewards;
+        const posAddrArr = accountRewards.map(r=>r.posAddress)
+        const accounts = await PosAccount.findAll({
+            attributes: ['id','hex'],
+            where: {hex: {[Op.in]:posAddrArr}}
+        })
+        const accountMap = new Map<string, PosAccount>()
+        accounts.forEach(a=>accountMap.set(a.hex, a))
+        if (posAddrArr.length !== accounts.length) {
+            console.log(` account absent, want ${posAddrArr.join(',')}\n actual ${accounts.map(a=>a.hex).join(',')}`)
+            await sleep(5_000)
+            return 0
+        }
+        const rewardBeans:IPosReward[] = accountRewards.map(r=>{
+            const account = accountMap.get(r.posAddress);
+            if (!account) {
+                throw new Error(`account not found, pos addr ${r.posAddress}, \n in ${JSON.stringify(accounts)}`)
+            }
+            const accountId = account.id;
+            return {
+                accountId: accountId,
+                reward: r.reward,
+                epoch,
+                createdAt: new Date(), // FIXME
+            }
+        })
+        await PosReward.sequelize.transaction(async (dbTx)=>{
+            return Promise.all([
+                PosReward.bulkCreate(rewardBeans, {transaction: dbTx}),
+                Promise.all(rewardBeans.map(b=>{
+                    const diff:any = b.reward.toString()
+                    return PosAccount.increment('totalReward',
+                        {by: diff,
+                            where: {id: b.accountId},
+                            transaction: dbTx,
+                            logging: console.log,
+                        })
+                }))
+            ])
+        })
+        return 1 // indicate increase epoch by 1
+    }
     async test() {
         console.log(`===================== pos test ========`)
+        console.log(` rpc version :`, await this.cfx.getClientVersion())
+        console.log(` rpc status :`, await this.cfx.getStatus())
         // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
         const st = await this.cfx["pos"].getStatus()
         console.log(` status ${JSON.stringify(st)}`)
+        const powBlock = await this.cfx.getBlockByEpochNumber(199);
+        console.log(` pow block detail: `, powBlock)
+        console.log(` pos block detail: `, await this.cfx['pos'].getBlockByHash(powBlock["posReference"]))
         // await this.getCommittee(st.latestCommitted).catch(console.log)
         // await this.getCommittee(1).catch(console.log)
         // await this.getCommittee(st.latestVoted).catch(console.log)
         // await this.getCommittee(st.pivotDecision).catch(console.log)
         // await this.syncCommittee()
-        await this.repeatSyncTx()
+        // await this.repeatSyncTx()
+        // @ts-ignore
+        // console.log(`getPoSEconomics: `,await this.cfx.getPoSEconomics());
+        for (let i=0; i<0; i++) {
+            const rewardInfo = await this.cfx['pos'].getRewardsByEpoch(i);
+            if (rewardInfo === null) {
+                process.stdout.write('\r\u001b[2K null at '+i)
+                continue
+            }
+            console.log(`getRewardsByEpoch ${i}: `, rewardInfo);
+        }
+        // console.log(`getAccount: `,await this.cfx.getAccount('net8888:aakyb6jws3f2x7hr3ap3gwc3rjznj4r9eebeccmwvz'));
+
+    }
+    async computeRewardStartAt(powEpoch:number) {
+        const powBlock = await this.cfx.getBlockByEpochNumber(powEpoch)
+        const posBlock = await this.cfx['pos'].getBlockByHash(powBlock['posReference'])
+        return posBlock.epoch
     }
 }
 if (require.main === module) {
@@ -244,6 +341,7 @@ if (require.main === module) {
     const url = args[0]
     const cfx = new Conflux({url})
     const posSync = new PosSync(cfx);
+    const rewardStartAtPow = args[1] ? parseInt(args[1]) : 200_000
     init().then(()=> {
         return posSync.init()
     }).then(()=>{
@@ -253,16 +351,21 @@ if (require.main === module) {
         // cfx['pos'].getBlockByNumber(153).then(res=>{
             // console.log(` pos block `, res)
         // })
-        // return posSync.test()
         // cfx['pos'].getAccount('0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055').then(console.log)
         // posSync.patchCreatedAccount(0, '0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055')
 
         return Promise.all([
+            // posSync.test(),
             posSync.run(),
             posSync.repeatFetchCommittee(),
             posSync.repeatSyncTx(),
+            posSync.repeatSyncRewards(rewardStartAtPow),
         ])
     }).then(()=>{
 
     })
 }
+/*
+Rpc Document
+https://github.com/Pana/conflux-doc/blob/update-rpc/docs/pos-rpc-zh.md#AccountStatus
+ */
