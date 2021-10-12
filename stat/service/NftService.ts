@@ -16,6 +16,7 @@ import {init} from "./tool/FixDailyTokenStat";
 import {format} from "js-conflux-sdk";
 import {list2map, reverseMap} from "./common/utils";
 import {StatApp} from "../StatApp";
+import lodash from 'lodash'
 
 export class NftService {
     zeroAddrId:number
@@ -77,7 +78,7 @@ export async function getRegisterNftBalances(accountBase32: string) : Promise<Ma
     const accHexId = await getAddrId(format.hexAddress(accountBase32))
     const nftTokenList = await Token.findAll({
         attributes:['base32','hex40id'],
-        where:{type: {[Op.in]:['ERC721', 'ERC1155']}}
+        where:{type: {[Op.in]:['ERC721', 'ERC1155'], auditResult: true}}
     })
     const ret = new Map<string, number>()
     if (nftTokenList.length === 0 || accHexId === null) {
@@ -87,7 +88,10 @@ export async function getRegisterNftBalances(accountBase32: string) : Promise<Ma
     const balanceList = await countAccountNft(contractHexIds, accHexId)
     const tokenMap = list2map(nftTokenList, 'hex40id')
     balanceList.forEach(bean=>{
-        ret.set(tokenMap.get(bean.contractId).base32, bean["balance"])
+        const token = tokenMap.get(bean.contractId);
+        if (token) {
+            ret.set(token.base32, bean["balance"])
+        }
     })
     return ret;
 }
@@ -98,13 +102,17 @@ async function countAccountNft(cHexIds: number[], accHexId: number) {
             'contractId',
             [Sequelize.fn('COUNT', Sequelize.col('*')), 'balance'],
         ],
-        where: {contractId: {[Op.in]: cHexIds}, toId: accHexId},
+        where: {
+            // contractId: {[Op.in]: cHexIds}, // do not filter in DB, filter in memory
+            toId: accHexId
+        },
         group: ["contractId"], raw: true,
         logging: console.log,
     })
-    return groupByContractList;
+    const set = new Set(cHexIds)
+    return groupByContractList.filter(r=>set.has(r.contractId));
 }
-export async function listRecentNftOfAccount(accountBase32:string,contractBase32:string) {
+export async function listNftOfAccountByContract(accountBase32:string, contractBase32:string, skip:number, limit:number) {
     const [accHexId,contractId] = await Promise.all([
         getAddrId(format.hexAddress(accountBase32)),
         new Promise(resolve => {
@@ -120,7 +128,7 @@ export async function listRecentNftOfAccount(accountBase32:string,contractBase32
         where['contractId'] = contractId
     }
     const list = await NftMint.findAll({
-        where: where, limit: 100, raw: true,
+        where: where, offset:skip, limit, raw: true,
         order: [['updatedAt','DESC']]
     })
     const hexIdSet = buildHexSet(undefined, list,
@@ -128,10 +136,12 @@ export async function listRecentNftOfAccount(accountBase32:string,contractBase32
     const map = await idHex40Map([...hexIdSet])
     const base32map = convert2base32map(map)
     mapProp(base32map, list, 'contractId', 'contractBase32')
-    return list;
+    const count = await NftMint.count({where})
+    return {count, list};
 }
+// query with specified contracts
 export async function getNftBalances(accountBase32:string, contractsBase32:string[]) {
-    const accHexId = await getAddrId(format.hexAddress(accountBase32))
+    const accHexId = await getAddrId(accountBase32)
     if (accHexId === null) {
         return contractsBase32.map(b=>0) // zero array.
     }
@@ -148,7 +158,8 @@ export async function getNftBalances(accountBase32:string, contractsBase32:strin
     groupByContractList.forEach(bean=>{
         bean['contractBase32'] = format.address('0x'+id2hexMap.get(bean.contractId), StatApp.networkId)
     })
-    return groupByContractList
+    const map = lodash.keyBy(groupByContractList, 'contractBase32')
+    return contractsBase32.map(base32=>map[base32]?.balance || 0)
 }
 
 

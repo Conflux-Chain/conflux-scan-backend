@@ -6,7 +6,7 @@ import {Context} from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import bodyParser = require("koa-bodyparser");
-import {KEY_MINER_EPOCH, KEY_TX_EPOCH, KV} from "../model/KV";
+import {KEY_MINER_EPOCH, KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
@@ -26,7 +26,7 @@ import {CfxBill} from "../service/watcher/DummyNode";
 import {NFTMap} from "../service/nftchecker/NFTInfo";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
-import {listRecentNftOfAccount} from "../service/NftService";
+import {listNftOfAccountByContract} from "../service/NftService";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -420,11 +420,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const nftInfo = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: BigInt(tokenId)});
         ctx.body = {code: 0, data: nftInfo};
     })
-    router.get('/nft/checker/list-recent-of-account', async (ctx)=>{
-        const {account,contract} = ctx.request.query;
-        const list = await listRecentNftOfAccount(account,contract)
-        ctx.body = {code: 0, data: {list}}
-    })
+
     // nft checker, get balances
     router.get('/nft/checker/balance', async function (ctx) {
         const {ownerAddress} = ctx.request.query
@@ -458,13 +454,33 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {code: 0, data: page, hexBean, hex}
     })
 
-    // nft checker, get tokens
-    router.get('/nft/checker/token', async function (ctx) {
+    async function nftCountAndIds (ctx) {
         const {ownerAddress, contractAddress, skip, limit} = ctx.request.query
         const tokens = await statApp.nftCheckerService.getNFTTokens({ownerAddress, contractAddress,
             offset: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
         ctx.body = {code: 0, data: tokens};
-    })
+    }
+    // nft checker, get tokens
+    router.get('/nft/checker/token', nftCountAndIds )
+
+    router.get('/nft/account/token-by-contract', async function(ctx) {
+        const {ownerAddress, contractAddress, skip, limit, withDetail} = ctx.request.query
+        const useDB = await KV.getString(KEY_NFT_FROM_DB, '')
+        console.log(`use db ${useDB}`)
+        if (useDB) {
+            const {count, list} = await listNftOfAccountByContract(ownerAddress, contractAddress,
+                parseInt(skip || 0), Math.min(100, parseInt(limit || 10)))
+            if (withDetail) {
+                // output updatedAt for each nft.
+                ctx.body = {code: 0, data: {total: count, list}}
+            } else {
+                // only contains token id.
+                ctx.body = {code: 0, data: [count, list.map(t => t.tokenId)]}
+            }
+        } else {
+            await nftCountAndIds(ctx)
+        }
+    });
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {
