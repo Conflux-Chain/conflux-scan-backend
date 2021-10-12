@@ -17,6 +17,7 @@ import {format} from "js-conflux-sdk";
 import {list2map, reverseMap} from "./common/utils";
 import {StatApp} from "../StatApp";
 import lodash from 'lodash'
+import {KEY_NFT_FROM_DB, KV} from "../model/KV";
 
 export class NftService {
     zeroAddrId:number
@@ -25,6 +26,11 @@ export class NftService {
         const hex = '0'.padStart(40, '0')
         this.zeroAddrId = await makeIdV(hex)
         console.log(`setup zero addr id to ${this.zeroAddrId}`)
+        KV.findByPk(KEY_NFT_FROM_DB).then(res=>{
+            if(!res) {
+                KV.create({key: KEY_NFT_FROM_DB, value: '1'})
+            }
+        })
     }
 
     // sync from exists transfer record from DB
