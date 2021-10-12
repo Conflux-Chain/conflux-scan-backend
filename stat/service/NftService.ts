@@ -16,7 +16,7 @@ import {init} from "./tool/FixDailyTokenStat";
 import {format} from "js-conflux-sdk";
 import {list2map, reverseMap} from "./common/utils";
 import {StatApp} from "../StatApp";
-import lodash from 'lodash'
+const lodash = require('lodash');
 import {KEY_NFT_FROM_DB, KV} from "../model/KV";
 
 export class NftService {
