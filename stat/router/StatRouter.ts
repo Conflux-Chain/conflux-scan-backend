@@ -466,7 +466,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/nft/account/token-by-contract', async function(ctx) {
         const {ownerAddress, contractAddress, skip, limit, withDetail} = ctx.request.query
         const useDB = await KV.getString(KEY_NFT_FROM_DB, '')
-        console.log(`use db ${useDB}`)
+        // console.log(`use db ${useDB}`)
         if (useDB) {
             const {count, list} = await listNftOfAccountByContract(ownerAddress, contractAddress,
                 parseInt(skip || 0), Math.min(100, parseInt(limit || 10)))
