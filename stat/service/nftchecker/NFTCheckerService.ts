@@ -1,6 +1,8 @@
 import {NFTMap, NFTMapPlus} from "./NFTInfo";
 import {Token} from "../../model/Token";
 import {Op} from "sequelize";
+import {KEY_NFT_FROM_DB, KV} from "../../model/KV";
+import {getNftBalances} from "../NftService";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -36,9 +38,10 @@ export class NFTCheckerService {
             };
         });
         const NFTMapDb = lodash.keyBy(NFTArray, 'address');
-        const NFTMap = lodash.defaults(NFTMapPlus, NFTMapDb);
+        // will change NFTMapPlus
+        lodash.defaults(NFTMapPlus, NFTMapDb);
 
-        const contractAddresses = Object.keys(NFTMap);
+        const contractAddresses = Object.keys(NFTMapPlus);
         const balances = await this._getNFTBalances({ownerAddress, contractAddresses});
         const nftBalances = Object.keys(NFTMapPlus)
             .map((address, index) => ({
@@ -60,9 +63,13 @@ export class NFTCheckerService {
 
     private async _getNFTBalances({ ownerAddress, contractAddresses }
     : { ownerAddress: string, contractAddresses: string[] }
-    ){
+    ) : Promise<any[]>{
+        const useDb = await KV.getString(KEY_NFT_FROM_DB, '')
         try {
-            return this.contract.getBalances( ownerAddress, contractAddresses );
+            return Boolean(useDb) ?
+                getNftBalances(ownerAddress, contractAddresses)
+                :
+                this.contract.getBalances( ownerAddress, contractAddresses );
         } catch (e) {
             console.error(`getNFTBalances, ownerAddress:${ownerAddress}, contractAddresses:${contractAddresses}`, e);
             return null;

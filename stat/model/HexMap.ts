@@ -2,6 +2,7 @@ import {Sequelize, DataTypes, Model, Transaction, Op} from "sequelize";
 import {incDailyAddressCount} from "./StatAddress";
 import {delLock, waitLock} from "./Lock";
 import {format} from "js-conflux-sdk";
+import {StatApp} from "../StatApp";
 const NodeCache = require( "node-cache" );
 
 /**
@@ -129,17 +130,17 @@ export async function getAddrId(addr:string) {
         return res?.id
     })
 }
-export function buildHexSet(hexSet:Set<string>, arr:any[], hexKey:string) : Set<string> {
+export function buildHexSet(hexSet:Set<string>, arr:any[], ...hexKey:string[]) : Set<string> {
     if (hexSet === undefined) {
         hexSet = new Set<string>()
     }
     arr.forEach(bean=>{
-        hexSet.add(bean[hexKey])
+        hexKey.forEach(k=>hexSet.add(bean[k]))
     });
     return hexSet
 }
 let debugLogCnt = 10
-export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) : Promise<Map<string,number>> {
+export async function buildIdMap(hexSet:Set<any>, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) : Promise<Map<string,number>> {
     const templates = []
     hexSet.forEach(hex=>{
         templates.push({hex: hex.substr(2)})
@@ -175,7 +176,10 @@ export async function buildIdMap(hexSet:Set<string>, model:typeof Hex40Map| type
         })
     })
 }
-export function fillHexId(map:Map<string,number>, arr:any[], hexKey:string, idKey:string) {
+export function mapProp(map:Map<any,any>, arr:any[], from:any, to:any) {
+    arr.forEach(data=>{ data[to] = map.get(data[from])})
+}
+export function fillHexId(map:Map<any,any>, arr:any[], hexKey:string, idKey:string) {
     arr.forEach(data=>{ data[idKey] = map.get(data[hexKey]?.substr(2)) || 0})
 }
 export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) {
@@ -248,6 +252,7 @@ export class AddressInfo extends Model<IAddressInfo> implements IAddressInfo {
 }
 
 export async function hex40IdMap(hex40Array: Array<string>): Promise<Map<string, number>> {
+    hex40Array = hex40Array.map(hex=>hex.startsWith('0x') ? hex.substr(2) : hex)
     const result = await Hex40Map.findAll({
         where: {hex: {[Op.in]: hex40Array}},
     })
@@ -258,7 +263,15 @@ export async function hex40IdMap(hex40Array: Array<string>): Promise<Map<string,
     return hex40IdMap;
 }
 
-export async function idHex40Map(idArray: Array<number>): Promise<Map<number, string>>{
+export function convert2base32map(map: Map<any, string>) : Map<any, string> {
+    // hex40 value to base32 value
+    const base32map = new Map()
+    for (const key of map.keys()) {
+        base32map.set(key, format.address('0x'+map.get(key), StatApp.networkId))
+    }
+    return base32map
+}
+export async function idHex40Map(idArray: Array<number|string>): Promise<Map<number, string>>{
     const result = await Hex40Map.findAll({
         where: {id: { [Op.in]: idArray}},
     })
