@@ -277,10 +277,14 @@ export class NFTPreviewService {
                     let url = jsonUriFormatter ? jsonUriFormatter(meta)
                         //@ts-ignore
                         : meta.indexOf('{id}') > -1 ? meta.replace('{id}', BigInt(tokenId).toString(16)) : meta;
+                    url = url.startsWith('ipfs://') ? this.replaceIPFSGateway(url) : url;
                     const response = await superagent.get(url);
                     meta = JSON.parse(response.text);
+                    if(meta.Image) meta.image = meta.Image;
+                    if(meta.Name) meta.name = meta.Name;
                 }
                 imageUri = imageUriFormatter ? imageUriFormatter(meta) : needFetchJson ? meta.image : meta;
+                imageUri = imageUri.startsWith('ipfs://') ? this.replaceIPFSGateway(imageUri) : imageUri;
                 imageName = await this.getNFTName({address, tokenId, meta}) || {};
             }
             this.setNFTCacheInfo({ address, tokenId, imageUri, imageName });
@@ -329,6 +333,10 @@ export class NFTPreviewService {
                 JSON.stringify({address, tokenId, imageUri, imageName, timeout: +new Date() + 1000 * 60 * 60}));
         }
     };
+
+    private replaceIPFSGateway(ipfsPath){
+        return `https://ipfs.io/ipfs/${ipfsPath.substr(7)}`;
+    }
 }
 
 export type NFTInfoType = {
