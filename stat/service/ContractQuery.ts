@@ -119,7 +119,8 @@ export class ContractQuery {
         return result;
     }
 
-    public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult, similarity}) {
+    public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult, similarity,
+        creationData}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
 
@@ -128,7 +129,8 @@ export class ContractQuery {
             logger?.error({ src: `[${address}]stat verify request`, updateError: `record.base32 not equals ${base32}` });
         }
 
-        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, updatedAt: new Date()});
+        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, creationData,
+            updatedAt: new Date()});
         let updateVerify = lodash.assign(dbVerify, updateInfo);
         if(verifyResult){
             const proxyInfo = await this.queryImplementation(base32)
