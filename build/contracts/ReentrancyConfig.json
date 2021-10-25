@@ -1,0 +1,748 @@
+{
+  "contractName": "ReentrancyConfig",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "bool",
+          "name": "allowance",
+          "type": "bool"
+        }
+      ],
+      "name": "allowReentrancy",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "contractAddr",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowance",
+          "type": "bool"
+        }
+      ],
+      "name": "allowReentrancyByAdmin",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "contractAddr",
+          "type": "address"
+        }
+      ],
+      "name": "isReentrancyAllowed",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.7.4+commit.3f05b770\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"bool\",\"name\":\"allowance\",\"type\":\"bool\"}],\"name\":\"allowReentrancy\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"contractAddr\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"allowance\",\"type\":\"bool\"}],\"name\":\"allowReentrancyByAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"contractAddr\",\"type\":\"address\"}],\"name\":\"isReentrancyAllowed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"allowReentrancy(bool)\":{\"details\":\"set contract reentrancy config from contract\",\"params\":{\"allowance\":\"True or false to configure the config\"}},\"allowReentrancyByAdmin(address,bool)\":{\"details\":\"set contract reentrancy through contract admin\",\"params\":{\"allowance\":\"True or false to configure the config\"}},\"isReentrancyAllowed(address)\":{\"details\":\"check whether contract is allowed reentrancy\",\"params\":{\"contractAddr\":\"The contract address to check\"},\"returns\":{\"_0\":\"boolean\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/ReentrancyConfig.sol\":\"ReentrancyConfig\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/ReentrancyConfig.sol\":{\"keccak256\":\"0x50cbe50293a9fffcf012f3036fb20da29ee09e6c1bb2e1fa91d1e483dde013b9\",\"urls\":[\"bzz-raw://05a4dc8dda9cbe4c20230fdc4096f174478bd79cb9ea859d2046a099fcba2624\",\"dweb:/ipfs/Qmd8zqrr5rZJfdJz59emcaimkrtQQhjxTVTHbLPnhLEqXk\"]}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50610164806100206000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c8063838d377c146100465780638fef6c3914610076578063e2adea25146100c6575b600080fd5b6100746004803603602081101561005c57600080fd5b81019080803515159060200190929190505050610120565b005b6100c46004803603604081101561008c57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190803515159060200190929190505050610123565b005b610108600480360360208110156100dc57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610127565b60405180821515815260200191505060405180910390f35b50565b5050565b600091905056fea2646970667358221220a26abfd46526fa0c9d41e0964e365b3166bc74bfa8be8a24897f0eb3a48ccf4f64736f6c63430007040033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100415760003560e01c8063838d377c146100465780638fef6c3914610076578063e2adea25146100c6575b600080fd5b6100746004803603602081101561005c57600080fd5b81019080803515159060200190929190505050610120565b005b6100c46004803603604081101561008c57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190803515159060200190929190505050610123565b005b610108600480360360208110156100dc57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610127565b60405180821515815260200191505060405180910390f35b50565b5050565b600091905056fea2646970667358221220a26abfd46526fa0c9d41e0964e365b3166bc74bfa8be8a24897f0eb3a48ccf4f64736f6c63430007040033",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [],
+  "sourceMap": "27:680:2:-:0;;;;;;;;;;;;;;;;;;;",
+  "deployedSourceMap": "27:680:2:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;195:50;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;388:79;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;626;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;;;;;;;;;;;;;;;;;;195:50;;:::o;388:79::-;;;:::o;626:::-;698:4;626:79;;;:::o",
+  "source": "pragma solidity >=0.4.15;\n\ncontract ReentrancyConfig {\n\n    /**\n     * @dev set contract reentrancy config from contract\n     * @param allowance True or false to configure the config\n     */\n    function allowReentrancy(bool allowance) public {}\n\n    /**\n     * @dev set contract reentrancy through contract admin\n     * @param allowance True or false to configure the config\n     */\n    function allowReentrancyByAdmin(address contractAddr, bool allowance) public {}\n\n    /**\n     * @dev check whether contract is allowed reentrancy\n     * @param contractAddr The contract address to check\n     * @return boolean\n     */\n    function isReentrancyAllowed(address contractAddr) public view returns (bool){}\n}",
+  "sourcePath": "/Users/wangzhenting/IdeaProjects/conflux-scan-statistics/contracts/ReentrancyConfig.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/ReentrancyConfig.sol",
+    "exportedSymbols": {
+      "ReentrancyConfig": [
+        134
+      ]
+    },
+    "id": 135,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 108,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.4",
+          ".15"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:25:2"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "fullyImplemented": true,
+        "id": 134,
+        "linearizedBaseContracts": [
+          134
+        ],
+        "name": "ReentrancyConfig",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 114,
+              "nodeType": "Block",
+              "src": "243:2:2",
+              "statements": []
+            },
+            "documentation": {
+              "id": 109,
+              "nodeType": "StructuredDocumentation",
+              "src": "60:130:2",
+              "text": " @dev set contract reentrancy config from contract\n @param allowance True or false to configure the config"
+            },
+            "functionSelector": "838d377c",
+            "id": 115,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "allowReentrancy",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 112,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 111,
+                  "mutability": "mutable",
+                  "name": "allowance",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 115,
+                  "src": "220:14:2",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  },
+                  "typeName": {
+                    "id": 110,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "220:4:2",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "219:16:2"
+            },
+            "returnParameters": {
+              "id": 113,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "243:0:2"
+            },
+            "scope": 134,
+            "src": "195:50:2",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 123,
+              "nodeType": "Block",
+              "src": "465:2:2",
+              "statements": []
+            },
+            "documentation": {
+              "id": 116,
+              "nodeType": "StructuredDocumentation",
+              "src": "251:132:2",
+              "text": " @dev set contract reentrancy through contract admin\n @param allowance True or false to configure the config"
+            },
+            "functionSelector": "8fef6c39",
+            "id": 124,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "allowReentrancyByAdmin",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 121,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 118,
+                  "mutability": "mutable",
+                  "name": "contractAddr",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 124,
+                  "src": "420:20:2",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 117,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "420:7:2",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 120,
+                  "mutability": "mutable",
+                  "name": "allowance",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 124,
+                  "src": "442:14:2",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  },
+                  "typeName": {
+                    "id": 119,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "442:4:2",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "419:38:2"
+            },
+            "returnParameters": {
+              "id": 122,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "465:0:2"
+            },
+            "scope": 134,
+            "src": "388:79:2",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 132,
+              "nodeType": "Block",
+              "src": "703:2:2",
+              "statements": []
+            },
+            "documentation": {
+              "id": 125,
+              "nodeType": "StructuredDocumentation",
+              "src": "473:148:2",
+              "text": " @dev check whether contract is allowed reentrancy\n @param contractAddr The contract address to check\n @return boolean"
+            },
+            "functionSelector": "e2adea25",
+            "id": 133,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "isReentrancyAllowed",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 128,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 127,
+                  "mutability": "mutable",
+                  "name": "contractAddr",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 133,
+                  "src": "655:20:2",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 126,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "655:7:2",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "654:22:2"
+            },
+            "returnParameters": {
+              "id": 131,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 130,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 133,
+                  "src": "698:4:2",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  },
+                  "typeName": {
+                    "id": 129,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "698:4:2",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "697:6:2"
+            },
+            "scope": 134,
+            "src": "626:79:2",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          }
+        ],
+        "scope": 135,
+        "src": "27:680:2"
+      }
+    ],
+    "src": "0:707:2"
+  },
+  "legacyAST": {
+    "attributes": {
+      "absolutePath": "project:/contracts/ReentrancyConfig.sol",
+      "exportedSymbols": {
+        "ReentrancyConfig": [
+          134
+        ]
+      }
+    },
+    "children": [
+      {
+        "attributes": {
+          "literals": [
+            "solidity",
+            ">=",
+            "0.4",
+            ".15"
+          ]
+        },
+        "id": 108,
+        "name": "PragmaDirective",
+        "src": "0:25:2"
+      },
+      {
+        "attributes": {
+          "abstract": false,
+          "baseContracts": [
+            null
+          ],
+          "contractDependencies": [
+            null
+          ],
+          "contractKind": "contract",
+          "fullyImplemented": true,
+          "linearizedBaseContracts": [
+            134
+          ],
+          "name": "ReentrancyConfig",
+          "scope": 135
+        },
+        "children": [
+          {
+            "attributes": {
+              "functionSelector": "838d377c",
+              "implemented": true,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "allowReentrancy",
+              "scope": 134,
+              "stateMutability": "nonpayable",
+              "virtual": false,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev set contract reentrancy config from contract\n @param allowance True or false to configure the config"
+                },
+                "id": 109,
+                "name": "StructuredDocumentation",
+                "src": "60:130:2"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "allowance",
+                      "scope": 115,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bool",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bool",
+                          "type": "bool"
+                        },
+                        "id": 110,
+                        "name": "ElementaryTypeName",
+                        "src": "220:4:2"
+                      }
+                    ],
+                    "id": 111,
+                    "name": "VariableDeclaration",
+                    "src": "220:14:2"
+                  }
+                ],
+                "id": 112,
+                "name": "ParameterList",
+                "src": "219:16:2"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 113,
+                "name": "ParameterList",
+                "src": "243:0:2"
+              },
+              {
+                "attributes": {
+                  "statements": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 114,
+                "name": "Block",
+                "src": "243:2:2"
+              }
+            ],
+            "id": 115,
+            "name": "FunctionDefinition",
+            "src": "195:50:2"
+          },
+          {
+            "attributes": {
+              "functionSelector": "8fef6c39",
+              "implemented": true,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "allowReentrancyByAdmin",
+              "scope": 134,
+              "stateMutability": "nonpayable",
+              "virtual": false,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev set contract reentrancy through contract admin\n @param allowance True or false to configure the config"
+                },
+                "id": 116,
+                "name": "StructuredDocumentation",
+                "src": "251:132:2"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "contractAddr",
+                      "scope": 124,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "stateMutability": "nonpayable",
+                          "type": "address"
+                        },
+                        "id": 117,
+                        "name": "ElementaryTypeName",
+                        "src": "420:7:2"
+                      }
+                    ],
+                    "id": 118,
+                    "name": "VariableDeclaration",
+                    "src": "420:20:2"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "allowance",
+                      "scope": 124,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bool",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bool",
+                          "type": "bool"
+                        },
+                        "id": 119,
+                        "name": "ElementaryTypeName",
+                        "src": "442:4:2"
+                      }
+                    ],
+                    "id": 120,
+                    "name": "VariableDeclaration",
+                    "src": "442:14:2"
+                  }
+                ],
+                "id": 121,
+                "name": "ParameterList",
+                "src": "419:38:2"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 122,
+                "name": "ParameterList",
+                "src": "465:0:2"
+              },
+              {
+                "attributes": {
+                  "statements": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 123,
+                "name": "Block",
+                "src": "465:2:2"
+              }
+            ],
+            "id": 124,
+            "name": "FunctionDefinition",
+            "src": "388:79:2"
+          },
+          {
+            "attributes": {
+              "functionSelector": "e2adea25",
+              "implemented": true,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "isReentrancyAllowed",
+              "scope": 134,
+              "stateMutability": "view",
+              "virtual": false,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev check whether contract is allowed reentrancy\n @param contractAddr The contract address to check\n @return boolean"
+                },
+                "id": 125,
+                "name": "StructuredDocumentation",
+                "src": "473:148:2"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "contractAddr",
+                      "scope": 133,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "stateMutability": "nonpayable",
+                          "type": "address"
+                        },
+                        "id": 126,
+                        "name": "ElementaryTypeName",
+                        "src": "655:7:2"
+                      }
+                    ],
+                    "id": 127,
+                    "name": "VariableDeclaration",
+                    "src": "655:20:2"
+                  }
+                ],
+                "id": 128,
+                "name": "ParameterList",
+                "src": "654:22:2"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "scope": 133,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bool",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bool",
+                          "type": "bool"
+                        },
+                        "id": 129,
+                        "name": "ElementaryTypeName",
+                        "src": "698:4:2"
+                      }
+                    ],
+                    "id": 130,
+                    "name": "VariableDeclaration",
+                    "src": "698:4:2"
+                  }
+                ],
+                "id": 131,
+                "name": "ParameterList",
+                "src": "697:6:2"
+              },
+              {
+                "attributes": {
+                  "statements": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 132,
+                "name": "Block",
+                "src": "703:2:2"
+              }
+            ],
+            "id": 133,
+            "name": "FunctionDefinition",
+            "src": "626:79:2"
+          }
+        ],
+        "id": 134,
+        "name": "ContractDefinition",
+        "src": "27:680:2"
+      }
+    ],
+    "id": 135,
+    "name": "SourceUnit",
+    "src": "0:707:2"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.7.4+commit.3f05b770.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.1",
+  "updatedAt": "2021-10-25T08:26:28.522Z",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "allowReentrancy(bool)": {
+        "details": "set contract reentrancy config from contract",
+        "params": {
+          "allowance": "True or false to configure the config"
+        }
+      },
+      "allowReentrancyByAdmin(address,bool)": {
+        "details": "set contract reentrancy through contract admin",
+        "params": {
+          "allowance": "True or false to configure the config"
+        }
+      },
+      "isReentrancyAllowed(address)": {
+        "details": "check whether contract is allowed reentrancy",
+        "params": {
+          "contractAddr": "The contract address to check"
+        },
+        "returns": {
+          "_0": "boolean"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}

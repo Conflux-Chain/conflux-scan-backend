@@ -7,6 +7,8 @@ import {Contract} from "../../model/Contract";
 const AdminControl = require("../abi/AdminControl");
 const SponsorWhitelistControl = require("../abi/SponsorWhitelistControl");
 const Staking = require("../abi/Staking");
+const ReentrancyConfig = require("../abi/ReentrancyConfig");
+const Context = require("../abi/Context");
 const PoSRegister = require("../abi/PoSRegister");
 
 let seq;
@@ -31,6 +33,23 @@ const internalContractArray = [
         website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
         abi: JSON.stringify(Staking.abi),
     },
+    // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-64.md
+    {
+        address: '0x0888000000000000000000000000000000000003',
+        name: 'Context',
+        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        abi: JSON.stringify(Context.abi),
+    },
+    // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-64.md
+    // Parameters: BLOCK_NUMBER_CIP71A, BLOCK_NUMBER_CIP71B.
+    // a. Enable the new internal contracts and disable the anti-reentrancy for contracts allowing reentrancy. Should be activated when block_numer >= BLOCK_NUMBER_CIP71A.
+    // b. Fix incorrect behaviour in the current implementation of anti-reentrancy, when block_number >= BLOCK_NUMBER_CIP71B.
+    {
+        address: '0x0888000000000000000000000000000000000004',
+        name: 'ReentrancyConfig',
+        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        abi: JSON.stringify(ReentrancyConfig.abi),
+    },
     {
         address: '0x0888000000000000000000000000000000000005',
         name: 'PoSRegister',
@@ -43,7 +62,7 @@ async function init() {
     // load config
     const config = loadConfig('Prod')
     // init db
-    seq = createDB(config.database)
+    seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
     // init sdk
