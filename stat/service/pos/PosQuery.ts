@@ -1,6 +1,7 @@
 import {PosAccount} from "../../model/PoS";
 import {col, fn} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
+import {Epoch} from "../../model/Epoch";
 
 // noinspection CommaExpressionJS
 export class PosQuery {
@@ -17,6 +18,11 @@ export class PosQuery {
             // @ts-ignore
             this.cfx.getPoSEconomics(),
         ])
+        const [latestVotedTime,pivotDecisionTime,lastDistributeBlockTime] = await Promise.all([
+            Epoch.findByPk(st.latestVoted.toString()), //
+            Epoch.findByPk(st.pivotDecision.toString()), //
+            Epoch.findByPk(posEconomics.lastDistributeBlock.toString()), //
+        ]).then(arr=>arr.map(e=>e?.timestamp.getTime() || 0))
         return {
             latestCommitted: (st.latestCommitted || '0').toString(),
             latestVoted: (st.latestVoted || '0').toString(),
@@ -26,6 +32,7 @@ export class PosQuery {
             distributablePosInterest: posEconomics.distributablePosInterest.toString(),
             lastDistributeBlock: posEconomics.lastDistributeBlock.toString(),
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
+            latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
         }
     }
     async listPosAccount({sortBy = 'id', sort = 'DESC', skip = 0, limit = 10,

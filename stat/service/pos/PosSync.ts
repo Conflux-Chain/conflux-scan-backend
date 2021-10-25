@@ -11,6 +11,7 @@ import {
 } from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
 import {fn, col, Op, QueryTypes} from "sequelize";
+import {PosQuery} from "./PosQuery";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -347,6 +348,12 @@ if (require.main === module) {
     }).then(()=>{
         return posSync.updateLatestBlockNumber()
     }).then(()=>{
+        if (args.includes('test')) {
+            new PosQuery(cfx).posInfo().then(info=>{
+                console.log(` pos info:`, info)
+            })
+            return;
+        }
         // posSync.sync(2).then()
         // cfx['pos'].getBlockByNumber(153).then(res=>{
             // console.log(` pos block `, res)
@@ -361,8 +368,6 @@ if (require.main === module) {
             posSync.repeatSyncTx(),
             posSync.repeatSyncRewards(rewardStartAtPow),
         ])
-    }).then(()=>{
-
     })
 }
 /*
