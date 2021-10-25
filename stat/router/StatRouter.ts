@@ -23,10 +23,11 @@ import {countRecentMiner} from "../service/BlockAndMinerSync";
 import {buildHexSet, convert2base32map, fillHexId, hex40IdMap, Hex40Map, idHex40Map, mapProp} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
-import {NFTMap} from "../service/nftchecker/NFTInfo";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
 import {listNftOfAccountByContract} from "../service/NftService";
+const e2k = require('express-to-koa');
+const swStats = require('swagger-stats');
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -499,6 +500,14 @@ function addSwagger(app: Application, router: Router<any, {}>) {
     router.get(apiDef, async (ctx)=>{
         ctx.body = ApiDef
     })
+    //
+    // metrics
+    app.use(e2k(swStats.getMiddleware({
+        swaggerSpec: ApiDef,
+        uriPath: '/stat/api-stat', // ui at /stat/api-stat/
+        hostname: 'stat-api', // Prevent exposure of server ip
+        basePath: '/stat',
+    })));
     // router.use((ctx,next)=>{
     // ctx.set("script-src 'self'", 'sha256-bLIba9y02h2X9/32+3oS/4EmGe/+1HjpiNUBsaTTIGY=')
     // })
@@ -520,15 +529,7 @@ export function register(app:Koa, statApp: StatApp) {
     const trusted = [
         "'self'",
     ];
-    app.use(helmet({contentSecurityPolicy: {directives:{
-                defaultSrc: trusted,
-                scriptSrc: ['https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.38.0/swagger-ui-bundle.js',
-                    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.38.0/swagger-ui-standalone-preset.js', 'unsafe-inline', "'unsafe-inline'"],
-                styleSrc: ['https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.38.0/swagger-ui.min.css', "'unsafe-inline'",
-                    'https://fonts.googleapis.com/css'],
-                fontSrc: [ 'https:', "'unsafe-inline'", 'https://fonts.gstatic.com/s/opensans/v18/mem8YaGs126MiZpBA-UFWJ0bf8pkAp6a.woff2'],
-                imgSrc: ['data:', 'https:', 'localhost', 'http://localhost:8086/favicon.png']
-            }}}))
+
     app.use(cors())
     app.use(bodyParser())
     let middleware = router.routes();
