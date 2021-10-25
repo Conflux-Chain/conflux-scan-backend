@@ -292,7 +292,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const base32 = ctx.request.query.base32 || ''
         const token = await Token.findOne({
-            attributes: ['name', 'symbol', 'decimals', 'granularity', 'totalSupply', 'type'],
+            attributes: ['name', 'symbol', 'decimals', 'granularity', 'totalSupply', 'type', 'hex40id'],
             where: {base32: base32}
         });
         if (!token) {
