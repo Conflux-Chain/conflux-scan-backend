@@ -7,6 +7,7 @@ export interface IContractVerify{
     name:string
     compiler?:string
     version?:string
+    creationData?:string
     constructorArgs?:string
     sourceCode?:string
     abi?:string
@@ -27,6 +28,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     name:string
     compiler?:string
     version?:string
+    creationData?:string
     constructorArgs?:string
     sourceCode?:string
     abi?:string
@@ -48,6 +50,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name: {type: DataTypes.CHAR(255), allowNull: false},
             compiler: {type: DataTypes.CHAR(255), allowNull: true},
             version: {type: DataTypes.CHAR(255), allowNull: true},
+            creationData: {type: DataTypes.TEXT, allowNull: true, },
             constructorArgs: {type: DataTypes.TEXT, allowNull: true, },
             sourceCode: {type: DataTypes.TEXT, allowNull: true, },
             abi: {type: DataTypes.TEXT, allowNull: true, },
@@ -76,6 +79,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name:contract.name,
             compiler:contract.compiler,
             version:contract.version,
+            creationData: contract.creationData,
             constructorArgs: contract.constructorArgs,
             sourceCode:contract.sourceCode,
             abi:contract.abi,
