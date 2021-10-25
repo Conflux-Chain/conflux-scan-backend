@@ -19,9 +19,9 @@ export class PosQuery {
             this.cfx.getPoSEconomics(),
         ])
         const [latestVotedTime,pivotDecisionTime,lastDistributeBlockTime] = await Promise.all([
-            Epoch.findByPk(st.latestVoted.toString()), //
-            Epoch.findByPk(st.pivotDecision.toString()), //
-            Epoch.findByPk(posEconomics.lastDistributeBlock.toString()), //
+            Epoch.findByPk(st.latestVoted?.toString() || 0), //
+            Epoch.findByPk(st.pivotDecision?.toString() || 0), //
+            Epoch.findByPk(posEconomics.lastDistributeBlock?.toString() || 0), //
         ]).then(arr=>arr.map(e=>e?.timestamp.getTime() || 0))
         return {
             latestCommitted: (st.latestCommitted || '0').toString(),
