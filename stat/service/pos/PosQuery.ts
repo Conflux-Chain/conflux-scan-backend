@@ -19,13 +19,16 @@ export class PosQuery {
             this.cfx.getPoSEconomics(),
         ])
         const [latestVotedTime,pivotDecisionTime,lastDistributeBlockTime] = await Promise.all([
-            Epoch.findByPk(st.latestVoted?.toString() || 0), //
+            Epoch.findByPk((st.latestVoted||st.latestCommitted)?.toString() || 0), //
             Epoch.findByPk(st.pivotDecision?.toString() || 0), //
-            Epoch.findByPk(posEconomics.lastDistributeBlock?.toString() || 0), //
+            // @ts-ignore
+            this.cfx.getBlockByBlockNumber(posEconomics.lastDistributeBlock?.toString() || 0).then(blk=>{
+                return {epoch: 0, timestamp: new Date(blk.timestamp * 1000)}
+            })
         ]).then(arr=>arr.map(e=>e?.timestamp.getTime() || 0))
         return {
             latestCommitted: (st.latestCommitted || '0').toString(),
-            latestVoted: (st.latestVoted || '0').toString(),
+            latestVoted: (st.latestVoted || st.latestCommitted || '0').toString(),
             posPivotDecision: st.pivotDecision?.toString() || '0',
             posEpoch: st.epoch?.toString() || '0',
             posAccountCount: posAccountCount?.toString() || '0',
