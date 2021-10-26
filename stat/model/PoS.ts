@@ -140,14 +140,14 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     }
 }
 export interface IPosReward {
-    id:number
+    id?:number
     accountId:number
     epoch:number
     reward:number
     createdAt:Date
 }
 export class PosReward extends Model<IPosReward> implements IPosReward {
-    id:number
+    id?:number
     accountId:number
     epoch:number
     reward:number

@@ -15,7 +15,7 @@ async function processEpoch(epoch, minerBase32, cfx) {
         for(const info of arr) {
             // @ts-ignore
             const tr = info.totalReward;
-            sum += tr
+            sum += BigInt(tr)
             console.log(`epoch ${epoch} total reward ${tr}, sum ${sum}`)
         }
     })
