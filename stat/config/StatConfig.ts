@@ -1,7 +1,16 @@
-import {ConfluxOption} from "js-conflux-sdk";
+// import {ConfluxOption} from "js-conflux-sdk";
 const fs = require('fs')
 const templateConf = require('./Template')
 
+interface ConfluxOption {
+    url: string,
+    timeout?: number,
+    networkId?: number,
+    logger?: object,
+    defaultGasPrice?: number,
+    defaultGasRatio?: number,
+    defaultStorageRatio?: number,
+}
 export interface Database{
     host: string;
     port: number;

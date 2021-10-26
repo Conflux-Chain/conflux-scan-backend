@@ -4,7 +4,6 @@ import {sleep} from "../service/tool/ProcessTool";
 export interface IPosBlock {
     epoch: number
     round: number
-    version: number
     height: number // it's block number.
     hash: string
     parentHash: string
@@ -12,6 +11,7 @@ export interface IPosBlock {
     minerId: number
     pivotDecision: number
     createdAt: Date
+    nextTxNumber:number
     transactionCount: number
     // signatures: []string
     signatureCount: number
@@ -19,7 +19,6 @@ export interface IPosBlock {
 export class PosBlock extends Model<IPosBlock> implements IPosBlock {
     epoch: number
     round: number
-    version: number
     height: number // it's block number.
     hash: string
     parentHash: string
@@ -27,13 +26,13 @@ export class PosBlock extends Model<IPosBlock> implements IPosBlock {
     minerId: number
     pivotDecision: number
     createdAt: Date
+    nextTxNumber:number
     transactionCount: number
     signatureCount: number
     static register(seq:Sequelize) {
         PosBlock.init({
             epoch: {type: DataTypes.BIGINT({unsigned: true})},
             round: {type: DataTypes.INTEGER, allowNull: true},
-            version: {type: DataTypes.INTEGER, allowNull: true},
             height: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, primaryKey: true},
             hash: {type: DataTypes.STRING(66), allowNull: false},
             parentHash: {type: DataTypes.STRING(4), allowNull: false},
@@ -42,6 +41,7 @@ export class PosBlock extends Model<IPosBlock> implements IPosBlock {
             pivotDecision: {type: DataTypes.INTEGER()},
             createdAt: {type: DataTypes.DATE()},
             transactionCount: {type: DataTypes.INTEGER({unsigned: true})},
+            nextTxNumber: {type: DataTypes.INTEGER({unsigned: true})},
             signatureCount: {type: DataTypes.INTEGER({unsigned: true})},
         }, {
             tableName: 'pos_block',
@@ -57,6 +57,13 @@ export interface IPosAccount {
     mineCount: number
     powBase32: string
     totalReward: number
+    availableVotes: number
+    lockedVotes: number
+    unlockedVotes: number
+    forfeitedVotes: number
+    forceRetiredVotes: number
+    createdAt?: Date
+    updatedAt?: Date
 }
 export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     id: number
@@ -65,6 +72,13 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     mineCount: number
     powBase32: string // not unique
     totalReward: number
+    availableVotes: number
+    lockedVotes: number
+    unlockedVotes: number
+    forfeitedVotes: number
+    forceRetiredVotes: number
+    createdAt?: Date
+    updatedAt?: Date
     static register(seq: Sequelize) {
         PosAccount.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
@@ -73,10 +87,15 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             mineCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
             powBase32: {type: DataTypes.STRING(128)},
             totalReward: {type: DataTypes.DECIMAL(56, 0), defaultValue: 0},
+            availableVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            unlockedVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            forfeitedVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            forceRetiredVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
         }, {
             sequelize: seq,
             tableName: 'pos_account',
-            timestamps: false,
+            timestamps: true,
             indexes: [
                 {name: 'idx_pow_base32', fields:['powBase32'],},
                 {name: 'idx_pos_hex', fields:['hex'],}
@@ -104,7 +123,10 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             const newOne = await PosAccount.create({
                 id: next, signCount: 0, mineCount: 0,
                 powBase32: '',
-                hex, totalReward: 0,
+                hex, totalReward: 0, availableVotes: 0, forceRetiredVotes: 0,
+                forfeitedVotes: 0,
+                lockedVotes: 0,
+                unlockedVotes: 0
             }).catch(err=>{
                 return undefined
             })

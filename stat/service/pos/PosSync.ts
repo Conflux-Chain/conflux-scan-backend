@@ -63,7 +63,10 @@ export class PosSync {
         }
     }
     async syncBlock(blockNumber) {
-        const blockDetail = await this.cfx["pos"].getBlockByNumber(blockNumber)
+        const [blockDetail, preBlock] = await Promise.all([
+            this.cfx["pos"].getBlockByNumber(blockNumber),
+            PosBlock.findByPk(blockNumber - 1),
+        ])
         if (blockDetail === null) {
             throw new Error(`block detail is null, ${blockNumber}`)
         }
@@ -80,6 +83,7 @@ export class PosSync {
             accountBlockBeans.push({accountId: id, blockNumber, id: null})
             accountIds.push(id)
         }
+        const preNextTxNumber = preBlock?.nextTxNumber || 1;
         await PosAccountBlock.sequelize.transaction(async tx=>{
             await Promise.all([
                 PosBlock.create({
@@ -90,10 +94,10 @@ export class PosSync {
                     minerId: minerId,
                     parentHash: blockDetail.parentHash?.substr(2,4),
                     pivotDecision: blockDetail.pivotDecision,
-                    round: Number.isInteger(blockDetail.round) ? blockDetail.round : Number.parseInt(blockDetail.round, 16),
+                    round: blockDetail.round,
                     timestamp: blockDetail.timestamp,
-                    transactionCount: blockDetail.transactions?.length || 0,
-                    version: blockDetail.version,
+                    transactionCount: (blockDetail.nextTxNumber || 1) - preNextTxNumber ,
+                    nextTxNumber: blockDetail.nextTxNumber,
                     signatureCount: blockDetail.signatures?.length || 0,
                 }, {transaction: tx}).catch(err=>{
                     console.log(` save to db fail, data:`, blockDetail)
@@ -133,9 +137,18 @@ export class PosSync {
         })
     }
     async patchCreatedAccount(id, hex) {
-        const info = await this.posContract.identifierToAddress(hex)
+        const [info, {status: posStatus}] = await Promise.all([
+            this.posContract.identifierToAddress(hex),
+            this.cfx['pos'].getAccount(hex),
+        ])
         // console.log(` identifierToAddress ${hex}, got `, info)
-        return PosAccount.update({powBase32: info}, {
+        return PosAccount.update({powBase32: info,
+            availableVotes: posStatus.availableVotes,
+            lockedVotes: posStatus.locked,
+            unlockedVotes: posStatus.unlocked,
+            forfeitedVotes: posStatus.forfeited,
+            forceRetiredVotes: posStatus.forceRetired,
+        }, {
             where: {id: id}
         }).then(()=>{
             return id
@@ -155,10 +168,13 @@ export class PosSync {
         repeat().then()
     }
     async syncCommittee() {
-        const [status, next] = await Promise.all([
+        const [status, next, maxEpochAtDB] = await Promise.all([
             this.cfx["pos"].getStatus(),
             PosCommittee.max('blockNumber').then(res=>{
                 return Number.isNaN(res) ? 1 : (Number(res) + 1)
+            }),
+            PosCommittee.max('epochNumber').then(res=>{
+                return Number.isNaN(res) ? 0 : (Number(res))
             }),
         ])
         let cursor = next;
