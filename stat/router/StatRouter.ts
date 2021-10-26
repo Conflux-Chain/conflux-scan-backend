@@ -543,9 +543,9 @@ export function register(app:Koa, statApp: StatApp) {
 
     app.use(cors())
     app.use(bodyParser())
+    addSwagger(app, router)
     let middleware = router.routes();
     app.use(middleware)
-    addSwagger(app, router)
     addDevopsRouter(router, statApp)
     addConfluxConsortiumNFTRouter(router, statApp)
     console.log('router registered.')
