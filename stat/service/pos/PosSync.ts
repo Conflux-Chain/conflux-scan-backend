@@ -183,13 +183,27 @@ export class PosSync {
             cursor += 1
         }
         console.log(` Done for this round, start at ${next}`)
-    }
+        // refresh account information when pos epoch changing.
+        if (maxEpochAtDB + 1 === status.epoch) {
+            // do not refresh when catching up.
 
+        }
+    }
+    async updateRecentCommitteeAccount(epoch: number) {
+        const recentGap = 10; // hour
+        const list = await PosCommitteeNode.findAll({
+            attributes: [
+                [fn('distinct', col('accountId')), 'accountId']
+            ],
+            where: {epochNumber: {[Op.between]:[epoch - recentGap, epoch]}},
+        })
+    }
     private async syncCommitteeByBlockNumber(cursor: number) {
         const rpcResult = await this.getCommittee(cursor);
         if (this.NOT_FOUND_COMMITTEE === rpcResult) {
             return
         }
+        // @ts-ignore
         const {currentCommittee} = rpcResult;
         // make account id
         for (const n of currentCommittee.nodes) {
