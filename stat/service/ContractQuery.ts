@@ -95,11 +95,11 @@ export class ContractQuery {
     public async addVerify({name, address, compiler, version, optimizeFlag, optimizeRuns, license, verifyResult, similarity}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
-        const hex40id = (await makeId(address)).id;
+        // const hex40id = (await makeId(address)).id;
 
         const verify = new ContractVerify();
         verify.base32 = base32;
-        verify.hex40id = hex40id;
+        // verify.hex40id = hex40id;
         verify.name = name;
         verify.compiler = compiler;
         verify.version = version;
@@ -173,7 +173,7 @@ export class ContractQuery {
         options.attributes = [
             'id',
             'name',
-            'hex40id',
+            // 'hex40id',
             ['base32', 'address'],
             'compiler',
             'version',
@@ -210,8 +210,10 @@ export class ContractQuery {
         }
         if(detail){
             await Promise.all(list.map(async contract =>{
-                const transactionCount = await AddressTransactionIndex.count({where: {addressId: contract.hex40id}});
-                const balance = await CfxBalance.findOne({where: {addressId: contract.hex40id}});
+                const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(contract.base32).substr(2)}})
+                const hex40id = hex40?.id
+                const transactionCount = await AddressTransactionIndex.count({where: {addressId: hex40id}});
+                const balance = await CfxBalance.findOne({where: {addressId: hex40id}});
                 contract.transactionCount = transactionCount;
                 contract.balance = balance?.total || 0;
             }));
