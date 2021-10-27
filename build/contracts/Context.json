@@ -1,0 +1,290 @@
+{
+  "contractName": "Context",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "epochNumber",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.7.4+commit.3f05b770\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"epochNumber\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"epochNumber()\":{\"details\":\"get the current epoch number\"}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/Context.sol\":\"Context\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/Context.sol\":{\"keccak256\":\"0x4c3cdf1ac2a5c1f1dd1ad56539105561062c56eace4e0bd23f3fdbeaf5b88d7f\",\"urls\":[\"bzz-raw://1e50dad10a2203963f3e77f91e53cc57649676f93dbe22d744049c0c89ae9fa6\",\"dweb:/ipfs/QmeAcBgdFr7Zbk91SbX9t21Ug7yZ7EyREq6GqSQseLUkcm\"]}},\"version\":1}",
+  "bytecode": "0x6080604052348015600f57600080fd5b50608e8061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063f4145a8314602d575b600080fd5b60336053565b604051808267ffffffffffffffff16815260200191505060405180910390f35b60009056fea2646970667358221220fad5ea1acbde191bf387648dc7d6a5977fd011b0076d2531644dd77917fe0e5364736f6c63430007040033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063f4145a8314602d575b600080fd5b60336053565b604051808267ffffffffffffffff16815260200191505060405180910390f35b60009056fea2646970667358221220fad5ea1acbde191bf387648dc7d6a5977fd011b0076d2531644dd77917fe0e5364736f6c63430007040033",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [],
+  "sourceMap": "27:166:2:-:0;;;;;;;;;;;;;;;;;;;",
+  "deployedSourceMap": "27:166:2:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;137:54;;;:::i;:::-;;;;;;;;;;;;;;;;;;;;;;181:6;137:54;:::o",
+  "source": "pragma solidity >=0.4.15;\n\ncontract Context {\n    /*** Query Functions ***/\n    /**\n     * @dev get the current epoch number\n     */\n    function epochNumber() public view returns (uint64) {}\n}\n",
+  "sourcePath": "/Users/wangzhenting/IdeaProjects/conflux-scan-statistics/contracts/Context.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/Context.sol",
+    "exportedSymbols": {
+      "Context": [
+        65
+      ]
+    },
+    "id": 66,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 57,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.4",
+          ".15"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:25:2"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "fullyImplemented": true,
+        "id": 65,
+        "linearizedBaseContracts": [
+          65
+        ],
+        "name": "Context",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 63,
+              "nodeType": "Block",
+              "src": "189:2:2",
+              "statements": []
+            },
+            "documentation": {
+              "id": 58,
+              "nodeType": "StructuredDocumentation",
+              "src": "80:52:2",
+              "text": " @dev get the current epoch number"
+            },
+            "functionSelector": "f4145a83",
+            "id": 64,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "epochNumber",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 59,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "157:2:2"
+            },
+            "returnParameters": {
+              "id": 62,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 61,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 64,
+                  "src": "181:6:2",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  },
+                  "typeName": {
+                    "id": 60,
+                    "name": "uint64",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "181:6:2",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint64",
+                      "typeString": "uint64"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "180:8:2"
+            },
+            "scope": 65,
+            "src": "137:54:2",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          }
+        ],
+        "scope": 66,
+        "src": "27:166:2"
+      }
+    ],
+    "src": "0:194:2"
+  },
+  "legacyAST": {
+    "attributes": {
+      "absolutePath": "project:/contracts/Context.sol",
+      "exportedSymbols": {
+        "Context": [
+          65
+        ]
+      }
+    },
+    "children": [
+      {
+        "attributes": {
+          "literals": [
+            "solidity",
+            ">=",
+            "0.4",
+            ".15"
+          ]
+        },
+        "id": 57,
+        "name": "PragmaDirective",
+        "src": "0:25:2"
+      },
+      {
+        "attributes": {
+          "abstract": false,
+          "baseContracts": [
+            null
+          ],
+          "contractDependencies": [
+            null
+          ],
+          "contractKind": "contract",
+          "fullyImplemented": true,
+          "linearizedBaseContracts": [
+            65
+          ],
+          "name": "Context",
+          "scope": 66
+        },
+        "children": [
+          {
+            "attributes": {
+              "functionSelector": "f4145a83",
+              "implemented": true,
+              "isConstructor": false,
+              "kind": "function",
+              "modifiers": [
+                null
+              ],
+              "name": "epochNumber",
+              "scope": 65,
+              "stateMutability": "view",
+              "virtual": false,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "text": " @dev get the current epoch number"
+                },
+                "id": 58,
+                "name": "StructuredDocumentation",
+                "src": "80:52:2"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 59,
+                "name": "ParameterList",
+                "src": "157:2:2"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "mutability": "mutable",
+                      "name": "",
+                      "scope": 64,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint64",
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint64",
+                          "type": "uint64"
+                        },
+                        "id": 60,
+                        "name": "ElementaryTypeName",
+                        "src": "181:6:2"
+                      }
+                    ],
+                    "id": 61,
+                    "name": "VariableDeclaration",
+                    "src": "181:6:2"
+                  }
+                ],
+                "id": 62,
+                "name": "ParameterList",
+                "src": "180:8:2"
+              },
+              {
+                "attributes": {
+                  "statements": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 63,
+                "name": "Block",
+                "src": "189:2:2"
+              }
+            ],
+            "id": 64,
+            "name": "FunctionDefinition",
+            "src": "137:54:2"
+          }
+        ],
+        "id": 65,
+        "name": "ContractDefinition",
+        "src": "27:166:2"
+      }
+    ],
+    "id": 66,
+    "name": "SourceUnit",
+    "src": "0:194:2"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.7.4+commit.3f05b770.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.1",
+  "updatedAt": "2021-10-25T07:52:46.971Z",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "epochNumber()": {
+        "details": "get the current epoch number"
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}
