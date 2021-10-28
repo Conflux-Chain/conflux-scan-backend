@@ -46,7 +46,7 @@ export class PosQuery {
         ])
         const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
         page.rows.forEach(row=>{
-            row['committeeInfo'] = map[row.hex] || {}
+            row['committeeInfo'] = map[row.hex] || {votingPower: 0}
         })
         return page;
     }
