@@ -175,6 +175,7 @@ export interface IPosAccountBlock {
     accountId: number
     blockNumber: number
 }
+// It's signed blocks by an account. not mined.
 export class PosAccountBlock extends Model<IPosAccountBlock> implements IPosAccountBlock {
     id: number
     accountId: number
@@ -187,7 +188,8 @@ export class PosAccountBlock extends Model<IPosAccountBlock> implements IPosAcco
         }, {
             tableName: 'pos_account_block',
             indexes: [
-                {name: 'uk_acc_blk', fields: ['accountId', 'blockNumber'], unique: true}
+                {name: 'uk_acc_blk', fields: ['accountId', 'blockNumber'], unique: true},
+                {name: 'idx_blk', fields: ['blockNumber']},
             ],
             sequelize: seq,
             timestamps: false
@@ -286,6 +288,9 @@ export class PosTransaction extends Model<IPosTransaction> implements IPosTransa
             sequelize: seq,
             tableName: 'pos_tx',
             timestamps: false,
+            indexes: [
+                {name: 'idx_block', fields: ['blockNumber']}
+            ]
         })
     }
 }

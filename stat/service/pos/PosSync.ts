@@ -34,17 +34,18 @@ export class PosSync {
         this.posContract = this.cfx.Contract({abi:posAbi, address: posContractAddr})
     }
     async updateLatestBlockNumber() {
-        let st: Object;
+        let st;
         try {
-            st = await this.cfx["pos"].getStatus();
+            st = await this.cfx.pos.getStatus();
         } catch (e) {
             console.log(` get status fail:`, e)
             return
         }
         // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
         // console.log(` status : ${JSON.stringify(st)}`)
-        this.latestBlockNumber = st["latestVoted"];
-        console.log(` update latestBlockNumber to ${this.latestBlockNumber}`)
+        this.latestBlockNumber = st["latestVoted"] || st.latestCommitted;
+        console.log(` update latestBlockNumber to ${this.latestBlockNumber
+        }, status voted ${st.latestVoted} committed ${st.latestCommitted}`)
     }
     async repeatSyncBlock() {
         // syn block thread.
@@ -56,7 +57,7 @@ export class PosSync {
                     that.position += 1
                 })
                 .catch(err=>{
-                    console.log(` error at ${that.position} , ${err.message}`)
+                    console.log(` repeatSyncBlock error at ${that.position} `, err)
                     delay = 10_000
                 })
             setTimeout(()=>this.repeatSyncBlock(), delay)
@@ -68,11 +69,39 @@ export class PosSync {
     }
     async syncBlock(blockNumber) {
         const [blockDetail, preBlock] = await Promise.all([
-            this.cfx["pos"].getBlockByNumber(blockNumber),
+            this.cfx.pos.getBlockByNumber(blockNumber),
             PosBlock.findByPk(blockNumber - 1),
         ])
         if (blockDetail === null) {
             throw new Error(`block detail is null, ${blockNumber}`)
+        }
+        if (blockNumber >= 3 && preBlock !== null && blockDetail.parentHash !== preBlock.hash
+            // when epoch is changing, it's designed that a new block is build as genesis.
+            && preBlock.epoch === blockDetail.epoch) {
+            const preAccountIds = await PosAccountBlock.findAll({attributes: ['accountId'],
+                where: {blockNumber: preBlock.height}}).then(arr=>arr.map(row=>row.accountId))
+            // reorg happens
+            console.log(`block number ${blockNumber}, parent hash ${blockDetail.parentHash
+            } \n not match previous block hash ${preBlock.hash} with number ${preBlock.height}`)
+            // fetch from chain node
+            const infoDebug = await Promise.all([
+                this.cfx.pos.getBlockByNumber(preBlock.height),
+                this.cfx.pos.getBlockByNumber(blockNumber),
+            ]).then(arr=>arr.map(blk=>{
+                return `block height ${blk.height} hash ${blk.hash} \n parentHash ${blk.parentHash}`
+            })).then(arr=>arr.join('\n'));
+            console.log(` debug info :\n${infoDebug}`)
+            await PosBlock.sequelize.transaction(async (dbTx)=>{
+                return Promise.all([
+                    preBlock.destroy({transaction: dbTx}),
+                    PosTransaction.destroy({where: {blockNumber: preBlock.height}, transaction: dbTx}),
+                    this.diffMineCount(preBlock.minerId, -1, dbTx),
+                    this.diffSignCount(preAccountIds, -1, dbTx),
+                    PosAccountBlock.destroy({where: {blockNumber: preBlock.height}, transaction: dbTx}),
+                ]);
+            })
+            this.position -= 2 // +1 at caller. re-syn previous block.
+            return;
         }
         const dt = new Date(blockDetail.timestamp/1000);
         let minerId = null;
@@ -88,52 +117,73 @@ export class PosSync {
             accountBlockBeans.push({accountId: id, blockNumber, id: null})
             accountIds.push(id)
         }
-        const preNextTxNumber = preBlock?.nextTxNumber || 1;
+        const preNextTxNumber = blockNumber === 2 ? 2 : preBlock?.nextTxNumber || 1;
+        const txIdStopBefore = blockNumber === 1 ? 2 : blockDetail.nextTxNumber;
+        const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore, blockNumber);
+        const txCountByDiff = txIdStopBefore - preNextTxNumber;
+        if (txArr.length !== txCountByDiff) {
+            console.log(` block number ${blockNumber} tx count not match, count by diff ${txCountByDiff} vs ${txArr.length}`)
+            this.position -= 1 // +1 at caller. sync again.
+            return;
+        }
         await PosAccountBlock.sequelize.transaction(async tx=>{
             await Promise.all([
-                PosBlock.create({
-                    createdAt: dt,
-                    epoch: blockDetail.epoch,
-                    hash: blockDetail.hash,
-                    height: blockDetail.height,
-                    minerId: minerId,
-                    parentHash: blockDetail.parentHash?.substr(2,4),
-                    pivotDecision: blockDetail.pivotDecision,
-                    round: blockDetail.round,
-                    timestamp: blockDetail.timestamp,
-                    transactionCount: Math.max(0,(blockDetail.nextTxNumber || 1) - preNextTxNumber ),
-                    nextTxNumber: blockDetail.nextTxNumber,
-                    signatureCount: blockDetail.signatures?.length || 0,
-                }, {transaction: tx}).catch(err=>{
-                    delete blockDetail.signatures;
-                    console.log(` sync pos block, save to db fail, data:`, blockDetail)
-                    console.log(` error is :`, err)
-                    throw err
-                }),
+                PosBlock.create(
+                        this.createBlockBean(dt, blockDetail, minerId, txCountByDiff),
+                    {transaction: tx}
+                    ).catch(err=>{
+                        delete blockDetail.signatures;
+                        console.log(` sync pos block, save to db fail, data:`, blockDetail)
+                        console.log(` error is :`, err)
+                        throw err
+                    }),
                 PosAccountBlock.bulkCreate(accountBlockBeans, {transaction: tx}),
-                new Promise((resolve, reject) => {
-                    if (!accountIds.length) {
-                        resolve(0)
-                        return
-                    }
-                    PosAccount.sequelize.query(
-                        `update pos_account set signCount = signCount + 1 where id in (${accountIds.join(',')})`,{
-                            transaction: tx, type: QueryTypes.UPDATE
-                        }).then(()=>{
-                        return minerId ? PosAccount.sequelize.query(
-                            `update pos_account set mineCount = mineCount + 1 where id = ${minerId}`,{
-                                transaction: tx, type: QueryTypes.UPDATE
-                            }) : undefined
-                    }).then(resolve).catch(reject)
-                }),
+                // update account signCount
+                this.diffMineCount(minerId, 1, tx),
+                this.diffSignCount(accountIds, 1, tx),
+                // save tx
+                PosTransaction.bulkCreate(txArr, {transaction: tx}),
             ])
-        })
+        });
 
         // console.log(`pos sync block:`, blockDetail)
         if (blockNumber % 100 === 1) {
-            console.log(`pos sync block:`, blockNumber)
+            console.log(`pos sync block number ${blockNumber}, tx count ${txArr.length}`)
         }
     }
+    async diffMineCount(minerId: number, v:number, tx) {
+        if (!minerId) {
+            return
+        }
+        return PosAccount.increment('mineCount', {
+            by: v, where: {id: minerId}, transaction: tx,
+        })
+    }
+    async diffSignCount(accountIds:number[], v:number, tx) {
+        if (!accountIds.length) {
+            return;
+        }
+        return PosAccount.increment('signCount', {
+            by: v, where: {id: {[Op.in]:accountIds}}, transaction: tx,
+        })
+    }
+    private createBlockBean(dt: Date, blockDetail: any, minerId, txCountByDiff: number) {
+        return {
+            createdAt: dt,
+            epoch: blockDetail.epoch,
+            hash: blockDetail.hash,
+            height: blockDetail.height,
+            minerId: minerId,
+            parentHash: blockDetail.parentHash?.substr(2, 4),
+            pivotDecision: blockDetail.pivotDecision,
+            round: blockDetail.round,
+            timestamp: blockDetail.timestamp,
+            transactionCount: txCountByDiff,
+            nextTxNumber: blockDetail.nextTxNumber,
+            signatureCount: blockDetail.signatures?.length || 0,
+        };
+    }
+
     async saveAccount(hex:string, dt: Date) : Promise<number> {
         return PosAccount.make(hex, dt,(id)=>{
             // console.log(` callback after account created.`)
@@ -177,21 +227,18 @@ export class PosSync {
         repeat().then()
     }
     async syncCommittee() {
-        const [status, next, maxEpochAtDB] = await Promise.all([
+        const [status, maxEpochAtDB] = await Promise.all([
             this.cfx["pos"].getStatus(),
-            PosCommittee.max('blockNumber').then(res=>{
-                return Number.isNaN(res) ? 1 : (Number(res) + 1)
-            }),
             PosCommittee.max('epochNumber').then(res=>{
-                return Number.isNaN(res) ? 0 : (Number(res))
+                return Number.isNaN(res) ? -1 : (Number(res))
             }),
         ])
-        let cursor = next;
-        while(cursor < status.latestCommitted) {
+        let cursor = maxEpochAtDB + 1;
+        while(cursor < status.epoch) {
             await this.syncCommitteeByBlockNumber(cursor);
             cursor += 1
         }
-        console.log(` syncCommittee Done for this round, start at ${next}`)
+        console.log(` syncCommittee Done for this round, start at ${maxEpochAtDB+1}`)
         // refresh account information when pos epoch changing.
         if (maxEpochAtDB + 1 === status.epoch) {
             // do not refresh when catching up.
@@ -302,34 +349,29 @@ export class PosSync {
         // console.log(` committee info of block number ${blockNumber.toString().padStart(8, ' ')}: `, JSON.stringify(info, ))
         return info
     }
-    async repeatSyncTx() {
-        let next = await PosTransaction.max('number').then(res=>{
-            return Number.isNaN(res) ? 1 : (Number(res) + 1)
-        })
+    async fetchTxArr(start:number, stopBefore:number, blockNumber) {
+        let next = start;
+        const txArr = []
         const that = this
-        async function repeat() {
+        while(next < stopBefore) {
             const tx = await that.cfx['pos'].getTransactionByNumber(next).catch(err=>{
                 console.log(` getTransactionByNumber fail, ${next}:`, err)
                 return null
             })
             if (tx === null) {
-                setTimeout(repeat, 10_000)
+                return null;
             } else {
                 const dt = new Date(tx.timestamp/1000)
                 const accountId = await that.saveAccount(tx.from, dt)
-                await PosTransaction.create({
-                    blockNumber: 0, // FIXME
+                txArr.push({
+                    blockNumber: blockNumber,
                     fromId: accountId, number: next, status: tx.status, type: tx.type,
                     createdAt: dt,
                 })
-                if (next % 100 === 1) {
-                    console.log(` save tx ${next}`)
-                }
                 next += 1
-                setTimeout(repeat, 0)
             }
         }
-        repeat().then()
+        return txArr;
     }
     async repeatSyncRewards(rewardStartAt: number) {
         const rewardStartAtPos = await this.computeRewardStartAt(rewardStartAt)
@@ -499,7 +541,6 @@ if (require.main === module) {
             // posSync.test(),
             posSync.repeatSyncBlock(),
             posSync.repeatFetchCommittee(),
-            posSync.repeatSyncTx(),
             posSync.repeatSyncRewards(rewardStartAtPow),
             // posSync.updateRecentCommitteeAccount(8),
         ])
