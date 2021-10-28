@@ -3,7 +3,7 @@ import {Model,Sequelize,DataTypes} from "sequelize";
 export interface IContractVerify{
     id?:number
     base32:string
-    hex40id:number
+    // hex40id:number
     name:string
     compiler?:string
     version?:string
@@ -24,7 +24,7 @@ export interface IContractVerify{
 export class ContractVerify extends Model<IContractVerify> implements IContractVerify{
     id?:number
     base32:string
-    hex40id:number
+    // hex40id:number
     name:string
     compiler?:string
     version?:string
@@ -45,7 +45,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
         ContractVerify.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false},
-            hex40id: {type: DataTypes.BIGINT, allowNull: false},
+            // hex40id: {type: DataTypes.BIGINT, allowNull: false},
 
             name: {type: DataTypes.CHAR(255), allowNull: false},
             compiler: {type: DataTypes.CHAR(255), allowNull: true},
@@ -74,7 +74,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     static async add(contract: ContractVerify, dbTx = undefined): Promise<IContractVerify> {
         return await ContractVerify.create({
             base32:contract.base32,
-            hex40id:contract.hex40id,
+            // hex40id:contract.hex40id,
 
             name:contract.name,
             compiler:contract.compiler,

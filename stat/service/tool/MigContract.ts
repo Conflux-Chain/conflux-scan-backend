@@ -1,22 +1,27 @@
 import {loadConfig} from "../../config/StatConfig";
-import {createDB, initModel} from "../DBProvider";
+import {createMySql, initModel} from "../DBProvider";
+const fs = require('fs');
 import {StatApp} from "../../StatApp";
 import {ContractInfo} from "../../model/ContractInfo";
 import {Contract} from "../../model/Contract";
-import {makeId} from "../../model/HexMap";
+import {Hex40Map, makeId} from "../../model/HexMap";
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
 import {TokenTool} from "./TokenTool";
+import {ContractVerify} from "../../model/ContractVerify";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
+let type; // 1-sync, 2-writeContractVerify, 3-insertContractVerify
 let cfx;
 let tokenTool;
+let networkId;
+let round;
 
 async function init() {
     const config = loadConfig('Prod')
     console.log(`config-----------${JSON.stringify(config)}`)
-    let seq = createDB(config.database)
+    let seq = createMySql(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
 
@@ -24,9 +29,60 @@ async function init() {
     tokenTool = new TokenTool(cfx);
 }
 
-async function run() {
+async function run(round) {
     await init();
-    await sync();
+    if(type === 1){
+        await sync();
+    }
+    if(type === 2) {
+        await writeContractVerify(round);
+    }
+    if(type === 3){
+        await insertContractVerify();
+    }
+}
+
+async function writeContractVerify(round = 10){
+    let minId:number = await ContractVerify.min('id');
+    let maxId:number = await ContractVerify.max('id');
+    console.log(`writeContractVerify start...\nround:${round}\nminId:${minId}\nmaxId:${maxId}`);
+
+    let roundCounter = 0
+    while (roundCounter < round && minId <= maxId) {
+        const id = minId++;
+        const verify = await ContractVerify.findByPk(id, {raw: true});
+        // @ts-ignore
+        if(!verify.verifyResult) continue;
+
+        const verifyJson = JSON.stringify(verify);
+        fs.writeFileSync(`${__dirname}/verifyJSON/${verify.base32}.json`, verifyJson);
+        roundCounter++
+    }
+}
+
+async function insertContractVerify(){
+    const files = await fs.readdirSync(`${__dirname}/verifyJSON/`);
+    for(const fileName of files){
+        console.log(`fileName------${fileName}`)
+        const content = await fs.readFileSync(`${__dirname}/verifyJSON/${fileName}`);
+        const verify = JSON.parse(content);
+
+        // const base32 = verify.base32;
+        // const hex = format.hexAddress(base32);
+        // const hex40 = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
+        // const hex40id = hex40.id;
+
+        verify.id = undefined;
+        // verify.hex40id = hex40id;
+        console.log(`verify------${JSON.stringify(lodash.pick(verify, ['id','hex40id']))}`)
+
+        try{
+            await ContractVerify.add(verify);
+        }catch (e) {
+            const msg = `${e}`
+            console.log(`ContractVerify add file,verify:${JSON.stringify(verify.base32)}, error:${msg.substr(0, 1000)}`);
+        }
+    }
 }
 
 async function sync() {
@@ -65,8 +121,15 @@ async function sync() {
 //              0       1
 // node this netId epochNumber
 const args = process.argv.slice(2)
-StatApp.networkId = Number(args[0])
-run().then();
+networkId = Number(args[0]);
+StatApp.networkId = networkId;
+if(args[1]){
+    type = Number(args[1]);
+}
+if(args[2]){
+    round = Number(args[2]);
+}
+run(round).then();
 
 //-----------------------------------------------------------------
 async function getAnnounceInfo(epochNumber) {
