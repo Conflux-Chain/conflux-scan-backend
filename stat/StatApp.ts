@@ -159,7 +159,8 @@ export class StatApp{
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
-        new PowSidePosSync(this.cfx).listen().then();
+        const powSidePosSync = new PowSidePosSync(this.cfx);
+        powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
