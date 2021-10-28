@@ -16,7 +16,7 @@
     "agentkeepalive": "^4.1.4",
     "ali-oss": "~6.16.0",
     "bigfixed": "0.0.2",
-    "js-conflux-sdk": "next",
+    "js-conflux-sdk": "2.0.0-beta.3",
     "koa": "2.13.1",
     "koa-bodyparser": "^4.3.0",
     "koa-helmet": "6.0.0",
@@ -36,7 +36,8 @@
   "devDependencies": {
     "@types/ali-oss": "6.0.10",
     "@types/redis": "^2.8.28",
-    "typescript": "^4.1.3",
+    "typescript": "4.1.3",
+    "@types/lodash": "4.14.176",
     "tsc-watch": "^4.2.9",
     "@types/koa": "2.11.6",
     "@types/koa-router": "7.4.1",

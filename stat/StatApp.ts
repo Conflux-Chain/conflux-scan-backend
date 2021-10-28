@@ -41,6 +41,7 @@ import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {patchHttpProvider} from "./service/common/utils";
 import {KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
+import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 
 export class StatApp{
     public config: StatConfig;
@@ -158,6 +159,7 @@ export class StatApp{
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
+        new PowSidePosSync(this.cfx).listen().then();
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block

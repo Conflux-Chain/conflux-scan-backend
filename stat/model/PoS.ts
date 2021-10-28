@@ -83,28 +83,28 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
         PosAccount.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
             hex: {type: DataTypes.STRING(66), unique: true},
-            signCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
-            mineCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            signCount: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            mineCount: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
             powBase32: {type: DataTypes.STRING(128)},
-            totalReward: {type: DataTypes.DECIMAL(56, 0), defaultValue: 0},
-            availableVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
-            lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
-            unlockedVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
-            forfeitedVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
-            forceRetiredVotes: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            totalReward: {type: DataTypes.DECIMAL(56, 0), allowNull:false, defaultValue: 0},
+            availableVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            unlockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            forfeitedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            forceRetiredVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
         }, {
             sequelize: seq,
             tableName: 'pos_account',
             timestamps: true,
             indexes: [
                 {name: 'idx_pow_base32', fields:['powBase32'],},
-                {name: 'idx_pos_hex', fields:['hex'],}
+                //{name: 'idx_pos_hex', fields:['hex'], unique: true},// field has unique modifier.
             ]
         })
     }
     static lock = false
     static printLog = false
-    static async make(hex:string, createdFn = (id)=>{}) : Promise<number>{
+    static async make(hex:string, dt:Date, createdFn = (id)=>{}) : Promise<number>{
         // TODO use some cache.
         do {
             if (PosAccount.lock) {
@@ -126,7 +126,8 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
                 hex, totalReward: 0, availableVotes: 0, forceRetiredVotes: 0,
                 forfeitedVotes: 0,
                 lockedVotes: 0,
-                unlockedVotes: 0
+                unlockedVotes: 0,
+                createdAt: dt,
             }).catch(err=>{
                 return undefined
             })
@@ -248,7 +249,7 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
                 // {name: 'idx_epoch', fields:['epoch']},
                 //
                 {name: 'uk_status_change', unique: true, fields:['epoch','identifier','votePower','retire']},
-                {name: 'idx_powBase32', fields:['powBase32']}
+                {name: 'idx_powBase32', fields:['powBase32']},
             ]
         })
     }

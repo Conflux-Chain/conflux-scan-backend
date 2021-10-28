@@ -2,6 +2,7 @@ import {PosAccount} from "../../model/PoS";
 import {col, fn} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
+const lodash = require('lodash')
 
 // noinspection CommaExpressionJS
 export class PosQuery {
@@ -37,6 +38,17 @@ export class PosQuery {
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
         }
+    }
+    async listPosAccountWithCurrentCommittee(query) {
+        const [page, {currentCommittee}] = await Promise.all([
+            this.listPosAccount(query),
+            this.cfx.pos.getCommittee(),
+        ])
+        const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
+        page.rows.forEach(row=>{
+            row['committeeInfo'] = map[row.hex] || {}
+        })
+        return page;
     }
     async listPosAccount({sortBy = 'id', sort = 'DESC', skip = 0, limit = 10,
                              groupByPowAddress=false}) {

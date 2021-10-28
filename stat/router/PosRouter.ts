@@ -9,7 +9,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const p = {...ctx.request.query, skip, limit,
             groupByPowAddress: Boolean(ctx.request.query.groupByPowAddress)
         }
-        const page = await statApp.posQuery.listPosAccount(p)
+        const page = await statApp.posQuery.listPosAccountWithCurrentCommittee(p)
         ctx.body = {
             code: 0, message: 'ok',
             data: {
