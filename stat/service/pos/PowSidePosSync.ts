@@ -57,7 +57,9 @@ export class PowSidePosSync {
         if (logs === undefined) {
             return;
         }
-        console.log( ` sync pos register event, logs count ${logs.length}, pow epoch ${epoch}`);
+        if (epoch % 100 === 0) {
+            console.log(` sync pos register event, logs count ${logs.length}, pow epoch ${epoch}`);
+        }
         const dt = new Date(block.timestamp * 1000)
         const registerArr:IPosRegister[] = []
         // const registerArr:IPosRegister[] = []
