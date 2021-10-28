@@ -152,11 +152,11 @@ export class PosSync {
         ])
         // console.log(` identifierToAddress ${hex}, got `, info)
         return PosAccount.update({powBase32: info,
-            availableVotes: posStatus.availableVotes,
-            lockedVotes: posStatus.locked,
-            unlockedVotes: posStatus.unlocked,
-            forfeitedVotes: posStatus.forfeited,
-            forceRetiredVotes: posStatus.forceRetired,
+            availableVotes: posStatus.availableVotes || 0,
+            lockedVotes: posStatus.locked || 0,
+            unlockedVotes: posStatus.unlocked || 0,
+            forfeitedVotes: posStatus.forfeited || 0,
+            forceRetiredVotes: posStatus.forceRetired || 0,
         }, {
             where: {id: id}
         }).then(()=>{
@@ -242,7 +242,7 @@ export class PosSync {
                 lockedVotes: status.lockedVotes,
                 unlockedVotes: status.unlockedVotes,
                 forfeitedVotes: status.forfeitedVotes || 0,
-                forceRetiredVotes: status.forceRetiredVotes,
+                forceRetiredVotes: status.forceRetiredVotes || 0,
             }, {where: {hex: accInfo.address}})
         })
         await Promise.all(updateTasks);
