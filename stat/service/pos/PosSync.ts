@@ -204,21 +204,25 @@ export class PosSync {
             attributes: [
                 [fn('distinct', col('accountId')), 'accountId']
             ],
-            where: {epochNumber: {[Op.between]:[epoch - recentGap, epoch]}},
-        }).then(res=>{
-            return res.map(row=>row.accountId)
+            where: {epochNumber: {[Op.between]: [epoch - recentGap, epoch]}},
+        }).then(res => {
+            return res.map(row => row.accountId)
         })
         if (!listOfAccountId.length) {
             console.log(` account ids is empty.`)
             return;
         }
         const accountList = await PosAccount.findAll({
-            where: {id: {[Op.in]:listOfAccountId}}
+            where: {id: {[Op.in]: listOfAccountId}}
         })
         if (!accountList.length) {
-            console.log( ` account list is empty, but with ids: ${listOfAccountId.join(",")}`);
+            console.log(` account list is empty, but with ids: ${listOfAccountId.join(",")}`);
             return;
         }
+        return this.updateAccountVotes(accountList);
+    }
+
+    async updateAccountVotes(accountList: PosAccount[]) {
         //
         const chunks2d: PosAccount[][] = lodash.chunk(accountList, 50);
         const batchArr = chunks2d.map(chunks=>{
@@ -243,6 +247,20 @@ export class PosSync {
         })
         await Promise.all(updateTasks);
         console.log(` update account votes, count ${updateTasks.length}`)
+    }
+    async updateAllAccountVotes() {
+        let i = 0
+        let pageSize = 100
+        do {
+            const list = await PosAccount.findAll({where: {id:{[Op.gte]: i}},
+                order: [['id','asc']], limit: pageSize});
+            if (list.length === 0) {
+                break;
+            }
+            await this.updateAccountVotes(list);
+            i = list[list.length - 1].id + 1;
+        } while (true)
+        console.log(` update all account votes done.`)
     }
     private async syncCommitteeByBlockNumber(cursor: number) {
         const rpcResult = await this.getCommittee(cursor);
@@ -461,6 +479,11 @@ if (require.main === module) {
         // })
         if (args.includes('test')) {
             posSync.test().then(()=>{
+                process.exit(0)
+            })
+            return;
+        } else if (args.includes('updateAllAccount')) {
+            posSync.updateAllAccountVotes().then(()=>{
                 process.exit(0)
             })
             return;
