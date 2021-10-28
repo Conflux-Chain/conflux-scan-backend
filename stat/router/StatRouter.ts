@@ -502,11 +502,22 @@ function addSwagger(app: Application, router: Router<any, {}>) {
     })
     //
     // metrics
+    const pathArr = router.stack.map((layer) => {
+        return layer.path.split('/').map((sec) => {
+            return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
+        }).join('/');
+    });
+    const pathDef = {};
+    pathArr.forEach((p) => {
+        pathDef[p] = { get: {} };
+    });
+    // @ts-ignore
+    ApiDef.paths = pathDef;
     app.use(e2k(swStats.getMiddleware({
         swaggerSpec: ApiDef,
         uriPath: '/stat/api-stat', // ui at /stat/api-stat/
         hostname: 'stat-api', // Prevent exposure of server ip
-        basePath: '/stat',
+        // basePath: '/', // api definition has a prefix.
     })));
     // router.use((ctx,next)=>{
     // ctx.set("script-src 'self'", 'sha256-bLIba9y02h2X9/32+3oS/4EmGe/+1HjpiNUBsaTTIGY=')
@@ -532,9 +543,9 @@ export function register(app:Koa, statApp: StatApp) {
 
     app.use(cors())
     app.use(bodyParser())
+    addSwagger(app, router)
     let middleware = router.routes();
     app.use(middleware)
-    addSwagger(app, router)
     addDevopsRouter(router, statApp)
     addConfluxConsortiumNFTRouter(router, statApp)
     console.log('router registered.')
