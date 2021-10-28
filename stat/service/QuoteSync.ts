@@ -13,7 +13,7 @@ export class QuoteSync {
   private wCFXAddress = "cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx";
   private cETHAddress = "cfx:acdrf821t59y12b4guyzckyuw2xf1gfpj2ba0x4sj6";
   private cUSDTAddress = "cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7";
-  private viaWCFXSet = new Set<string>(['cITF', 'cFLUX', 'TREA', 'YAO', 'POOLGO', 'DAN']);
+  private viaWCFXSet = new Set<string>(['cITF', 'cFLUX', 'TREA', 'YAO', 'POOLGO', 'DAN', 'POS']);
   private viaCETHSet = new Set<string>(['cFOR']);
   private viaCETHUnilateralSet = new Set<string>(['cLEND']);
 
