@@ -88,7 +88,7 @@ export class PosSync {
                 this.cfx.pos.getBlockByNumber(preBlock.height),
                 this.cfx.pos.getBlockByNumber(blockNumber),
             ]).then(arr=>arr.map(blk=>{
-                return `block height ${blk.height} hash ${blk.hash} \n parentHash ${blk.parentHash}`
+                return `block height ${blk.height} epoch ${blk.epoch} hash ${blk.hash} \n parentHash ${blk.parentHash}`
             })).then(arr=>arr.join('\n'));
             console.log(` debug info :\n${infoDebug}`)
             await PosBlock.sequelize.transaction(async (dbTx)=>{
