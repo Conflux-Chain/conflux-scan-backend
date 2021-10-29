@@ -8,6 +8,7 @@ export interface ITokenSecurityAudit{
     // common audit
     verify?:boolean
     audit?:boolean
+    auditUrl?:string
     sponsor?:boolean
     zeroAdmin?:boolean
     // cex audit
@@ -28,6 +29,7 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
     // common audit
     verify?:boolean
     audit?:boolean
+    auditUrl?:string
     sponsor?:boolean
     zeroAdmin?:boolean
     // cex audit
@@ -48,6 +50,7 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
             // common audit
             verify: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             audit: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            auditUrl: {type: DataTypes.CHAR(255), allowNull: true, },
             sponsor: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             zeroAdmin: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             // cex audit
@@ -75,6 +78,7 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
             zeroAdmin: token.zeroAdmin, // cfx.getAccount(address)
             verify: token.verify, // get field verifyResult from table contract_verify
             audit: token.audit,
+            auditUrl: token.auditUrl,
             // cex audit
             cexBinance: token.cexBinance,
             cexHuobi: token.cexHuobi,

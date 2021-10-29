@@ -291,7 +291,7 @@ export class TokenQuery {
             const securityAudit = securityAuditMap[item.address];
             item.securityAudit = {
                 verify: securityAudit?.verify ? 1 : 0,
-                audit: securityAudit?.audit ? 1 : 0,
+                audit: { result: securityAudit?.audit ? 1 : 0, auditUrl: securityAudit.auditUrl },
                 sponsor: securityAudit?.sponsor ? 1 : 0,
                 zeroAdmin: securityAudit?.zeroAdmin ? 1 : 0,
                 cex: {
