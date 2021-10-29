@@ -140,6 +140,25 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
         } while (true)
     }
 }
+export interface IPosEpochRewardHash {
+    epoch:number
+    powDate:Date
+    powEpochHash:string
+}
+export class PosEpochRewardHash extends Model<IPosEpochRewardHash> implements IPosEpochRewardHash {
+    epoch:number
+    powEpochHash:string
+    powDate:Date
+    static register(seq: Sequelize) {
+        PosEpochRewardHash.init({
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
+            powEpochHash: {type: DataTypes.STRING(66)},
+            powDate: {type: DataTypes.DATE},
+        }, {
+            sequelize: seq, tableName: 'pos_epoch_reward_hash',
+        })
+    }
+}
 export interface IPosReward {
     id?:number
     accountId:number

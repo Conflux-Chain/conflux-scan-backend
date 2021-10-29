@@ -12,10 +12,14 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const page = await statApp.posQuery.listPosAccountWithCurrentCommittee(p)
         ctx.body = {
             code: 0, message: 'ok',
-            data: {
-                list: page.rows,
-                total: page.count
-            }
+            list: page.rows,
+            total: page.count,
+        }
+    })
+    router.get('/pos-account-detail', async (ctx)=>{
+        const {identifier} = ctx.request.query
+        ctx.body = {
+            code: 0, ...await statApp.posQuery.getAccountDetail(identifier)
         }
     })
     router.get('/pos-info', async (ctx)=>{

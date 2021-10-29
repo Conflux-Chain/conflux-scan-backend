@@ -392,10 +392,10 @@ export class PosSync {
         repeat().then()
     }
     async syncRewardByEpoch(epoch:number) {
-        const rewardInfo = await this.cfx['pos'].getRewardsByEpoch(epoch)
+        const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (rewardInfo === null) {
             console.log(` reward is null at epoch ${epoch}`)
-            await sleep(5_000)
+            await sleep(10_000)
             return 0
         }
         const accountRewards = rewardInfo.accountRewards;

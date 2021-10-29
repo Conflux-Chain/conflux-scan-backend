@@ -39,6 +39,21 @@ export class PosQuery {
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
         }
     }
+    async getAccountDetail(identifier:string) {
+        const [dbInfo, onChainInfo, {currentCommittee}] = await Promise.all([
+            PosAccount.findOne({where: {hex: identifier}}),
+            this.cfx.pos.getAccount(identifier),
+            this.cfx.pos.getCommittee(),
+        ])
+        const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
+        return {
+            ...onChainInfo.status,
+            forceRetired: onChainInfo.status.forceRetired || 0,
+            createdAt: dbInfo?.createdAt || new Date(),
+            totalReward: dbInfo?.totalReward || 0,
+            committeeInfo: map[identifier] || {votingPower: 0}
+        }
+    }
     async listPosAccountWithCurrentCommittee(query) {
         const [page, {currentCommittee}] = await Promise.all([
             this.listPosAccount(query),
