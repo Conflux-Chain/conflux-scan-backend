@@ -601,16 +601,7 @@ export async function sumRecentCfxTxn(days:number) : Promise<number> {
         .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b))
 }
 
-export async function sumRecentCfxAmount(days:number) : Promise<BigInt> {
-    // select sum(`value`) from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0');
-    // select createdAt ,`fromId`,`value`,txHashId from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0') order by `value` desc limit 10;
-    // select sum(`value`) from tx where blockTime > addtime(now(), '-7 0:0:0') and status=0;
-    return CfxTransfer.sum('value',{
-        where: {
-            'createdAt': {
-                [Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)
-            },
-        },
-        // benchmark: true, logging: console.log
-    }).then(BigInt)
+export async function sumRecentCfxAmount(days:number) : Promise<number> {
+    return DailyCfxTxn.findAll({limit:days, order:[['day','desc']]})
+        .then(arr=>arr.map(row=>row.amount).reduce((a,b)=>a+b))
 }

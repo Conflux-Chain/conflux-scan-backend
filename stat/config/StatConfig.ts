@@ -1,3 +1,4 @@
+//@ts-ignore
 import {ConfluxOption} from "js-conflux-sdk";
 const fs = require('fs')
 const templateConf = require('./Template')

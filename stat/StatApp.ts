@@ -134,7 +134,7 @@ export class StatApp{
         this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)
         this.contractService.schedule()
         //
-        this.dailyTxnSync = new DailyTxnSync(this.sequelize);
+        this.dailyTxnSync = new DailyTxnSync();
         this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);

@@ -127,6 +127,9 @@ if (require.main === module) {
             return checkAllTokenHolderTop()
         } else if (args[0] === 'test') {
             return testRank()
+        } else if (args[0] === 'dailyTx') {
+            new DailyTxnSync().countDaily(new Date(args[1])).then(()=>0)
+            return;
         } else if (args[0] === 'amount') {
             if (args.length === 3) {
                 // node this amount 2021-05-13 1

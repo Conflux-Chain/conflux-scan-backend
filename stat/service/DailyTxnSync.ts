@@ -9,36 +9,42 @@ import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {Erc777Transfer, T_ERC777_TRANSFER} from "../model/Erc777Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
+import {FullTransaction} from "../model/FullBlock";
 
 const CONST = require('./common/constant');
 
 export class DailyTxnSync{
-    private sequelize: Sequelize;
 
-    constructor(sequelize: Sequelize) {
-        this.sequelize = sequelize;
+    constructor() {
     }
 
-    private async countDaily(day: Date): Promise<IDailyTransaction>{
+    public async countDaily(day: Date): Promise<IDailyTransaction>{
         const {beginTime, endTime} = calBeginEndTime(day);
         const record = await DailyTransaction.findOne({where: {statDay: endTime}})
         if(record) return Promise.resolve(record);
 
-        const txCount = await TransactionDB.count({
+        const stat:any = await FullTransaction.findOne({
+            attributes:[
+                [fn('sum',col('gas')), 'gasFee'],
+                [fn('count',col('*')), 'txCount'],
+            ],
             where: {
                 [Op.and]:[
-                    {blockTime: {
+                    {createdAt: {
                         [Op.gte]:beginTime
                     }},
-                    {blockTime: {
+                    {createdAt: {
                         [Op.lt]:endTime
-                    }}
+                    }},
+                    {status: 0}
                 ]
             }
         });
+        const {txCount, gasFee} = stat;
         const dailyTransaction = new DailyTransaction();
         dailyTransaction.statDay = endTime;
         dailyTransaction.txCount = txCount;
+        dailyTransaction.gasFee = gasFee;
         const newRecord = await DailyTransaction.add(dailyTransaction);
         console.log('count daily_tx record:' + JSON.stringify(newRecord));
         return Promise.resolve(newRecord);
