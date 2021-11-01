@@ -94,7 +94,7 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
         default: throw new Error(`Unsupported hex length ${hex.length}`)
     }
     const cached = dbCache.get(hex)
-    if (cached !== undefined) {
+    if (cached !== undefined && cached !== null) {
         dbCache.ttl(hex, cacheTtl)
         return cached
     }
