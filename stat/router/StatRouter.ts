@@ -167,15 +167,22 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         let days = parseInt(ctx.query.days || 1)
         days = Math.max(days, 1)
         days = Math.min(days, 7)
+        const now = Date.now()
+        const timeCosts = {}
+        function timeCost(res,key){
+            timeCosts[key] = Date.now() - now;
+            return res;
+        }
         await Promise.all([
-            TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}),
+            TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}).then((res)=>timeCost(res,'txnCount')),
             // sumRecentCfxTxn(days),
-            sumRecentCfxAmount(-days),
-            TxnQuery.gasUsedSum(-days),
-            countRecentTokenTransfer(-days),
+            sumRecentCfxAmount(-days).then((res)=>timeCost(res,'sumRecentCfxAmount')),
+            TxnQuery.gasUsedSum(-days).then((res)=>timeCost(res,'gasUsedSum')),
+            countRecentTokenTransfer(-days).then((res)=>timeCost(res,'countRecentTokenTransfer')),
             // countRecentTokenTransferAccount(-days),
-            countRecentMiner(-days),
+            countRecentMiner(-days).then((res)=>timeCost(res,'countRecentMiner')),
         ]).then((arr)=>{
+            console.log(` time cost for overview stat:, ${JSON.stringify(timeCosts)}`)
             const [cfxTxn ,cfxAmount ,gasUsed , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 code: 0, stat: {
