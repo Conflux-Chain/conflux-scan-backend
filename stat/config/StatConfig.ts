@@ -92,6 +92,7 @@ export interface StatConfig{
     syncContractRegisterCountDaily: boolean,
     syncBlockDataStatDaily: boolean,
     syncTokenSecurityAudit: boolean,
+    syncPrune: boolean,
     databaseRW: DatabaseRW,
 }
 

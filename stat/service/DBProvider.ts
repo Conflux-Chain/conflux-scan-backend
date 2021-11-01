@@ -94,6 +94,7 @@ import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
 import {CfxBill, createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
+import {PruneInfo} from "../model/PruneInfo";
 import {
     PosAccount,
     PosAccountBlock,
@@ -199,6 +200,7 @@ export async function initPartialModel(sequelize) {
     DailyBlockDataStat.register(sequelize);
     CfxBalance.register(sequelize);
     TokenSecurityAudit.register(sequelize);
+    PruneInfo.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

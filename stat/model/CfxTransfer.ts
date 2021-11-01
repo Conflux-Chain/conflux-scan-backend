@@ -4,6 +4,7 @@ import {TransactionDB} from "./Transaction";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {RedisWrap, TRANSFER_ADDRESS_Q} from "../service/RedisWrap";
+import {PruneNotifier} from "../service/prune/PruneNotifier";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {
@@ -464,6 +465,9 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
             console.log(`save cfx transfer, ${JSON.stringify(metrics)}`)
             metrics.reset()
         }
+    }).then(async ()=>{
+        await PruneNotifier.notifyCFXTransfer(addressCfxTransferArray)
+            .catch(e => console.log(`transfer-sync.noticePruneTransfer, epoch:${addressCfxTransferArray[0].epoch}`, e));
     });
 
     // async add address-cfx-transfer

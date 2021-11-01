@@ -29,6 +29,7 @@ import {PreloadMap} from "./SyncBase";
 import {Epoch} from "../model/Epoch";
 import {batchFetchBlock} from "./common/utils";
 import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
+import {PruneNotifier} from "./prune/PruneNotifier";
 
 
 // Do not care the value
@@ -459,6 +460,8 @@ export class FullBlockService {
                 throw err;
             }
         });
+        await PruneNotifier.notifyTransaction(executedTxArr)
+            .catch(e => console.log(`block-sync.noticePruneTx, epoch:${executedTxArr[0].epoch}`, e));
         if (fixDupError) {
             await Promise.all([txByAddressArr.map( async tx=>AddressTransactionIndex.destroy({
                 where: {addressId: tx.addressId, epoch: tx.epoch}}))]

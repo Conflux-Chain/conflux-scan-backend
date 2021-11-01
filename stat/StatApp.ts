@@ -38,6 +38,7 @@ import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
+import {PruneHandler} from "./service/prune/PruneHandler";
 import {patchHttpProvider} from "./service/common/utils";
 import {KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
@@ -77,6 +78,7 @@ export class StatApp{
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
+    public pruneHandler: PruneHandler;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -158,6 +160,7 @@ export class StatApp{
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
+        this.pruneHandler = new PruneHandler(this);
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
@@ -204,6 +207,9 @@ export class StatApp{
         }
         if (this.config.syncTokenSecurityAudit) {
             await this.tokenSecurityAuditSync.schedule();
+        }
+        if (this.config.syncPrune) {
+            await this.pruneHandler.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
