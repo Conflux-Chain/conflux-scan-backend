@@ -7,7 +7,7 @@ import {
     PosAccountBlock,
     PosBlock,
     PosCommittee,
-    PosCommitteeNode, PosReward,
+    PosCommitteeNode, PosEpochRewardHash, PosReward,
     PosTransaction
 } from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
@@ -398,6 +398,14 @@ export class PosSync {
             await sleep(10_000)
             return 0
         }
+        const powBlock = await this.cfx.getBlockByHash(rewardInfo.powEpochHash).catch(err=>{
+            console.log(` sync pos reward at epoch ${epoch}, `, err)
+            return null;
+        })
+        if (powBlock === null) {
+            return 0;
+        }
+        const powDate = new Date(powBlock.timestamp * 1000);
         const accountRewards = rewardInfo.accountRewards;
         const posAddrArr = accountRewards.map(r=>r.posAddress)
         const accounts = await PosAccount.findAll({
@@ -429,7 +437,7 @@ export class PosSync {
                 accountId: accountId,
                 reward: r.reward,
                 epoch,
-                createdAt: new Date(), // FIXME
+                createdAt: powDate,
             }
         })
         await PosReward.sequelize.transaction(async (dbTx)=>{
@@ -443,7 +451,9 @@ export class PosSync {
                             transaction: dbTx,
                             logging: idx === 0 ? console.log : false,
                         })
-                }))
+                })),
+                PosEpochRewardHash.create({epoch, powEpochHash: rewardInfo.powEpochHash, powDate},
+                    {transaction: dbTx})
             ])
         })
         return 1 // indicate increase epoch by 1

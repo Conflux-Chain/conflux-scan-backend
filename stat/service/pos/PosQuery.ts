@@ -1,5 +1,5 @@
-import {PosAccount} from "../../model/PoS";
-import {col, fn} from 'sequelize'
+import {PosAccount, PosEpochRewardHash, PosReward} from "../../model/PoS";
+import {col, fn,Op} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 const lodash = require('lodash')
@@ -38,6 +38,25 @@ export class PosQuery {
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
         }
+    }
+    async listPosAccountReward({skip, limit, identifier}) {
+        const account = await PosAccount.findOne({where: {hex: identifier}})
+        if (account === null) {
+            return {rows:[], count: 0};
+        }
+        const [rows, count] = await PosReward.findAndCountAll({
+            where: {accountId: account.id}, order: [['epoch','desc']], limit, offset: skip, raw:true,
+        });
+        if (!rows.length) {
+            return [rows, count]
+        }
+        const epochs = [...new Set(rows.map(r=>r.epoch))];
+        const epochHashes = await PosEpochRewardHash.findAll({where:{epoch:{[Op.in]:epochs}}})
+        const hashesMap = lodash.byKey(epochHashes, r=>r.epoch);
+        rows.forEach(row=>{
+            row['powBlockHash'] = hashesMap[r.escape]?.powBlockHash || ''
+        })
+        return [rows, count]
     }
     async getAccountDetail(identifier:string) {
         const [dbInfo, onChainInfo, {currentCommittee}] = await Promise.all([
