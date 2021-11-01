@@ -605,12 +605,11 @@ export async function sumRecentCfxAmount(days:number) : Promise<BigInt> {
     // select sum(`value`) from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0');
     // select createdAt ,`fromId`,`value`,txHashId from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0') order by `value` desc limit 10;
     // select sum(`value`) from tx where blockTime > addtime(now(), '-7 0:0:0') and status=0;
-    return TransactionDB.sum('value',{
+    return CfxTransfer.sum('value',{
         where: {
-            'blockTime': {
+            'createdAt': {
                 [Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)
             },
-            status: 0
         },
         // benchmark: true, logging: console.log
     }).then(BigInt)
