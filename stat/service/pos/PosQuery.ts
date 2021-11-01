@@ -18,7 +18,26 @@ export class PosQuery {
             PosAccount.count({}),
             // @ts-ignore
             this.cfx.getPoSEconomics(),
-        ])
+        ]).catch(err=>{
+            if (err.message.includes('PoS chain is not enabled')) {
+                return []
+            }
+            throw err;
+        })
+        if (st === undefined) {
+            return {
+                latestCommitted: '0',
+                latestVoted:  '0',
+                posPivotDecision:  '0',
+                posEpoch: '0',
+                posAccountCount: '0',
+                distributablePosInterest:  '0',
+                lastDistributeBlock:  '0',
+                totalPosStakingTokens:  '0',
+                latestVotedTime:0,pivotDecisionTime:0,lastDistributeBlockTime:0,
+                waitPosEnable: true,
+            }
+        }
         const [latestVotedTime,pivotDecisionTime,lastDistributeBlockTime] = await Promise.all([
             Epoch.findByPk((st.latestVoted||st.latestCommitted)?.toString() || 0), //
             Epoch.findByPk(st.pivotDecision?.toString() || 0), //
@@ -44,25 +63,29 @@ export class PosQuery {
         if (account === null) {
             return {rows:[], count: 0};
         }
-        const [rows, count] = await PosReward.findAndCountAll({
+        const {rows, count} = await PosReward.findAndCountAll({
             where: {accountId: account.id}, order: [['epoch','desc']], limit, offset: skip, raw:true,
         });
         if (!rows.length) {
-            return [rows, count]
+            return {rows, count}
         }
         const epochs = [...new Set(rows.map(r=>r.epoch))];
         const epochHashes = await PosEpochRewardHash.findAll({where:{epoch:{[Op.in]:epochs}}})
         const hashesMap = lodash.byKey(epochHashes, r=>r.epoch);
         rows.forEach(row=>{
-            row['powBlockHash'] = hashesMap[r.escape]?.powBlockHash || ''
+            row['powBlockHash'] = hashesMap[row.epoch]?.powBlockHash || ''
         })
-        return [rows, count]
+        return {rows, count}
     }
     async getAccountDetail(identifier:string) {
         const [dbInfo, onChainInfo, {currentCommittee}] = await Promise.all([
             PosAccount.findOne({where: {hex: identifier}}),
-            this.cfx.pos.getAccount(identifier),
-            this.cfx.pos.getCommittee(),
+            this.cfx.pos.getAccount(identifier).catch(err=>{
+                return {status:{forceRetired: 0, waitPosEnable: true}}
+            }),
+            this.cfx.pos.getCommittee().catch(err=>{
+                return {currentCommittee:{nodes:[]}}
+            }),
         ])
         const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
         return {
@@ -76,7 +99,9 @@ export class PosQuery {
     async listPosAccountWithCurrentCommittee(query) {
         const [page, {currentCommittee}] = await Promise.all([
             this.listPosAccount(query),
-            this.cfx.pos.getCommittee(),
+            this.cfx.pos.getCommittee().catch(err=>{
+                return {currentCommittee:{nodes:[]}}
+            }),
         ])
         const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
         page.rows.forEach(row=>{

@@ -34,3 +34,4 @@ export function intParam(obj: object, key: string, defaultV: number) {
 	}
 	return number;
 }
+export class InvalidParamError extends Error{}
