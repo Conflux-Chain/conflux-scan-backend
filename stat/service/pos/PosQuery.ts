@@ -71,7 +71,7 @@ export class PosQuery {
         }
         const epochs = [...new Set(rows.map(r=>r.epoch))];
         const epochHashes = await PosEpochRewardHash.findAll({where:{epoch:{[Op.in]:epochs}}})
-        const hashesMap = lodash.byKey(epochHashes, r=>r.epoch);
+        const hashesMap = lodash.keyBy(epochHashes, r=>r.epoch);
         rows.forEach(row=>{
             row['powBlockHash'] = hashesMap[row.epoch]?.powBlockHash || ''
         })
