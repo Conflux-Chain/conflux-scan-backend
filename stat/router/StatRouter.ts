@@ -168,15 +168,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         days = Math.max(days, 1)
         days = Math.min(days, 7)
         await Promise.all([
-            TxnQuery.txnCountByTime({span:'24h'}),
+            TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}),
             // sumRecentCfxTxn(days),
             sumRecentCfxAmount(-days),
             TxnQuery.gasUsedSum(-days),
             countRecentTokenTransfer(-days),
-            countRecentTokenTransferAccount(-days),
+            // countRecentTokenTransferAccount(-days),
             countRecentMiner(-days),
         ]).then((arr)=>{
-            const [cfxTxn ,cfxAmount ,gasUsed ,tokenTransfer ,tokenAccount , minerCount] = arr
+            const [cfxTxn ,cfxAmount ,gasUsed , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 code: 0, stat: {
                     cfxTxn, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
