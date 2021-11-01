@@ -174,7 +174,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             return res;
         }
         await Promise.all([
-            TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}).then((res)=>timeCost(res,'txnCount')),
+            // TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}).then((res)=>timeCost(res,'txnCount')),
             // sumRecentCfxTxn(days),
             sumRecentCfxAmount(-days).then((res)=>timeCost(res,'sumRecentCfxAmount')),
             TxnQuery.gasUsedSum(-days).then((res)=>timeCost(res,'gasUsedSum')),
@@ -183,10 +183,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             countRecentMiner(-days).then((res)=>timeCost(res,'countRecentMiner')),
         ]).then((arr)=>{
             console.log(` time cost for overview stat:, ${JSON.stringify(timeCosts)}`)
-            const [cfxTxn ,cfxAmount ,gasUsed , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
+            const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 code: 0, stat: {
-                    cfxTxn, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
+                    txCount, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
                 }, days
             }
             dbCache.set(ctx.request.url, ctx.body, cacheTtl)

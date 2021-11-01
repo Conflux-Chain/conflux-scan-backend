@@ -1,9 +1,10 @@
 import {Transaction, TransactionDB} from "../model/Transaction";
 import {Hex40Map} from "../model/HexMap";
-import {QueryTypes, Op, Sequelize, fn} from 'sequelize'
+import {QueryTypes, Op, Sequelize, fn, col} from 'sequelize'
 // @ts-ignore
 import {format} from 'js-conflux-sdk'
 import {StatApp} from "../StatApp";
+import {DailyTransaction} from "../model/DailyTransaction";
 
 export class TxnQuery{
     static async txnCountByTime({span = '24h'}) : Promise<number> {
@@ -15,12 +16,18 @@ export class TxnQuery{
             // benchmark: true, logging: console.log
         })
     }
-    static async gasUsedSum(days:number) : Promise<number> {
-        return TransactionDB.sum('gas',{
-            where: { 'blockTime': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}
-                , status: 0},
-            // benchmark: true, logging: console.log
-        }).then(result=>result ? result : 0)
+    static async gasUsedSum(days:number) : Promise<{txCount, gasFee}> {
+        const sum = await DailyTransaction.findOne({
+            attributes: [
+                [fn('sum', col('txCount')),'txCount'],
+                [fn('sum', col('gasFee')),'gasFee'],
+            ],
+            where: {
+                statDay: {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`),}
+            },
+            logging: console.log,
+        })
+        return sum;
     }
     static async topByGasUsed({span = '24h'}, seq:Sequelize) {
         const def = {'24h': -1, '3d': -3, '7d': -7}
