@@ -43,7 +43,7 @@ export class PosQuery {
             Epoch.findByPk(st.pivotDecision?.toString() || 0), //
             // @ts-ignore
             this.cfx.getBlockByBlockNumber(posEconomics.lastDistributeBlock?.toString() || 0).then(blk=>{
-                return {epoch: 0, timestamp: new Date(blk.timestamp * 1000)}
+                return {epoch: 0, timestamp: new Date((blk?.timestamp || 0) * 1000)}
             })
         ]).then(arr=>arr.map(e=>e?.timestamp.getTime() || 0))
         return {
