@@ -30,7 +30,7 @@ export class TxnQuery{
         })
         return sum;
     }
-    static async topByGasUsed({span = '24h'}, seq:Sequelize) {
+    static async topByGasUsed({span = '24h'}) {
         const def = {'24h': -1, '3d': -3, '7d': -7}
         let spanDay = def[span];
         if (spanDay === undefined) {

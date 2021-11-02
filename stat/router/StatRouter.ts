@@ -192,9 +192,19 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             dbCache.set(ctx.request.url, ctx.body, cacheTtl)
         })
     })
+    function updateTopGasUsed() {
+        return {
+            '7d': TxnQuery.topByGasUsed({span: '7d'}),
+            '3d': TxnQuery.topByGasUsed({span: '3d'}),
+            '24h': TxnQuery.topByGasUsed({span: '24h'}),
+        };
+    }
+    let topGasUsedCache = updateTopGasUsed();
+    setInterval(()=>{topGasUsedCache = updateTopGasUsed()}, 3600_000)
     //top gas used
     router.get('/top-gas-used', async (ctx)=>{
-        ctx.body = await TxnQuery.topByGasUsed(ctx.request.query, statApp.sequelize)
+        const {span} = ctx.request.query;
+        ctx.body = await topGasUsedCache[span||'24h'];
     })
     //
     router.get('/top-cfx-holder', async (ctx)=>{
