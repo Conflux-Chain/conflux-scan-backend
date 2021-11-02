@@ -52,8 +52,8 @@ export class TxnQuery{
         if (!list.length) {
             return {code: 0, totalGas: 0, list:[]};
         }
-        const sumGas = list.map(row=>BigInt(row['gasFee'])).reduce((a,b)=>a+b);
-        const hexMap = await idHex40Map(list.map(row=>row.fromId));
+        const sumGas = list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b);
+        const hexMap = await idHex40Map(list.map(row=>row['fromId']));
         // const sql = `select sum(gas) as gas, \`from\` as fromId, hex
         //         from tx left join hex40 on tx.\`from\` = hex40.id
         //         where blockTime > addtime(now(), '${spanDay} 0:0:0') and status=0 group by \`from\`
@@ -66,7 +66,7 @@ export class TxnQuery{
         // })
         // const maxBlockTime = await TransactionDB.max('blockTime')
         list.forEach(row=>{
-            row['hex'] = `0x${hexMap.get(row.fromId)}`
+            row['hex'] = `0x${hexMap.get(row['fromId'])}`
             row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
         })
         return { code: 0, totalGas: sumGas, list}
