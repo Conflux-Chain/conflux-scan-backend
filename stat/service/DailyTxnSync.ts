@@ -44,7 +44,7 @@ export class DailyTxnSync{
         const dailyTransaction = new DailyTransaction();
         dailyTransaction.statDay = endTime;
         dailyTransaction.txCount = txCount;
-        dailyTransaction.gasFee = gasFee;
+        dailyTransaction.gasFee = gasFee || 0;
         const newRecord = await DailyTransaction.add(dailyTransaction);
         console.log('count daily_tx record:' + JSON.stringify(newRecord));
     }
