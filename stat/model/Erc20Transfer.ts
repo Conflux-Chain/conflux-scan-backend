@@ -5,7 +5,7 @@ import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
 import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
-import {popPartition} from "./ErcTransfer";
+import {StatApp} from "../StatApp";
 
 export interface ITokenTransfer {
     createdAt: Date
@@ -197,7 +197,7 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
     for (const obj of array) {
         const bean = await buildErc20Transfer(obj, date);
         // 13870862 pos points
-        if (bean.contractId === 13870862) {
+        if (bean.contractId === 13870862 && StatApp.networkId === 1029) {
             skipCount ++
             continue;
         }
