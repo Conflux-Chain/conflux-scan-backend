@@ -5,7 +5,7 @@ import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
 import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
-import {popPartition} from "./ErcTransfer";
+import {StatApp} from "../StatApp";
 
 export interface ITokenTransfer {
     createdAt: Date
@@ -186,15 +186,29 @@ export async function buildErc20Transfer(obj, date) {
     };
     return erc20Transfer
 }
-
+let logTimes = 10;
 export async function batchSaveErc20Transfer(array: any[], seconds) {
     if (!array.length) {
         return;
     }
     let templates = []
     let date = new Date(Number(seconds)*1000)
+    let skipCount = 0;
     for (const obj of array) {
-        templates.push(await buildErc20Transfer(obj, date))
+        const bean = await buildErc20Transfer(obj, date);
+        // 13870862 pos points
+        if (bean.contractId === 13870862 && StatApp.networkId === 1029) {
+            skipCount ++
+            continue;
+        }
+        templates.push(bean);
+    }
+    if (logTimes > 0 && skipCount > 0) {
+        logTimes --;
+        console.log(` skip points contract, count ${skipCount}`)
+    }
+    if (!templates.length) {
+        return;
     }
     // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
     return Promise.all([
@@ -202,7 +216,7 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
             // benchmark: true, logging:console.log,
         }),
         RedisWrap.sendStreamMessage(templates, ERC20_TRANSFER_Q)
-    ])
+    ]);
 }
 
 export async function batchPopErc20Transfer(epoch) {

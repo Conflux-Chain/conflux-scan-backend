@@ -3,6 +3,9 @@ import {format} from "js-conflux-sdk";
 import {Erc20Transfer, AddressErc20Transfer} from "../model/Erc20Transfer";
 import {TransferQueryBase} from "./TransferQueryBase";
 const CONST = require('./common/constant');
+import {Token} from "../model/Token";
+import {StatApp} from "../StatApp";
+import {IndexHints} from "sequelize";
 
 export class Crc20TransferQuery extends TransferQueryBase{
     protected app;
@@ -28,9 +31,25 @@ export class Crc20TransferQuery extends TransferQueryBase{
     }
     public async doQuery(options: any, queryOptions: any): Promise<any>{
         const{ logger } = this.app;
+        const latestRows = 10000;
 
         if(options.accountAddress !== undefined){
+            const cloneQueryOptions = {...queryOptions, offset: latestRows, limit: 1};
+            const one = await AddressErc20Transfer.findOne(cloneQueryOptions);
+            if(one !== null){
+                const rows = await AddressErc20Transfer.findAll(queryOptions);
+                return {count: latestRows , rows: rows || []};
+            }
             return await AddressErc20Transfer.findAndCountAll(queryOptions);
+        }
+
+        if(options?.address){
+            const base32 = format.address(options.address, StatApp.networkId);
+            const token = await Token.findOne({where:{base32}});
+            if(token?.transfer > 10000){
+                const rows = await Erc20Transfer.findAll(queryOptions);
+                return {count: token.transfer , rows: rows || []};
+            }
         }
         return await Erc20Transfer.findAndCountAll(queryOptions);
     }

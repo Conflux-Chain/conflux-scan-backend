@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk"
+import {format, Drip} from "js-conflux-sdk"
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import {Context} from 'koa'
@@ -167,27 +167,44 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         let days = parseInt(ctx.query.days || 1)
         days = Math.max(days, 1)
         days = Math.min(days, 7)
+        const now = Date.now()
+        const timeCosts = {}
+        function timeCost(res,key){
+            timeCosts[key] = Date.now() - now;
+            return res;
+        }
         await Promise.all([
-            TxnQuery.txnCountByTime({span:'24h'}),
+            // TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}).then((res)=>timeCost(res,'txnCount')),
             // sumRecentCfxTxn(days),
-            sumRecentCfxAmount(-days),
-            TxnQuery.gasUsedSum(-days),
-            countRecentTokenTransfer(-days),
-            countRecentTokenTransferAccount(-days),
-            countRecentMiner(-days),
+            sumRecentCfxAmount(days).then((res)=>timeCost(res,'sumRecentCfxAmount')),
+            TxnQuery.gasUsedSum(-days).then((res)=>timeCost(res,'gasUsedSum')),
+            countRecentTokenTransfer(-days).then((res)=>timeCost(res,'countRecentTokenTransfer')),
+            // countRecentTokenTransferAccount(-days),
+            countRecentMiner(-days).then((res)=>timeCost(res,'countRecentMiner')),
         ]).then((arr)=>{
-            const [cfxTxn ,cfxAmount ,gasUsed ,tokenTransfer ,tokenAccount , minerCount] = arr
+            console.log(` time cost for overview stat :, ${JSON.stringify(timeCosts)}`)
+            const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 code: 0, stat: {
-                    cfxTxn, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
+                    cfxTxn:txCount, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
                 }, days
             }
             dbCache.set(ctx.request.url, ctx.body, cacheTtl)
         })
     })
+    function updateTopGasUsed() {
+        return {
+            '7d': TxnQuery.topByGasUsed({span: '7d'}),
+            '3d': TxnQuery.topByGasUsed({span: '3d'}),
+            '24h': TxnQuery.topByGasUsed({span: '24h'}),
+        };
+    }
+    let topGasUsedCache = updateTopGasUsed();
+    setInterval(()=>{topGasUsedCache = updateTopGasUsed()}, 3600_000)
     //top gas used
     router.get('/top-gas-used', async (ctx)=>{
-        ctx.body = await TxnQuery.topByGasUsed(ctx.request.query, statApp.sequelize)
+        const {span} = ctx.request.query;
+        ctx.body = await topGasUsedCache[span||'24h'];
     })
     //
     router.get('/top-cfx-holder', async (ctx)=>{
