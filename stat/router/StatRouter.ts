@@ -176,7 +176,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         await Promise.all([
             // TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}).then((res)=>timeCost(res,'txnCount')),
             // sumRecentCfxTxn(days),
-            sumRecentCfxAmount(-days).then((res)=>timeCost(res,'sumRecentCfxAmount')),
+            sumRecentCfxAmount(days).then((res)=>timeCost(res,'sumRecentCfxAmount')),
             TxnQuery.gasUsedSum(-days).then((res)=>timeCost(res,'gasUsedSum')),
             countRecentTokenTransfer(-days).then((res)=>timeCost(res,'countRecentTokenTransfer')),
             // countRecentTokenTransferAccount(-days),
