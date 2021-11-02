@@ -105,6 +105,7 @@ export class PosSync {
             return;
         }
         const dt = new Date(blockDetail.timestamp/1000);
+        //console.log(` block timestamp is ${blockDetail.timestamp} ${dt.toISOString()} ${blockNumber}`)
         let minerId = null;
         if (blockDetail.miner) {
             minerId = await this.saveAccount(blockDetail.miner, dt)
@@ -129,6 +130,7 @@ export class PosSync {
             console.log(` pre bock height [${preBlockDetail?.height}] nextTx [${preBlockDetail?.nextTxNumber
             }], \n current block height [${blockDetail.height}] nextTx ${blockDetail.nextTxNumber}`)
             this.position -= 1 // +1 at caller. sync again.
+            await sleep(30_000)
             return;
         }
         await PosAccountBlock.sequelize.transaction(async tx=>{
