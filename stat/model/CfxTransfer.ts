@@ -601,7 +601,9 @@ export async function sumRecentCfxTxn(days:number) : Promise<number> {
         .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b))
 }
 
-export async function sumRecentCfxAmount(days:number) : Promise<number> {
+export async function sumRecentCfxAmount(days:number) : Promise<any> {
     return DailyCfxTxn.findAll({limit:days, order:[['day','desc']]})
-        .then(arr=>arr.map(row=>row.amount).reduce((a,b)=>a+b))
+        .then(arr=>arr.map(row=>BigInt(row.amount)).reduce((a,b)=>{
+            return a+b;
+        }))
 }
