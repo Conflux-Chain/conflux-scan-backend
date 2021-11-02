@@ -9,7 +9,7 @@ export class DailyTxnQuery{
             where: query, offset: skip, limit, order:[["statDay", "DESC"]]
         })
         // fix the end time to previous day.
-        page.rows.forEach(row=>row.statDay.setDate(row.statDay.getDate()-1))
+        // page.rows.forEach(row=>row.statDay.setDate(row.statDay.getDate()-1))
         return page;
     }
 }

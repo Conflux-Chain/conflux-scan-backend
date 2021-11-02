@@ -18,10 +18,8 @@ export class DailyTxnSync{
     constructor() {
     }
 
-    public async countDaily(day: Date): Promise<IDailyTransaction>{
+    public async countDaily(day: Date){
         const {beginTime, endTime} = calBeginEndTime(day);
-        const record = await DailyTransaction.findOne({where: {statDay: endTime}})
-        if(record) return Promise.resolve(record);
 
         const stat:any = await FullTransaction.findOne({
             attributes:[
@@ -38,7 +36,9 @@ export class DailyTxnSync{
                     }},
                     {status: 0}
                 ]
-            }
+            },
+            logging: console.log,
+            raw: true
         });
         const {txCount, gasFee} = stat;
         const dailyTransaction = new DailyTransaction();
@@ -47,7 +47,6 @@ export class DailyTxnSync{
         dailyTransaction.gasFee = gasFee;
         const newRecord = await DailyTransaction.add(dailyTransaction);
         console.log('count daily_tx record:' + JSON.stringify(newRecord));
-        return Promise.resolve(newRecord);
     }
 
     public async countHistory(startDay?: Date, endDay?: Date){
@@ -67,8 +66,8 @@ export class DailyTxnSync{
             await that.countDaily(getYesterday(now)).catch(err=>{
                 console.log(`count daily_tx fail: `, err);
             });
-            const delay = getNextDelay(now, 1, 10);
-            console.log(`schedule daily_tx service in delay ${delay/1000}s.`);
+            const delay = 3600_000 ;
+            console.log(`schedule daily_tx service in delay 1 hour.`);
             setTimeout(repeat, delay);
         }
         repeat().then();

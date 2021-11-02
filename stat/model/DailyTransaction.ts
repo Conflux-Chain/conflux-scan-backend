@@ -15,7 +15,7 @@ export class DailyTransaction extends Model<IDailyTransaction> implements IDaily
     static register(sequelize) {
         DailyTransaction.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
-            statDay: {type: DataTypes.DATE, allowNull: false},
+            statDay: {type: DataTypes.DATEONLY, allowNull: false},
             txCount: {type: DataTypes.BIGINT, allowNull: false},
             gasFee: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: '0'},
         },{
@@ -30,8 +30,8 @@ export class DailyTransaction extends Model<IDailyTransaction> implements IDaily
         })
     }
 
-    static async add(dailyTx: DailyTransaction, dbTx = undefined): Promise<IDailyTransaction> {
-        return await DailyTransaction.create({
+    static async add(dailyTx: DailyTransaction, dbTx = undefined){
+        return DailyTransaction.upsert({
             statDay: dailyTx.statDay,
             txCount: dailyTx.txCount,
             gasFee: dailyTx.gasFee

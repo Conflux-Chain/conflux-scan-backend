@@ -1,4 +1,5 @@
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
+import {getYesterday} from "./DateTool";
 
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
@@ -115,11 +116,17 @@ async function checkAllTokenHolderTop() {
     const len2 = await xLen(TRANSFER_ADDRESS_Q)
     console.log(`transfer q len1 ${len1} len2 ${len2}`)
 }
+
+async function syncDailyTxCntr(dt){
+    const statDay = getYesterday(dt);
+    return new DailyTxnSync().countDaily(statDay);
+}
+
 if (require.main === module) {
     const args = process.argv.slice(2)
     init().then((cfg)=> {
         return RedisWrap.connect(cfg.redis)
-    }).then(()=>{
+    }).then(async ()=>{
         if (args[0] === 'participants') {
             // node stat/dist/service/tool/ participants
             return fixParticipants()
@@ -128,8 +135,7 @@ if (require.main === module) {
         } else if (args[0] === 'test') {
             return testRank()
         } else if (args[0] === 'dailyTx') {
-            new DailyTxnSync().countDaily(new Date(args[1])).then(()=>0)
-            return;
+            return syncDailyTxCntr(args[1]);
         } else if (args[0] === 'amount') {
             if (args.length === 3) {
                 // node this amount 2021-05-13 1
