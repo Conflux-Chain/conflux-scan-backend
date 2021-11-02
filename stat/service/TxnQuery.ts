@@ -47,7 +47,7 @@ export class TxnQuery{
                 where: {status: 0,
                     createdAt: {[Op.gte]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}
                 },
-                order: [[col('gas'),'desc']],
+                order: [[col('gas'),'desc']], limit: 10,
             });
         if (!list.length) {
             return {code: 0, totalGas: 0, list:[]};
