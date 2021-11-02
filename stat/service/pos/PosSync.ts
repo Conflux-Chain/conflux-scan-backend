@@ -89,9 +89,12 @@ export class PosSync {
                     minerId: minerId,
                     parentHash: blockDetail.parentHash?.substr(2,4),
                     pivotDecision: blockDetail.pivotDecision,
+                    //@ts-ignore
                     round: Number.isInteger(blockDetail.round) ? blockDetail.round : Number.parseInt(blockDetail.round, 16),
                     timestamp: blockDetail.timestamp,
+                    //@ts-ignore
                     transactionCount: blockDetail.transactions?.length || 0,
+                    //@ts-ignore
                     version: blockDetail.version,
                     signatureCount: blockDetail.signatures?.length || 0,
                 }, {transaction: tx}).catch(err=>{
@@ -173,6 +176,7 @@ export class PosSync {
         if (this.NOT_FOUND_COMMITTEE === rpcResult) {
             return
         }
+        //@ts-ignore
         const {currentCommittee} = rpcResult;
         // make account id
         for (const n of currentCommittee.nodes) {
@@ -272,6 +276,7 @@ export class PosSync {
             await sleep(5_000)
             return 0
         }
+        //@ts-ignore
         const rewardBeans:IPosReward[] = accountRewards.map(r=>{
             const account = accountMap.get(r.posAddress);
             if (!account) {
