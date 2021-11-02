@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk"
+import {format, Drip} from "js-conflux-sdk"
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import {Context} from 'koa'
@@ -186,7 +186,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 code: 0, stat: {
-                    txCount, cfxAmount:BigInt(cfxAmount)/BigInt(1e+18), gasUsed, tokenTransfer, tokenAccount, minerCount
+                    txCount:Number(txCount), cfxAmount:new Drip(cfxAmount).toCFX(), gasUsed, tokenTransfer, tokenAccount, minerCount
                 }, days
             }
             dbCache.set(ctx.request.url, ctx.body, cacheTtl)
