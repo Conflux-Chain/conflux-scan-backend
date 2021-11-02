@@ -74,7 +74,8 @@ export class PosSync {
             this.cfx.pos.getBlockByNumber(blockNumber - 1),
         ])
         if (blockDetail === null) {
-            throw new Error(`block detail is null, ${blockNumber}`)
+            await this.updateLatestBlockNumber();
+            throw new Error(`block detail is null, ${blockNumber}, latest ${this.latestBlockNumber}`)
         }
         if (blockNumber >= 3 && preBlock !== null && blockDetail.parentHash !== preBlock.hash
             // when epoch is changing, it's designed that a new block is build as genesis.
@@ -127,8 +128,11 @@ export class PosSync {
             console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdStopBefore
             } - ${preNextTxNumber} = ${txCountByDiff
             } , actual tx ${txArr.length}`)
-            console.log(` pre bock height [${preBlockDetail?.height}] nextTx [${preBlockDetail?.nextTxNumber
-            }], \n current block height [${blockDetail.height}] nextTx ${blockDetail.nextTxNumber}`)
+            const info = [preBlockDetail,blockDetail].map(block=>{
+                return ` block height [${block?.height}] nextTx [${block?.nextTxNumber
+                }], hash ${block?.hash}`;
+            }).join('\n')
+            console.log(` debug block nextTxNumber:\n`, info)
             this.position -= 1 // +1 at caller. sync again.
             await sleep(30_000)
             return;
@@ -401,7 +405,14 @@ export class PosSync {
     async syncRewardByEpoch(epoch:number) {
         const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (rewardInfo === null) {
-            console.log(` reward is null at epoch ${epoch}`)
+            if (epoch === 0) {
+                const rewardEpoch1 = await this.cfx.pos.getRewardsByEpoch(1)
+                if (rewardEpoch1 !== null) {
+                    console.log(` epoch 0 has no reward but epoch 1 has, move to epoch 1.`)
+                    return 1;
+                }
+            }
+            console.log(` reward is null at epoch ${epoch}`);
             await sleep(10_000)
             return 0
         }
@@ -472,11 +483,13 @@ export class PosSync {
         // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
         const st = await this.cfx["pos"].getStatus()
         console.log(` status ${JSON.stringify(st)}`)
-        const next = await Promise.all([5446,5447,5448].map(n=>this.cfx.pos.getBlockByNumber(n).then(res=>{
-            return ` block number ${res.height}, next tx number ${res.nextTxNumber}`
-        })))
-            .then(arr=>arr.join('\n'))
-        console.log(` next tx numbers \n ${next}`)
+        // const next = await Promise.all([5446,5447,5448].map(n=>this.cfx.pos.getBlockByNumber(n).then(res=>{
+        //     return ` block number ${res.height}, next tx number ${res.nextTxNumber}`
+        // })))
+        //     .then(arr=>arr.join('\n'))
+        // console.log(` next tx numbers \n ${next}`)
+        console.log(` reward ${await this.cfx.pos.getRewardsByEpoch(0)}`)
+        console.log(` reward ${await this.cfx.pos.getRewardsByEpoch(1)}`)
         // const powBlock = await this.cfx.getBlockByEpochNumber(199);
         // console.log(` pow block detail: `, powBlock)
         // console.log(` pos block detail: `, await this.cfx['pos'].getBlockByHash(powBlock["posReference"]))
@@ -514,6 +527,8 @@ export class PosSync {
                 console.log(` pos block not found, pow block, `, powBlock)
                 process.exit(2)
             }
+            console.log(` pos reward at pow hash ${powBlock.hash}, pos ref ${posRef
+            }, height ${posBlock.height}, epoch ${posBlock.epoch}`)
             return posBlock.epoch;
         } catch (e) {
             console.log(` pos get block by hash fail, pow epoch ${powEpoch}, pos ref: ${posRef}: `, e)
