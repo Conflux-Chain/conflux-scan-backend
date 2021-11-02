@@ -182,7 +182,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             // countRecentTokenTransferAccount(-days),
             countRecentMiner(-days).then((res)=>timeCost(res,'countRecentMiner')),
         ]).then((arr)=>{
-            console.log(` time cost for overview stat:, ${JSON.stringify(timeCosts)}`)
+            console.log(` time cost for overview stat :, ${JSON.stringify(timeCosts)}`)
             const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 code: 0, stat: {

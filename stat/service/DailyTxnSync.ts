@@ -95,10 +95,10 @@ export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount
             [fn('sum', col('userCount')),'userCount'],
         ],
         where: {
-            day: {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`),
-            type: {[Op.in]:['_ALL_4','ERC1155','ERC721','ERC20']}},
+            day: {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)},
+            type: {[Op.in]:['_ALL_4','ERC1155','ERC721','ERC20']},
             },
-        logging: console.log,
+        logging: msg=>console.log(` countRecentTokenTransfer: ${msg}`),
     })
     return sum;
     // return Promise.all([

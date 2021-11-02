@@ -598,12 +598,12 @@ export async function scheduleRollupDailyCfxTxn() {
 
 export async function sumRecentCfxTxn(days:number) : Promise<number> {
     return DailyCfxTxn.findAll({limit:days, order:[['day','desc']]})
-        .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b))
+        .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b, 0))
 }
 
 export async function sumRecentCfxAmount(days:number) : Promise<any> {
     return DailyCfxTxn.findAll({limit:days, order:[['day','desc']]})
         .then(arr=>arr.map(row=>BigInt(row.amount)).reduce((a,b)=>{
             return a+b;
-        }))
+        }, BigInt(0)))
 }
