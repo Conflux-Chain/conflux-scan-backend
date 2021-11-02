@@ -68,9 +68,10 @@ export class PosSync {
         }
     }
     async syncBlock(blockNumber) {
-        const [blockDetail, preBlock] = await Promise.all([
+        const [blockDetail, preBlock, preBlockDetail] = await Promise.all([
             this.cfx.pos.getBlockByNumber(blockNumber),
             PosBlock.findByPk(blockNumber - 1),
+            this.cfx.pos.getBlockByNumber(blockNumber - 1),
         ])
         if (blockDetail === null) {
             throw new Error(`block detail is null, ${blockNumber}`)
@@ -122,7 +123,11 @@ export class PosSync {
         const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore, blockNumber);
         const txCountByDiff = txIdStopBefore - preNextTxNumber;
         if (txArr.length !== txCountByDiff) {
-            console.log(` block number ${blockNumber} tx count not match, count by diff ${txCountByDiff} vs ${txArr.length}`)
+            console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdStopBefore
+            } - ${preNextTxNumber} = ${txCountByDiff
+            } , actual tx ${txArr.length}`)
+            console.log(` pre bock height [${preBlockDetail?.height}] nextTx [${preBlockDetail?.nextTxNumber
+            }], \n current block height [${blockDetail.height}] nextTx ${blockDetail.nextTxNumber}`)
             this.position -= 1 // +1 at caller. sync again.
             return;
         }
