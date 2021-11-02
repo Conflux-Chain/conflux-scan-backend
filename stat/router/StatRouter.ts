@@ -186,7 +186,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 code: 0, stat: {
-                    txCount, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
+                    cfxTxn:txCount, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
                 }, days
             }
             dbCache.set(ctx.request.url, ctx.body, cacheTtl)
