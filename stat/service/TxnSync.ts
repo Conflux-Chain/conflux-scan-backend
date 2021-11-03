@@ -1,5 +1,4 @@
 import {Op, Sequelize, QueryTypes} from "sequelize";
-import {TransactionDB} from "../model/Transaction";
 // @ts-ignore
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
@@ -66,7 +65,7 @@ export class TxnSync {
                 where epoch between ? and ? and status = 0 group by ${group} order by value desc limit ?) t 
                 join hex40 on t.${group} = hex40.id `;
         // console.log('sql is: ', sql)
-        const list:any[] = await TransactionDB.sequelize.query(sql, {
+        const list:any[] = await FullTransaction.sequelize.query(sql, {
             replacements: [minEpoch, maxEpoch, limit],
             type: QueryTypes.SELECT,
             benchmark: true, logging: console.log
