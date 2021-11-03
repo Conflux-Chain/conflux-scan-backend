@@ -1,6 +1,5 @@
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
-import {TransactionDB} from "./Transaction";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {RedisWrap, TRANSFER_ADDRESS_Q} from "../service/RedisWrap";

@@ -163,9 +163,7 @@ export class StatApp{
             await this.blockAndMinerSync.checkPosition(); // miner block
             await this.blockAndMinerSync.schedule(this.config.syncBlockDelay)
         }
-        if (this.config.syncTxn) {
-            await this.txnSync.schedule(this.config.syncTxnDelay); // txn
-        }
+        this.txnSync.scheduleCache()
         if (this.config.syncTxnCountDaily) {
             await this.dailyTxnSync.schedule(); // dailyTxn
             scheduleDailyActiveAddress()

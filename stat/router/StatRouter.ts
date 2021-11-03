@@ -174,7 +174,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             return res;
         }
         await Promise.all([
-            // TxnQuery.txnCountByTime({span: days === 1 ? '24h' : `${days}d`}).then((res)=>timeCost(res,'txnCount')),
             // sumRecentCfxTxn(days),
             sumRecentCfxAmount(days).then((res)=>timeCost(res,'sumRecentCfxAmount')),
             TxnQuery.gasUsedSum(-days).then((res)=>timeCost(res,'gasUsedSum')),
@@ -286,13 +285,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             chainEpoch: await statApp.blockAndMinerSync.cfx.getEpochNumber()
         };
     });
-    //
-    router.get('/txn/list', async function (ctx) {
-        const {from, skip, limit} = ctx.request.query
-        const page = await new TxnQuery().listTxn({from},
-            parseInt(skip), parseInt(limit), StatApp.networkId)
-        ctx.body = {code: 0, data: page};
-    })
+
     // daily address creation.
     router.get('/daily-address-creation', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);

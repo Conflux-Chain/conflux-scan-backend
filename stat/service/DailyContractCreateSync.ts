@@ -1,4 +1,3 @@
-import {TransactionDB} from "../model/Transaction";
 import {DailyContractCreate, IDailyContractCreate} from "../model/DailyContractCreate";
 import {calBeginEndTime, getYesterday, getNextDelay} from "./tool/DateTool";
 import {Op, Sequelize} from 'sequelize'
