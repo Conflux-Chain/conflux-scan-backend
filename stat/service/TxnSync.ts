@@ -1,16 +1,15 @@
 import {Op, Sequelize, QueryTypes} from "sequelize";
 import {TransactionDB} from "../model/Transaction";
-import {KEY_TX_EPOCH, KV} from "../model/KV";
 // @ts-ignore
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
-import {getSumFunction} from "./DBProvider";
-import {Stopwatch} from "./Stopwatch";
 import {StatApp} from "../StatApp";
 import {makeId as makeAddrId} from "../model/HexMap";
 import {ContractInfo} from "../model/ContractInfo";
 import {batchFetchBlock, patchHttpProvider} from "./common/utils";
 import {sleep} from "./tool/ProcessTool";
+import {FullTransaction} from "../model/FullBlock";
+import {Epoch} from "../model/Epoch";
 const BigFixed = require('bigfixed');
 
 /**
@@ -40,37 +39,43 @@ export class TxnSync {
             return Promise.resolve(cacheV);
         }
         // cache end
-        const maxTime:Date = await TransactionDB.max('blockTime');
+        const maxTime:Date = await FullTransaction.max('createdAt');
         if (maxTime == null) {
             return Promise.resolve({
                 code: 500, message: 'Empty Data.'
             })
         }
         const endTime = maxTime;
+        console.log(` end time is ${endTime}`, endTime)
         let beginTime: Date;
         try {
             beginTime = await calculateBeginTime(n, type, endTime);
         } catch (err) {
+            console.log(` error calculateBeginTime:`, err)
             return Promise.resolve({
                 code: 501, message: `${err}`
             })
         }
-        let aggregate = action.startsWith("txn") ? "COUNT(*)" : `${getSumFunction()}(value)`;
-        let group = action.endsWith('Send') ? '`from`' : '`to`'
-        const sql = `select t.*, hex from (select ${aggregate} as value, ${group} from tx
-                where blockTime between ? and ? and status = 0 group by ${group} order by value desc limit ?) t 
+        const[{epoch:maxEpoch},{epoch:minEpoch}] = await Promise.all([
+            Epoch.findOne({where: {timestamp:{[Op.gte]:endTime}}, order:[['timestamp','asc']], limit: 1}),
+            Epoch.findOne({where: {timestamp:{[Op.lte]:beginTime}}, order:[['timestamp','desc']], limit: 1}),
+        ])
+        let aggregate = action.startsWith("txn") ? "COUNT(*)" : `sum(dripValue)`;
+        let group = action.endsWith('Send') ? '`fromId`' : '`toId`'
+        const sql = `select t.*, hex from (select ${aggregate} as value, ${group} from full_tx
+                where epoch between ? and ? and status = 0 group by ${group} order by value desc limit ?) t 
                 join hex40 on t.${group} = hex40.id `;
         // console.log('sql is: ', sql)
         const list:any[] = await TransactionDB.sequelize.query(sql, {
-            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime), limit],
+            replacements: [minEpoch, maxEpoch, limit],
             type: QueryTypes.SELECT,
-            // benchmark: true, logging: console.log
+            benchmark: true, logging: console.log
         })
         let sumOption = {where:{
-                blockTime: {[Op.between]: [beginTime, endTime]}
+                epoch: {[Op.between]: [minEpoch, maxEpoch]}
             }};
-        const sum =  action.startsWith("txn") ? await TransactionDB.count(sumOption)
-          : await TransactionDB.sum('value', sumOption)
+        const sum =  action.startsWith("txn") ? await FullTransaction.count(sumOption)
+          : await FullTransaction.sum('dripValue', sumOption)
         let rank = 1
         // const drip2cfx = 1e+18
         const addressArray = [];
@@ -107,7 +112,7 @@ export class TxnSync {
         return format.address(hex, networkId)
     }
 
-    public scheduleCache(delay:number = 60_000) {
+    public scheduleCache(delay:number = 3600_000) {
         const that = this
 
         async function refreshAction(action: string) {
@@ -129,109 +134,5 @@ export class TxnSync {
             setTimeout(refreshCache, delay)
         }
         refreshCache().then()
-    }
-
-    public async schedule(delay:number = 100) {
-        console.log(`sync tx with delay ${delay}`)
-        const that = this;
-        async function repeat() {
-            let fullNodeDown = ''
-            await that.run().catch(err=>{
-                if (err.message.includes('ECONNREFUSED')) {
-                    fullNodeDown = err.message
-                    return
-                }
-                console.log(`sync tx fail: `, err)
-            });
-            if (fullNodeDown) {
-                console.log(`full node down: ${fullNodeDown}`)
-                await sleep(10_000)
-            }
-            setTimeout(repeat, delay);
-        }
-        repeat().then()
-        this.scheduleCache()
-    }
-
-    async run() :Promise<{ txOk: string, txCount: number }> {
-        const preEpoch = await KV.getNumber(KEY_TX_EPOCH) || 0
-        return await this.copyEpoch(preEpoch)
-    }
-
-    async copyEpoch(epoch: number) : Promise<{ txOk: string, txCount: number, epoch:number }>{
-        // @ts-ignore
-        const epochConfirmed = await this.cfx.getEpochNumber('latest_confirmed')
-        if (epoch > epochConfirmed) {
-            return ;
-        }
-        const stopwatch = new Stopwatch();
-        stopwatch.start('getBlocksByEpochNumber')
-        const blockHashes = await this.cfx.getBlocksByEpochNumber(epoch).catch(err=>{
-            console.log(`error for epoch ${epoch}`, err)
-            return null
-        })
-        if (blockHashes === null) {
-            await new Promise(resolve => setTimeout(resolve, 5000))
-            return;
-        }
-        stopwatch.start('get-BlockByHash')
-        const blockList: any[] = await batchFetchBlock(this.cfx, blockHashes, true, false)
-        const allTx = []
-        blockList.map(blk=>{
-            blk.transactions.forEach(tx=>tx.blockTime = blk.timestamp)
-            return blk.transactions
-        }).forEach(txList=>
-            // 0 for success, 1 if an error occurred, null when the transaction is skipped or not packed.
-            txList.filter(tx=>tx.status !== null && tx.status !== '')
-                .forEach(tx=>{
-                tx.from = format.hexAddress(tx.from) //base32 address to hex
-                if (tx.to) {
-                    tx.to = format.hexAddress(tx.to)
-                } else {
-                    tx.to = '0x0'
-                }
-                allTx.push(tx)
-            })
-        )
-        const txArr = []
-        for (const tx of allTx) {
-            tx.gas = parseInt(tx.gas, 16)
-            tx.gasPrice = parseInt(tx.gasPrice, 16)
-            tx.status = (tx.status === null || tx.status === '') ? null : parseInt(tx.status, 16)
-            tx.value = parseInt(tx.value, 16)
-            tx.nonce = parseInt(tx.nonce, 16)
-            tx.txIndex = parseInt(tx.transactionIndex, 16) || 0
-            tx.blockTime = new Date(parseInt(tx.blockTime, 16) * 1000)
-            tx['data'] = ''
-            tx.epochHeight = epoch;
-            const fromId = await makeAddrId(tx.from, null, {dt:tx.blockTime});
-            const toId = await makeAddrId(tx.to, null, {dt:tx.blockTime});
-            tx.from = fromId.id
-            tx.to = toId.id
-            txArr.push(tx)
-        }
-        stopwatch.start('db transaction phase 0')
-        let txOk = 'not executed';
-        const txCount = allTx.length;
-        await TransactionDB.sequelize.transaction(async (dbTx) => {
-            // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc#cfx_gettransactionbyhash
-            stopwatch.start('db transaction phase 1')
-            await TransactionDB.bulkCreate(txArr, {transaction: dbTx}
-            ).then(async ()=>{
-                stopwatch.start('db transaction phase 2')
-                return KV.upsert({key: KEY_TX_EPOCH, value: (epoch + 1).toString()}, {
-                    transaction:dbTx
-                })
-            })
-            txOk = 'ok'
-        }).then(()=>{
-            if (epoch % 100 === 0) {
-                // stopwatch.dump('time costs:')
-                console.log(`${fmtDtUTC(new Date())} insert ${txCount} txn at epoch ${epoch}`)
-            }
-        }).catch(err=>{
-            console.error(`tx fail, epoch ${epoch}:`, err)
-        })
-        return {txOk, txCount, epoch};
     }
 }

@@ -1,6 +1,5 @@
 import {Sequelize as DB} from "sequelize";
 import {Epoch} from "../model/Epoch";
-import {TransactionDB} from "../model/Transaction";
 import {hex, hex64, rnd} from "./GenData";
 import {Hex40Map} from "../model/HexMap";
 import {BlockAndMinerSync} from "../service/BlockAndMinerSync";
