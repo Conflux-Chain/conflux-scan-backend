@@ -20,8 +20,9 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/list-pos-account-reward', async (ctx)=>{
         const {identifier} = ctx.request.query
         const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listPosAccountReward({identifier, skip, limit});
         ctx.body = {
-            code: 0, ...await statApp.posQuery.listPosAccountReward({identifier, skip, limit})
+            code: 0, total, list
         }
     })
     router.get('/pos-account-detail', async (ctx)=>{
