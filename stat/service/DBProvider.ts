@@ -1,7 +1,6 @@
 import {QueryTypes, Sequelize} from "sequelize";
 import {Address, AddressInfo, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
-import {TransactionDB} from "../model/Transaction";
 import {Block, PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV, Position} from "../model/KV";
@@ -202,7 +201,6 @@ export async function initPartialModel(sequelize) {
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
-    TransactionDB.register(sequelize);
     Block.register(sequelize);
     MinerBlock.register(sequelize);
     TopBatchIndex.register(sequelize)
