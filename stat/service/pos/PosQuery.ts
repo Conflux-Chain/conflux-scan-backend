@@ -1,4 +1,4 @@
-import {PosAccount, PosEpochRewardHash, PosReward} from "../../model/PoS";
+import {PosAccount, PosBlock, PosEpochRewardHash, PosReward, PosTransaction} from "../../model/PoS";
 import {col, fn,Op} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
@@ -137,5 +137,37 @@ export class PosQuery {
             offset: skip, limit, raw: true,
             order: [[sortBy, sort]]
         })
+    }
+    async listBlock({skip, limit}) {
+        const {count, rows} = await PosBlock.findAndCountAll({offset: skip, limit, raw: true,
+            order: [['height','desc']]})
+        if (count) {
+            const minerIds = rows.map(row=>row.minerId).filter(Boolean)
+            if (minerIds.length) {
+                const accounts = await PosAccount.findAll({
+                    attributes: ['hex','id'],
+                    where: {id: {[Op.in]: minerIds}}})
+                const map = lodash.keyBy(accounts, acc=>acc.id)
+                rows.forEach(r=>r['miner'] = map[r.minerId])
+            }
+        }
+        return {count, rows}
+    }
+
+    async listTx({skip:offset, limit}) {
+        const {count, rows} = await PosTransaction.findAndCountAll({offset, limit, raw:true,
+            order: [['number','desc']]
+        })
+        if (count) {
+            const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)
+            if (blockIds.length) {
+                const blocks = await PosBlock.findAll({
+                    attributes: ['height','hash'],
+                    where: {height: {[Op.in]: blockIds}}})
+                const map = lodash.keyBy(blocks, acc=>acc.height)
+                rows.forEach(r=>r['block'] = map[r.blockNumber])
+            }
+        }
+        return {count, rows}
     }
 }

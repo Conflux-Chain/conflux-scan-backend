@@ -365,7 +365,7 @@ export class PosSync {
         const txArr = []
         const that = this
         while(next < stopBefore) {
-            const tx = await that.cfx['pos'].getTransactionByNumber(next).catch(err=>{
+            const tx = await that.cfx.pos.getTransactionByNumber(next).catch(err=>{
                 console.log(` getTransactionByNumber fail, ${next}:`, err)
                 return null
             })
@@ -378,6 +378,7 @@ export class PosSync {
                     blockNumber: blockNumber,
                     fromId: accountId, number: next, status: tx.status, type: tx.type,
                     createdAt: dt,
+                    hash: tx.hash,
                 })
                 next += 1
             }

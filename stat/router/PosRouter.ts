@@ -34,5 +34,20 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/pos-info', async (ctx)=>{
         ctx.body = await statApp.posQuery.posInfo()
     })
-
+    router.get('/list-pos-block', async (ctx)=>{
+        // const {identifier} = ctx.request.query
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listBlock({skip, limit});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
+    router.get('/list-pos-tx', async (ctx)=>{
+        // const {identifier} = ctx.request.query
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listTx({skip, limit});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
 }
