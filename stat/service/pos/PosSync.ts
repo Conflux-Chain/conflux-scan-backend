@@ -123,6 +123,11 @@ export class PosSync {
         const preNextTxNumber = blockNumber === 2 ? 2 : preBlock?.nextTxNumber || 1;
         const txIdStopBefore = blockNumber === 1 ? 2 : blockDetail.nextTxNumber;
         const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore, blockNumber);
+        if (txArr === null) {
+            this.position -= 1
+            await sleep(3_000)
+            return;
+        }
         const txCountByDiff = txIdStopBefore - preNextTxNumber;
         if (txArr.length !== txCountByDiff) {
             console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdStopBefore
@@ -370,7 +375,8 @@ export class PosSync {
                 return null
             })
             if (tx === null) {
-                return null;
+                console.log(` fetch pos tx got null at number ${next}`)
+                return txArr;
             } else {
                 const dt = new Date(tx.timestamp/1000)
                 const accountId = await that.saveAccount(tx.from, dt)
