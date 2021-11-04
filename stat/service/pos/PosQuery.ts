@@ -70,10 +70,12 @@ export class PosQuery {
             return {rows, count}
         }
         const epochs = [...new Set(rows.map(r=>r.epoch))];
-        const epochHashes = await PosEpochRewardHash.findAll({where:{epoch:{[Op.in]:epochs}}})
+        const epochHashes = await PosEpochRewardHash.findAll({where:{epoch:{[Op.in]:epochs}},
+            // logging: true,
+        })
         const hashesMap = lodash.keyBy(epochHashes, r=>r.epoch);
         rows.forEach(row=>{
-            row['powBlockHash'] = hashesMap[row.epoch]?.powBlockHash || ''
+            row['powBlockHash'] = hashesMap[row.epoch]?.powEpochHash || ''
         })
         return {rows, count}
     }
