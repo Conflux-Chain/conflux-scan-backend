@@ -117,7 +117,7 @@ export class PosSync {
         for (const s of blockDetail.signatures) {
             const id = await this.saveAccount(s.account, dt)
             map.set(s.account, id)
-            accountBlockBeans.push({accountId: id, blockNumber, id: null})
+            accountBlockBeans.push({accountId: id, blockNumber, id: null, votes: s.votes})
             accountIds.push(id)
         }
         const preNextTxNumber = blockNumber === 2 ? 2 : preBlock?.nextTxNumber || 1;

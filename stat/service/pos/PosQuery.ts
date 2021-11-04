@@ -1,4 +1,4 @@
-import {PosAccount, PosBlock, PosEpochRewardHash, PosReward, PosTransaction} from "../../model/PoS";
+import {PosAccount, PosAccountBlock, PosBlock, PosEpochRewardHash, PosReward, PosTransaction} from "../../model/PoS";
 import {col, fn,Op} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
@@ -165,6 +165,28 @@ export class PosQuery {
             if (blockIds.length) {
                 const blocks = await PosBlock.findAll({
                     attributes: ['height','hash'],
+                    where: {height: {[Op.in]: blockIds}}})
+                const map = lodash.keyBy(blocks, acc=>acc.height)
+                rows.forEach(r=>r['block'] = map[r.blockNumber])
+            }
+        }
+        return {count, rows}
+    }
+    async listAccountVoteHistory({skip:offset, limit, identifier}) {
+        const account = await PosAccount.findOne({where: {hex: identifier}})
+        if (account === null) {
+            return {rows:[], count: 0};
+        }
+        const {count, rows} = await PosAccountBlock.findAndCountAll({offset, limit, raw:true,
+            attributes: ['blockNumber','votes'],
+            where: {accountId: account.id},
+            order: [['blockNumber','desc']]
+        })
+        if (count) {
+            const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)
+            if (blockIds.length) {
+                const blocks = await PosBlock.findAll({
+                    attributes: ['height','hash','createdAt'],
                     where: {height: {[Op.in]: blockIds}}})
                 const map = lodash.keyBy(blocks, acc=>acc.height)
                 rows.forEach(r=>r['block'] = map[r.blockNumber])

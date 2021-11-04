@@ -193,17 +193,20 @@ export interface IPosAccountBlock {
     id: number
     accountId: number
     blockNumber: number
+    votes: number
 }
 // It's signed blocks by an account. not mined.
 export class PosAccountBlock extends Model<IPosAccountBlock> implements IPosAccountBlock {
     id: number
     accountId: number
     blockNumber: number
+    votes: number
     static register(seq: Sequelize) {
         PosAccountBlock.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true, autoIncrement: true},
             accountId: {type: DataTypes.BIGINT({unsigned: true})},
             blockNumber: {type: DataTypes.BIGINT({unsigned: true})},
+            votes: {type: DataTypes.BIGINT({unsigned: true})},
         }, {
             tableName: 'pos_account_block',
             indexes: [

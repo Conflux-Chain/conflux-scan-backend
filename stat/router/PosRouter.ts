@@ -50,4 +50,12 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
             code: 0, total, list
         }
     })
+    router.get('/list-account-vote-history', async (ctx)=>{
+        const {identifier} = ctx.request.query
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
 }
