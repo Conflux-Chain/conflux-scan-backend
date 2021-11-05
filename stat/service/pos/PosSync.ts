@@ -347,6 +347,8 @@ export class PosSync {
         for (const n of currentCommittee.nodes) {
             n.accountId = await this.saveAccount(n.address, new Date());
         }
+        const block = await this.cfx.getBlockByBlockNumber(cursorBlock)
+        let blockDt = new Date(block.timestamp/1000);
         // save to db
         await PosCommittee.sequelize.transaction(async (dbTx) => {
             return Promise.all([
@@ -357,6 +359,7 @@ export class PosSync {
                     // console.log(` node is ${JSON.stringify(n)}`)
                     return {
                         ...n, epochNumber: currentCommittee.epochNumber, blockNumber: cursorBlock,
+                        createdAt: blockDt
                     }
                 }, {transaction: dbTx}))
             ])

@@ -182,7 +182,7 @@ export class PosQuery {
     }
     async listCommittee({skip:offset, limit}) {
         const page = await PosCommittee.findAndCountAll({
-            offset, limit, order: [['blockNumber','desc']]
+            offset, limit, order: [['blockNumber','desc']], raw: true
         })
         return page;
     }
