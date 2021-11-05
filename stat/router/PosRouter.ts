@@ -58,4 +58,11 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
             code: 0, total, list
         }
     })
+    router.get('/list-pos-committee', async (ctx)=>{
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listCommittee({skip, limit});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
 }

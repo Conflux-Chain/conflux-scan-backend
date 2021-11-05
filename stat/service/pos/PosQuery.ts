@@ -1,4 +1,12 @@
-import {PosAccount, PosAccountBlock, PosBlock, PosEpochRewardHash, PosReward, PosTransaction} from "../../model/PoS";
+import {
+    PosAccount,
+    PosAccountBlock,
+    PosBlock,
+    PosCommittee,
+    PosEpochRewardHash,
+    PosReward,
+    PosTransaction
+} from "../../model/PoS";
 import {col, fn,Op} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
@@ -171,6 +179,12 @@ export class PosQuery {
             }
         }
         return {count, rows}
+    }
+    async listCommittee({skip:offset, limit}) {
+        const page = await PosCommittee.findAndCountAll({
+            offset, limit, order: [['blockNumber','desc']]
+        })
+        return page;
     }
     async listAccountVoteHistory({skip:offset, limit, identifier}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
