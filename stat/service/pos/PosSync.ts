@@ -242,21 +242,28 @@ export class PosSync {
         }
         repeat().then()
     }
+    committeeBlockPosition = 0
     async syncCommittee() {
-        const [status, maxEpochAtDB] = await Promise.all([
+        const [status, maxCommitteeDB] = await Promise.all([
             this.cfx["pos"].getStatus(),
-            PosCommittee.max('epochNumber').then(res=>{
-                return Number.isNaN(res) ? -1 : (Number(res))
-            }),
+            PosCommittee.findOne({order:[['blockNumber','desc']]}),
         ])
-        let cursor = maxEpochAtDB + 1;
-        while(cursor < status.epoch) {
-            await this.syncCommitteeByBlockNumber(cursor);
-            cursor += 1
+        let cursorBlock = this.committeeBlockPosition || maxCommitteeDB?.blockNumber || 1
+        const startAt = cursorBlock
+        let cursorEpoch = maxCommitteeDB?.epochNumber || 0
+        let epochChanged = false
+        while(cursorBlock < status.latestCommitted) {
+            const epochGrow = await this.syncCommitteeByBlockNumber(cursorBlock, cursorEpoch);
+            cursorBlock += 1
+            this.committeeBlockPosition = cursorBlock;
+            if (epochGrow) {
+                epochChanged = true
+                cursorEpoch +=1
+            }
         }
-        console.log(` syncCommittee Done for this round, start at ${maxEpochAtDB+1}`)
+        console.log(` syncCommittee start at ${startAt}, status epoch ${status.epoch} block committed ${status.latestCommitted}`)
         // refresh account information when pos epoch changing.
-        if (maxEpochAtDB + 1 === status.epoch) {
+        if (epochChanged) {
             // do not refresh when catching up.
             await this.updateRecentCommitteeAccount(status.epoch);
         }
@@ -325,37 +332,42 @@ export class PosSync {
         } while (true)
         console.log(` update all account votes done.`)
     }
-    private async syncCommitteeByBlockNumber(cursor: number) {
-        const rpcResult = await this.getCommittee(cursor);
+    private async syncCommitteeByBlockNumber(cursorBlock: number, cursorEpoch) {
+        // fetch by block number, but only save when epoch changing.
+        const rpcResult = await this.getCommittee(cursorBlock);
         if (this.NOT_FOUND_COMMITTEE === rpcResult) {
-            return
+            return false
         }
         // @ts-ignore
         const {currentCommittee} = rpcResult;
+        if (currentCommittee.epochNumber <= cursorEpoch) {
+            return false
+        }
         // make account id
         for (const n of currentCommittee.nodes) {
-            n.accountId = await this.saveAccount(n.address, new Date())
+            n.accountId = await this.saveAccount(n.address, new Date());
         }
         // save to db
         await PosCommittee.sequelize.transaction(async (dbTx) => {
             return Promise.all([
                 PosCommittee.create({
-                    ...currentCommittee, blockNumber: cursor, nodesCount: currentCommittee.nodes.length,
+                    ...currentCommittee, blockNumber: cursorBlock, nodesCount: currentCommittee.nodes.length,
                 }, {transaction: dbTx}),
                 PosCommitteeNode.bulkCreate(currentCommittee.nodes.map(n => {
                     // console.log(` node is ${JSON.stringify(n)}`)
                     return {
-                        ...n, epochNumber: currentCommittee.epochNumber, blockNumber: cursor,
+                        ...n, epochNumber: currentCommittee.epochNumber, blockNumber: cursorBlock,
                     }
                 }, {transaction: dbTx}))
             ])
         })
-        console.log(` save committee, epoch ${currentCommittee.epochNumber} block number ${cursor}, nodes count ${currentCommittee.nodes.length}`)
+        console.log(` save committee, epoch ${currentCommittee.epochNumber} block number ${cursorBlock}, nodes count ${currentCommittee.nodes.length}`)
+        return true
     }
     readonly NOT_FOUND_COMMITTEE = {}
     async getCommittee(blockNumber: number) {
         // const info = await this.cfx["pos"].getCommittee(undefined)
-        const info = await this.cfx["pos"].getCommittee(blockNumber).catch(err=>{
+        const info = await this.cfx.pos.getCommittee(blockNumber).catch(err=>{
             if (/PoS state of \d+ not found/.test(err.message)) {
                 // console.log(` It's ok. ${err.message}`);
                 return this.NOT_FOUND_COMMITTEE
