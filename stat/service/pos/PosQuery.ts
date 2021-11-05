@@ -163,7 +163,20 @@ export class PosQuery {
         }
         return {count, rows}
     }
-
+    async listTxInBlock({skip:offset, limit, blockHeight}) {
+        const [preBlock, curBlock] = await Promise.all([
+            PosBlock.findByPk(blockHeight-1),
+            PosBlock.findByPk(blockHeight, {attributes:['nextTxNumber']}),
+        ])
+        const minTxId = preBlock?.nextTxNumber || 1
+        const maxTxId = curBlock?.nextTxNumber || 0 // trick to empty list
+        const page = await PosTransaction.findAndCountAll({
+            attributes: {exclude: ['fromId']},
+            where: {number: {[Op.between]:[minTxId, maxTxId]}}, raw: true, offset, limit,
+            order: [['number','desc']]
+        })
+        return page;
+    }
     async listTx({skip:offset, limit}) {
         const {count, rows} = await PosTransaction.findAndCountAll({offset, limit, raw:true,
             order: [['number','desc']]

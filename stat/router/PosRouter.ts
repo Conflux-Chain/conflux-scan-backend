@@ -65,4 +65,10 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
             code: 0, total, list
         }
     })
+    router.get('/list-tx-by-pos-height', async (ctx)=>{
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {height} = ctx.request.query;
+        const {count: total, rows: list} = await statApp.posQuery.listTxInBlock({skip, limit, blockHeight: height});
+        ctx.body = { code: 0, total, list }
+    })
 }
