@@ -374,10 +374,38 @@ export class PosCommitteeNode extends Model<IPosCommitteeNode> implements IPosCo
         })
     }
 }
-export interface PosAccount {
-    addressHex: string
-    addressId: number
-    status: number
-    startTime: Date // status start time
-    votePower: number
+//
+export interface IPosDailyStat {
+    id?:number
+    epoch:number
+    createdAt: Date
+    updatedAt: Date
+    stakingAmount: number
+    lockedVotes: number
+    statDay: Date
+}
+export class PosDailyStat extends Model<IPosDailyStat> implements IPosDailyStat{
+    id?:number
+    epoch:number
+    createdAt: Date
+    updatedAt: Date
+    stakingAmount: number
+    lockedVotes: number
+    statDay: Date
+    static register(seq:Sequelize) {
+        PosDailyStat.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            createdAt: {type: DataTypes.DATE, },
+            updatedAt: {type: DataTypes.DATE, },
+            stakingAmount: {type: DataTypes.DECIMAL(56,18), allowNull: false},
+            lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            statDay: {type: DataTypes.DATEONLY, },
+        },{
+            sequelize: seq, tableName: 'pos_daily_stat',
+            indexes: [
+                {name: 'uk_stat_day', fields: ['statDay']}
+            ]
+        })
+    }
 }
