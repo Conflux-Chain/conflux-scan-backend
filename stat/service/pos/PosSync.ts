@@ -74,7 +74,8 @@ export class PosSync {
             this.cfx.pos.getBlockByNumber(blockNumber - 1),
         ])
         if (blockDetail === null) {
-            throw new Error(`block detail is null, ${blockNumber}`)
+            await this.updateLatestBlockNumber();
+            throw new Error(`block detail is null, ${blockNumber}, latest ${this.latestBlockNumber}`)
         }
         if (blockNumber >= 3 && preBlock !== null && blockDetail.parentHash !== preBlock.hash
             // when epoch is changing, it's designed that a new block is build as genesis.
@@ -105,6 +106,7 @@ export class PosSync {
             return;
         }
         const dt = new Date(blockDetail.timestamp/1000);
+        //console.log(` block timestamp is ${blockDetail.timestamp} ${dt.toISOString()} ${blockNumber}`)
         let minerId = null;
         if (blockDetail.miner) {
             minerId = await this.saveAccount(blockDetail.miner, dt)
@@ -115,20 +117,29 @@ export class PosSync {
         for (const s of blockDetail.signatures) {
             const id = await this.saveAccount(s.account, dt)
             map.set(s.account, id)
-            accountBlockBeans.push({accountId: id, blockNumber, id: null})
+            accountBlockBeans.push({accountId: id, blockNumber, id: null, votes: s.votes})
             accountIds.push(id)
         }
         const preNextTxNumber = blockNumber === 2 ? 2 : preBlock?.nextTxNumber || 1;
         const txIdStopBefore = blockNumber === 1 ? 2 : blockDetail.nextTxNumber;
         const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore, blockNumber);
+        if (txArr === null) {
+            this.position -= 1
+            await sleep(3_000)
+            return;
+        }
         const txCountByDiff = txIdStopBefore - preNextTxNumber;
         if (txArr.length !== txCountByDiff) {
             console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdStopBefore
             } - ${preNextTxNumber} = ${txCountByDiff
             } , actual tx ${txArr.length}`)
-            console.log(` pre bock height [${preBlockDetail?.height}] nextTx [${preBlockDetail?.nextTxNumber
-            }], \n current block height [${blockDetail.height}] nextTx ${blockDetail.nextTxNumber}`)
+            const info = [preBlockDetail,blockDetail].map(block=>{
+                return ` block height [${block?.height}] nextTx [${block?.nextTxNumber
+                }], hash ${block?.hash}`;
+            }).join('\n')
+            console.log(` debug block nextTxNumber:\n`, info)
             this.position -= 1 // +1 at caller. sync again.
+            await sleep(30_000)
             return;
         }
         await PosAccountBlock.sequelize.transaction(async tx=>{
@@ -231,21 +242,28 @@ export class PosSync {
         }
         repeat().then()
     }
+    committeeBlockPosition = 0
     async syncCommittee() {
-        const [status, maxEpochAtDB] = await Promise.all([
+        const [status, maxCommitteeDB] = await Promise.all([
             this.cfx["pos"].getStatus(),
-            PosCommittee.max('epochNumber').then(res=>{
-                return Number.isNaN(res) ? -1 : (Number(res))
-            }),
+            PosCommittee.findOne({order:[['blockNumber','desc']]}),
         ])
-        let cursor = maxEpochAtDB + 1;
-        while(cursor < status.epoch) {
-            await this.syncCommitteeByBlockNumber(cursor);
-            cursor += 1
+        let cursorBlock = this.committeeBlockPosition || maxCommitteeDB?.blockNumber || 1
+        const startAt = cursorBlock
+        let cursorEpoch = maxCommitteeDB?.epochNumber || 0
+        let epochChanged = false
+        while(cursorBlock < status.latestCommitted) {
+            const epochGrow = await this.syncCommitteeByBlockNumber(cursorBlock, cursorEpoch);
+            cursorBlock += 1
+            this.committeeBlockPosition = cursorBlock;
+            if (epochGrow) {
+                epochChanged = true
+                cursorEpoch +=1
+            }
         }
-        console.log(` syncCommittee Done for this round, start at ${maxEpochAtDB+1}`)
+        console.log(` syncCommittee start at ${startAt}, status epoch ${status.epoch} block committed ${status.latestCommitted}`)
         // refresh account information when pos epoch changing.
-        if (maxEpochAtDB + 1 === status.epoch) {
+        if (epochChanged) {
             // do not refresh when catching up.
             await this.updateRecentCommitteeAccount(status.epoch);
         }
@@ -314,37 +332,45 @@ export class PosSync {
         } while (true)
         console.log(` update all account votes done.`)
     }
-    private async syncCommitteeByBlockNumber(cursor: number) {
-        const rpcResult = await this.getCommittee(cursor);
+    private async syncCommitteeByBlockNumber(cursorBlock: number, cursorEpoch) {
+        // fetch by block number, but only save when epoch changing.
+        const rpcResult = await this.getCommittee(cursorBlock);
         if (this.NOT_FOUND_COMMITTEE === rpcResult) {
-            return
+            return false
         }
         // @ts-ignore
         const {currentCommittee} = rpcResult;
+        if (currentCommittee.epochNumber <= cursorEpoch) {
+            return false
+        }
         // make account id
         for (const n of currentCommittee.nodes) {
-            n.accountId = await this.saveAccount(n.address, new Date())
+            n.accountId = await this.saveAccount(n.address, new Date());
         }
+        const block = await this.cfx.getBlockByBlockNumber(cursorBlock)
+        let blockDt = new Date(block.timestamp/1000);
         // save to db
         await PosCommittee.sequelize.transaction(async (dbTx) => {
             return Promise.all([
                 PosCommittee.create({
-                    ...currentCommittee, blockNumber: cursor, nodesCount: currentCommittee.nodes.length,
+                    ...currentCommittee, blockNumber: cursorBlock, nodesCount: currentCommittee.nodes.length,
                 }, {transaction: dbTx}),
                 PosCommitteeNode.bulkCreate(currentCommittee.nodes.map(n => {
                     // console.log(` node is ${JSON.stringify(n)}`)
                     return {
-                        ...n, epochNumber: currentCommittee.epochNumber, blockNumber: cursor,
+                        ...n, epochNumber: currentCommittee.epochNumber, blockNumber: cursorBlock,
+                        createdAt: blockDt
                     }
                 }, {transaction: dbTx}))
             ])
         })
-        console.log(` save committee, epoch ${currentCommittee.epochNumber} block number ${cursor}, nodes count ${currentCommittee.nodes.length}`)
+        console.log(` save committee, epoch ${currentCommittee.epochNumber} block number ${cursorBlock}, nodes count ${currentCommittee.nodes.length}`)
+        return true
     }
     readonly NOT_FOUND_COMMITTEE = {}
     async getCommittee(blockNumber: number) {
         // const info = await this.cfx["pos"].getCommittee(undefined)
-        const info = await this.cfx["pos"].getCommittee(blockNumber).catch(err=>{
+        const info = await this.cfx.pos.getCommittee(blockNumber).catch(err=>{
             if (/PoS state of \d+ not found/.test(err.message)) {
                 // console.log(` It's ok. ${err.message}`);
                 return this.NOT_FOUND_COMMITTEE
@@ -359,12 +385,13 @@ export class PosSync {
         const txArr = []
         const that = this
         while(next < stopBefore) {
-            const tx = await that.cfx['pos'].getTransactionByNumber(next).catch(err=>{
+            const tx = await that.cfx.pos.getTransactionByNumber(next).catch(err=>{
                 console.log(` getTransactionByNumber fail, ${next}:`, err)
                 return null
             })
             if (tx === null) {
-                return null;
+                console.log(` fetch pos tx got null at number ${next}`)
+                return txArr;
             } else {
                 const dt = new Date(tx.timestamp/1000)
                 const accountId = await that.saveAccount(tx.from, dt)
@@ -372,6 +399,7 @@ export class PosSync {
                     blockNumber: blockNumber,
                     fromId: accountId, number: next, status: tx.status, type: tx.type,
                     createdAt: dt,
+                    hash: tx.hash,
                 })
                 next += 1
             }
@@ -399,7 +427,14 @@ export class PosSync {
     async syncRewardByEpoch(epoch:number) {
         const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (rewardInfo === null) {
-            console.log(` reward is null at epoch ${epoch}`)
+            if (epoch === 0) {
+                const rewardEpoch1 = await this.cfx.pos.getRewardsByEpoch(1)
+                if (rewardEpoch1 !== null) {
+                    console.log(` epoch 0 has no reward but epoch 1 has, move to epoch 1.`)
+                    return 1;
+                }
+            }
+            console.log(` reward is null at epoch ${epoch}`);
             await sleep(10_000)
             return 0
         }
@@ -470,11 +505,13 @@ export class PosSync {
         // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
         const st = await this.cfx["pos"].getStatus()
         console.log(` status ${JSON.stringify(st)}`)
-        const next = await Promise.all([5446,5447,5448].map(n=>this.cfx.pos.getBlockByNumber(n).then(res=>{
-            return ` block number ${res.height}, next tx number ${res.nextTxNumber}`
-        })))
-            .then(arr=>arr.join('\n'))
-        console.log(` next tx numbers \n ${next}`)
+        // const next = await Promise.all([5446,5447,5448].map(n=>this.cfx.pos.getBlockByNumber(n).then(res=>{
+        //     return ` block number ${res.height}, next tx number ${res.nextTxNumber}`
+        // })))
+        //     .then(arr=>arr.join('\n'))
+        // console.log(` next tx numbers \n ${next}`)
+        console.log(` reward ${await this.cfx.pos.getRewardsByEpoch(0)}`)
+        console.log(` reward ${await this.cfx.pos.getRewardsByEpoch(1)}`)
         // const powBlock = await this.cfx.getBlockByEpochNumber(199);
         // console.log(` pow block detail: `, powBlock)
         // console.log(` pos block detail: `, await this.cfx['pos'].getBlockByHash(powBlock["posReference"]))
@@ -512,6 +549,8 @@ export class PosSync {
                 console.log(` pos block not found, pow block, `, powBlock)
                 process.exit(2)
             }
+            console.log(` pos reward at pow hash ${powBlock.hash}, pos ref ${posRef
+            }, height ${posBlock.height}, epoch ${posBlock.epoch}`)
             return posBlock.epoch;
         } catch (e) {
             console.log(` pos get block by hash fail, pow epoch ${powEpoch}, pos ref: ${posRef}: `, e)

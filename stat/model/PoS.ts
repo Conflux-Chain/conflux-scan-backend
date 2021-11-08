@@ -193,17 +193,20 @@ export interface IPosAccountBlock {
     id: number
     accountId: number
     blockNumber: number
+    votes: number
 }
 // It's signed blocks by an account. not mined.
 export class PosAccountBlock extends Model<IPosAccountBlock> implements IPosAccountBlock {
     id: number
     accountId: number
     blockNumber: number
+    votes: number
     static register(seq: Sequelize) {
         PosAccountBlock.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true, autoIncrement: true},
             accountId: {type: DataTypes.BIGINT({unsigned: true})},
             blockNumber: {type: DataTypes.BIGINT({unsigned: true})},
+            votes: {type: DataTypes.BIGINT({unsigned: true})},
         }, {
             tableName: 'pos_account_block',
             indexes: [
@@ -282,6 +285,7 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
 export interface IPosTransaction {
     number: number, // it's pk.
     blockNumber: number,
+    hash: string
     fromId: number
     type: string
     status: string
@@ -290,6 +294,7 @@ export interface IPosTransaction {
 }
 export class PosTransaction extends Model<IPosTransaction> implements IPosTransaction {
     number: number // it's pk.
+    hash: string
     blockNumber: number
     fromId: number
     type: string
@@ -301,6 +306,7 @@ export class PosTransaction extends Model<IPosTransaction> implements IPosTransa
             blockNumber: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             fromId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             type: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
+            hash: {type: DataTypes.CHAR({length: 66}), allowNull: false, defaultValue: ''},
             status: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
             createdAt: {type: DataTypes.DATE(), allowNull: false},
         }, {

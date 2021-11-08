@@ -1,4 +1,12 @@
-import {PosAccount, PosEpochRewardHash, PosReward} from "../../model/PoS";
+import {
+    PosAccount,
+    PosAccountBlock,
+    PosBlock,
+    PosCommittee,
+    PosEpochRewardHash,
+    PosReward,
+    PosTransaction
+} from "../../model/PoS";
 import {col, fn,Op} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
@@ -70,10 +78,12 @@ export class PosQuery {
             return {rows, count}
         }
         const epochs = [...new Set(rows.map(r=>r.epoch))];
-        const epochHashes = await PosEpochRewardHash.findAll({where:{epoch:{[Op.in]:epochs}}})
+        const epochHashes = await PosEpochRewardHash.findAll({where:{epoch:{[Op.in]:epochs}},
+            // logging: true,
+        })
         const hashesMap = lodash.keyBy(epochHashes, r=>r.epoch);
         rows.forEach(row=>{
-            row['powBlockHash'] = hashesMap[row.epoch]?.powBlockHash || ''
+            row['powBlockHash'] = hashesMap[row.epoch]?.powEpochHash || ''
         })
         return {rows, count}
     }
@@ -137,5 +147,78 @@ export class PosQuery {
             offset: skip, limit, raw: true,
             order: [[sortBy, sort]]
         })
+    }
+    async listBlock({skip, limit}) {
+        const {count, rows} = await PosBlock.findAndCountAll({offset: skip, limit, raw: true,
+            order: [['height','desc']]})
+        if (count) {
+            const minerIds = rows.map(row=>row.minerId).filter(Boolean)
+            if (minerIds.length) {
+                const accounts = await PosAccount.findAll({
+                    attributes: ['hex','id'],
+                    where: {id: {[Op.in]: minerIds}}})
+                const map = lodash.keyBy(accounts, acc=>acc.id)
+                rows.forEach(r=>r['miner'] = map[r.minerId])
+            }
+        }
+        return {count, rows}
+    }
+    async listTxInBlock({skip:offset, limit, blockHeight}) {
+        const [preBlock, curBlock] = await Promise.all([
+            PosBlock.findByPk(blockHeight-1),
+            PosBlock.findByPk(blockHeight, {attributes:['nextTxNumber']}),
+        ])
+        const minTxId = preBlock?.nextTxNumber || 1
+        const maxTxId = curBlock?.nextTxNumber || 0 // trick to empty list
+        const page = await PosTransaction.findAndCountAll({
+            attributes: {exclude: ['fromId']},
+            where: {number: {[Op.between]:[minTxId, maxTxId]}}, raw: true, offset, limit,
+            order: [['number','desc']]
+        })
+        return page;
+    }
+    async listTx({skip:offset, limit}) {
+        const {count, rows} = await PosTransaction.findAndCountAll({offset, limit, raw:true,
+            order: [['number','desc']]
+        })
+        if (count) {
+            const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)
+            if (blockIds.length) {
+                const blocks = await PosBlock.findAll({
+                    attributes: ['height','hash'],
+                    where: {height: {[Op.in]: blockIds}}})
+                const map = lodash.keyBy(blocks, acc=>acc.height)
+                rows.forEach(r=>r['block'] = map[r.blockNumber])
+            }
+        }
+        return {count, rows}
+    }
+    async listCommittee({skip:offset, limit}) {
+        const page = await PosCommittee.findAndCountAll({
+            offset, limit, order: [['blockNumber','desc']], raw: true
+        })
+        return page;
+    }
+    async listAccountVoteHistory({skip:offset, limit, identifier}) {
+        const account = await PosAccount.findOne({where: {hex: identifier}})
+        if (account === null) {
+            return {rows:[], count: 0};
+        }
+        const {count, rows} = await PosAccountBlock.findAndCountAll({offset, limit, raw:true,
+            attributes: ['blockNumber','votes'],
+            where: {accountId: account.id},
+            order: [['blockNumber','desc']]
+        })
+        if (count) {
+            const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)
+            if (blockIds.length) {
+                const blocks = await PosBlock.findAll({
+                    attributes: ['height','hash','createdAt'],
+                    where: {height: {[Op.in]: blockIds}}})
+                const map = lodash.keyBy(blocks, acc=>acc.height)
+                rows.forEach(r=>r['block'] = map[r.blockNumber])
+            }
+        }
+        return {count, rows}
     }
 }

@@ -20,8 +20,9 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/list-pos-account-reward', async (ctx)=>{
         const {identifier} = ctx.request.query
         const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listPosAccountReward({identifier, skip, limit});
         ctx.body = {
-            code: 0, ...await statApp.posQuery.listPosAccountReward({identifier, skip, limit})
+            code: 0, total, list
         }
     })
     router.get('/pos-account-detail', async (ctx)=>{
@@ -33,5 +34,41 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/pos-info', async (ctx)=>{
         ctx.body = await statApp.posQuery.posInfo()
     })
-
+    router.get('/list-pos-block', async (ctx)=>{
+        // const {identifier} = ctx.request.query
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listBlock({skip, limit});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
+    router.get('/list-pos-tx', async (ctx)=>{
+        // const {identifier} = ctx.request.query
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listTx({skip, limit});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
+    router.get('/list-account-vote-history', async (ctx)=>{
+        const {identifier} = ctx.request.query
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
+    router.get('/list-pos-committee', async (ctx)=>{
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listCommittee({skip, limit});
+        ctx.body = {
+            code: 0, total, list
+        }
+    })
+    router.get('/list-tx-by-pos-height', async (ctx)=>{
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {height} = ctx.request.query;
+        const {count: total, rows: list} = await statApp.posQuery.listTxInBlock({skip, limit, blockHeight: height});
+        ctx.body = { code: 0, total, list }
+    })
 }
