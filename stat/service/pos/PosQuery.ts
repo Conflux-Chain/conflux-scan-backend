@@ -2,7 +2,7 @@ import {
     PosAccount,
     PosAccountBlock,
     PosBlock,
-    PosCommittee,
+    PosCommittee, PosDailyStat,
     PosEpochRewardHash,
     PosReward,
     PosTransaction
@@ -220,5 +220,11 @@ export class PosQuery {
             }
         }
         return {count, rows}
+    }
+    async listPosDailyStat({skip:offset, limit}) {
+        const page = await PosDailyStat.findAndCountAll({offset, limit,
+            order: [['statDay','desc']]
+        })
+        return page;
     }
 }

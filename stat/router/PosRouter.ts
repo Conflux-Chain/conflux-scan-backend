@@ -71,4 +71,9 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {count: total, rows: list} = await statApp.posQuery.listTxInBlock({skip, limit, blockHeight: height});
         ctx.body = { code: 0, total, list }
     })
+    router.get('/list-pos-daily-stat', async (ctx)=>{
+        const {skip,limit} = skipLimit(ctx.request.query)
+        const {count: total, rows: list} = await statApp.posQuery.listPosDailyStat({skip, limit});
+        ctx.body = { code: 0, total, list }
+    })
 }

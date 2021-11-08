@@ -7,7 +7,7 @@ import {
     PosAccountBlock,
     PosBlock,
     PosCommittee,
-    PosCommitteeNode, PosEpochRewardHash, PosReward,
+    PosCommitteeNode, PosDailyStat, PosEpochRewardHash, PosReward,
     PosTransaction
 } from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
@@ -266,8 +266,10 @@ export class PosSync {
         if (epochChanged) {
             // do not refresh when catching up.
             await this.updateRecentCommitteeAccount(status.epoch);
+            await this.updateDailyStat(status.epoch);
         }
     }
+
     async updateRecentCommitteeAccount(epoch: number) {
         const recentGap = 10; // hour
         const listOfAccountId = await PosCommitteeNode.findAll({
@@ -291,7 +293,23 @@ export class PosSync {
         }
         return this.updateAccountVotes(accountList);
     }
-
+    async updateDailyStat(epoch:number) {
+        const [{totalPosStakingTokens}, lockedVotes] = await Promise.all([
+            this.cfx.getPoSEconomics(),
+            PosAccount.sum('lockedVotes'),
+        ])
+        const dt = new Date();
+        const [affected] = await PosDailyStat.update({stakingAmount: totalPosStakingTokens, lockedVotes},
+            {where: {statDay: dt}})
+        if (!affected) {
+            await PosDailyStat.create({
+                statDay: dt,
+                stakingAmount: totalPosStakingTokens, lockedVotes,
+                createdAt: dt, updatedAt: dt, epoch,
+            })
+        }
+        console.log(` update daily stat done.`)
+    }
     async updateAccountVotes(accountList: PosAccount[]) {
         //
         const chunks2d: PosAccount[][] = lodash.chunk(accountList, 50);

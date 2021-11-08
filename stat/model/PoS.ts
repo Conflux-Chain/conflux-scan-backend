@@ -404,7 +404,7 @@ export class PosDailyStat extends Model<IPosDailyStat> implements IPosDailyStat{
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             createdAt: {type: DataTypes.DATE, },
             updatedAt: {type: DataTypes.DATE, },
-            stakingAmount: {type: DataTypes.DECIMAL(56,18), allowNull: false},
+            stakingAmount: {type: DataTypes.DECIMAL(56,0), allowNull: false},
             lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             statDay: {type: DataTypes.DATEONLY, },
         },{
