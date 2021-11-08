@@ -1,7 +1,17 @@
 import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
 import {ScanHttpProvider} from "./ScanHttpProvider";
-
+export function patchFormat() {
+    const fun = format.address;
+    function saveAddress(str, networkId, verbose) {
+        try {
+            return fun(str, networkId, verbose)
+        } catch (e) {
+            return str;
+        }
+    }
+    format.address = saveAddress;
+}
 export function removeLongData(obj) {
     if (Array.isArray(obj)) {
         obj.forEach(i=>removeLongData(i))
