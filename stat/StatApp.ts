@@ -38,10 +38,10 @@ import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
-import {patchHttpProvider} from "./service/common/utils";
+import {patchFormat, patchHttpProvider} from "./service/common/utils";
 import {KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
-
+patchFormat();
 export class StatApp{
     public config: StatConfig;
     public sequelize: Sequelize;

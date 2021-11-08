@@ -6,7 +6,7 @@ const limit = pLimit(1000); // could increase it when connection issues are fixe
 export class ScanHttpProvider extends HttpProvider {
     tag: string
     times = 0
-    agent = new Agent({maxSockets: 100,})
+    agent = new Agent({maxSockets: 100, timeout:60000})
     methodTimes = {}
     constructor(conf, tag) {
         super(conf);
