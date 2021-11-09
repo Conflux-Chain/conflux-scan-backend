@@ -1,7 +1,7 @@
 import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {pickNumber} from "../model/Utils";
-import {skipLimit} from "./ParamChecker";
+import {skipLimit, skipLimitAny} from "./ParamChecker";
 
 export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/list-pos-account', async (ctx)=>{
@@ -44,7 +44,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/list-pos-tx', async (ctx)=>{
         // const {identifier} = ctx.request.query
-        const {skip,limit} = skipLimit(ctx.request.query)
+        const {skip,limit} = skipLimitAny(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listTx({skip, limit});
         ctx.body = {
             code: 0, total, list

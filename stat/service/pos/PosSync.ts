@@ -83,7 +83,7 @@ export class PosSync {
             const preAccountIds = await PosAccountBlock.findAll({attributes: ['accountId'],
                 where: {blockNumber: preBlock.height}}).then(arr=>arr.map(row=>row.accountId))
             // reorg happens
-            console.log(`block number ${blockNumber}, parent hash ${blockDetail.parentHash
+            console.log(` ${new Date().toISOString()} block number ${blockNumber}, parent hash ${blockDetail.parentHash
             } \n not match previous block hash ${preBlock.hash} with number ${preBlock.height}`)
             // fetch from chain node
             const infoDebug = await Promise.all([
@@ -103,6 +103,7 @@ export class PosSync {
                 ]);
             })
             this.position -= 2 // +1 at caller. re-syn previous block.
+            await sleep(5_000)
             return;
         }
         const dt = new Date(blockDetail.timestamp/1000);

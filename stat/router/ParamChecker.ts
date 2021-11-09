@@ -12,6 +12,14 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
 	return param
 }
 
+// skip exceeds 10_000;
+export function skipLimitAny(obj) {
+	return {
+		skip: intParam(obj, 'skip', 0),
+		limit: intParam(obj, 'limit', 10)
+	};
+
+}
 export function skipLimit(obj) {
 	return pageParam(obj, 'skip', 'limit', 10)
 }

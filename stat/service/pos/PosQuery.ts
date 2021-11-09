@@ -149,8 +149,17 @@ export class PosQuery {
         })
     }
     async listBlock({skip, limit}) {
-        const {count, rows} = await PosBlock.findAndCountAll({offset: skip, limit, raw: true,
-            order: [['height','desc']]})
+        let min = 0, max = 0;
+        const maxDB:number = await PosBlock.max('height').then(v=>{
+            return  (isNaN((Number(v))) ? 0 : v) as number;
+        })
+        max = maxDB - skip;
+        min = max - limit;
+        const count = maxDB;
+        const rows = await PosBlock.findAll({offset: skip, limit, raw: true,
+            order: [['height','desc']],
+            where: {height:{[Op.between]:[min, max]}}
+        })
         if (count) {
             const minerIds = rows.map(row=>row.minerId).filter(Boolean)
             if (minerIds.length) {
@@ -178,8 +187,18 @@ export class PosQuery {
         return page;
     }
     async listTx({skip:offset, limit}) {
-        const {count, rows} = await PosTransaction.findAndCountAll({offset, limit, raw:true,
-            order: [['number','desc']]
+        // tx has pk called 'number'
+        let min = 0, max = 0;
+        const maxDB:number = await PosTransaction.max('number').then(v=>{
+            return  (isNaN(Number(v)) ? 0 : v) as number;
+        })
+        const count = maxDB
+        max = maxDB - offset;
+        min = max - limit;
+        const rows= await PosTransaction.findAll({offset, limit, raw:true,
+            order: [['number','desc']],
+            where: {number:{[Op.between]:[min, max]}},
+            logging: console.log,
         })
         if (count) {
             const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)
