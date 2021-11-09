@@ -41,6 +41,7 @@ import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
 import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
+import {CFX_BILL_EPOCH, KV} from "../../model/KV";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
@@ -342,10 +343,8 @@ export class DummyNode {
     async getEpochInDB() {
         console.log(`${new Date().toISOString()} begin find max epoch in db.`)
 
-        return CfxBill.findOne({order:[['epoch','desc']]}).then(bill=>{
-            const ret = bill === null ? -1 : bill.epoch
-            console.log(`${new Date().toISOString()} max epoch in db ${ret}`)
-            return ret
+        return KV.getNumber(CFX_BILL_EPOCH).then(res=>{
+            return isNaN(res) ? -1 : res;
         })
     }
     async loop(epoch, auto=false) {
@@ -374,8 +373,13 @@ export class DummyNode {
             return this.computeBalance(bills, preBillMap, o=>o.ownerId).then(()=>{
                 return bills
             })
-        }).then(bills=>{
-            return CfxBill.bulkCreate(bills)
+        }).then(async bills=>{
+            return CfxBill.sequelize.transaction(async dbTx=>{
+                const arr = await CfxBill.bulkCreate(bills, {transaction: dbTx})
+                await KV.update({value: epoch.toString()}, {where:{key: CFX_BILL_EPOCH},
+                    transaction: dbTx})
+                return arr;
+            })
         }).then((bills)=> {
             if (!auto || epoch % 100 == 0) {
                 const now = Date.now()
