@@ -4,6 +4,13 @@ import {pickNumber} from "../model/Utils";
 import {skipLimit, skipLimitAny} from "./ParamChecker";
 
 export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
+    router.get('/top-pos-account-by-reward', async (ctx)=>{
+        const page = await statApp.posQuery.listPosAccount({sortBy: 'totalReward', limit: 100})
+        ctx.body = {
+            code: 0, message: 'ok',
+            list: page.rows, total: page.count,
+        }
+    })
     router.get('/list-pos-account', async (ctx)=>{
         const limit = pickNumber(parseInt(ctx.request.query.limit), 10)
         const skip = pickNumber(parseInt(ctx.request.query.skip), 0)
