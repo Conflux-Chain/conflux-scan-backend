@@ -155,6 +155,7 @@ export class PosQuery {
         })
         max = maxDB - skip;
         min = max - limit;
+        skip = 0;
         const count = maxDB;
         const rows = await PosBlock.findAll({offset: skip, limit, raw: true,
             order: [['height','desc']],
@@ -195,10 +196,11 @@ export class PosQuery {
         const count = maxDB
         max = maxDB - offset;
         min = max - limit;
+        offset = 0;
         const rows= await PosTransaction.findAll({offset, limit, raw:true,
             order: [['number','desc']],
             where: {number:{[Op.between]:[min, max]}},
-            logging: console.log,
+            // logging: console.log,
         })
         if (count) {
             const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)
