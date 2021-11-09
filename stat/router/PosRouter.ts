@@ -22,7 +22,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {skip,limit} = skipLimit(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listPosAccountReward({identifier, skip, limit});
         ctx.body = {
-            code: 0, total, list
+            code: 0, total, list, listLimit:10_000,
         }
     })
     router.get('/pos-account-detail', async (ctx)=>{
@@ -55,7 +55,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {skip,limit} = skipLimit(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier});
         ctx.body = {
-            code: 0, total, list
+            code: 0, total, list, listLimit:10_000,
         }
     })
     router.get('/list-pos-committee', async (ctx)=>{
