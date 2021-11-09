@@ -77,6 +77,7 @@ export class DummyNode {
         console.log(`network id ${networkId}`)
         const anyOne = await CfxBill.findOne({limit: 1})
         if (anyOne) {
+            console.log(`  db has record:`, anyOne.ownerId)
             return
         }
         async function make(hex:string, ban, pos) {
