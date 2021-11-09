@@ -347,7 +347,10 @@ export class DummyNode {
 
         return KV.getNumber(CFX_BILL_EPOCH).then(res=>{
             console.log(`  cfx bill epoch position in db :`, res)
-            return isNaN(res) ? 0 : res;
+            if (isNaN(res)) {
+                throw new Error('Should setup epoch 0 automatically, or set it manually in DB.')
+            }
+            return res;
         })
     }
     async loop(epoch, auto=false) {
