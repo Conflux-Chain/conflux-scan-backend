@@ -105,6 +105,7 @@ export class DummyNode {
             // cfxtest:aar8jzybzv0fhzreav49syxnzut8s0jt1a1pdeeuwb
             await make('0x1be45681ac6c53d5a40475f7526bac1fe7590fb8', 5000000000000000, 0)
         }
+        await KV.create({key: CFX_BILL_EPOCH, value: '0'})
     }
     preFetchedTo = 0
     async fetchEpoch(epoch) {
