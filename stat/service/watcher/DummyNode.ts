@@ -106,6 +106,7 @@ export class DummyNode {
             await make('0x1be45681ac6c53d5a40475f7526bac1fe7590fb8', 5000000000000000, 0)
         }
         await KV.create({key: CFX_BILL_EPOCH, value: '0'})
+        console.log(` setup epoch 0, ok.`)
     }
     preFetchedTo = 0
     async fetchEpoch(epoch) {
@@ -345,7 +346,8 @@ export class DummyNode {
         console.log(`${new Date().toISOString()} begin find max epoch in db.`)
 
         return KV.getNumber(CFX_BILL_EPOCH).then(res=>{
-            return isNaN(res) ? -1 : res;
+            console.log(`  cfx bill epoch position in db :`, res)
+            return isNaN(res) ? 0 : res;
         })
     }
     async loop(epoch, auto=false) {
