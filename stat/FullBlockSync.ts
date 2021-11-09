@@ -54,5 +54,5 @@ async function syncFullBlock(fullBlockService:FullBlockService) {
         })
 }
 const args = process.argv.slice(2)
-let always = Boolean(args[0])
+let always = true;//Boolean(args[0])
 run().then()
