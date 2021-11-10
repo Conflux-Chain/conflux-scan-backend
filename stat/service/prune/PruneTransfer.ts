@@ -72,10 +72,10 @@ export class PruneTransfer extends PruneBase {
         return {where: undefined, key: {id: 0, type}};
     }
 
-    public adjustPruneQuery({type, where, maxToDel}): { where: any } {
-        if (this.TYPE_TOKEN_TRANSFER.has(type)) {
-            return {where: lodash.defaults({...where}, {id: maxToDel.id})};
-        }
-        return {where};
-    }
+    // public adjustPruneQuery({type, where, maxToDel}): { where: any } {
+    //     if (this.TYPE_TOKEN_TRANSFER.has(type)) {
+    //         return {where: lodash.defaults({...where}, {id: maxToDel.id})};
+    //     }
+    //     return {where};
+    // }
 }

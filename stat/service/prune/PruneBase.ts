@@ -27,18 +27,18 @@ export abstract class PruneBase {
             lodash.defaults({},{where: {...where}, order: [["epoch", "desc"]], offset: keepRows, limit: 1, raw: true})
         );
     }
-    protected async maxOneDel({type, where, maxToPrune, delRowsPerLoop}): Promise<any>{
-        const model = this.getModel(type);
-        return model.findOne({where: lodash.defaults({...where}, { epoch:{[Op.lte]: maxToPrune.epoch}}),
-            offset: delRowsPerLoop - 1, limit: 1, raw: true});
-    }
-    protected nextCheckpoint({maxToPrune, maxToDel}): any{
-        const maxToDelEpoch = maxToDel !== null ? maxToDel.epoch : maxToPrune.epoch;
-        return {position: maxToDelEpoch};
-    }
-    protected adjustPruneQuery({type, where, maxToDel}): { where: any } {
-        return {where};
-    }
+    // protected async maxOneDel({type, where, maxToPrune, delRowsPerLoop}): Promise<any>{
+    //     const model = this.getModel(type);
+    //     return model.findOne({where: lodash.defaults({...where}, { epoch:{[Op.lte]: maxToPrune.epoch}}),
+    //         offset: delRowsPerLoop - 1, limit: 1, raw: true});
+    // }
+    // protected nextCheckpoint({maxToPrune, maxToDel}): any{
+    //     const maxToDelEpoch = maxToDel !== null ? maxToDel.epoch : maxToPrune.epoch;
+    //     return {position: maxToDelEpoch};
+    // }
+    // protected adjustPruneQuery({type, where, maxToDel}): { where: any } {
+    //     return {where};
+    // }
 
     public async prune(
         {
@@ -66,9 +66,10 @@ export abstract class PruneBase {
         let delDelta = 0;
         let maxLoop = 10;
         do{
-            const maxToDel = await this.maxOneDel({type, where, maxToPrune, delRowsPerLoop});
-            const checkpoint = this.nextCheckpoint({maxToPrune, maxToDel});
-            const {where: pruneWhere} = await this.adjustPruneQuery({type, where, maxToDel});
+            // const maxToDel = await this.maxOneDel({type, where, maxToPrune, delRowsPerLoop});
+            // const checkpoint = this.nextCheckpoint({maxToPrune, maxToDel});
+            // const {where: pruneWhere} = await this.adjustPruneQuery({type, where, maxToDel});
+            const checkpoint = { position: maxToPrune.epoch };
             const pruneResult = await this.doPrune({type, where: pruneWhere, key, checkpoint});
             // console.log(`prune_pruneRlt[type=${type}],result:${JSON.stringify(pruneResult)}`);
             delDelta = pruneResult.delDelta;
@@ -76,7 +77,7 @@ export abstract class PruneBase {
         } while (delDelta>0 && maxLoop>0)
     }
 
-    private async doPrune({type, where, key, checkpoint, delRowsPerLoop = undefined}): Promise<any>{
+    private async doPrune({type, where, key, checkpoint, delRowsPerLoop = PruneBase.DEL_ROWS_PER_LOOP}): Promise<any>{
         const model = this.getModel(type);
         let delDelta = 0;
         let delCntr = 0;
@@ -89,8 +90,9 @@ export abstract class PruneBase {
                 transaction: dbTx
             });
             delCntr = pruneDb != null ? pruneDb.pruned : 0;
-            delDelta = await model.count({
+            delDelta = await model.destory({
                 where: lodash.defaults({...where}, {epoch:{[Op.lte]: checkpoint.position}}),
+                limit: delRowsPerLoop,
                 transaction: dbTx,
             });
 

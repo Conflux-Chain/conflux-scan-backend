@@ -105,7 +105,7 @@ export class PruneHandler {
             case PruneType.ERC20_TRANSFER:
             case PruneType.ERC721_TRANSFER:
             case PruneType.ERC1155_TRANSFER:
-                keepRows = 5_000_000;
+                keepRows = 20_000;
                 break;
             case PruneType.MINER_BLOCK:
             case PruneType.ADDR_TX:
@@ -113,7 +113,7 @@ export class PruneHandler {
             case PruneType.ADDR_ERC20_TRANSFER:
             case PruneType.ADDR_ERC721_TRANSFER:
             case PruneType.ADDR_ERC1155_TRANSFER:
-                keepRows = 100_000;
+                keepRows = 20_000;
                 break;
             default:
                 throw new Error(`unknown prune type:${type}`);

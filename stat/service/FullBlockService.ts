@@ -460,7 +460,7 @@ export class FullBlockService {
                 throw err;
             }
         });
-        await PruneNotifier.notifyTransaction(executedTxArr)
+        PruneNotifier.notifyTransaction(executedTxArr)
             .catch(e => console.log(`block-sync.noticePruneTx, epoch:${executedTxArr[0].epoch}`, e));
         if (fixDupError) {
             await Promise.all([txByAddressArr.map( async tx=>AddressTransactionIndex.destroy({

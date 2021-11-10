@@ -16,7 +16,7 @@ export class PruneNotifier {
         if(!(await PruneNotifier.checkEnqueueAble())) {
             return;
         }
-        await RedisWrap.sendStreamMessage(msg, PRUNE_Q);
+        return RedisWrap.sendStreamMessage(msg, PRUNE_Q).then();
     }
 
     public static async notifyBlock(minerBlockArray){
@@ -24,10 +24,9 @@ export class PruneNotifier {
         minerBlockArray.forEach(block => minerIdSet.add(block.minerId));
 
         const msg = {
-            [PruneType.BLOCK]: [0],
             [PruneType.MINER_BLOCK]: [...minerIdSet],
         };
-        await PruneNotifier.notifyPrune(msg);
+        return PruneNotifier.notifyPrune(msg);
         // console.log(`prune_notify[type=block],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
     }
 
@@ -39,10 +38,9 @@ export class PruneNotifier {
         });
 
         const msg = {
-            [PruneType.TX]: [0],
             [PruneType.ADDR_TX]: [...addressIdSet],
         };
-        await PruneNotifier.notifyPrune(msg);
+        return PruneNotifier.notifyPrune(msg);
         // console.log(`prune_notify[type=tx],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
     }
 
@@ -53,10 +51,9 @@ export class PruneNotifier {
         });
 
         const msg = {
-            [PruneType.CFX_TRANSFER]: [0],
             [PruneType.ADDR_CFX_TRANSFER]: [...addressIdSet],
         };
-        await PruneNotifier.notifyPrune(msg);
+        return PruneNotifier.notifyPrune(msg);
         // console.log(`prune_notify[type=cfxTransfer],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
     }
 
@@ -111,7 +108,7 @@ export class PruneNotifier {
                 msg[PruneType.ADDR_ERC1155_TRANSFER] = addressIdArray;
             }
         });
-        await PruneNotifier.notifyPrune(msg);
+        return PruneNotifier.notifyPrune(msg);
         // console.log(`prune_notify[type=tokenTransfer],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
     }
 

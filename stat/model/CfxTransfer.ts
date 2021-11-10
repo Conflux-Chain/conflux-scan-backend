@@ -466,7 +466,7 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
             metrics.reset()
         }
     }).then(async ()=>{
-        await PruneNotifier.notifyCFXTransfer(addressCfxTransferArray)
+        PruneNotifier.notifyCFXTransfer(addressCfxTransferArray)
             .catch(e => console.log(`transfer-sync.noticePruneTransfer, epoch:${addressCfxTransferArray[0].epoch}`, e));
     });
 

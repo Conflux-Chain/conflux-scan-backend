@@ -46,9 +46,9 @@ export class EpochSync extends SyncBase{
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
         const traceCreateArray = await  this.getTraceCreateArrayDB(epochNumber);
 
-        await PruneNotifier.notifyBlock(minerBlockArray)
+        PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
-        await PruneNotifier.notifyTokenTransfer(eventLogInfo)
+        PruneNotifier.notifyTokenTransfer(eventLogInfo)
             .catch(e => console.log(`epoch-sync.noticePruneTransfer, epoch:${epochNumber}`, e));
 
         return {
