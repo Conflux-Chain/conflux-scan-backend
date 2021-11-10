@@ -27,8 +27,8 @@ services:
     command: node /stat-root/stat/dist/StreamSync.js
   bill:
     image: node:14.7.0
-      network_mode: host
-      restart: always
-      volumes:
-        - ./:/stat-root
-      command: node /stat-root/stat/dist/service/watcher/DummyNode.js 1
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/service/watcher/DummyNode.js 1
