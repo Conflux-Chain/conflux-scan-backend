@@ -69,8 +69,9 @@ export abstract class PruneBase {
             // const maxToDel = await this.maxOneDel({type, where, maxToPrune, delRowsPerLoop});
             // const checkpoint = this.nextCheckpoint({maxToPrune, maxToDel});
             // const {where: pruneWhere} = await this.adjustPruneQuery({type, where, maxToDel});
+            // const pruneResult = await this.doPrune({type, where: pruneWhere, key, checkpoint});
             const checkpoint = { position: maxToPrune.epoch };
-            const pruneResult = await this.doPrune({type, where: pruneWhere, key, checkpoint});
+            const pruneResult = await this.doPrune({type, where, key, checkpoint});
             // console.log(`prune_pruneRlt[type=${type}],result:${JSON.stringify(pruneResult)}`);
             delDelta = pruneResult.delDelta;
             maxLoop--;
