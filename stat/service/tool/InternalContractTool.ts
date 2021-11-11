@@ -1,9 +1,8 @@
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
-import {loadConfig} from "../../config/StatConfig";
-import {createDB, initModel} from "../DBProvider";
 import {Hex40Map, makeId} from "../../model/HexMap";
 import {Contract} from "../../model/Contract";
+import {init} from "./FixDailyTokenStat";
 const AdminControl = require("../abi/AdminControl");
 const SponsorWhitelistControl = require("../abi/SponsorWhitelistControl");
 const Staking = require("../abi/Staking");
@@ -11,8 +10,6 @@ const ReentrancyConfig = require("../abi/ReentrancyConfig");
 const Context = require("../abi/Context");
 const PoSRegister = require("../abi/PoSRegister");
 
-let seq;
-let cfx;
 let networkId;
 const internalContractArray = [
     {
@@ -57,17 +54,6 @@ const internalContractArray = [
         abi: JSON.stringify(PoSRegister.abi),
     },
 ];
-
-async function init() {
-    // load config
-    const config = loadConfig('Prod')
-    // init db
-    seq = createDB(config.databaseRW)
-    await seq.sync({})
-    await initModel(seq)
-    // init sdk
-    cfx = new Conflux({...config.conflux})
-}
 
 async function registerContract(contract) {
     const hex40id =  (await makeId(contract.address)).id;
