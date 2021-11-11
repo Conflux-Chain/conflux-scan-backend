@@ -27,18 +27,6 @@ export abstract class PruneBase {
             lodash.defaults({},{where: {...where}, order: [["epoch", "desc"]], offset: keepRows, limit: 1, raw: true})
         );
     }
-    // protected async maxOneDel({type, where, maxToPrune, delRowsPerLoop}): Promise<any>{
-    //     const model = this.getModel(type);
-    //     return model.findOne({where: lodash.defaults({...where}, { epoch:{[Op.lte]: maxToPrune.epoch}}),
-    //         offset: delRowsPerLoop - 1, limit: 1, raw: true});
-    // }
-    // protected nextCheckpoint({maxToPrune, maxToDel}): any{
-    //     const maxToDelEpoch = maxToDel !== null ? maxToDel.epoch : maxToPrune.epoch;
-    //     return {position: maxToDelEpoch};
-    // }
-    // protected adjustPruneQuery({type, where, maxToDel}): { where: any } {
-    //     return {where};
-    // }
 
     public async prune(
         {
@@ -66,19 +54,15 @@ export abstract class PruneBase {
         let delDelta = 0;
         let maxLoop = 10;
         do{
-            // const maxToDel = await this.maxOneDel({type, where, maxToPrune, delRowsPerLoop});
-            // const checkpoint = this.nextCheckpoint({maxToPrune, maxToDel});
-            // const {where: pruneWhere} = await this.adjustPruneQuery({type, where, maxToDel});
-            // const pruneResult = await this.doPrune({type, where: pruneWhere, key, checkpoint});
             const checkpoint = { position: maxToPrune.epoch };
-            const pruneResult = await this.doPrune({type, where, key, checkpoint});
+            const pruneResult = await this.doPrune({type, where, key, checkpoint, delRowsPerLoop});
             // console.log(`prune_pruneRlt[type=${type}],result:${JSON.stringify(pruneResult)}`);
             delDelta = pruneResult.delDelta;
             maxLoop--;
         } while (delDelta>0 && maxLoop>0)
     }
 
-    private async doPrune({type, where, key, checkpoint, delRowsPerLoop = PruneBase.DEL_ROWS_PER_LOOP}): Promise<any>{
+    private async doPrune({type, where, key, checkpoint, delRowsPerLoop}): Promise<any>{
         const model = this.getModel(type);
         let delDelta = 0;
         let delCntr = 0;
