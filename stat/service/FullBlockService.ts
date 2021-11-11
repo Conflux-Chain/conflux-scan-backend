@@ -603,17 +603,27 @@ export class FullBlockService {
     }
 }
 /*
-SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
+SELECT TABLE_SCHEMA,TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
        FROM INFORMATION_SCHEMA.PARTITIONS
-       WHERE PARTITION_NAME is not null;
+       WHERE PARTITION_NAME is not null and PARTITION_METHOD <> 'HASH' and TABLE_ROWS=0;
+
+SELECT *
+       FROM INFORMATION_SCHEMA.PARTITIONS
+       WHERE PARTITION_NAME is not null and PARTITION_METHOD <> 'HASH' and TABLE_ROWS=0;
 
 ALTER TABLE full_block DROP PARTITION pm;
 alter table full_block add partition (partition p4 values less than (40000000));
 alter table full_block add partition (partition p5 values less than (50000000));
+alter table full_block add partition (partition p6 values less than (60000000));
+alter table full_block add partition (partition p7 values less than (70000000));
+alter table full_block add partition (partition p8 values less than (80000000));
 
 ALTER TABLE full_tx DROP PARTITION pm;
 alter table full_tx add partition (partition p4 values less than (40000000));
 alter table full_tx add partition (partition p5 values less than (50000000));
+alter table full_tx add partition (partition p6 values less than (60000000));
+alter table full_tx add partition (partition p7 values less than (70000000));
+alter table full_tx add partition (partition p8 values less than (80000000));
 
 alter table full_block add column `executedTxnCount` bigint unsigned null  default null;
 

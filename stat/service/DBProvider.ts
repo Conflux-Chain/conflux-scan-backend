@@ -98,7 +98,7 @@ import {
     PosAccountBlock,
     PosBlock,
     PosCommittee,
-    PosCommitteeNode,
+    PosCommitteeNode, PosDailyStat, PosEpochRewardHash,
     PosRegister, PosReward,
     PosTransaction
 } from "../model/PoS";
@@ -279,7 +279,9 @@ export async function initModel(sequelize) {
     PosCommitteeNode.register(sequelize)
     PosTransaction.register(sequelize)
     PosRegister.register(sequelize)
+    PosEpochRewardHash.register(sequelize)
     PosReward.register(sequelize)
+    PosDailyStat.register(sequelize)
 }
 
 export function createMySql(dbConf) {
