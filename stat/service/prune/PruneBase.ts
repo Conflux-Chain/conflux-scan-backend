@@ -1,6 +1,7 @@
 import {PruneType, PruneInfo} from "../../model/PruneInfo";
 import {Op} from "sequelize";
 import {StatApp} from "../../StatApp";
+import {sleep} from "../tool/ProcessTool"
 const lodash = require('lodash');
 
 export abstract class PruneBase {
@@ -59,6 +60,7 @@ export abstract class PruneBase {
             // console.log(`prune_pruneRlt[type=${type}],result:${JSON.stringify(pruneResult)}`);
             delDelta = pruneResult.delDelta;
             maxLoop--;
+            await sleep(10);
         } while (delDelta>0 && maxLoop>0)
     }
 
