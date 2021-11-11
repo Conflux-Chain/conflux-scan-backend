@@ -1,6 +1,6 @@
 // Sync pos things that happen on pow side.
 import {Conflux} from "js-conflux-sdk";
-import {IPosRegister, PosBlock, PosRegister} from "../../model/PoS";
+import {IPosRegister, PosAccount, PosBlock, PosRegister} from "../../model/PoS";
 import {abi as posAbi} from "../abi/PoSRegister";
 import {patchHttpProvider, removeLongData} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
@@ -10,6 +10,7 @@ export class PowSidePosSync {
     private cfx: Conflux;
     private posContract: any;
     private posContractAddr: string;
+    isPosRpc = true;
     constructor(cfx: Conflux) {
         this.cfx = cfx;
     }
@@ -21,21 +22,35 @@ export class PowSidePosSync {
     }
     // XADD POW_EPOCH_FOR_POS_Q * v1 '{"action":"pop", "epoch":0}'
     async listen() {
+        try {
+            await this.cfx.pos.getStatus()
+        } catch (e) {
+            if (e.message.includes('Method not found')) {
+                this.isPosRpc = false;
+                console.log(` not pos rpc, will drop all redis message.`)
+            } else {
+                console.log(` can not determine pos rpc.`)
+                process.exit(0)
+            }
+        }
         RedisWrap.listenStreamMessage(POW_EPOCH_FOR_POS_Q, (data)=>{
             return this.listenPowEpoch(data)
         }).then()
         console.log(` listen on queue : ${POW_EPOCH_FOR_POS_Q}`)
     }
     async listenPowEpoch(data:RedisStreamMessage[]) {
+        if (!this.isPosRpc) {
+            return RedisWrap.xDel(data)
+        }
         const list:any[] = data.map(msg=>msg.message)
         for (const msg of list) {
             if (msg.action === 'pop') {
                 await PosRegister.destroy({
                     where: {epoch: msg.epoch}
-                })
-                console.log(` PosRegister pop: ${msg.epoch} `)
+                });
+                console.log(` PosRegister pop: ${msg.epoch} `);
             } else {
-                await this.sync(msg.epoch)
+                await this.sync(msg.epoch);
             }
         }
         return RedisWrap.xDel(data)
@@ -45,13 +60,22 @@ export class PowSidePosSync {
             fromEpoch:epoch, toEpoch: epoch,
             address: this.posContractAddr,
         };
-        const logs = await this.cfx.getLogs(filter).catch(err=>{
+        const [logs, block] = await Promise.all([
+            this.cfx.getLogs(filter),
+            this.cfx.getBlockByEpochNumber(epoch, false)
+        ]).catch(err=> {
             if (err.message.includes('expected a numbers with less than largest epoch number')) {
                 return []
             }
-            throw err
+            throw err;
         })
-        console.log( `logs count ${logs.length}, epoch ${epoch}`)
+        if (logs === undefined) {
+            return;
+        }
+        if (epoch % 100 === 0) {
+            console.log(` sync pos register event, logs count ${logs.length}, pow epoch ${epoch}`);
+        }
+        const dt = new Date(block.timestamp * 1000)
         const registerArr:IPosRegister[] = []
         // const registerArr:IPosRegister[] = []
         for (const log of logs) {
@@ -72,6 +96,7 @@ export class PowSidePosSync {
                 bean.identifier = decoded.identifier
                 bean.blsPubKey = obj['blsPubKey'].toString('hex')
                 bean.vrfPubKey = obj['vrfPubKey'].toString('hex')
+                await PosAccount.make(decoded.identifier, dt)
                 // console.log(' decoded:', obj)
             } else if (log["topics"][0]?.startsWith('0xcacdde07b9b')) {//retire
                 // 0xe13f3e895baf53075eec116787300f2ebbf62420db8a58dede6aea2d084a71b7

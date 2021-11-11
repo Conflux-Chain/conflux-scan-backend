@@ -4,7 +4,6 @@ import {sleep} from "../service/tool/ProcessTool";
 export interface IPosBlock {
     epoch: number
     round: number
-    version: number
     height: number // it's block number.
     hash: string
     parentHash: string
@@ -12,6 +11,7 @@ export interface IPosBlock {
     minerId: number
     pivotDecision: number
     createdAt: Date
+    nextTxNumber:number
     transactionCount: number
     // signatures: []string
     signatureCount: number
@@ -19,7 +19,6 @@ export interface IPosBlock {
 export class PosBlock extends Model<IPosBlock> implements IPosBlock {
     epoch: number
     round: number
-    version: number
     height: number // it's block number.
     hash: string
     parentHash: string
@@ -27,13 +26,13 @@ export class PosBlock extends Model<IPosBlock> implements IPosBlock {
     minerId: number
     pivotDecision: number
     createdAt: Date
+    nextTxNumber:number
     transactionCount: number
     signatureCount: number
     static register(seq:Sequelize) {
         PosBlock.init({
             epoch: {type: DataTypes.BIGINT({unsigned: true})},
             round: {type: DataTypes.INTEGER, allowNull: true},
-            version: {type: DataTypes.INTEGER, allowNull: true},
             height: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, primaryKey: true},
             hash: {type: DataTypes.STRING(66), allowNull: false},
             parentHash: {type: DataTypes.STRING(4), allowNull: false},
@@ -42,6 +41,7 @@ export class PosBlock extends Model<IPosBlock> implements IPosBlock {
             pivotDecision: {type: DataTypes.INTEGER()},
             createdAt: {type: DataTypes.DATE()},
             transactionCount: {type: DataTypes.INTEGER({unsigned: true})},
+            nextTxNumber: {type: DataTypes.INTEGER({unsigned: true})},
             signatureCount: {type: DataTypes.INTEGER({unsigned: true})},
         }, {
             tableName: 'pos_block',
@@ -57,6 +57,13 @@ export interface IPosAccount {
     mineCount: number
     powBase32: string
     totalReward: number
+    availableVotes: number
+    lockedVotes: number
+    unlockedVotes: number
+    forfeitedVotes: number
+    forceRetiredVotes: number
+    createdAt?: Date
+    updatedAt?: Date
 }
 export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     id: number
@@ -65,27 +72,39 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     mineCount: number
     powBase32: string // not unique
     totalReward: number
+    availableVotes: number
+    lockedVotes: number
+    unlockedVotes: number
+    forfeitedVotes: number
+    forceRetiredVotes: number
+    createdAt?: Date
+    updatedAt?: Date
     static register(seq: Sequelize) {
         PosAccount.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
             hex: {type: DataTypes.STRING(66), unique: true},
-            signCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
-            mineCount: {type: DataTypes.BIGINT({unsigned: true}), defaultValue: 0},
+            signCount: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            mineCount: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
             powBase32: {type: DataTypes.STRING(128)},
-            totalReward: {type: DataTypes.DECIMAL(56, 0), defaultValue: 0},
+            totalReward: {type: DataTypes.DECIMAL(56, 0), allowNull:false, defaultValue: 0},
+            availableVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            unlockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            forfeitedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            forceRetiredVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
         }, {
             sequelize: seq,
             tableName: 'pos_account',
-            timestamps: false,
+            timestamps: true,
             indexes: [
                 {name: 'idx_pow_base32', fields:['powBase32'],},
-                {name: 'idx_pos_hex', fields:['hex'],}
+                //{name: 'idx_pos_hex', fields:['hex'], unique: true},// field has unique modifier.
             ]
         })
     }
     static lock = false
     static printLog = false
-    static async make(hex:string, createdFn = (id)=>{}) : Promise<number>{
+    static async make(hex:string, dt:Date, createdFn = (id)=>{}) : Promise<number>{
         // TODO use some cache.
         do {
             if (PosAccount.lock) {
@@ -104,7 +123,11 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             const newOne = await PosAccount.create({
                 id: next, signCount: 0, mineCount: 0,
                 powBase32: '',
-                hex, totalReward: 0,
+                hex, totalReward: 0, availableVotes: 0, forceRetiredVotes: 0,
+                forfeitedVotes: 0,
+                lockedVotes: 0,
+                unlockedVotes: 0,
+                createdAt: dt,
             }).catch(err=>{
                 return undefined
             })
@@ -117,15 +140,34 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
         } while (true)
     }
 }
+export interface IPosEpochRewardHash {
+    epoch:number
+    powDate:Date
+    powEpochHash:string
+}
+export class PosEpochRewardHash extends Model<IPosEpochRewardHash> implements IPosEpochRewardHash {
+    epoch:number
+    powEpochHash:string
+    powDate:Date
+    static register(seq: Sequelize) {
+        PosEpochRewardHash.init({
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
+            powEpochHash: {type: DataTypes.STRING(66)},
+            powDate: {type: DataTypes.DATE},
+        }, {
+            sequelize: seq, tableName: 'pos_epoch_reward_hash',
+        })
+    }
+}
 export interface IPosReward {
-    id:number
+    id?:number
     accountId:number
     epoch:number
     reward:number
     createdAt:Date
 }
 export class PosReward extends Model<IPosReward> implements IPosReward {
-    id:number
+    id?:number
     accountId:number
     epoch:number
     reward:number
@@ -151,20 +193,25 @@ export interface IPosAccountBlock {
     id: number
     accountId: number
     blockNumber: number
+    votes: number
 }
+// It's signed blocks by an account. not mined.
 export class PosAccountBlock extends Model<IPosAccountBlock> implements IPosAccountBlock {
     id: number
     accountId: number
     blockNumber: number
+    votes: number
     static register(seq: Sequelize) {
         PosAccountBlock.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true, autoIncrement: true},
             accountId: {type: DataTypes.BIGINT({unsigned: true})},
             blockNumber: {type: DataTypes.BIGINT({unsigned: true})},
+            votes: {type: DataTypes.BIGINT({unsigned: true})},
         }, {
             tableName: 'pos_account_block',
             indexes: [
-                {name: 'uk_acc_blk', fields: ['accountId', 'blockNumber'], unique: true}
+                {name: 'uk_acc_blk', fields: ['accountId', 'blockNumber'], unique: true},
+                {name: 'idx_blk', fields: ['blockNumber']},
             ],
             sequelize: seq,
             timestamps: false
@@ -226,7 +273,7 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
                 // {name: 'idx_epoch', fields:['epoch']},
                 //
                 {name: 'uk_status_change', unique: true, fields:['epoch','identifier','votePower','retire']},
-                {name: 'idx_powBase32', fields:['powBase32']}
+                {name: 'idx_powBase32', fields:['powBase32']},
             ]
         })
     }
@@ -238,6 +285,7 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
 export interface IPosTransaction {
     number: number, // it's pk.
     blockNumber: number,
+    hash: string
     fromId: number
     type: string
     status: string
@@ -246,6 +294,7 @@ export interface IPosTransaction {
 }
 export class PosTransaction extends Model<IPosTransaction> implements IPosTransaction {
     number: number // it's pk.
+    hash: string
     blockNumber: number
     fromId: number
     type: string
@@ -257,12 +306,16 @@ export class PosTransaction extends Model<IPosTransaction> implements IPosTransa
             blockNumber: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             fromId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             type: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
+            hash: {type: DataTypes.CHAR({length: 66}), allowNull: false, defaultValue: ''},
             status: {type: DataTypes.CHAR({length: 32}), allowNull: false, defaultValue: ''},
             createdAt: {type: DataTypes.DATE(), allowNull: false},
         }, {
             sequelize: seq,
             tableName: 'pos_tx',
             timestamps: false,
+            indexes: [
+                {name: 'idx_block', fields: ['blockNumber']}
+            ]
         })
     }
 }
@@ -327,10 +380,38 @@ export class PosCommitteeNode extends Model<IPosCommitteeNode> implements IPosCo
         })
     }
 }
-export interface PosAccount {
-    addressHex: string
-    addressId: number
-    status: number
-    startTime: Date // status start time
-    votePower: number
+//
+export interface IPosDailyStat {
+    id?:number
+    epoch:number
+    createdAt: Date
+    updatedAt: Date
+    stakingAmount: number
+    lockedVotes: number
+    statDay: Date
+}
+export class PosDailyStat extends Model<IPosDailyStat> implements IPosDailyStat{
+    id?:number
+    epoch:number
+    createdAt: Date
+    updatedAt: Date
+    stakingAmount: number
+    lockedVotes: number
+    statDay: Date
+    static register(seq:Sequelize) {
+        PosDailyStat.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            createdAt: {type: DataTypes.DATE, },
+            updatedAt: {type: DataTypes.DATE, },
+            stakingAmount: {type: DataTypes.DECIMAL(56,0), allowNull: false},
+            lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            statDay: {type: DataTypes.DATEONLY, },
+        },{
+            sequelize: seq, tableName: 'pos_daily_stat',
+            indexes: [
+                {name: 'uk_stat_day', fields: ['statDay']}
+            ]
+        })
+    }
 }
