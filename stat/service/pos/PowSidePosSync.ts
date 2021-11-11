@@ -10,6 +10,7 @@ export class PowSidePosSync {
     private cfx: Conflux;
     private posContract: any;
     private posContractAddr: string;
+    isPosRpc = true;
     constructor(cfx: Conflux) {
         this.cfx = cfx;
     }
@@ -21,21 +22,35 @@ export class PowSidePosSync {
     }
     // XADD POW_EPOCH_FOR_POS_Q * v1 '{"action":"pop", "epoch":0}'
     async listen() {
+        try {
+            await this.cfx.pos.getStatus()
+        } catch (e) {
+            if (e.message.includes('Method not found')) {
+                this.isPosRpc = false;
+                console.log(` not pos rpc, will drop all redis message.`)
+            } else {
+                console.log(` can not determine pos rpc.`)
+                process.exit(0)
+            }
+        }
         RedisWrap.listenStreamMessage(POW_EPOCH_FOR_POS_Q, (data)=>{
             return this.listenPowEpoch(data)
         }).then()
         console.log(` listen on queue : ${POW_EPOCH_FOR_POS_Q}`)
     }
     async listenPowEpoch(data:RedisStreamMessage[]) {
+        if (!this.isPosRpc) {
+            return RedisWrap.xDel(data)
+        }
         const list:any[] = data.map(msg=>msg.message)
         for (const msg of list) {
             if (msg.action === 'pop') {
                 await PosRegister.destroy({
                     where: {epoch: msg.epoch}
-                })
-                console.log(` PosRegister pop: ${msg.epoch} `)
+                });
+                console.log(` PosRegister pop: ${msg.epoch} `);
             } else {
-                await this.sync(msg.epoch)
+                await this.sync(msg.epoch);
             }
         }
         return RedisWrap.xDel(data)
