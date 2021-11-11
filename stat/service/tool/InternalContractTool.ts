@@ -55,17 +55,6 @@ const internalContractArray = [
     },
 ];
 
-async function init() {
-    // load config
-    const config = loadConfig('Prod')
-    // init db
-    seq = createDB(config.database)
-    await seq.sync({})
-    await initModel(seq)
-    // init sdk
-    cfx = new Conflux({...config.conflux})
-}
-
 async function registerContract(contract) {
     const hex40id =  (await makeId(contract.address)).id;
     const base32 = format.address(contract.address, networkId);
