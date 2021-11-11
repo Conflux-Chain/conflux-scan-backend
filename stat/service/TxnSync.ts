@@ -39,7 +39,7 @@ export class TxnSync {
         }
         // cache end
         const maxTime:Date = await FullTransaction.max('createdAt');
-        if (maxTime == null) {
+        if (maxTime == null || typeof maxTime === 'number') {
             return Promise.resolve({
                 code: 500, message: 'Empty Data.'
             })
