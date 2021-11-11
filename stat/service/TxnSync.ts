@@ -3,12 +3,7 @@ import {Op, Sequelize, QueryTypes} from "sequelize";
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
 import {StatApp} from "../StatApp";
-import {makeId as makeAddrId} from "../model/HexMap";
-import {ContractInfo} from "../model/ContractInfo";
-import {batchFetchBlock, patchHttpProvider} from "./common/utils";
-import {sleep} from "./tool/ProcessTool";
 import {FullTransaction} from "../model/FullBlock";
-import {Epoch} from "../model/Epoch";
 const BigFixed = require('bigfixed');
 
 /**
@@ -38,12 +33,14 @@ export class TxnSync {
             return Promise.resolve(cacheV);
         }
         // cache end
-        const maxTime:Date = await FullTransaction.max('createdAt');
-        if (maxTime == null || typeof maxTime === 'number') {
+        const maxTx = await FullTransaction.findOne({order: [['epoch','desc']]})
+        if (maxTx == null) {
             return Promise.resolve({
                 code: 500, message: 'Empty Data.'
             })
         }
+        const maxEpoch = maxTx.epoch
+        const maxTime = maxTx.createdAt
         const endTime = maxTime;
         console.log(` end time is ${endTime}`, endTime)
         let beginTime: Date;
@@ -55,9 +52,8 @@ export class TxnSync {
                 code: 501, message: `${err}`
             })
         }
-        const[{epoch:maxEpoch},{epoch:minEpoch}] = await Promise.all([
-            Epoch.findOne({where: {timestamp:{[Op.gte]:endTime}}, order:[['timestamp','asc']], limit: 1}),
-            Epoch.findOne({where: {timestamp:{[Op.lte]:beginTime}}, order:[['timestamp','desc']], limit: 1}),
+        const[{epoch:minEpoch}] = await Promise.all([
+            FullTransaction.findOne({where: {createdAt:{[Op.gte]:beginTime}}, order:[['epoch','asc']], limit: 1}),
         ])
         let aggregate = action.startsWith("txn") ? "COUNT(*)" : `sum(dripValue)`;
         let group = action.endsWith('Send') ? '`fromId`' : '`toId`'
