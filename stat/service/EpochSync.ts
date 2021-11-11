@@ -48,8 +48,6 @@ export class EpochSync extends SyncBase{
 
         PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
-        // PruneNotifier.notifyTokenTransfer(eventLogInfo)
-        //     .catch(e => console.log(`epoch-sync.noticePruneTransfer, epoch:${epochNumber}`, e));
 
         return {
             parentHash: epoch.parentHash,
