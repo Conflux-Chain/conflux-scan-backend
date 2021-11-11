@@ -41,6 +41,7 @@ import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
 import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
+import {CFX_BILL_EPOCH, KV} from "../../model/KV";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
@@ -76,6 +77,7 @@ export class DummyNode {
         console.log(`network id ${networkId}`)
         const anyOne = await CfxBill.findOne({limit: 1})
         if (anyOne) {
+            console.log(`  db has record:`, anyOne.ownerId)
             return
         }
         async function make(hex:string, ban, pos) {
@@ -104,6 +106,8 @@ export class DummyNode {
             // cfxtest:aar8jzybzv0fhzreav49syxnzut8s0jt1a1pdeeuwb
             await make('0x1be45681ac6c53d5a40475f7526bac1fe7590fb8', 5000000000000000, 0)
         }
+        await KV.create({key: CFX_BILL_EPOCH, value: '0'})
+        console.log(` setup epoch 0, ok.`)
     }
     preFetchedTo = 0
     async fetchEpoch(epoch) {
@@ -342,10 +346,12 @@ export class DummyNode {
     async getEpochInDB() {
         console.log(`${new Date().toISOString()} begin find max epoch in db.`)
 
-        return CfxBill.findOne({order:[['epoch','desc']]}).then(bill=>{
-            const ret = bill === null ? -1 : bill.epoch
-            console.log(`${new Date().toISOString()} max epoch in db ${ret}`)
-            return ret
+        return KV.getNumber(CFX_BILL_EPOCH).then(res=>{
+            console.log(`  cfx bill epoch position in db :`, res)
+            if (isNaN(res)) {
+                throw new Error('Should setup epoch 0 automatically, or set it manually in DB.')
+            }
+            return res;
         })
     }
     async loop(epoch, auto=false) {
@@ -374,8 +380,13 @@ export class DummyNode {
             return this.computeBalance(bills, preBillMap, o=>o.ownerId).then(()=>{
                 return bills
             })
-        }).then(bills=>{
-            return CfxBill.bulkCreate(bills)
+        }).then(async bills=>{
+            return CfxBill.sequelize.transaction(async dbTx=>{
+                const arr = await CfxBill.bulkCreate(bills, {transaction: dbTx})
+                await KV.update({value: epoch.toString()}, {where:{key: CFX_BILL_EPOCH},
+                    transaction: dbTx})
+                return arr;
+            })
         }).then((bills)=> {
             if (!auto || epoch % 100 == 0) {
                 const now = Date.now()
@@ -467,6 +478,11 @@ export class DummyNode {
     }
 }
 if (require.main === module) {
+    main()
+    process.on('SIGINT', ()=>process.exit(0));
+    process.on('SIGTERM', ()=>process.exit(0));
+}
+function main() {
     //
     const args = process.argv.slice(2)
     const args0 = args[0]
