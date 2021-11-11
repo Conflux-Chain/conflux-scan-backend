@@ -492,6 +492,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             await nftCountAndIds(ctx)
         }
     });
+
+    router.get('/transfer/tps', async function (ctx) {
+        const tps = await statApp.transferTpsService.getTps();
+        ctx.body = {code: 0, data: {...tps}};
+    });
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {

@@ -13,6 +13,8 @@ export const ERC1155_TRANSFER_Q = 'ERC1155_TRANSFER_Q'
 export const CFX_TRANSFER_Q = 'CFX_TRANSFER_Q'
 export const POW_EPOCH_FOR_POS_Q = 'POW_EPOCH_FOR_POS_Q'
 
+export const TPS_TRANSFER_Q = 'TPS_TRANSFER_Q'
+
 export const HASH_CUSTODIAN_TOKEN = 'CUSTODIAN_TOKEN'
 
 export class RedisWrap{
