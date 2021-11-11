@@ -41,8 +41,8 @@ import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {patchFormat, patchHttpProvider} from "./service/common/utils";
 import {KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
+import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
-
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -79,6 +79,7 @@ export class StatApp{
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
+    public transferTpsService: TransferTpsService;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -160,6 +161,7 @@ export class StatApp{
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
+        this.transferTpsService = new TransferTpsService(this);
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
@@ -206,6 +208,9 @@ export class StatApp{
         }
         if (this.config.syncTokenSecurityAudit) {
             await this.tokenSecurityAuditSync.schedule();
+        }
+        if (this.config.syncTransferTps) {
+            await this.transferTpsService.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
