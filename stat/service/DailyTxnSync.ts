@@ -1,47 +1,51 @@
-import {TransactionDB} from "../model/Transaction";
 import {DailyTransaction, IDailyTransaction} from "../model/DailyTransaction";
 import {calBeginEndTime, getNextDelay, getYesterday} from "./tool/DateTool";
-import {fn, Op, Sequelize, Model} from 'sequelize'
-import {Erc20Transfer, T_ERC20_TRANSFER} from "../model/Erc20Transfer";
+import {fn, Op, Sequelize, Model, col} from 'sequelize'
+import {DailyTokenTxn, Erc20Transfer, T_ERC20_TRANSFER} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {Erc777Transfer, T_ERC777_TRANSFER} from "../model/Erc777Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
+import {FullTransaction} from "../model/FullBlock";
 
 const CONST = require('./common/constant');
 
 export class DailyTxnSync{
-    private sequelize: Sequelize;
 
-    constructor(sequelize: Sequelize) {
-        this.sequelize = sequelize;
+    constructor() {
     }
 
-    private async countDaily(day: Date): Promise<IDailyTransaction>{
+    public async countDaily(day: Date){
         const {beginTime, endTime} = calBeginEndTime(day);
-        const record = await DailyTransaction.findOne({where: {statDay: endTime}})
-        if(record) return Promise.resolve(record);
 
-        const txCount = await TransactionDB.count({
+        const stat:any = await FullTransaction.findOne({
+            attributes:[
+                [fn('sum',col('gas')), 'gasFee'],
+                [fn('count',col('*')), 'txCount'],
+            ],
             where: {
                 [Op.and]:[
-                    {blockTime: {
+                    {createdAt: {
                         [Op.gte]:beginTime
                     }},
-                    {blockTime: {
+                    {createdAt: {
                         [Op.lt]:endTime
-                    }}
+                    }},
+                    {status: 0}
                 ]
-            }
+            },
+            logging: console.log,
+            raw: true
         });
+        const {txCount, gasFee} = stat;
         const dailyTransaction = new DailyTransaction();
         dailyTransaction.statDay = endTime;
         dailyTransaction.txCount = txCount;
+        dailyTransaction.gasFee = gasFee || 0;
         const newRecord = await DailyTransaction.add(dailyTransaction);
         console.log('count daily_tx record:' + JSON.stringify(newRecord));
-        return Promise.resolve(newRecord);
     }
 
     public async countHistory(startDay?: Date, endDay?: Date){
@@ -61,8 +65,8 @@ export class DailyTxnSync{
             await that.countDaily(getYesterday(now)).catch(err=>{
                 console.log(`count daily_tx fail: `, err);
             });
-            const delay = getNextDelay(now, 1, 10);
-            console.log(`schedule daily_tx service in delay ${delay/1000}s.`);
+            const delay = 3600_000 ;
+            console.log(`schedule daily_tx service in delay 1 hour.`);
             setTimeout(repeat, delay);
         }
         repeat().then();
@@ -83,14 +87,25 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     }
     console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
 }
-export async  function countRecentTokenTransfer(days:number) {
-    const options = {where:{createdAt:{[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}}}
-    return Promise.all([
-        Erc20Transfer.count(options),
-        Erc721Transfer.count(options),
-        Erc777Transfer.count(options),
-        Erc1155Transfer.count(options),
-    ]).then(arr=>arr.reduce((a,b)=>a+b))
+export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount, userCount}> {
+    const sum = await DailyTokenTxn.findOne({
+        attributes: [
+            [fn('sum', col('txnCount')),'txnCount'],
+            [fn('sum', col('userCount')),'userCount'],
+        ],
+        where: {
+            day: {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)},
+            type: {[Op.in]:['_ALL_4','ERC1155','ERC721','ERC20']},
+            },
+        logging: msg=>console.log(` countRecentTokenTransfer: ${msg}`),
+    })
+    return sum;
+    // return Promise.all([
+    //     Erc20Transfer.count(options),
+    //     Erc721Transfer.count(options),
+    //     Erc777Transfer.count(options),
+    //     Erc1155Transfer.count(options),
+    // ]).then(arr=>arr.reduce((a,b)=>a+b))
 }
 export async  function countRecentTokenTransferAccount(days:number) {
     // const options = {where:{createdAt:{[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}}}

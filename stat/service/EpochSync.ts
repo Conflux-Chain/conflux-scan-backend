@@ -16,6 +16,7 @@ import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {PruneNotifier} from "./prune/PruneNotifier";
+import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
 const lodash = require('lodash');
 const zlib = require('zlib');
 const CONST = require('./common/constant');
@@ -26,6 +27,10 @@ const FIELDS_TOKEN = [...['hex40id', 'base32'], ...FIELDS_TOKEN_BASIC, ...FIELDS
 
 const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
 const FIELDS_CONTRACT = [...['hex40id', 'base32'], ...FIELDS_CONTRACT_REGISTER];
+
+const TOPIC0_TRANSFER_ERC20 = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const TOPIC0_TRANSFER_ERC1155_SINGLE = '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62';
+const TOPIC0_TRANSFER_ERC1155_BATCH = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb';
 
 export class EpochSync extends SyncBase{
     protected app;
@@ -123,6 +128,9 @@ export class EpochSync extends SyncBase{
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
             console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}, traceCreateDel:${traceCreateDel}`);
         });
+        RedisWrap.sendStreamMessage({epochNumber, action: 'pop'}, TPS_TRANSFER_Q).then().catch(
+            err => console.log(`epoch-sync.transfer-tps-pop epoch:${epochNumber} error:${err}`)
+        );
     }
 
     //---------------------- business method for epoch -----------------------
@@ -378,7 +386,16 @@ export class EpochSync extends SyncBase{
             }
             return [];
         });
-        return eventLogArray.map((v) => EpochSync.parseEventLog(v));
+
+        const eventLogStat = EpochSync.countEventLog(epochNumber, eventLogArray);
+        RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q).then().catch(
+            err => console.log(`epoch-sync.transfer-tps-push epoch:${epochNumber} error:${err}`)
+        );
+
+        return eventLogArray
+            .filter((v) => v.address !== 'CFX:TYPE.CONTRACT:ACAV5V98NP8T3M66UW7X61YER1JA1JM0DPZJ1ZYZXV'
+                && v.address !== '0x811dc7fe5B3CFCaB9c84bB3E5e846Dd00ba1561b')
+            .map((v) => EpochSync.parseEventLog(v));
     }
 
     private static parseEventLog(eventLog) {
@@ -386,6 +403,30 @@ export class EpochSync extends SyncBase{
         eventLog.address = format.hexAddress(eventLog.address);
         eventLog.transactionLogIndex = Number(eventLog.transactionLogIndex);
         return eventLog;
+    }
+
+    private static countEventLog(epochNumber, eventLogArray) {
+        let erc20Cntr = 0;
+        let erc721Cntr = 0;
+        let erc1155Cntr = 0;
+
+        eventLogArray.forEach(eventLog => {
+            const topic0 = eventLog.topics[0];
+            if(topic0 === TOPIC0_TRANSFER_ERC20){
+                if(eventLog.topics.length === 3){
+                    erc20Cntr++;
+                } else {
+                    erc721Cntr++;
+                }
+
+            }
+            if(topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE ||
+                topic0 === TOPIC0_TRANSFER_ERC1155_BATCH){
+                erc1155Cntr++;
+            }
+        });
+
+        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr};
     }
 
     // ------------------------------ trace create ------------------------------

@@ -1,7 +1,6 @@
 import {QueryTypes, Sequelize} from "sequelize";
 import {Address, AddressInfo, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
-import {TransactionDB} from "../model/Transaction";
 import {Block, PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV, Position} from "../model/KV";
@@ -100,7 +99,7 @@ import {
     PosAccountBlock,
     PosBlock,
     PosCommittee,
-    PosCommitteeNode,
+    PosCommitteeNode, PosDailyStat, PosEpochRewardHash,
     PosRegister, PosReward,
     PosTransaction
 } from "../model/PoS";
@@ -204,7 +203,6 @@ export async function initPartialModel(sequelize) {
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
-    TransactionDB.register(sequelize);
     Block.register(sequelize);
     MinerBlock.register(sequelize);
     TopBatchIndex.register(sequelize)
@@ -283,7 +281,9 @@ export async function initModel(sequelize) {
     PosCommitteeNode.register(sequelize)
     PosTransaction.register(sequelize)
     PosRegister.register(sequelize)
+    PosEpochRewardHash.register(sequelize)
     PosReward.register(sequelize)
+    PosDailyStat.register(sequelize)
 }
 
 export function createMySql(dbConf) {

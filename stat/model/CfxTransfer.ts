@@ -1,6 +1,5 @@
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
-import {TransactionDB} from "./Transaction";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {RedisWrap, TRANSFER_ADDRESS_Q} from "../service/RedisWrap";
@@ -602,20 +601,12 @@ export async function scheduleRollupDailyCfxTxn() {
 
 export async function sumRecentCfxTxn(days:number) : Promise<number> {
     return DailyCfxTxn.findAll({limit:days, order:[['day','desc']]})
-        .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b))
+        .then(arr=>arr.map(row=>row.txnCount).reduce((a,b)=>a+b, 0))
 }
 
-export async function sumRecentCfxAmount(days:number) : Promise<BigInt> {
-    // select sum(`value`) from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0');
-    // select createdAt ,`fromId`,`value`,txHashId from cfx_transfer where createdAt > addtime(now(), '-7 0:0:0') order by `value` desc limit 10;
-    // select sum(`value`) from tx where blockTime > addtime(now(), '-7 0:0:0') and status=0;
-    return TransactionDB.sum('value',{
-        where: {
-            'blockTime': {
-                [Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)
-            },
-            status: 0
-        },
-        // benchmark: true, logging: console.log
-    }).then(BigInt)
+export async function sumRecentCfxAmount(days:number) : Promise<any> {
+    return DailyCfxTxn.findAll({limit:days, order:[['day','desc']]})
+        .then(arr=>arr.map(row=>BigInt(row.amount)).reduce((a,b)=>{
+            return a+b;
+        }, BigInt(0)))
 }

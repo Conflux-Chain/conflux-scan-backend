@@ -311,4 +311,6 @@ async function run() {
 const args = process.argv.slice(2)
 if (require.main === module) {
     run().then()
+    process.on('SIGINT', ()=>process.exit(0));
+    process.on('SIGTERM', ()=>process.exit(0));
 }

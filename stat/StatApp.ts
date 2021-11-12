@@ -39,10 +39,12 @@ import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {PruneHandler} from "./service/prune/PruneHandler";
-import {patchHttpProvider} from "./service/common/utils";
+import {patchFormat, patchHttpProvider} from "./service/common/utils";
 import {KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
-
+import {TransferTpsService} from "./service/TransferTpsService";
+import {PowSidePosSync} from "./service/pos/PowSidePosSync";
+patchFormat();
 export class StatApp{
     public config: StatConfig;
     public sequelize: Sequelize;
@@ -79,6 +81,7 @@ export class StatApp{
     public nftCheckerService: NFTCheckerService;
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
     public pruneHandler: PruneHandler;
+    public transferTpsService: TransferTpsService;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -136,7 +139,7 @@ export class StatApp{
         this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)
         this.contractService.schedule()
         //
-        this.dailyTxnSync = new DailyTxnSync(this.sequelize);
+        this.dailyTxnSync = new DailyTxnSync();
         this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
@@ -161,14 +164,15 @@ export class StatApp{
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
         this.pruneHandler = new PruneHandler(this);
+        this.transferTpsService = new TransferTpsService(this);
+        const powSidePosSync = new PowSidePosSync(this.cfx);
+        powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
         if (this.config.syncBlock) {
             await this.blockAndMinerSync.checkPosition(); // miner block
             await this.blockAndMinerSync.schedule(this.config.syncBlockDelay)
         }
-        if (this.config.syncTxn) {
-            await this.txnSync.schedule(this.config.syncTxnDelay); // txn
-        }
+        this.txnSync.scheduleCache()
         if (this.config.syncTxnCountDaily) {
             await this.dailyTxnSync.schedule(); // dailyTxn
             scheduleDailyActiveAddress()
@@ -210,6 +214,9 @@ export class StatApp{
         }
         if (this.config.syncPrune) {
             await this.pruneHandler.schedule();
+        }
+        if (this.config.syncTransferTps) {
+            await this.transferTpsService.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
