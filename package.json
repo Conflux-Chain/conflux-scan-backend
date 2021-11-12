@@ -12,12 +12,13 @@
     "start:tools": "tsc-watch -b ./tools --onSuccess 'node ./stat/dist/test/Dev.js'"
   },
   "dependencies": {
+    "@conflux-dev/conflux-address-rust": "0.1.6",
     "@koa/cors": "^3.1.0",
     "@types/koa-bodyparser": "~4.3.0",
     "agentkeepalive": "^4.1.4",
     "ali-oss": "~6.16.0",
     "bigfixed": "0.0.2",
-    "js-conflux-sdk": "2.0.0-beta.3",
+    "js-conflux-sdk": "2.0.0-beta.7",
     "koa": "2.13.1",
     "koa-bodyparser": "^4.3.0",
     "koa-helmet": "6.0.0",
