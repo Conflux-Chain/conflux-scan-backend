@@ -62,8 +62,12 @@ export class PruneNotifier {
         const contractIdArray = [];
         const addressIdSet = new Set<number>();
         contractIdAndAddressSetMap.forEach((addrIdSet, contractId) => {
-            contractIdArray.push(contractId);
-            addrIdSet.forEach(addrId => addressIdSet.add(addrId));
+            if(contractId === 13870862){
+                contractIdArray.push(contractId);
+                addrIdSet.forEach(addrId => addressIdSet.add(addrId));
+            } else{
+                // NO-OP
+            }
         });
         const addressIdArray = [...addressIdSet];
 
@@ -81,7 +85,7 @@ export class PruneNotifier {
             msg[PruneType.ADDR_ERC1155_TRANSFER] = addressIdArray;
         }
         return PruneNotifier.notifyPrune(msg);
-        // console.log(`prune_notify[type=tokenTransfer],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
+        console.log(`prune_notify[type=tokenTransfer],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
     }
 
     private static async checkEnqueueAble() {

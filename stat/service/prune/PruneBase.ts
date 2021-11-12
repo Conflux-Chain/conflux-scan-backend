@@ -12,6 +12,10 @@ export abstract class PruneBase {
     protected TYPE_ADDR_TOKEN_TRANSFER = new Set([PruneType.ADDR_ERC20_TRANSFER, PruneType.ADDR_ERC721_TRANSFER,
         PruneType.ADDR_ERC1155_TRANSFER]);
 
+    protected metrics = {
+        total_ms : 0,
+    }
+
     protected app: StatApp;
     protected constructor(app: StatApp) {
         this.app = app;
@@ -42,6 +46,7 @@ export abstract class PruneBase {
                 pruneParas: any,
                 delRowsPerLoop?: number,
             }) {
+        let start = Date.now();
         if(!this.validateParas({type, pruneParas})){
             return;
         }
@@ -52,16 +57,24 @@ export abstract class PruneBase {
             return;
         }
 
+        let delTotal = 0;
         let delDelta = 0;
-        let maxLoop = 10;
+        let maxLoop = 100;
         do{
             const checkpoint = { position: maxToPrune.epoch };
             const pruneResult = await this.doPrune({type, where, key, checkpoint, delRowsPerLoop});
-            // console.log(`prune_pruneRlt[type=${type}],result:${JSON.stringify(pruneResult)}`);
             delDelta = pruneResult.delDelta;
+            delTotal += delDelta;
             maxLoop--;
             await sleep(10);
+            console.log(`prune_pruneRlt[type=${type}],delDelta:${JSON.stringify(delDelta)}`);
         } while (delDelta>0 && maxLoop>0)
+
+        let end = Date.now();
+        const elapsed = end - start;
+        this.metrics.total_ms += elapsed;
+        this.doMetric(type, delTotal, elapsed);
+        console.log(`prune_metrics[type=${type}],metrics:${JSON.stringify(this.metrics)}`);
     }
 
     private async doPrune({type, where, key, checkpoint, delRowsPerLoop}): Promise<any>{
@@ -77,7 +90,7 @@ export abstract class PruneBase {
                 transaction: dbTx
             });
             delCntr = pruneDb != null ? pruneDb.pruned : 0;
-            delDelta = await model.destory({
+            delDelta = await model.destroy({
                 where: lodash.defaults({...where}, {epoch:{[Op.lte]: checkpoint.position}}),
                 limit: delRowsPerLoop,
                 transaction: dbTx,
@@ -100,5 +113,12 @@ export abstract class PruneBase {
             });
         });
         return {delDelta, delCntr, prune, pruneDb};
+    }
+
+    private doMetric(type, delDelta, elapsedDelta){
+        const effectRows = this.metrics[type];
+        const elapsedTime = this.metrics[`${type}_ms`];
+        this.metrics[type] = effectRows === undefined ? delDelta : (effectRows + delDelta);
+        this.metrics[`${type}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
     }
 }

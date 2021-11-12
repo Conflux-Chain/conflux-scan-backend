@@ -66,7 +66,7 @@ export class PruneHandler {
 
                     queue.push(addressId);
                     marker.add(addressId);
-                    // console.log(`prune_enqueue[type=${type}],addressId:${addressId},queueLen:${queue.length}`);
+                    console.log(`prune_enqueue[type=${type}],addressId:${addressId},queueLen:${queue.length}`);
                 });
             });
         }
@@ -86,13 +86,13 @@ export class PruneHandler {
             const task = {type, keepRows, pruneParas};
 
             if(type === PruneType.BLOCK || type === PruneType.MINER_BLOCK){
-                await this.pruneBlock.prune(task);
+                // await this.pruneBlock.prune(task);
             } else if(type === PruneType.TX || type === PruneType.ADDR_TX){
-                await this.pruneTransaction.prune(task);
+                // await this.pruneTransaction.prune(task);
             } else {
                 await this.pruneTransfer.prune(task);
             }
-            // console.log(`prune_handle[type=${type}],task:${JSON.stringify(task)}`);
+            console.log(`prune_handle[type=${type}],task:${JSON.stringify(task)}`);
         }
     }
 
