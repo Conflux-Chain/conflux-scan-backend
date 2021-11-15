@@ -22,6 +22,7 @@ export class PosSync {
     private position: number;
     private latestBlockNumber: 0;
     private posContract: any;
+    private dbLocked = false;
     constructor(cfx: Conflux) {
         this.cfx = cfx;
     }
@@ -93,6 +94,7 @@ export class PosSync {
                 return `block height ${blk.height} epoch ${blk.epoch} hash ${blk.hash} \n parentHash ${blk.parentHash}`
             })).then(arr=>arr.join('\n'));
             console.log(` debug info :\n${infoDebug}`)
+            await this.waitLock();
             await PosBlock.sequelize.transaction(async (dbTx)=>{
                 return Promise.all([
                     preBlock.destroy({transaction: dbTx}),
@@ -101,6 +103,8 @@ export class PosSync {
                     this.diffSignCount(preAccountIds, -1, dbTx),
                     PosAccountBlock.destroy({where: {blockNumber: preBlock.height}, transaction: dbTx}),
                 ]);
+            }).finally(()=>{
+                this.dbLocked=false
             })
             this.position -= 2 // +1 at caller. re-syn previous block.
             await sleep(5_000)
@@ -143,6 +147,7 @@ export class PosSync {
             await sleep(30_000)
             return;
         }
+        await this.waitLock()
         await PosAccountBlock.sequelize.transaction(async tx=>{
             await Promise.all([
                 PosBlock.create(
@@ -161,6 +166,8 @@ export class PosSync {
                 // save tx
                 PosTransaction.bulkCreate(txArr, {transaction: tx}),
             ])
+        }).finally(()=>{
+            this.dbLocked = false;
         });
 
         // console.log(`pos sync block:`, blockDetail)
@@ -334,7 +341,10 @@ export class PosSync {
                 forceRetiredVotes: status.forceRetiredVotes || 0,
             }, {where: {hex: accInfo.address}})
         })
-        await Promise.all(updateTasks);
+        await this.waitLock()
+        await Promise.all(updateTasks).finally(()=>{
+            this.dbLocked = false;
+        });
         console.log(` update account votes, count ${updateTasks.length}`)
     }
     async updateAllAccountVotes() {
@@ -500,6 +510,7 @@ export class PosSync {
                 createdAt: powDate,
             }
         })
+        await this.waitLock()
         await PosReward.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
                 PosReward.bulkCreate(rewardBeans, {transaction: dbTx}),
@@ -515,8 +526,16 @@ export class PosSync {
                 PosEpochRewardHash.create({epoch, powEpochHash: rewardInfo.powEpochHash, powDate},
                     {transaction: dbTx})
             ])
+        }).finally(()=>{
+            this.dbLocked = false;
         })
         return 1 // indicate increase epoch by 1
+    }
+    async waitLock() {
+        while (this.dbLocked) {
+            await sleep(100)
+        }
+        this.dbLocked = true;
     }
     async test() {
         console.log(`===================== pos test ========`)
