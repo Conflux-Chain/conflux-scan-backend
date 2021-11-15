@@ -15,6 +15,7 @@ import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {PruneNotifier} from "./prune/PruneNotifier";
 import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -49,6 +50,10 @@ export class EpochSync extends SyncBase{
         const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
         const traceCreateArray = await  this.getTraceCreateArrayDB(epochNumber);
+
+        PruneNotifier.notifyBlock(minerBlockArray)
+            .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
+
         return {
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,

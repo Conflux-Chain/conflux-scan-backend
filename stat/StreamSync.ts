@@ -34,7 +34,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             if (!copies.length) {
                 return RedisWrap.xDel(data)
             }
-            sendAddressIds(copies).catch(err=>{
+            sendAddressIds(fullT, copies).catch(err=>{
                 console.log(`send address in transfer error:`, err)
             })
             if (fullT === Erc1155Transfer || fullT === Erc721Transfer) {
@@ -106,7 +106,7 @@ async function checkTotalSupply(model, copies:IErc20Transfer[]) {
         console.log(`\n update total supply ${sup}, db updated ${cnt} for ${token.symbol}`)
     }
 }
-async function sendAddressIds(arr:{fromId:number, toId:number, contractId:number}[]) {
+async function sendAddressIds(model, arr:{fromId:number, toId:number, contractId:number}[]) {
     const set = new Set<number>()
     // key: contract id, value: set of address id
     const addressAndContractIdMap = new Map<number,Set<number>>()
@@ -121,6 +121,8 @@ async function sendAddressIds(arr:{fromId:number, toId:number, contractId:number
         adSet.add(item.fromId)
         adSet.add(item.toId)
     })
+    PruneNotifier.notifyTokenTransfer(model, addressAndContractIdMap)
+        .catch(e => console.log(`stream-sync.noticePruneTransfer`, e));
     return RedisWrap.sendStreamMessage([...set], TRANSFER_ADDRESS_Q).then(()=>{
         handleTokenTransferWithContract(addressAndContractIdMap).then()
         updateTokenTransferCount(addressAndContractIdMap.keys()).then()
@@ -253,6 +255,7 @@ import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
 import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {StatApp} from "./StatApp";
+import {PruneNotifier} from "./service/prune/PruneNotifier";
 let config:StatConfig
 let nftService:NftService
 let zeroAddrId = 0
