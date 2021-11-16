@@ -11,6 +11,7 @@ let config:StatConfig;
 let cfx:Conflux;
 let type: number;
 let pruneHandler: PruneHandler;
+let loop: number;
 
 async function run() {
     config = await init();
@@ -27,10 +28,25 @@ async function run() {
     }
     if(type === 2){
         const message = {
-            [PruneType.ERC20_TRANSFER]: [13870862],
-            [PruneType.ADDR_ERC20_TRANSFER]: [33162167],
+            [PruneType.ERC20_TRANSFER]: [
+                {
+                    pruneLoop: 30000, // optional
+                    delRowsPerLoop: 500, // optional
+                    sleepMsPerLoop: 20, // optional
+                    addressId: 13870862,
+                }
+            ],
+            // [PruneType.ADDR_ERC20_TRANSFER]: [
+            //     {
+            //         pruneLoop: 10000, // optional
+            //         delRowsPerLoop: 500, // optional
+            //         sleepMsPerLoop: 20, // optional
+            //         addressId: 33162167,
+            //     }
+            // ],
         };
         await PruneNotifier.notifyPrune(message);
+        console.log(`message------------message:${JSON.stringify(message)}`);
     }
 }
 

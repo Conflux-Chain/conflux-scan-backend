@@ -51,11 +51,11 @@ export class PruneHandler {
         for (const item of data) {
             const {message} = item;
             Object.keys(message).forEach(type => {
-                const addressIdArray = message[type];
+                const pruneInfoArray = message[type];
 
-                addressIdArray.forEach(addressId => {
+                pruneInfoArray.forEach(pruneInfo => {
                     const marker = this.CACHE_MARKER[type];
-                    if(marker.has(addressId)){
+                    if(marker.has(pruneInfo.addressId)){
                         return;
                     }
 
@@ -64,9 +64,9 @@ export class PruneHandler {
                         return;
                     }
 
-                    queue.push(addressId);
-                    marker.add(addressId);
-                    console.log(`prune_enqueue[type=${type}],addressId:${addressId},queueLen:${queue.length}`);
+                    queue.push(pruneInfo);
+                    marker.add(pruneInfo.addressId);
+                    console.log(`prune_enqueue[type=${type}],pruneInfo:${JSON.stringify(pruneInfo)},queueLen:${queue.length}`);
                 });
             });
         }
@@ -75,16 +75,17 @@ export class PruneHandler {
 
     private async handle(){
         for (const type of Object.keys(this.CACHE_POOL)) {
-            const addressId = this.CACHE_POOL[type].pop();
-            if (addressId === undefined) {
+            const pruneInfo = this.CACHE_POOL[type].shift();
+            if (pruneInfo?.addressId === undefined) {
                 continue;
             }
-            this.CACHE_MARKER[type].delete(addressId);
+            this.CACHE_MARKER[type].delete(pruneInfo.addressId);
 
             const keepRows = PruneHandler.getKeepRowsByType(type);
-            const pruneParas = PruneHandler.getPruneParas({type, addressId});
-            const task = {type, keepRows, pruneParas};
+            const pruneParas = PruneHandler.getPruneParas({type, addressId: pruneInfo.addressId});
+            const task = {type, keepRows, pruneParas, ...pruneInfo};
 
+            console.log(`prune_handle[type=${type}],task:${JSON.stringify(task)}`);
             if(type === PruneType.BLOCK || type === PruneType.MINER_BLOCK){
                 // await this.pruneBlock.prune(task);
             } else if(type === PruneType.TX || type === PruneType.ADDR_TX){
@@ -92,7 +93,6 @@ export class PruneHandler {
             } else {
                 await this.pruneTransfer.prune(task);
             }
-            console.log(`prune_handle[type=${type}],task:${JSON.stringify(task)}`);
         }
     }
 

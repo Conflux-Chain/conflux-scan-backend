@@ -11,8 +11,10 @@ import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressCfxTransfer, CfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
+import {PruneInfo, PruneType} from "./model/PruneInfo";
 import {UniqueConstraintError} from "sequelize"
 import {format} from 'js-conflux-sdk'
+const CONST = require('./service/common/constant');
 
 async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
     // console.log(`handleTokenTransfer `, data.length)
@@ -177,14 +179,31 @@ async function updateTransferCountReal(t: Token) {
     }
     table.count({
         where: {contractId: t.hex40id}
-    }).then(cnt=>{
-        return Token.update({transfer: cnt}, {
+    }).then(async cnt=>{
+        const prunedRows = await getPrunedRowsByToken({type: t.type, hex40id: t.hex40id});
+        return Token.update({transfer: cnt + prunedRows}, {
             where: {id: t.id}
         })
     }).then(()=>{
         console.log(` update transfer count of token ${t.base32}`)
     })
 }
+
+async function getPrunedRowsByToken({type, hex40id}) {
+    let pruneType;
+    if(type === CONST.TRANSFER_TYPE.ERC20){
+        pruneType = PruneType.ERC20_TRANSFER;
+    } else if (type === CONST.TRANSFER_TYPE.ERC721){
+        pruneType = PruneType.ERC721_TRANSFER;
+    } else if (type === CONST.TRANSFER_TYPE.ERC1155){
+        pruneType = PruneType.ERC1155_TRANSFER;
+    } else {
+        return 0;
+    }
+    const pruneInfo = await PruneInfo.findOne({where: {addressId: hex40id, type: pruneType}});
+    return pruneInfo !== null ? pruneInfo.pruned : 0;
+}
+
 // xlen ERC20_TRANSFER_Q
 //   XADD ERC20_TRANSFER_Q  * v1 '[{"contractId":16,"fromId":3,"toId":4,"txHashId":0,"value":1,"epoch":0, "createdAt":"2021-01-01 11:22:33", "updatedAt":"2021-01-01 11:22:33"}]'
 let logCount = 0
