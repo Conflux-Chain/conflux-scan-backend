@@ -43,7 +43,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/list-pos-block', async (ctx)=>{
         // const {identifier} = ctx.request.query
-        const {skip,limit} = skipLimit(ctx.request.query)
+        const {skip,limit} = skipLimitAny(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listBlock({skip, limit});
         ctx.body = {
             code: 0, total, list
