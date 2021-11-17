@@ -238,7 +238,7 @@ export class FullBlockService {
                     || tx.receipt.blockHash !== blk.hash) {
                     message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockHash
                     } \n tx hash ${tx.hash}\n receipt tx hash ${tx.receipt.transactionHash
-                    }\n receipt block hash ${tx.receipt.blockHash} \n tx epoch ${tx.epochNumber} != ${minEpochNumber}`
+                    }\n receipt block hash ${tx.receipt.blockHash} \n tx epoch ${tx.receipt.epochNumber} != ${minEpochNumber}`
                     console.log(message)
                     code = CODE_CONTINUE
                     break;
