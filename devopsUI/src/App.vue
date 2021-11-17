@@ -1,5 +1,8 @@
 <template>
   <div id="app">
+    <div>Host:
+      {{host}}
+    </div>
     <el-tabs :active-name="tb">
       <el-tab-pane label="ERC20" name="ERC20">
         <TokenList type="ERC20"></TokenList>
@@ -29,12 +32,14 @@ import PartitionList from "@/components/PartitionList";
 import TokenList from "@/components/TokenList";
 import PruneInfo from "@/components/PruneInfo";
 import HexId from "@/components/HexId";
+import {host, setHost} from "@/lib/lib"
 
 export default {
   name: 'app',
   data() {
     return {
-      tb: 'token'
+      tb: 'token',
+      host: host,
     }
   },
   components: {
@@ -43,6 +48,10 @@ export default {
     TokenList,
     PartitionList,
     // HelloWorld
+  },
+  mounted() {
+    //console.log(` env ${process.env}`, process.env)
+    //setHost(process.env.VUE_APP_HOST)
   }
 }
 </script>
