@@ -231,13 +231,14 @@ export class FullBlockService {
                     continue
                 }
                 // check consistency
-                if (minEpochNumber !== 0) {
+                if (minEpochNumber === 0) {
                 } else if (tx.blockHash !== blk.hash
+                    || tx.epochNumber != minEpochNumber
                     || tx.receipt.transactionHash !== tx.hash
                     || tx.receipt.blockHash !== blk.hash) {
                     message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockHash
                     } \n tx hash ${tx.hash}\n receipt tx hash ${tx.receipt.transactionHash
-                    }\n receipt block hash ${tx.receipt.blockHash}`
+                    }\n receipt block hash ${tx.receipt.blockHash} \n tx epoch ${tx.epochNumber} != ${minEpochNumber}`
                     console.log(message)
                     code = CODE_CONTINUE
                     break;
@@ -411,7 +412,6 @@ export class FullBlockService {
         }
         const failedBeans = failedTxArr
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
-        let fixDupError = false
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
@@ -450,28 +450,12 @@ export class FullBlockService {
                 metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
             }
         }).catch(err => {
-            ok = false;
-            if (err instanceof UniqueConstraintError) {
-                console.log(`Known issue, UniqueConstraintError error:`, err.message)
-                fixDupError = true
-            } else {
-                message = `${err}`
-                console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
-                throw err;
-            }
+            message = `${err}`
+            console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
+            throw err;
         });
         PruneNotifier.notifyTransaction(executedTxArr)
             .catch(e => console.log(`block-sync.noticePruneTx, epoch:${executedTxArr[0].epoch}`, e));
-        if (fixDupError) {
-            await Promise.all([txByAddressArr.map( async tx=>AddressTransactionIndex.destroy({
-                where: {addressId: tx.addressId, epoch: tx.epoch}}))]
-            ).then(()=>{
-                console.log(`fix dup error, ok. ${minEpochNumber}`)
-            }).catch(err=>{
-                console.log(`fix dup error fail , ${minEpochNumber} : `, err)
-            })
-            return {code: CODE_CONTINUE, message: `continue after fix UniqueConstraintError, ${minEpochNumber}.`}
-        }
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
