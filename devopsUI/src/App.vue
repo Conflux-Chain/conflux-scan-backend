@@ -32,7 +32,7 @@ import PartitionList from "@/components/PartitionList";
 import TokenList from "@/components/TokenList";
 import PruneInfo from "@/components/PruneInfo";
 import HexId from "@/components/HexId";
-import {host, setHost} from "@/lib/lib"
+import {host} from "@/lib/lib"
 
 export default {
   name: 'app',
