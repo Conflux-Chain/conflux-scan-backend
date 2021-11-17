@@ -1,4 +1,4 @@
-import {RedisWrap, PRUNE_Q, xLen} from "../RedisWrap";
+import {RedisWrap, PRUNE_Q} from "../RedisWrap";
 import {PruneType} from "../../model/PruneInfo";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
@@ -6,7 +6,7 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 
 export class PruneNotifier {
 
-    private static LEN_QUEUE_TOTAL = 10000;
+    public static SWITCH_SYNC_PRUNE = false;
 
     // message format:
     // {
@@ -14,7 +14,7 @@ export class PruneNotifier {
     //     [PruneType.ADDR_ERC20_TRANSFER]: [{pruneLoop,delRowsPerLoop,sleepMsPerLoop,addressId},],
     // }
     public static async notifyPrune(msg){
-        if(!(await PruneNotifier.checkEnqueueAble())) {
+        if(!PruneNotifier.filter(msg)) {
             return;
         }
         return RedisWrap.sendStreamMessage(msg, PRUNE_Q).then();
@@ -23,9 +23,10 @@ export class PruneNotifier {
     public static async notifyBlock(minerBlockArray){
         const minerIdSet = new Set<number>();
         minerBlockArray.forEach(block => minerIdSet.add(block.minerId));
+        const pruneInfoArray = [...minerIdSet].map(minerId => ({addressId: minerId}));
 
         const msg = {
-            [PruneType.MINER_BLOCK]: [...minerIdSet],
+            [PruneType.MINER_BLOCK]: pruneInfoArray,
         };
         // console.log(`prune_notify[type=block],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
         return PruneNotifier.notifyPrune(msg);
@@ -37,9 +38,10 @@ export class PruneNotifier {
             if(transaction.fromId !== 0) addressIdSet.add(transaction.fromId);
             if(transaction.toId !== 0) addressIdSet.add(transaction.toId);
         });
+        const pruneInfoArray = [...addressIdSet].map(addressId => ({addressId}));
 
         const msg = {
-            [PruneType.ADDR_TX]: [...addressIdSet],
+            [PruneType.ADDR_TX]: pruneInfoArray,
         };
         // console.log(`prune_notify[type=tx],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
         return PruneNotifier.notifyPrune(msg);
@@ -50,9 +52,10 @@ export class PruneNotifier {
         addressCfxTransferArray.forEach(cfxTransfer => {
             if(cfxTransfer.addressId !== 0) addressIdSet.add(cfxTransfer.addressId);
         });
+        const pruneInfoArray = [...addressIdSet].map(addressId => ({addressId}));
 
         const msg = {
-            [PruneType.ADDR_CFX_TRANSFER]: [...addressIdSet],
+            [PruneType.ADDR_CFX_TRANSFER]: pruneInfoArray,
         };
         // console.log(`prune_notify[type=cfxTransfer],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
         return PruneNotifier.notifyPrune(msg);
@@ -62,35 +65,48 @@ export class PruneNotifier {
         const contractIdArray = [];
         const addressIdSet = new Set<number>();
         contractIdAndAddressSetMap.forEach((addrIdSet, contractId) => {
-            if(contractId === 13870862){
-                contractIdArray.push(contractId);
-                addrIdSet.forEach(addrId => addressIdSet.add(addrId));
-            } else{
-                // NO-OP
-            }
+            contractIdArray.push(contractId);
+            addrIdSet.forEach(addrId => addressIdSet.add(addrId));
         });
         const addressIdArray = [...addressIdSet];
 
+        const tokenPruneInfoArray = contractIdArray.map(contractId => ({addressId: contractId}));
+        const addressPruneInfoArray = addressIdArray.map(addressId => ({addressId}));
+
         const msg = {};
         if(model === Erc20Transfer){
-            msg[PruneType.ERC20_TRANSFER] = contractIdArray;
-            msg[PruneType.ADDR_ERC20_TRANSFER] = addressIdArray;
+            msg[PruneType.ERC20_TRANSFER] = tokenPruneInfoArray;
+            msg[PruneType.ADDR_ERC20_TRANSFER] = addressPruneInfoArray;
         } else if(model === Erc721Transfer){
-            msg[PruneType.ERC721_TRANSFER] = contractIdArray;
-            msg[PruneType.ADDR_ERC721_TRANSFER] = addressIdArray;
+            msg[PruneType.ERC721_TRANSFER] = tokenPruneInfoArray;
+            msg[PruneType.ADDR_ERC721_TRANSFER] = addressPruneInfoArray;
         } else if(model === Erc1155Transfer){
-            msg[PruneType.ERC1155_TRANSFER] = contractIdArray;
-            msg[PruneType.ADDR_ERC1155_TRANSFER] = addressIdArray;
+            msg[PruneType.ERC1155_TRANSFER] = tokenPruneInfoArray;
+            msg[PruneType.ADDR_ERC1155_TRANSFER] = addressPruneInfoArray;
         } else {
             return;
         }
-
         // console.log(`prune_notify[type=tokenTransfer],queueLen:${await xLen(PRUNE_Q)},msg:${JSON.stringify(msg)}`);
         return PruneNotifier.notifyPrune(msg);
     }
 
-    private static async checkEnqueueAble() {
-        const len = await xLen(PRUNE_Q);
-        return len <= PruneNotifier.LEN_QUEUE_TOTAL;
+    private static filter(msg) {
+        let isFiltered = false;
+
+        if (!PruneNotifier.SWITCH_SYNC_PRUNE) {
+            return isFiltered;
+        }
+
+        // just prune token transfer
+        if(msg[PruneType.ERC20_TRANSFER] || msg[PruneType.ADDR_ERC20_TRANSFER]
+            || msg[PruneType.ERC721_TRANSFER] || msg[PruneType.ADDR_ERC721_TRANSFER]
+            || msg[PruneType.ERC1155_TRANSFER] || msg[PruneType.ADDR_ERC1155_TRANSFER]){
+            isFiltered = true;
+        }
+        delete msg[PruneType.MINER_BLOCK];
+        delete msg[PruneType.ADDR_TX];
+        delete msg[PruneType.ADDR_CFX_TRANSFER];
+
+        return isFiltered;
     }
 }

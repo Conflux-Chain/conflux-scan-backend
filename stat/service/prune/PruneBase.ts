@@ -5,7 +5,8 @@ import {sleep} from "../tool/ProcessTool"
 const lodash = require('lodash');
 
 export abstract class PruneBase {
-    public static PRUNE_LOOP = 10000;
+    public static KEEP_ROWS = 20_000;
+    public static PRUNE_LOOP = 10_000;
     public static DEL_ROWS_PER_LOOP = 500;
     public static SLEEP_MS_PER_LOOP = 20;
 
@@ -23,7 +24,6 @@ export abstract class PruneBase {
         this.app = app;
     }
 
-    protected abstract validateParas({type, pruneParas}): boolean;
     protected abstract getModel(type: {type: string}): any;
     protected abstract buildBaseQuery({type, pruneParas}): {where: any, key: any};
 
@@ -35,28 +35,27 @@ export abstract class PruneBase {
         );
     }
 
-    public async prune(
-        {
-            type,
-            keepRows,
-            pruneParas,
+    public async needPrune({type, pruneInfo}): Promise<boolean>{
+        const {addressId} = pruneInfo;
+        const keepRows = PruneBase.getKeepRowsByType(type);
+        const pruneParas = PruneBase.getPruneParas({type, addressId});
+
+        const {where} = this.buildBaseQuery({type, pruneParas});
+        const maxToPrune = await this.maxOnePrune({type, where, keepRows});
+        return maxToPrune !== null ? true : false;
+    }
+
+    public async prune({type, pruneInfo}) {
+        const {
             pruneLoop = PruneBase.PRUNE_LOOP,
             delRowsPerLoop = PruneBase.DEL_ROWS_PER_LOOP,
             sleepMsPerLoop = PruneBase.SLEEP_MS_PER_LOOP,
-        }:
-            {
-                type: string,
-                keepRows: number,
-                pruneParas: any,
-                pruneLoop?:number,
-                delRowsPerLoop?: number,
-                sleepMsPerLoop?: number,
-            }) {
-        let start = Date.now();
-        if(!this.validateParas({type, pruneParas})){
-            return;
-        }
+            addressId,
+        } = pruneInfo;
+        const keepRows = PruneBase.getKeepRowsByType(type);
+        const pruneParas = PruneBase.getPruneParas({type, addressId});
 
+        let start = Date.now();
         const {where, key} = this.buildBaseQuery({type, pruneParas});
         const maxToPrune = await this.maxOnePrune({type, where, keepRows});
         if(maxToPrune === null){
@@ -64,6 +63,7 @@ export abstract class PruneBase {
         }
 
         const unlimitedLoop = pruneLoop === 0;
+        let loop = pruneLoop;
         let delTotal = 0;
         let delDelta = 0;
         do{
@@ -71,18 +71,18 @@ export abstract class PruneBase {
             const pruneResult = await this.doPrune({type, where, key, checkpoint, delRowsPerLoop});
             delDelta = pruneResult.delDelta;
             delTotal += delDelta;
-            pruneLoop--;
+            loop--;
             await sleep(sleepMsPerLoop);
             if (delTotal % 10000 === 0) {
-                console.log(`prune_pruneRlt[type=${type}][addressId=${key.id}],delTotal:${delTotal},time:${new Date()}`);
+                console.log(`prune_pruneRlt[type=${type}][addressId=${addressId}],delTotal:${delTotal},time:${new Date()}`);
             }
-        } while (delDelta>0 && (unlimitedLoop || pruneLoop>0))
+        } while (delDelta>0 && (unlimitedLoop || loop>0))
 
         let end = Date.now();
         const elapsed = end - start;
         this.metrics.total_ms += elapsed;
         this.doMetric(type, delTotal, elapsed);
-        console.log(`prune_metrics[type=${type}],metrics:${JSON.stringify(this.metrics)}`);
+        console.log(`prune_metrics[type=${type}][addressId=${addressId}],metrics:${JSON.stringify(this.metrics)}`);
     }
 
     private async doPrune({type, where, key, checkpoint, delRowsPerLoop}): Promise<any>{
@@ -128,5 +128,38 @@ export abstract class PruneBase {
         const elapsedTime = this.metrics[`${type}_ms`];
         this.metrics[type] = effectRows === undefined ? delDelta : (effectRows + delDelta);
         this.metrics[`${type}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
+    }
+
+    private static getKeepRowsByType(type): number{
+        let keepRows;
+        switch (type) {
+            case PruneType.BLOCK:
+            case PruneType.TX:
+            case PruneType.CFX_TRANSFER:
+            case PruneType.ERC20_TRANSFER:
+            case PruneType.ERC721_TRANSFER:
+            case PruneType.ERC1155_TRANSFER:
+                keepRows = PruneBase.KEEP_ROWS;
+                break;
+            case PruneType.MINER_BLOCK:
+            case PruneType.ADDR_TX:
+            case PruneType.ADDR_CFX_TRANSFER:
+            case PruneType.ADDR_ERC20_TRANSFER:
+            case PruneType.ADDR_ERC721_TRANSFER:
+            case PruneType.ADDR_ERC1155_TRANSFER:
+                keepRows = PruneBase.KEEP_ROWS;
+                break;
+            default:
+                throw new Error(`unknown prune type:${type}`);
+        }
+        return keepRows;
+    }
+
+    private static getPruneParas({type, addressId}): any{
+        const isTokenTransfer = type === PruneType.ERC20_TRANSFER
+            || type === PruneType.ERC721_TRANSFER
+            || type === PruneType.ERC1155_TRANSFER;
+        const contractId = isTokenTransfer ? addressId : undefined;
+        return {addressId, contractId};
     }
 }

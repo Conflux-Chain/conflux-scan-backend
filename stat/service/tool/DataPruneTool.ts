@@ -7,11 +7,12 @@ import {PruneHandler} from "../prune/PruneHandler";
 import {PruneNotifier} from "../prune/PruneNotifier";
 import {PruneInfo, PruneType} from "../../model/PruneInfo";
 import {Token} from "../../model/Token";
-import {Op} from "sequelize";
 import {TokenBalance} from "../../model/Balance";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {PruneBase} from "../prune/PruneBase";
+import {sleep} from "./ProcessTool";
 const CONST = require('../common/constant');
 
 let config:StatConfig;
@@ -39,7 +40,7 @@ async function getHolderIdArray({contractId}){
     return tokenBalanceList.map(tokenBalance => tokenBalance.addressId);
 }
 
-async function assemblePruneMessage({contractId, transferType}){
+async function buildPruneMessageByToken({contractId, transferType}){
     const pruneType = getPruneType({transferType, isAddressModule: false});
     const addressPruneType = getPruneType({transferType, isAddressModule: true});
     const holderIdArray = await getHolderIdArray({contractId});
@@ -170,7 +171,7 @@ async function run() {
         console.log(`holderIdArray------------${JSON.stringify(holderIdArray)}`)
     }
     if(type === 5){ // prune token transfer one by one
-        const messageArray = await assemblePruneMessage({contractId, transferType});
+        const messageArray = await buildPruneMessageByToken({contractId, transferType});
         let sent = 0;
         if(needSend===1) {
             for (const message of messageArray) {
@@ -180,32 +181,47 @@ async function run() {
         }
         console.log(`assemblePruneMessage------------message counter:${messageArray.length},sent:${sent}`)
     }
-    if(type === 6){ // prune token transfer batch
-        const tokenArray = await getTokenArray();
-        let cntr = 0;
-        let sent = 0;
-        for (const token of tokenArray) {
-            const pruneMessageArray = await assemblePruneMessage({contractId: token.hex40id, transferType: token.type});
-            cntr += pruneMessageArray.length;
-            if(needSend===1) {
-                for (const message of pruneMessageArray) {
-                    await PruneNotifier.notifyPrune(message);
-                    sent++;
-                }
-            }
-        }
-        console.log(`assemblePruneMessageBatch------------token counter:${tokenArray.length},message counter:${cntr},message sent:${sent}`)
-    }
-    if(type === 7){
+    if(type === 6){ // fix token's transfer
         const tokenArray = await getTokenArray();
         for (const t of tokenArray) {
             const prunedRows = await getPrunedRowsByToken({type: t.type, hex40id: t.hex40id});
-            if(prunedRows !== 0){
-                const storageRows = await getStorageRowsByToken({type: t.type, hex40id: t.hex40id});
+            const storageRows = await getStorageRowsByToken({type: t.type, hex40id: t.hex40id});
+            if(prunedRows > 0){
                 await Token.update({transfer: storageRows + prunedRows}, {where: {id: t.id}});
-                console.log(`updateTokenTransfer------------tokenId:${t.hex40id},storageRows:${storageRows},prunedRows:${prunedRows}`)
+                console.log(`updateTokenTransfer.update------------tokenId:${t.hex40id},storageRows:${storageRows},prunedRows:${prunedRows}`)
             }
         }
+        for (const t of tokenArray) {
+            const prunedRows = await getPrunedRowsByToken({type: t.type, hex40id: t.hex40id});
+            const storageRows = await getStorageRowsByToken({type: t.type, hex40id: t.hex40id});
+            if(storageRows > PruneBase.KEEP_ROWS){
+                console.log(`updateTokenTransfer.needPrune------------tokenId:${t.hex40id},storageRows:${storageRows},prunedRows:${prunedRows}`)
+            }
+        }
+    }
+    if(type === 7){ // prune token transfer batch
+        do{
+            const tokenArray = await getTokenArray();
+            let cntr = 0;
+            let sent = 0;
+            for (const token of tokenArray) {
+                const pruneMessageArray = await buildPruneMessageByToken({contractId: token.hex40id, transferType: token.type});
+                cntr += pruneMessageArray.length;
+                let cntrPerToken = pruneMessageArray.length;
+                let sentPerToken = 0;
+                if(needSend===1) {
+                    for (const message of pruneMessageArray) {
+                        await PruneNotifier.notifyPrune(message);
+                        sent++;
+                        sentPerToken++;
+                    }
+                    console.log(`assemblePruneMessageBatch------------token:${token.hex40id},message counter:${cntrPerToken},message sent:${sentPerToken}`)
+                    const sleepMsPerToken = cntr * 3;
+                    await sleep(sleepMsPerToken);
+                }
+            }
+            console.log(`assemblePruneMessageBatch------------token counter:${tokenArray.length},message counter:${cntr},message sent:${sent}`)
+        } while (true)
     }
 }
 
@@ -223,4 +239,5 @@ if(args[3]){
     needSend = Number(args[3]);
 }
 // console.log(`DataPruneTool------------type:${type},contractId:${contractId},transferType:${transferType}`);
+PruneNotifier.SWITCH_SYNC_PRUNE = true;
 run().then();

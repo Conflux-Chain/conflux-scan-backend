@@ -44,6 +44,7 @@ import {KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
+import {PruneNotifier} from "./service/prune/PruneNotifier";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -213,6 +214,7 @@ export class StatApp{
             await this.tokenSecurityAuditSync.schedule();
         }
         if (this.config.syncPrune) {
+            PruneNotifier.SWITCH_SYNC_PRUNE = this.config.syncPrune;
             await this.pruneHandler.schedule();
         }
         if (this.config.syncTransferTps) {

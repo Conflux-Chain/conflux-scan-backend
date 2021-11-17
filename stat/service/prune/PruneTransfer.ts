@@ -5,7 +5,6 @@ import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {AddressErc20Transfer, Erc20Transfer} from "../../model/Erc20Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
-const lodash = require('lodash');
 
 export class PruneTransfer extends PruneBase {
     protected app: StatApp;
@@ -13,19 +12,6 @@ export class PruneTransfer extends PruneBase {
     constructor(app: StatApp) {
         super(app);
         this.app = app;
-    }
-
-    public validateParas({type, pruneParas}): boolean {
-        const {addressId, contractId} = pruneParas;
-        if (!this.TYPE_TOKEN_TRANSFER.has(type) && !this.TYPE_ADDR_TOKEN_TRANSFER.has(type)
-            && PruneType.CFX_TRANSFER !== type && PruneType.ADDR_CFX_TRANSFER !== type)
-            return false;
-        if (this.TYPE_TOKEN_TRANSFER.has(type) && !contractId)
-            return false;
-        if ((this.TYPE_ADDR_TOKEN_TRANSFER.has(type) || PruneType.ADDR_CFX_TRANSFER === type)
-            && !addressId)
-            return false;
-        return true;
     }
 
     public getModel(type): any{
@@ -71,11 +57,4 @@ export class PruneTransfer extends PruneBase {
         }
         return {where: undefined, key: {id: 0, type}};
     }
-
-    // public adjustPruneQuery({type, where, maxToDel}): { where: any } {
-    //     if (this.TYPE_TOKEN_TRANSFER.has(type)) {
-    //         return {where: lodash.defaults({...where}, {id: maxToDel.id})};
-    //     }
-    //     return {where};
-    // }
 }
