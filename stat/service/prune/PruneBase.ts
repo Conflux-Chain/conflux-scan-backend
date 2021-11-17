@@ -74,7 +74,7 @@ export abstract class PruneBase {
             pruneLoop--;
             await sleep(sleepMsPerLoop);
             if (delTotal % 10000 === 0) {
-                console.log(`prune_pruneRlt[type=${type}],delTotal:${delTotal},time:${new Date()}`);
+                console.log(`prune_pruneRlt[type=${type}][addressId=${key.id}],delTotal:${delTotal},time:${new Date()}`);
             }
         } while (delDelta>0 && (unlimitedLoop || pruneLoop>0))
 

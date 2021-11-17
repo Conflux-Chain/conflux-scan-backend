@@ -11,7 +11,7 @@ export class PruneHandler {
     private pruneTransfer: PruneTransfer;
     private CACHE_POOL = {};
     private CACHE_MARKER = {};
-    private LEN_QUEUE_BIZ = 1000;
+    private LEN_QUEUE_BIZ = 10000;
 
     constructor(app: any) {
         this.app = app;
