@@ -226,14 +226,14 @@ export class FullBlockService {
             }
             for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
                 let tx = blk.transactions[txIdx];
-                tx.receipt = (receipts[idx]||[])[txIdx] || {}
-                if (tx.status === null || tx.status === undefined) {
+                tx.receipt = (receipts[idx]||[])[txIdx]
+                if (tx.status === null || tx.status === undefined || tx.receipt === undefined) {
                     continue
                 }
                 // check consistency
                 if (minEpochNumber === 0) {
                 } else if (tx.blockHash !== blk.hash
-                    || tx.epochNumber != minEpochNumber
+                    || tx.receipt.epochNumber != minEpochNumber
                     || tx.receipt.transactionHash !== tx.hash
                     || tx.receipt.blockHash !== blk.hash) {
                     message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockHash
