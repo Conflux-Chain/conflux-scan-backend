@@ -1,14 +1,13 @@
 <template>
   <div>
-    <el-form :inline="true">
-      <el-form-item label="input" @submit.prevent.native="()=>{}">
-        <el-input style="width: 300px" size="mini" v-model="input" @keypress.enter="fetchHexInfo"></el-input>
+    <el-form :inline="true" @submit.native.prevent>
+      <el-form-item label="input">
+        <el-input style="width: 300px" size="mini" v-model="input"></el-input>
+        <el-button @click="fetchHexInfo" size="mini" type="primary">Find</el-button>
       </el-form-item>
     </el-form>
-    <div>
-      <pre>
-        {{JSON.stringify(info, null, 4)}}
-      </pre>
+    <div style="">
+      <pre class="pre">{{JSON.stringify(info, null, 4)}}</pre>
     </div>
   </div>
 </template>
@@ -25,8 +24,7 @@ export default {
     }
   },
   methods:{
-    async fetchHexInfo(e) {
-      e.preventDefault()
+    async fetchHexInfo() {
       const info = await rpc(`/stat/devops/hexId?hexId=${this.input}`)
       this.info = info;
     }
@@ -35,5 +33,11 @@ export default {
 </script>
 
 <style scoped>
-
+.pre {
+  width: 50%;
+  margin: 8px;
+  padding: 8px;
+  text-align: left;
+  /*border: #2c3e50 1px solid;*/
+}
 </style>
