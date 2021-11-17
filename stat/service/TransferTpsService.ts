@@ -31,7 +31,7 @@ export class TransferTpsService {
 
     public async getTps(){
         const config = await KV.findOne({where: {key: KEY_TPS_TRANSFER}})
-        return JSON.parse(config?.value || '{}');
+        return config?.value ? JSON.parse(config?.value) : {tps: 0};
     }
 
     private async setTps(){
