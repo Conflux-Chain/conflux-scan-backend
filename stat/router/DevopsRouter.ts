@@ -26,6 +26,7 @@ import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
 import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
+import {PruneInfo} from "../model/PruneInfo";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -91,12 +92,16 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {xLen:{erc20, erc721, erc777, erc1155}}
     })
     router.get('/devops/db-partition',async (ctx) => {
-        const sql = `SELECT TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
+        const sql = `SELECT TABLE_SCHEMA,TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
        FROM INFORMATION_SCHEMA.PARTITIONS
-       WHERE PARTITION_NAME is not null;`
+       WHERE PARTITION_NAME is not null and TABLE_SCHEMA = '${statApp.config.databaseRW.instanceName}';`
         const list = await Hex40Map.sequelize.query(sql,{
             type: QueryTypes.SELECT
         })
+        ctx.body = {list}
+    })
+    router.get('/devops/prune-info', async(ctx)=>{
+        const list = await PruneInfo.findAll({order:[['pruned','desc']], limit: 1000})
         ctx.body = {list}
     })
     router.get('/devops/set-address-name',
