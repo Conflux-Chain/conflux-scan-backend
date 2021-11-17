@@ -2,7 +2,7 @@
   <div>
     <el-form :inline="true" @submit.native.prevent>
       <el-form-item label="input">
-        <el-input style="width: 300px" size="mini" v-model="input"></el-input>
+        <el-input style="width: 500px" size="mini" v-model="input"></el-input>
         <el-button @click="fetchHexInfo" size="mini" type="primary">Find</el-button>
       </el-form-item>
     </el-form>
