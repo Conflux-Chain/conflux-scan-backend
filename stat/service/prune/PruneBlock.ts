@@ -12,13 +12,6 @@ export class PruneBlock extends PruneBase {
         this.app = app;
     }
 
-    public validateParas({type, pruneParas}): boolean {
-        const {addressId, contractId} = pruneParas;
-        if (PruneType.BLOCK !== type && PruneType.MINER_BLOCK !== type) return false;
-        if (PruneType.MINER_BLOCK === type && !addressId) return false;
-        return true;
-    }
-
     public getModel(type): any{
         let model;
         switch (type) {

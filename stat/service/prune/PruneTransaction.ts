@@ -1,7 +1,7 @@
 import {PruneBase} from "./PruneBase";
 import {StatApp} from "../../StatApp";
 import {PruneType} from "../../model/PruneInfo";
-import {AddressTransactionIndex, FullBlock, FullTransaction} from "../../model/FullBlock";
+import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
 
 export class PruneTransaction extends PruneBase {
     protected app: StatApp;
@@ -9,13 +9,6 @@ export class PruneTransaction extends PruneBase {
     constructor(app: StatApp) {
         super(app);
         this.app = app;
-    }
-
-    public validateParas({type, pruneParas}): boolean {
-        const {addressId, contractId} = pruneParas;
-        if (PruneType.TX !== type && PruneType.ADDR_TX !== type) return false;
-        if (PruneType.ADDR_TX === type && !addressId) return false;
-        return true;
     }
 
     public getModel(type): any{
