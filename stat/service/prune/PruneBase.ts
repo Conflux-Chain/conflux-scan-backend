@@ -2,6 +2,10 @@ import {PruneType, PruneInfo} from "../../model/PruneInfo";
 import {Op} from "sequelize";
 import {StatApp} from "../../StatApp";
 import {sleep} from "../tool/ProcessTool"
+import {Erc20Transfer} from "../../model/Erc20Transfer";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {Token} from "../../model/Token";
 const lodash = require('lodash');
 
 export abstract class PruneBase {
@@ -42,7 +46,7 @@ export abstract class PruneBase {
 
         const {where} = this.buildBaseQuery({type, pruneParas});
         const maxToPrune = await this.maxOnePrune({type, where, keepRows});
-        return maxToPrune !== null ? true : false;
+        return maxToPrune !== null;
     }
 
     public async prune({type, pruneInfo}) {
@@ -77,6 +81,9 @@ export abstract class PruneBase {
                 console.log(`prune_pruneRlt[type=${type}][addressId=${addressId}],delTotal:${delTotal},time:${new Date()}`);
             }
         } while (delDelta>0 && (unlimitedLoop || loop>0))
+
+        // update token's transfer
+        await this.updateTransferCounter({type, addressId});
 
         let end = Date.now();
         const elapsed = end - start;
@@ -161,5 +168,34 @@ export abstract class PruneBase {
             || type === PruneType.ERC1155_TRANSFER;
         const contractId = isTokenTransfer ? addressId : undefined;
         return {addressId, contractId};
+    }
+
+    private async updateTransferCounter({type, addressId}){
+        if(this.TYPE_TOKEN_TRANSFER.has(type)){
+            const prunedRows = await PruneBase.getStorageRows({type, addressId});
+            if(prunedRows > 0){
+                const storageRows = await PruneBase.getPrunedRows({type, addressId});
+                await Token.update({transfer: storageRows + prunedRows}, {where: {hex40id: addressId}});
+            }
+        }
+    }
+
+    private static async getPrunedRows({type, addressId}) {
+        const prune = await PruneInfo.findOne({where: {addressId, type}});
+        return prune !== null ? prune.pruned : 0;
+    }
+
+    private static async getStorageRows({type, addressId}) {
+        let model;
+        if(type === PruneType.ERC20_TRANSFER){
+            model = Erc20Transfer;
+        } else if (type === PruneType.ERC721_TRANSFER){
+            model = Erc721Transfer;
+        } else if (type === PruneType.ERC1155_TRANSFER){
+            model = Erc1155Transfer;
+        } else {
+            return 0;
+        }
+        return model.count({where: {contractId: addressId}});
     }
 }
