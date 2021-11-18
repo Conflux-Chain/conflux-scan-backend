@@ -172,9 +172,9 @@ export abstract class PruneBase {
 
     private async updateTransferCounter({type, addressId}){
         if(this.TYPE_TOKEN_TRANSFER.has(type)){
-            const prunedRows = await PruneBase.getStorageRows({type, addressId});
+            const prunedRows = await PruneBase.getPrunedRows({type, addressId});
             if(prunedRows > 0){
-                const storageRows = await PruneBase.getPrunedRows({type, addressId});
+                const storageRows = await PruneBase.getStorageRows({type, addressId});
                 await Token.update({transfer: storageRows + prunedRows}, {where: {hex40id: addressId}});
             }
         }

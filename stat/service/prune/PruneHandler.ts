@@ -11,6 +11,7 @@ export class PruneHandler {
     private pruneTransfer: PruneTransfer;
     private CACHE_POOL = {};
     private CACHE_MARKER = {};
+    private CACHE_COUNTER = {};
     private LEN_QUEUE_BIZ = 10_000;
 
     constructor(app: any) {
@@ -40,6 +41,7 @@ export class PruneHandler {
         Object.values(PruneType).forEach(type => {
             this.CACHE_POOL[type] = [];
             this.CACHE_MARKER[type] = new Set();
+            this.CACHE_COUNTER[type] = {};
         });
     }
 
@@ -56,6 +58,16 @@ export class PruneHandler {
                 for (const pruneInfo of pruneInfoArray) {
                     const addressId = pruneInfo?.addressId;
                     if (addressId === undefined) {
+                        continue;
+                    }
+
+                    const counterMap = this.CACHE_COUNTER[type];
+                    if(counterMap[addressId] === undefined){
+                        counterMap[addressId] = 1;
+                    } else{
+                        counterMap[addressId] ++;
+                    }
+                    if(counterMap[addressId] % 1000 !== 0){
                         continue;
                     }
 
