@@ -70,6 +70,7 @@ export class PruneHandler {
                     if(counterMap[addressId] % 1000 !== 0){
                         continue;
                     }
+                    counterMap[addressId] = 0;
 
                     const marker = this.CACHE_MARKER[type];
                     if(marker.has(addressId)){
