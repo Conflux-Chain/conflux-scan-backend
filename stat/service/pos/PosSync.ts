@@ -199,7 +199,7 @@ export class PosSync {
             height: blockDetail.height,
             minerId: minerId,
             parentHash: blockDetail.parentHash?.substr(2, 4),
-            pivotDecision: blockDetail.pivotDecision,
+            pivotDecision: blockDetail.pivotDecision?.height,
             round: blockDetail.round,
             timestamp: blockDetail.timestamp,
             transactionCount: txCountByDiff,
