@@ -28,7 +28,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {identifier, orderBy, reverse} = ctx.request.query
         const {skip,limit} = skipLimit(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listPosAccountReward({identifier, skip, limit,
-            orderBy, order: Boolean(reverse) ? 'desc' : 'asc'});
+            orderBy: orderBy === 'createdAt' ? 'epoch' : orderBy, order: reverse === 'true' ? 'desc' : 'asc'});
         ctx.body = {
             code: 0, total, list, listLimit:10_000,
         }
@@ -62,7 +62,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {identifier,orderBy,reverse} = ctx.request.query
         const {skip,limit} = skipLimit(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier,
-            orderBy, order: reverse === 'true' ? 'desc':'asc'});
+            orderBy: orderBy === 'createdAt' ? 'epoch' : orderBy, order: reverse === 'true' ? 'desc':'asc'});
         ctx.body = {
             code: 0, total, list, listLimit:10_000,
         }
