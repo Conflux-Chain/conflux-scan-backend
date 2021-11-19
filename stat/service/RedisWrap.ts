@@ -79,7 +79,7 @@ export class RedisWrap{
         return redisWrap.sendCommand('XREAD', ['BLOCK', 10, 'STREAMS', q, preIdExclusive])
     }
 
-    static convertMessage(raw:[]) : RedisStreamMessage[] {
+    static convertMessage(raw:any[]) : RedisStreamMessage[] {
         const ret:RedisStreamMessage[] = []
         raw.forEach(stream=>{
             const streamName = stream[0]
@@ -111,11 +111,18 @@ export class RedisWrap{
         // console.log(`listen on queue ${q}, tick ${RedisWrap.tick}`)
         RedisWrap.readStreamMessage(q, posFrom).then(res=>{
             RedisWrap.tick ++
-            if (res) {
-                return cb(RedisWrap.convertMessage(res))
-            } else {
-                // console.log(`got nothing this round.`)
-            }
+            return new Promise(async r=>{
+                if (res) {
+                    for (const data of res) {
+                        // callee handles message one by one;
+                        await cb(RedisWrap.convertMessage([data]))
+                    }
+                    // return cb(RedisWrap.convertMessage(res))
+                } else {
+                    // console.log(`got nothing this round.`)
+                }
+                r(0)
+            })
         }).then(()=>{
             setTimeout(()=>{
                 RedisWrap.listenStreamMessage(q, cb, posFrom)
