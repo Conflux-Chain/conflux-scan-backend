@@ -62,7 +62,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {identifier,orderBy,reverse} = ctx.request.query
         const {skip,limit} = skipLimit(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier,
-            orderBy: orderBy === 'createdAt' ? 'epoch' : orderBy, order: reverse === 'true' ? 'desc':'asc'});
+            orderBy: orderBy === 'createdAt' ? 'blockNumber' : orderBy, order: reverse === 'true' ? 'desc':'asc'});
         ctx.body = {
             code: 0, total, list, listLimit:10_000,
         }
