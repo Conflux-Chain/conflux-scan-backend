@@ -179,7 +179,7 @@ export class PosQuery {
             PosBlock.findByPk(blockHeight, {attributes:['nextTxNumber']}),
         ])
         const minTxId = preBlock?.nextTxNumber || 1
-        const maxTxId = curBlock?.nextTxNumber || 0 // trick to empty list
+        const maxTxId = curBlock?.nextTxNumber - 1 || 0 // trick to empty list
         const page = await PosTransaction.findAndCountAll({
             attributes: {exclude: ['fromId']},
             where: {number: {[Op.between]:[minTxId, maxTxId]}}, raw: true, offset, limit,
