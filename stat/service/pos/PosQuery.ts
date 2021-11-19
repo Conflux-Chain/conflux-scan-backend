@@ -66,13 +66,13 @@ export class PosQuery {
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
         }
     }
-    async listPosAccountReward({skip, limit, identifier}) {
+    async listPosAccountReward({skip, limit, identifier, orderBy, order}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
         if (account === null) {
             return {rows:[], count: 0};
         }
         const {rows, count} = await PosReward.findAndCountAll({
-            where: {accountId: account.id}, order: [['epoch','desc']], limit, offset: skip, raw:true,
+            where: {accountId: account.id}, order: [[ orderBy || 'epoch',order]], limit, offset: skip, raw:true,
         });
         if (!rows.length) {
             return {rows, count}
@@ -220,7 +220,7 @@ export class PosQuery {
         })
         return page;
     }
-    async listAccountVoteHistory({skip:offset, limit, identifier}) {
+    async listAccountVoteHistory({skip:offset, limit, identifier, orderBy, order}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
         if (account === null) {
             return {rows:[], count: 0};
@@ -228,7 +228,7 @@ export class PosQuery {
         const {count, rows} = await PosAccountBlock.findAndCountAll({offset, limit, raw:true,
             attributes: ['blockNumber','votes'],
             where: {accountId: account.id},
-            order: [['blockNumber','desc']]
+            order: [[orderBy || 'blockNumber',order || 'desc']]
         })
         if (count) {
             const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)
