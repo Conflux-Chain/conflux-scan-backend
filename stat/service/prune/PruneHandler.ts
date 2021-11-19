@@ -3,6 +3,13 @@ import {PruneType} from "../../model/PruneInfo";
 import {PruneBlock} from "./PruneBlock";
 import {PruneTransaction} from "./PruneTransaction";
 import {PruneTransfer} from "./PruneTransfer";
+import {
+    KEY_PRUNE_LOOP,
+    KEY_PRUNE_DEL_ROWS_PER_LOOP,
+    KEY_PRUNE_SLEEP_MS_PER_LOOP,
+    KV
+} from "../../model/KV";
+import {PruneBase} from "./PruneBase";
 
 export class PruneHandler {
     private app: any;
@@ -20,6 +27,17 @@ export class PruneHandler {
         this.pruneTransaction = new PruneTransaction(app);
         this.pruneTransfer = new PruneTransfer(app);
         this.init();
+    }
+
+    public async scheduleRefreshConfig(delay = 1000) {
+        async function repeat() {
+            await PruneHandler.refreshConfig().catch(err=>{
+                console.log(`prune_refresh_conf fail: `, err);
+            });
+            setTimeout(repeat, delay);
+        }
+        repeat().then();
+        console.log(`schedule prune_refresh_conf service in 1s interval`);
     }
 
     public async schedule(delay = 10) {
@@ -45,6 +63,20 @@ export class PruneHandler {
         });
     }
 
+    private static async refreshConfig(){
+        const [loop, delRowsPerLoop, sleepMsPerLoop] = await Promise.all([
+            KV.getNumber(KEY_PRUNE_LOOP),
+            KV.getNumber(KEY_PRUNE_DEL_ROWS_PER_LOOP),
+            KV.getNumber(KEY_PRUNE_SLEEP_MS_PER_LOOP),
+        ]);
+
+        PruneBase.PRUNE_LOOP = loop !== null ? loop : PruneBase.PRUNE_LOOP;
+        PruneBase.DEL_ROWS_PER_LOOP = delRowsPerLoop !== null ?
+            (delRowsPerLoop > PruneBase.DEL_ROWS_MAX_PER_LOOP ? PruneBase.DEL_ROWS_MAX_PER_LOOP : delRowsPerLoop) :
+            PruneBase.DEL_ROWS_PER_LOOP;
+        PruneBase.SLEEP_MS_PER_LOOP = sleepMsPerLoop !== null ? sleepMsPerLoop : PruneBase.SLEEP_MS_PER_LOOP;
+    }
+
     private async listen() {
         return RedisWrap.listenStreamMessage(PRUNE_Q, (data) => this.enqueue(data));
     }
@@ -67,10 +99,10 @@ export class PruneHandler {
                     } else{
                         counterMap[addressId] ++;
                     }
-                    if(counterMap[addressId] % 1000 !== 0){
+                    if(counterMap[addressId] % 1 !== 0){
                         continue;
                     }
-                    counterMap[addressId] = 0;
+                    delete counterMap[addressId];
 
                     const marker = this.CACHE_MARKER[type];
                     if(marker.has(addressId)){
@@ -125,5 +157,20 @@ export class PruneHandler {
                 await this.pruneTransfer.prune(task);
             }
         }
+    }
+
+    public getDevMetrics(){
+        return {
+            cache: {
+                pool: this.CACHE_POOL,
+                marker: this.CACHE_MARKER,
+            },
+            prune: {
+                pruneLoop: PruneBase.PRUNE_LOOP,
+                delRowsPerLoop: PruneBase.DEL_ROWS_PER_LOOP,
+                sleepMsPerLoop: PruneBase.SLEEP_MS_PER_LOOP,
+            },
+            metrics: PruneBase.metrics,
+        };
     }
 }

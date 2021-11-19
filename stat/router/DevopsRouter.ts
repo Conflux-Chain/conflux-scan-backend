@@ -104,6 +104,9 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         const list = await PruneInfo.findAll({order:[['pruned','desc']], limit: 1000})
         ctx.body = {list}
     })
+    router.get('/devops/prune-metrics',async (ctx) => {
+        ctx.body = statApp.pruneHandler.getDevMetrics();
+    })
     router.get('/devops/set-address-name',
         checkLocal,
         async (ctx) => await setAddressInfo(ctx)

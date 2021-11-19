@@ -11,17 +11,17 @@ const lodash = require('lodash');
 export abstract class PruneBase {
     public static KEEP_ROWS = 20_000;
     public static PRUNE_LOOP = 10_000;
-    public static DEL_ROWS_PER_LOOP = 500;
     public static SLEEP_MS_PER_LOOP = 20;
+    public static DEL_ROWS_PER_LOOP = 500;
+    public static DEL_ROWS_MAX_PER_LOOP = 5_000;
+    public static metrics = {
+        total_ms : 0,
+    }
 
     protected TYPE_TOKEN_TRANSFER = new Set([PruneType.ERC20_TRANSFER, PruneType.ERC721_TRANSFER,
         PruneType.ERC1155_TRANSFER]);
     protected TYPE_ADDR_TOKEN_TRANSFER = new Set([PruneType.ADDR_ERC20_TRANSFER, PruneType.ADDR_ERC721_TRANSFER,
         PruneType.ADDR_ERC1155_TRANSFER]);
-
-    protected metrics = {
-        total_ms : 0,
-    }
 
     protected app: StatApp;
     protected constructor(app: StatApp) {
@@ -87,9 +87,9 @@ export abstract class PruneBase {
 
         let end = Date.now();
         const elapsed = end - start;
-        this.metrics.total_ms += elapsed;
-        this.doMetric(type, delTotal, elapsed);
-        console.log(`prune_metrics[type=${type}][addressId=${addressId}],metrics:${JSON.stringify(this.metrics)}`);
+        PruneBase.metrics.total_ms += elapsed;
+        PruneBase.doMetric(type, delTotal, elapsed);
+        console.log(`prune_metrics[type=${type}][addressId=${addressId}],metrics:${JSON.stringify(PruneBase.metrics)}`);
     }
 
     private async doPrune({type, where, key, checkpoint, delRowsPerLoop}): Promise<any>{
@@ -130,11 +130,11 @@ export abstract class PruneBase {
         return {delDelta, delCntr, prune, pruneDb};
     }
 
-    private doMetric(type, delDelta, elapsedDelta){
-        const effectRows = this.metrics[type];
-        const elapsedTime = this.metrics[`${type}_ms`];
-        this.metrics[type] = effectRows === undefined ? delDelta : (effectRows + delDelta);
-        this.metrics[`${type}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
+    private static doMetric(type, delDelta, elapsedDelta){
+        const effectRows = PruneBase.metrics[type];
+        const elapsedTime = PruneBase.metrics[`${type}_ms`];
+        PruneBase.metrics[type] = effectRows === undefined ? delDelta : (effectRows + delDelta);
+        PruneBase.metrics[`${type}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
     }
 
     private static getKeepRowsByType(type): number{
