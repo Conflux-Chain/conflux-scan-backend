@@ -75,8 +75,8 @@ export class RedisWrap{
     }
     static async readStreamMessage(q:string, preIdExclusive = 0) {
         // `xread block 0` will block the client, sending message is blocked too.
-        // So, only block for 10ms.
-        return redisWrap.sendCommand('XREAD', ['count', 1, 'BLOCK', 10, 'STREAMS', q, preIdExclusive])
+        // So, only block for 10ms. // 'count', 1, performance issues.
+        return redisWrap.sendCommand('XREAD', ['BLOCK', 10, 'STREAMS', q, preIdExclusive])
     }
 
     static convertMessage(raw:[]) : RedisStreamMessage[] {
