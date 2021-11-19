@@ -235,6 +235,7 @@ export class BlockAndMinerSync {
             this.skip1mTimes -= 1
             return;
         }
+        this.skip1mTimes = 60;
         // merge by time span, Block table.
         //
         const latest1m = await MinerBlock.findOne({where:{
@@ -263,7 +264,6 @@ export class BlockAndMinerSync {
         if (maxBlock.createAt.getTime() < maxTime.getTime()) {
             console.info(`rollup ${n} minute(s), block not ready, max is ${
                 maxBlock.createAt.toISOString()}, want ${maxTime.toISOString()}`)
-            this.skip1mTimes = 30;
             return;
         }
         const sumFn = getSumFunction();
