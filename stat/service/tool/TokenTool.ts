@@ -9,6 +9,7 @@ const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
 const lodash = require('lodash');
+const Web3 = require("web3");
 
 const NodeCache = require( "node-cache" );
 const dbCache = new NodeCache()
@@ -18,10 +19,12 @@ export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base3
 }
 export class TokenTool {
     protected cfx;
+    protected web3;
     contract;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.contract = cfx.Contract({abi});
+        this.web3 = new Web3();
     }
 
     async getToken(address, epochNumber = undefined): Promise<any> {
@@ -77,12 +80,45 @@ export class TokenTool {
         return undefined;
     }
 
+    decodeAnnouncePlus(eventLog) {
+        const { topics = [], data = '0x' } = eventLog;
+
+        if (topics[0] === this.contract.Announce.signature && topics.length === 3 && data.length > 2) {
+            const parameters = this.web3.eth.abi.decodeParameters(['bytes','bytes'], data);
+            return {
+                ...eventLog,
+                announcer: `0x${topics[1].slice(-40)}`,
+                keyHash: topics[2],
+                key: Buffer.from(parameters['0'].substr(2), 'hex'),
+                value: parameters['1'] ? Buffer.from(parameters['1'].substr(2), 'hex') : parameters['1'],
+            };
+        }
+
+        return undefined;
+    }
+
     decodeERC20Transfer(eventLog = {}) {
         try {
             const tuple = this.contract.Transfer.decodeLog(eventLog);
             return { ...eventLog, ...tuple.toObject() };
         } catch (e) {
             // pass
+        }
+
+        return undefined;
+    }
+
+    decodeERC20TransferPlus(eventLog = {}) {
+        // @ts-ignore
+        const { topics = [], data = '0x' } = eventLog;
+
+        if (topics[0] === this.contract.Transfer.signature && topics.length === 3 && data.length === 66) {
+            return {
+                ...eventLog,
+                from: `0x${topics[1].slice(-40)}`,
+                to: `0x${topics[2].slice(-40)}`,
+                value: BigInt(data),
+            };
         }
 
         return undefined;
@@ -131,6 +167,49 @@ export class TokenTool {
             return [{ ...eventLog, ...tuple.toObject(), batchIndex: 0 }];
         } catch (e) {
             // pass
+        }
+
+        return [];
+    }
+
+    decodeERC1155TransferArrayPlus(eventLog = {}) {
+        // @ts-ignore
+        const { topics = [], data = '0x' } = eventLog;
+
+        if (topics[0] === this.contract.TransferSingle.signature && topics.length === 4 && data.length === 130) {
+            const parameters = this.web3.eth.abi.decodeParameters(['uint256','uint256'], data);
+            return [{
+                ...eventLog,
+                operator: `0x${topics[1].slice(-40)}`,
+                from: `0x${topics[2].slice(-40)}`,
+                to: `0x${topics[3].slice(-40)}`,
+                tokenId: BigInt(parameters['0']),
+                value: BigInt(parameters['1']),
+                batchIndex: 0
+            }];
+        }
+
+        if (topics[0] === this.contract.TransferBatch.signature && topics.length === 4 && data.length > 2) {
+            const operator = `0x${topics[1].slice(-40)}`;
+            const from = `0x${topics[2].slice(-40)}`;
+            const to = `0x${topics[3].slice(-40)}`;
+            const parameters = this.web3.eth.abi.decodeParameters(['uint256[]','uint256[]'], data);
+            const tokenIdArray = parameters['0'];
+            const valueArray = parameters['1'];
+            return lodash.zip(tokenIdArray, valueArray)
+                .map(([tokenId, value], batchIndex) => {
+                    return {
+                        ...eventLog,
+                        operator,
+                        from,
+                        to,
+                        tokenIdArray,
+                        valueArray,
+                        tokenId: BigInt(tokenId),
+                        value: BigInt(value),
+                        batchIndex
+                    };
+                });
         }
 
         return [];
