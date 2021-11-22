@@ -90,7 +90,7 @@ export class TokenTool {
                 announcer: `0x${topics[1].slice(-40)}`,
                 keyHash: topics[2],
                 key: Buffer.from(parameters['0'].substr(2), 'hex'),
-                value: parameters['1'] ? Buffer.from(parameters['1'].substr(2), 'hex') : parameters['1'],
+                value: parameters['1'] ? Buffer.from(parameters['1'].substr(2), 'hex') : '',
             };
         }
 
