@@ -357,10 +357,10 @@ export class EpochSync extends SyncBase{
 
         for(const eventLog of eventLogArray) {
             const [transfer20, transfer721, transfer1155, announcement] = await Promise.all([
-                tokenTool.decodeERC20Transfer(eventLog),
+                tokenTool.decodeERC20TransferPlus(eventLog),
                 tokenTool.decodeERC721Transfer(eventLog),
-                tokenTool.decodeERC1155TransferArray(eventLog),
-                tokenTool.decodeAnnounce(eventLog),
+                tokenTool.decodeERC1155TransferArrayPlus(eventLog),
+                tokenTool.decodeAnnouncePlus(eventLog),
             ]);
             if(transfer20) {groupedLogs.transfer20Array.push(transfer20);}
             if(transfer721) {groupedLogs.transfer721Array.push(transfer721);}

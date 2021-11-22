@@ -6,6 +6,7 @@ import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Token} from "../../model/Token";
+import {KEY_PRUNE_CONFIG_SWITCH, KV} from "../../model/KV";
 const lodash = require('lodash');
 
 export abstract class PruneBase {
@@ -50,7 +51,7 @@ export abstract class PruneBase {
     }
 
     public async prune({type, pruneInfo}) {
-        const {
+        let {
             pruneLoop = PruneBase.PRUNE_LOOP,
             delRowsPerLoop = PruneBase.DEL_ROWS_PER_LOOP,
             sleepMsPerLoop = PruneBase.SLEEP_MS_PER_LOOP,
@@ -66,21 +67,27 @@ export abstract class PruneBase {
             return;
         }
 
-        const unlimitedLoop = pruneLoop === 0;
-        let loop = pruneLoop;
+        // const unlimitedLoop = pruneLoop === 0;
+        let countdownLoop = pruneLoop;
         let delTotal = 0;
         let delDelta = 0;
         do{
+            if(await KV.getSwitch(KEY_PRUNE_CONFIG_SWITCH)){
+                if(PruneBase.PRUNE_LOOP <= (pruneLoop - countdownLoop)) break;
+                delRowsPerLoop = PruneBase.DEL_ROWS_PER_LOOP;
+                sleepMsPerLoop = PruneBase.SLEEP_MS_PER_LOOP;
+            }
+
             const checkpoint = { position: maxToPrune.epoch };
             const pruneResult = await this.doPrune({type, where, key, checkpoint, delRowsPerLoop});
             delDelta = pruneResult.delDelta;
             delTotal += delDelta;
-            loop--;
+            countdownLoop--;
             await sleep(sleepMsPerLoop);
             if (delTotal % 10000 === 0) {
                 console.log(`prune_pruneRlt[type=${type}][addressId=${addressId}],delTotal:${delTotal},time:${new Date()}`);
             }
-        } while (delDelta>0 && (unlimitedLoop || loop>0))
+        } while (delDelta>0 && (pruneLoop === 0 || countdownLoop>0))
 
         // update token's transfer
         await this.updateTransferCounter({type, addressId});
