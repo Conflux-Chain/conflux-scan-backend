@@ -19,7 +19,15 @@ import {
 } from "../model/FullBlock";
 import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
-import {ERC1155_TRANSFER_Q, ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, ERC777_TRANSFER_Q, xLen} from "../service/RedisWrap";
+import {
+    CFX_TRANSFER_Q,
+    ERC1155_TRANSFER_Q,
+    ERC20_TRANSFER_Q,
+    ERC721_TRANSFER_Q,
+    ERC777_TRANSFER_Q, POW_EPOCH_FOR_POS_Q,
+    PRUNE_Q, TPS_TRANSFER_Q, TRANSFER_ADDRESS_Q,
+    xLen
+} from "../service/RedisWrap";
 import {TxnQuery} from "../service/TxnQuery";
 import {AddressErc20Transfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
@@ -83,13 +91,18 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         })
     })
     router.get('/devops/stream-queue-report', async (ctx)=>{
-        const [erc20, erc721, erc777, erc1155] = await Promise.all([
+        const [erc20, erc721, erc777, erc1155, prune, pow_epoch_for_pos, transfer_address, cfx_transfer, tps_transfer] = await Promise.all([
             xLen(ERC20_TRANSFER_Q),
             xLen(ERC721_TRANSFER_Q),
             xLen(ERC777_TRANSFER_Q),
             xLen(ERC1155_TRANSFER_Q),
+            xLen(PRUNE_Q),
+            xLen(POW_EPOCH_FOR_POS_Q),
+            xLen(TRANSFER_ADDRESS_Q),
+            xLen(CFX_TRANSFER_Q),
+            xLen(TPS_TRANSFER_Q),
         ])
-        ctx.body = {xLen:{erc20, erc721, erc777, erc1155}}
+        ctx.body = {xLen:{erc20, erc721, erc777, erc1155, prune, pow_epoch_for_pos, transfer_address, cfx_transfer, tps_transfer}}
     })
     router.get('/devops/db-partition',async (ctx) => {
         const sql = `SELECT TABLE_SCHEMA,TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
