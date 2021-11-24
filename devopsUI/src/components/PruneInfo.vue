@@ -6,7 +6,9 @@
       <el-table-column label="addressId" prop="addressId"></el-table-column>
       <el-table-column label="type" prop="type"></el-table-column>
       <el-table-column label="pruned" prop="pruned"
-                       :sort-orders="['descending', null]" sortable="custom"></el-table-column>
+                       :sort-orders="['descending', null]" sortable="custom">
+        <template slot-scope="d">{{d.row.pruned.toLocaleString()}}</template>
+      </el-table-column>
       <el-table-column label="epoch" prop="epoch"></el-table-column>
       <el-table-column label="updatedAt" prop="updatedAt"
                        :sort-orders="['descending', null]" sortable="custom" ></el-table-column>
