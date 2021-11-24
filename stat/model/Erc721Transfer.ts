@@ -123,10 +123,10 @@ export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Tra
             updatedAt: false,
             tableName: T_ERC721_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_contract_id',
-                    fields: ['contractId']
-                },
+                // {
+                //     name: 'idx_contract_id',
+                //     fields: ['contractId']
+                // },
                 {
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]

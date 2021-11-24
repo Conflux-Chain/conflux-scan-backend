@@ -125,10 +125,10 @@ export class Erc777Transfer extends Model<IErc777Transfer> implements IErc777Tra
             updatedAt: false,
             tableName: T_ERC777_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_contract_id',
-                    fields: ['contractId']
-                },
+                // {
+                //     name: 'idx_contract_id',
+                //     fields: ['contractId']
+                // },
                 {
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]

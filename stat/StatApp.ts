@@ -216,7 +216,7 @@ export class StatApp{
         if (this.config.syncPrune) {
             PruneNotifier.SWITCH_SYNC_PRUNE = this.config.syncPrune;
             await this.pruneHandler.scheduleRefreshConfig();
-            await this.pruneHandler.schedule();
+            // await this.pruneHandler.schedule();
         }
         if (this.config.syncTransferTps) {
             await this.transferTpsService.schedule();

@@ -91,22 +91,24 @@ export class PruneNotifier {
     }
 
     private static filter(msg) {
-        let isFiltered = false;
+        // let isFiltered = false;
+        //
+        // if (!PruneNotifier.SWITCH_SYNC_PRUNE) {
+        //     return isFiltered;
+        // }
+        //
+        // // just prune token transfer
+        // if(msg[PruneType.ERC20_TRANSFER] || msg[PruneType.ADDR_ERC20_TRANSFER]
+        //     || msg[PruneType.ERC721_TRANSFER] || msg[PruneType.ADDR_ERC721_TRANSFER]
+        //     || msg[PruneType.ERC1155_TRANSFER] || msg[PruneType.ADDR_ERC1155_TRANSFER]){
+        //     isFiltered = true;
+        // }
+        // delete msg[PruneType.MINER_BLOCK];
+        // delete msg[PruneType.ADDR_TX];
+        // delete msg[PruneType.ADDR_CFX_TRANSFER];
+        //
+        // return isFiltered;
 
-        if (!PruneNotifier.SWITCH_SYNC_PRUNE) {
-            return isFiltered;
-        }
-
-        // just prune token transfer
-        if(msg[PruneType.ERC20_TRANSFER] || msg[PruneType.ADDR_ERC20_TRANSFER]
-            || msg[PruneType.ERC721_TRANSFER] || msg[PruneType.ADDR_ERC721_TRANSFER]
-            || msg[PruneType.ERC1155_TRANSFER] || msg[PruneType.ADDR_ERC1155_TRANSFER]){
-            isFiltered = true;
-        }
-        delete msg[PruneType.MINER_BLOCK];
-        delete msg[PruneType.ADDR_TX];
-        delete msg[PruneType.ADDR_CFX_TRANSFER];
-
-        return isFiltered;
+        return PruneNotifier.SWITCH_SYNC_PRUNE === true;
     }
 }

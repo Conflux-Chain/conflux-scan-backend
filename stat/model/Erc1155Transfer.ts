@@ -131,10 +131,10 @@ export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155
             updatedAt: false,
             tableName: T_ERC1155_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_contract_id',
-                    fields: ['contractId']
-                },
+                // {
+                //     name: 'idx_contract_id',
+                //     fields: ['contractId']
+                // },
                 {
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]
