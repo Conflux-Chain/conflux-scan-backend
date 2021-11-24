@@ -6,9 +6,9 @@ import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {Erc777Transfer} from "../model/Erc777Transfer";
-import {Contract} from "../model/Contract";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {makeId} from "../model/HexMap";
 
 const lodash = require('lodash');
 const CONST = require('./common/constant');
@@ -22,6 +22,8 @@ export class DailyContractStatSync {
 
     private async statDaily(day: Date): Promise<any>{
         const contractList = await TraceCreateContract.findAll({attributes: ['to', 'blockTime'], raw: true}) || [];
+        await DailyContractStatSync.addInternalContract(contractList);
+
         for(const contract of contractList){
             const stat = await this.statDailyByAddress(contract, day);
             if(!stat){
@@ -122,6 +124,15 @@ export class DailyContractStatSync {
                 return undefined;
         }
         return model;
+    }
+
+    private static async addInternalContract(contractList){
+        const internalContractArray = CONST.INTERNAL_CONTRACT;
+        for (const hex40 of internalContractArray) {
+            const addressId = await makeId(hex40);
+            contractList.push({to: addressId, blockTime: 0});
+        }
+        return contractList;
     }
 }
 
