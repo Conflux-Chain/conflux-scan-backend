@@ -114,7 +114,8 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {list}
     })
     router.get('/devops/prune-info', async(ctx)=>{
-        const list = await PruneInfo.findAll({order:[['pruned','desc']], limit: 1000})
+        const {orderBy} = ctx.request.query;
+        const list = await PruneInfo.findAll({order:[[orderBy || 'pruned','desc']], limit: 1000})
         ctx.body = {list}
     })
     router.get('/devops/prune-metrics',async (ctx) => {
