@@ -14,7 +14,7 @@ export abstract class PruneBase {
     public static PRUNE_LOOP = 10_000;
     public static SLEEP_MS_PER_LOOP = 20;
     public static DEL_ROWS_PER_LOOP = 500;
-    public static DEL_ROWS_MAX_PER_LOOP = 5_000;
+    public static DEL_ROWS_MAX_PER_LOOP = 50_000;
     public static metrics = {
         total_ms : 0,
     }
@@ -39,6 +39,13 @@ export abstract class PruneBase {
             lodash.defaults({},{where: {...where}, order: [["epoch", "desc"]], offset: keepRows, limit: 1, raw: true})
         );
     }
+    protected getPruneQuery({type, where, maxToPrune}){
+        if(this.TYPE_TOKEN_TRANSFER.has(type)){
+            return lodash.defaults({...where}, {id:{[Op.lte]: maxToPrune.id}});
+        } else{
+            return where;
+        }
+    }
 
     public async needPrune({type, pruneInfo}): Promise<boolean>{
         const {addressId} = pruneInfo;
@@ -57,17 +64,18 @@ export abstract class PruneBase {
             sleepMsPerLoop = PruneBase.SLEEP_MS_PER_LOOP,
             addressId,
         } = pruneInfo;
+        let veryStart = Date.now();
+        let start = Date.now();
         const keepRows = PruneBase.getKeepRowsByType(type);
         const pruneParas = PruneBase.getPruneParas({type, addressId});
-
-        let start = Date.now();
         const {where, key} = this.buildBaseQuery({type, pruneParas});
         const maxToPrune = await this.maxOnePrune({type, where, keepRows});
         if(maxToPrune === null){
             return;
         }
+        const pruneWhere = this.getPruneQuery({type, where, maxToPrune});
+        start = PruneBase.doMetricStep(type, 'queryMax', start);
 
-        // const unlimitedLoop = pruneLoop === 0;
         let countdownLoop = pruneLoop;
         let delTotal = 0;
         let delDelta = 0;
@@ -77,14 +85,17 @@ export abstract class PruneBase {
                 delRowsPerLoop = PruneBase.DEL_ROWS_PER_LOOP;
                 sleepMsPerLoop = PruneBase.SLEEP_MS_PER_LOOP;
             }
+            start = PruneBase.doMetricStep(type, 'getSwitch', start);
 
             const checkpoint = { position: maxToPrune.epoch };
-            const pruneResult = await this.doPrune({type, where, key, checkpoint, delRowsPerLoop});
+            const pruneResult = await this.doPrune({type, where: pruneWhere, key, checkpoint, delRowsPerLoop});
+            start = PruneBase.doMetricStep(type, 'doPrune', start);
+
             delDelta = pruneResult.delDelta;
             delTotal += delDelta;
             countdownLoop--;
             await sleep(sleepMsPerLoop);
-            if (delTotal % 10000 === 0) {
+            if (delTotal % delRowsPerLoop === 0) {
                 console.log(`prune_pruneRlt[type=${type}][addressId=${addressId}],delTotal:${delTotal},time:${new Date()}`);
             }
         } while (delDelta>0 && (pruneLoop === 0 || countdownLoop>0))
@@ -92,8 +103,7 @@ export abstract class PruneBase {
         // update token's transfer
         await this.updateTransferCounter({type, addressId});
 
-        let end = Date.now();
-        const elapsed = end - start;
+        const elapsed = Date.now() - veryStart;
         PruneBase.metrics.total_ms += elapsed;
         PruneBase.doMetric(type, delTotal, elapsed);
         console.log(`prune_metrics[type=${type}][addressId=${addressId}],metrics:${JSON.stringify(PruneBase.metrics)}`);
@@ -106,17 +116,21 @@ export abstract class PruneBase {
         let pruneDb;
         let prune;
         await PruneInfo.sequelize.transaction(async (dbTx) => {
+            let start = Date.now();
             pruneDb = await PruneInfo.findOne({
                 where: { addressId: key.id, type: key.type},
                 raw: true,
                 transaction: dbTx
             });
+            start = PruneBase.doMetricStep(type, 'findPrune', start);
+
             delCntr = pruneDb != null ? pruneDb.pruned : 0;
             delDelta = await model.destroy({
                 where: lodash.defaults({...where}, {epoch:{[Op.lte]: checkpoint.position}}),
                 limit: delRowsPerLoop,
                 transaction: dbTx,
             });
+            start = PruneBase.doMetricStep(type, 'destroy', start);
 
             prune = {
                 addressId: key.id,
@@ -133,8 +147,18 @@ export abstract class PruneBase {
                 where: {id: pruneDb.id, pruned: pruneDb.pruned},
                 transaction: dbTx
             });
+            PruneBase.doMetricStep(type, 'updatePrune', start);
         });
         return {delDelta, delCntr, prune, pruneDb};
+    }
+
+    private static doMetricStep(type, step, start){
+        const runTimes = PruneBase.metrics[`${type}_${step}`];
+        const elapsedTime = PruneBase.metrics[`${type}_${step}_ms`];
+        const elapsedDelta = Date.now() - start;
+        PruneBase.metrics[`${type}_${step}`] = runTimes === undefined ? 1 : runTimes + 1;
+        PruneBase.metrics[`${type}_${step}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
+        return Date.now();
     }
 
     private static doMetric(type, delDelta, elapsedDelta){

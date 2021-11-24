@@ -148,10 +148,10 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
             updatedAt: false,
             tableName: T_ERC20_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_contract_id',
-                    fields: ['contractId']
-                },
+                // {
+                //     name: 'idx_contract_id',
+                //     fields: ['contractId']
+                // },
                 {
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]

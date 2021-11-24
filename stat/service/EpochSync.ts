@@ -393,8 +393,8 @@ export class EpochSync extends SyncBase{
         );
 
         return eventLogArray
-            .filter((v) => v.address !== 'CFX:TYPE.CONTRACT:ACAV5V98NP8T3M66UW7X61YER1JA1JM0DPZJ1ZYZXV'
-                && v.address !== '0x811dc7fe5B3CFCaB9c84bB3E5e846Dd00ba1561b')
+            // .filter((v) => v.address !== 'CFX:TYPE.CONTRACT:ACAV5V98NP8T3M66UW7X61YER1JA1JM0DPZJ1ZYZXV'
+            //     && v.address !== '0x811dc7fe5B3CFCaB9c84bB3E5e846Dd00ba1561b')
             .map((v) => EpochSync.parseEventLog(v));
     }
 

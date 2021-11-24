@@ -138,26 +138,27 @@ async function run() {
     const app = {cfx};
     if(type === 1){
         pruneHandler = new PruneHandler(app);
+        await pruneHandler.scheduleRefreshConfig();
         await pruneHandler.schedule(10);
     }
     if(type === 2){
         const message = {
             // [PruneType.ERC20_TRANSFER]: [
             //     {
-            //         pruneLoop: 30000, // optional
-            //         delRowsPerLoop: 500, // optional
+            //         pruneLoop: 1000, // optional
+            //         delRowsPerLoop: 20000, // optional
             //         sleepMsPerLoop: 20, // optional
-            //         addressId: 13870862,
+            //         addressId: 369958,
             //     }
             // ],
-            [PruneType.ADDR_ERC20_TRANSFER]: [
-                {
-                    pruneLoop: 10000, // optional
-                    delRowsPerLoop: 500, // optional
-                    sleepMsPerLoop: 20, // optional
-                    addressId: 33162167,
-                }
-            ],
+            // [PruneType.ADDR_ERC20_TRANSFER]: [
+            //     {
+            //         pruneLoop: 1000, // optional
+            //         delRowsPerLoop: 20000, // optional
+            //         sleepMsPerLoop: 20, // optional
+            //         addressId: 33162167,
+            //     }
+            // ],
         };
         await PruneNotifier.notifyPrune(message);
         console.log(`sendPruneMessage------------${JSON.stringify(message)}`);
@@ -239,5 +240,5 @@ if(args[3]){
     needSend = Number(args[3]);
 }
 // console.log(`DataPruneTool------------type:${type},contractId:${contractId},transferType:${transferType}`);
-PruneNotifier.SWITCH_SYNC_PRUNE = true;
+// PruneNotifier.SWITCH_SYNC_PRUNE = true;
 run().then();
