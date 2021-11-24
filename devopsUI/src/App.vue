@@ -19,6 +19,12 @@
       <el-tab-pane label="PruneInfo" name="PruneInfo">
         <PruneInfo></PruneInfo>
       </el-tab-pane>
+      <el-tab-pane label="PruneMetrics" name="PruneMetrics">
+        <PruneMetrics></PruneMetrics>
+      </el-tab-pane>
+      <el-tab-pane label="Redis" name="Redis">
+        <Redis></Redis>
+      </el-tab-pane>
       <el-tab-pane label="HexId" name="HexId">
         <HexId></HexId>
       </el-tab-pane>
@@ -33,6 +39,8 @@ import TokenList from "@/components/TokenList";
 import PruneInfo from "@/components/PruneInfo";
 import HexId from "@/components/HexId";
 import {host} from "@/lib/lib"
+import PruneMetrics from "@/components/PruneMetrics";
+import Redis from "@/components/Redis";
 
 export default {
   name: 'app',
@@ -43,6 +51,8 @@ export default {
     }
   },
   components: {
+    Redis,
+    PruneMetrics,
     HexId,
     PruneInfo,
     TokenList,

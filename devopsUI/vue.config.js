@@ -5,7 +5,7 @@ module.exports = {
             // mutate config for production...
         } else {
             // mutate for development...
-            process.env.HOST = '00'
+            // process.env.HOST = '00'
         }
     }
 }
