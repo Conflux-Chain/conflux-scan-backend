@@ -15,7 +15,8 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const limit = pickNumber(parseInt(ctx.request.query.limit), 10)
         const skip = pickNumber(parseInt(ctx.request.query.skip), 0)
         const p = {...ctx.request.query, skip, limit,
-            groupByPowAddress: Boolean(ctx.request.query.groupByPowAddress)
+            groupByPowAddress: Boolean(ctx.request.query.groupByPowAddress),
+            sortBy: ctx.request.query.orderBy,
         }
         const page = await statApp.posQuery.listPosAccountWithCurrentCommittee(p)
         ctx.body = {
