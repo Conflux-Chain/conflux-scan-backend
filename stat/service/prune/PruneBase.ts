@@ -95,7 +95,7 @@ export abstract class PruneBase {
             delTotal += delDelta;
             countdownLoop--;
             await sleep(sleepMsPerLoop);
-            if (delTotal % delRowsPerLoop === 0) {
+            if (countdownLoop % 2 === 0) {
                 console.log(`prune_pruneRlt[type=${type}][addressId=${addressId}],delTotal:${delTotal},time:${new Date()}`);
             }
         } while (delDelta>0 && (pruneLoop === 0 || countdownLoop>0))
