@@ -6,6 +6,7 @@ import {FullBlock} from "./model/FullBlock";
 import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "./model/KV";
 import {patchHttpProvider} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
+import {PruneNotifier} from "./service/prune/PruneNotifier";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -17,6 +18,7 @@ export async function run() {
     await seq.sync({})
     await initModel(seq)
     const svc = new FullBlockService(cfx)
+    PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
 
     if (args[0] === 'fix') {
         // batch size 10, loop 1 time:

@@ -301,6 +301,7 @@ async function run() {
     }
     //
     tokenTool = new TokenTool(cfx)
+    PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     RedisWrap.connect(config.redis).then(()=>{
         RedisWrap.listenStreamMessage(
             ERC20_TRANSFER_Q,
