@@ -129,7 +129,7 @@ export class DailyContractStatSync {
     private static async addInternalContract(contractList){
         const internalContractArray = CONST.INTERNAL_CONTRACT;
         for (const hex40 of internalContractArray) {
-            const addressId = await makeId(hex40);
+            const addressId = (await makeId(hex40)).id;
             contractList.push({to: addressId, blockTime: 0});
         }
         return contractList;
