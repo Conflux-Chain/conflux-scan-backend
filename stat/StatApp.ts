@@ -159,7 +159,7 @@ export class StatApp{
         this.contractStatQuery = new DailyContractStatQuery();
         this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
         this.contractRegisterQuery = new DailyContractRegisterQuery();
-        this.blockDataStatSync = new DailyBlockDataStatSync(this.sequelize);
+        this.blockDataStatSync = new DailyBlockDataStatSync();
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
