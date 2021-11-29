@@ -16,8 +16,8 @@ export abstract class PruneBase {
     public static DEL_ROWS_PER_LOOP = 500;
     public static DEL_ROWS_MAX_PER_LOOP = 50_000;
     public static metrics = {
-        total_ms : 0,
-    }
+        sampling: 0,
+    };
 
     protected TYPE_TOKEN_TRANSFER = new Set([PruneType.ERC20_TRANSFER, PruneType.ERC721_TRANSFER,
         PruneType.ERC1155_TRANSFER]);
@@ -98,15 +98,11 @@ export abstract class PruneBase {
             if (countdownLoop % 2 === 0) {
                 console.log(`prune_pruneRlt[type=${type}][addressId=${addressId}],delTotal:${delTotal},time:${new Date()}`);
             }
+            veryStart = PruneBase.doMetric(type, delDelta, veryStart);
         } while (delDelta>0 && (pruneLoop === 0 || countdownLoop>0))
 
         // update token's transfer
         await this.updateTransferCounter({type, addressId});
-
-        const elapsed = Date.now() - veryStart;
-        PruneBase.metrics.total_ms += elapsed;
-        PruneBase.doMetric(type, delTotal, elapsed);
-        console.log(`prune_metrics[type=${type}][addressId=${addressId}],metrics:${JSON.stringify(PruneBase.metrics)}`);
     }
 
     private async doPrune({type, where, key, checkpoint, delRowsPerLoop}): Promise<any>{
@@ -161,11 +157,19 @@ export abstract class PruneBase {
         return Date.now();
     }
 
-    private static doMetric(type, delDelta, elapsedDelta){
+    private static doMetric(type, delDelta, veryStart){
         const effectRows = PruneBase.metrics[type];
         const elapsedTime = PruneBase.metrics[`${type}_ms`];
+        const elapsedDelta = Date.now() - veryStart;
         PruneBase.metrics[type] = effectRows === undefined ? delDelta : (effectRows + delDelta);
         PruneBase.metrics[`${type}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
+
+        PruneBase.metrics.sampling++;
+        if(PruneBase.metrics.sampling % 100 === 0) {
+            console.log(`prune_metrics,metrics:${JSON.stringify(PruneBase.metrics)}`);
+            PruneBase.metrics = { sampling: 0 };
+        }
+        return Date.now();
     }
 
     private static getKeepRowsByType(type): number{
