@@ -1,7 +1,7 @@
 <template>
   <div>
-    <el-button @click="fetList" size="mini">Refresh</el-button>
-    <el-table :data="list"
+    <el-button @click="fetList('pruned')" size="mini">Refresh</el-button>
+    <el-table :data="list" v-loading="loading"
              @sort-change="sortChange" :default-sort="{ prop: 'pruned', order: 'descending' }">
       <el-table-column label="addressId" prop="addressId"></el-table-column>
       <el-table-column label="type" prop="type"></el-table-column>
@@ -23,7 +23,8 @@ export default {
   name: "PruneInfo"
   ,data() {
     return {
-      list: []
+      list: [],
+      loading: false,
     }
   },
   props: {
@@ -36,8 +37,10 @@ export default {
       this.fetList(prop)
     },
     async fetList(orderBy = 'pruned') {
-      const list = await rpc(`/stat/devops/prune-info?orderBy=${orderBy}`)
+      this.loading = true;
+      const list = await rpc(`/stat/devops/prune-info?orderBy=${orderBy}&limit=50`)
       this.list = list.list
+      this.loading = false;
     }
   }
 }

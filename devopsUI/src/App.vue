@@ -2,6 +2,7 @@
   <div id="app">
     <div>Host:
       {{host}}
+      <a :href="host" target="_blank">Go!</a>
     </div>
     <el-tabs :active-name="tb">
       <el-tab-pane label="ERC20" name="ERC20">
@@ -73,6 +74,6 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  margin-top: 20px;
 }
 </style>
