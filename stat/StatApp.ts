@@ -120,7 +120,7 @@ export class StatApp{
         KV.setupSwitch().then()
         this.rankService = new RankService(this)
         this.txnSync = new TxnSync(this);
-        this.blockAndMinerSync = new BlockAndMinerSync(sequelize, this.cfx);
+        this.blockAndMinerSync = new BlockAndMinerSync();
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx)).schedule(this.config.cfxWatcherDelay).then()
@@ -159,7 +159,7 @@ export class StatApp{
         this.contractStatQuery = new DailyContractStatQuery();
         this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
         this.contractRegisterQuery = new DailyContractRegisterQuery();
-        this.blockDataStatSync = new DailyBlockDataStatSync(this.sequelize);
+        this.blockDataStatSync = new DailyBlockDataStatSync();
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
@@ -170,8 +170,7 @@ export class StatApp{
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
         if (this.config.syncBlock) {
-            await this.blockAndMinerSync.checkPosition(); // miner block
-            await this.blockAndMinerSync.schedule(this.config.syncBlockDelay)
+            await this.blockAndMinerSync.schedule()
         }
         this.txnSync.scheduleCache()
         if (this.config.syncTxnCountDaily) {

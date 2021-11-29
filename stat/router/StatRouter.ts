@@ -6,7 +6,7 @@ import {Context} from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import bodyParser = require("koa-bodyparser");
-import {KEY_MINER_EPOCH, KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
+import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
@@ -278,11 +278,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // sync info
     router.get('/sync-info', async (ctx)=>{
         const tx = await KV.getNumber(KEY_TX_EPOCH);
-        const miner = await KV.getNumber(KEY_MINER_EPOCH);
         ctx.body = {
             txEpoch: tx,
-            minerEpoch: miner,
-            chainEpoch: await statApp.blockAndMinerSync.cfx.getEpochNumber()
+            chainEpoch: await statApp.cfx.getEpochNumber()
         };
     });
 

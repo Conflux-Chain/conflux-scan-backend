@@ -54,6 +54,13 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             ctx.body = {code: 0, message:"OK"}
         }
     )
+    router.get('/devops/miner-stat',
+        checkLocal,
+        async(ctx)=>{
+            await statApp.blockAndMinerSync.rollupStatPerHour();
+            ctx.body = {code: 0, message:"OK"}
+        }
+    )
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
         let bean:Hex40Map

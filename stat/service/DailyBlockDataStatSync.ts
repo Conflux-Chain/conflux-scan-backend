@@ -13,8 +13,8 @@ export class DailyBlockDataStatSync{
     private intervalHourInSec = BigFixed(3600);
     private intervalDayInSec = BigFixed(86400);
 
-    constructor(sequelize: Sequelize) {
-        this.sequelize = sequelize;
+    constructor() {
+        this.sequelize = DailyBlockDataStat.sequelize;
     }
 
     public async statByHour(): Promise<any>{
