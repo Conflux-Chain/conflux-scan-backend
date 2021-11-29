@@ -20,16 +20,16 @@ export function calculateBeginTime(n: number, type: string, endDt: Date): Promis
             if (n > 24){
                 return Promise.reject(`too large hour span ${n}`)
             }
-            endDt.setMinutes(0,0,0)
             beginDt = new Date(endDt.getTime())
+            beginDt.setMinutes(0,0,0)
             addUTCMinutes(beginDt, -60*(n)) // calculate time by minutes
             break;
         case 'd':
             if (n > 90) { // 24 * 90 = 2160
                 return Promise.reject(`too large day span ${n}`)
             }
-            endDt.setMinutes(0,0,0);
             beginDt = new Date(endDt.getTime())
+            beginDt.setMinutes(0,0,0);
             addUTCMinutes(beginDt, -60*24*(n)) // calculate time by minutes
             break;
         default:

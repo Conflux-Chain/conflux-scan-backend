@@ -79,9 +79,10 @@ export class BlockAndMinerSync {
     from minerBlock join hex40 on minerBlock.minerId =
     hex40.id where minerBlock.beginTime >= ? and minerBlock.endTime <= ? and timeWindow = ?
     group by minerId order by blockCount desc limit ${limit}`,{
-            replacements: [fmtDtUTC(beginDt), fmtDtUTC(endDt), timeWindow, limit],
+            replacements: [beginDt, endDt, timeWindow, limit],
             type: QueryTypes.SELECT,
-                // benchmark: true, logging: console.log
+                // benchmark: true,
+                // logging: console.log
         })
         list.forEach(item=>{
             // @ts-ignore
