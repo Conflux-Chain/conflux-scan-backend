@@ -75,16 +75,14 @@ export class RankService{
         const prunedMap = {};
         if(!addressIdArray?.length) return prunedMap;
 
-        const addressIds = addressIdArray.map(i => '?').join(',');
-        const sql = `select addressId,pruned from prune_info  where addressId in(${addressIds}) and type = 'AD_TX'`;
-
-        const list = await PruneInfo.sequelize.query(sql, {
-            type: QueryTypes.SELECT,
-            replacements:addressIdArray,
-            logging: console.log,
+        const list = await PruneInfo.findAll({
+            where: {
+                addressId: {[Op.in]: addressIdArray},
+                type: 'AD_TX'
+            }
         })
 
-        list.forEach(pruneInfo => {
+        list?.forEach(pruneInfo => {
             prunedMap[pruneInfo['addressId']] = pruneInfo['pruned'];
         });
         return prunedMap;
