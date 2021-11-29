@@ -10,6 +10,7 @@ import {Op} from "sequelize"
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {init} from "./tool/FixDailyTokenStat";
 import {DailyToken} from "../model/Token";
+import {PruneInfo} from "../model/PruneInfo";
 
 export class RankService{
     private app: StatApp;
@@ -62,10 +63,34 @@ export class RankService{
                 arr.forEach(b => this.txnMap.set(b['addressId'], b))
             })
         } else {
-            list.forEach(r => r['valueN'] = this.txnMap.get(r['addressId'])?.cnt || 0)
+            const addressIdArray = list.map(item => item['addressId']) || [];
+            const prunedMap = await this.getPrunedTxCount(addressIdArray);
+            // add pruned tx count
+            list.forEach(r => r['valueN'] = (this.txnMap.get(r['addressId'])?.cnt || 0) + (prunedMap[r['addressId']] || 0))
         }
         return list
     }
+
+    async getPrunedTxCount(addressIdArray){
+        const prunedMap = {};
+        if(!addressIdArray?.length) return prunedMap;
+
+        const addressIds = addressIdArray.map(i => '?').join(',');
+        const sql = `select addressId,pruned from prune_info  where addressId in(${addressIds}) and type = 'AD_TX'`;
+
+        const list = await PruneInfo.sequelize.query(sql, {
+            type: QueryTypes.SELECT,
+            replacements:addressIdArray,
+            logging: console.log,
+        })
+
+        list.forEach(pruneInfo => {
+            prunedMap[pruneInfo['addressId']] = pruneInfo['pruned'];
+        });
+        return prunedMap;
+    }
+
+
     // 9999895641981116/5000000000000000*2
     async rankByCfx(order:string, limit, networkId) {
         const list = await this.rankCfxBalance(order, limit)
