@@ -186,7 +186,7 @@ export async function buildErc20Transfer(obj, date) {
     };
     return erc20Transfer
 }
-let logTimes = 10;
+// let logTimes = 10;
 export async function batchSaveErc20Transfer(array: any[], seconds) {
     if (!array.length) {
         return;
@@ -196,17 +196,17 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
     let skipCount = 0;
     for (const obj of array) {
         const bean = await buildErc20Transfer(obj, date);
-        // 13870862 pos points
-        if (bean.contractId === 13870862 && StatApp.networkId === 1029) {
-            skipCount ++
-            continue;
-        }
+        // // 13870862 pos points
+        // if (bean.contractId === 13870862 && StatApp.networkId === 1029) {
+        //     skipCount ++
+        //     continue;
+        // }
         templates.push(bean);
     }
-    if (logTimes > 0 && skipCount > 0) {
-        logTimes --;
-        console.log(` skip points contract, count ${skipCount}`)
-    }
+    // if (logTimes > 0 && skipCount > 0) {
+    //     logTimes --;
+    //     console.log(` skip points contract, count ${skipCount}`)
+    // }
     if (!templates.length) {
         return;
     }
