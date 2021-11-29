@@ -51,13 +51,13 @@ export class MinerBlock extends Model<IMinerBlock> implements IMinerBlock {
                 sequelize: sequelize,
                 tableName: 'minerBlock',
                 indexes: [{
-                    name: 'mine_dt_idx',
-                    fields: ['beginTime']
+                    name: 'mine_dt_idx', unique: true,
+                    fields: ['beginTime', 'minerId']
                 }],
                 scopes: {
                     maxOneById: {
                         limit: 1,
-                        order: [["id", "desc"]]
+                        order: [["endTime", "desc"]]
                     },
                 }
             })

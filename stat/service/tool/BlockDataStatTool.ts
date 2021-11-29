@@ -1,18 +1,12 @@
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {DailyBlockDataStatSync} from "../DailyBlockDataStatSync";
+import {init} from "./FixDailyTokenStat";
+import {BlockAndMinerSync} from "../BlockAndMinerSync";
+import {MinerBlock} from "../../model/MinerBlock";
+import {Epoch} from "../../model/Epoch";
 
 let blockDataStatTool;
-
-async function init() {
-    const config = loadConfig('Prod')
-    // console.log(`config-----------${JSON.stringify(config)}`)
-    let seq = createDB(config.database)
-    await seq.sync({})
-    await initModel(seq)
-
-    blockDataStatTool = new DailyBlockDataStatSync(seq);
-}
 
 async function sync(startDay, endDay) {
     await blockDataStatTool.statHistory(startDay, endDay);
@@ -24,6 +18,13 @@ async function syncByHour() {
 
 async function run(startDay, endDay) {
     await init();
+    if (args.includes('miner')) {
+        const dt = await Epoch.max('timestamp') as any;
+        await new BlockAndMinerSync().rollupByHour(dt)
+        await MinerBlock.sequelize.close()
+        return;
+    }
+    blockDataStatTool = new DailyBlockDataStatSync();
     await sync(startDay, endDay);
     // await syncByHour();
 }

@@ -1,7 +1,7 @@
 import {QueryTypes, Sequelize} from "sequelize";
 import {Address, AddressInfo, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
-import {Block, PivotSwitch} from "../model/Block";
+import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV, Position} from "../model/KV";
 import {TestTimezone} from "../model/TestTimezone";
@@ -203,7 +203,6 @@ export async function initPartialModel(sequelize) {
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
-    Block.register(sequelize);
     MinerBlock.register(sequelize);
     TopBatchIndex.register(sequelize)
     TopRecord.register(sequelize);
