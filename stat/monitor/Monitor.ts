@@ -34,8 +34,6 @@ export class Monitor{
         await this.checkDelay(Epoch, 60)
         await this.checkDelay(Erc20Transfer, 60 * 2)
         await this.checkDelay(CfxTransfer, 60)
-        const that = this;
-        setTimeout(()=>that.checkAllDelay(), 60_000)
     }
     async getMaxSyncEpoch() : Promise<number> {
         return FullBlock.max('epoch')
@@ -53,12 +51,12 @@ export class Monitor{
             }
         }
         const that = this;
+        that.checkAllDelay().then();
         function repeat() {
             that.checkFullBlockSyncRunning()
         }
         setTimeout(repeat, 60*1000) // 1 minute
 
-        setTimeout(()=>that.checkAllDelay(), 10_000)
     }
 
 
