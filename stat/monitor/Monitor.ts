@@ -1,5 +1,8 @@
 import { QueryTypes } from "sequelize";
 import {FullBlock} from "../model/FullBlock";
+import {Epoch} from "../model/Epoch";
+import {Erc20Transfer} from "../model/Erc20Transfer";
+import {CfxTransfer} from "../model/CfxTransfer";
 const superagent = require('superagent')
 
 export class Monitor{
@@ -9,6 +12,30 @@ export class Monitor{
     constructor(dingTalkToken:string, serverTag:string) {
         this.dingTalkToken = dingTalkToken;
         this.serverTag = serverTag;
+    }
+    async checkDelay(model:any, delaySeconds: number) {
+        const maxBean = await model.findOne({order: [['epoch','desc']]})
+        if (maxBean === null) {
+            return;
+        }
+        const now = Date.now()
+        const delay = (now - (maxBean.createdAt||maxBean.timestamp).getTime())/1000
+        if (delay > delaySeconds) {
+            const msg = `Table ${model.getTableName()} delay, seconds ${delay} > ${delaySeconds}`;
+            console.log(msg)
+            await dingMsg(msg, this.dingTalkToken)
+        } else {
+            console.log(` no delay. ${model.getTableName()}`)
+        }
+    }
+
+    async checkAllDelay() {
+        await this.checkDelay(FullBlock, 60)
+        await this.checkDelay(Epoch, 60)
+        await this.checkDelay(Erc20Transfer, 60 * 2)
+        await this.checkDelay(CfxTransfer, 60)
+        const that = this;
+        setTimeout(()=>that.checkAllDelay(), 60_000)
     }
     async getMaxSyncEpoch() : Promise<number> {
         return FullBlock.max('epoch')
@@ -30,6 +57,8 @@ export class Monitor{
             that.checkFullBlockSyncRunning()
         }
         setTimeout(repeat, 60*1000) // 1 minute
+
+        setTimeout(()=>that.checkAllDelay(), 10_000)
     }
 
 
