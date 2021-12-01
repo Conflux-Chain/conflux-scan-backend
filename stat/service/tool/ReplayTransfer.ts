@@ -47,7 +47,7 @@ async function setup(config){
     console.log(` network id ${StatApp.networkId}`)
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     console.log(` util contract ${utilContract}`)
-    new BatchBalanceWatcher(cfx,[],null, utilContract)
+    new BatchBalanceWatcher(cfx,null, utilContract)
 }
 init().then((config)=> {
     return setup(config)
