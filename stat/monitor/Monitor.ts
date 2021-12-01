@@ -3,6 +3,7 @@ import {FullBlock} from "../model/FullBlock";
 import {Epoch} from "../model/Epoch";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer} from "../model/CfxTransfer";
+import {CFX_TRANSFER_DELAY, ERC20_TRANSFER_DELAY, KV} from "../model/KV";
 const superagent = require('superagent')
 
 export class Monitor{
@@ -30,10 +31,14 @@ export class Monitor{
     }
 
     async checkAllDelay() {
+        const [delay20, delayCfx] = await Promise.all([
+            KV.getString(ERC20_TRANSFER_DELAY,'120').then(parseInt),
+            KV.getString(CFX_TRANSFER_DELAY,'120').then(parseInt),
+        ])
         await this.checkDelay(FullBlock, 60)
         await this.checkDelay(Epoch, 60)
-        await this.checkDelay(Erc20Transfer, 60 * 2)
-        await this.checkDelay(CfxTransfer, 60)
+        await this.checkDelay(Erc20Transfer, delay20)
+        await this.checkDelay(CfxTransfer, delayCfx)
     }
     async getMaxSyncEpoch() : Promise<number> {
         return FullBlock.max('epoch')
