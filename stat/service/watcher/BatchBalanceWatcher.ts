@@ -8,7 +8,7 @@ import {Hex40Map, idHex40Map, makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
-import {CFX_TRANSFER_ADDRESS_Q, RedisStreamMessage, RedisWrap,} from "../RedisWrap";
+import {CFX_TRANSFER_ADDRESS_Q, RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q,} from "../RedisWrap";
 import {Op} from 'sequelize'
 import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
@@ -66,6 +66,11 @@ export class BatchBalanceWatcher {
 
     // xadd TRANSFER_ADDRESS_Q * v1 [1,2]
     async listenTransfer() {
+        // should be removed
+        RedisWrap.listenStreamMessage(
+            TRANSFER_ADDRESS_Q,
+            (data) => this.handleCfxTransferAddress(data)
+        ).then()
         return RedisWrap.listenStreamMessage(
             CFX_TRANSFER_ADDRESS_Q,
             (data) => this.handleCfxTransferAddress(data)
