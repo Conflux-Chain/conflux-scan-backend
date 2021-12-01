@@ -36,9 +36,9 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
             if (!copies.length) {
                 return RedisWrap.xDel(data)
             }
-            sendAddressIds(fullT, copies).catch(err=>{
+            setImmediate(()=>sendAddressIds(fullT, copies).catch(err=>{
                 console.log(`send address in transfer error:`, err)
-            })
+            }))
             if (fullT === Erc1155Transfer || fullT === Erc721Transfer) {
                 nftService.saveIds(copies).then().catch(err=>{
                     console.log(`save nft id failed`, err)
@@ -125,10 +125,8 @@ async function sendAddressIds(model, arr:{fromId:number, toId:number, contractId
     })
     PruneNotifier.notifyTokenTransfer(model, addressAndContractIdMap)
         .catch(e => console.log(`stream-sync.noticePruneTransfer`, e));
-    return RedisWrap.sendStreamMessage([...set], TRANSFER_ADDRESS_Q).then(()=>{
-        handleTokenTransferWithContract(addressAndContractIdMap).then()
-        updateTokenTransferCount(addressAndContractIdMap.keys()).then()
-    })
+    handleTokenTransferWithContract(addressAndContractIdMap).then()
+    updateTokenTransferCount(addressAndContractIdMap.keys()).then()
 }
 const waitUpdateTransferTokens = {
     hex40ids: new Set<number>()
@@ -291,7 +289,7 @@ async function run() {
     // @ts-ignore
     StatApp.networkId = (await cfx.getStatus()).networkId
     console.log(` network id ${StatApp.networkId}`)
-    new BatchBalanceWatcher(cfx,[],null, await BatchBalanceWatcher.getUtilContractAddr())
+    new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
     if (args[0] === 'test') {
         const addr = ['','']
         const contract = ''

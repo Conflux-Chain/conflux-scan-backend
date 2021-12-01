@@ -123,18 +123,17 @@ export class StatApp{
         this.blockAndMinerSync = new BlockAndMinerSync();
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
-            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx)).schedule(this.config.cfxWatcherDelay).then()
-            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.config.erc20watchList, this.cfxWatcher, utilContract)
-            this.batchBalanceWatcher.schedule().then()
+            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx))//.schedule(this.config.cfxWatcherDelay).then()
+            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.cfxWatcher, utilContract)
             this.batchBalanceWatcher.listenTransfer().then()
         }
-        this.config.erc20watchList.forEach(erc20=>{
-            const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, {tokenType: erc20.tokenType})
-            watcher.schedule(erc20.watchDelay)
-        })
+        // this.config.erc20watchList.forEach(erc20=>{
+            // const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, {tokenType: erc20.tokenType})
+            // watcher.schedule(erc20.watchDelay)
+        // })
         // @ts-ignore
-        this.balanceService = new BalanceService(this, this.config.erc20watchList, StatApp.networkId)
-        this.balanceService.schedule(3000)
+        this.balanceService = new BalanceService(this, [], StatApp.networkId)
+        this.balanceService.schedule(60_000)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
         //
         this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)

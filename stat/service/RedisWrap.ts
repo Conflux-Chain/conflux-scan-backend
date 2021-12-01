@@ -5,6 +5,7 @@ const redis = require('redis');
 const { promisify } = require('util');
 export const CHANNEL_TEST = 'test'
 export const TRANSFER_ADDRESS_Q = 'TRANSFER_ADDRESS_Q' // only contains address id.
+export const CFX_TRANSFER_ADDRESS_Q = 'CFX_TRANSFER_ADDRESS_Q' // only contains address id.
 // export const TRANSFER_ADDRESS_WITH_CONTRACT_Q = 'TRANSFER_ADDRESS_WITH_CONTRACT_Q' // contains address id and contract id.
 export const ERC20_TRANSFER_Q = 'ERC20_TRANSFER_Q'
 export const ERC721_TRANSFER_Q = 'ERC721_TRANSFER_Q'

@@ -11,7 +11,7 @@ async function run() {
         await cfx.updateNetworkId()
         // @ts-ignore
         StatApp.networkId = (await cfx.getStatus()).networkId
-        const w = new BatchBalanceWatcher(cfx, config.erc20watchList, null, await BatchBalanceWatcher.getUtilContractAddr())
+        const w = new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
         config.erc20watchList.forEach(token=>{
             BatchBalanceWatcher.getBalances(config.erc20watchList[0].address, [token.address])
                 .then(()=>{

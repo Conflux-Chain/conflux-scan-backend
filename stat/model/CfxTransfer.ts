@@ -2,7 +2,7 @@ import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
-import {RedisWrap, TRANSFER_ADDRESS_Q} from "../service/RedisWrap";
+import {CFX_TRANSFER_ADDRESS_Q, RedisWrap} from "../service/RedisWrap";
 import {PruneNotifier} from "../service/prune/PruneNotifier";
 
 // ============= partition by address table ==============
@@ -425,7 +425,7 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
             return res
         }),
     ]);
-    RedisWrap.sendStreamMessage([...idSet], TRANSFER_ADDRESS_Q).catch(err=>{
+    RedisWrap.sendStreamMessage([...idSet], CFX_TRANSFER_ADDRESS_Q).catch(err=>{
         console.log(`send to TRANSFER_ADDRESS_Q fail, `, err)
     })
     // must wait building id finished.

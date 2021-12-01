@@ -8,7 +8,7 @@ import {Hex40Map, idHex40Map, makeId} from "../../model/HexMap";
 import {fmtDtUTC} from "../../model/Utils";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
-import {RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q, } from "../RedisWrap";
+import {CFX_TRANSFER_ADDRESS_Q, RedisStreamMessage, RedisWrap, TRANSFER_ADDRESS_Q,} from "../RedisWrap";
 import {Op} from 'sequelize'
 import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
@@ -23,10 +23,9 @@ export class BatchBalanceWatcher {
     public static contract: {balances};
     public static allTokenContract: {getBalances};
     private readonly tokenList: string[];
-    private readonly erc20list: Erc20WatchList[];
     fraction = BigInt(1e+18)
     private readonly cfxWatcher:CfxWatcher
-    constructor( cfx:Conflux, erc20List:Erc20WatchList[], cfxWatcher:CfxWatcher, utilContract: string | null) {
+    constructor( cfx:Conflux, cfxWatcher:CfxWatcher, utilContract: string | null) {
         if (!utilContract) {
             console.log(` scan util contract should be an address. Got [${utilContract}]`)
             process.exit(9)
@@ -37,9 +36,6 @@ export class BatchBalanceWatcher {
         BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
         // @ts-ignore
         BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
-        this.tokenList = erc20List.map(erc20=>erc20.address)
-        this.erc20list = erc20List
-        this.txAddressSet = null
     }
 
     public static async getUtilContractAddr() {
@@ -48,41 +44,14 @@ export class BatchBalanceWatcher {
             StatApp.networkId === 1029 ? MAINNET_UTIL_CONTRACT : (await KV.getString(SCAN_UTIL_CONTRACT, ''))
         return utilContract;
     }
-    public async balanceOf(userAddr, hexId:number = 0) {
-        if (this.erc20list.length === 0) {
-            return;
-        }
-        if (userAddr === '0x0000000000000000000000000000000000000000') {
-            return;
-        }
-        // contract used by portal
-        // let banList = await BatchBalanceWatcher.contract.balances([userAddr], this.tokenList)
-        // contract made by BO, which support tokens include 1155.
-        let banList = await BatchBalanceWatcher.allTokenContract.getBalances(userAddr, this.tokenList).catch(err=>{
-            console.log(`allTokenContract.getBalances fail, param:${userAddr}, ${this.tokenList} , error:`, err)
-            return []
-        })
-        if (banList.length === 0) {
-            return;
-        }
-        // console.log(`BatchBalanceWatcher , balance list length ${banList.length}`)
-        let i = 0
-        for (const erc20 of this.erc20list) {
-            let model = BalanceWatcher.mapModel(erc20.name)  // by configuration, will be deprecated.
-            let id = hexId || (await makeId(userAddr)).id
-            await BalanceWatcher.saveModel(model, id, banList[i], !(erc20.tokenType||'').includes('1155'), this.fraction)
-            i++
-        }
-    }
     logCount = 300
-    async handleTokenTransferAddress(data:RedisStreamMessage[]) {
+    async handleCfxTransferAddress(data:RedisStreamMessage[]) {
         let count = 0
         for (const item of data) {
             const {message: ids} = item
             const hexList = await Hex40Map.findAll({where: {id:{[Op.in]: ids}}})
             for (const hexBean of hexList) {
                 await Promise.all([
-                    this.balanceOf('0x'+hexBean.hex, hexBean.id),
                     this.cfxWatcher.queryBalance('0x'+hexBean.hex, hexBean.id)
                     ])
             }
@@ -97,44 +66,15 @@ export class BatchBalanceWatcher {
 
     // xadd TRANSFER_ADDRESS_Q * v1 [1,2]
     async listenTransfer() {
-        return RedisWrap.listenStreamMessage(
+        // should be removed
+        RedisWrap.listenStreamMessage(
             TRANSFER_ADDRESS_Q,
-            (data) => this.handleTokenTransferAddress(data)
+            (data) => this.handleCfxTransferAddress(data)
+        ).then()
+        return RedisWrap.listenStreamMessage(
+            CFX_TRANSFER_ADDRESS_Q,
+            (data) => this.handleCfxTransferAddress(data)
         )
-    }
-
-    public async schedule(delay = 10_000) {
-        //
-        const that = this;
-        async function repeat() {
-            await that.run().catch(err=>{
-                console.log(`error process batch balance:`, err.data, err)
-            })
-            setTimeout(repeat, delay)
-        }
-        repeat().then()
-        console.log(`schedule batch balance watcher with delay ${delay}.`)
-    }
-    txAddressSet :Set<string>
-    async run() {
-        if (this.txAddressSet === null) {
-            this.txAddressSet = EventBus.swapAddressSet();
-        }
-        if (this.txAddressSet.size === 0) {
-            this.txAddressSet = null
-            console.log(`swapAddressSet empty data.`)
-            return
-        }
-        for (const hex of this.txAddressSet) {
-            await this.balanceOf(hex)
-            // update cfx balance.
-            if (this.cfxWatcher) {
-                let id = (await makeId(hex)).id
-                await this.cfxWatcher.queryBalance(hex, id);
-            }
-        }
-        console.log(`${fmtDtUTC(new Date())} batch process address count ${this.txAddressSet.size}`)
-        this.txAddressSet = null
     }
 
     public static async getBalances(account:string, tokens:string[]) {
