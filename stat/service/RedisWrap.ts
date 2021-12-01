@@ -79,26 +79,24 @@ export class RedisWrap{
         return redisWrap.sendCommand('XREAD', ['BLOCK', 10, 'STREAMS', q, preIdExclusive])
     }
 
-    static convertMessage(raw:any[]) : RedisStreamMessage[] {
+    static convertMessage(stream:any) : RedisStreamMessage[] {
         const ret:RedisStreamMessage[] = []
-        raw.forEach(stream=>{
-            const streamName = stream[0]
-            const msgArr:[] = stream[1]
-            msgArr.forEach(msg=>{
-                let json = {}
-                try {
-                    json = JSON.parse(msg[1][1]);
-                } catch (e) {
-                    json['__error_parse_json'] = e.toString()
-                }
+        const streamName = stream[0]
+        const msgArr:[] = stream[1]
+        msgArr.forEach(msg=>{
+            let json = {}
+            try {
+                json = JSON.parse(msg[1][1]);
+            } catch (e) {
+                json['__error_parse_json'] = e.toString()
+            }
 
-                ret.push({
-                    stream: streamName,
-                    messageId: msg[0],
-                    payload: msg[1],
-                    version: msg[1][0],
-                    message: json,
-                })
+            ret.push({
+                stream: streamName,
+                messageId: msg[0],
+                payload: msg[1],
+                version: msg[1][0],
+                message: json,
             })
         })
         return ret
@@ -113,9 +111,14 @@ export class RedisWrap{
             RedisWrap.tick ++
             return new Promise(async r=>{
                 if (res) {
+                    // res could contains result of multiple stream
                     for (const data of res) {
+                        // data contains result of each stream, include q name and array of biz data
+                        const parseArr = RedisWrap.convertMessage(data)
                         // callee handles message one by one;
-                        await cb(RedisWrap.convertMessage([data]))
+                        for (let redisStreamMessage of parseArr) {
+                            await cb([redisStreamMessage])
+                        }
                     }
                     // return cb(RedisWrap.convertMessage(res))
                 } else {
