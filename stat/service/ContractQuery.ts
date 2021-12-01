@@ -136,6 +136,12 @@ export class ContractQuery {
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => logger.error({ src: 'updateVerify', msg: e.toString() }));
             updateVerify = lodash.assign(updateInfo, {sourceCode, abi}, proxyInfo);
+            try {
+                const abiObj = JSON.parse(abi);
+                saveAbiInfo(abiObj).then();
+            } catch (e) {
+                console.log(`error, save abi info, ${base32}`, e);
+            }
         }
         const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
         logger?.info({ src: `[${address}]stat verify request`, updateResult: `${JSON.stringify(result)}` });
