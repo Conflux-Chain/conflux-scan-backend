@@ -77,22 +77,10 @@ export class BalanceService {
     }
 
     async run() {
-        const confIds = [-1]
-        const tasks = []
-        this.tokens.forEach(t=>{
-            tasks.push(
-                this.updateTokenByConf(t).then(res=>{
-                    if (res) {
-                        confIds.push(res.id)
-                    }
-                })
-            )
-        })
-        await Promise.all(tasks)
         const list = await Token.findAll({
+            attributes: {exclude: ['icon']},
             where: {type: {[Op.ne]: ''}, name: {[Op.ne]: ''}, symbol: {[Op.ne]: ''},
-                // skip configured token.
-                id: {[Op.notIn]: confIds}}
+                auditResult:true}
         })
         for (let i = 0; i < list.length; i++){
             let t = list[i];
@@ -106,24 +94,7 @@ export class BalanceService {
         let holder = await table.count({})
         await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
     }
-    public async updateTokenByConf(token: Erc20WatchList) {
-        const hexBean = await makeId(token.address) //Hex40Map.findOne({where: {hex: token.address.substr(2)}})
-        let tokenBean:Token = await Token.findOne({where: {hex40id: hexBean.id}});
-        if (tokenBean == null) {
-            return
-        }
-        //
-        let table: typeof Balance;
-        try {
-            table = BalanceWatcher.mapModel(token.name, false, tokenBean.hex40id);
-        } catch (err) {
-            console.log(`table not found for ${token.name}`)
-            return;
-        }
-        let holder = await table.count({})
-        await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
-        return tokenBean
-    }
+
     async rankHolder(base32: any, skip: any, limit: any) {
         const {
             app: { tokenTool },
