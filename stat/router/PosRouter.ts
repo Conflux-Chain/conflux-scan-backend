@@ -15,7 +15,8 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const limit = pickNumber(parseInt(ctx.request.query.limit), 10)
         const skip = pickNumber(parseInt(ctx.request.query.skip), 0)
         const p = {...ctx.request.query, skip, limit,
-            groupByPowAddress: Boolean(ctx.request.query.groupByPowAddress)
+            groupByPowAddress: Boolean(ctx.request.query.groupByPowAddress),
+            sortBy: ctx.request.query.orderBy,
         }
         const page = await statApp.posQuery.listPosAccountWithCurrentCommittee(p)
         ctx.body = {
@@ -25,9 +26,10 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         }
     })
     router.get('/list-pos-account-reward', async (ctx)=>{
-        const {identifier} = ctx.request.query
+        const {identifier, orderBy, reverse} = ctx.request.query
         const {skip,limit} = skipLimit(ctx.request.query)
-        const {count: total, rows: list} = await statApp.posQuery.listPosAccountReward({identifier, skip, limit});
+        const {count: total, rows: list} = await statApp.posQuery.listPosAccountReward({identifier, skip, limit,
+            orderBy: orderBy === 'createdAt' ? 'epoch' : orderBy, order: reverse === 'true' ? 'desc' : 'asc'});
         ctx.body = {
             code: 0, total, list, listLimit:10_000,
         }
@@ -43,7 +45,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/list-pos-block', async (ctx)=>{
         // const {identifier} = ctx.request.query
-        const {skip,limit} = skipLimit(ctx.request.query)
+        const {skip,limit} = skipLimitAny(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listBlock({skip, limit});
         ctx.body = {
             code: 0, total, list
@@ -58,9 +60,10 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         }
     })
     router.get('/list-account-vote-history', async (ctx)=>{
-        const {identifier} = ctx.request.query
+        const {identifier,orderBy,reverse} = ctx.request.query
         const {skip,limit} = skipLimit(ctx.request.query)
-        const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier});
+        const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier,
+            orderBy: orderBy === 'createdAt' ? 'blockNumber' : orderBy, order: reverse === 'true' ? 'desc':'asc'});
         ctx.body = {
             code: 0, total, list, listLimit:10_000,
         }

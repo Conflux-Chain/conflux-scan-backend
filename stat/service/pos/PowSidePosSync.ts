@@ -28,8 +28,10 @@ export class PowSidePosSync {
             if (e.message.includes('Method not found')) {
                 this.isPosRpc = false;
                 console.log(` not pos rpc, will drop all redis message.`)
+            } else if (e.message.includes('PoS chain is not enabled')) {
+                //
             } else {
-                console.log(` can not determine pos rpc.`)
+                console.log(` can not determine pos rpc.`, e)
                 process.exit(0)
             }
         }
@@ -83,7 +85,8 @@ export class PowSidePosSync {
             const bean:IPosRegister = {
                 epoch,
                 txHash: log['transactionHash'],
-                powBase32: '', identifier: ''
+                powBase32: '', identifier: '',
+                transactionLogIndex: log.transactionLogIndex,
             }
             if (log["topics"][0]?.startsWith('0xf3c')) {//IncreaseStake
                 const decoded = this.posContract.IncreaseStake.decodeLog(log).toObject()

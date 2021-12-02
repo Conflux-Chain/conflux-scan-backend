@@ -48,7 +48,7 @@ export class PosQuery {
         }
         const [latestVotedTime,pivotDecisionTime,lastDistributeBlockTime] = await Promise.all([
             Epoch.findByPk((st.latestVoted||st.latestCommitted)?.toString() || 0), //
-            Epoch.findByPk(st.pivotDecision?.toString() || 0), //
+            Epoch.findByPk(st.pivotDecision?.height?.toString() || 0), //
             // @ts-ignore
             this.cfx.getBlockByBlockNumber(posEconomics.lastDistributeBlock?.toString() || 0).then(blk=>{
                 return {epoch: 0, timestamp: new Date((blk?.timestamp || 0) * 1000)}
@@ -57,7 +57,7 @@ export class PosQuery {
         return {
             latestCommitted: (st.latestCommitted || '0').toString(),
             latestVoted: (st.latestVoted || st.latestCommitted || '0').toString(),
-            posPivotDecision: st.pivotDecision?.toString() || '0',
+            posPivotDecision: st.pivotDecision?.height?.toString() || '0',
             posEpoch: st.epoch?.toString() || '0',
             posAccountCount: posAccountCount?.toString() || '0',
             distributablePosInterest: posEconomics.distributablePosInterest.toString(),
@@ -66,13 +66,13 @@ export class PosQuery {
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
         }
     }
-    async listPosAccountReward({skip, limit, identifier}) {
+    async listPosAccountReward({skip, limit, identifier, orderBy, order}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
         if (account === null) {
             return {rows:[], count: 0};
         }
         const {rows, count} = await PosReward.findAndCountAll({
-            where: {accountId: account.id}, order: [['epoch','desc']], limit, offset: skip, raw:true,
+            where: {accountId: account.id}, order: [[ orderBy || 'epoch',order]], limit, offset: skip, raw:true,
         });
         if (!rows.length) {
             return {rows, count}
@@ -179,7 +179,7 @@ export class PosQuery {
             PosBlock.findByPk(blockHeight, {attributes:['nextTxNumber']}),
         ])
         const minTxId = preBlock?.nextTxNumber || 1
-        const maxTxId = curBlock?.nextTxNumber || 0 // trick to empty list
+        const maxTxId = curBlock?.nextTxNumber - 1 || 0 // trick to empty list
         const page = await PosTransaction.findAndCountAll({
             attributes: {exclude: ['fromId']},
             where: {number: {[Op.between]:[minTxId, maxTxId]}}, raw: true, offset, limit,
@@ -220,7 +220,7 @@ export class PosQuery {
         })
         return page;
     }
-    async listAccountVoteHistory({skip:offset, limit, identifier}) {
+    async listAccountVoteHistory({skip:offset, limit, identifier, orderBy, order}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
         if (account === null) {
             return {rows:[], count: 0};
@@ -228,7 +228,7 @@ export class PosQuery {
         const {count, rows} = await PosAccountBlock.findAndCountAll({offset, limit, raw:true,
             attributes: ['blockNumber','votes'],
             where: {accountId: account.id},
-            order: [['blockNumber','desc']]
+            order: [[orderBy || 'blockNumber',order || 'desc']]
         })
         if (count) {
             const blockIds = rows.map(row=>row.blockNumber).filter(Boolean)

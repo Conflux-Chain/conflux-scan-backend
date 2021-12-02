@@ -233,6 +233,7 @@ export interface IPosRegister {
     blsPubKey?: string
     vrfPubKey?: string
     retire?: boolean
+    transactionLogIndex:number
 }
 export class PosRegister extends Model<IPosRegister> implements IPosRegister {
     id?: number
@@ -250,12 +251,14 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
     blsPubKey?: string // when creating
     vrfPubKey?: string // when creating
     retire?: boolean // when retiring
+    transactionLogIndex:number
     static register(seq:Sequelize) {
         PosRegister.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             // blockHash: {type: DataTypes.CHAR(4), allowNull: false},
             txHash: {type: DataTypes.CHAR(66), allowNull: false},
+            transactionLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             // txIdx: {type: DataTypes.INTEGER, allowNull: false},
             // logIdx: {type: DataTypes.INTEGER, allowNull: false},
             powBase32: {type: DataTypes.STRING(128), allowNull: true, defaultValue: ''},
@@ -272,7 +275,7 @@ export class PosRegister extends Model<IPosRegister> implements IPosRegister {
             indexes: [
                 // {name: 'idx_epoch', fields:['epoch']},
                 //
-                {name: 'uk_status_change', unique: true, fields:['epoch','identifier','votePower','retire']},
+                {name: 'uk_epoch_tx_log_idx', unique: true, fields:['epoch','txHash','transactionLogIndex']},
                 {name: 'idx_powBase32', fields:['powBase32']},
             ]
         })
