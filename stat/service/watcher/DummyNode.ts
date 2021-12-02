@@ -382,7 +382,7 @@ export class DummyNode {
         })
     }
     async processOne(epoch, auto=false) {
-        while (epoch >= this.stopAtEpoch) {
+        while (epoch > this.stopAtEpoch) {
             await new Promise(r=>setTimeout(r, 5000))
             await this.updateMaxEpochLimit()
         }
