@@ -159,6 +159,23 @@ export class PosEpochRewardHash extends Model<IPosEpochRewardHash> implements IP
         })
     }
 }
+// record the corresponding pow epoch of each pow reward event.
+export interface IPosRewardPowEpoch {
+    powEpoch: number
+    posEpoch: number
+}
+export class PosRewardPowEpoch extends Model<IPosRewardPowEpoch> implements IPosRewardPowEpoch {
+    posEpoch: number
+    powEpoch: number
+    static register(seq) {
+        PosRewardPowEpoch.init({
+            posEpoch: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
+            powEpoch: {type: DataTypes.BIGINT({unsigned: true}), },
+        },{
+            sequelize:seq, tableName: 'pos_reward_pow_epoch'
+        })
+    }
+}
 export interface IPosReward {
     id?:number
     accountId:number

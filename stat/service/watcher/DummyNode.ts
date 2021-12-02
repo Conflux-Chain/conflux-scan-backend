@@ -41,7 +41,8 @@ import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
 import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
-import {CFX_BILL_EPOCH, KV} from "../../model/KV";
+import {CFX_BILL_EPOCH, CFX_BILL_POS_EPOCH_REWARD, KV} from "../../model/KV";
+import {PosRewardPowEpoch} from "../../model/PoS";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
@@ -52,12 +53,14 @@ const GAS = 'gas'
 const STORAGE_USED = 'store_u'
 const STORAGE_RELEASED = 'store_r'
 const REWARD = 'reward'
+const POS_REWARD = 'pos_r'
 const GENESIS = 'genesis'
 const MINED_COUNT_AGGREGATE_SIZE = 1_000_000_000
 export class DummyNode {
     cfx:Conflux
     verbose: boolean = false;
     stopAtEpoch = 0
+    curPosPosition = -1
     preLoadMap:PreloadMap
     constructor(cfx:Conflux) {
         this.cfx = cfx;
@@ -260,9 +263,26 @@ export class DummyNode {
             }
             billArr.push(rewardBill)
         }
+        await this.addPosRewardBill(billArr, epoch)
         return billArr
     }
-
+    async addPosRewardBill(billArr:any[], epoch:number) {
+        if (epoch <= this.stopAtEpoch || this.curPosPosition < 0) {
+            return
+        }
+        // only when reach the ceil epoch, check pos reward, add them to bill array.
+        const rewardInfo = await this.cfx.pos.getRewardsByEpoch(this.curPosPosition)
+        for (let {powAddress, reward} of rewardInfo.accountRewards) {
+            const bill = {
+                owner: powAddress, epoch, blockIndex:0, txIndex:0, traceIndex:0, type: POS_REWARD,
+                from: '', to: powAddress, diffDrip: reward,
+                seq: billArr.length
+            }
+            billArr.push(bill)
+        }
+        console.log(` push pos reward to bill, length ${rewardInfo.accountRewards.length}, pow epoch ${epoch
+        } pos epoch ${this.curPosPosition}`)
+    }
     async computeBalance(billList:any[], map:Map<any,any>, keyMapper:(o:any)=>any) {
         // find previous record
         billList.forEach(b=>{
@@ -385,6 +405,8 @@ export class DummyNode {
                 const arr = await CfxBill.bulkCreate(bills, {transaction: dbTx})
                 await KV.update({value: epoch.toString()}, {where:{key: CFX_BILL_EPOCH},
                     transaction: dbTx})
+                await KV.upsert({key: CFX_BILL_POS_EPOCH_REWARD, value: this.curPosPosition.toString()},
+                    {transaction: dbTx})
                 return arr;
             })
         }).then((bills)=> {
@@ -410,9 +432,30 @@ export class DummyNode {
     }
     ms = Date.now()
     async updateMaxEpochLimit() {
+        let posDecision = 0
+        try {
+            // if pos reward shows up, use the corresponding pow epoch as ceil epoch.
+            // otherwise, use confirmed epoch subtract a value as ceil epoch.
+            // default pos position is -1, means that we haven't use it yet.
+            const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD, '-1').then(parseInt)
+            const posRewardPowEpoch = await PosRewardPowEpoch.findOne({
+                where: {posEpoch: {[Op.gt]:posPosition}},
+                order: [['posEpoch','asc']]
+            })
+            if (posRewardPowEpoch !== null) {
+                this.stopAtEpoch = posRewardPowEpoch.powEpoch
+                this.curPosPosition = posRewardPowEpoch.posEpoch
+                console.log(` pos decision ${posDecision}`)
+                return
+            }
+        } catch (e) {
+            console.log(` pos status fail: ${e}`)
+        }
+
         this.cfx.getEpochNumber('latest_confirmed').then(res=>{
-            this.stopAtEpoch = res - 1000
-        })
+            this.stopAtEpoch = res - 20_000 // delay about 2hour.
+            console.log(` pow confirmed epoch ${res} with subtract, final ${this.stopAtEpoch}`)
+        });
     }
     // if the miner doesn't have tx in current epoch,
     // and previous record is a reward

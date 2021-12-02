@@ -7,7 +7,7 @@ import {
     PosAccountBlock,
     PosBlock,
     PosCommittee,
-    PosCommitteeNode, PosDailyStat, PosEpochRewardHash, PosReward,
+    PosCommitteeNode, PosDailyStat, PosEpochRewardHash, PosReward, PosRewardPowEpoch,
     PosTransaction
 } from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
@@ -513,6 +513,7 @@ export class PosSync {
         await this.waitLock()
         await PosReward.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
+                PosRewardPowEpoch.create({posEpoch: epoch, powEpoch: powBlock.epochNumber}, {transaction: dbTx}),
                 PosReward.bulkCreate(rewardBeans, {transaction: dbTx}),
                 Promise.all(rewardBeans.map((b,idx)=>{
                     const diff:any = b.reward.toString()
