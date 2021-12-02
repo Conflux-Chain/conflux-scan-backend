@@ -1,3 +1,5 @@
+import {sleep} from "./tool/ProcessTool";
+
 const lodash = require('lodash');
 const CONST = require('./common/constant');
 import {Epoch} from "../model/Epoch";
@@ -68,10 +70,17 @@ export abstract class SyncBase{
         let data: SyncData;
         try {
             data = await this.getDataForwardWithPreload(epochNumber);
+        } catch (e) {
+            console.log(`sync_base fetch data at ${epochNumber} fail:`, e)
+            await sleep(10_000);
+            return epochNumber;
+        }
+        try {
             syncCode = await this.saveForward(epochNumber, data);
         } catch (error) {
             console.error(`sync_base sync forward error, epoch:${epochNumber}`, error);
-            throw error;  //ECONNREFUSED
+            await sleep(10_000);
+            return epochNumber;
         }
 
         if(syncCode === SyncCode.SUCCESS){
