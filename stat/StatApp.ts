@@ -217,6 +217,7 @@ export class StatApp{
             // await this.pruneHandler.schedule();
         }
         if (this.config.syncTransferTps) {
+            await this.transferTpsService.scheduleRefreshConfig();
             await this.transferTpsService.schedule();
         }
         // Register global process events and graceful shutdown

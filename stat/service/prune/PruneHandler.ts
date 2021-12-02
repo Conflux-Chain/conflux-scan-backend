@@ -7,11 +7,14 @@ import {
     KEY_PRUNE_LOOP,
     KEY_PRUNE_DEL_ROWS_PER_LOOP,
     KEY_PRUNE_SLEEP_MS_PER_LOOP,
+    KEY_PRUNE_NOTIFY_INTERVAL,
     KV
 } from "../../model/KV";
 import {PruneBase} from "./PruneBase";
 
 export class PruneHandler {
+    public static NOTIFY_INTERVAL = 1;
+
     private app: any;
     private pruneBlock: PruneBlock;
     private pruneTransaction: PruneTransaction;
@@ -64,10 +67,11 @@ export class PruneHandler {
     }
 
     private static async refreshConfig(){
-        const [loop, delRowsPerLoop, sleepMsPerLoop] = await Promise.all([
+        const [loop, delRowsPerLoop, sleepMsPerLoop, notifyInterval] = await Promise.all([
             KV.getNumber(KEY_PRUNE_LOOP),
             KV.getNumber(KEY_PRUNE_DEL_ROWS_PER_LOOP),
             KV.getNumber(KEY_PRUNE_SLEEP_MS_PER_LOOP),
+            KV.getNumber(KEY_PRUNE_NOTIFY_INTERVAL),
         ]);
 
         PruneBase.PRUNE_LOOP = loop !== null ? loop : PruneBase.PRUNE_LOOP;
@@ -75,6 +79,7 @@ export class PruneHandler {
             (delRowsPerLoop > PruneBase.DEL_ROWS_MAX_PER_LOOP ? PruneBase.DEL_ROWS_MAX_PER_LOOP : delRowsPerLoop) :
             PruneBase.DEL_ROWS_PER_LOOP;
         PruneBase.SLEEP_MS_PER_LOOP = sleepMsPerLoop !== null ? sleepMsPerLoop : PruneBase.SLEEP_MS_PER_LOOP;
+        PruneHandler.NOTIFY_INTERVAL = notifyInterval !== null ? notifyInterval: PruneHandler.NOTIFY_INTERVAL;
     }
 
     private async listen() {
@@ -99,7 +104,7 @@ export class PruneHandler {
                     } else{
                         counterMap[addressId] ++;
                     }
-                    if(counterMap[addressId] % 1 !== 0){
+                    if(counterMap[addressId] % PruneHandler.NOTIFY_INTERVAL !== 0){
                         continue;
                     }
                     delete counterMap[addressId];
