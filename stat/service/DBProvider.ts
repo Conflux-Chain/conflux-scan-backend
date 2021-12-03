@@ -100,7 +100,7 @@ import {
     PosBlock,
     PosCommittee,
     PosCommitteeNode, PosDailyStat, PosEpochRewardHash,
-    PosRegister, PosReward, PosRewardPowEpoch,
+    PosRegister, PosReward,
     PosTransaction
 } from "../model/PoS";
 let conf
@@ -275,7 +275,6 @@ export async function initModel(sequelize) {
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);
-    PosRewardPowEpoch.register(sequelize);
     PosAccountBlock.register(sequelize)
     PosCommittee.register(sequelize)
     PosCommitteeNode.register(sequelize)
