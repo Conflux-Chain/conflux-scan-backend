@@ -418,7 +418,6 @@ export class DummyNode {
                 console.log(`${new Date().toISOString()} process epoch ${epoch} finished, create bills ${bills.length
                 }, target epoch ${this.stopAtEpoch}, diff ${this.stopAtEpoch - epoch} ${remainH}H, min balance -${new Drip(-this.minBalanceRecord.balance).toCFX()
                 }CFX owner ${this.minBalanceRecord.ownerId||'Empty'}`)
-                this.updateMaxEpochLimit()
             }
             if (this.verbose) {
                 // sync check
