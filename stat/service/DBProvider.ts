@@ -320,9 +320,12 @@ export async function autoAddPartition(seq:Sequelize) {
     console.log(` partition table count ${partitionList.length}`)
     // check whether max partition contains records
     for (let partition of partitionList) {
-        const row = `select TABLE_ROWS from INFORMATION_SCHEMA.PARTITIONS where TABLE_SCHEMA = '${conf.instanceName}'
+        const hasBlankPartitionSql = `select TABLE_ROWS from INFORMATION_SCHEMA.PARTITIONS where TABLE_SCHEMA = '${conf.instanceName}'
         and TABLE_NAME = '${partition.TABLE_NAME}' and PARTITION_DESCRIPTION = ${partition.maxV} 
         and TABLE_ROWS = 0`
+        const row = seq.query(hasBlankPartitionSql, {type: QueryTypes.UPDATE,
+            // logging: console.log
+        })
         if (row) {
             console.log(` table ${partition.TABLE_NAME} has a partition with zero records and range < ${partition.maxV}`)
             continue
