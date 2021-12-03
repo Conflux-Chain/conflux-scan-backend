@@ -438,17 +438,12 @@ export class DummyNode {
             // otherwise, use confirmed epoch subtract a value as ceil epoch.
             // default pos position is -1, means that we haven't use it yet.
             const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD, '-1').then(parseInt)
-            const posRewardPowEpoch = await PosEpochRewardHash.findOne({
-                where: {epoch: {[Op.gt]:posPosition}},
-                order: [['posEpoch','asc']]
-            }).then(res=>{
-                if (res === null) {
-                    // fallback to current pos reward epoch.
-                    return PosEpochRewardHash.findByPk(posPosition)
-                }
-                return res;
+            const [curPos, nextPos] = await PosEpochRewardHash.findAll({
+                where: {epoch: {[Op.gte]:posPosition}},
+                order: [['posEpoch','asc']], limit: 2
             })
-            if (posRewardPowEpoch !== null) {
+            const posRewardPowEpoch = nextPos || curPos
+            if (posRewardPowEpoch) {
                 this.stopAtEpoch = posRewardPowEpoch.powEpoch
                 this.curPosPosition = posRewardPowEpoch.epoch
                 console.log(` pos decision ${posDecision}`)
