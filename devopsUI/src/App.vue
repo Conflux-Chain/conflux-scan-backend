@@ -2,7 +2,7 @@
   <div id="app">
     <div>Host:
       {{host}}
-      <a :href="host" target="_blank">Go!</a>
+      <a href="/" target="_blank">Go!</a>
     </div>
     <el-tabs :active-name="tb">
       <el-tab-pane label="ERC20" name="ERC20">
