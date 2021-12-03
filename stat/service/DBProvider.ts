@@ -323,7 +323,7 @@ export async function autoAddPartition(seq:Sequelize) {
         const hasBlankPartitionSql = `select TABLE_ROWS from INFORMATION_SCHEMA.PARTITIONS where TABLE_SCHEMA = '${conf.instanceName}'
         and TABLE_NAME = '${partition.TABLE_NAME}' and PARTITION_DESCRIPTION = ${partition.maxV} 
         and TABLE_ROWS = 0`
-        const row = seq.query(hasBlankPartitionSql, {type: QueryTypes.SELECT,
+        const row = await seq.query(hasBlankPartitionSql, {type: QueryTypes.SELECT,
             // logging: console.log
         })
         if (row) {
