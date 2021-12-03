@@ -42,7 +42,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
 import {CFX_BILL_EPOCH, CFX_BILL_POS_EPOCH_REWARD, KV} from "../../model/KV";
-import {PosRewardPowEpoch} from "../../model/PoS";
+import {PosEpochRewardHash} from "../../model/PoS";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
@@ -438,13 +438,19 @@ export class DummyNode {
             // otherwise, use confirmed epoch subtract a value as ceil epoch.
             // default pos position is -1, means that we haven't use it yet.
             const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD, '-1').then(parseInt)
-            const posRewardPowEpoch = await PosRewardPowEpoch.findOne({
-                where: {posEpoch: {[Op.gt]:posPosition}},
+            const posRewardPowEpoch = await PosEpochRewardHash.findOne({
+                where: {epoch: {[Op.gt]:posPosition}},
                 order: [['posEpoch','asc']]
+            }).then(res=>{
+                if (res === null) {
+                    // fallback to current pos reward epoch.
+                    return PosEpochRewardHash.findByPk(posPosition)
+                }
+                return res;
             })
             if (posRewardPowEpoch !== null) {
                 this.stopAtEpoch = posRewardPowEpoch.powEpoch
-                this.curPosPosition = posRewardPowEpoch.posEpoch
+                this.curPosPosition = posRewardPowEpoch.epoch
                 console.log(` pos decision ${posDecision}`)
                 return
             }
