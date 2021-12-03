@@ -440,7 +440,8 @@ export class DummyNode {
             const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD, '-1').then(parseInt)
             const [curPos, nextPos] = await PosEpochRewardHash.findAll({
                 where: {epoch: {[Op.gte]:posPosition}},
-                order: [['epoch','asc']], limit: 2
+                order: [['epoch','asc']], limit: 2,
+                logging: console.log,
             })
             const posRewardPowEpoch = nextPos || curPos
             if (posRewardPowEpoch) {
