@@ -1,4 +1,4 @@
-import {QueryTypes, Sequelize} from "sequelize";
+import {Sequelize, QueryTypes} from "sequelize";
 import {Address, AddressInfo, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
@@ -286,7 +286,7 @@ export async function initModel(sequelize) {
 }
 
 export function createMySql(dbConf) {
-    console.log(`create mysql ${dbConf.host}`)
+    console.log(`create mysql ${dbConf.host} ${dbConf.instanceName}`)
     // return new Sequelize(dbConf.database,
     //     dbConf.user,
     //     dbConf.pwd, {
@@ -300,5 +300,35 @@ export function createMySql(dbConf) {
     //     // },
     // });
 
-    return new Sequelize(dbConf.instanceName, null, null, dbConf);
+    const seq = new Sequelize(dbConf.instanceName, null, null, dbConf);
+    autoAddPartition(seq).then()
+    setInterval(()=>autoAddPartition(seq), 600_000)
+    return seq
+}
+
+
+export async function autoAddPartition(seq:Sequelize) {
+    const sql = `SELECT TABLE_SCHEMA,TABLE_NAME, min(convert(PARTITION_DESCRIPTION,unsigned)) as minV,
+        max(convert(PARTITION_DESCRIPTION, UNSIGNED)) as maxV,
+        count(*) as pCnt
+       FROM INFORMATION_SCHEMA.PARTITIONS
+       WHERE PARTITION_NAME is not null and TABLE_SCHEMA = '${conf.instanceName}' and PARTITION_METHOD = 'RANGE'
+       group by TABLE_SCHEMA,TABLE_NAME
+       `
+    // find partition list
+    const partitionList:any[] = await seq.query(sql, {type: QueryTypes.SELECT, raw: true})
+    console.log(` partition table count ${partitionList.length}`)
+    // check whether max partition contains records
+    for (let partition of partitionList) {
+        const row = `select TABLE_ROWS from INFORMATION_SCHEMA.PARTITIONS where TABLE_SCHEMA = '${conf.instanceName}'
+        and TABLE_NAME = '${partition.TABLE_NAME}' and PARTITION_DESCRIPTION = ${partition.maxV} 
+        and TABLE_ROWS = 0`
+        if (row) {
+            console.log(` table ${partition.TABLE_NAME} has a partition with zero records and range < ${partition.maxV}`)
+            continue
+        }
+        const addSql = `alter table ${partition.TABLE_NAME
+        } add partition (partition p${partition.pCnt+1} values less than (${partition.minV + partition.maxV}))`
+        await seq.query(addSql, {type:QueryTypes.UPDATE, logging: console.log})
+    }
 }
