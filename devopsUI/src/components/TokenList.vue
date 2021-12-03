@@ -6,7 +6,9 @@
       <el-table-column label="name" prop="name"></el-table-column>
       <el-table-column label="symbol" prop="symbol"></el-table-column>
       <el-table-column label="address" prop="address"></el-table-column>
-      <el-table-column label="transfer" prop="transferCount"></el-table-column>
+      <el-table-column label="transfer" prop="transferCount">
+        <template slot-scope="{row:{transferCount}}">{{transferCount.toLocaleString()}}</template>
+      </el-table-column>
     </el-table>
   </div>
 </template>
