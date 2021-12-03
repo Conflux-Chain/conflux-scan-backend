@@ -326,7 +326,7 @@ export async function autoAddPartition(seq:Sequelize) {
         const row = await seq.query(hasBlankPartitionSql, {type: QueryTypes.SELECT,
             // logging: console.log
         })
-        if (row) {
+        if (row.length) {
             console.log(` table ${partition.TABLE_NAME} has a partition with zero records and range < ${partition.maxV}`)
             continue
         }
