@@ -447,7 +447,8 @@ export class DummyNode {
             if (posRewardPowEpoch) {
                 this.stopAtEpoch = posRewardPowEpoch.powEpoch
                 this.curPosPosition = posRewardPowEpoch.epoch
-                console.log(` pos decision ${posDecision}`)
+                console.log(` pos decision ${this.stopAtEpoch}, db pos position ${posPosition
+                }, cur pos position ${this.curPosPosition}`)
                 return
             }
         } catch (e) {
