@@ -114,7 +114,7 @@ export class DummyNode {
     }
     preFetchedTo = 0
     async fetchEpoch(epoch) {
-        if (epoch+10 === this.preFetchedTo) {
+        if (epoch+10 === this.preFetchedTo && epoch + 10 <= this.stopAtEpoch) {
             for(let i=1; i<=10; i++) {
                 this.preLoadMap.start(++this.preFetchedTo)
             }
@@ -267,7 +267,7 @@ export class DummyNode {
         return billArr
     }
     async addPosRewardBill(billArr:any[], epoch:number) {
-        if (epoch <= this.stopAtEpoch || this.curPosPosition < 0) {
+        if (epoch !== this.stopAtEpoch || this.curPosPosition < 0) {
             return
         }
         // only when reach the ceil epoch, check pos reward, add them to bill array.
