@@ -25,6 +25,10 @@ export class RedisWrap{
     selectAsync:Function
     sendCommand:Function
     info:Function
+    sadd:Function
+    scard:Function
+    del:Function
+    // hsetnx:Function
     client:RedisClient
     static init(client:RedisClient) {
         redisWrap.client = client
@@ -32,6 +36,10 @@ export class RedisWrap{
         redisWrap.getAsync = promisify(client.get).bind(client);
         redisWrap.selectAsync = promisify(client.select).bind(client);
         redisWrap.info = promisify(client.info).bind(client);
+        // redisWrap.hsetnx = promisify(client.hsetnx).bind(client);
+        redisWrap.sadd = promisify(client.sadd).bind(client);
+        redisWrap.scard = promisify(client.scard).bind(client);
+        redisWrap.del = promisify(client.del).bind(client);
         redisWrap.sendCommand = promisify(client.sendCommand).bind(client);
     }
 
@@ -150,6 +158,20 @@ export class RedisWrap{
             }
             return res
         })
+    }
+    static async saddm(key:string, members:any[]) {
+        console.log()
+        return redisWrap.sadd(key, members)
+    }
+    static async sadd(key:string, ...members) {
+        console.log()
+        return redisWrap.sadd(key, members)
+    }
+    static async scard(key:string) {
+        return redisWrap.scard(key)
+    }
+    static async del(key:string) {
+        return redisWrap.del(key)
     }
     static async xDel(data:RedisStreamMessage[]) {
         return Promise.all(data.map(msg=>{
