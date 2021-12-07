@@ -176,8 +176,8 @@ export abstract class TransferQueryBase {
             // fields mapping
             list.forEach(row=>{
                 row['transactionHash'] = `0x${hex64Map.get(row['transactionHash'])}`;
-                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
-                row['to'] = format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId);
+                row['from'] = hex40Map.get(row['from']) ? format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId) : '';
+                row['to'] = hex40Map.get(row['to']) ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : '';
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
                     : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];
