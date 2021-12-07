@@ -42,7 +42,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
 import {CFX_BILL_EPOCH, CFX_BILL_POS_EPOCH_REWARD, KV} from "../../model/KV";
-import {PosRewardPowEpoch} from "../../model/PoS";
+import {PosEpochRewardHash} from "../../model/PoS";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
