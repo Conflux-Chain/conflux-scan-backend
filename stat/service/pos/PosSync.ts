@@ -599,16 +599,32 @@ export class PosSync {
     }
 }
 if (require.main === module) {
+    start().then()
+}
+async function start() {
     const args = process.argv.slice(2)
     const url = args[0]
     const cfx = new Conflux({url})
     const posSync = new PosSync(cfx);
     const rewardStartAtPow = args[1] ? parseInt(args[1]) : 200_000
-    init().then(()=> {
-        return posSync.init()
-    }).then(()=>{
-        return posSync.updateLatestBlockNumber()
-    }).then(()=>{
+    await init()
+    await posSync.init()
+    await posSync.updateLatestBlockNumber()
+    // wait pos enable
+    while (true) {
+        try {
+            await cfx.pos.getStatus()
+            break;
+        } catch (e) {
+            if (e.message.includes('PoS chain is not enabled')) {
+                console.log(` wait. ${e}`)
+                await sleep(10_0000)
+            }
+            console.log(` get pos status fail when startup:`, e)
+            throw e;
+        }
+    }
+    {
         // cfx.getBlockByEpochNumber(345000).then(blk=>{
         //     removeLongData(blk)
         //     console.log(` block is `, blk)
@@ -638,7 +654,7 @@ if (require.main === module) {
             posSync.repeatSyncRewards(rewardStartAtPow),
             // posSync.updateRecentCommitteeAccount(8),
         ])
-    })
+    }
 }
 /*
 Rpc Document
