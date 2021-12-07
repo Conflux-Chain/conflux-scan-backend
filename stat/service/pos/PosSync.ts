@@ -609,7 +609,6 @@ async function start() {
     const rewardStartAtPow = args[1] ? parseInt(args[1]) : 200_000
     await init()
     await posSync.init()
-    await posSync.updateLatestBlockNumber()
     // wait pos enable
     while (true) {
         try {
@@ -618,12 +617,13 @@ async function start() {
         } catch (e) {
             if (e.message.includes('PoS chain is not enabled')) {
                 console.log(` wait. ${e}`)
-                await sleep(10_0000)
+                await sleep(10_000)
             }
             console.log(` get pos status fail when startup:`, e)
             throw e;
         }
     }
+    await posSync.updateLatestBlockNumber()
     {
         // cfx.getBlockByEpochNumber(345000).then(blk=>{
         //     removeLongData(blk)
