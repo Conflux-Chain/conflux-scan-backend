@@ -17,6 +17,7 @@ import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {PruneNotifier} from "./prune/PruneNotifier";
 import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
+import {TransferTpsService} from "./TransferTpsService";
 const lodash = require('lodash');
 const zlib = require('zlib');
 const CONST = require('./common/constant');
@@ -128,9 +129,12 @@ export class EpochSync extends SyncBase{
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
             console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}, traceCreateDel:${traceCreateDel}`);
         });
-        RedisWrap.sendStreamMessage({epochNumber, action: 'pop'}, TPS_TRANSFER_Q).then().catch(
-            err => console.log(`epoch-sync.transfer-tps-pop epoch:${epochNumber} error:${err}`)
-        );
+
+        if(TransferTpsService.TPS_TRANSFER_NOTIFY) {
+            RedisWrap.sendStreamMessage({epochNumber, action: 'pop'}, TPS_TRANSFER_Q).then().catch(
+                err => console.log(`epoch-sync.transfer-tps-pop epoch:${epochNumber} error:${err}`)
+            );
+        }
     }
 
     //---------------------- business method for epoch -----------------------
@@ -387,10 +391,12 @@ export class EpochSync extends SyncBase{
             return [];
         });
 
-        const eventLogStat = EpochSync.countEventLog(epochNumber, eventLogArray);
-        RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q).then().catch(
-            err => console.log(`epoch-sync.transfer-tps-push epoch:${epochNumber} error:${err}`)
-        );
+        if(TransferTpsService.TPS_TRANSFER_NOTIFY){
+            const eventLogStat = EpochSync.countEventLog(epochNumber, eventLogArray);
+            RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q).then().catch(
+                err => console.log(`epoch-sync.transfer-tps-push epoch:${epochNumber} error:${err}`)
+            );
+        }
 
         return eventLogArray
             .filter((v) => v.address !== 'CFX:TYPE.CONTRACT:ACAV5V98NP8T3M66UW7X61YER1JA1JM0DPZJ1ZYZXV'

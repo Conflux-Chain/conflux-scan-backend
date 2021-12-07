@@ -3,16 +3,33 @@ import {
     RedisStreamMessage,
     TPS_TRANSFER_Q, xLen,
 } from "./RedisWrap";
-import {KEY_TPS_TRANSFER, KV} from "../model/KV";
+import {
+    KEY_TPS_TRANSFER,
+    KEY_TPS_TRANSFER_NOTIFY,
+    KV
+} from "../model/KV";
 const lodash = require('lodash');
 
 export class TransferTpsService {
+    public static TPS_TRANSFER_NOTIFY: Boolean = false;
+
     private app: any;
     private TRANSFER_COUNTER: any = {};
     private STAT_EPOCH_LENGTH = 60;
 
     constructor(app: any) {
         this.app = app;
+    }
+
+    public async scheduleRefreshConfig(delay = 1000) {
+        async function repeat() {
+            await TransferTpsService.refreshConfig().catch(err=>{
+                console.log(`tps_transfer_refresh_conf fail: `, err);
+            });
+            setTimeout(repeat, delay);
+        }
+        repeat().then();
+        console.log(`schedule tps_transfer_refresh_conf service in 1s interval`);
     }
 
     public async schedule() {
@@ -27,6 +44,11 @@ export class TransferTpsService {
         }
         repeat().then();
         console.log(`schedule transfer_tps_stat service in 1s interval`);
+    }
+
+    private static async refreshConfig(){
+        const notify = await KV.getSwitch(KEY_TPS_TRANSFER_NOTIFY);
+        TransferTpsService.TPS_TRANSFER_NOTIFY = notify !== null ? notify: TransferTpsService.TPS_TRANSFER_NOTIFY;
     }
 
     public async getTps(){
