@@ -618,6 +618,7 @@ async function start() {
             if (e.message.includes('PoS chain is not enabled')) {
                 console.log(` wait. ${e}`)
                 await sleep(10_000)
+                continue
             }
             console.log(` get pos status fail when startup:`, e)
             throw e;
