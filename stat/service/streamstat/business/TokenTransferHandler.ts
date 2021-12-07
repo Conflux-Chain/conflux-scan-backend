@@ -1,0 +1,143 @@
+import {StatApp} from "../../../StatApp";
+import {StatHandler} from "../StatHandler";
+import {TokenTransferStat} from "../../../model/TokenTransferStat";
+import {col, fn, Op} from "sequelize";
+import {Token} from "../../../model/Token";
+import {BizStatInfo} from "../BizStatInfo";
+import {STREAM_STAT_TRANSFER_Q} from "../../RedisWrap";
+import {StatBucket} from "../StatBucket";
+
+export class TokenTransferHandler extends StatHandler {
+    protected app: StatApp;
+
+    public constructor(app: StatApp) {
+        super(app);
+        this.app = app;
+        this.bizQueue = STREAM_STAT_TRANSFER_Q;
+        this.bizStatInfo = new BizStatInfo();
+    }
+
+    public bizAlias(): string {
+        return "token_transfer";
+    }
+
+    public async warmUp({reservedBuckets}) {
+        const checkpoint = new Date();
+        checkpoint.setMinutes(0, 0, 0);
+        checkpoint.setHours(checkpoint.getHours() - reservedBuckets);
+
+        const tokens = await Token.findAll({
+            attributes: ['id', 'hex40id'],
+            where: {auditResult: true},
+        });
+
+        for (const token of tokens) {
+            const statArray = await TokenTransferStat.findAll({
+                where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.gte]: checkpoint}},
+                order: [['statTime', 'ASC']],
+                raw: true,
+                // logging: msg => console.log(`[type=${this.bizAlias()}]preload: ${msg}`),
+            });
+            if (statArray === null) continue;
+
+            this.bizStatInfo.statRecords[token.hex40id] = statArray.forEach(stat => {
+                const statEndTime = new Date(stat.statTime);
+                statEndTime.setMinutes(0, 0, 0);
+                statEndTime.setHours(statEndTime.getHours() + 1);
+                return new StatBucket({
+                    bizValue: BigInt(stat.bizValue),
+                    lowerBoundInclude: stat.statTime,
+                    upperBoundExclude: statEndTime,
+                    minEpochNumber: stat.minEpoch,
+                    maxEpochNumber: stat.maxEpoch
+                });
+            });
+        }
+    }
+
+    public async rollupBucket({statId, bucketArray, reservedBuckets}) {
+        do {
+            const oldest = bucketArray[0];
+            const record = {
+                bizId: statId,
+                statType: '1h',
+                statTime: oldest.lowerBoundInclude,
+                bizValue: oldest.bizValue,
+                minEpoch: oldest.minEpochNumber,
+                maxEpoch: oldest.maxEpochNumber,
+            };
+
+            await TokenTransferStat.upsert(record as TokenTransferStat);
+            bucketArray.shift();
+        } while (bucketArray.length > reservedBuckets);
+    }
+
+    protected async loadBucket({statId, statTime, statEpoch}) {
+        let stat = null;
+        if(statTime !== undefined){
+            const searchTime = new Date(statTime);
+            searchTime.setMinutes(0, 0, 0);
+            stat = await TokenTransferStat.findOne({
+                where: {bizId: statId, statType: '1h', statTime: searchTime},
+                raw: true,
+                // logging: msg => console.log(`transferStat: ${msg}`),
+            });
+        }
+
+        if(statEpoch !== undefined){
+            stat = await TokenTransferStat.findOne({
+                where: {bizId: statId, statType: '1h', minEpoch: {[Op.lte]: statEpoch}, maxEpoch: {[Op.gte]: statEpoch}},
+                raw: true,
+                // logging: msg => console.log(`transferStat: ${msg}`),
+            });
+        }
+
+        if(!stat){
+            return stat;
+        }
+
+        const statEndTime = new Date(stat.statTime);
+        statEndTime.setMinutes(0, 0, 0);
+        statEndTime.setHours(statEndTime.getHours() + 1);
+        return new StatBucket({
+            bizValue: BigInt(stat.bizValue),
+            lowerBoundInclude: stat.statTime,
+            upperBoundExclude: statEndTime,
+            minEpochNumber: stat.minEpoch,
+            maxEpochNumber: stat.maxEpoch
+        });
+    }
+
+    public async collectBucket() {
+        const trigger = this.bizStatInfo.trigger();
+        if(!trigger) return;
+
+        const collectTime = this.bizStatInfo.currentEpochTimestamp;
+        collectTime.setDate(collectTime.getDate() - 7);
+        const startTime = new Date(collectTime);
+
+        const tokens = await Token.findAll({
+            attributes: ['id', 'hex40id'],
+            where: {auditResult: true},
+        });
+
+        for (const token of tokens) {
+            const statItem = await TokenTransferStat.findOne({
+                attributes: [[fn('sum', col('bizValue')), 'transferLatest']],
+                where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.gte]: startTime}},
+                // logging: msg => console.log(`transferLatest: ${msg}`),
+            });
+
+            await Token.sequelize.transaction(async (dbTx) => {
+                await Token.update({transferLatest: statItem['transferLatest'] || 0}, {
+                    where: {id: token.id},
+                    transaction: dbTx,
+                });
+                await TokenTransferStat.destroy({
+                    where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.lt]: startTime},},
+                    transaction: dbTx,
+                });
+            });
+        }
+    }
+}

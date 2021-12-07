@@ -16,8 +16,9 @@ import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {PruneNotifier} from "./prune/PruneNotifier";
-import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
+import {RedisWrap, STREAM_STAT_TRANSFER_Q, TPS_TRANSFER_Q} from "./RedisWrap";
 import {TransferTpsService} from "./TransferTpsService";
+import {StatNotifier} from "./streamstat/StatNotifier";
 const lodash = require('lodash');
 const zlib = require('zlib');
 const CONST = require('./common/constant');
@@ -47,7 +48,7 @@ export class EpochSync extends SyncBase{
     async getData(epochNumber): Promise<SyncData> {
         const epoch = await this.getEpoch(epochNumber);
         const minerBlockArray = await this.getMinerBlockArray(epochNumber);
-        const eventLogInfo = await this.getLogsGrouped(epochNumber);
+        const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp: epoch.timestamp});
         const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
         const traceCreateArray = await  this.getTraceCreateArrayDB(epochNumber);
@@ -345,12 +346,12 @@ export class EpochSync extends SyncBase{
     }
 
     // -------------------------------- event log -------------------------------
-    private async getLogsGrouped(epochNumber) {
+    private async getLogsGrouped({epochNumber, epochTimestamp}) {
         const {
             app: { tokenTool },
         } = this;
 
-        const eventLogArray = await this.getLogs(epochNumber);
+        const eventLogArray = await this.getLogs({epochNumber, epochTimestamp});
         const groupedLogs = {
             epochNumber,
             transfer20Array: [],
@@ -375,7 +376,7 @@ export class EpochSync extends SyncBase{
         return groupedLogs;
     }
 
-    private async getLogs(epochNumber) {
+    private async getLogs({epochNumber, epochTimestamp}) {
         const {
             app: { cfx },
         } = this;
@@ -391,11 +392,15 @@ export class EpochSync extends SyncBase{
             return [];
         });
 
+        const eventLogStat = await EpochSync.countEventLog(epochNumber, eventLogArray);
         if(TransferTpsService.TPS_TRANSFER_NOTIFY){
-            const eventLogStat = EpochSync.countEventLog(epochNumber, eventLogArray);
-            RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q).then().catch(
-                err => console.log(`epoch-sync.transfer-tps-push epoch:${epochNumber} error:${err}`)
-            );
+            RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q)
+                .catch(e => console.log(`epoch-sync.notifyTransferTps epoch:${epochNumber}`, e));
+        }
+        if(this.app.config.statTokenTransfer && Object.keys(eventLogStat.tokenIdTransferCntrMap).length > 0){
+            const msg = {epochNumber, epochTimestamp, statInfo: eventLogStat.tokenIdTransferCntrMap};
+            StatNotifier.notifyStatTokenTransfer({msg: lodash.defaults(msg, {action: 'push'}), q: STREAM_STAT_TRANSFER_Q})
+                .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e));
         }
 
         return eventLogArray
@@ -411,28 +416,44 @@ export class EpochSync extends SyncBase{
         return eventLog;
     }
 
-    private static countEventLog(epochNumber, eventLogArray) {
+    private static async countEventLog(epochNumber, eventLogArray) {
         let erc20Cntr = 0;
         let erc721Cntr = 0;
         let erc1155Cntr = 0;
+        let tokenTransferCntrMap = {};
+        let tokenIdTransferCntrMap = {};
 
         eventLogArray.forEach(eventLog => {
             const topic0 = eventLog.topics[0];
+            let isTokenTransfer = false;
             if(topic0 === TOPIC0_TRANSFER_ERC20){
                 if(eventLog.topics.length === 3){
                     erc20Cntr++;
                 } else {
                     erc721Cntr++;
                 }
-
+                isTokenTransfer = true;
             }
             if(topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE ||
                 topic0 === TOPIC0_TRANSFER_ERC1155_BATCH){
                 erc1155Cntr++;
+                isTokenTransfer = true;
+            }
+
+            if(isTokenTransfer){
+                const addr = eventLog.address;
+                tokenTransferCntrMap[addr] = tokenTransferCntrMap[addr] ? (tokenTransferCntrMap[addr] + 1) : 1;
             }
         });
 
-        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr};
+        const addrArray = Object.keys(tokenTransferCntrMap);
+        for(const addr of addrArray){
+            const hex = format.hexAddress(addr);
+            const tokenId = (await makeId(hex)).id;
+            tokenIdTransferCntrMap[tokenId] = tokenTransferCntrMap[addr];
+        }
+
+        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenIdTransferCntrMap};
     }
 
     // ------------------------------ trace create ------------------------------

@@ -17,6 +17,8 @@ export const PRUNE_Q = 'PRUNE_Q';
 
 export const TPS_TRANSFER_Q = 'TPS_TRANSFER_Q'
 
+export const STREAM_STAT_TRANSFER_Q = 'STREAM_STAT_TRANSFER_Q';
+
 export const HASH_CUSTODIAN_TOKEN = 'CUSTODIAN_TOKEN'
 
 export class RedisWrap{

@@ -45,6 +45,7 @@ import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
+import {TokenTransferHandler} from "./service/streamstat/business/TokenTransferHandler";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -83,6 +84,7 @@ export class StatApp{
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
     public pruneHandler: PruneHandler;
     public transferTpsService: TransferTpsService;
+    public tokenTransferHandler: TokenTransferHandler;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -165,6 +167,7 @@ export class StatApp{
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
         this.pruneHandler = new PruneHandler(this);
         this.transferTpsService = new TransferTpsService(this);
+        this.tokenTransferHandler = new TokenTransferHandler(this);
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
@@ -219,6 +222,9 @@ export class StatApp{
         if (this.config.syncTransferTps) {
             await this.transferTpsService.scheduleRefreshConfig();
             await this.transferTpsService.schedule();
+        }
+        if (this.config.statTokenTransfer) {
+            await this.tokenTransferHandler.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

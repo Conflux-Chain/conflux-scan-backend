@@ -103,6 +103,7 @@ import {
     PosRegister, PosReward,
     PosTransaction
 } from "../model/PoS";
+import {TokenTransferStat} from "../model/TokenTransferStat";
 let conf
 export function createDB(config) {
     conf = config
@@ -200,6 +201,7 @@ export async function initPartialModel(sequelize) {
     CfxBalance.register(sequelize);
     TokenSecurityAudit.register(sequelize);
     PruneInfo.register(sequelize);
+    TokenTransferStat.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

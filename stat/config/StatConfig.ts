@@ -103,6 +103,7 @@ export interface StatConfig{
     syncTokenSecurityAudit: boolean,
     syncPrune: boolean,
     syncTransferTps: boolean,
+    statTokenTransfer: boolean,
     databaseRW: DatabaseRW,
 }
 
