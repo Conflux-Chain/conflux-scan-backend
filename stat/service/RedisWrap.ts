@@ -28,6 +28,10 @@ export class RedisWrap{
     sadd:Function
     scard:Function
     del:Function
+    zadd:Function
+    zrange:Function
+    zrem:Function
+    zcard:Function
     // hsetnx:Function
     client:RedisClient
     static init(client:RedisClient) {
@@ -40,6 +44,10 @@ export class RedisWrap{
         redisWrap.sadd = promisify(client.sadd).bind(client);
         redisWrap.scard = promisify(client.scard).bind(client);
         redisWrap.del = promisify(client.del).bind(client);
+        redisWrap.zadd = promisify(client.zadd).bind(client);
+        redisWrap.zrange = promisify(client.zrange).bind(client);
+        redisWrap.zrem = promisify(client.zrem).bind(client);
+        redisWrap.zcard = promisify(client.zcard.bind(client));
         redisWrap.sendCommand = promisify(client.sendCommand).bind(client);
     }
 
@@ -159,13 +167,14 @@ export class RedisWrap{
             return res
         })
     }
-    static async saddm(key:string, members:any[]) {
-        console.log()
+    static async saddm(key:any, members:any[]) {
         return redisWrap.sadd(key, members)
     }
     static async sadd(key:string, ...members) {
-        console.log()
         return redisWrap.sadd(key, members)
+    }
+    static async zadd(key:string, score:any, member:any) {
+        return redisWrap.zadd(key, score, member)
     }
     static async scard(key:string) {
         return redisWrap.scard(key)
