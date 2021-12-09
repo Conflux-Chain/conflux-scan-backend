@@ -36,6 +36,7 @@ import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {PruneInfo} from "../model/PruneInfo";
+import {Epoch} from "../model/Epoch";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -79,14 +80,19 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {hex: bean, token, base32}
     })
     router.get('/devops/sync-max-epoch',async (ctx) => {
-        await Promise.all([
-            Erc20Transfer.max('epoch').then(epoch=>{return {epoch, t:'Erc20Transfer'}}),
-            AddressErc20Transfer.max('epoch').then(epoch=>{return {epoch, t:'AddressErc20Transfer'}}),
-            CfxTransfer.max('epoch').then(epoch=>{return {epoch, t:'CfxTransfer'}}),
-            AddressCfxTransfer.max('epoch').then(epoch=>{return {epoch, t:'AddressCfxTransfer'}}),
-            FullTransaction.max('epoch').then(epoch=>{return {epoch, t:'FullTransaction'}}),
-            FullBlock.max('epoch').then(epoch=>{return {epoch, t:'FullBlock'}}),
+        function fillName(res, name) {
+            res = res || {createdAt: new Date(), epoch: -1}
+            res.name = name
+            return res;
+        }
+        const list = await Promise.all([
+            Epoch.findOne({order:[['epoch','desc']], raw:true}).then(res=>fillName(res, 'epoch')),
+            Erc20Transfer.findOne({order:[['epoch','desc']], raw:true}).then(res=>fillName(res, 'Erc20transfer')),
+            CfxTransfer.findOne({order:[['epoch','desc']], raw:true}).then(res=>fillName(res, 'cfx transfer')),
+            FullBlock.findOne({order:[['epoch','desc']], raw:true}).then(res=>fillName(res, 'full block')),
+            FullTransaction.findOne({order:[['epoch','desc']], raw:true}).then(res=>fillName(res, 'full tx')),
         ])
+        ctx.body = {list};
     })
     router.get('/devops/sync-max-info',async (ctx) => {
         await Promise.all([
