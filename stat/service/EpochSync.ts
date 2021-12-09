@@ -260,8 +260,8 @@ export class EpochSync extends SyncBase{
             item[field] = isBlob ? Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString()
                 : Buffer.from(announce.value, 'base64').toString();
 
-            if (field === 'name' && item[field].length >= 256) {
-                item[field] = item[field].substr(0, 256);
+            if (field === 'name' && item[field].length >= 255) {
+                item[field] = item[field].substr(0, 255);
             }
             console.log(`announce---epoch:${epochNumber}---${params}---${isBlob ? (item[field])?.length : item[field]}`);
 
