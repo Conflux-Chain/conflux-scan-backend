@@ -30,6 +30,7 @@ import {Epoch} from "../model/Epoch";
 import {batchFetchBlock} from "./common/utils";
 import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 import {PruneNotifier} from "./prune/PruneNotifier";
+import {PowSidePosSync} from "./pos/PowSidePosSync";
 
 
 // Do not care the value
@@ -248,7 +249,7 @@ export class FullBlockService {
                 break;
             }
         }
-        return {code, message, blockList, rewardList, latest_state}
+        return {code, message, blockList, rewardList, latest_state, receipts}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -421,7 +422,8 @@ export class FullBlockService {
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
-                RedisWrap.sendStreamMessage({action:'push', epoch: minEpochNumber}, POW_EPOCH_FOR_POS_Q),
+                PowSidePosSync.sendMq(preLoadResult.receipts, minEpochNumber),
+                //RedisWrap.sendStreamMessage({action:'push', epoch: minEpochNumber}, POW_EPOCH_FOR_POS_Q),
             ])
         }).then(async ()=>{
             let now = Date.now()
