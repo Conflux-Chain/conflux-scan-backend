@@ -26,6 +26,9 @@
       <el-tab-pane label="Redis" name="Redis">
         <Redis></Redis>
       </el-tab-pane>
+      <el-tab-pane label="SyncInfo" name="SyncInfo">
+        <SyncInfo></SyncInfo>
+      </el-tab-pane>
       <el-tab-pane label="HexId" name="HexId">
         <HexId></HexId>
       </el-tab-pane>
@@ -42,6 +45,7 @@ import HexId from "@/components/HexId";
 import {host} from "@/lib/lib"
 import PruneMetrics from "@/components/PruneMetrics";
 import Redis from "@/components/Redis";
+import SyncInfo from "@/components/SyncInfo";
 
 export default {
   name: 'app',
@@ -52,6 +56,7 @@ export default {
     }
   },
   components: {
+    SyncInfo,
     Redis,
     PruneMetrics,
     HexId,
