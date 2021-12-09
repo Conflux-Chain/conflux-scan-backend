@@ -4,12 +4,11 @@
     <el-table :data="list" v-loading="loading"
              >
       <el-table-column label="name" prop="name"></el-table-column>
-      <el-table-column label="type" prop="type"></el-table-column>
       <el-table-column label="epoch" prop="epoch">
-        <template slot-scope="d">{{d.row.pruned.toLocaleString()}}</template>
+        <template slot-scope="d">{{d.row.epoch.toLocaleString()}}</template>
       </el-table-column>
       <el-table-column label="time">
-        <template slot-scope="d">{{ (d.row.createdAt || d.row.timestamp).toISOString()}}</template>
+        <template slot-scope="d">{{ new Date(d.row.createdAt || d.row.timestamp || 0).toISOString()}}</template>
       </el-table-column>
     </el-table>
   </div>
