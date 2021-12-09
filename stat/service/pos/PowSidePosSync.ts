@@ -7,6 +7,9 @@ import {init} from "../tool/FixDailyTokenStat";
 import {POW_EPOCH_FOR_POS_Q, RedisStreamMessage, RedisWrap} from "../RedisWrap";
 
 export class PowSidePosSync {
+    // will be set when system startup.
+    static POS_CONTRACT_VERBOSE = 'CFX:TYPE.BUILTIN:AAEJUAAAAAAAAAAAAAAAAAAAAAAAAAAAAYF993UFD7'
+    static POS_CONTRACT_HEX = '0x0888000000000000000000000000000000000005'
     private cfx: Conflux;
     private posContract: any;
     private posContractAddr: string;
@@ -17,8 +20,18 @@ export class PowSidePosSync {
     async init() {
         await this.cfx.updateNetworkId();
         console.log(` PowSidePosSync network id ${this.cfx['networkId']}`)
-        this.posContractAddr = '0x0888000000000000000000000000000000000005'
+        this.posContractAddr = PowSidePosSync.POS_CONTRACT_HEX
         this.posContract = this.cfx.Contract({abi: posAbi, address: this.posContractAddr})
+    }
+    static async sendMq(receipts2d:any[][], epoch) {
+        // check it , send to mq by condition.
+        for (let receipts of receipts2d) {
+            for (let receipt of receipts) {
+                if (receipt.address === PowSidePosSync.POS_CONTRACT_VERBOSE) {
+                    return RedisWrap.sendStreamMessage({action:'push', epoch: epoch}, POW_EPOCH_FOR_POS_Q)
+                }
+            }
+        }
     }
     // XADD POW_EPOCH_FOR_POS_Q * v1 '{"action":"pop", "epoch":0}'
     async listen() {
