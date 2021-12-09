@@ -1,7 +1,7 @@
 <template>
   <div>
     <el-form :inline="true" @submit.native.prevent>
-      <el-form-item label="1">
+      <el-form-item label="">
         <el-button @click="fetchHexInfo" size="mini" type="primary">Refresh</el-button>
       </el-form-item>
     </el-form>
