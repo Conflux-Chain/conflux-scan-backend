@@ -5,7 +5,7 @@ import {Sequelize} from "sequelize";
 import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
 import {BalanceService} from "./service/watcher/BalanceService";
@@ -96,10 +96,10 @@ export class StatApp{
     public async init() {
         this.cfx = new Conflux({...this.config.conflux})
         patchHttpProvider(this.cfx, this.config.conflux, 'StatApp')
-        // @ts-ignore
         await this.cfx.updateNetworkId();
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
+        PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
         this.tokenTool = new TokenTool(this.cfx);
