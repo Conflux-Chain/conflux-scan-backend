@@ -81,6 +81,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/devops/sync-max-epoch',async (ctx) => {
         function fillName(res, name) {
+            res = res || {createdAt: new Date(), epoch: -1}
             res.name = name
             return res;
         }
