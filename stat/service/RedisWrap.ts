@@ -32,6 +32,8 @@ export class RedisWrap{
     zrange:Function
     zrem:Function
     zcard:Function
+    zrevrangebyscore:Function
+    ZRANGEBYSCORE:Function
     // hsetnx:Function
     client:RedisClient
     static init(client:RedisClient) {
@@ -48,6 +50,8 @@ export class RedisWrap{
         redisWrap.zrange = promisify(client.zrange).bind(client);
         redisWrap.zrem = promisify(client.zrem).bind(client);
         redisWrap.zcard = promisify(client.zcard.bind(client));
+        redisWrap.zrevrangebyscore = promisify(client.zrevrangebyscore.bind(client));
+        redisWrap.ZRANGEBYSCORE = promisify(client.ZRANGEBYSCORE.bind(client));
         redisWrap.sendCommand = promisify(client.sendCommand).bind(client);
     }
 

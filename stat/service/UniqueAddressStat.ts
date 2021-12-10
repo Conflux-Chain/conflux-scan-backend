@@ -11,11 +11,11 @@ function parseKey(key:string) {
     return {dt: new Date(dt), side, contractId:parseInt(contractId)}
 }
 // compose time,  key[from/to] and contract id
-async function buildRedisKey(fmt:string, key:string, id:number, dt:Date) {
-    return `${moment(dt).format(fmt)}_${key}_${id}_token_unique_addr`
+function buildRedisKey(fmt:string, key:string, id:number, dt:Date) {
+    return `${moment(dt).format(fmt)}_${key}_${id}_tokenUniqueAddr`
 }
 // assume that all records are within one epoch, so they have same time.
-async function handleUniqueAddress(arr:{fromId:number, toId:number, contractId:number, createdAt: Date}[]) {
+export async function handleUniqueAddress(arr:{fromId:number, toId:number, contractId:number, createdAt: Date}[]) {
     if (!arr.length) {
         return
     }
@@ -45,8 +45,7 @@ async function handleUniqueAddress(arr:{fromId:number, toId:number, contractId:n
         // keep keys and their time. move statistics to DB later.
         // zset, should keep the min timestamp.
         // https://redis.io/commands/zadd
-        // LT: Only update existing elements if the new score is less than the current score. This flag doesn't prevent adding new elements.
-        await redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'LT', timestamp, keyH)
+        await redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'NX', timestamp, keyH)
         // add ids to each bucket.
         await RedisWrap.saddm(keyH, [...ids])
     }
@@ -54,28 +53,44 @@ async function handleUniqueAddress(arr:{fromId:number, toId:number, contractId:n
         for (let entry of map.entries()) {
             const [contractId, addressIds] = entry;
             // add to hour set and day set
-            send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), addressIds).then();
-            send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), addressIds).then();
+            await send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), addressIds).then();
+            await send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), addressIds).then();
         }
     }
     await send2redis(fromMap, 'from')
     await send2redis(toMap, 'to')
     await send2redis(allMap, 'all')
 }
-async function persist2db() {
-    const now = Date.now()
-    const earlier = now - 3600_1000;
-    // fetch keys before some time gap.
-    //                                        min   max    order by  <offset>,count
-    const keys:any[] = await redisWrap.zrange(0, earlier, 'BYSCORE', 1)
-    if (!keys.length) {
-        console.log(` no keys. `)
+export async function persist2db() {
+    // find max time. we may under catchup mode, the max time is not current time.
+    const [maxKey, maxTime] = await redisWrap.zrevrangebyscore(ALL_UNIQUE_ADDRESS_BUCKET,
+        new Date('5050').getTime(), 0, 'WITHSCORES', 'LIMIT', 0, 1)
+    if (!maxKey) {
+        console.log(` there is no key in redis.`)
+        return;
     }
-    for (let key of keys) {
-        const count = await redisWrap.zcard(key)
+    const earlier = maxTime - 3600_1000;
+    // fetch keys before some time gap.
+    const [minKey, minTime] = await redisWrap.ZRANGEBYSCORE(ALL_UNIQUE_ADDRESS_BUCKET,
+        0, earlier, 'WITHSCORES', 'LIMIT', 0, 1)
+    if (!minKey) {
+        console.log(` no keys. max time ${maxTime}, max key ${maxKey}, want before ${earlier
+        }, ${new Date(earlier).toISOString()}`)
+        // check the minimum one.
+        const [minKey2, minTime2] = await redisWrap.ZRANGEBYSCORE(ALL_UNIQUE_ADDRESS_BUCKET,
+            0, maxTime, 'WITHSCORES', 'LIMIT', 0, 1)
+        console.log(` the minimum one ${minKey2} with time [${minTime2}]`)
+        console.log(` time is  ${new Date(Number(minTime2)).toISOString()}`)
+        return;
+    }
+    console.log(` max ${maxKey} min ${minKey}`)
+    let key = minKey
+    {
+        const count = await redisWrap.scard(key)
+
         const {dt, side, contractId} = parseKey(key)
-        console.log(`${key}, ${dt}, ${side}, ${contractId}, count ${count}`)
-        let prop = {'from':'uniqueSender','to':'uniqueReceiver', all:'participants'}[key]
+        console.log(`unique address stat in redis: ${key}, ${dt.toISOString()}, ${side}, contract [${contractId}], count ${count}`)
+        let prop = {'from':'uniqueSender','to':'uniqueReceiver', all:'participants'}[side]
 
         const identifier = {hexId: contractId, createdAt: dt}
         const dbBean = await HourlyToken.findOne({where: identifier})
@@ -92,10 +107,15 @@ async function persist2db() {
             })
             console.log(` update hourly bean for ${key}, ${prop}:${count}`)
         } else {
-            console.log(` db has larger value ${key}, ${prop}: ${dbBean[prop]} > ${count}`)
+            console.log(` db has larger value ${key}, ${prop}: ${dbBean[prop]} >= ${count}`)
         }
         await redisWrap.del(key)
         await redisWrap.zrem(ALL_UNIQUE_ADDRESS_BUCKET, key)
+        console.log(` ------- finish this key ${key} --------`)
     }
+    return true
 }
 // rollup daily.
+async function rollupDailyUnique() {
+
+}
