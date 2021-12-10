@@ -1,14 +1,15 @@
-// @ts-ignore
-import {Conflux, format} from "js-conflux-sdk";
+import {format} from "js-conflux-sdk";
 import {Hex40Map, makeId} from "../../model/HexMap";
 import {Contract} from "../../model/Contract";
 import {init} from "./FixDailyTokenStat";
+import {ContractVerify} from "../../model/ContractVerify";
 const AdminControl = require("../abi/AdminControl");
 const SponsorWhitelistControl = require("../abi/SponsorWhitelistControl");
 const Staking = require("../abi/Staking");
-const ReentrancyConfig = require("../abi/ReentrancyConfig");
+// const ReentrancyConfig = require("../abi/ReentrancyConfig");
 const Context = require("../abi/Context");
 const PoSRegister = require("../abi/PoSRegister");
+const fs = require('fs');
 
 let networkId;
 const internalContractArray = [
@@ -32,21 +33,21 @@ const internalContractArray = [
     },
     // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-64.md
     {
-        address: '0x0888000000000000000000000000000000000003',
+        address: '0x0888000000000000000000000000000000000004',
         name: 'Context',
         website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
         abi: JSON.stringify(Context.abi),
     },
-    // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-64.md
-    // Parameters: BLOCK_NUMBER_CIP71A, BLOCK_NUMBER_CIP71B.
-    // a. Enable the new internal contracts and disable the anti-reentrancy for contracts allowing reentrancy. Should be activated when block_numer >= BLOCK_NUMBER_CIP71A.
-    // b. Fix incorrect behaviour in the current implementation of anti-reentrancy, when block_number >= BLOCK_NUMBER_CIP71B.
-    {
-        address: '0x0888000000000000000000000000000000000004',
-        name: 'ReentrancyConfig',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
-        abi: JSON.stringify(ReentrancyConfig.abi),
-    },
+    // // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-71.md
+    // // Parameters: BLOCK_NUMBER_CIP71A, BLOCK_NUMBER_CIP71B.
+    // // a. Enable the new internal contracts and disable the anti-reentrancy for contracts allowing reentrancy. Should be activated when block_numer >= BLOCK_NUMBER_CIP71A.
+    // // b. Fix incorrect behaviour in the current implementation of anti-reentrancy, when block_number >= BLOCK_NUMBER_CIP71B.
+    // {
+    //     address: '0x0888000000000000000000000000000000000004',
+    //     name: 'ReentrancyConfig',
+    //     website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+    //     abi: JSON.stringify(ReentrancyConfig.abi),
+    // },
     {
         address: '0x0888000000000000000000000000000000000005',
         name: 'PoSRegister',
@@ -67,6 +68,21 @@ async function registerContract(contract) {
         abi: contract.abi,
     };
     await Contract.upsert(newContract);
+
+    const sourceCode = await fs.readFileSync(`../../../../contracts/${contract.name}.sol`);
+    const newContractVerify = {
+        name: contract.name,
+        base32,
+        compiler: 'solidity',
+        version: 'v0.8.0+commit.c7dfd78e',
+        sourceCode: sourceCode.toString().trim(),
+        abi: contract.abi,
+        verifyResult: true,
+        similarity: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+    await ContractVerify.upsert(newContractVerify);
 }
 
 async function close(){
