@@ -27,8 +27,10 @@ export class PowSidePosSync {
         // check it , send to mq by condition.
         for (let receipts of receipts2d) {
             for (let receipt of receipts) {
-                if (receipt.address === PowSidePosSync.POS_CONTRACT_VERBOSE) {
-                    return RedisWrap.sendStreamMessage({action:'push', epoch: epoch}, POW_EPOCH_FOR_POS_Q)
+                for (let log of receipt.logs) {
+                    if (log.address === PowSidePosSync.POS_CONTRACT_VERBOSE) {
+                        return RedisWrap.sendStreamMessage({action:'push', epoch: epoch}, POW_EPOCH_FOR_POS_Q)
+                    }
                 }
             }
         }
@@ -85,6 +87,7 @@ export class PowSidePosSync {
             throw err;
         })
         if (logs === undefined) {
+            console.log(` logs is undefined, epoch ${epoch}`)
             return;
         }
         if (epoch % 100 === 0) {
@@ -140,6 +143,7 @@ export class PowSidePosSync {
                 PosRegister.bulkCreate(registerArr),
             ])
         })
+        console.log(` pos register, epoch ${epoch}, count ${registerArr.length}`);
     }
 
     async testRetire(account:string) {
