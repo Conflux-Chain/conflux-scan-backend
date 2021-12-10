@@ -1,0 +1,789 @@
+{
+  "contractName": "ConfluxContext",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "epochNumber",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "posHeight",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "finalizedEpochNumber",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.8.0+commit.c7dfd78e\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"epochNumber\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalizedEpochNumber\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"posHeight\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"epochNumber()\":{\"details\":\"get the current epoch number\",\"returns\":{\"_0\":\"the current epoch number\"}},\"finalizedEpochNumber()\":{\"details\":\"get the epoch number of the finalized pivot block.\",\"returns\":{\"_0\":\"the finalized epoch number\"}},\"posHeight()\":{\"details\":\"get the height of the referred PoS block in the last epoch\",\"returns\":{\"_0\":\"the current PoS block height\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/ConfluxContext.sol\":\"ConfluxContext\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/ConfluxContext.sol\":{\"keccak256\":\"0x0632be7b2b36d18a10bf56e60eec5a737225c872ef02a781bfc71446be72398b\",\"urls\":[\"bzz-raw://39582570a37bd9befbe1b65792d3c933860045f1d3c147d0c478e81670b6551d\",\"dweb:/ipfs/QmT2xeUTwKRbyCrBVKNi2kwimgb77Ca8L8j76TDm77TxhW\"]}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50610104806100206000396000f3fe6080604052348015600f57600080fd5b5060043610603c5760003560e01c8063227907b414604157806323adad1014605b578063f4145a83146075575b600080fd5b6047608f565b6040516052919060ab565b60405180910390f35b60616094565b604051606c919060ab565b60405180910390f35b607b6099565b6040516086919060ab565b60405180910390f35b600090565b600090565b600090565b60a58160c4565b82525050565b600060208201905060be6000830184609e565b92915050565b600081905091905056fea2646970667358221220a3b3c7f12cdbc29c9eab2a9357fb4b1356e5f5e8594f4ca7bd43bbc9971e510c64736f6c63430008000033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b5060043610603c5760003560e01c8063227907b414604157806323adad1014605b578063f4145a83146075575b600080fd5b6047608f565b6040516052919060ab565b60405180910390f35b60616094565b604051606c919060ab565b60405180910390f35b607b6099565b6040516086919060ab565b60405180910390f35b600090565b600090565b600090565b60a58160c4565b82525050565b600060208201905060be6000830184609e565b92915050565b600081905091905056fea2646970667358221220a3b3c7f12cdbc29c9eab2a9357fb4b1356e5f5e8594f4ca7bd43bbc9971e510c64736f6c63430008000033",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [
+    {
+      "ast": {
+        "nodeType": "YulBlock",
+        "src": "0:439:6",
+        "statements": [
+          {
+            "body": {
+              "nodeType": "YulBlock",
+              "src": "72:53:6",
+              "statements": [
+                {
+                  "expression": {
+                    "arguments": [
+                      {
+                        "name": "pos",
+                        "nodeType": "YulIdentifier",
+                        "src": "89:3:6"
+                      },
+                      {
+                        "arguments": [
+                          {
+                            "name": "value",
+                            "nodeType": "YulIdentifier",
+                            "src": "112:5:6"
+                          }
+                        ],
+                        "functionName": {
+                          "name": "cleanup_t_uint256",
+                          "nodeType": "YulIdentifier",
+                          "src": "94:17:6"
+                        },
+                        "nodeType": "YulFunctionCall",
+                        "src": "94:24:6"
+                      }
+                    ],
+                    "functionName": {
+                      "name": "mstore",
+                      "nodeType": "YulIdentifier",
+                      "src": "82:6:6"
+                    },
+                    "nodeType": "YulFunctionCall",
+                    "src": "82:37:6"
+                  },
+                  "nodeType": "YulExpressionStatement",
+                  "src": "82:37:6"
+                }
+              ]
+            },
+            "name": "abi_encode_t_uint256_to_t_uint256_fromStack",
+            "nodeType": "YulFunctionDefinition",
+            "parameters": [
+              {
+                "name": "value",
+                "nodeType": "YulTypedName",
+                "src": "60:5:6",
+                "type": ""
+              },
+              {
+                "name": "pos",
+                "nodeType": "YulTypedName",
+                "src": "67:3:6",
+                "type": ""
+              }
+            ],
+            "src": "7:118:6"
+          },
+          {
+            "body": {
+              "nodeType": "YulBlock",
+              "src": "229:124:6",
+              "statements": [
+                {
+                  "nodeType": "YulAssignment",
+                  "src": "239:26:6",
+                  "value": {
+                    "arguments": [
+                      {
+                        "name": "headStart",
+                        "nodeType": "YulIdentifier",
+                        "src": "251:9:6"
+                      },
+                      {
+                        "kind": "number",
+                        "nodeType": "YulLiteral",
+                        "src": "262:2:6",
+                        "type": "",
+                        "value": "32"
+                      }
+                    ],
+                    "functionName": {
+                      "name": "add",
+                      "nodeType": "YulIdentifier",
+                      "src": "247:3:6"
+                    },
+                    "nodeType": "YulFunctionCall",
+                    "src": "247:18:6"
+                  },
+                  "variableNames": [
+                    {
+                      "name": "tail",
+                      "nodeType": "YulIdentifier",
+                      "src": "239:4:6"
+                    }
+                  ]
+                },
+                {
+                  "expression": {
+                    "arguments": [
+                      {
+                        "name": "value0",
+                        "nodeType": "YulIdentifier",
+                        "src": "319:6:6"
+                      },
+                      {
+                        "arguments": [
+                          {
+                            "name": "headStart",
+                            "nodeType": "YulIdentifier",
+                            "src": "332:9:6"
+                          },
+                          {
+                            "kind": "number",
+                            "nodeType": "YulLiteral",
+                            "src": "343:1:6",
+                            "type": "",
+                            "value": "0"
+                          }
+                        ],
+                        "functionName": {
+                          "name": "add",
+                          "nodeType": "YulIdentifier",
+                          "src": "328:3:6"
+                        },
+                        "nodeType": "YulFunctionCall",
+                        "src": "328:17:6"
+                      }
+                    ],
+                    "functionName": {
+                      "name": "abi_encode_t_uint256_to_t_uint256_fromStack",
+                      "nodeType": "YulIdentifier",
+                      "src": "275:43:6"
+                    },
+                    "nodeType": "YulFunctionCall",
+                    "src": "275:71:6"
+                  },
+                  "nodeType": "YulExpressionStatement",
+                  "src": "275:71:6"
+                }
+              ]
+            },
+            "name": "abi_encode_tuple_t_uint256__to_t_uint256__fromStack_reversed",
+            "nodeType": "YulFunctionDefinition",
+            "parameters": [
+              {
+                "name": "headStart",
+                "nodeType": "YulTypedName",
+                "src": "201:9:6",
+                "type": ""
+              },
+              {
+                "name": "value0",
+                "nodeType": "YulTypedName",
+                "src": "213:6:6",
+                "type": ""
+              }
+            ],
+            "returnVariables": [
+              {
+                "name": "tail",
+                "nodeType": "YulTypedName",
+                "src": "224:4:6",
+                "type": ""
+              }
+            ],
+            "src": "131:222:6"
+          },
+          {
+            "body": {
+              "nodeType": "YulBlock",
+              "src": "404:32:6",
+              "statements": [
+                {
+                  "nodeType": "YulAssignment",
+                  "src": "414:16:6",
+                  "value": {
+                    "name": "value",
+                    "nodeType": "YulIdentifier",
+                    "src": "425:5:6"
+                  },
+                  "variableNames": [
+                    {
+                      "name": "cleaned",
+                      "nodeType": "YulIdentifier",
+                      "src": "414:7:6"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "cleanup_t_uint256",
+            "nodeType": "YulFunctionDefinition",
+            "parameters": [
+              {
+                "name": "value",
+                "nodeType": "YulTypedName",
+                "src": "386:5:6",
+                "type": ""
+              }
+            ],
+            "returnVariables": [
+              {
+                "name": "cleaned",
+                "nodeType": "YulTypedName",
+                "src": "396:7:6",
+                "type": ""
+              }
+            ],
+            "src": "359:77:6"
+          }
+        ]
+      },
+      "contents": "{\n\n    function abi_encode_t_uint256_to_t_uint256_fromStack(value, pos) {\n        mstore(pos, cleanup_t_uint256(value))\n    }\n\n    function abi_encode_tuple_t_uint256__to_t_uint256__fromStack_reversed(headStart , value0) -> tail {\n        tail := add(headStart, 32)\n\n        abi_encode_t_uint256_to_t_uint256_fromStack(value0,  add(headStart, 0))\n\n    }\n\n    function cleanup_t_uint256(value) -> cleaned {\n        cleaned := value\n    }\n\n}\n",
+      "id": 6,
+      "language": "Yul",
+      "name": "#utility.yul"
+    }
+  ],
+  "sourceMap": "27:593:1:-:0;;;;;;;;;;;;;;;;;;;",
+  "deployedSourceMap": "27:593:1:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;375:53;;;:::i;:::-;;;;;;;:::i;:::-;;;;;;;;554:64;;;:::i;:::-;;;;;;;:::i;:::-;;;;;;;;184:55;;;:::i;:::-;;;;;;;:::i;:::-;;;;;;;;375:53;417:7;375:53;:::o;554:64::-;607:7;554:64;:::o;184:55::-;228:7;184:55;:::o;7:118:6:-;94:24;112:5;94:24;:::i;:::-;89:3;82:37;72:53;;:::o;131:222::-;;262:2;251:9;247:18;239:26;;275:71;343:1;332:9;328:17;319:6;275:71;:::i;:::-;229:124;;;;:::o;359:77::-;;425:5;414:16;;404:32;;;:::o",
+  "source": "pragma solidity >=0.4.15;\n\ncontract ConfluxContext {\n    /*** Query Functions ***/\n    /**\n     * @dev get the current epoch number\n     * @return the current epoch number\n     */\n    function epochNumber() public view returns (uint256) {}\n    /**\n     * @dev get the height of the referred PoS block in the last epoch\n`    * @return the current PoS block height\n     */\n    function posHeight() public view returns (uint256) {}\n    /**\n     * @dev get the epoch number of the finalized pivot block.\n     * @return the finalized epoch number\n     */\n    function finalizedEpochNumber() public view returns (uint256) {}\n}",
+  "sourcePath": "/Users/wangzhenting/IdeaProjects/conflux-scan-statistics/contracts/ConfluxContext.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/ConfluxContext.sol",
+    "exportedSymbols": {
+      "ConfluxContext": [
+        51
+      ]
+    },
+    "id": 52,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 29,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.4",
+          ".15"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:25:1"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "fullyImplemented": true,
+        "id": 51,
+        "linearizedBaseContracts": [
+          51
+        ],
+        "name": "ConfluxContext",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 35,
+              "nodeType": "Block",
+              "src": "237:2:1",
+              "statements": []
+            },
+            "documentation": {
+              "id": 30,
+              "nodeType": "StructuredDocumentation",
+              "src": "87:92:1",
+              "text": " @dev get the current epoch number\n @return the current epoch number"
+            },
+            "functionSelector": "f4145a83",
+            "id": 36,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "epochNumber",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 31,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "204:2:1"
+            },
+            "returnParameters": {
+              "id": 34,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 33,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 36,
+                  "src": "228:7:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 32,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "228:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "227:9:1"
+            },
+            "scope": 51,
+            "src": "184:55:1",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 42,
+              "nodeType": "Block",
+              "src": "426:2:1",
+              "statements": []
+            },
+            "documentation": {
+              "id": 37,
+              "nodeType": "StructuredDocumentation",
+              "src": "244:126:1",
+              "text": " @dev get the height of the referred PoS block in the last epoch\n`    * @return the current PoS block height"
+            },
+            "functionSelector": "227907b4",
+            "id": 43,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "posHeight",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 38,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "393:2:1"
+            },
+            "returnParameters": {
+              "id": 41,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 40,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 43,
+                  "src": "417:7:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 39,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "417:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "416:9:1"
+            },
+            "scope": 51,
+            "src": "375:53:1",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 49,
+              "nodeType": "Block",
+              "src": "616:2:1",
+              "statements": []
+            },
+            "documentation": {
+              "id": 44,
+              "nodeType": "StructuredDocumentation",
+              "src": "433:116:1",
+              "text": " @dev get the epoch number of the finalized pivot block.\n @return the finalized epoch number"
+            },
+            "functionSelector": "23adad10",
+            "id": 50,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "finalizedEpochNumber",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 45,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "583:2:1"
+            },
+            "returnParameters": {
+              "id": 48,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 50,
+                  "src": "607:7:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 46,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "607:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "606:9:1"
+            },
+            "scope": 51,
+            "src": "554:64:1",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          }
+        ],
+        "scope": 52,
+        "src": "27:593:1"
+      }
+    ],
+    "src": "0:620:1"
+  },
+  "legacyAST": {
+    "absolutePath": "project:/contracts/ConfluxContext.sol",
+    "exportedSymbols": {
+      "ConfluxContext": [
+        51
+      ]
+    },
+    "id": 52,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 29,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.4",
+          ".15"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:25:1"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "fullyImplemented": true,
+        "id": 51,
+        "linearizedBaseContracts": [
+          51
+        ],
+        "name": "ConfluxContext",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 35,
+              "nodeType": "Block",
+              "src": "237:2:1",
+              "statements": []
+            },
+            "documentation": {
+              "id": 30,
+              "nodeType": "StructuredDocumentation",
+              "src": "87:92:1",
+              "text": " @dev get the current epoch number\n @return the current epoch number"
+            },
+            "functionSelector": "f4145a83",
+            "id": 36,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "epochNumber",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 31,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "204:2:1"
+            },
+            "returnParameters": {
+              "id": 34,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 33,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 36,
+                  "src": "228:7:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 32,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "228:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "227:9:1"
+            },
+            "scope": 51,
+            "src": "184:55:1",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 42,
+              "nodeType": "Block",
+              "src": "426:2:1",
+              "statements": []
+            },
+            "documentation": {
+              "id": 37,
+              "nodeType": "StructuredDocumentation",
+              "src": "244:126:1",
+              "text": " @dev get the height of the referred PoS block in the last epoch\n`    * @return the current PoS block height"
+            },
+            "functionSelector": "227907b4",
+            "id": 43,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "posHeight",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 38,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "393:2:1"
+            },
+            "returnParameters": {
+              "id": 41,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 40,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 43,
+                  "src": "417:7:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 39,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "417:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "416:9:1"
+            },
+            "scope": 51,
+            "src": "375:53:1",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 49,
+              "nodeType": "Block",
+              "src": "616:2:1",
+              "statements": []
+            },
+            "documentation": {
+              "id": 44,
+              "nodeType": "StructuredDocumentation",
+              "src": "433:116:1",
+              "text": " @dev get the epoch number of the finalized pivot block.\n @return the finalized epoch number"
+            },
+            "functionSelector": "23adad10",
+            "id": 50,
+            "implemented": true,
+            "kind": "function",
+            "modifiers": [],
+            "name": "finalizedEpochNumber",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 45,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "583:2:1"
+            },
+            "returnParameters": {
+              "id": 48,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 50,
+                  "src": "607:7:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 46,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "607:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "606:9:1"
+            },
+            "scope": 51,
+            "src": "554:64:1",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "public"
+          }
+        ],
+        "scope": 52,
+        "src": "27:593:1"
+      }
+    ],
+    "src": "0:620:1"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.8.0+commit.c7dfd78e.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.3",
+  "updatedAt": "2021-12-10T09:37:18.149Z",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "epochNumber()": {
+        "details": "get the current epoch number",
+        "returns": {
+          "_0": "the current epoch number"
+        }
+      },
+      "finalizedEpochNumber()": {
+        "details": "get the epoch number of the finalized pivot block.",
+        "returns": {
+          "_0": "the finalized epoch number"
+        }
+      },
+      "posHeight()": {
+        "details": "get the height of the referred PoS block in the last epoch",
+        "returns": {
+          "_0": "the current PoS block height"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}

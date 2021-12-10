@@ -7,7 +7,7 @@ const AdminControl = require("../abi/AdminControl");
 const SponsorWhitelistControl = require("../abi/SponsorWhitelistControl");
 const Staking = require("../abi/Staking");
 // const ReentrancyConfig = require("../abi/ReentrancyConfig");
-const Context = require("../abi/Context");
+const ConfluxContext = require("../abi/ConfluxContext");
 const PoSRegister = require("../abi/PoSRegister");
 const fs = require('fs');
 
@@ -34,9 +34,9 @@ const internalContractArray = [
     // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-64.md
     {
         address: '0x0888000000000000000000000000000000000004',
-        name: 'Context',
+        name: 'ConfluxContext',
         website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
-        abi: JSON.stringify(Context.abi),
+        abi: JSON.stringify(ConfluxContext.abi),
     },
     // // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-71.md
     // // Parameters: BLOCK_NUMBER_CIP71A, BLOCK_NUMBER_CIP71B.
