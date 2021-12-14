@@ -440,11 +440,14 @@ export class PosSync {
         }
         return txArr;
     }
-    async repeatSyncRewards(rewardStartAt: number) {
-        const rewardStartAtPos = await this.computeRewardStartAt(rewardStartAt)
+    async repeatSyncRewards() {
         const that = this
         let nextEpoch = await PosReward.findOne({order:[['id','desc']]}).then(res=>{
-            return res === null ? rewardStartAtPos : res.epoch + 1
+            if (res === null) {
+                return 0
+            } else {
+                return res.epoch + 1
+            }
         })
         async function repeat() {
             try {
@@ -579,29 +582,19 @@ export class PosSync {
         // console.log(`getAccount: `,await this.cfx.getAccount('net8888:aakyb6jws3f2x7hr3ap3gwc3rjznj4r9eebeccmwvz'));
 
     }
-    async computeRewardStartAt(powEpoch:number) {
-        console.log(` computeRewardStartAtPow epoch ${powEpoch}`)
-        const powBlock = await this.cfx.getBlockByEpochNumber(powEpoch)
-        const posRef = powBlock['posReference'];
-        removeLongData(powBlock)
-        if (posRef === null) {
-            console.log(` computeRewardStartAtPow fail, pow block `, powBlock)
-            process.exit(1)
+}
+export async function detectTxCountAtPosBlock1(cfx:Conflux) {
+    const initTxNumber = 1
+    let txNumber = initTxNumber
+    do {
+        const tx = await cfx.pos.getTransactionByNumber(txNumber)
+        if (tx.blockNumber > 1) {
+            // find the first tx in block 2
+            break;
         }
-        try {
-            const posBlock = await this.cfx['pos'].getBlockByHash(posRef)
-            if (powBlock === null) {
-                console.log(` pos block not found, pow block, `, powBlock)
-                process.exit(2)
-            }
-            console.log(` pos reward at pow hash ${powBlock.hash}, pos ref ${posRef
-            }, height ${posBlock.height}, epoch ${posBlock.epoch}`)
-            return posBlock.epoch;
-        } catch (e) {
-            console.log(` pos get block by hash fail, pow epoch ${powEpoch}, pos ref: ${posRef}: `, e)
-            process.exit(3)
-        }
-    }
+        txNumber += 1
+    } while (true)
+    return txNumber - initTxNumber;
 }
 if (require.main === module) {
     start().then()
@@ -611,7 +604,6 @@ async function start() {
     const url = args[0]
     const cfx = new Conflux({url})
     const posSync = new PosSync(cfx);
-    const rewardStartAtPow = args[1] ? parseInt(args[1]) : 200_000
     await init()
     await posSync.init()
     // wait pos enable
@@ -657,24 +649,12 @@ async function start() {
             // posSync.test(),
             posSync.repeatSyncBlock(),
             posSync.repeatFetchCommittee(),
-            posSync.repeatSyncRewards(rewardStartAtPow),
+            posSync.repeatSyncRewards(),
             // posSync.updateRecentCommitteeAccount(8),
         ])
     }
 }
-export async function detectTxCountAtPosBlock1(cfx:Conflux) {
-    const initTxNumber = 1
-    let txNumber = initTxNumber
-    do {
-        const tx = await cfx.pos.getTransactionByNumber(txNumber)
-        if (tx.blockNumber > 1) {
-            // find the first tx in block 2
-            break;
-        }
-        txNumber += 1
-    } while (true)
-    return txNumber - initTxNumber;
-}
+
 /*
 Rpc Document
 https://github.com/Pana/conflux-doc/blob/update-rpc/docs/pos-rpc-zh.md#AccountStatus
