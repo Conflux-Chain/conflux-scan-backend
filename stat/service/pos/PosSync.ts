@@ -125,8 +125,8 @@ export class PosSync {
             accountBlockBeans.push({accountId: id, blockNumber, id: null, votes: s.votes})
             accountIds.push(id)
         }
-        const preNextTxNumber = blockNumber === 2 ? 2 : preBlock?.nextTxNumber || 1;
-        const txIdStopBefore = blockNumber === 1 ? 2 : blockDetail.nextTxNumber;
+        const preNextTxNumber = preBlock?.nextTxNumber || preBlockDetail?.nextTxNumber || 0;
+        const txIdStopBefore = blockDetail.nextTxNumber;
         const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore, blockNumber);
         if (txArr === null) {
             this.position -= 1
