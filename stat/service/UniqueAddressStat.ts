@@ -203,3 +203,7 @@ export async function rollupDailyUnique() {
         } participants ${hourlyToken.participants}`)
     }
 }
+
+async function run() {
+
+}
