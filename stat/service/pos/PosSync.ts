@@ -127,7 +127,7 @@ export class PosSync {
         }
         const preNextTxNumber = preBlock?.nextTxNumber || preBlockDetail?.nextTxNumber || 0;
         const txIdStopBefore = blockDetail.nextTxNumber;
-        const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore, blockNumber);
+        const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore);
         if (txArr === null) {
             this.position -= 1
             await sleep(3_000)
@@ -410,7 +410,7 @@ export class PosSync {
         // console.log(` committee info of block number ${blockNumber.toString().padStart(8, ' ')}: `, JSON.stringify(info, ))
         return info
     }
-    async fetchTxArr(start:number, stopBefore:number, blockNumber) {
+    async fetchTxArr(start:number, stopBefore:number) {
         let next = start;
         const txArr = []
         const that = this
@@ -426,7 +426,7 @@ export class PosSync {
                 const dt = new Date(tx.timestamp/1000)
                 const accountId = await that.saveAccount(tx.from, dt)
                 txArr.push({
-                    blockNumber: blockNumber,
+                    blockNumber: tx.blockNumber,
                     fromId: accountId, number: next, status: tx.status, type: tx.type,
                     createdAt: dt,
                     hash: tx.hash,
