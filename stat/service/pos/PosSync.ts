@@ -256,6 +256,7 @@ export class PosSync {
             this.cfx["pos"].getStatus(),
             PosCommittee.findOne({order:[['blockNumber','desc']]}),
         ])
+        // It's pos block number
         let cursorBlock = this.committeeBlockPosition || maxCommitteeDB?.blockNumber || 1
         const startAt = cursorBlock
         let cursorEpoch = maxCommitteeDB?.epochNumber || 0
@@ -362,7 +363,7 @@ export class PosSync {
         console.log(` update all account votes done.`)
     }
     private async syncCommitteeByBlockNumber(cursorBlock: number, cursorEpoch) {
-        // fetch by block number, but only save when epoch changing.
+        // fetch by pos block number, but only save when epoch changing.
         const rpcResult = await this.getCommittee(cursorBlock);
         if (this.NOT_FOUND_COMMITTEE === rpcResult) {
             return false
@@ -376,7 +377,7 @@ export class PosSync {
         for (const n of currentCommittee.nodes) {
             n.accountId = await this.saveAccount(n.address, new Date());
         }
-        const block = await this.cfx.getBlockByBlockNumber(cursorBlock)
+        const block = await this.cfx.pos.getBlockByNumber(cursorBlock)
         let blockDt = new Date(block.timestamp/1000);
         // save to db
         await PosCommittee.sequelize.transaction(async (dbTx) => {
