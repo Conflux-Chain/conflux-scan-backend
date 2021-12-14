@@ -68,6 +68,7 @@ export class PosSync {
             setTimeout(()=>this.repeatSyncBlock(), 0)
         }
     }
+
     async syncBlock(blockNumber) {
         const [blockDetail, preBlock, preBlockDetail] = await Promise.all([
             this.cfx.pos.getBlockByNumber(blockNumber),
@@ -125,17 +126,20 @@ export class PosSync {
             accountBlockBeans.push({accountId: id, blockNumber, id: null, votes: s.votes})
             accountIds.push(id)
         }
-        const preNextTxNumber = preBlock?.nextTxNumber || preBlockDetail?.nextTxNumber || 0;
-        const txIdStopBefore = blockDetail.nextTxNumber;
-        const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore);
+        // next tx number is the last tx number of the block, in fact.
+        const preNextTxNumber = preBlock?.nextTxNumber
+            || preBlockDetail?.nextTxNumber
+            || await detectTxCountAtPosBlock1(this.cfx);
+        const txIdEndInclude = blockDetail.nextTxNumber;
+        const txArr = await this.fetchTxArr(preNextTxNumber+1, txIdEndInclude);
         if (txArr === null) {
             this.position -= 1
             await sleep(3_000)
             return;
         }
-        const txCountByDiff = txIdStopBefore - preNextTxNumber;
+        const txCountByDiff = txIdEndInclude - preNextTxNumber;
         if (txArr.length !== txCountByDiff) {
-            console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdStopBefore
+            console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdEndInclude
             } - ${preNextTxNumber} = ${txCountByDiff
             } , actual tx ${txArr.length}`)
             const info = [preBlockDetail,blockDetail].map(block=>{
@@ -410,11 +414,11 @@ export class PosSync {
         // console.log(` committee info of block number ${blockNumber.toString().padStart(8, ' ')}: `, JSON.stringify(info, ))
         return info
     }
-    async fetchTxArr(start:number, stopBefore:number) {
+    async fetchTxArr(start:number, endInclude:number) {
         let next = start;
         const txArr = []
         const that = this
-        while(next < stopBefore) {
+        while(next <= endInclude) {
             const tx = await that.cfx.pos.getTransactionByNumber(next).catch(err=>{
                 console.log(` getTransactionByNumber fail, ${next}:`, err)
                 return null
@@ -657,6 +661,19 @@ async function start() {
             // posSync.updateRecentCommitteeAccount(8),
         ])
     }
+}
+export async function detectTxCountAtPosBlock1(cfx:Conflux) {
+    const initTxNumber = 1
+    let txNumber = initTxNumber
+    do {
+        const tx = await cfx.pos.getTransactionByNumber(txNumber)
+        if (tx.blockNumber > 1) {
+            // find the first tx in block 2
+            break;
+        }
+        txNumber += 1
+    } while (true)
+    return txNumber - initTxNumber;
 }
 /*
 Rpc Document
