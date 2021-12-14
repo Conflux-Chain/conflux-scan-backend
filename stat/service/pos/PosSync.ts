@@ -68,6 +68,7 @@ export class PosSync {
             setTimeout(()=>this.repeatSyncBlock(), 0)
         }
     }
+
     async syncBlock(blockNumber) {
         const [blockDetail, preBlock, preBlockDetail] = await Promise.all([
             this.cfx.pos.getBlockByNumber(blockNumber),
@@ -125,17 +126,20 @@ export class PosSync {
             accountBlockBeans.push({accountId: id, blockNumber, id: null, votes: s.votes})
             accountIds.push(id)
         }
-        const preNextTxNumber = blockNumber === 2 ? 2 : preBlock?.nextTxNumber || 1;
-        const txIdStopBefore = blockNumber === 1 ? 2 : blockDetail.nextTxNumber;
-        const txArr = await this.fetchTxArr(preNextTxNumber, txIdStopBefore, blockNumber);
+        // next tx number is the last tx number of the block, in fact.
+        const preNextTxNumber = preBlock?.nextTxNumber
+            || preBlockDetail?.nextTxNumber
+            || await detectTxCountAtPosBlock1(this.cfx);
+        const txIdEndInclude = blockDetail.nextTxNumber;
+        const txArr = await this.fetchTxArr(preNextTxNumber+1, txIdEndInclude);
         if (txArr === null) {
             this.position -= 1
             await sleep(3_000)
             return;
         }
-        const txCountByDiff = txIdStopBefore - preNextTxNumber;
+        const txCountByDiff = txIdEndInclude - preNextTxNumber;
         if (txArr.length !== txCountByDiff) {
-            console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdStopBefore
+            console.log(` block number ${blockNumber} tx count not match, count by diff ${txIdEndInclude
             } - ${preNextTxNumber} = ${txCountByDiff
             } , actual tx ${txArr.length}`)
             const info = [preBlockDetail,blockDetail].map(block=>{
@@ -256,6 +260,7 @@ export class PosSync {
             this.cfx["pos"].getStatus(),
             PosCommittee.findOne({order:[['blockNumber','desc']]}),
         ])
+        // It's pos block number
         let cursorBlock = this.committeeBlockPosition || maxCommitteeDB?.blockNumber || 1
         const startAt = cursorBlock
         let cursorEpoch = maxCommitteeDB?.epochNumber || 0
@@ -362,7 +367,7 @@ export class PosSync {
         console.log(` update all account votes done.`)
     }
     private async syncCommitteeByBlockNumber(cursorBlock: number, cursorEpoch) {
-        // fetch by block number, but only save when epoch changing.
+        // fetch by pos block number, but only save when epoch changing.
         const rpcResult = await this.getCommittee(cursorBlock);
         if (this.NOT_FOUND_COMMITTEE === rpcResult) {
             return false
@@ -376,7 +381,7 @@ export class PosSync {
         for (const n of currentCommittee.nodes) {
             n.accountId = await this.saveAccount(n.address, new Date());
         }
-        const block = await this.cfx.getBlockByBlockNumber(cursorBlock)
+        const block = await this.cfx.pos.getBlockByNumber(cursorBlock)
         let blockDt = new Date(block.timestamp/1000);
         // save to db
         await PosCommittee.sequelize.transaction(async (dbTx) => {
@@ -409,11 +414,11 @@ export class PosSync {
         // console.log(` committee info of block number ${blockNumber.toString().padStart(8, ' ')}: `, JSON.stringify(info, ))
         return info
     }
-    async fetchTxArr(start:number, stopBefore:number, blockNumber) {
+    async fetchTxArr(start:number, endInclude:number) {
         let next = start;
         const txArr = []
         const that = this
-        while(next < stopBefore) {
+        while(next <= endInclude) {
             const tx = await that.cfx.pos.getTransactionByNumber(next).catch(err=>{
                 console.log(` getTransactionByNumber fail, ${next}:`, err)
                 return null
@@ -425,7 +430,7 @@ export class PosSync {
                 const dt = new Date(tx.timestamp/1000)
                 const accountId = await that.saveAccount(tx.from, dt)
                 txArr.push({
-                    blockNumber: blockNumber,
+                    blockNumber: tx.blockNumber,
                     fromId: accountId, number: next, status: tx.status, type: tx.type,
                     createdAt: dt,
                     hash: tx.hash,
@@ -435,11 +440,14 @@ export class PosSync {
         }
         return txArr;
     }
-    async repeatSyncRewards(rewardStartAt: number) {
-        const rewardStartAtPos = await this.computeRewardStartAt(rewardStartAt)
+    async repeatSyncRewards() {
         const that = this
         let nextEpoch = await PosReward.findOne({order:[['id','desc']]}).then(res=>{
-            return res === null ? rewardStartAtPos : res.epoch + 1
+            if (res === null) {
+                return 0
+            } else {
+                return res.epoch + 1
+            }
         })
         async function repeat() {
             try {
@@ -574,29 +582,19 @@ export class PosSync {
         // console.log(`getAccount: `,await this.cfx.getAccount('net8888:aakyb6jws3f2x7hr3ap3gwc3rjznj4r9eebeccmwvz'));
 
     }
-    async computeRewardStartAt(powEpoch:number) {
-        console.log(` computeRewardStartAtPow epoch ${powEpoch}`)
-        const powBlock = await this.cfx.getBlockByEpochNumber(powEpoch)
-        const posRef = powBlock['posReference'];
-        removeLongData(powBlock)
-        if (posRef === null) {
-            console.log(` computeRewardStartAtPow fail, pow block `, powBlock)
-            process.exit(1)
+}
+export async function detectTxCountAtPosBlock1(cfx:Conflux) {
+    const initTxNumber = 1
+    let txNumber = initTxNumber
+    do {
+        const tx = await cfx.pos.getTransactionByNumber(txNumber)
+        if (tx.blockNumber > 1) {
+            // find the first tx in block 2
+            break;
         }
-        try {
-            const posBlock = await this.cfx['pos'].getBlockByHash(posRef)
-            if (powBlock === null) {
-                console.log(` pos block not found, pow block, `, powBlock)
-                process.exit(2)
-            }
-            console.log(` pos reward at pow hash ${powBlock.hash}, pos ref ${posRef
-            }, height ${posBlock.height}, epoch ${posBlock.epoch}`)
-            return posBlock.epoch;
-        } catch (e) {
-            console.log(` pos get block by hash fail, pow epoch ${powEpoch}, pos ref: ${posRef}: `, e)
-            process.exit(3)
-        }
-    }
+        txNumber += 1
+    } while (true)
+    return txNumber - initTxNumber;
 }
 if (require.main === module) {
     start().then()
@@ -606,7 +604,6 @@ async function start() {
     const url = args[0]
     const cfx = new Conflux({url})
     const posSync = new PosSync(cfx);
-    const rewardStartAtPow = args[1] ? parseInt(args[1]) : 200_000
     await init()
     await posSync.init()
     // wait pos enable
@@ -652,11 +649,12 @@ async function start() {
             // posSync.test(),
             posSync.repeatSyncBlock(),
             posSync.repeatFetchCommittee(),
-            posSync.repeatSyncRewards(rewardStartAtPow),
+            posSync.repeatSyncRewards(),
             // posSync.updateRecentCommitteeAccount(8),
         ])
     }
 }
+
 /*
 Rpc Document
 https://github.com/Pana/conflux-doc/blob/update-rpc/docs/pos-rpc-zh.md#AccountStatus
