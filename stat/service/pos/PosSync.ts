@@ -11,7 +11,7 @@ import {
     PosTransaction
 } from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
-import {fn, col, Op, QueryTypes, where} from "sequelize";
+import {fn, col, Op, QueryTypes} from "sequelize";
 import {PosQuery} from "./PosQuery";
 import {removeLongData} from "../common/utils";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
