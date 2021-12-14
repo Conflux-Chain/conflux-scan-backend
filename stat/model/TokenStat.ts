@@ -14,7 +14,6 @@ export class HourlyToken extends Model<IHourlyToken> implements IHourlyToken {
     createdAt: Date
     uniqueReceiver:number
     uniqueSender:number
-    holderCount:number
     participants:number
     static register(seq:Sequelize) {
         HourlyToken.init({

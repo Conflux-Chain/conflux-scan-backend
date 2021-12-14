@@ -1,7 +1,9 @@
 import moment = require("moment");
-import {Op} from 'sequelize'
+import {Op,fn,col} from 'sequelize'
 import {RedisWrap, redisWrap} from "./RedisWrap";
 import {HourlyToken, IHourlyToken} from "../model/TokenStat";
+import {KV, UNIQUE_ADDR_DATE_MARK} from "../model/KV";
+import {DailyToken} from "../model/Token";
 export const ALL_UNIQUE_ADDRESS_BUCKET = 'ALL_UNIQUE_ADDRESS_BUCKET'
 const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
 const DAY_FMT = 'YYYY-MM-DD'
@@ -116,6 +118,88 @@ export async function persist2db() {
     return true
 }
 // rollup daily.
-async function rollupDailyUnique() {
+export async function rollupDailyUnique() {
+    // calculate from earliest time to latest time, and then delete earliest ones.
+    const preDateMark =  await KV.getString(UNIQUE_ADDR_DATE_MARK, '2020-10-28')
+    const preDate = new Date(preDateMark)
+    const newDay = new Date(preDate)
+    newDay.setDate(newDay.getDate()+1)
+    console.log(` mark ${preDateMark} pre date ${preDate.toISOString()} new day ${newDay.toISOString()}`)
 
+    const [preOne, newDayOne, maxOne, ] = await Promise.all([
+        HourlyToken.findOne({order:[['createdAt','asc']],
+            where: {createdAt:{[Op.gte]: preDate}}
+        }),
+        HourlyToken.findOne({order:[['createdAt','asc']],
+            where: {createdAt:{[Op.gte]: newDay}}
+        }),
+        HourlyToken.findOne({order:[['createdAt','desc']]}),
+    ])
+    if (maxOne === null) {
+        console.log(` min hourly record not found, table is empty.`)
+        return
+    }
+    let timeForThisRound = preDate;
+    // keep hourly records for 8 days.
+    if (newDayOne !== null) {
+        // records for new day show up. this will move day position.
+        timeForThisRound = newDayOne.createdAt
+        console.log(` use next day`)
+    } else if (preOne === null) {
+        console.log(` new records not ready, want after ${preDateMark}`)
+        return
+    } else if (maxOne.createdAt.getTime() - 3600_000 > newDay.getTime()) {
+        // move forward
+        timeForThisRound = newDay;
+    } else {
+        // update current day's stat.
+        timeForThisRound = preOne.createdAt
+        console.log(` repeat day`)
+    }
+    console.log(`hourly stat time, pre ${preOne?.createdAt.toISOString()
+    }, next day ${newDayOne?.createdAt.toISOString()}, max ${maxOne?.createdAt.toISOString()}, mark position ${preDateMark}`)
+    const dayStart = new Date(timeForThisRound)
+    dayStart.setHours(0,0,0,0)
+    const dayEnd = new Date(timeForThisRound)
+    dayEnd.setHours(23,59,59,999);
+    const groupByContract  = await HourlyToken.findAll({
+        where: {createdAt: {[Op.between]: [dayStart, dayEnd]}},
+        raw: true,
+        attributes: [
+            [fn('sum',col('uniqueReceiver')), 'uniqueReceiver'],
+            [fn('sum',col('uniqueSender')), 'uniqueSender'],
+            [fn('sum',col('participants')), 'participants'],
+            'hexId',
+        ],
+        group: ['hexId'],
+    })
+    for (let hourlyToken of groupByContract) {
+        const [cnt] = await DailyToken.update({
+            uniqueSender: hourlyToken.uniqueSender,
+            uniqueReceiver: hourlyToken.uniqueReceiver,
+            participants: hourlyToken.participants,
+        }, {where: {
+                hexId: hourlyToken.hexId, day: dayStart
+            }, limit: 1})
+        let op = ''
+        if (cnt) {
+            op = 'update'
+        } else {
+            // create it. use bulkCreate to control updateOnDuplicate. upsert do not support updateOnDuplicate.
+            await DailyToken.bulkCreate([{
+                hexId: hourlyToken.hexId,
+                day: dayStart,
+                uniqueSender: hourlyToken.uniqueSender,
+                uniqueReceiver: hourlyToken.uniqueReceiver,
+                participants: hourlyToken.participants,
+                transferAmount: '0', transferCount: 0, holderCount: 0,
+            }], {updateOnDuplicate: ['uniqueSender','uniqueReceiver','participants']})
+            op = 'create'
+        }
+        //
+        await KV.upsert({key: UNIQUE_ADDR_DATE_MARK, value: dayStart.toISOString().substr(0, 10)})
+        console.log(` [${op}] daily unique address for ${hourlyToken.hexId
+        }, day ${dayStart.toISOString().substr(0, 10)} uniqueSender ${hourlyToken.uniqueSender} uniqueReceiver ${hourlyToken.uniqueReceiver
+        } participants ${hourlyToken.participants}`)
+    }
 }
