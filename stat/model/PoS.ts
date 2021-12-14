@@ -146,18 +146,21 @@ export interface IPosEpochRewardHash {
     powDate:Date
     powEpochHash:string
     powEpoch:number
+    drip: bigint
 }
 export class PosEpochRewardHash extends Model<IPosEpochRewardHash> implements IPosEpochRewardHash {
     epoch:number
     powEpochHash:string
     powDate:Date
     powEpoch: number
+    drip: bigint
     static register(seq: Sequelize) {
         PosEpochRewardHash.init({
             epoch: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
             powEpochHash: {type: DataTypes.STRING(66)},
             powDate: {type: DataTypes.DATE},
             powEpoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            drip: {type: DataTypes.DECIMAL(56, 0), allowNull: false},
         }, {
             sequelize: seq, tableName: 'pos_epoch_reward_hash',
         })

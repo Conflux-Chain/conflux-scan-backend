@@ -442,11 +442,12 @@ export class DummyNode {
                 order: [['epoch','asc']], limit: 2,
                 logging: console.log,
             })
-            const posRewardPowEpoch = nextPos || curPos
+            // use small one when start up. use larger one (if exists) when growing up, or stuck at current position.
+            const posRewardPowEpoch = posPosition === -1 ? curPos : nextPos || curPos
             if (posRewardPowEpoch) {
                 this.stopAtEpoch = posRewardPowEpoch.powEpoch
                 this.curPosPosition = posRewardPowEpoch.epoch
-                console.log(` pos decision ${this.stopAtEpoch}, db pos position ${posPosition
+                console.log(` pos decision( pow epoch ) ${this.stopAtEpoch}, db pos position ${posPosition
                 }, cur pos position ${this.curPosPosition}`)
                 return
             }

@@ -10,6 +10,7 @@ import {
 import {col, fn,Op} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
+import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 const lodash = require('lodash')
 
 // noinspection CommaExpressionJS
@@ -20,12 +21,12 @@ export class PosQuery {
         this.cfx = cfx
     }
     async posInfo() {
-        const [st, posAccountCount, posEconomics] = await Promise.all([
+        const [st, posAccountCount, posEconomics, totalPosRewardDrip] = await Promise.all([
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
-            this.cfx['pos'].getStatus(),
+            this.cfx.pos.getStatus(),
             PosAccount.count({}),
-            // @ts-ignore
             this.cfx.getPoSEconomics(),
+            KV.getString(TOTAL_POS_REWARD, "0"),
         ]).catch(err=>{
             if (err.message.includes('PoS chain is not enabled')) {
                 return []
@@ -34,6 +35,7 @@ export class PosQuery {
         })
         if (st === undefined) {
             return {
+                totalPosRewardDrip,
                 latestCommitted: '0',
                 latestVoted:  '0',
                 posPivotDecision:  '0',
@@ -55,6 +57,7 @@ export class PosQuery {
             })
         ]).then(arr=>arr.map(e=>e?.timestamp.getTime() || 0))
         return {
+            totalPosRewardDrip,
             latestCommitted: (st.latestCommitted || '0').toString(),
             latestVoted: (st.latestVoted || st.latestCommitted || '0').toString(),
             posPivotDecision: st.pivotDecision?.height?.toString() || '0',

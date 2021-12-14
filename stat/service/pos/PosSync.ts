@@ -14,6 +14,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {fn, col, Op, QueryTypes} from "sequelize";
 import {PosQuery} from "./PosQuery";
 import {removeLongData} from "../common/utils";
+import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -461,6 +462,14 @@ export class PosSync {
         }
         repeat().then()
     }
+    async calculateTotalPosReward(diff, dbTx) {
+        const dripDb = await KV.getString(TOTAL_POS_REWARD, "0")
+        const drip = BigInt(dripDb);
+        const total = drip + BigInt(diff)
+        await KV.upsert({key:TOTAL_POS_REWARD, value: total.toString()}, {
+            transaction: dbTx
+        })
+    }
     async syncRewardByEpoch(epoch:number) {
         const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (rewardInfo === null) {
@@ -518,6 +527,7 @@ export class PosSync {
                 createdAt: powDate,
             }
         })
+        const totalReward = accountRewards.map(r=>r.reward).reduce((a,b)=>a+b)
         await this.waitLock()
         await PosReward.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
@@ -532,8 +542,9 @@ export class PosSync {
                         })
                 })),
                 PosEpochRewardHash.create({epoch, powEpochHash: rewardInfo.powEpochHash, powDate,
-                    powEpoch: powBlock.epochNumber},
-                    {transaction: dbTx})
+                    powEpoch: powBlock.epochNumber, drip: BigInt(totalReward)},
+                    {transaction: dbTx}),
+                this.calculateTotalPosReward(totalReward, dbTx),
             ])
         }).finally(()=>{
             this.dbLocked = false;
