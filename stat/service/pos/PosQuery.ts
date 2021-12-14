@@ -26,9 +26,7 @@ export class PosQuery {
             this.cfx.pos.getStatus(),
             PosAccount.count({}),
             this.cfx.getPoSEconomics(),
-            KV.getString(TOTAL_POS_REWARD, "{}").then(res=>{
-                return JSON.parse(res)['drip'] || 0
-            })
+            KV.getString(TOTAL_POS_REWARD, "0"),
         ]).catch(err=>{
             if (err.message.includes('PoS chain is not enabled')) {
                 return []

@@ -462,23 +462,13 @@ export class PosSync {
         }
         repeat().then()
     }
-    async calculateTotalPosReward() {
-        const maxRewardEpoch:any = await PosEpochRewardHash.max("epoch")
-        if (isNaN(maxRewardEpoch)) {
-            return
-        }
-        const {epoch:epochDb, drip:dripDb} = await KV.getString(TOTAL_POS_REWARD, "{}").then(JSON.parse)
-        const epoch = epochDb || -1;
-        if (epoch >= maxRewardEpoch) {
-            return
-        }
-        const drip = BigInt(dripDb || "0");
-        const sumV = await PosEpochRewardHash.sum('drip', {
-            where: {epoch:{[Op.between]:[epoch+1, maxRewardEpoch]}}
+    async calculateTotalPosReward(diff, dbTx) {
+        const dripDb = await KV.getString(TOTAL_POS_REWARD, "0")
+        const drip = BigInt(dripDb);
+        const total = drip + BigInt(diff)
+        await KV.upsert({key:TOTAL_POS_REWARD, value: total.toString()}, {
+            transaction: dbTx
         })
-        const total = drip + BigInt(sumV)
-        const info = {epoch: maxRewardEpoch, drip: total.toString()}
-        await KV.upsert({key:TOTAL_POS_REWARD, value: JSON.stringify(info)})
     }
     async syncRewardByEpoch(epoch:number) {
         const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
@@ -553,7 +543,8 @@ export class PosSync {
                 })),
                 PosEpochRewardHash.create({epoch, powEpochHash: rewardInfo.powEpochHash, powDate,
                     powEpoch: powBlock.epochNumber, drip: BigInt(totalReward)},
-                    {transaction: dbTx})
+                    {transaction: dbTx}),
+                this.calculateTotalPosReward(totalReward, dbTx),
             ])
         }).finally(()=>{
             this.dbLocked = false;
