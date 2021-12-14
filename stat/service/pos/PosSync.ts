@@ -11,9 +11,10 @@ import {
     PosTransaction
 } from "../../model/PoS";
 import {init} from "../tool/FixDailyTokenStat";
-import {fn, col, Op, QueryTypes} from "sequelize";
+import {fn, col, Op, QueryTypes, where} from "sequelize";
 import {PosQuery} from "./PosQuery";
 import {removeLongData} from "../common/utils";
+import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -461,6 +462,24 @@ export class PosSync {
         }
         repeat().then()
     }
+    async calculateTotalPosReward() {
+        const maxRewardEpoch:any = await PosEpochRewardHash.max("epoch")
+        if (isNaN(maxRewardEpoch)) {
+            return
+        }
+        const {epoch:epochDb, drip:dripDb} = await KV.getString(TOTAL_POS_REWARD, "{}").then(JSON.parse)
+        const epoch = epochDb || -1;
+        if (epoch >= maxRewardEpoch) {
+            return
+        }
+        const drip = BigInt(dripDb || "0");
+        const sumV = await PosEpochRewardHash.sum('drip', {
+            where: {epoch:{[Op.between]:[epoch+1, maxRewardEpoch]}}
+        })
+        const total = drip + BigInt(sumV)
+        const info = {epoch: maxRewardEpoch, drip: total.toString()}
+        await KV.upsert({key:TOTAL_POS_REWARD, value: JSON.stringify(info)})
+    }
     async syncRewardByEpoch(epoch:number) {
         const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (rewardInfo === null) {
@@ -518,6 +537,7 @@ export class PosSync {
                 createdAt: powDate,
             }
         })
+        const totalReward = accountRewards.map(r=>r.reward).reduce((a,b)=>a+b)
         await this.waitLock()
         await PosReward.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
@@ -532,7 +552,7 @@ export class PosSync {
                         })
                 })),
                 PosEpochRewardHash.create({epoch, powEpochHash: rewardInfo.powEpochHash, powDate,
-                    powEpoch: powBlock.epochNumber},
+                    powEpoch: powBlock.epochNumber, drip: BigInt(totalReward)},
                     {transaction: dbTx})
             ])
         }).finally(()=>{
