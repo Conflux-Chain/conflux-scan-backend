@@ -12,6 +12,7 @@ import {CfxLog} from "js-conflux-sdk/types/rpc";
 import {TokenTool} from "./tool/TokenTool";
 import {makeIdV} from "../model/HexMap";
 import {ITokenTransfer} from "../model/Erc20Transfer";
+import {Measure} from "./common/Measure";
 export const ALL_UNIQUE_ADDRESS_BUCKET = 'ALL_UNIQUE_ADDRESS_BUCKET'
 const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
 const DAY_FMT = 'YYYY-MM-DD'
@@ -212,6 +213,7 @@ export async function rollupDailyUnique() {
     }
 }
 
+const measure = new Measure()
 async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epochTime:Date) {
     // console.log(` epoch ${epoch} logs length ${logs.length}`)
     if (logs.length === 0) {
@@ -244,11 +246,13 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
         }
         // console.log(log)
         const contractHex = format.hexAddress(address)
-        const [contractId, fromId, toId] = await Promise.all([
-            makeIdV(contractHex, undefined, epochTime),
-            makeIdV(from, undefined, epochTime),
-            makeIdV(to, undefined, epochTime),
-        ])
+        const [contractId, fromId, toId] = await measure.call('makeId',
+            ()=> Promise.all([
+                    makeIdV(contractHex, undefined, epochTime),
+                    makeIdV(from, undefined, epochTime),
+                    makeIdV(to, undefined, epochTime),
+                ])
+        )
         log['contractId'] = contractId;
         log['fromId'] = fromId
         log['toId'] = toId
@@ -265,10 +269,10 @@ async function run(cfx:Conflux, fromEpoch:number) {
         tokenTool.contract.TransferSingle.signature,
     ]]
     async function getLogs(epochNumber) : Promise<CfxLog[]>{
-        const [block, logs] = await Promise.all([
-            cfx.getBlockByEpochNumber(epochNumber, false),
-            cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics}),
-        ])
+        const [block, logs] = await measure.call('rpc', ()=> Promise.all([
+            measure.call('getBlocks', ()=>cfx.getBlockByEpochNumber(epochNumber, false)),
+            measure.call('getLogs', ()=>cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics})),
+        ]))
         const dt = new Date(block.timestamp * 1000)
         return polishLogs(logs, epochNumber, tokenTool, dt)
     }
@@ -300,8 +304,9 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 } else {
                     console.log(` no transfer at ${epoch}`)
                 }
-                if (epoch % 100 === 0) {
+                if (epoch % 10 === 0) {
                     loader.dumpMetrics(` --------------- get logs metrics `)
+                    measure.dump(` --`, );
                 }
                 epoch++
                 break;

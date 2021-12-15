@@ -1,0 +1,37 @@
+class CallTime {
+    times = 0
+    ms = 0
+}
+export class Measure {
+    times = 0
+    map:Map<string, CallTime> = new Map<string, CallTime>()
+    m(tag:string, start) {
+        let t = this.map.get(tag)
+        if (!t) {
+            t = new CallTime()
+            this.map.set(tag, t)
+        }
+        t.times += 1
+        t.ms += Date.now() - start
+    }
+    call<T>(tag:string, fn:()=>Promise<T>) : Promise<T> {
+        const start = Date.now()
+        return fn().then(res=>{
+            this.times ++
+            this.m(tag, start)
+            return res;
+        })
+    }
+    dump(msg:string, mod = 1) {
+        if (this.times % mod !== 0) {
+            return;
+        }
+        const info = [...this.map.keys()].map(k=>{
+            const t = this.map.get(k);
+            return `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}`
+        }).join(';');
+        console.log(`${msg} avg: ${info}`)
+        this.times = 0
+        this.map.clear()
+    }
+}
