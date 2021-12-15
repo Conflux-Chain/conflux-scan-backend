@@ -26,7 +26,7 @@ export class Measure {
         if (this.times % mod !== 0) {
             return;
         }
-        function buildInfo(keys:string[]) {
+        const buildInfo = (keys:string[]) => {
             keys.map(k=>{
                 const t = this.map.get(k);
                 return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}` : ''
