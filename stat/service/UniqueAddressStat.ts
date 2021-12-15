@@ -286,7 +286,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
         switch (action) {
             case "ok":
                 const transfers:any[] = await data;
-                await handleUniqueAddress(transfers)
+                await measure.call('handle', ()=>handleUniqueAddress(transfers))
                 const log = epoch % 10 === 0
                 const [sample] = transfers
                 if (!log) {
@@ -304,7 +304,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 } else {
                     console.log(` no transfer at ${epoch}`)
                 }
-                if (epoch % 10 === 0) {
+                if (epoch % 100 === 0) {
                     loader.dumpMetrics(` --------------- get logs metrics `)
                     measure.dump(` --`, );
                 }
