@@ -351,9 +351,10 @@ async function benchmark() {
         await redisWrap.zadd(k, 'NX', 1, 'a')
         await redisWrap.sadd(kSet, [1,2,3,4,5])
     }
-    await redisWrap.del(k)
     const ms = Date.now() - start
     console.log(`times ${times}, avg ${(ms / times).toPrecision(5)}`)
+    await redisWrap.del(k)
+    await redisWrap.del(kSet)
     process.exit(0);
 }
 async function setup(cfxUrl:string, fromEpoch = '30495305') {
