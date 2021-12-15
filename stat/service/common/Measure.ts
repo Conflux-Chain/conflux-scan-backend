@@ -27,7 +27,7 @@ export class Measure {
             return;
         }
         const buildInfo = (keys:string[]) => {
-            keys.map(k=>{
+            return keys.map(k=>{
                 const t = this.map.get(k);
                 return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}` : ''
             }).join(';');
