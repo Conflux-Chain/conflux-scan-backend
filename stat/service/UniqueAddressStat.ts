@@ -253,7 +253,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
     }
     return filtered;
 }
-async function run(cfx:Conflux) {
+async function run(cfx:Conflux, fromEpoch:number) {
     const tokenTool = new TokenTool(cfx);
     const topics = [[
         tokenTool.contract.Transfer.signature,
@@ -268,8 +268,9 @@ async function run(cfx:Conflux) {
         const dt = new Date(block.timestamp * 1000)
         return polishLogs(logs, epochNumber, tokenTool, dt)
     }
-    const loader = new PreLoader(cfx, getLogs, 100);
-    let epoch = 31496126;//await cfx.getEpochNumber().then(res=> res - 1000)
+    const loader = new PreLoader(cfx, getLogs, 10000);
+    loader.preLoadSize = 100
+    let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     let hourMark = -1
     async function repeat() {
         const {action, data} = loader.get(epoch)
@@ -278,10 +279,13 @@ async function run(cfx:Conflux) {
             case "ok":
                 const transfers:any[] = await data;
                 await handleUniqueAddress(transfers)
+                const log = epoch % 10 === 0
                 const [sample] = transfers
-                if (sample) {
+                if (!log) {
+                    // skip
+                } else if (sample) {
                     const epochHour = sample.createdAt.getHours();
-                    console.log(`sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
+                    console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
                     }, preload size ${loader.data.size}`)
                     if (epochHour !== hourMark) {
                         console.log(`----------------- hourly event ----------- ${epochHour}`)
@@ -291,6 +295,9 @@ async function run(cfx:Conflux) {
                     }
                 } else {
                     console.log(` no transfer at ${epoch}`)
+                }
+                if (epoch % 100 === 0) {
+                    loader.dumpMetrics(` --------------- get logs metrics `)
                 }
                 epoch++
                 break;
@@ -307,7 +314,7 @@ async function run(cfx:Conflux) {
     }
     repeat().then()
 }
-async function setup(cfxUrl:string) {
+async function setup(cfxUrl:string, fromEpoch = '30495305') {
     const config = await init();
     await RedisWrap.connect(config.redis)
     console.log(`--------------------`)
@@ -316,10 +323,10 @@ async function setup(cfxUrl:string) {
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
     console.log(` ${process.argv[1]} \n network ${st.networkId}`)
-    return run(cfx)
+    return run(cfx, parseInt(fromEpoch))
 }
-const [,,cfxUrl] = process.argv
-setup(cfxUrl).then().catch(err=>{
+const [,,cfxUrl,fromEpoch] = process.argv
+setup(cfxUrl, fromEpoch).then().catch(err=>{
     console.log(`${process.argv[1]}\n`, err)
     process.exit(1)
 })

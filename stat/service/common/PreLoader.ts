@@ -1,4 +1,5 @@
 import {Conflux} from "js-conflux-sdk";
+import {RoundRobin} from "./RoundRobin";
 
 export type WAIT = 'wait'
 // use rpc sub to manage pivot switch. WIP.
@@ -26,6 +27,7 @@ export class PreLoader<T> {
     fetchTimes = 0
     usedMs = 0
     lastMs = 0
+    robin = new RoundRobin(50)
 
     constructor(cfx:Conflux, fn: (epoch:number)=>Promise<T>, delayEpoch:number) {
         this.cfx = cfx;
@@ -47,7 +49,7 @@ export class PreLoader<T> {
             console.log(` fetch right now: ${epoch}`)
             loaded = this.fn(epoch)
         } else {
-            console.log(` from pre loaded ${epoch}`)
+            // console.log(` from pre loaded ${epoch}`)
             this.data.delete(epoch)
         }
         return new LoadedResult<T>("ok", loaded)
@@ -58,7 +60,7 @@ export class PreLoader<T> {
             // this.updateLatestState().then() // will be triggered below.
             console.log(` start fetch from ${wantEpoch}, pre load size ${this.preLoadSize}, data size ${this.data.size}`)
         }
-        while(this.data.size < this.preLoadSize) {
+        while(this.data.size <= this.preLoadSize) {
             const fetchEpoch = this.maxFetchedEpoch + 1
             if (fetchEpoch > this.latestState - this.delayEpoch) {
                 this.updateLatestState().then()
@@ -67,11 +69,19 @@ export class PreLoader<T> {
             const startMs = Date.now()
             const v = this.fn(fetchEpoch).finally(()=>{
                 this.fetchTimes ++
-                this.usedMs += (this.lastMs = Date.now() - startMs);
+                this.lastMs = Date.now() - startMs;
+                this.usedMs += this.lastMs;
+                this.robin.push(this.lastMs)
             })
-            console.log(` pre load ${fetchEpoch}`)
+            // console.log(` pre load ${fetchEpoch}`)
             this.data.set(fetchEpoch, v);
             this.maxFetchedEpoch = fetchEpoch;
         }
+    }
+
+    dumpMetrics(prefixMsg:string = '') {
+        console.log(`${prefixMsg} fetch ${this.fetchTimes} used ${this.usedMs
+        }, avg ${(this.usedMs / (this.fetchTimes || 1)).toPrecision(5)
+        }, latest ${this.robin.len} avg ${this.robin.avg().toPrecision(5)}`)
     }
 }
