@@ -4,6 +4,14 @@ import {RedisWrap, redisWrap} from "./RedisWrap";
 import {HourlyToken, IHourlyToken} from "../model/TokenStat";
 import {KV, UNIQUE_ADDR_DATE_MARK} from "../model/KV";
 import {DailyToken} from "../model/Token";
+import {Conflux, format} from "js-conflux-sdk";
+import {init} from "./tool/FixDailyTokenStat";
+import {patchHttpProvider} from "./common/utils";
+import {PreLoader} from "./common/PreLoader";
+import {CfxLog} from "js-conflux-sdk/types/rpc";
+import {TokenTool} from "./tool/TokenTool";
+import {makeIdV} from "../model/HexMap";
+import {ITokenTransfer} from "../model/Erc20Transfer";
 export const ALL_UNIQUE_ADDRESS_BUCKET = 'ALL_UNIQUE_ADDRESS_BUCKET'
 const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
 const DAY_FMT = 'YYYY-MM-DD'
@@ -204,6 +212,114 @@ export async function rollupDailyUnique() {
     }
 }
 
-async function run() {
-
+async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epochTime:Date) {
+    // console.log(` epoch ${epoch} logs length ${logs.length}`)
+    if (logs.length === 0) {
+        return []
+    }
+    const filtered = []
+    for (let log of logs) {
+        const {address,topics:[t,t1,t2,t3]} = log
+        // console.log(`${address} ${t}`)
+        if (t1 === undefined || t2 === undefined) {
+            console.log(` invalid topics at epoch ${epoch
+            }, block ${log.blockHash} tx ${log.transactionHash
+            }, tx log index ${log.transactionLogIndex} `, log.topics)
+            continue
+        }
+        let from, to;
+        if (t === tokenTool.contract.TransferSingle.signature
+            || t === tokenTool.contract.TransferBatch.signature) {
+            if (t3) { // t2 has been checked above.
+                from = `0x${t2.slice(-40)}`
+                to = `0x${t3.slice(-40)}`
+            }
+        } else {
+            from = `0x${t1.slice(-40)}`
+            to = `0x${t2.slice(-40)}`
+        }
+        // console.log(log)
+        const contractHex = format.hexAddress(address)
+        const [contractId, fromId, toId] = await Promise.all([
+            makeIdV(contractHex, undefined, epochTime),
+            makeIdV(from, undefined, epochTime),
+            makeIdV(to, undefined, epochTime),
+        ])
+        log['contractId'] = contractId;
+        log['fromId'] = fromId
+        log['toId'] = toId
+        log['createdAt'] = epochTime
+        filtered.push(log)
+    }
+    return filtered;
 }
+async function run(cfx:Conflux) {
+    const tokenTool = new TokenTool(cfx);
+    const topics = [[
+        tokenTool.contract.Transfer.signature,
+        tokenTool.contract.TransferBatch.signature,
+        tokenTool.contract.TransferSingle.signature,
+    ]]
+    async function getLogs(epochNumber) : Promise<CfxLog[]>{
+        const [block, logs] = await Promise.all([
+            cfx.getBlockByEpochNumber(epochNumber, false),
+            cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics}),
+        ])
+        const dt = new Date(block.timestamp * 1000)
+        return polishLogs(logs, epochNumber, tokenTool, dt)
+    }
+    const loader = new PreLoader(cfx, getLogs, 100);
+    let epoch = 31496126;//await cfx.getEpochNumber().then(res=> res - 1000)
+    let hourMark = -1
+    async function repeat() {
+        const {action, data} = loader.get(epoch)
+        let delay = 0
+        switch (action) {
+            case "ok":
+                const transfers:any[] = await data;
+                await handleUniqueAddress(transfers)
+                const [sample] = transfers
+                if (sample) {
+                    const epochHour = sample.createdAt.getHours();
+                    console.log(`sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
+                    }, preload size ${loader.data.size}`)
+                    if (epochHour !== hourMark) {
+                        console.log(`----------------- hourly event ----------- ${epochHour}`)
+                        await persist2db()
+                        await rollupDailyUnique()
+                        hourMark = epochHour
+                    }
+                } else {
+                    console.log(` no transfer at ${epoch}`)
+                }
+                epoch++
+                break;
+            case "pop":
+                console.log(`pop ${epoch}`);
+                epoch --
+                break;
+            case "wait":
+                console.log(`wait for ${epoch}`)
+                delay = 500
+                break;
+        }
+        setTimeout(repeat, delay)
+    }
+    repeat().then()
+}
+async function setup(cfxUrl:string) {
+    const config = await init();
+    await RedisWrap.connect(config.redis)
+    console.log(`--------------------`)
+    const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
+    let cfx = new Conflux(config.conflux)
+    patchHttpProvider(cfx, cfxOp)
+    const st = await cfx.getStatus()
+    console.log(` ${process.argv[1]} \n network ${st.networkId}`)
+    return run(cfx)
+}
+const [,,cfxUrl] = process.argv
+setup(cfxUrl).then().catch(err=>{
+    console.log(`${process.argv[1]}\n`, err)
+    process.exit(1)
+})
