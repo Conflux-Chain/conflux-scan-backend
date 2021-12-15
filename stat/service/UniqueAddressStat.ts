@@ -219,6 +219,10 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
     }
     const filtered = []
     for (let log of logs) {
+        if (log.topics.length < 3) {
+            // at least, topic contains [ topic, from, to]
+            continue;
+        }
         const {address,topics:[t,t1,t2,t3]} = log
         // console.log(`${address} ${t}`)
         if (t1 === undefined || t2 === undefined) {
