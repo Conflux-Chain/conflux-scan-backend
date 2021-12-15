@@ -57,24 +57,25 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
         return
     }
     //
-    async function send2redisWrap(fmt:string, key:string, contractId:number, timestamp:number, ids:Set<number>){
+    async function send2redisWrap(fmt:string, key:string, contractId:number, timestamp:number, ids:number[]){
         const keyH = buildRedisKey(fmt, key, contractId, dt)
         // keep keys and their time. move statistics to DB later.
         // zset, should keep the min timestamp.
         // https://redis.io/commands/zadd
         await Promise.all([
-            redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'NX', timestamp, keyH),
+            measure.call('addAllKey', ()=>redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'NX', timestamp, keyH)),
         // add ids to each bucket.
-            RedisWrap.saddm(keyH, [...ids]),
+            measure.call('saddm', ()=>RedisWrap.saddm(keyH, ids)),
         ])
     }
     async function send2redis(map:Map<number, Set<number>>, key: string) {
         for (let entry of map.entries()) {
             const [contractId, addressIds] = entry;
             // add to hour set and day set
+            const ids = [...addressIds]
             await Promise.all([
-                send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), addressIds).then(),
-                send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), addressIds).then(),
+                send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), ids).then(),
+                send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), ids).then(),
             ])
         }
     }
