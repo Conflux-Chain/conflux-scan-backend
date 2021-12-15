@@ -1,3 +1,4 @@
+process.env.TZ='UTC'
 import moment = require("moment");
 import {Op,fn,col} from 'sequelize'
 import {RedisWrap, redisWrap} from "./RedisWrap";
