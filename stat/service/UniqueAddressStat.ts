@@ -348,6 +348,7 @@ async function benchmark() {
     const start = Date.now()
     for (let i = 0; i < times; i++) {
         await redisWrap.zadd(k, 'NX', 1, 'a')
+        await redisWrap.sadd(k, [1,2,3,4,5])
     }
     await redisWrap.del(k)
     const ms = Date.now() - start
