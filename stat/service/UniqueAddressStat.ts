@@ -11,7 +11,6 @@ import {PreLoader} from "./common/PreLoader";
 import {CfxLog} from "js-conflux-sdk/types/rpc";
 import {TokenTool} from "./tool/TokenTool";
 import {makeIdV} from "../model/HexMap";
-import {ITokenTransfer} from "../model/Erc20Transfer";
 import {Measure} from "./common/Measure";
 export const ALL_UNIQUE_ADDRESS_BUCKET = 'ALL_UNIQUE_ADDRESS_BUCKET'
 const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
@@ -62,22 +61,22 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
         // keep keys and their time. move statistics to DB later.
         // zset, should keep the min timestamp.
         // https://redis.io/commands/zadd
-        await Promise.all([
+        return Promise.all([
             measure.call('addAllKey', ()=>redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'NX', timestamp, keyH)),
         // add ids to each bucket.
             measure.call('saddm', ()=>RedisWrap.saddm(keyH, ids)),
         ])
     }
     async function send2redis(map:Map<number, Set<number>>, key: string) {
+        const tasks = []
         for (let entry of map.entries()) {
             const [contractId, addressIds] = entry;
             // add to hour set and day set
             const ids = [...addressIds]
-            await Promise.all([
-                send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), ids).then(),
-                send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), ids).then(),
-            ])
+            tasks.push(send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), ids).then())
+            tasks.push(send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), ids).then())
         }
+        return Promise.all(tasks)
     }
     await Promise.all([
         send2redis(fromMap, 'from'),
@@ -309,7 +308,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 } else if (sample) {
                     const epochHour = sample.createdAt.getHours();
                     console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
-                    }, preload size ${loader.data.size}, transfer count ${transfers.arr.length}`)
+                    }, preload size ${loader.data.size}, epoch time ${sample.createdAt.toISOString()} transfer count ${transfers.arr.length}`)
                     if (epochHour !== hourMark) {
                         console.log(`----------------- hourly event ----------- ${epochHour}`)
                         await persist2db()
@@ -321,7 +320,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 }
                 if (epoch % 100 === 0) {
                     loader.dumpMetrics(` --------------- get logs metrics `)
-                    measure.dump(` --`, 'handle');
+                    measure.dump(` --`, undefined,'handle', 'addAllKey', 'saddm');
                 }
                 epoch++
                 break;

@@ -22,25 +22,20 @@ export class Measure {
             return res;
         })
     }
-    dump(msg:string, specialKey:string = undefined, mod = 1) {
+    dump(msg:string, mod = 1, ...specialKey:string[]) {
         if (this.times % mod !== 0) {
             return;
         }
-        let specialInfo = ''
-        if (specialKey) {
-            const spv = this.map.get(specialKey);
-            if (spv) {
-                specialInfo = `${specialKey}:${(spv.ms / spv.times).toPrecision(5)}`
-                this.map.delete(specialKey)
-            } else {
-                specialInfo = `${specialKey}:0`
-            }
+        function buildInfo(keys:string[]) {
+            keys.map(k=>{
+                const t = this.map.get(k);
+                return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}` : ''
+            }).join(';');
         }
+        let specialInfo = buildInfo(specialKey)
+        specialKey.forEach(k=>this.map.delete(k))
 
-        const info = [...this.map.keys()].map(k=>{
-            const t = this.map.get(k);
-            return `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}`
-        }).join(';');
+        const info = buildInfo([...this.map.keys()])
         console.log(`${msg} avg: ${specialInfo} ${info}`)
         this.times = 0
         this.map.clear()
