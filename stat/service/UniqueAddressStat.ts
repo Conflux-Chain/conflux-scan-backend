@@ -338,10 +338,27 @@ async function run(cfx:Conflux, fromEpoch:number) {
     }
     repeat().then()
 }
+async function benchmark() {
+    if (!process.argv.includes('benchmark')) {
+        return
+    }
+    const times = 1000
+    const k = 'delIt';
+    await redisWrap.del(k)
+    const start = Date.now()
+    for (let i = 0; i < times; i++) {
+        await redisWrap.zadd(k, 'NX', 1, 'a')
+    }
+    await redisWrap.del(k)
+    const ms = Date.now() - start
+    console.log(`times ${times}, avg ${(ms / times).toPrecision(5)}`)
+    process.exit(0);
+}
 async function setup(cfxUrl:string, fromEpoch = '30495305') {
     const config = await init();
     await RedisWrap.connect(config.redis)
     console.log(`--------------------`)
+    await benchmark();
     const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
     let cfx = new Conflux(config.conflux)
     patchHttpProvider(cfx, cfxOp)
