@@ -348,8 +348,8 @@ async function benchmark() {
     await redisWrap.del(k)
     const start = Date.now()
     for (let i = 0; i < times; i++) {
-        await redisWrap.zadd(k, 'NX', 1, 'a')
-        await redisWrap.sadd(kSet, [1,2,3,4,5].map(n=>n*10000+i))
+        await redisWrap.zadd(k, 'NX', times, 'a'+times)
+        await RedisWrap.saddm(kSet, [1,2,3,4,5].map(n=>n*10000+i))
     }
     const ms = Date.now() - start
     console.log(`times ${times}, avg ${(ms / times).toPrecision(5)}`)
