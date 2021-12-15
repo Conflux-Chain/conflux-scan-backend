@@ -26,9 +26,9 @@ function buildRedisKey(fmt:string, key:string, id:number, dt:Date) {
     return `${moment(dt).format(fmt)}_${key}_${id}_tokenUniqueAddr`
 }
 // assume that all records are within one epoch, so they have same time.
-export async function handleUniqueAddress(arr:{fromId:number, toId:number, contractId:number, createdAt: Date}[]) {
+function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt: Date}[]) {
     if (!arr.length) {
-        return
+        return {arr}
     }
     const dt = arr[0].createdAt
     function push(map:Map<number, Set<number>>, key:number, v: number) {
@@ -50,27 +50,39 @@ export async function handleUniqueAddress(arr:{fromId:number, toId:number, contr
         push(allMap, transfer.contractId, transfer.fromId)
         push(allMap, transfer.contractId, transfer.toId)
     }
+    return {fromMap, toMap, allMap, dt, arr}
+}
+export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
+    if (!allMap) {
+        return
+    }
     //
     async function send2redisWrap(fmt:string, key:string, contractId:number, timestamp:number, ids:Set<number>){
         const keyH = buildRedisKey(fmt, key, contractId, dt)
         // keep keys and their time. move statistics to DB later.
         // zset, should keep the min timestamp.
         // https://redis.io/commands/zadd
-        await redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'NX', timestamp, keyH)
+        await Promise.all([
+            redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'NX', timestamp, keyH),
         // add ids to each bucket.
-        await RedisWrap.saddm(keyH, [...ids])
+            RedisWrap.saddm(keyH, [...ids]),
+        ])
     }
     async function send2redis(map:Map<number, Set<number>>, key: string) {
         for (let entry of map.entries()) {
             const [contractId, addressIds] = entry;
             // add to hour set and day set
-            await send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), addressIds).then();
-            await send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), addressIds).then();
+            await Promise.all([
+                send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), addressIds).then(),
+                send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), addressIds).then(),
+            ])
         }
     }
-    await send2redis(fromMap, 'from')
-    await send2redis(toMap, 'to')
-    await send2redis(allMap, 'all')
+    await Promise.all([
+        send2redis(fromMap, 'from'),
+        send2redis(toMap, 'to'),
+        send2redis(allMap, 'all'),
+    ])
 }
 export async function persist2db() {
     // find max time. we may under catchup mode, the max time is not current time.
@@ -268,13 +280,15 @@ async function run(cfx:Conflux, fromEpoch:number) {
         tokenTool.contract.TransferBatch.signature,
         tokenTool.contract.TransferSingle.signature,
     ]]
-    async function getLogs(epochNumber) : Promise<CfxLog[]>{
+    async function getLogs(epochNumber) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
             measure.call('getBlocks', ()=>cfx.getBlockByEpochNumber(epochNumber, false)),
             measure.call('getLogs', ()=>cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics})),
         ]))
         const dt = new Date(block.timestamp * 1000)
-        return polishLogs(logs, epochNumber, tokenTool, dt)
+        return polishLogs(logs, epochNumber, tokenTool, dt).then(logs=>{
+            return buildMap(logs as any)
+        })
     }
     const loader = new PreLoader(cfx, getLogs, 10000);
     loader.preLoadSize = 100
@@ -285,10 +299,10 @@ async function run(cfx:Conflux, fromEpoch:number) {
         let delay = 0
         switch (action) {
             case "ok":
-                const transfers:any[] = await data;
+                const transfers:any = await data;
                 await measure.call('handle', ()=>handleUniqueAddress(transfers))
                 const log = epoch % 10 === 0
-                const [sample] = transfers
+                const [sample] = transfers.arr
                 if (!log) {
                     // skip
                 } else if (sample) {
@@ -306,7 +320,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 }
                 if (epoch % 100 === 0) {
                     loader.dumpMetrics(` --------------- get logs metrics `)
-                    measure.dump(` --`, );
+                    measure.dump(` --`, 'handle');
                 }
                 epoch++
                 break;
