@@ -286,7 +286,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 } else if (sample) {
                     const epochHour = sample.createdAt.getHours();
                     console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
-                    }, preload size ${loader.data.size}`)
+                    }, preload size ${loader.data.size}, transfer count ${transfers.length}`)
                     if (epochHour !== hourMark) {
                         console.log(`----------------- hourly event ----------- ${epochHour}`)
                         await persist2db()
