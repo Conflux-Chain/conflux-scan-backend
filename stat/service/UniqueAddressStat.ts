@@ -286,8 +286,8 @@ async function run(cfx:Conflux, fromEpoch:number) {
             measure.call('getLogs', ()=>cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics})),
         ]))
         const dt = new Date(block.timestamp * 1000)
-        return polishLogs(logs, epochNumber, tokenTool, dt).then(logs=>{
-            return buildMap(logs as any)
+        return measure.call('polishLog',()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
+            return measure.call('buildMap', ()=>Promise.resolve(buildMap(logs as any)))
         })
     }
     const loader = new PreLoader(cfx, getLogs, 10000);
@@ -308,7 +308,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 } else if (sample) {
                     const epochHour = sample.createdAt.getHours();
                     console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
-                    }, preload size ${loader.data.size}, transfer count ${transfers.length}`)
+                    }, preload size ${loader.data.size}, transfer count ${transfers.arr.length}`)
                     if (epochHour !== hourMark) {
                         console.log(`----------------- hourly event ----------- ${epochHour}`)
                         await persist2db()
