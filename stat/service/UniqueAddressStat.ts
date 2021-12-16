@@ -217,6 +217,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
         return []
     }
     const addrMap = new Map<string, string>()
+    const addrIdMap = new Map<string, number>()
     const filtered = []
     for (let log of logs) {
         if (log.topics.length < 3) {
@@ -254,11 +255,21 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             hex = format.hexAddress(address);
             addrMap.set(address, hex)
         });
+        const addr2id = async (hex)=>{
+            const id = addrIdMap.get(hex)
+            if (id) {
+                return id;
+            }
+            return makeIdV(hex, undefined, epochTime).then(id=>{
+                addrIdMap.set(hex, id)
+                return id;
+            });
+        }
         const [contractId, fromId, toId] = await measure.call('makeId',
             ()=> Promise.all([
-                    makeIdV(contractHex, undefined, epochTime),
-                    makeIdV(from, undefined, epochTime),
-                    makeIdV(to, undefined, epochTime),
+                addr2id(contractHex),
+                addr2id(from),
+                addr2id(to),
                 ])
         )
         measure.execute('set prop', ()=>{
