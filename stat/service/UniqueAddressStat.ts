@@ -90,13 +90,13 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
             console.log(`==========005`)
         })
     }
-    return Promise.all([
+    return measure.call('call-3m', ()=>Promise.all([
         send2redis(fromMap, 'from'),
         send2redis(toMap, 'to'),
         send2redis(allMap, 'all'),
     ]).then(()=>{
         console.log(`==========006 \n\n\n`)
-    })
+    }))
 }
 export async function persist2db(indexBucket:string, hoursAgo: number) {
     let has;
