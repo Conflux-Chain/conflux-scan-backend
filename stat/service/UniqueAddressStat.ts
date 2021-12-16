@@ -87,6 +87,12 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
     ])
 }
 export async function persist2db(indexBucket:string, hoursAgo: number) {
+    let has;
+    do {
+        has = await persist2dbOne(indexBucket, hoursAgo)
+    } while(has)
+}
+export async function persist2dbOne(indexBucket:string, hoursAgo: number) {
     // find max time. we may under catchup mode, the max time is not current time.
     const [maxKey, maxTime] = await redisWrap.zrevrangebyscore(indexBucket,
         new Date('5050').getTime(), 0, 'WITHSCORES', 'LIMIT', 0, 1)
@@ -141,7 +147,6 @@ export async function persist2db(indexBucket:string, hoursAgo: number) {
     await redisWrap.zrem(indexBucket, key)
     console.log(` ------- finish this key ${key} --------`)
     // process more records.
-    setImmediate(()=>persist2db(indexBucket, hoursAgo));
     return true
 }
 // rollup daily.
@@ -263,7 +268,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
         })
     }
     const loader = new PreLoader(cfx, getLogs, 10000);
-    loader.preLoadSize = 100
+    loader.preLoadSize = 5
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     let hourMark = -1
     async function repeat() {
@@ -282,18 +287,19 @@ async function run(cfx:Conflux, fromEpoch:number) {
                     console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
                     }, preload size ${loader.data.size}, epoch time ${sample.createdAt.toISOString()} transfer count ${transfers.arr.length}`)
                     if (epochHour !== hourMark) {
-                        console.log(`----------------- hourly event ----------- ${epochHour}`)
+                        console.log(`----------------- hourly event begin  ----------- ${epochHour}`)
                         await persist2db(HOUR_UNIQUE_ADDRESS_BUCKET, 2)
                         await persist2db(DAY_UNIQUE_ADDRESS_BUCKET, 24)
+                        console.log(`----------------- hourly event finish ----------- ${epochHour}`)
                         // await rollupDailyUnique()
                         hourMark = epochHour
                     }
                 } else {
                     console.log(` no transfer at ${epoch}`)
                 }
-                if (epoch % 100 === 0) {
-                    loader.dumpMetrics(` --------------- get logs metrics `)
+                if (epoch % 10 === 0) {
                     measure.dump(` --`, undefined,'handle', 'addAllKey', 'saddm');
+                    loader.dumpMetrics(` --------------- get logs metrics `)
                 }
                 epoch++
                 break;
