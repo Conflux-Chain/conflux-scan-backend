@@ -226,6 +226,26 @@ export async function rollupDailyUnique() {
     }
 }
 
+export async function clean() {
+    const [,,cmd, zSetKey] = process.argv
+    if (cmd !=='clean') {
+        return;
+    }
+    let size = await redisWrap.zcard(zSetKey);
+    console.log(` ${zSetKey} size ${size}`)
+    do {
+        if (size === 0) {
+            break;
+        }
+        const [maxKey, maxTime] = await redisWrap.zrevrangebyscore(zSetKey,
+            new Date('5050').getTime(), 0, 'WITHSCORES', 'LIMIT', 0, 1)
+        await redisWrap.del(maxKey)
+        await redisWrap.zrem(zSetKey, maxKey)
+        console.log(` remove ${maxKey}`)
+        size --
+    } while (true)
+    process.exit(0)
+}
 const measure = new Measure()
 async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epochTime:Date) {
     // console.log(` epoch ${epoch} logs length ${logs.length}`)
@@ -362,6 +382,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495305') {
     await RedisWrap.connect(config.redis)
     console.log(`--------------------`)
     await benchmark();
+    await clean();
     const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
     let cfx = new Conflux(config.conflux)
     patchHttpProvider(cfx, cfxOp)
