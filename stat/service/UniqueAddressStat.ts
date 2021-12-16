@@ -211,13 +211,13 @@ export async function clean(indexBucket = '', force = false) {
     !force && process.exit(0)
 }
 const measure = new Measure()
+const addrMap = new Map<string, string>()
+const addrIdMap = new Map<string, number>()
 async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epochTime:Date) {
     // console.log(` epoch ${epoch} logs length ${logs.length}`)
     if (logs.length === 0) {
         return []
     }
-    const addrMap = new Map<string, string>()
-    const addrIdMap = new Map<string, number>()
     const filtered = []
     for (let log of logs) {
         if (log.topics.length < 3) {
