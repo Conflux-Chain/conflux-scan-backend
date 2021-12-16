@@ -230,8 +230,8 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             }, tx log index ${log.transactionLogIndex} `, log.topics)
             continue
         }
+        let from, to;
         const fn = ()=> {
-            let from, to;
             if (t === tokenTool.contract.TransferSingle.signature
                 || t === tokenTool.contract.TransferBatch.signature) {
                 if (t3) { // t2 has been checked above.
