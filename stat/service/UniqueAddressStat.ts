@@ -64,17 +64,14 @@ async function send2redisWrap(indexBucket: string, fmt:string, key:string, contr
         // add ids to each bucket.
         measure.call('saddm', ()=>RedisWrap.saddm(setKey, ids)),
     ]).then(res=>{
-        console.log(`==========004`)
     }))
 }
 export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
-    console.log(`==========001`)
     if (!allMap) {
         return
     }
     //
     async function send2redis(map:Map<number, Set<number>>, key: string) {
-        console.log(`==========002`)
         const tasks = []
         const build = ()=> {
             for (let entry of map.entries()) {
@@ -87,7 +84,6 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
         }
         await measure.call('buildTask', ()=>Promise.resolve(build()));
         return measure.call('all-task', ()=>Promise.all(tasks).then(()=>{
-            console.log(`==========005`)
         }))
     }
     return measure.call('call-3m', ()=>Promise.all([
@@ -95,7 +91,7 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
         measure.call('to', ()=>send2redis(toMap, 'to')),
         measure.call('all', ()=>send2redis(allMap, 'all')),
     ]).then(()=>{
-        console.log(`==========006 \n\n\n`)
+        // console.log(`==========006 \n\n\n`)
     }))
 }
 export async function persist2db(indexBucket:string, hoursAgo: number) {
