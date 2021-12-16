@@ -39,6 +39,16 @@ export class Measure {
             return res;
         })
     }
+    execute<T>(tag:string, fn:()=>T):T {
+        if (!tag) {
+            return fn();
+        }
+        const start = Date.now();
+        const ret = fn()
+        this.times++
+        this.m(tag, start)
+        return ret;
+    }
     dump(msg:string, mod = 1, ...specialKey:string[]) {
         if (this.times % mod !== 0) {
             return;

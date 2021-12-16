@@ -245,7 +245,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
         }
         await measure.call('parseLog', () => Promise.resolve(fn()));
         // console.log(log)
-        const contractHex = format.hexAddress(address)
+        const contractHex = await measure.call('fmtAddr', ()=>Promise.resolve(format.hexAddress(address)));
         const [contractId, fromId, toId] = await measure.call('makeId',
             ()=> Promise.all([
                     makeIdV(contractHex, undefined, epochTime),
@@ -253,11 +253,13 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
                     makeIdV(to, undefined, epochTime),
                 ])
         )
+        measure.execute('set prop', ()=>{
         log['contractId'] = contractId;
         log['fromId'] = fromId
         log['toId'] = toId
         log['createdAt'] = epochTime
         filtered.push(log)
+        })
     }
     return filtered;
 }
