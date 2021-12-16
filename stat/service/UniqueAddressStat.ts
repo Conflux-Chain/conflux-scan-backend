@@ -3,7 +3,6 @@ import moment = require("moment");
 import {Op,fn,col} from 'sequelize'
 import {RedisWrap, redisWrap} from "./RedisWrap";
 import {HourlyToken, IHourlyToken} from "../model/TokenStat";
-import {KV, UNIQUE_ADDR_DATE_MARK} from "../model/KV";
 import {DailyToken} from "../model/Token";
 import {Conflux, format} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
@@ -13,7 +12,8 @@ import {CfxLog} from "js-conflux-sdk/types/rpc";
 import {TokenTool} from "./tool/TokenTool";
 import {makeIdV} from "../model/HexMap";
 import {Measure} from "./common/Measure";
-export const ALL_UNIQUE_ADDRESS_BUCKET = 'ALL_UNIQUE_ADDRESS_BUCKET'
+export const HOUR_UNIQUE_ADDRESS_BUCKET = 'HOUR_UNIQUE_ADDRESS_BUCKET'
+export const DAY_UNIQUE_ADDRESS_BUCKET = 'DAY_UNIQUE_ADDRESS_BUCKET'
 const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
 const DAY_FMT = 'YYYY-MM-DD'
 
@@ -52,30 +52,31 @@ function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt:
     }
     return {fromMap, toMap, allMap, dt, arr}
 }
+async function send2redisWrap(indexBucket: string, fmt:string, key:string, contractId:number, dt:Date, ids:number[]){
+    const timestamp = dt.getTime()
+    const setKey =await measure.call('buildRedisKey', ()=>Promise.resolve(buildRedisKey(fmt, key, contractId, dt)))
+    // keep keys and their time. move statistics to DB later.
+    // zset, should keep the min timestamp.
+    // https://redis.io/commands/zadd
+    return Promise.all([
+        measure.call('addAllKey', ()=>redisWrap.zadd(indexBucket, 'NX', timestamp, setKey)),
+        // add ids to each bucket.
+        measure.call('saddm', ()=>RedisWrap.saddm(setKey, ids)),
+    ])
+}
 export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
     if (!allMap) {
         return
     }
     //
-    async function send2redisWrap(fmt:string, key:string, contractId:number, timestamp:number, ids:number[]){
-        const keyH = buildRedisKey(fmt, key, contractId, dt)
-        // keep keys and their time. move statistics to DB later.
-        // zset, should keep the min timestamp.
-        // https://redis.io/commands/zadd
-        return Promise.all([
-            measure.call('addAllKey', ()=>redisWrap.zadd(ALL_UNIQUE_ADDRESS_BUCKET, 'NX', timestamp, keyH)),
-        // add ids to each bucket.
-            measure.call('saddm', ()=>RedisWrap.saddm(keyH, ids)),
-        ])
-    }
     async function send2redis(map:Map<number, Set<number>>, key: string) {
         const tasks = []
         for (let entry of map.entries()) {
             const [contractId, addressIds] = entry;
             // add to hour set and day set
             const ids = [...addressIds]
-            tasks.push(send2redisWrap(HOUR_FMT, key, contractId, dt.getTime(), ids).then())
-            tasks.push(send2redisWrap(DAY_FMT, key, contractId, dt.getTime(), ids).then())
+            tasks.push(send2redisWrap(HOUR_UNIQUE_ADDRESS_BUCKET, HOUR_FMT, key, contractId, dt, ids).then())
+            tasks.push(send2redisWrap(DAY_UNIQUE_ADDRESS_BUCKET, DAY_FMT, key, contractId, dt, ids).then())
         }
         return Promise.all(tasks)
     }
@@ -85,23 +86,23 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
         send2redis(allMap, 'all'),
     ])
 }
-export async function persist2db() {
+export async function persist2db(indexBucket:string, hoursAgo: number) {
     // find max time. we may under catchup mode, the max time is not current time.
-    const [maxKey, maxTime] = await redisWrap.zrevrangebyscore(ALL_UNIQUE_ADDRESS_BUCKET,
+    const [maxKey, maxTime] = await redisWrap.zrevrangebyscore(indexBucket,
         new Date('5050').getTime(), 0, 'WITHSCORES', 'LIMIT', 0, 1)
     if (!maxKey) {
         console.log(` there is no key in redis.`)
         return;
     }
-    const earlier = maxTime - 3600_1000;
+    const earlier = maxTime - 3600_1000 * hoursAgo;
     // fetch keys before some time gap.
-    const [minKey, minTime] = await redisWrap.ZRANGEBYSCORE(ALL_UNIQUE_ADDRESS_BUCKET,
+    const [minKey, minTime] = await redisWrap.ZRANGEBYSCORE(indexBucket,
         0, earlier, 'WITHSCORES', 'LIMIT', 0, 1)
     if (!minKey) {
         console.log(` no keys. max time ${maxTime}, max key ${maxKey}, want before ${earlier
         }, ${new Date(earlier).toISOString()}`)
         // check the minimum one.
-        const [minKey2, minTime2] = await redisWrap.ZRANGEBYSCORE(ALL_UNIQUE_ADDRESS_BUCKET,
+        const [minKey2, minTime2] = await redisWrap.ZRANGEBYSCORE(indexBucket,
             0, maxTime, 'WITHSCORES', 'LIMIT', 0, 1)
         console.log(` the minimum one ${minKey2} with time [${minTime2}]`)
         console.log(` time is  ${new Date(Number(minTime2)).toISOString()}`)
@@ -109,13 +110,13 @@ export async function persist2db() {
     }
     console.log(` max ${maxKey} min ${minKey}`)
     let key = minKey
-    {
         const count = await redisWrap.scard(key)
 
         const {dt, side, contractId} = parseKey(key)
         console.log(`unique address stat in redis: ${key}, ${dt.toISOString()}, ${side}, contract [${contractId}], count ${count}`)
         let prop = {'from':'uniqueSender','to':'uniqueReceiver', all:'participants'}[side]
 
+    if (indexBucket === HOUR_UNIQUE_ADDRESS_BUCKET){
         const identifier = {hexId: contractId, createdAt: dt}
         const dbBean = await HourlyToken.findOne({where: identifier})
         if (dbBean === null) {
@@ -133,104 +134,54 @@ export async function persist2db() {
         } else {
             console.log(` db has larger value ${key}, ${prop}: ${dbBean[prop]} >= ${count}`)
         }
-        await redisWrap.del(key)
-        await redisWrap.zrem(ALL_UNIQUE_ADDRESS_BUCKET, key)
-        console.log(` ------- finish this key ${key} --------`)
+    } else {
+        await saveDailyUnique({dayStart: dt, prop, count, hexId:contractId})
     }
+    await redisWrap.del(key)
+    await redisWrap.zrem(indexBucket, key)
+    console.log(` ------- finish this key ${key} --------`)
+    // process more records.
+    setImmediate(()=>persist2db(indexBucket, hoursAgo));
     return true
 }
 // rollup daily.
-export async function rollupDailyUnique() {
-    // calculate from earliest time to latest time, and then delete earliest ones.
-    const preDateMark =  await KV.getString(UNIQUE_ADDR_DATE_MARK, '2020-10-28')
-    const preDate = new Date(preDateMark)
-    const newDay = new Date(preDate)
-    newDay.setDate(newDay.getDate()+1)
-    console.log(` mark ${preDateMark} pre date ${preDate.toISOString()} new day ${newDay.toISOString()}`)
-
-    const [preOne, newDayOne, maxOne, ] = await Promise.all([
-        HourlyToken.findOne({order:[['createdAt','asc']],
-            where: {createdAt:{[Op.gte]: preDate}}
-        }),
-        HourlyToken.findOne({order:[['createdAt','asc']],
-            where: {createdAt:{[Op.gte]: newDay}}
-        }),
-        HourlyToken.findOne({order:[['createdAt','desc']]}),
-    ])
-    if (maxOne === null) {
-        console.log(` min hourly record not found, table is empty.`)
-        return
-    }
-    let timeForThisRound = preDate;
-    // keep hourly records for 8 days.
-    if (newDayOne !== null) {
-        // records for new day show up. this will move day position.
-        timeForThisRound = newDayOne.createdAt
-        console.log(` use next day`)
-    } else if (preOne === null) {
-        console.log(` new records not ready, want after ${preDateMark}`)
-        return
-    } else if (maxOne.createdAt.getTime() - 3600_000 > newDay.getTime()) {
-        // move forward
-        timeForThisRound = newDay;
-    } else {
-        // update current day's stat.
-        timeForThisRound = preOne.createdAt
-        console.log(` repeat day`)
-    }
-    console.log(`hourly stat time, pre ${preOne?.createdAt.toISOString()
-    }, next day ${newDayOne?.createdAt.toISOString()}, max ${maxOne?.createdAt.toISOString()}, mark position ${preDateMark}`)
-    const dayStart = new Date(timeForThisRound)
-    dayStart.setHours(0,0,0,0)
-    const dayEnd = new Date(timeForThisRound)
-    dayEnd.setHours(23,59,59,999);
-    const groupByContract  = await HourlyToken.findAll({
-        where: {createdAt: {[Op.between]: [dayStart, dayEnd]}},
-        raw: true,
-        attributes: [
-            [fn('sum',col('uniqueReceiver')), 'uniqueReceiver'],
-            [fn('sum',col('uniqueSender')), 'uniqueSender'],
-            [fn('sum',col('participants')), 'participants'],
-            'hexId',
-        ],
-        group: ['hexId'],
-    })
-    for (let hourlyToken of groupByContract) {
+export async function saveDailyUnique({dayStart, hexId, prop, count}) {
         const [cnt] = await DailyToken.update({
-            uniqueSender: hourlyToken.uniqueSender,
-            uniqueReceiver: hourlyToken.uniqueReceiver,
-            participants: hourlyToken.participants,
+            [prop]: count,
         }, {where: {
-                hexId: hourlyToken.hexId, day: dayStart
+                hexId, day: dayStart, [prop]: {[Op.lt]: count}
             }, limit: 1})
         let op = ''
         if (cnt) {
             op = 'update'
         } else {
             // create it. use bulkCreate to control updateOnDuplicate. upsert do not support updateOnDuplicate.
-            await DailyToken.bulkCreate([{
-                hexId: hourlyToken.hexId,
+            const bean = {
+                hexId,
                 day: dayStart,
-                uniqueSender: hourlyToken.uniqueSender,
-                uniqueReceiver: hourlyToken.uniqueReceiver,
-                participants: hourlyToken.participants,
+                uniqueSender : 0,
+                uniqueReceiver: 0,
+                participants : 0,
                 transferAmount: '0', transferCount: 0, holderCount: 0,
-            }], {updateOnDuplicate: ['uniqueSender','uniqueReceiver','participants']})
+            };
+            bean[prop] = count
+            await DailyToken.bulkCreate([bean], {
+                updateOnDuplicate: [prop]
+            })
             op = 'create'
         }
         //
-        await KV.upsert({key: UNIQUE_ADDR_DATE_MARK, value: dayStart.toISOString().substr(0, 10)})
-        console.log(` [${op}] daily unique address for ${hourlyToken.hexId
-        }, day ${dayStart.toISOString().substr(0, 10)} uniqueSender ${hourlyToken.uniqueSender} uniqueReceiver ${hourlyToken.uniqueReceiver
-        } participants ${hourlyToken.participants}`)
-    }
+        console.log(` [${op}] daily unique address for ${hexId
+        }, day ${dayStart.toISOString().substr(0, 10)} ${prop} = ${count}`)
 }
 
-export async function clean() {
-    const [,,cmd, zSetKey] = process.argv
-    if (cmd !=='clean') {
+export async function clean(indexBucket = '', force = false) {
+    const [,,cmd, zSetKeyArg] = process.argv
+    if (force) {
+    } else if (cmd !=='clean') {
         return;
     }
+    const zSetKey = indexBucket || zSetKeyArg
     let size = await redisWrap.zcard(zSetKey);
     console.log(` ${zSetKey} size ${size}`)
     do {
@@ -244,7 +195,7 @@ export async function clean() {
         console.log(` remove ${maxKey}`)
         size --
     } while (true)
-    process.exit(0)
+    !force && process.exit(0)
 }
 const measure = new Measure()
 async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epochTime:Date) {
@@ -332,8 +283,9 @@ async function run(cfx:Conflux, fromEpoch:number) {
                     }, preload size ${loader.data.size}, epoch time ${sample.createdAt.toISOString()} transfer count ${transfers.arr.length}`)
                     if (epochHour !== hourMark) {
                         console.log(`----------------- hourly event ----------- ${epochHour}`)
-                        await persist2db()
-                        await rollupDailyUnique()
+                        await persist2db(HOUR_UNIQUE_ADDRESS_BUCKET, 2)
+                        await persist2db(DAY_UNIQUE_ADDRESS_BUCKET, 24)
+                        // await rollupDailyUnique()
                         hourMark = epochHour
                     }
                 } else {
@@ -359,22 +311,23 @@ async function run(cfx:Conflux, fromEpoch:number) {
     repeat().then()
 }
 async function benchmark() {
-    if (!process.argv.includes('benchmark')) {
+    const [,,cmd, timesStr] = process.argv
+    if (cmd !== 'benchmark') {
         return
     }
-    const times = 1000
+    const times = parseInt(timesStr || '1000' );
     const k = 'delIt';
     const kSet = 'delItSet';
     await redisWrap.del(k)
+    const dt = new Date()
     const start = Date.now()
     for (let i = 0; i < times; i++) {
-        await redisWrap.zadd(k, 'NX', times, 'a'+times)
-        await RedisWrap.saddm(kSet, [1,2,3,4,5].map(n=>n*10000+i))
+        await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
     }
     const ms = Date.now() - start
+    await clean(k, true);
     console.log(`times ${times}, avg ${(ms / times).toPrecision(5)}`)
-    await redisWrap.del(k)
-    await redisWrap.del(kSet)
+    measure.dump(`----`)
     process.exit(0);
 }
 async function setup(cfxUrl:string, fromEpoch = '30495305') {
