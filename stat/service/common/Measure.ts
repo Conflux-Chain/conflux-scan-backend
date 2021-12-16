@@ -32,6 +32,7 @@ export class Measure {
             return fn();
         }
         const start = Date.now();
+        console.log(` start ${tag} ${start}`)
         return fn().then(res=>{
             this.times ++
             this.m(tag as string, start)
