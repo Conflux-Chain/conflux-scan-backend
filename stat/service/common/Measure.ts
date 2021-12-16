@@ -48,7 +48,7 @@ export class Measure {
                 const t = this.map.get(k);
                 return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}=${t.ms}/${t.times
                 }` : '' // (${t.veryStart}-${t.veryEnd})
-            }).join('; \n');
+            }).join('; ');
         }
         let specialInfo = buildInfo(specialKey)
         specialKey.forEach(k=>this.map.delete(k))
