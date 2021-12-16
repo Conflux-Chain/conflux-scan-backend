@@ -299,7 +299,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
                     console.log(` no transfer at ${epoch}`)
                 }
                 if (epoch % 10 === 0) {
-                    measure.dump(` --`, undefined,'handle', 'addAllKey', 'saddm');
+                    measure.dump(`\n --`, undefined,'handle', 'addAllKey', 'saddm', 'idLength');
                     loader.dumpMetrics(` --------------- get logs metrics `)
                 }
                 epoch++
@@ -328,13 +328,15 @@ async function benchmark() {
     await redisWrap.del(k)
     const dt = new Date()
     const start = Date.now()
-    const m = buildMap([{fromId:1, toId: 2, contractId: 0, createdAt: new Date()}])
     for (let i = 0; i < times; i++) {
+        const rnd = Math.round(Math.random() * 1000)
+        const m = buildMap([{fromId:rnd, toId: rnd+1, contractId: rnd, createdAt: new Date()}])
         await handleUniqueAddress(m as any)
         // await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
     }
     const ms = Date.now() - start
-    await clean(k, true);
+    await clean(DAY_UNIQUE_ADDRESS_BUCKET, true);
+    await clean(HOUR_UNIQUE_ADDRESS_BUCKET, true);
     console.log(`times ${times}, avg ${(ms / times).toPrecision(5)}`)
     measure.dump(`----`)
     process.exit(0);
