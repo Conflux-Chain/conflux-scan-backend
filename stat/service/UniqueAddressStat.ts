@@ -256,16 +256,16 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             addrMap.set(address, hex)
         });
         const addr2id = async (hex)=>{
-            const id = addrIdMap.get(hex)
+            const id = measure.execute('makeId', ()=>addrIdMap.get(hex))
             if (id) {
                 return id;
             }
-            return makeIdV(hex, undefined, epochTime).then(id=>{
+            return measure.call('makeId', ()=>makeIdV(hex, undefined, epochTime).then(id=>{
                 addrIdMap.set(hex, id)
                 return id;
-            });
+            }));
         }
-        const [contractId, fromId, toId] = await measure.call('makeId',
+        const [contractId, fromId, toId] = await measure.call('loadId',
             ()=> Promise.all([
                 addr2id(contractHex),
                 addr2id(from),
