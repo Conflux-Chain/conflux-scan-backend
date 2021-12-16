@@ -63,14 +63,18 @@ async function send2redisWrap(indexBucket: string, fmt:string, key:string, contr
         measure.call('addAllKey', ()=>redisWrap.zadd(indexBucket, 'NX', timestamp, setKey)),
         // add ids to each bucket.
         measure.call('saddm', ()=>RedisWrap.saddm(setKey, ids)),
-    ])
+    ]).then(res=>{
+        console.log(`==========004`)
+    })
 }
 export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
+    console.log(`==========001`)
     if (!allMap) {
         return
     }
     //
     async function send2redis(map:Map<number, Set<number>>, key: string) {
+        console.log(`==========002`)
         const tasks = []
         for (let entry of map.entries()) {
             const [contractId, addressIds] = entry;
@@ -79,13 +83,17 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
             tasks.push(send2redisWrap(HOUR_UNIQUE_ADDRESS_BUCKET, HOUR_FMT, key, contractId, dt, ids))
             tasks.push(send2redisWrap(DAY_UNIQUE_ADDRESS_BUCKET, DAY_FMT, key, contractId, dt, ids))
         }
-        return Promise.all(tasks)
+        return Promise.all(tasks).then(()=>{
+            console.log(`==========005`)
+        })
     }
     await Promise.all([
         send2redis(fromMap, 'from'),
         send2redis(toMap, 'to'),
         send2redis(allMap, 'all'),
-    ])
+    ]).then(()=>{
+        console.log(`==========006 \n\n\n`)
+    })
 }
 export async function persist2db(indexBucket:string, hoursAgo: number) {
     let has;
