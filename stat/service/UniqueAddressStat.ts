@@ -76,13 +76,16 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
     async function send2redis(map:Map<number, Set<number>>, key: string) {
         console.log(`==========002`)
         const tasks = []
-        for (let entry of map.entries()) {
-            const [contractId, addressIds] = entry;
-            // add to hour set and day set
-            const ids = [...addressIds]
-            tasks.push(send2redisWrap(HOUR_UNIQUE_ADDRESS_BUCKET, HOUR_FMT, key, contractId, dt, ids))
-            tasks.push(send2redisWrap(DAY_UNIQUE_ADDRESS_BUCKET, DAY_FMT, key, contractId, dt, ids))
+        const build = ()=> {
+            for (let entry of map.entries()) {
+                const [contractId, addressIds] = entry;
+                // add to hour set and day set
+                const ids = [...addressIds]
+                tasks.push(send2redisWrap(HOUR_UNIQUE_ADDRESS_BUCKET, HOUR_FMT, key, contractId, dt, ids))
+                tasks.push(send2redisWrap(DAY_UNIQUE_ADDRESS_BUCKET, DAY_FMT, key, contractId, dt, ids))
+            }
         }
+        await measure.call('buildTask', ()=>Promise.resolve(build()));
         return Promise.all(tasks).then(()=>{
             console.log(`==========005`)
         })
@@ -286,7 +289,9 @@ async function run(cfx:Conflux, fromEpoch:number) {
         switch (action) {
             case "ok":
                 const transfers:any = await data;
-                await measure.call('handle', ()=>handleUniqueAddress(transfers))
+                if (transfers.arr?.length) {
+                    await measure.call('handle', () => handleUniqueAddress(transfers))
+                }
                 const log = epoch % 10 === 0
                 const [sample] = transfers.arr
                 if (!log) {
