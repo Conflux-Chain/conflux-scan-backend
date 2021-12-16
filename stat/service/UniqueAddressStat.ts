@@ -55,17 +55,17 @@ function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt:
 async function send2redisWrap(indexBucket: string, fmt:string, key:string, contractId:number, dt:Date, ids:number[]){
     measure.count('idLength', ids.length)
     const timestamp = dt.getTime()
-    const setKey = await measure.call('', ()=>Promise.resolve(buildRedisKey(fmt, key, contractId, dt)))
+    const setKey = await measure.call('buildKey', ()=>Promise.resolve(buildRedisKey(fmt, key, contractId, dt)))
     // keep keys and their time. move statistics to DB later.
     // zset, should keep the min timestamp.
     // https://redis.io/commands/zadd
-    return Promise.all([
+    return measure.call('two-key', ()=>Promise.all([
         measure.call('addAllKey', ()=>redisWrap.zadd(indexBucket, 'NX', timestamp, setKey)),
         // add ids to each bucket.
         measure.call('saddm', ()=>RedisWrap.saddm(setKey, ids)),
     ]).then(res=>{
         console.log(`==========004`)
-    })
+    }))
 }
 export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
     console.log(`==========001`)
@@ -86,14 +86,14 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
             }
         }
         await measure.call('buildTask', ()=>Promise.resolve(build()));
-        return Promise.all(tasks).then(()=>{
+        return measure.call('all-task', ()=>Promise.all(tasks).then(()=>{
             console.log(`==========005`)
-        })
+        }))
     }
     return measure.call('call-3m', ()=>Promise.all([
-        send2redis(fromMap, 'from'),
-        send2redis(toMap, 'to'),
-        send2redis(allMap, 'all'),
+        measure.call('from', ()=>send2redis(fromMap, 'from')),
+        measure.call('to', ()=>send2redis(toMap, 'to')),
+        measure.call('all', ()=>send2redis(allMap, 'all')),
     ]).then(()=>{
         console.log(`==========006 \n\n\n`)
     }))
