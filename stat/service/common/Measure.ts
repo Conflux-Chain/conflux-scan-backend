@@ -14,11 +14,14 @@ export class Measure {
         t.times += 1
         t.ms += Date.now() - start
     }
-    call<T>(tag:string, fn:()=>Promise<T>) : Promise<T> {
-        const start = Date.now()
+    async call<T>(tag:string|boolean, fn:()=>Promise<T>) : Promise<T> {
+        if (!tag) {
+            return fn();
+        }
+        const start = Date.now();
         return fn().then(res=>{
             this.times ++
-            this.m(tag, start)
+            this.m(tag as string, start)
             return res;
         })
     }

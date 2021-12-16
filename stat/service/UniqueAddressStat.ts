@@ -54,7 +54,7 @@ function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt:
 }
 async function send2redisWrap(indexBucket: string, fmt:string, key:string, contractId:number, dt:Date, ids:number[]){
     const timestamp = dt.getTime()
-    const setKey =await measure.call('buildRedisKey', ()=>Promise.resolve(buildRedisKey(fmt, key, contractId, dt)))
+    const setKey = await measure.call('', ()=>Promise.resolve(buildRedisKey(fmt, key, contractId, dt)))
     // keep keys and their time. move statistics to DB later.
     // zset, should keep the min timestamp.
     // https://redis.io/commands/zadd
@@ -75,8 +75,8 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
             const [contractId, addressIds] = entry;
             // add to hour set and day set
             const ids = [...addressIds]
-            tasks.push(send2redisWrap(HOUR_UNIQUE_ADDRESS_BUCKET, HOUR_FMT, key, contractId, dt, ids).then())
-            tasks.push(send2redisWrap(DAY_UNIQUE_ADDRESS_BUCKET, DAY_FMT, key, contractId, dt, ids).then())
+            tasks.push(send2redisWrap(HOUR_UNIQUE_ADDRESS_BUCKET, HOUR_FMT, key, contractId, dt, ids))
+            tasks.push(send2redisWrap(DAY_UNIQUE_ADDRESS_BUCKET, DAY_FMT, key, contractId, dt, ids))
         }
         return Promise.all(tasks)
     }
@@ -254,12 +254,12 @@ async function run(cfx:Conflux, fromEpoch:number) {
     ]]
     async function getLogs(epochNumber) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
-            measure.call('getBlocks', ()=>cfx.getBlockByEpochNumber(epochNumber, false)),
-            measure.call('getLogs', ()=>cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics})),
+            measure.call(false, ()=>cfx.getBlockByEpochNumber(epochNumber, false)),
+            measure.call(false, ()=>cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics})),
         ]))
         const dt = new Date(block.timestamp * 1000)
-        return measure.call('polishLog',()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
-            return measure.call('buildMap', ()=>Promise.resolve(buildMap(logs as any)))
+        return measure.call(false,()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
+            return measure.call(false, ()=>Promise.resolve(buildMap(logs as any)))
         })
     }
     const loader = new PreLoader(cfx, getLogs, 10000);
