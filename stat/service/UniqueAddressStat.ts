@@ -331,7 +331,7 @@ async function benchmark() {
     for (let i = 0; i < times; i++) {
         const rnd = Math.round(Math.random() * 1000)
         const m = buildMap([{fromId:rnd, toId: rnd+1, contractId: rnd, createdAt: new Date()}])
-        await handleUniqueAddress(m as any)
+        await measure.call('handle', ()=> handleUniqueAddress(m as any));
         // await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
     }
     const ms = Date.now() - start
