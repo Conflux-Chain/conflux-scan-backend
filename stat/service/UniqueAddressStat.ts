@@ -87,7 +87,7 @@ export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
             console.log(`==========005`)
         })
     }
-    await Promise.all([
+    return Promise.all([
         send2redis(fromMap, 'from'),
         send2redis(toMap, 'to'),
         send2redis(allMap, 'all'),
