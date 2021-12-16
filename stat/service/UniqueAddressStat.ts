@@ -256,7 +256,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             addrMap.set(address, hex)
         });
         const addr2id = async (hex)=>{
-            const id = measure.execute('makeId', ()=>addrIdMap.get(hex))
+            const id = measure.execute('getCacheId', ()=>addrIdMap.get(hex))
             if (id) {
                 return id;
             }
