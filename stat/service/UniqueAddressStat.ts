@@ -321,8 +321,10 @@ async function benchmark() {
     await redisWrap.del(k)
     const dt = new Date()
     const start = Date.now()
+    const m = buildMap([{fromId:1, toId: 2, contractId: 0, createdAt: new Date()}])
     for (let i = 0; i < times; i++) {
-        await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
+        await handleUniqueAddress(m as any)
+        // await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
     }
     const ms = Date.now() - start
     await clean(k, true);
