@@ -1,6 +1,8 @@
 class CallTime {
     times = 0
     ms = 0
+    veryStart = 0
+    veryEnd = 0
 }
 export class Measure {
     times = 0
@@ -9,8 +11,10 @@ export class Measure {
         let t = this.map.get(tag)
         if (!t) {
             t = new CallTime()
+            t.veryStart = Date.now()
             this.map.set(tag, t)
         }
+        t.veryEnd = Date.now()
         return t;
     }
     m(tag:string, start) {
@@ -41,8 +45,9 @@ export class Measure {
         const buildInfo = (keys:string[]) => {
             return keys.map(k=>{
                 const t = this.map.get(k);
-                return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}=${t.ms}/${t.times}` : ''
-            }).join('; ');
+                return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}=${t.ms}/${t.times
+                }(${t.veryStart-t.veryEnd})` : ''
+            }).join('; \n');
         }
         let specialInfo = buildInfo(specialKey)
         specialKey.forEach(k=>this.map.delete(k))
