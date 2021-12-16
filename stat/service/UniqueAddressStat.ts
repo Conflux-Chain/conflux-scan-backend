@@ -60,9 +60,9 @@ async function send2redisWrap(indexBucket: string, fmt:string, key:string, contr
     // zset, should keep the min timestamp.
     // https://redis.io/commands/zadd
     return measure.call('two-key', ()=>Promise.all([
-        measure.call('addAllKey', ()=>redisWrap.zadd(indexBucket, 'NX', timestamp, setKey)),
+        // measure.call('addAllKey', ()=>redisWrap.zadd(indexBucket, 'NX', timestamp, setKey)),
         // add ids to each bucket.
-        measure.call('saddm', ()=>RedisWrap.saddm(setKey, ids)),
+        // measure.call('saddm', ()=>RedisWrap.saddm(setKey, ids)),
     ]).then(res=>{
     }))
 }
