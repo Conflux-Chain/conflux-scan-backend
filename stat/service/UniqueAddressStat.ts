@@ -301,7 +301,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
         })
     }
     const loader = new PreLoader(cfx, getLogs, 10000);
-    loader.preLoadSize = 5
+    loader.preLoadSize = 50
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     let hourMark = -1
     async function repeat() {
