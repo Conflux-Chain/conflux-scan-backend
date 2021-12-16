@@ -67,7 +67,7 @@ async function send2redisWrap(indexBucket: string, fmt:string, key:string, contr
     }))
 }
 export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
-    if (!allMap || 1) {
+    if (!allMap) {
         return
     }
     //
@@ -332,9 +332,9 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 } else {
                     console.log(` no transfer at ${epoch}`)
                 }
-                if (epoch % 10 === 0) {
+                if (epoch % 50 === 0) {
                     measure.dump(`\n --`, undefined,'handle', 'addAllKey', 'saddm', 'idLength');
-                    loader.dumpMetrics(` --------------- get logs metrics `)
+                    loader.dumpMetrics(` --------------- get logs metrics , addr count ${addrIdMap.size}`)
                 }
                 epoch++
                 break;
