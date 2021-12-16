@@ -272,8 +272,8 @@ async function run(cfx:Conflux, fromEpoch:number) {
         ]))
         const dt = new Date(block.timestamp * 1000)
         // return {arr:[{createdAt:dt}]};
-        return measure.call(false,()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
-            return measure.call(false, ()=>Promise.resolve(buildMap(logs as any)))
+        return measure.call('polishLogs',()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
+            return measure.call('buildMap', ()=>Promise.resolve(buildMap(logs as any)))
         })
     }
     const loader = new PreLoader(cfx, getLogs, 10000);
