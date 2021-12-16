@@ -222,7 +222,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             // at least, topic contains [ topic, from, to]
             continue;
         }
-        const {address,topics:[t,t1,t2,t3]} = log
+        const {address, topics: [t, t1, t2, t3]} = log
         // console.log(`${address} ${t}`)
         if (t1 === undefined || t2 === undefined) {
             console.log(` invalid topics at epoch ${epoch
@@ -230,17 +230,20 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             }, tx log index ${log.transactionLogIndex} `, log.topics)
             continue
         }
-        let from, to;
-        if (t === tokenTool.contract.TransferSingle.signature
-            || t === tokenTool.contract.TransferBatch.signature) {
-            if (t3) { // t2 has been checked above.
-                from = `0x${t2.slice(-40)}`
-                to = `0x${t3.slice(-40)}`
+        const fn = ()=> {
+            let from, to;
+            if (t === tokenTool.contract.TransferSingle.signature
+                || t === tokenTool.contract.TransferBatch.signature) {
+                if (t3) { // t2 has been checked above.
+                    from = `0x${t2.slice(-40)}`
+                    to = `0x${t3.slice(-40)}`
+                }
+            } else {
+                from = `0x${t1.slice(-40)}`
+                to = `0x${t2.slice(-40)}`
             }
-        } else {
-            from = `0x${t1.slice(-40)}`
-            to = `0x${t2.slice(-40)}`
         }
+        await measure.call('parseLog', () => Promise.resolve(fn()));
         // console.log(log)
         const contractHex = format.hexAddress(address)
         const [contractId, fromId, toId] = await measure.call('makeId',
