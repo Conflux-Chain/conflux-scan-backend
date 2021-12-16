@@ -5,14 +5,23 @@ class CallTime {
 export class Measure {
     times = 0
     map:Map<string, CallTime> = new Map<string, CallTime>()
-    m(tag:string, start) {
+    checkEntry(tag:string) {
         let t = this.map.get(tag)
         if (!t) {
             t = new CallTime()
             this.map.set(tag, t)
         }
+        return t;
+    }
+    m(tag:string, start) {
+        const t = this.checkEntry(tag)
         t.times += 1
         t.ms += Date.now() - start
+    }
+    count(tag:string, cnt:number) {
+        const t = this.checkEntry(tag)
+        t.times+=1;
+        t.ms += cnt;
     }
     async call<T>(tag:string|boolean, fn:()=>Promise<T>) : Promise<T> {
         if (!tag) {

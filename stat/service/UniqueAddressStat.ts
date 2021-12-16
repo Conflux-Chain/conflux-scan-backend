@@ -53,6 +53,7 @@ function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt:
     return {fromMap, toMap, allMap, dt, arr}
 }
 async function send2redisWrap(indexBucket: string, fmt:string, key:string, contractId:number, dt:Date, ids:number[]){
+    measure.count('idLength', ids.length)
     const timestamp = dt.getTime()
     const setKey = await measure.call('', ()=>Promise.resolve(buildRedisKey(fmt, key, contractId, dt)))
     // keep keys and their time. move statistics to DB later.
