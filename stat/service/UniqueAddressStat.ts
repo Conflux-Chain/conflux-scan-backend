@@ -271,7 +271,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
             measure.call(false, ()=>cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics})),
         ]))
         const dt = new Date(block.timestamp * 1000)
-        return {arr:[]};
+        return {arr:[{createdAt:dt}]};
         // return measure.call(false,()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
         //     return measure.call(false, ()=>Promise.resolve(buildMap(logs as any)))
         // })
