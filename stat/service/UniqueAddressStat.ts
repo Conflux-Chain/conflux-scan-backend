@@ -216,6 +216,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
     if (logs.length === 0) {
         return []
     }
+    const addrMap = new Map<string, string>()
     const filtered = []
     for (let log of logs) {
         if (log.topics.length < 3) {
@@ -245,7 +246,14 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
         }
         await measure.call('parseLog', () => Promise.resolve(fn()));
         // console.log(log)
-        const contractHex = await measure.call('fmtAddr', ()=>Promise.resolve(format.hexAddress(address)));
+        const contractHex = measure.execute('fmtAddr', ()=>{
+            let hex = addrMap.get(address)
+            if (hex) {
+                return hex;
+            }
+            hex = format.hexAddress(address);
+            addrMap.set(address, hex)
+        });
         const [contractId, fromId, toId] = await measure.call('makeId',
             ()=> Promise.all([
                     makeIdV(contractHex, undefined, epochTime),
