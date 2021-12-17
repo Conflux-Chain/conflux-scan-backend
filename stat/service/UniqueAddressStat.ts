@@ -26,7 +26,7 @@ function buildRedisKey(fmt:string, key:string, id:number, dt:Date) {
     return `${moment(dt).format(fmt)}_${key}_${id}_tokenUniqueAddr`
 }
 // assume that all records are within one epoch, so they have same time.
-function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt: Date}[]) {
+export function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt: Date}[]) {
     if (!arr.length) {
         return {arr}
     }
