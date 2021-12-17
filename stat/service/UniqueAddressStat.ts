@@ -388,8 +388,10 @@ async function setup(cfxUrl:string, fromEpoch = '30495305') {
     console.log(` ${process.argv[1]} \n network ${st.networkId}`)
     return run(cfx, parseInt(fromEpoch))
 }
-const [,,cfxUrl,fromEpoch] = process.argv
-setup(cfxUrl, fromEpoch).then().catch(err=>{
-    console.log(`${process.argv[1]}\n`, err)
-    process.exit(1)
-})
+if (module === require.main) {
+    const [, , cfxUrl, fromEpoch] = process.argv
+    setup(cfxUrl, fromEpoch).then().catch(err => {
+        console.log(`${process.argv[1]}\n`, err)
+        process.exit(1)
+    })
+}
