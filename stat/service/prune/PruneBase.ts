@@ -10,7 +10,7 @@ import {KEY_PRUNE_CONFIG_SWITCH, KV} from "../../model/KV";
 const lodash = require('lodash');
 
 export abstract class PruneBase {
-    public static KEEP_ROWS = 20_000;
+    public static KEEP_ROWS = 2_000;
     public static PRUNE_LOOP = 10_000;
     public static SLEEP_MS_PER_LOOP = 20;
     public static DEL_ROWS_PER_LOOP = 500;
