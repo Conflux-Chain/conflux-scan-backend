@@ -193,6 +193,7 @@ export function aggregateTransfer(array: any[]) {
     const keyArr = []
     const map = new Map<string, any>();
     for (const obj of array) {
+        obj.value = BigInt(obj.value)
         const key = `${obj.address}_${obj.from}_${obj.to}`
         let pre = map.get(key);
         if (!pre) {
