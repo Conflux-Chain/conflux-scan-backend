@@ -13,6 +13,8 @@ import {FullMinerBlock} from "../model/FullMinerBlock";
 import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
+import {PruneInfo, PruneType} from "../model/PruneInfo";
+import {checkExist} from "./common/utils";
 const CONST = require('./common/constant');
 
 export class FullBlockQuery {
@@ -155,7 +157,16 @@ export class FullBlockQuery {
                 }
             })
         }
-        const result = {total: count ? count : 0, list, paging};
+
+        // add pruned total
+        let prunedCntr = 0;
+        const optionObj = {minEpochNumber, maxEpochNumber, blockHash, minTimestamp, maxTimestamp, miner};
+        if(checkExist(optionObj, ['miner'])){
+            const pruneInfo = await PruneInfo.findOne({where: {addressId: minerId, type: PruneType.MINER_BLOCK}});
+            prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
+        }
+
+        const result = {total: (count ? count : 0) + prunedCntr, list, paging};
         return result;
     }
     public async listTransaction({minEpochNumber, maxEpochNumber, blockHash, transactionHash,
@@ -367,7 +378,17 @@ export class FullBlockQuery {
                 extraInfo['fillMethodError'] = err
             })
         }
-        return {total: count ? count : 0, list, extraInfo};
+
+        // add pruned total
+        let prunedCntr = 0;
+        const optionObj = {minEpochNumber, maxEpochNumber, blockHash, transactionHash, nonce, minTimestamp,
+            maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
+        if(checkExist(optionObj, ['accountAddress'])){
+            const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}});
+            prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
+        }
+
+        return {total: (count ? count : 0) + prunedCntr, list, extraInfo};
     }
 
     private async buildPagedBlockOptions(skip) : Promise<{blockPage:BlockPage, pagedCondition}>{

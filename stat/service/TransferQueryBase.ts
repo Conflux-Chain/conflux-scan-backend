@@ -2,6 +2,8 @@
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
+import {PruneInfo, PruneType} from "../model/PruneInfo";
+import {checkExist} from "./common/utils";
 const CONST = require('./common/constant');
 
 export abstract class TransferQueryBase {
@@ -184,7 +186,26 @@ export abstract class TransferQueryBase {
                 this.processQueryResult(row, hex40Map, hex64Map);
             })
         }
-        const result = {total: page?.count || 0, list};
+
+        // add pruned total
+        let prunedCntr = 0;
+        const optionObj = {minEpochNumber, maxEpochNumber, transactionHash,
+            minTimestamp, maxTimestamp,
+            accountAddress, address, from, to, opponentAddress, tokenArray,
+            tokenId, txType , status};
+        if(checkExist(optionObj, ['accountAddress'])){
+            let pruneType;
+            if(this.getTransferType() === CONST.TRANSFER_TYPE.CFX) pruneType = PruneType.ADDR_CFX_TRANSFER;
+            if(this.getTransferType() === CONST.TRANSFER_TYPE.ERC20) pruneType = PruneType.ADDR_ERC20_TRANSFER;
+            if(this.getTransferType() === CONST.TRANSFER_TYPE.ERC721) pruneType = PruneType.ADDR_ERC721_TRANSFER;
+            if(this.getTransferType() === CONST.TRANSFER_TYPE.ERC1155) pruneType = PruneType.ADDR_ERC1155_TRANSFER;
+            if(pruneType){
+                const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: pruneType}});
+                prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
+            }
+        }
+
+        const result = {total: (page?.count || 0) + prunedCntr, list};
         return result;
     }
 
