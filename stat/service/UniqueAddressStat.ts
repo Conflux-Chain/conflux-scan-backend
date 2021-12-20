@@ -16,7 +16,13 @@ export const HOUR_UNIQUE_ADDRESS_BUCKET = 'HOUR_UNIQUE_ADDRESS_BUCKET'
 export const DAY_UNIQUE_ADDRESS_BUCKET = 'DAY_UNIQUE_ADDRESS_BUCKET'
 const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
 const DAY_FMT = 'YYYY-MM-DD'
-
+// worker takes task (epoch range), and aggregate transfer records within the epoch range, then persist to db.
+export interface IEpochTask {
+    epoch: number
+    range: number,
+    createdAt: number,
+}
+//
 function parseKey(key:string) {
     const [dt, side, contractId] = key.split('_')
     return {dt: new Date(dt), side, contractId:parseInt(contractId)}
@@ -26,31 +32,35 @@ function buildRedisKey(fmt:string, key:string, id:number, dt:Date) {
     return `${moment(dt).format(fmt)}_${key}_${id}_tokenUniqueAddr`
 }
 // assume that all records are within one epoch, so they have same time.
-export function buildMap(arr:{fromId:number, toId:number, contractId:number, createdAt: Date}[]) {
-    if (!arr.length) {
-        return {arr}
-    }
-    const dt = arr[0].createdAt
-    function push(map:Map<number, Set<number>>, key:number, v: number) {
-        let arr = map.get(key)
-        if (!arr) {
-            arr = new Set<number>()
-            map.set(key, arr)
+export class Aggregator<K,V> {
+    fromMap = new Map<K, Set<V>>()
+    toMap = new Map<K, Set<V>>()
+    allMap = new Map<K, Set<V>>()
+    buildMap(arr: { fromId: V, toId: V, contractId: K, createdAt: Date }[]) {
+        if (!arr.length) {
+            return {arr}
         }
-        arr.add(v)
-    }
-    // distinguish from/sender and to/receiver.
-    const fromMap = new Map<number, Set<number>>()
-    const toMap = new Map<number, Set<number>>()
-    const allMap = new Map<number, Set<number>>()
-    for (let transfer of arr) {
-        push(fromMap, transfer.contractId, transfer.fromId)
-        push(toMap, transfer.contractId, transfer.toId)
+        const dt = arr[0].createdAt
 
-        push(allMap, transfer.contractId, transfer.fromId)
-        push(allMap, transfer.contractId, transfer.toId)
+        function push(map: Map<K, Set<V>>, key: K, v: V) {
+            let arr = map.get(key)
+            if (!arr) {
+                arr = new Set<V>()
+                map.set(key, arr)
+            }
+            arr.add(v)
+        }
+
+        // distinguish from/sender and to/receiver.
+
+        for (let transfer of arr) {
+            push(this.fromMap, transfer.contractId, transfer.fromId)
+            push(this.toMap, transfer.contractId, transfer.toId)
+
+            push(this.allMap, transfer.contractId, transfer.fromId)
+            push(this.allMap, transfer.contractId, transfer.toId)
+        }
     }
-    return {fromMap, toMap, allMap, dt, arr}
 }
 async function send2redisWrap(indexBucket: string, fmt:string, key:string, contractId:number, dt:Date, ids:number[]){
     measure.count('idLength', ids.length)
@@ -282,6 +292,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
     }
     return filtered;
 }
+const aggregator = new Aggregator();
 async function run(cfx:Conflux, fromEpoch:number) {
     const tokenTool = new TokenTool(cfx);
     const topics = [[
@@ -297,7 +308,7 @@ async function run(cfx:Conflux, fromEpoch:number) {
         const dt = new Date(block.timestamp * 1000)
         // return {arr:[{createdAt:dt}]};
         return measure.call('polishLogs',()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
-            return measure.call('buildMap', ()=>Promise.resolve(buildMap(logs as any)))
+            return measure.execute('buildMap', ()=>aggregator.buildMap(logs as any))
         })
     }
     const loader = new PreLoader(cfx, getLogs, 10000);
@@ -364,7 +375,7 @@ async function benchmark() {
     const start = Date.now()
     for (let i = 0; i < times; i++) {
         const rnd = Math.round(Math.random() * 1000)
-        const m = buildMap([{fromId:rnd, toId: rnd+1, contractId: rnd, createdAt: new Date()}])
+        const m = aggregator.buildMap([{fromId:rnd, toId: rnd+1, contractId: rnd, createdAt: new Date()}])
         await measure.call('handle', ()=> handleUniqueAddress(m as any));
         // await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
     }
