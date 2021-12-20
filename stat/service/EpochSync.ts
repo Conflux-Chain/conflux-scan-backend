@@ -16,7 +16,7 @@ import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {PruneNotifier} from "./prune/PruneNotifier";
-import {RedisWrap, STREAM_STAT_TRANSFER_Q, TPS_TRANSFER_Q} from "./RedisWrap";
+import {RedisWrap, STREAM_STAT_TOKEN_TRANSFER_Q, TPS_TRANSFER_Q} from "./RedisWrap";
 import {TransferTpsService} from "./TransferTpsService";
 import {StatNotifier} from "./streamstat/StatNotifier";
 const lodash = require('lodash');
@@ -397,9 +397,9 @@ export class EpochSync extends SyncBase{
             RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q)
                 .catch(e => console.log(`epoch-sync.notifyTransferTps epoch:${epochNumber}`, e));
         }
-        if(this.app.config.statTokenTransfer && Object.keys(eventLogStat.tokenIdTransferCntrMap).length > 0){
-            const msg = {epochNumber, epochTimestamp, statInfo: eventLogStat.tokenIdTransferCntrMap};
-            StatNotifier.notifyStatTokenTransfer({msg: lodash.defaults(msg, {action: 'push'}), q: STREAM_STAT_TRANSFER_Q})
+        if(this.app.config.statTokenTransfer && Object.keys(eventLogStat.tokenTransfer).length > 0){
+            const msg = {epochNumber, epochTimestamp, action: 'push', tokenTransfer: eventLogStat.tokenTransfer};
+            StatNotifier.notifyStatTokenTransfer(msg)
                 .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e));
         }
 
@@ -420,8 +420,8 @@ export class EpochSync extends SyncBase{
         let erc20Cntr = 0;
         let erc721Cntr = 0;
         let erc1155Cntr = 0;
-        let tokenTransferCntrMap = {};
-        let tokenIdTransferCntrMap = {};
+        let tokenAddrTransfer = {};
+        let tokenTransfer = {};
 
         eventLogArray.forEach(eventLog => {
             const topic0 = eventLog.topics[0];
@@ -442,18 +442,18 @@ export class EpochSync extends SyncBase{
 
             if(isTokenTransfer){
                 const addr = eventLog.address;
-                tokenTransferCntrMap[addr] = tokenTransferCntrMap[addr] ? (tokenTransferCntrMap[addr] + 1) : 1;
+                tokenAddrTransfer[addr] = tokenAddrTransfer[addr] ? (tokenAddrTransfer[addr] + 1) : 1;
             }
         });
 
-        const addrArray = Object.keys(tokenTransferCntrMap);
+        const addrArray = Object.keys(tokenAddrTransfer);
         for(const addr of addrArray){
             const hex = format.hexAddress(addr);
             const tokenId = (await makeId(hex)).id;
-            tokenIdTransferCntrMap[tokenId] = tokenTransferCntrMap[addr];
+            tokenTransfer[tokenId] = [tokenAddrTransfer[addr]];
         }
 
-        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenIdTransferCntrMap};
+        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenTransfer};
     }
 
     // ------------------------------ trace create ------------------------------

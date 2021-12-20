@@ -4,16 +4,19 @@ import {TokenTransferStat} from "../../../model/TokenTransferStat";
 import {col, fn, Op} from "sequelize";
 import {Token} from "../../../model/Token";
 import {BizStatInfo} from "../BizStatInfo";
-import {STREAM_STAT_TRANSFER_Q} from "../../RedisWrap";
+import {STREAM_STAT_TOKEN_TRANSFER_Q} from "../../RedisWrap";
 import {StatBucket} from "../StatBucket";
+import {Epoch} from "../../../model/Epoch";
 
 export class TokenTransferHandler extends StatHandler {
     protected app: StatApp;
+    protected statLatestDays: number;
 
     public constructor(app: StatApp) {
         super(app);
         this.app = app;
-        this.bizQueue = STREAM_STAT_TRANSFER_Q;
+        this.statLatestDays = 7;
+        this.bizQueue = STREAM_STAT_TOKEN_TRANSFER_Q;
         this.bizStatInfo = new BizStatInfo();
     }
 
@@ -45,7 +48,7 @@ export class TokenTransferHandler extends StatHandler {
                 statEndTime.setMinutes(0, 0, 0);
                 statEndTime.setHours(statEndTime.getHours() + 1);
                 return new StatBucket({
-                    bizValue: BigInt(stat.bizValue),
+                    bizValue0: BigInt(stat.transferCntr),
                     lowerBoundInclude: stat.statTime,
                     upperBoundExclude: statEndTime,
                     minEpochNumber: stat.minEpoch,
@@ -62,7 +65,7 @@ export class TokenTransferHandler extends StatHandler {
                 bizId: statId,
                 statType: '1h',
                 statTime: oldest.lowerBoundInclude,
-                bizValue: oldest.bizValue,
+                transferCntr: oldest.bizValue0,
                 minEpoch: oldest.minEpochNumber,
                 maxEpoch: oldest.maxEpochNumber,
             };
@@ -100,7 +103,7 @@ export class TokenTransferHandler extends StatHandler {
         statEndTime.setMinutes(0, 0, 0);
         statEndTime.setHours(statEndTime.getHours() + 1);
         return new StatBucket({
-            bizValue: BigInt(stat.bizValue),
+            bizValue0: BigInt(stat.transferCntr),
             lowerBoundInclude: stat.statTime,
             upperBoundExclude: statEndTime,
             minEpochNumber: stat.minEpoch,
@@ -112,9 +115,10 @@ export class TokenTransferHandler extends StatHandler {
         const trigger = this.bizStatInfo.trigger();
         if(!trigger) return;
 
-        const collectTime = this.bizStatInfo.currentEpochTimestamp;
-        collectTime.setDate(collectTime.getDate() - 7);
-        const startTime = new Date(collectTime);
+        const latestEpoch = await Epoch.findOne({order:[['epoch','desc']], limit: 1})
+        const statEnd = latestEpoch.timestamp;
+        const statStart = new Date(statEnd);
+        statStart.setDate(statEnd.getDate() - this.statLatestDays);
 
         const tokens = await Token.findAll({
             attributes: ['id', 'hex40id'],
@@ -123,18 +127,18 @@ export class TokenTransferHandler extends StatHandler {
 
         for (const token of tokens) {
             const statItem = await TokenTransferStat.findOne({
-                attributes: [[fn('sum', col('bizValue')), 'transferLatest']],
-                where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.gte]: startTime}},
+                attributes: [[fn('sum', col('transferCntr')), 'transferLatest']],
+                where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.gte]: statStart}},
                 // logging: msg => console.log(`transferLatest: ${msg}`),
             });
 
             await Token.sequelize.transaction(async (dbTx) => {
-                await Token.update({transferLatest: statItem['transferLatest'] || 0}, {
+                await Token.update({transferLatest: statItem['transferLatest'] || 0} , {
                     where: {id: token.id},
                     transaction: dbTx,
                 });
                 await TokenTransferStat.destroy({
-                    where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.lt]: startTime},},
+                    where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.lt]: statStart},},
                     transaction: dbTx,
                 });
             });

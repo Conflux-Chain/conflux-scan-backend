@@ -9,7 +9,8 @@
 //          addressId:
 //          [
 //              {
-//                  bizValue: 8792,
+//                  bizValue0: 8792,
+//                  bizValue1: 5838,
 //                  upperBoundIncluded: 2021-12-09 00:00:00,
 //                  lowerBoundExcluded: 2021-12-09 00:01:00,
 //                  minEpochNumber: 20697260,

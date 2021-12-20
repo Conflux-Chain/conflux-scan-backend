@@ -104,6 +104,7 @@ export interface StatConfig{
     syncPrune: boolean,
     syncTransferTps: boolean,
     statTokenTransfer: boolean,
+    statAddrTransaction: boolean,
     databaseRW: DatabaseRW,
 }
 

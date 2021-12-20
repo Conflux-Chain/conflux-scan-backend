@@ -26,7 +26,7 @@ import {
     ERC20_TRANSFER_Q,
     ERC721_TRANSFER_Q,
     ERC777_TRANSFER_Q, POW_EPOCH_FOR_POS_Q,
-    PRUNE_Q, STREAM_STAT_TRANSFER_Q, TPS_TRANSFER_Q, TRANSFER_ADDRESS_Q,
+    PRUNE_Q, STREAM_STAT_TOKEN_TRANSFER_Q, TPS_TRANSFER_Q, TRANSFER_ADDRESS_Q,
     xLen
 } from "../service/RedisWrap";
 import {TxnQuery} from "../service/TxnQuery";
@@ -109,7 +109,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             CFX_TRANSFER_Q,
             CFX_TRANSFER_ADDRESS_Q,
             TPS_TRANSFER_Q,
-            STREAM_STAT_TRANSFER_Q,
+            STREAM_STAT_TOKEN_TRANSFER_Q,
         ]
         const arr = await Promise.all(qs.map(q=>{
             return xLen(q).then(len=>{

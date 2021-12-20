@@ -1,5 +1,6 @@
 export class StatBucket {
-    private bizValue: bigint;
+    private bizValue0: bigint;
+    private bizValue1: bigint;
     private lowerBoundInclude: Date;
     private upperBoundExclude: Date;
     private minEpochNumber: number;
@@ -9,19 +10,22 @@ export class StatBucket {
     {
         lowerBoundInclude,
         upperBoundExclude,
-        bizValue = BigInt(0),
+        bizValue0 = BigInt(0),
+        bizValue1 = BigInt(0),
         minEpochNumber = 0,
         maxEpochNumber = 0
     }: {
         lowerBoundInclude: Date,
         upperBoundExclude: Date,
-        bizValue?: bigint,
+        bizValue0?: bigint,
+        bizValue1?: bigint,
         minEpochNumber?: number,
         maxEpochNumber?: number
     }) {
         this.lowerBoundInclude = lowerBoundInclude;
         this.upperBoundExclude = upperBoundExclude;
-        this.bizValue = bizValue;
+        this.bizValue0 = bizValue0;
+        this.bizValue1 = bizValue1;
         this.minEpochNumber = minEpochNumber;
         this.maxEpochNumber = maxEpochNumber;
     }
@@ -37,14 +41,16 @@ export class StatBucket {
         }
     }
 
-    public increase({epochNumber, val}: { epochNumber: number, val: bigint }) {
-        this.bizValue += val;
+    public increase({epochNumber, valArray}: { epochNumber: number, valArray: bigint[] }) {
+        this.bizValue0 += BigInt(valArray[0]);
+        if(valArray[1]) this.bizValue1 += BigInt(valArray[1]);
         this.minEpochNumber = this.minEpochNumber === 0 ? epochNumber : this.minEpochNumber;
         this.maxEpochNumber = epochNumber > this.maxEpochNumber ? epochNumber : this.maxEpochNumber;
     }
 
-    public decrease({epochNumber, val}: { epochNumber: number, val: bigint }) {
-        this.bizValue -= val;
+    public decrease({epochNumber, valArray}: { epochNumber: number, valArray: bigint[] }) {
+        this.bizValue0 -= BigInt(valArray[0]);
+        if(valArray[1]) this.bizValue1 -= BigInt(valArray[1]);
         switch (epochNumber) {
             case this.minEpochNumber:
                 this.minEpochNumber = 0;

@@ -5,9 +5,9 @@
 //      epochTimestamp: '2021-12-09 01:02:03',
 //      action: 'push/pop',
 //      statInfo:{
-//          [addressId1]: 37,
-//          [addressId2]: 22,
-//          [addressId3]: 106,
+//          [addressId1]: [37, 23],
+//          [addressId2]: [22, 56],
+//          [addressId3]: [106, 73],
 //      },
 // }
 export class StatMessage {

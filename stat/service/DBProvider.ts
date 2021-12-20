@@ -104,6 +104,7 @@ import {
     PosTransaction
 } from "../model/PoS";
 import {TokenTransferStat} from "../model/TokenTransferStat";
+import {AddrTransactionStat} from "../model/AddrTransactionStat";
 let conf
 export function createDB(config) {
     conf = config
@@ -202,6 +203,7 @@ export async function initPartialModel(sequelize) {
     TokenSecurityAudit.register(sequelize);
     PruneInfo.register(sequelize);
     TokenTransferStat.register(sequelize);
+    AddrTransactionStat.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

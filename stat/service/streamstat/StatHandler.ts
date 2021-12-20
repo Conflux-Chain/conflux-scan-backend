@@ -43,6 +43,7 @@ export abstract class StatHandler {
             const action = message.action;
             if (action === 'push') {
                 await this.stat({epochNumber, epochTimestamp, message});
+                // TODO get latest epoch info
                 this.bizStatInfo.counter({epochNumber, epochTimestamp});
             }
             if (action === 'pop') {
@@ -56,7 +57,7 @@ export abstract class StatHandler {
         const statInfo = message.statInfo;
         for (const statId of Object.keys(statInfo)) {
             const bucket = await this.checkoutBucket({statId, statTime: epochTimestamp});
-            bucket.increase({epochNumber, val: BigInt(statInfo[statId])});
+            bucket.increase({epochNumber, valArray: statInfo[statId]});
             this.rollupBucket({statId, bucketArray: [bucket], reservedBuckets: 0});
         }
     }
@@ -65,7 +66,7 @@ export abstract class StatHandler {
         const statInfo = message.statInfo;
         for (const statId of Object.keys(statInfo)) {
             const bucket = await this.checkoutBucket({statId, statEpoch: epochNumber});
-            bucket.decrease({epochNumber, val: BigInt(statInfo[statId])});
+            bucket.decrease({epochNumber, valArray: statInfo[statId]});
             this.rollupBucket({statId, bucketArray: [bucket], reservedBuckets: 0});
         }
     }
