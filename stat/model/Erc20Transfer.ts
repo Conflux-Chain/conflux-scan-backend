@@ -197,7 +197,7 @@ export function aggregateTransfer(array: any[]) {
         if (transStr) {
             obj.value = BigInt(obj.value)
         }
-        const key = `${obj.address}_${obj.from}_${obj.to}`
+        const key = `${obj.transactionHash}_${obj.address}_${obj.from}_${obj.to}`
         let pre = map.get(key);
         if (!pre) {
             pre = obj;

@@ -32,7 +32,7 @@ export class Contract extends Model<IContract> implements IContract{
             name: {type: DataTypes.CHAR(255), allowNull: true},
             website: {type: DataTypes.CHAR(255), allowNull: true},
             abi: {type: DataTypes.TEXT, allowNull: true, },
-            sourceCode: {type: DataTypes.TEXT, allowNull: true, },
+            sourceCode: {type: DataTypes.TEXT({length:'long'}), allowNull: true, },
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
         },{
             tableName: 'contract',
