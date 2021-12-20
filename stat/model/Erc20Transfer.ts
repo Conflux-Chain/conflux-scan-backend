@@ -192,8 +192,11 @@ export function aggregateTransfer(array: any[]) {
     }
     const keyArr = []
     const map = new Map<string, any>();
+    const transStr = typeof array[0].value === 'string'
     for (const obj of array) {
-        obj.value = BigInt(obj.value)
+        if (transStr) {
+            obj.value = BigInt(obj.value)
+        }
         const key = `${obj.address}_${obj.from}_${obj.to}`
         let pre = map.get(key);
         if (!pre) {
@@ -204,7 +207,13 @@ export function aggregateTransfer(array: any[]) {
         }
         pre.value += obj.value;
     }
-    return keyArr.map(k=>map.get(k))
+    return keyArr.map(k=>{
+        const agg = map.get(k);
+        if (transStr) {
+            agg.value = agg.value.toString();
+        }
+        return agg
+    })
 }
 // let logTimes = 10;
 export async function batchSaveErc20Transfer(array: any[], seconds) {
