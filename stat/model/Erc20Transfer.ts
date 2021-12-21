@@ -207,13 +207,18 @@ export function aggregateTransfer(array: any[]) {
         }
         pre.value += obj.value;
     }
-    return keyArr.map(k=>{
+    const result = []
+    keyArr.forEach(k=>{
         const agg = map.get(k);
-        if (transStr) {
-            agg.value = agg.value.toString();
+        if (agg.value) {
+            // only reserve record with value > 0
+            if (transStr) {
+                agg.value = agg.value.toString();
+            }
+            result.push(agg)
         }
-        return agg
     })
+    return result;
 }
 // let logTimes = 10;
 export async function batchSaveErc20Transfer(array: any[], seconds) {
