@@ -2,7 +2,7 @@
 const fs = require('fs')
 const templateConf = require('./Template')
 
-interface ConfluxOption {
+export interface ConfluxOption {
     url: string,
     timeout?: number,
     networkId?: number,

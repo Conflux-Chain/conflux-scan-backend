@@ -25,6 +25,16 @@ export class RedisWrap{
     selectAsync:Function
     sendCommand:Function
     info:Function
+    sadd:Function
+    scard:Function
+    del:Function
+    zadd:Function
+    zrange:Function
+    zrem:Function
+    zcard:Function
+    zrevrangebyscore:Function
+    ZRANGEBYSCORE:Function
+    // hsetnx:Function
     client:RedisClient
     static init(client:RedisClient) {
         redisWrap.client = client
@@ -32,6 +42,16 @@ export class RedisWrap{
         redisWrap.getAsync = promisify(client.get).bind(client);
         redisWrap.selectAsync = promisify(client.select).bind(client);
         redisWrap.info = promisify(client.info).bind(client);
+        // redisWrap.hsetnx = promisify(client.hsetnx).bind(client);
+        redisWrap.sadd = promisify(client.sadd).bind(client);
+        redisWrap.scard = promisify(client.scard).bind(client);
+        redisWrap.del = promisify(client.del).bind(client);
+        redisWrap.zadd = promisify(client.zadd).bind(client);
+        redisWrap.zrange = promisify(client.zrange).bind(client);
+        redisWrap.zrem = promisify(client.zrem).bind(client);
+        redisWrap.zcard = promisify(client.zcard.bind(client));
+        redisWrap.zrevrangebyscore = promisify(client.zrevrangebyscore.bind(client));
+        redisWrap.ZRANGEBYSCORE = promisify(client.ZRANGEBYSCORE.bind(client));
         redisWrap.sendCommand = promisify(client.sendCommand).bind(client);
     }
 
@@ -150,6 +170,21 @@ export class RedisWrap{
             }
             return res
         })
+    }
+    static async saddm(key:any, members:any[]) {
+        return redisWrap.sadd(key, members)
+    }
+    static async sadd(key:string, ...members) {
+        return redisWrap.sadd(key, members)
+    }
+    static async zadd(key:string, score:any, member:any) {
+        return redisWrap.zadd(key, score, member)
+    }
+    static async scard(key:string) {
+        return redisWrap.scard(key)
+    }
+    static async del(key:string) {
+        return redisWrap.del(key)
     }
     static async xDel(data:RedisStreamMessage[]) {
         return Promise.all(data.map(msg=>{
