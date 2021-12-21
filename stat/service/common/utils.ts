@@ -1,6 +1,8 @@
 import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
 import {ScanHttpProvider} from "./ScanHttpProvider";
+const lodash = require('lodash');
+
 export function patchFormat() {
     const fun = format.address;
     function saveAddress(str, networkId, verbose) {
@@ -97,4 +99,16 @@ export function reverseMap(map:Map<any, any>) {
         ret.set(map.get(k), k)
     }
     return ret;
+}
+
+export function checkExist(options, fieldArray){
+    let prunedFlag = true;
+    lodash.forEach(options, (value, key) => {
+        if(lodash.includes(fieldArray, key)){
+            prunedFlag = prunedFlag && (value !== undefined);
+        } else {
+            prunedFlag = prunedFlag && (value === undefined);
+        }
+    });
+    return prunedFlag;
 }
