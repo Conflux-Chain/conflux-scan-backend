@@ -186,6 +186,35 @@ export async function buildErc20Transfer(obj, date) {
     };
     return erc20Transfer
 }
+export function aggregateTransfer(array: any[]) {
+    if (!array.length) {
+        return []
+    }
+    const keyArr = []
+    const map = new Map<string, any>();
+    const transStr = typeof array[0].value === 'string'
+    for (const obj of array) {
+        if (transStr) {
+            obj.value = BigInt(obj.value)
+        }
+        const key = `${obj.transactionHash}_${obj.address}_${obj.from}_${obj.to}`
+        let pre = map.get(key);
+        if (!pre) {
+            pre = obj;
+            map.set(key, pre)
+            keyArr.push(key)
+            continue
+        }
+        pre.value += obj.value;
+    }
+    return keyArr.map(k=>{
+        const agg = map.get(k);
+        if (transStr) {
+            agg.value = agg.value.toString();
+        }
+        return agg
+    })
+}
 // let logTimes = 10;
 export async function batchSaveErc20Transfer(array: any[], seconds) {
     if (!array.length) {
@@ -194,6 +223,7 @@ export async function batchSaveErc20Transfer(array: any[], seconds) {
     let templates = []
     let date = new Date(Number(seconds)*1000)
     let skipCount = 0;
+    array = aggregateTransfer(array)
     for (const obj of array) {
         const bean = await buildErc20Transfer(obj, date);
         // // 13870862 pos points
