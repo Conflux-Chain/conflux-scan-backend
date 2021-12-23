@@ -23,16 +23,18 @@ export class PreLoader<T> {
     preLoadSize = 20
     maxFetchedEpoch = -1
     latestState:number = 0
+    stopBefore:number = -1
 
     fetchTimes = 0
     usedMs = 0
     lastMs = 0
     robin = new RoundRobin(50)
 
-    constructor(cfx:Conflux, fn: (epoch:number)=>Promise<T>, delayEpoch:number) {
+    constructor(cfx:Conflux, fn: (epoch:number)=>Promise<T>, delayEpoch:number, stopBefore:number) {
         this.cfx = cfx;
         this.fn = fn
         this.delayEpoch = delayEpoch
+        this.stopBefore = stopBefore;
     }
 
     async updateLatestState() {
@@ -64,6 +66,10 @@ export class PreLoader<T> {
             const fetchEpoch = this.maxFetchedEpoch + 1
             if (fetchEpoch > this.latestState - this.delayEpoch) {
                 this.updateLatestState().then()
+                break;
+            }
+            if (fetchEpoch === this.stopBefore) {
+                // console.log(`preload reach end, ${this.stopBefore}`)
                 break;
             }
             const startMs = Date.now()

@@ -1,6 +1,8 @@
+import {sleep} from "./tool/ProcessTool";
+
 process.env.TZ='UTC'
 import moment = require("moment");
-import {Op,fn,col} from 'sequelize'
+import {Op, fn, col, Model, Sequelize, DataTypes} from 'sequelize'
 import {RedisWrap, redisWrap} from "./RedisWrap";
 import {HourlyToken, IHourlyToken} from "../model/TokenStat";
 import {DailyToken} from "../model/Token";
@@ -16,11 +18,99 @@ export const HOUR_UNIQUE_ADDRESS_BUCKET = 'HOUR_UNIQUE_ADDRESS_BUCKET'
 export const DAY_UNIQUE_ADDRESS_BUCKET = 'DAY_UNIQUE_ADDRESS_BUCKET'
 const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
 const DAY_FMT = 'YYYY-MM-DD'
+//
+export interface IUniqueAddress {
+    id?:number
+    epochStart:number
+    epochEnd: number
+    timeStart: Date
+    timeEnd: Date
+    contractId:number
+    addr:string
+    fromMark: boolean
+    toMark: boolean
+}
+export class UniqueAddress extends Model<IUniqueAddress> implements IUniqueAddress {
+    id?:number
+    // main prop
+    contractId:number
+    addr:string
+    fromMark: boolean
+    toMark: boolean
+    epochStart:number // it's start epoch of the task.
+
+    epochEnd: number
+    timeStart: Date
+    timeEnd: Date
+    static register(seq:Sequelize) {
+        UniqueAddress.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true, autoIncrement: true},
+            epochStart: {type: DataTypes.BIGINT, allowNull: false, },
+            epochEnd: {type: DataTypes.BIGINT, allowNull: false, },
+            timeStart: {type: DataTypes.DATE, allowNull: false},
+            timeEnd: {type: DataTypes.DATE, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false, },
+            addr: {type: DataTypes.STRING(ADDR_LEN), allowNull: false, },
+            fromMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            toMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+        }, {
+            sequelize: seq, tableName: 'unique_addr', timestamps: false,
+            indexes: [
+                {name: 'uk_epoch_cid_addr', fields:['epochStart','contractId', 'addr']},
+                {name: 'idx_timeStart', fields: ['timeStart']}
+            ]
+        })
+    }
+}
 // worker takes task (epoch range), and aggregate transfer records within the epoch range, then persist to db.
 export interface IEpochTask {
     epoch: number
     range: number,
-    createdAt: number,
+    createdAt: Date,
+    updatedAt: Date
+    finished: boolean
+}
+// task epoch should be [epoch, epoch+range)
+export class EpochTask extends Model<IEpochTask> implements IEpochTask{
+    epoch: number
+    range: number
+    createdAt: Date
+    updatedAt: Date
+    finished: boolean
+    static register(seq:Sequelize) {
+        EpochTask.init({
+            epoch: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
+            range: {type: DataTypes.BIGINT, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            updatedAt: {type: DataTypes.DATE, allowNull: false},
+            finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+        },{
+            sequelize: seq, tableName: 'epoch_task',
+        })
+    }
+}
+//
+export async function fetchTask(len:number, fromEpoch = 0) : Promise<IEpochTask> {
+    do {
+        const maxOne = await EpochTask.findOne({order:[['epoch','desc']]})
+        let preEnd = fromEpoch
+        if (maxOne !== null) {
+            preEnd = maxOne.epoch + maxOne.range
+        }
+        const now = new Date();
+        const newOne:IEpochTask = {epoch: preEnd, range: len, finished: false, createdAt: now, updatedAt: now}
+        let ok = false
+        await EpochTask.create(newOne).then(()=>{
+            console.log(`create task, epoch ${preEnd}`)
+            ok = true
+        }).catch(err=>{
+            console.log(`create task fail, ${err}, try again`)
+            return sleep(1000)
+        })
+        if (ok) {
+            return newOne;
+        }
+    } while (true)
 }
 //
 function parseKey(key:string) {
@@ -33,33 +123,42 @@ function buildRedisKey(fmt:string, key:string, id:number, dt:Date) {
 }
 // assume that all records are within one epoch, so they have same time.
 export class Aggregator<K,V> {
-    fromMap = new Map<K, Set<V>>()
-    toMap = new Map<K, Set<V>>()
-    allMap = new Map<K, Set<V>>()
-    buildMap(arr: { fromId: V, toId: V, contractId: K, createdAt: Date }[]) {
+    allMap = new Map<K, Map<V, IUniqueAddress>>()
+    buildMap(arr: { from: V, to: V, contractId: K/*, createdAt: Date */}[], epoch:number, time:Date) {
         if (!arr.length) {
             return {arr}
         }
-        const dt = arr[0].createdAt
-
-        function push(map: Map<K, Set<V>>, key: K, v: V) {
-            let arr = map.get(key)
-            if (!arr) {
-                arr = new Set<V>()
-                map.set(key, arr)
-            }
-            arr.add(v)
-        }
-
+        // const dt = arr[0].createdAt
         // distinguish from/sender and to/receiver.
+        function checkEntry(addrInfoMap: Map<V, IUniqueAddress>, addr,
+                            contractId) {
+            let entry = addrInfoMap.get(addr);
+            if (!entry) {
+                entry = {contractId, addr, epochStart: epoch, epochEnd: epoch, timeStart: time,
+                timeEnd: time, fromMark: false, toMark: false};
+                addrInfoMap.set(addr, entry)
+            } else {
+                entry.epochEnd = epoch
+                entry.timeEnd = time
+            }
+            return entry;
+        }
 
         for (let transfer of arr) {
-            push(this.fromMap, transfer.contractId, transfer.fromId)
-            push(this.toMap, transfer.contractId, transfer.toId)
-
-            push(this.allMap, transfer.contractId, transfer.fromId)
-            push(this.allMap, transfer.contractId, transfer.toId)
+            const {contractId, from, to} = transfer
+            let addrInfoMap = this.allMap.get(contractId);
+            if (!addrInfoMap) {
+                addrInfoMap = new Map<V, IUniqueAddress>();
+                this.allMap.set(contractId, addrInfoMap)
+            }
+            let entry = checkEntry(addrInfoMap, from, contractId)
+            entry.fromMark = true
+            if (from !== to) {
+                entry = checkEntry(addrInfoMap, to, contractId)
+            }
+            entry.toMark = true
         }
+        return {arr}
     }
 }
 async function send2redisWrap(indexBucket: string, fmt:string, key:string, contractId:number, dt:Date, ids:number[]){
@@ -223,12 +322,14 @@ export async function clean(indexBucket = '', force = false) {
 const measure = new Measure()
 const addrMap = new Map<string, string>()
 const addrIdMap = new Map<string, number>()
+const ADDR_LEN = 8 // 40. only save the tail of an address.
 async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epochTime:Date) {
     // console.log(` epoch ${epoch} logs length ${logs.length}`)
     if (logs.length === 0) {
         return []
     }
     const filtered = []
+    const addrLen = -ADDR_LEN
     for (let log of logs) {
         if (log.topics.length < 3) {
             // at least, topic contains [ topic, from, to]
@@ -243,19 +344,19 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             continue
         }
         let from, to;
-        const fn = ()=> {
+        const sliceAddr = ()=> {
             if (t === tokenTool.contract.TransferSingle.signature
                 || t === tokenTool.contract.TransferBatch.signature) {
                 if (t3) { // t2 has been checked above.
-                    from = `0x${t2.slice(-40)}`
-                    to = `0x${t3.slice(-40)}`
+                    from = t2.slice(addrLen)
+                    to = t3.slice(addrLen)
                 }
             } else {
-                from = `0x${t1.slice(-40)}`
-                to = `0x${t2.slice(-40)}`
+                from = t1.slice(addrLen)
+                to = t2.slice(addrLen)
             }
         }
-        await measure.call('parseLog', () => Promise.resolve(fn()));
+        measure.execute('parseLog', sliceAddr);
         // console.log(log)
         const contractHex = measure.execute('fmtAddr', ()=>{
             let hex = addrMap.get(address)
@@ -264,6 +365,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
             }
             hex = format.hexAddress(address);
             addrMap.set(address, hex)
+            return hex;
         });
         const addr2id = async (hex)=>{
             const id = measure.execute('getCacheId', ()=>addrIdMap.get(hex))
@@ -275,31 +377,64 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
                 return id;
             }));
         }
-        const [contractId, fromId, toId] = await measure.call('loadId',
+        const [contractId] = await measure.call('loadId',
             ()=> Promise.all([
                 addr2id(contractHex),
-                addr2id(from),
-                addr2id(to),
+                // addr2id(from),
+                // addr2id(to),
                 ])
         )
+        if (!contractId) {
+            console.log(`contract id is not set !, contract ${address} ${contractHex}`)
+        }
         measure.execute('set prop', ()=>{
-        log['contractId'] = contractId;
-        log['fromId'] = fromId
-        log['toId'] = toId
-        log['createdAt'] = epochTime
-        filtered.push(log)
-        })
+            log['contractId'] = contractId;
+            log['from'] = from
+            log['to'] = to
+            // log['createdAt'] = epochTime
+            filtered.push(log)
+        });
     }
     return filtered;
 }
-const aggregator = new Aggregator();
-async function run(cfx:Conflux, fromEpoch:number) {
-    const tokenTool = new TokenTool(cfx);
-    const topics = [[
-        tokenTool.contract.Transfer.signature,
-        tokenTool.contract.TransferBatch.signature,
-        tokenTool.contract.TransferSingle.signature,
-    ]]
+async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
+    epoch
+}) {
+    const it = aggregator.allMap.entries()
+    const beanArr = []
+    for (let itElement of it) {
+        const [k,v] = itElement
+        for (let [addr, mark] of v.entries()) {
+            beanArr.push(mark)
+        }
+    }
+    return UniqueAddress.sequelize.transaction(async (dbTx)=>{
+        return Promise.all([
+            UniqueAddress.bulkCreate(beanArr, {transaction: dbTx, updateOnDuplicate:['fromMark', 'toMark']}),
+            EpochTask.update({finished: true}, {
+                transaction: dbTx, where: {epoch}
+            })
+        ])
+    }).then(()=>{
+        console.log(` save unique address, contract count ${aggregator.allMap.size
+        } addr count ${beanArr.length}`)
+    })
+
+}
+const toolInfo:any = {init: true}
+async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+    if (toolInfo.init) {
+        const tokenTool = new TokenTool(cfx);
+        const topics = [[
+            tokenTool.contract.Transfer.signature,
+            tokenTool.contract.TransferBatch.signature,
+            tokenTool.contract.TransferSingle.signature,
+        ]]
+        toolInfo.tokenTool = tokenTool
+        toolInfo.topics = topics;
+    }
+    const {tokenTool, topics} = toolInfo
+    const aggregator = new Aggregator<number,string>();
     async function getLogs(epochNumber) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
             measure.call(false, ()=>cfx.getBlockByEpochNumber(epochNumber, false)),
@@ -308,43 +443,42 @@ async function run(cfx:Conflux, fromEpoch:number) {
         const dt = new Date(block.timestamp * 1000)
         // return {arr:[{createdAt:dt}]};
         return measure.call('polishLogs',()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
-            return measure.execute('buildMap', ()=>aggregator.buildMap(logs as any))
+            return measure.execute('buildMap', ()=>aggregator.buildMap(logs as any, epochNumber, dt))
+        }).then(()=>{
+            return {arr:logs, epochTime: dt};
         })
     }
-    const loader = new PreLoader(cfx, getLogs, 10000);
+    let timeStart, timeEnd;
+    const loader = new PreLoader(cfx, getLogs, 10000, stopBeforeEpoch);
     loader.preLoadSize = 50
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
-    let hourMark = -1
     async function repeat() {
         const {action, data} = loader.get(epoch)
         let delay = 0
         switch (action) {
             case "ok":
                 const transfers:any = await data;
-                if (transfers.arr?.length) {
-                    await measure.call('handle', () => handleUniqueAddress(transfers))
-                }
                 const log = epoch % 10 === 0
-                const [sample] = transfers.arr
+                const {arr:[sample], epochTime} = transfers
+                if (timeStart) {
+                    timeEnd = epochTime
+                } else {
+                    timeStart = epochTime;
+                }
                 if (!log) {
                     // skip
                 } else if (sample) {
-                    const epochHour = sample.createdAt.getHours();
-                    console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour}, contract ${sample.contractId} : ${sample.fromId} -> ${sample.toId
-                    }, preload size ${loader.data.size}, epoch time ${sample.createdAt.toISOString()} transfer count ${transfers.arr.length}`)
-                    if (epochHour !== hourMark) {
-                        console.log(`----------------- hourly event begin  ----------- ${epochHour}`)
-                        await persist2db(HOUR_UNIQUE_ADDRESS_BUCKET, 2)
-                        await persist2db(DAY_UNIQUE_ADDRESS_BUCKET, 24)
-                        console.log(`----------------- hourly event finish ----------- ${epochHour}`)
-                        // await rollupDailyUnique()
-                        hourMark = epochHour
-                    }
+                    const epochHour = transfers.epochTime.getHours();
+                    console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour
+                    }, contract ${sample.contractId
+                    } : ${sample.from} -> ${sample.to
+                    }, preload size ${loader.data.size}, epoch time ${transfers.epochTime.toISOString()
+                    } transfer count ${transfers.arr.length}`)
                 } else {
                     console.log(` no transfer at ${epoch}`)
                 }
                 if (epoch % 50 === 0) {
-                    measure.dump(`\n --`, undefined,'handle', 'addAllKey', 'saddm', 'idLength');
+                    measure.dump(`\n --`, undefined,'handle', 'rpc', 'polishLogs','buildMap', 'idLength');
                     loader.dumpMetrics(` --------------- get logs metrics , addr count ${addrIdMap.size}`)
                 }
                 epoch++
@@ -358,7 +492,15 @@ async function run(cfx:Conflux, fromEpoch:number) {
                 delay = 500
                 break;
         }
-        setTimeout(repeat, delay)
+        if (epoch < stopBeforeEpoch) {
+            setTimeout(repeat, delay)
+        } else {
+            console.log(` round end, [${fromEpoch}, ${stopBeforeEpoch})`)
+            await saveUniqueAddrToDb(aggregator, {
+                epoch: fromEpoch
+            })
+            endFn()
+        }
     }
     repeat().then()
 }
@@ -373,9 +515,10 @@ async function benchmark() {
     await redisWrap.del(k)
     const dt = new Date()
     const start = Date.now()
+    const aggregator = new Aggregator();
     for (let i = 0; i < times; i++) {
         const rnd = Math.round(Math.random() * 1000)
-        const m = aggregator.buildMap([{fromId:rnd, toId: rnd+1, contractId: rnd, createdAt: new Date()}])
+        const m = aggregator.buildMap([{from:rnd, to: rnd+1, contractId: rnd}], i, dt)
         await measure.call('handle', ()=> handleUniqueAddress(m as any));
         // await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
     }
@@ -386,7 +529,8 @@ async function benchmark() {
     measure.dump(`----`)
     process.exit(0);
 }
-async function setup(cfxUrl:string, fromEpoch = '30495305') {
+// 3000 epoch is about an hour.
+async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
     await RedisWrap.connect(config.redis)
     console.log(`--------------------`)
@@ -397,11 +541,21 @@ async function setup(cfxUrl:string, fromEpoch = '30495305') {
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
     console.log(` ${process.argv[1]} \n network ${st.networkId}`)
-    return run(cfx, parseInt(fromEpoch))
+    return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
+}
+async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
+    const task = await fetchTask(len, fromEpoch)
+    console.log(` start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
+    await new Promise(r=>{
+        run(cfx, task.epoch, task.epoch + task.range, ()=>{
+            r(0)
+        })
+    })
+    setTimeout(()=>runTask(cfx, fromEpoch, len), 0)
 }
 if (module === require.main) {
-    const [, , cfxUrl, fromEpoch] = process.argv
-    setup(cfxUrl, fromEpoch).then().catch(err => {
+    const [, , cfxUrl, fromEpoch, taskLen] = process.argv
+    setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)
         process.exit(1)
     })
