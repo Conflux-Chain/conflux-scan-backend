@@ -611,7 +611,12 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
             r(0)
         })
     })
-    setTimeout(()=>runTask(cfx, fromEpoch, len), 0)
+    if (len === 0) {
+        console.log(`length parameter is zero, quit.`)
+        process.exit(0)
+    } else {
+        setTimeout(() => runTask(cfx, fromEpoch, len), 0)
+    }
 }
 if (module === require.main) {
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
