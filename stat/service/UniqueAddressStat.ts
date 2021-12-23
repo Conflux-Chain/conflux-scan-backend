@@ -472,7 +472,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                     delay = 10_000 // retry.
                     break;
                 }
-                const log = epoch % 10 === 0
+                const log = epoch % 100 === 0
                 const {arr:[sample], epochTime} = transfers
                 if (timeStart) {
                     timeEnd = epochTime
@@ -491,7 +491,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                 } else {
                     console.log(` no transfer at ${epoch}`)
                 }
-                if (epoch % 50 === 0) {
+                if (epoch % 100 === 0) {
                     measure.dump(`\n --`, undefined,'handle', 'rpc', 'polishLogs','buildMap', 'idLength');
                     loader.dumpMetrics(` --------------- get logs metrics , addr count ${addrIdMap.size}`)
                 }
