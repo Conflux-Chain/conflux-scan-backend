@@ -2,7 +2,7 @@ import {sleep} from "./tool/ProcessTool";
 
 process.env.TZ='UTC'
 import moment = require("moment");
-import {Op, fn, col, Model, Sequelize, DataTypes} from 'sequelize'
+import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
 import {RedisWrap, redisWrap} from "./RedisWrap";
 import {HourlyToken, IHourlyToken} from "../model/TokenStat";
 import {DailyToken} from "../model/Token";
@@ -303,7 +303,28 @@ export async function saveDailyUnique({dayStart, hexId, prop, count}) {
         console.log(` [${op}] daily unique address for ${hexId
         }, day ${dayStart.toISOString().substr(0, 10)} ${prop} = ${count}`)
 }
-
+export async function topUnique({limit = 10, day = 7}) {
+    // index on timeStart, not timeEnd.
+    const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
+    if (maxUnique === null) {
+        console.log(` no unique address record found.`)
+        return {list: [], timeBegin: new Date(0), maxTimeStart: new Date(0)}
+    }
+    let timeBegin = new Date(maxUnique.timeStart)
+    timeBegin.setDate(timeBegin.getDate() - day)
+    return UniqueAddress.findAll(({
+        attributes: [
+            'contractId',
+            [literal('count(distinct(if(fromMark, addr, "")))'), 'sender'],
+            [literal('count(distinct(if(toMark, addr, "")))'), 'receiver'],
+            [literal('count(distinct(addr))'), 'all'],
+        ], raw: true, group: ['contractId'],
+        where: {timeStart:{[Op.gte]: timeBegin}}, limit,
+        logging: console.log,
+    })).then(list=>{
+        return {list, timeBegin, maxTimeStart: maxUnique.timeStart}
+    })
+}
 export async function clean(indexBucket = '', force = false) {
     const [,,cmd, zSetKeyArg] = process.argv
     if (force) {
@@ -543,11 +564,24 @@ async function benchmark() {
     measure.dump(`----`)
     process.exit(0);
 }
+async function testTop() {
+    const [,,cmd,d] = process.argv
+    if (cmd !== 'test-top') {
+        return
+    }
+    const {maxTimeStart, list:topList, timeBegin} = await topUnique({limit: 10, day: parseInt(d||'7')})
+    // @ts-ignore
+    const table = topList.map((r,idx)=>`${idx} ${r.contractId} s ${r.sender} r ${r.receiver} a ${r.all}`).join('\n')
+    console.log(`timeBegin ${timeBegin.toISOString()} - maxTimeStart ${maxTimeStart.toISOString()}`)
+    console.log(`${table}`)
+    process.exit(0)
+}
 // 3000 epoch is about an hour.
 async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
     await RedisWrap.connect(config.redis)
     console.log(`--------------------`)
+    await testTop();
     await benchmark();
     await clean();
     const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
