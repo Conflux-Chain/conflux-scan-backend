@@ -89,11 +89,18 @@ export class EpochTask extends Model<IEpochTask> implements IEpochTask{
         })
     }
 }
-//
+// from epoch is from startup argument, so it's safe using it when resuming task.
 export async function fetchTask(len:number, fromEpoch = 0) : Promise<IEpochTask> {
     do {
-        const maxOne = await EpochTask.findOne({order:[['epoch','desc']]})
-        let preEnd = fromEpoch
+        const [maxOne, exactOne] = await Promise.all([
+            EpochTask.findOne({order:[['epoch','desc']]}),
+            EpochTask.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
+        ])
+        if (exactOne) {
+            console.log(` resume exists task ${fromEpoch}`)
+            return exactOne;
+        }
+        let preEnd = fromEpoch;
         if (maxOne !== null) {
             preEnd = maxOne.epoch + maxOne.range
         }
@@ -457,7 +464,14 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         let delay = 0
         switch (action) {
             case "ok":
-                const transfers:any = await data;
+                let transfers: any;
+                try {
+                    transfers = await data;
+                } catch (e) {
+                    console.log(`error when load data, epoch ${epoch}. `, e)
+                    delay = 10_000 // retry.
+                    break;
+                }
                 const log = epoch % 10 === 0
                 const {arr:[sample], epochTime} = transfers
                 if (timeStart) {
