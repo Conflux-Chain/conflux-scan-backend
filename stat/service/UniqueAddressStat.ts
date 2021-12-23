@@ -308,7 +308,7 @@ export async function topUnique({limit = 10, day = 7}) {
     const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
     if (maxUnique === null) {
         console.log(` no unique address record found.`)
-        return {list: [], timeBegin: new Date(0), maxTimeStart: new Date(0)}
+        return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0)}
     }
     let timeBegin = new Date(maxUnique.timeStart)
     timeBegin.setDate(timeBegin.getDate() - day)
@@ -318,12 +318,22 @@ export async function topUnique({limit = 10, day = 7}) {
             [literal('count(distinct(if(fromMark, addr, "")))'), 'sender'],
             [literal('count(distinct(if(toMark, addr, "")))'), 'receiver'],
             [literal('count(distinct(addr))'), 'all'],
-        ], raw: true, group: ['contractId'],
-        where: {timeStart:{[Op.gte]: timeBegin}}, limit,
+        ], raw: true, group: ['contractId'], order: [[col('all'), 'desc']],
+        where: {timeStart:{[Op.gte]: timeBegin}}, limit: limit * 6,
         logging: console.log,
     })).then(list=>{
-        return {list, timeBegin, maxTimeStart: maxUnique.timeStart}
+        return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart}
     })
+}
+export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:any[], all:any[]} {
+    const types = {}
+    function sort(prop) {
+        return list.sort((a,b)=>b[prop] - a[prop])
+    }
+    ['sender', 'receiver', 'all'].forEach(p=>{
+        types[p] = sort(p).slice(0, len)
+    })
+    return types as any;
 }
 export async function clean(indexBucket = '', force = false) {
     const [,,cmd, zSetKeyArg] = process.argv
@@ -569,11 +579,13 @@ async function testTop() {
     if (cmd !== 'test-top') {
         return
     }
-    const {maxTimeStart, list:topList, timeBegin} = await topUnique({limit: 10, day: parseInt(d||'7')})
+    const {maxTimeStart, list:{sender,receiver,all}, timeBegin} = await topUnique({limit: 10, day: parseInt(d||'7')})
     // @ts-ignore
-    const table = topList.map((r,idx)=>`${idx} ${r.contractId} s ${r.sender} r ${r.receiver} a ${r.all}`).join('\n')
+    const table = (topList)=>topList.map((r,idx)=>`${idx} ${r.contractId} s ${r.sender} r ${r.receiver} a ${r.all}`).join('\n')
     console.log(`timeBegin ${timeBegin.toISOString()} - maxTimeStart ${maxTimeStart.toISOString()}`)
-    console.log(`${table}`)
+    console.log(`${table(sender)}\n`)
+    console.log(`${table(receiver)}\n`)
+    console.log(`${table(all)}`)
     process.exit(0)
 }
 // 3000 epoch is about an hour.
