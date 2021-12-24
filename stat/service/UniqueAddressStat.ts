@@ -392,11 +392,12 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     async function repeat() {
         const {action, data} = loader.get(epoch)
         let delay = 0
+        const epochMeasureKey = 'perEpoch';
         switch (action) {
             case "ok":
                 let transfers: any;
                 try {
-                    transfers = await measure.call('perEpoch', ()=>data);
+                    transfers = await measure.call(epochMeasureKey, ()=>data);
                 } catch (e) {
                     console.log(`error when load data, epoch ${epoch}. `, e)
                     delay = 10_000 // retry.
@@ -422,7 +423,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                     console.log(` no transfer at ${epoch}`)
                 }
                 if (epoch % 100 === 0) {
-                    measure.dump(`\n --`, undefined,'handle', 'rpc', 'polishLogs','buildMap', 'idLength');
+                    measure.dump(`\n --`, undefined,epochMeasureKey, 'rpc', 'polishLogs','buildMap', 'idLength');
                     loader.dumpMetrics(` --------------- get logs metrics , addr count ${addrIdMap.size}`)
                 }
                 epoch++
