@@ -155,11 +155,11 @@ export class Aggregator<K,V> {
     }
 }
 
-export async function calcDailyUniqueArrSchedule() {
-    setTimeout(()=>calcDailyUniqueArr(), 10_000); // delay when startup.
-    setTimeout(()=>calcDailyUniqueArrSchedule(), 3600_000)// per hour.
+export async function calcDailyUniqueAddrSchedule() {
+    setTimeout(()=>calcDailyUniqueAddr(), 10_000); // delay when startup.
+    setTimeout(()=>calcDailyUniqueAddrSchedule(), 3600_000)// per hour.
 }
-export async function calcDailyUniqueArr() {
+export async function calcDailyUniqueAddr() {
     const dt = new Date();
     const hour = dt.getHours();
     if (hour === 1) {
