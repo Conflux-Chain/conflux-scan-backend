@@ -79,7 +79,7 @@ export class EpochTask extends Model<IEpochTask> implements IEpochTask{
             updatedAt: {type: DataTypes.DATE, allowNull: false},
             finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
-            sequelize: seq, tableName: 'epoch_task',
+            sequelize: seq, tableName: 'epoch_task_unique_addr',
         })
     }
 }
