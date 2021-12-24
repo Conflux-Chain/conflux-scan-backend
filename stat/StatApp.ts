@@ -45,6 +45,7 @@ import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
+import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -176,6 +177,7 @@ export class StatApp{
             await this.dailyTxnSync.schedule(); // dailyTxn
             scheduleDailyActiveAddress()
                 .then(()=>{scheduleDailyTokenStat()})
+            calcDailyUniqueAddrSchedule().then()
         }
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
