@@ -433,7 +433,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                 break;
             case "wait":
                 console.log(`wait for ${epoch}`)
-                delay = 500
+                delay = 5000
                 break;
         }
         if (epoch < stopBeforeEpoch) {
