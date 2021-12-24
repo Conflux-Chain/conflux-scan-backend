@@ -396,7 +396,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
             case "ok":
                 let transfers: any;
                 try {
-                    transfers = await data;
+                    transfers = await measure.call('perEpoch', ()=>data);
                 } catch (e) {
                     console.log(`error when load data, epoch ${epoch}. `, e)
                     delay = 10_000 // retry.
