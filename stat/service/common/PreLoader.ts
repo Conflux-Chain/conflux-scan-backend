@@ -37,8 +37,17 @@ export class PreLoader<T> {
         this.stopBefore = stopBefore;
     }
 
+    updating = false
     async updateLatestState() {
-        this.latestState = await this.cfx.getEpochNumber('latest_state')
+        if (this.updating) {
+            return
+        }
+        this.updating = true;
+        try {
+            this.latestState = await this.cfx.getEpochNumber('latest_state');
+        } catch (e) {
+        }
+        this.updating = false;
         console.log(`latest state epoch is ${this.latestState}`)
     }
     get(epoch:number) : LoadedResult<T> {
