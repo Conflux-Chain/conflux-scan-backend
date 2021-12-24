@@ -79,7 +79,10 @@ export async  function scheduleDailyTokenStat() {
         .then(()=>setTimeout(scheduleDailyTokenStat, 1000*3600*4))
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
-    const tokenList = await Token.findAll({where: {auditResult: true}})
+    const tokenList = await Token.findAll({
+        attributes: ['hex40id','symbol','name','base32'],
+        where: {auditResult: true},
+    })
     console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
     for(const token of tokenList) {
         await calcDailyToken(dt, token.hex40id)
