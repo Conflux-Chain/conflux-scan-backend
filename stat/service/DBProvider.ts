@@ -103,7 +103,6 @@ import {
     PosRegister, PosReward,
     PosTransaction
 } from "../model/PoS";
-import {HourlyToken} from "../model/TokenStat";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
 let conf
 export function createDB(config) {
@@ -268,7 +267,6 @@ export async function initModel(sequelize) {
 
     NftId.register(sequelize)
     PivotSwitch.register(sequelize)
-    HourlyToken.register(sequelize)
     TestTimezone.register(sequelize);
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);

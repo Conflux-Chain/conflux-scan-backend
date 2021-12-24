@@ -7,7 +7,6 @@ import {
     calcAllRegisteredTokenDailyStat,
     calcDailyToken,
     calcDailyTokenAmount,
-    calcDailyTokenParticipants,
     DailyTxnSync
 } from "../DailyTxnSync";
 import {Op, Sequelize, Options} from "sequelize"
@@ -68,7 +67,7 @@ async function fixParticipants() {
         for (const token of tokenList) {
             const model = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
             if (model) {
-                await calcDailyTokenParticipants(token.hex40id, token.type, start, end)
+                // await calcDailyTokenParticipants(token.hex40id, token.type, start, end)
             }
         }
         dt.setDate(dt.getDate()+1)

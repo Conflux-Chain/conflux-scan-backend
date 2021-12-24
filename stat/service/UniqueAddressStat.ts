@@ -1,11 +1,9 @@
-import {sleep} from "./tool/ProcessTool";
-
 process.env.TZ='UTC'
-import moment = require("moment");
+
+import {redisWrap,RedisWrap} from "./RedisWrap";
+import {sleep} from "./tool/ProcessTool";
 import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
-import {RedisWrap, redisWrap} from "./RedisWrap";
-import {HourlyToken, IHourlyToken} from "../model/TokenStat";
-import {DailyToken} from "../model/Token";
+import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux, format} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
 import {patchHttpProvider} from "./common/utils";
@@ -14,10 +12,6 @@ import {CfxLog} from "js-conflux-sdk/types/rpc";
 import {TokenTool} from "./tool/TokenTool";
 import {makeIdV} from "../model/HexMap";
 import {Measure} from "./common/Measure";
-export const HOUR_UNIQUE_ADDRESS_BUCKET = 'HOUR_UNIQUE_ADDRESS_BUCKET'
-export const DAY_UNIQUE_ADDRESS_BUCKET = 'DAY_UNIQUE_ADDRESS_BUCKET'
-const HOUR_FMT = 'YYYY-MM-DD HH:00:00'
-const DAY_FMT = 'YYYY-MM-DD'
 //
 export interface IUniqueAddress {
     id?:number
@@ -119,15 +113,7 @@ export async function fetchTask(len:number, fromEpoch = 0) : Promise<IEpochTask>
         }
     } while (true)
 }
-//
-function parseKey(key:string) {
-    const [dt, side, contractId] = key.split('_')
-    return {dt: new Date(dt), side, contractId:parseInt(contractId)}
-}
-// compose time,  key[from/to] and contract id
-function buildRedisKey(fmt:string, key:string, id:number, dt:Date) {
-    return `${moment(dt).format(fmt)}_${key}_${id}_tokenUniqueAddr`
-}
+
 // assume that all records are within one epoch, so they have same time.
 export class Aggregator<K,V> {
     allMap = new Map<K, Map<V, IUniqueAddress>>()
@@ -168,142 +154,53 @@ export class Aggregator<K,V> {
         return {arr}
     }
 }
-async function send2redisWrap(indexBucket: string, fmt:string, key:string, contractId:number, dt:Date, ids:number[]){
-    measure.count('idLength', ids.length)
-    const timestamp = dt.getTime()
-    const setKey = await measure.call('buildKey', ()=>Promise.resolve(buildRedisKey(fmt, key, contractId, dt)))
-    // keep keys and their time. move statistics to DB later.
-    // zset, should keep the min timestamp.
-    // https://redis.io/commands/zadd
-    return measure.call('two-key', ()=>Promise.all([
-        // measure.call('addAllKey', ()=>redisWrap.zadd(indexBucket, 'NX', timestamp, setKey)),
-        // add ids to each bucket.
-        // measure.call('saddm', ()=>RedisWrap.saddm(setKey, ids)),
-    ]).then(res=>{
-    }))
-}
-export async function handleUniqueAddress({fromMap,toMap,allMap,dt}) {
-    if (!allMap) {
-        return
-    }
-    //
-    async function send2redis(map:Map<number, Set<number>>, key: string) {
-        const tasks = []
-        const build = ()=> {
-            for (let entry of map.entries()) {
-                const [contractId, addressIds] = entry;
-                // add to hour set and day set
-                const ids = [...addressIds]
-                tasks.push(send2redisWrap(HOUR_UNIQUE_ADDRESS_BUCKET, HOUR_FMT, key, contractId, dt, ids))
-                tasks.push(send2redisWrap(DAY_UNIQUE_ADDRESS_BUCKET, DAY_FMT, key, contractId, dt, ids))
-            }
-        }
-        await measure.call('buildTask', ()=>Promise.resolve(build()));
-        return measure.call('all-task', ()=>Promise.all(tasks).then(()=>{
-        }))
-    }
-    return measure.call('call-3m', ()=>Promise.all([
-        measure.call('from', ()=>send2redis(fromMap, 'from')),
-        measure.call('to', ()=>send2redis(toMap, 'to')),
-        measure.call('all', ()=>send2redis(allMap, 'all')),
-    ]).then(()=>{
-        // console.log(`==========006 \n\n\n`)
-    }))
-}
-export async function persist2db(indexBucket:string, hoursAgo: number) {
-    let has;
-    do {
-        has = await persist2dbOne(indexBucket, hoursAgo)
-    } while(has)
-}
-export async function persist2dbOne(indexBucket:string, hoursAgo: number) {
-    // find max time. we may under catchup mode, the max time is not current time.
-    const [maxKey, maxTime] = await redisWrap.zrevrangebyscore(indexBucket,
-        new Date('5050').getTime(), 0, 'WITHSCORES', 'LIMIT', 0, 1)
-    if (!maxKey) {
-        console.log(` there is no key in redis.`)
-        return;
-    }
-    const earlier = maxTime - 3600_1000 * hoursAgo;
-    // fetch keys before some time gap.
-    const [minKey, minTime] = await redisWrap.ZRANGEBYSCORE(indexBucket,
-        0, earlier, 'WITHSCORES', 'LIMIT', 0, 1)
-    if (!minKey) {
-        console.log(` no keys. max time ${maxTime}, max key ${maxKey}, want before ${earlier
-        }, ${new Date(earlier).toISOString()}`)
-        // check the minimum one.
-        const [minKey2, minTime2] = await redisWrap.ZRANGEBYSCORE(indexBucket,
-            0, maxTime, 'WITHSCORES', 'LIMIT', 0, 1)
-        console.log(` the minimum one ${minKey2} with time [${minTime2}]`)
-        console.log(` time is  ${new Date(Number(minTime2)).toISOString()}`)
-        return;
-    }
-    console.log(` max ${maxKey} min ${minKey}`)
-    let key = minKey
-        const count = await redisWrap.scard(key)
 
-        const {dt, side, contractId} = parseKey(key)
-        console.log(`unique address stat in redis: ${key}, ${dt.toISOString()}, ${side}, contract [${contractId}], count ${count}`)
-        let prop = {'from':'uniqueSender','to':'uniqueReceiver', all:'participants'}[side]
-
-    if (indexBucket === HOUR_UNIQUE_ADDRESS_BUCKET){
-        const identifier = {hexId: contractId, createdAt: dt}
-        const dbBean = await HourlyToken.findOne({where: identifier})
-        if (dbBean === null) {
-            const template:IHourlyToken = {
-                createdAt: dt, hexId: contractId, participants: 0, uniqueReceiver: 0, uniqueSender: 0,
-            }
-            template[prop] = count
-            await HourlyToken.create(template)
-            console.log(`create hourly bean for ${key}, ${prop}:${count}`)
-        } else if (dbBean[prop] < count){
-            await HourlyToken.update({[prop]: count}, {
-                where:identifier
-            })
-            console.log(` update hourly bean for ${key}, ${prop}:${count}`)
-        } else {
-            console.log(` db has larger value ${key}, ${prop}: ${dbBean[prop]} >= ${count}`)
-        }
-    } else {
-        await saveDailyUnique({dayStart: dt, prop, count, hexId:contractId})
-    }
-    await redisWrap.del(key)
-    await redisWrap.zrem(indexBucket, key)
-    console.log(` ------- finish this key ${key} --------`)
-    // process more records.
-    return true
+export async function calcDailyUniqueArrSchedule() {
+    setTimeout(()=>calcDailyUniqueArr(), 10_000); // delay when startup.
+    setTimeout(()=>calcDailyUniqueArrSchedule(), 3600_000)// per hour.
 }
-// rollup daily.
-export async function saveDailyUnique({dayStart, hexId, prop, count}) {
-        const [cnt] = await DailyToken.update({
-            [prop]: count,
-        }, {where: {
-                hexId, day: dayStart, [prop]: {[Op.lt]: count}
-            }, limit: 1})
-        let op = ''
-        if (cnt) {
-            op = 'update'
-        } else {
-            // create it. use bulkCreate to control updateOnDuplicate. upsert do not support updateOnDuplicate.
-            const bean = {
-                hexId,
-                day: dayStart,
-                uniqueSender : 0,
-                uniqueReceiver: 0,
-                participants : 0,
-                transferAmount: '0', transferCount: 0, holderCount: 0,
-            };
-            bean[prop] = count
-            await DailyToken.bulkCreate([bean], {
-                updateOnDuplicate: [prop]
-            })
-            op = 'create'
-        }
+export async function calcDailyUniqueArr() {
+    const dt = new Date();
+    const hour = dt.getHours();
+    if (hour === 1) {
         //
-        console.log(` [${op}] daily unique address for ${hexId
-        }, day ${dayStart.toISOString().substr(0, 10)} ${prop} = ${count}`)
+        const preDay = new Date(dt);
+        preDay.setDate(preDay.getDate() - 1)
+        await calcOneDayUniqueArr(preDay)
+    }
+    await calcOneDayUniqueArr(dt)
 }
-export async function topUnique({limit = 10, day = 7}) {
+export async function calcOneDayUniqueArr(dt:Date) {
+    const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
+    const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+    const showSql = false;
+    const list = await UniqueAddress.findAll(({
+        attributes: [
+            'contractId',
+            [literal('count(distinct(if(fromMark, addr, "")))'), 'sender'],
+            [literal('count(distinct(if(toMark, addr, "")))'), 'receiver'],
+            [literal('count(distinct(addr))'), 'all'],
+        ], raw: true, group: ['contractId'],
+        where: {timeStart:{[Op.between]: [timeBegin,timeEnd]}},
+        logging: showSql ? console.log : false,
+    }))
+    // update one by one in order to prevent db dead lock.
+    for (let uniqueCount of list) {
+        const bean:IDailyToken = {
+            hexId: uniqueCount['contractId'], holderCount: 0, transferCount: 0, transferAmount: '0',
+            day: timeBegin,
+            uniqueSender: uniqueCount['sender'],
+            uniqueReceiver: uniqueCount['receiver'],
+            participants: uniqueCount['all'],
+        }
+        await DailyToken.bulkCreate([bean], {
+            updateOnDuplicate: ['uniqueSender','uniqueReceiver', 'participants'],
+        })
+    }
+    console.log(` calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
+}
+
+export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index on timeStart, not timeEnd.
     const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
     if (maxUnique === null) {
@@ -320,7 +217,7 @@ export async function topUnique({limit = 10, day = 7}) {
             [literal('count(distinct(addr))'), 'all'],
         ], raw: true, group: ['contractId'], order: [[col('all'), 'desc']],
         where: {timeStart:{[Op.gte]: timeBegin}}, limit: limit * 6,
-        logging: console.log,
+        logging: showSql ? console.log : false,
     })).then(list=>{
         return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart}
     })
@@ -331,7 +228,9 @@ export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:
         return list.sort((a,b)=>b[prop] - a[prop])
     }
     ['sender', 'receiver', 'all'].forEach(p=>{
-        types[p] = sort(p).slice(0, len)
+        types[p] = sort(p).slice(0, len).map(e=>{
+            return {...e} // deep copy
+        })
     })
     return types as any;
 }
@@ -564,12 +463,8 @@ async function benchmark() {
     for (let i = 0; i < times; i++) {
         const rnd = Math.round(Math.random() * 1000)
         const m = aggregator.buildMap([{from:rnd, to: rnd+1, contractId: rnd}], i, dt)
-        await measure.call('handle', ()=> handleUniqueAddress(m as any));
-        // await send2redisWrap(k, HOUR_FMT, kSet, i, dt, [800000+i])
     }
     const ms = Date.now() - start
-    await clean(DAY_UNIQUE_ADDRESS_BUCKET, true);
-    await clean(HOUR_UNIQUE_ADDRESS_BUCKET, true);
     console.log(`times ${times}, avg ${(ms / times).toPrecision(5)}`)
     measure.dump(`----`)
     process.exit(0);
@@ -588,12 +483,21 @@ async function testTop() {
     console.log(`${table(all)}`)
     process.exit(0)
 }
+async function testDaily() {
+    const [,,cmd,d] = process.argv
+    if (cmd !== 'test-daily') {
+        return
+    }
+    await calcOneDayUniqueArr( d ? new Date(d) : new Date())
+    process.exit(0)
+}
 // 3000 epoch is about an hour.
 async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
     await RedisWrap.connect(config.redis)
     console.log(`--------------------`)
     await testTop();
+    await testDaily();
     await benchmark();
     await clean();
     const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
