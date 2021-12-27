@@ -104,6 +104,7 @@ import {
     PosTransaction
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
+import {EpochTaskTokenTransfer} from "../TokenTransferSync";
 let conf
 export function createDB(config) {
     conf = config
@@ -274,6 +275,7 @@ export async function initModel(sequelize) {
     DailyContractStat.register(sequelize);
     DailyContractRegister.register(sequelize);
     EpochTask.register(sequelize);
+    EpochTaskTokenTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);

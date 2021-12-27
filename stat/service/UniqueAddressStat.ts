@@ -71,24 +71,31 @@ export class EpochTask extends Model<IEpochTask> implements IEpochTask{
     createdAt: Date
     updatedAt: Date
     finished: boolean
-    static register(seq:Sequelize) {
-        EpochTask.init({
-            epoch: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
-            range: {type: DataTypes.BIGINT, allowNull: false},
-            createdAt: {type: DataTypes.DATE, allowNull: false},
-            updatedAt: {type: DataTypes.DATE, allowNull: false},
-            finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-        },{
-            sequelize: seq, tableName: 'epoch_task',
-        })
+
+    static register(seq: Sequelize) {
+        registerTaskTable(seq, EpochTask, 'epoch_task')
     }
+}
+export function registerTaskTable(seq: Sequelize, model: any, table: string) {
+    model.init({
+        epoch: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
+        range: {type: DataTypes.BIGINT, allowNull: false},
+        createdAt: {type: DataTypes.DATE, allowNull: false},
+        updatedAt: {type: DataTypes.DATE, allowNull: false},
+        finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+    },{
+        sequelize: seq, tableName: table,
+    })
 }
 // from epoch is from startup argument, so it's safe using it when resuming task.
 export async function fetchTask(len:number, fromEpoch = 0) : Promise<IEpochTask> {
+    return fetchTaskByType(EpochTask, len, fromEpoch);
+}
+export async function fetchTaskByType(model:any, len:number, fromEpoch = 0) : Promise<IEpochTask> {
     do {
         const [maxOne, exactOne] = await Promise.all([
-            EpochTask.findOne({order:[['epoch','desc']]}),
-            EpochTask.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
+            model/*EpochTask*/.findOne({order:[['epoch','desc']]}),
+            model/*EpochTask*/.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
         ])
         if (exactOne) {
             console.log(` resume exists task ${fromEpoch}`)
@@ -101,7 +108,7 @@ export async function fetchTask(len:number, fromEpoch = 0) : Promise<IEpochTask>
         const now = new Date();
         const newOne:IEpochTask = {epoch: preEnd, range: len, finished: false, createdAt: now, updatedAt: now}
         let ok = false
-        await EpochTask.create(newOne).then(()=>{
+        await model/*EpochTask*/.create(newOne).then(()=>{
             console.log(`create task, epoch ${preEnd}`)
             ok = true
         }).catch(err=>{
@@ -359,7 +366,7 @@ async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
 
 }
 const toolInfo:any = {init: true}
-async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+export function getTokenTool(cfx:Conflux) {
     if (toolInfo.init) {
         const tokenTool = new TokenTool(cfx);
         const topics = [[
@@ -369,8 +376,12 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         ]]
         toolInfo.tokenTool = tokenTool
         toolInfo.topics = topics;
+        toolInfo.init = false;
     }
-    const {tokenTool, topics} = toolInfo
+    return toolInfo;
+}
+async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+    const {tokenTool, topics} = getTokenTool(cfx)
     const aggregator = new Aggregator<number,string>();
     async function getLogs(epochNumber) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
@@ -492,6 +503,7 @@ async function testDaily() {
     process.exit(0)
 }
 // 3000 epoch is about an hour.
+// noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
     await RedisWrap.connect(config.redis)
@@ -507,6 +519,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     console.log(` ${process.argv[1]} \n network ${st.networkId}`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
+// noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch)
     console.log(` start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
