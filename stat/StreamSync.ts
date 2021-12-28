@@ -6,7 +6,7 @@ import {
     RedisStreamMessage,
     RedisWrap, TRANSFER_ADDRESS_Q
 } from "./service/RedisWrap";
-import {AddressErc20Transfer, build20transferList2address, Erc20Transfer, IErc20Transfer} from "./model/Erc20Transfer";
+import {AddressErc20Transfer, buildTransferList2address, Erc20Transfer, IErc20Transfer} from "./model/Erc20Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
@@ -32,7 +32,7 @@ async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage
                     return RedisWrap.xDel(data)
                 });
             }
-            const copies = build20transferList2address(transferArr)
+            const copies = buildTransferList2address(transferArr)
             if (!copies.length) {
                 return RedisWrap.xDel(data)
             }

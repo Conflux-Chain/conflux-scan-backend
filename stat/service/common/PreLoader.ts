@@ -38,7 +38,7 @@ export class PreLoader<T> {
     }
 
     updating = false
-    async updateLatestState() {
+    async updateLatestState(want) {
         if (this.updating) {
             return
         }
@@ -48,7 +48,7 @@ export class PreLoader<T> {
         } catch (e) {
         }
         this.updating = false;
-        console.log(`latest state epoch is ${this.latestState}`)
+        console.log(`latest state epoch is ${this.latestState}, want ${want}`)
     }
     get(epoch:number) : LoadedResult<T> {
         this.checkPreLoadSize(epoch);
@@ -74,7 +74,7 @@ export class PreLoader<T> {
         while(this.data.size <= this.preLoadSize) {
             const fetchEpoch = this.maxFetchedEpoch + 1
             if (fetchEpoch > this.latestState - this.delayEpoch) {
-                this.updateLatestState().then()
+                this.updateLatestState(wantEpoch).then()
                 break;
             }
             if (fetchEpoch === this.stopBefore) {

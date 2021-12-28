@@ -359,7 +359,7 @@ async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
 
 }
 const toolInfo:any = {init: true}
-async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+export function getTokenTool(cfx:Conflux) {
     if (toolInfo.init) {
         const tokenTool = new TokenTool(cfx);
         const topics = [[
@@ -369,8 +369,12 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         ]]
         toolInfo.tokenTool = tokenTool
         toolInfo.topics = topics;
+        toolInfo.init = false;
     }
-    const {tokenTool, topics} = toolInfo
+    return toolInfo;
+}
+async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+    const {tokenTool, topics} = getTokenTool(cfx)
     const aggregator = new Aggregator<number,string>();
     async function getLogs(epochNumber) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
@@ -493,6 +497,7 @@ async function testDaily() {
     process.exit(0)
 }
 // 3000 epoch is about an hour.
+// noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
     await RedisWrap.connect(config.redis)
@@ -508,6 +513,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     console.log(` ${process.argv[1]} \n network ${st.networkId}`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
+// noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch)
     console.log(` start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)

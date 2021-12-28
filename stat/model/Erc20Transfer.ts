@@ -1,52 +1,46 @@
 import {QueryTypes, DataTypes, Model, Op, Sequelize} from "sequelize";
-import {batchBuildId, Hex64Map, makeId} from "./HexMap";
+import {batchBuildId, Hex64Map, makeId, makeIdV} from "./HexMap";
 import {Erc721Transfer} from "./Erc721Transfer";
 import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
-import {ERC20_TRANSFER_Q, ERC777_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
 import {StatApp} from "../StatApp";
+import {popPartition} from "./ErcTransfer";
 
 export interface ITokenTransfer {
     createdAt: Date
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
+    epoch: number
+    contractId: number
+    fromId: number
+    toId: number
 }
 
 export interface IErc20Transfer extends ITokenTransfer{
     id?: number
-    epoch: number
-    txHashId: number
-    contractId: number
-    fromId: number
-    toId: number
     value: string
 }
 
-export interface IAddressErc20Transfer {
+export interface IAddressErc20Transfer extends ITokenTransfer{
     addressId:number
-    epoch: number
-    tracePos: number
-    txHashId: number
-    createdAt: Date
-    contractId: number
-    fromId: number
-    toId: number
     value: string
 }
-export const T_ADDRESS_ERC20TRANSFER = 'address_erc20_transfer'
+export const T_ADDRESS_ERC20TRANSFER = 'address_erc20transfer_2'
 const ADDRESS_ERC20TRANSFER_SQL = `
     CREATE table if not exists ${T_ADDRESS_ERC20TRANSFER} (
   \`addressId\` bigint unsigned NOT NULL,
   \`epoch\` bigint unsigned NOT NULL,
-  \`tracePos\` int unsigned NOT NULL,
   \`contractId\` bigint unsigned NOT NULL,
-  \`txHashId\` bigint unsigned NOT NULL,
+  \`blockIndex\` int unsigned NOT NULL,
+  \`txIndex\` mediumint unsigned NOT NULL,
+  \`txLogIndex\` mediumint unsigned NOT NULL,
   \`createdAt\` datetime NOT NULL,
   \`fromId\` bigint unsigned NOT NULL,
   \`toId\` bigint unsigned NOT NULL,
   \`value\` varchar(78) NOT NULL DEFAULT '0',
-  PRIMARY KEY (\`addressId\`,\`epoch\`,\`tracePos\`),
-  KEY \`idx_datetime\` (\`createdAt\`),
-  KEY \`idx_epoch\` (\`epoch\`)
+  PRIMARY KEY (\`addressId\`,\`epoch\`,\`blockIndex\` desc, txIndex desc, txLogIndex desc)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 97;
@@ -62,34 +56,29 @@ export async function createAddressErc20TransferTable(seq:Sequelize) {
         process.exit(9)
     })
 }
-export function build20transferList2address(list:any[]) : IAddressErc20Transfer[] {
+export function buildTransferList2address(list:any[]) : any[] {
     const result : any[] = []
-    let idx = 0
     list.forEach(row=>{
-        result.push(buildAddress20transfer(row, row.fromId, idx))
-        if (row.fromId !== row.toId) {
-            result.push(buildAddress20transfer(row, row.toId, idx+1))
+        // fromId 1 is zero address
+        // see createZeroAddress()
+        if (row.fromId != 1){
+            result.push({...row, addressId: row.fromId})
         }
-        idx += 10
+        if (row.fromId !== row.toId) {
+            result.push({...row, addressId: row.toId})
+        }
     })
     return result
 }
-function buildAddress20transfer(row:any, addrId:number, pos:number) : any {
-    return {
-        addressId: addrId,
-        tracePos: pos,
-        contractId: row.contractId, createdAt: row.createdAt, epoch: row.epoch, fromId: row.fromId,
-        toId: row.toId, txHashId: row.txHashId, value: row.value,
-        tokenId: row.tokenId,
-    }
-}
+
 export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implements IAddressErc20Transfer {
     addressId:number
     epoch: number
-    tracePos: number //Need it to make primary key unique.
     createdAt: Date
     contractId: number
-    txHashId: number
+    blockIndex: number
+    txIndex: number
+    txLogIndex: number
     fromId: number
     toId: number
     value: string
@@ -97,9 +86,10 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
         AddressErc20Transfer.init({
             addressId: {type: DataTypes.BIGINT, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
-            tracePos: {type: DataTypes.BIGINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -109,27 +99,21 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
             updatedAt: false,
             tableName: T_ADDRESS_ERC20TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
-                {
-                    name: 'idx_datetime',
-                    fields: [{name: 'createdAt', order: "DESC"}]
-                },
             ],
         })
     }
 }
 
-export const T_ERC20_TRANSFER = "erc20transfer"
+export const T_ERC20_TRANSFER = "erc20transfer_2"
 
 export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transfer {
     id?: number
     epoch: number
     createdAt: Date
     contractId: number
-    txHashId: number
+    blockIndex: number
+    txIndex: number
+    txLogIndex: number
     fromId: number
     toId: number
     value: string
@@ -138,7 +122,9 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -148,17 +134,13 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
             updatedAt: false,
             tableName: T_ERC20_TRANSFER,
             indexes: [
-                // {
-                //     name: 'idx_contract_id',
-                //     fields: ['contractId']
-                // },
+                {
+                    name: 'idx_contractId_epoch',  // used in PruneService.
+                    fields: ['contractId','epoch']
+                },
                 {
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]
-                },
-                {
-                    name: 'idx_datetime',
-                    fields: [{name: 'createdAt', order: "DESC"}]
                 },
             ],
         })
@@ -167,24 +149,28 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
 
 export async function buildErc20Transfer(obj, date) {
     const [fromId, toId, contractId] = await Promise.all([
-        makeId(obj.from, undefined, {dt:date}),
-        makeId(obj.to, undefined, {dt:date}),
-        makeId(obj.address, undefined, {dt:date}),
-        // makeId(obj.transactionHash)
+        makeIdV(obj.from, undefined, {dt:date}),
+        makeIdV(obj.to, undefined, {dt:date}),
+        makeIdV(obj.address, undefined, {dt:date}),
     ])
-    if (obj.tokenId !== null && obj.tokenId !== undefined && obj.value === undefined) {
-        obj.value = 1
-    }
-    let erc20Transfer:IErc20Transfer = {
-        txHashId: obj.txHashId, //hashID.id,
-        contractId: contractId.id,
-        fromId: fromId.id,
-        toId: toId.id,
-        value: (obj.value || 0).toString(),
-        createdAt: date,
-        epoch: obj.epochNumber,
-    };
-    return erc20Transfer
+    obj['txIndex'] = obj.transactionIndex;
+    obj['contractId'] = contractId
+    obj['fromId'] = fromId
+    obj['toId'] = toId
+    obj.value = obj.value.toString()
+    obj.txLogIndex = obj.transactionLogIndex;
+    // let erc20Transfer:IErc20Transfer = {
+    //     blockIndex: obj.blockIndex, //
+    //     txIndex: obj.transactionIndex,
+    //     contractId: contractId,
+    //     fromId: fromId,
+    //     toId: toId,
+    //     value: (obj.value || 0).toString(),
+    //     createdAt: date,
+    //     epoch: obj.epochNumber,
+    //     txLogIndex: obj.transactionLogIndex,
+    // };
+    // return erc20Transfer
 }
 export function aggregateTransfer(array: any[]) {
     if (!array.length) {
@@ -197,7 +183,7 @@ export function aggregateTransfer(array: any[]) {
         if (transStr) {
             obj.value = BigInt(obj.value)
         }
-        const key = `${obj.transactionHash}_${obj.address}_${obj.from}_${obj.to}`
+        const key = `${obj.transactionHash || obj.transactionIndex}_${obj.address}_${obj.from}_${obj.to}`
         let pre = map.get(key);
         if (!pre) {
             pre = obj;
@@ -220,43 +206,13 @@ export function aggregateTransfer(array: any[]) {
     })
     return result;
 }
-// let logTimes = 10;
-export async function batchSaveErc20Transfer(array: any[], seconds) {
-    if (!array.length) {
-        return;
-    }
-    let templates = []
-    let date = new Date(Number(seconds)*1000)
-    let skipCount = 0;
-    array = aggregateTransfer(array)
-    for (const obj of array) {
-        const bean = await buildErc20Transfer(obj, date);
-        // // 13870862 pos points
-        // if (bean.contractId === 13870862 && StatApp.networkId === 1029) {
-        //     skipCount ++
-        //     continue;
-        // }
-        templates.push(bean);
-    }
-    // if (logTimes > 0 && skipCount > 0) {
-    //     logTimes --;
-    //     console.log(` skip points contract, count ${skipCount}`)
-    // }
-    if (!templates.length) {
-        return;
-    }
-    // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Promise.all([
-        Erc20Transfer.bulkCreate(templates, {
-            // benchmark: true, logging:console.log,
-        }),
-        RedisWrap.sendStreamMessage(templates, ERC20_TRANSFER_Q)
-    ]);
-}
 
-export async function batchPopErc20Transfer(epoch) {
-    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC20_TRANSFER_Q)
-    // return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
+export async function batchPopErc20Transfer(epoch, dbTx) {
+    // return Promise.all([
+    //     Erc20Transfer.destroy({where: {epoch}, transaction: dbTx}),
+    //     RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC20_TRANSFER_Q),
+    // ])
+    return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
 }
 
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'

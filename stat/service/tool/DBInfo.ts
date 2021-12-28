@@ -1,9 +1,6 @@
-import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "../../model/Erc20Transfer";
+import {AddressErc20Transfer, Erc20Transfer} from "../../model/Erc20Transfer";
 import {init} from "./FixDailyTokenStat";
 import {Op} from 'sequelize'
-import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
-import {AddressErc777Transfer, Erc777Transfer} from "../../model/Erc777Transfer";
-import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {StatConfig} from "../../config/StatConfig";

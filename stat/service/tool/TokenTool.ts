@@ -108,34 +108,51 @@ export class TokenTool {
         return undefined;
     }
 
-    decodeERC20TransferPlus(eventLog = {}) {
+    decodeERC20TransferPlus(eventLog = {}, copy = true) {
         // @ts-ignore
         const { topics = [], data = '0x' } = eventLog;
 
         if (topics[0] === this.contract.Transfer.signature && topics.length === 3 && data.length === 66) {
+            const from = `0x${topics[1].slice(-40)}`;
+            const to = `0x${topics[2].slice(-40)}`;
+            const value = BigInt(data);
+            if (!copy) {
+                eventLog['from']  = from;
+                eventLog["to"] = to;
+                eventLog["value"] = value;
+                return eventLog;
+            }
             return {
                 ...eventLog,
-                from: `0x${topics[1].slice(-40)}`,
-                to: `0x${topics[2].slice(-40)}`,
-                value: BigInt(data),
-            };
+                from,
+                to,
+                value,
+            }
         }
 
         return undefined;
     }
 
-    decodeERC721Transfer(eventLog = {}) {
+    decodeERC721Transfer(eventLog = {}, copy = true) {
         // @ts-ignore
         const { topics = [], data = '0x' } = eventLog;
 
         // ERC721: Transfer(address indexed from, address indexed to, uint256 indexed value)
         if (topics[0] === this.contract.Transfer.signature && topics.length === 4 && data.length === 2) {
-            return {
-                ...eventLog,
-                from: `0x${topics[1].slice(-40)}`,
-                to: `0x${topics[2].slice(-40)}`,
-                tokenId: BigInt(topics[3]),
-            };
+            const from = `0x${topics[1].slice(-40)}`;
+            const to = `0x${topics[2].slice(-40)}`;
+            const tokenId = BigInt(topics[3]);
+            if (copy) {
+                return {
+                    ...eventLog,
+                    from, to, tokenId,
+                };
+            } else {
+                eventLog['from']  = from;
+                eventLog["to"] = to;
+                eventLog["tokenId"] = tokenId;
+                return eventLog;
+            }
         }
 
         return undefined;
