@@ -9,6 +9,7 @@ export interface IAddressErc1155Transfer extends ITokenTransfer{
     addressId: number
     value: string
     tokenId:string
+    batchIndex: number
 }
 
 export const T_ADDRESS_ERC1155_TRANSFER = "address_erc1155transfer_2"
@@ -21,12 +22,14 @@ create table if not exists ${T_ADDRESS_ERC1155_TRANSFER}
   \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
 \`txLogIndex\` mediumint unsigned NOT NULL,
+\`batchIndex\` mediumint unsigned NOT NULL,
 \t contractId bigint not null,
 \t fromId bigint not null,
 \t toId bigint not null,
 \t \`value\` decimal(36) not null,
 \t tokenId varchar(78) null,
-    primary key  (\`addressId\` desc,\`epoch\` desc,\`blockIndex\` desc, txIndex desc, txLogIndex desc)
+    primary key  (addressId desc,epoch desc,blockIndex desc, 
+    txIndex desc, txLogIndex desc, batchIndex desc)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 23;
@@ -49,6 +52,7 @@ export class AddressErc1155Transfer extends Model<IAddressErc1155Transfer> imple
     blockIndex: number
     txIndex: number
     txLogIndex: number
+    batchIndex: number
     fromId: number
     toId: number
     value: string
@@ -61,6 +65,7 @@ export class AddressErc1155Transfer extends Model<IAddressErc1155Transfer> imple
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            batchIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
