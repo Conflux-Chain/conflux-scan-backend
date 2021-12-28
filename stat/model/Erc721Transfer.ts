@@ -1,37 +1,30 @@
 import {QueryTypes, DataTypes, Model, Sequelize} from "sequelize";
-import {makeId} from "./HexMap";
+import {makeId, makeIdV} from "./HexMap";
 import {sleep} from "../service/tool/ProcessTool";
 import {createTable} from "../service/DBProvider";
 import {ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
 import {popPartition} from "./ErcTransfer";
+import {Erc20Transfer, ITokenTransfer} from "./Erc20Transfer";
 
-export interface IAddressErc721Transfer {
+export interface IAddressErc721Transfer extends ITokenTransfer{
     addressId: number
-    epoch: number
-    tracePos: number
-    createdAt: Date
-    txHashId: number
-    contractId: number
-    fromId: number
-    toId: number
     tokenId:string
 }
-export const T_ADDRESS_ERC721_TRANSFER = "address_erc721transfer"
+export const T_ADDRESS_ERC721_TRANSFER = "address_erc721transfer_2"
 const T_ADDRESS_ERC721_TRANSFER_SQL = `
     create table if not exists ${T_ADDRESS_ERC721_TRANSFER}
 (
 \t addressId bigint not null,
 \t epoch bigint not null,
-\t tracePos bigint not null,
 \tcreatedAt datetime not null,
-\ttxHashId bigint not null,
+\`blockIndex\` int unsigned NOT NULL,
+  \`txIndex\` mediumint unsigned NOT NULL,
+\`txLogIndex\` mediumint unsigned NOT NULL,
 \tcontractId bigint not null,
 \tfromId bigint not null,
 \ttoId bigint not null,
 \ttokenId varchar(78) null,
-    primary key  (\`addressId\` desc,\`epoch\` desc, \`tracePos\` desc),
-    KEY \`idx_datetime\` (\`createdAt\` DESC),
-    KEY \`idx_epoch\` (\`epoch\` DESC)
+    primary key  (\`addressId\` desc,\`epoch\` desc, \`blockIndex\` desc, txIndex desc, txLogIndex desc)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 13;
@@ -50,10 +43,11 @@ export async function create721partition(seq:Sequelize) {
 export class AddressErc721Transfer extends Model<IAddressErc721Transfer> implements IAddressErc721Transfer {
     addressId: number
     epoch: number
-    tracePos: number
     createdAt: Date
     contractId: number
-    txHashId: number
+    blockIndex: number
+    txIndex: number
+    txLogIndex: number
     fromId: number
     toId: number
     tokenId:string
@@ -61,9 +55,10 @@ export class AddressErc721Transfer extends Model<IAddressErc721Transfer> impleme
         AddressErc721Transfer.init({
             addressId: {type: DataTypes.BIGINT, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
-            tracePos: {type: DataTypes.INTEGER, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -73,38 +68,26 @@ export class AddressErc721Transfer extends Model<IAddressErc721Transfer> impleme
             updatedAt: false,
             tableName: T_ADDRESS_ERC721_TRANSFER,
             indexes: [
-                // {
-                //     name: 'idx_epoch',
-                //     fields: [{name: 'epoch', order: "DESC"}]
-                // },
-                {
-                    name: 'idx_datetime',
-                    fields: [{name: 'createdAt', order: "DESC"}]
-                },
             ],
         })
     }
 }
 //========================================
-export interface IErc721Transfer {
+export interface IErc721Transfer extends ITokenTransfer{
     id?: number
-    epoch: number
-    createdAt: Date
-    txHashId: number
-    contractId: number
-    fromId: number
-    toId: number
     tokenId:string
 }
 
-export const T_ERC721_TRANSFER = "erc721transfer"
+export const T_ERC721_TRANSFER = "erc721transfer_2"
 
 export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Transfer {
     id?: number
     epoch: number
     createdAt: Date
     contractId: number
-    txHashId: number
+    blockIndex: number
+    txIndex: number
+    txLogIndex: number
     fromId: number
     toId: number
     tokenId:string
@@ -113,7 +96,9 @@ export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Tra
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -123,10 +108,10 @@ export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Tra
             updatedAt: false,
             tableName: T_ERC721_TRANSFER,
             indexes: [
-                // {
-                //     name: 'idx_contract_id',
-                //     fields: ['contractId']
-                // },
+                {
+                    name: 'idx_contractId_epoch',
+                    fields: ['contractId','epoch']
+                },
                 {
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]
@@ -140,41 +125,36 @@ export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Tra
     }
 }
 
+// noinspection DuplicatedCode
 export async function buildErc721Transfer(obj, date) {
-    const fromId = await makeId(obj.from, undefined, {dt:date})
-    const toId = await makeId(obj.to, undefined, {dt:date})
-    const contractId = await makeId(obj.address, undefined, {dt:date})
-    const hashID = await makeId(obj.transactionHash);
-    let erc721Transfer:IErc721Transfer = {
-        txHashId: hashID.id,
-        contractId: contractId.id,
-        fromId: fromId.id,
-        toId: toId.id,
-        createdAt: date,
-        epoch: obj.epochNumber,
-        tokenId: (obj.tokenId === null || obj.tokenId === undefined) ? null : obj.tokenId.toString(),
-    };
-    return erc721Transfer
+    const fromId = await makeIdV(obj.from, undefined, {dt:date})
+    const toId = await makeIdV(obj.to, undefined, {dt:date})
+    const contractId = await makeIdV(obj.address, undefined, {dt:date})
+    obj['txIndex'] = obj.transactionIndex;
+    obj['contractId'] = contractId
+    obj['fromId'] = fromId
+    obj['toId'] = toId
+    obj.value = obj.value.toString()
+    obj.txLogIndex = obj.transactionLogIndex;
+    obj.tokenId = (obj.tokenId === null || obj.tokenId === undefined) ? null : obj.tokenId.toString();
+    // let erc721Transfer:IErc721Transfer = {
+    //     blockIndex: obj.blockIndex, //
+    //     txIndex: obj.transactionIndex,
+    //     contractId: contractId.id,
+    //     fromId: fromId.id,
+    //     toId: toId.id,
+    //     createdAt: date,
+    //     epoch: obj.epochNumber,
+    //     tokenId: (obj.tokenId === null || obj.tokenId === undefined) ? null : obj.tokenId.toString(),
+    //     txLogIndex: obj.transactionLogIndex,
+    // };
+    // return erc721Transfer
 }
 
-export async function batchSaveErc721Transfer(array: any[], seconds) {
-    if (!array.length) {
-        return;
-    }
-    let templates = []
-    let date = new Date(Number(seconds)*1000)
-    for (const obj of array) {
-        templates.push(await buildErc721Transfer(obj, date))
-    }
-    // console.log(`---- ${templates.map(o=>o.epoch1).join(",")}`)
-    return Promise.all([Erc721Transfer.bulkCreate(templates, {
-        // benchmark: true, logging:console.log,
-        }),
-        RedisWrap.sendStreamMessage(templates, ERC721_TRANSFER_Q)
-    ])
-}
-
-export async function batchPopErc721Transfer(epoch) {
-    return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC721_TRANSFER_Q)
-    // return popPartition(epoch, Erc721Transfer, AddressErc721Transfer)
+export async function batchPopErc721Transfer(epoch, dbTx) {
+    // return Promise.all([
+    //     Erc20Transfer.destroy({where: {epoch}, transaction: dbTx}),
+    //     RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC721_TRANSFER_Q)
+    // ])
+    return popPartition(epoch, Erc721Transfer, AddressErc721Transfer)
 }

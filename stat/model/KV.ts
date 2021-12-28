@@ -57,7 +57,9 @@ export class KV extends Model<IKV> implements IKV {
         }
         return Promise.resolve(parseInt(str))
     }
-
+    static async saveNumber(key:string, value:number, dbTx:Transaction) {
+        return KV.upsert({key, value: value.toString()}, {transaction: dbTx})
+    }
     static async getSwitch(key: string): Promise<Boolean> {
         const str = (await KV.findOne({where: {key}}) || {}).value
         return Promise.resolve((str || '').toLowerCase() === 'true')

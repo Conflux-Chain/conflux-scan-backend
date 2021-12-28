@@ -37,9 +37,9 @@ export class PreLoader<T> {
         this.stopBefore = stopBefore;
     }
 
-    async updateLatestState() {
+    async updateLatestState(want) {
         this.latestState = await this.cfx.getEpochNumber('latest_state')
-        console.log(`latest state epoch is ${this.latestState}`)
+        console.log(`latest state epoch is ${this.latestState}, want ${want}`)
     }
     get(epoch:number) : LoadedResult<T> {
         this.checkPreLoadSize(epoch);
@@ -65,7 +65,7 @@ export class PreLoader<T> {
         while(this.data.size <= this.preLoadSize) {
             const fetchEpoch = this.maxFetchedEpoch + 1
             if (fetchEpoch > this.latestState - this.delayEpoch) {
-                this.updateLatestState().then()
+                this.updateLatestState(wantEpoch).then()
                 break;
             }
             if (fetchEpoch === this.stopBefore) {
