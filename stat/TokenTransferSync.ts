@@ -105,7 +105,12 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     }
     async function fetchAndBuild(epoch: number) {
         const [receipts, block] = await Promise.all([
-            cfx.getEpochReceipts(epoch),
+            cfx.getEpochReceipts(epoch).then(res=>{
+                if (res === null && epoch === 0) {
+                    res = []
+                }
+                return res;
+            }),
             cfx.getBlockByEpochNumber(epoch),
         ])
         const dt = new Date(block.timestamp * 1000)
