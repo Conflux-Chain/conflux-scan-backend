@@ -190,7 +190,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     }
                     epoch ++
                 } catch (e) {
-                    console.log(`process epoch fail at ${epoch}`, e)
+                    console.log(`process epoch fail at ${epoch}, task start epoch ${taskBegin}`, e)
                     process.exit(1)
                 }
                 break;
