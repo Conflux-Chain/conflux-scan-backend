@@ -1,3 +1,4 @@
+process.env.TZ = 'UTC'
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
 import {getYesterday} from "./DateTool";
 
