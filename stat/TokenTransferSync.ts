@@ -124,16 +124,12 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
         return {t20, t20addr, t721, t721addr, t1155, t1155addr, dt}
     }
+    const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, promiseData) {
-        let fetchAndBuildTag = 'fetchAndBuild';
         const finalData = await measure.call(fetchAndBuildTag, ()=>promiseData);
-        await measure.call('save', ()=>save(epoch, finalData as any, taskBegin))
-        if (epoch % dumpPerRound === 0) {
-            console.log(` sync transfer , epoch ${epoch}`)
-            measure.dump(` ------ sync transfer metrics: `, 1, fetchAndBuildTag, 'save');
-        }
+        return measure.call('save', ()=>save(epoch, finalData as any, taskBegin))
     }
-    const loader = new PreLoader(cfx, fetchAndBuild, 5, stopBeforeEpoch);
+    const loader = new PreLoader(cfx, fetchAndBuild, 500, stopBeforeEpoch);
     loader.preLoadSize = 10;
     let epoch = fromEpoch;
     let firstWait = true
@@ -143,7 +139,11 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         switch (action) {
             case "ok":
                 try {
-                    await processData(epoch, data)
+                    await measure.call('epoch', ()=>processData(epoch, data))
+                    if (epoch % dumpPerRound === 0) {
+                        console.log(` sync transfer , epoch ${epoch}`)
+                        measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', fetchAndBuildTag, 'save');
+                    }
                     epoch ++
                 } catch (e) {
                     console.log(`process epoch fail at ${epoch}`, e)
