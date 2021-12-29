@@ -48,6 +48,7 @@ import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {TokenTransferHandler} from "./service/streamstat/business/TokenTransferHandler";
 import {AddrTransactionHandler} from "./service/streamstat/business/AddrTransactionHandler";
 import {AddrCfxTransferHandler} from "./service/streamstat/business/AddrCfxTransferHandler";
+import {DailyCfxTransferHandler} from "./service/streamstat/business/DailyCfxTransferHandler";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -89,6 +90,7 @@ export class StatApp{
     public tokenTransferHandler: TokenTransferHandler;
     public addrTransactionHandler: AddrTransactionHandler;
     public addrCfxTransferHandler: AddrCfxTransferHandler;
+    public dailyCfxTransferHandler: DailyCfxTransferHandler;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -174,6 +176,7 @@ export class StatApp{
         this.tokenTransferHandler = new TokenTransferHandler(this);
         this.addrTransactionHandler = new AddrTransactionHandler(this);
         this.addrCfxTransferHandler = new AddrCfxTransferHandler(this);
+        this.dailyCfxTransferHandler = new DailyCfxTransferHandler(this);
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
@@ -237,6 +240,9 @@ export class StatApp{
         }
         if(this.config.statAddrCfxTransfer) {
             await this.addrCfxTransferHandler.schedule();
+        }
+        if(this.config.statDailyCfxTransfer) {
+            await this.dailyCfxTransferHandler.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

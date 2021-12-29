@@ -106,6 +106,7 @@ import {
 import {TokenTransferStat} from "../model/TokenTransferStat";
 import {AddrTransactionStat} from "../model/AddrTransactionStat";
 import {AddrCfxTransferStat} from "../model/AddrCfxTransferStat";
+import {DailyCfxTransferStat} from "../model/DailyCfxTransferStat";
 let conf
 export function createDB(config) {
     conf = config
@@ -206,6 +207,7 @@ export async function initPartialModel(sequelize) {
     TokenTransferStat.register(sequelize);
     AddrTransactionStat.register(sequelize);
     AddrCfxTransferStat.register(sequelize);
+    DailyCfxTransferStat.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
