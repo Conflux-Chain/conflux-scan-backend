@@ -129,9 +129,9 @@ export class PosSync {
         }
         // next tx number is the last tx number of the block, in fact.
         const preNextTxNumber = preBlock?.nextTxNumber
-            || preBlockDetail?.nextTxNumber
+            || preBlockDetail?.['lastTxNumber']
             || await detectTxCountAtPosBlock1(this.cfx);
-        const txIdEndInclude = blockDetail.nextTxNumber;
+        const txIdEndInclude = blockDetail['lastTxNumber'];
         const txArr = await this.fetchTxArr(preNextTxNumber+1, txIdEndInclude);
         if (txArr === null) {
             this.position -= 1
@@ -144,10 +144,10 @@ export class PosSync {
             } - ${preNextTxNumber} = ${txCountByDiff
             } , actual tx ${txArr.length}`)
             const info = [preBlockDetail,blockDetail].map(block=>{
-                return ` block height [${block?.height}] nextTx [${block?.nextTxNumber
+                return ` block height [${block?.height}] nextTx [${block?.['lastTxNumber']
                 }], hash ${block?.hash}`;
             }).join('\n')
-            console.log(` debug block nextTxNumber:\n`, info)
+            console.log(` debug block lastTxNumber:\n`, info)
             this.position -= 1 // +1 at caller. sync again.
             await sleep(30_000)
             return;
@@ -208,7 +208,7 @@ export class PosSync {
             round: blockDetail.round,
             timestamp: blockDetail.timestamp,
             transactionCount: txCountByDiff,
-            nextTxNumber: blockDetail.nextTxNumber,
+            nextTxNumber: blockDetail['lastTxNumber'],
             signatureCount: blockDetail.signatures?.length || 0,
         };
     }
