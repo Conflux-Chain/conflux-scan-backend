@@ -1,4 +1,9 @@
-import {RedisWrap, STREAM_STAT_ADDR_TRANSACTION_Q, STREAM_STAT_TOKEN_TRANSFER_Q} from "../RedisWrap";
+import {
+    RedisWrap,
+    STREAM_STAT_ADDR_CFX_TRANSFER_Q,
+    STREAM_STAT_ADDR_TRANSACTION_Q,
+    STREAM_STAT_TOKEN_TRANSFER_Q
+} from "../RedisWrap";
 
 export class StatNotifier {
 
@@ -31,6 +36,23 @@ export class StatNotifier {
 
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return RedisWrap.sendStreamMessage(msg, STREAM_STAT_ADDR_TRANSACTION_Q).then();
+    }
+
+    public static async notifyStatAddrCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
+        const statInfo = {};
+        cfxTransferArray.forEach(transfer => {
+            if(transfer.fromId !== 0) {
+                statInfo[transfer.fromId] = statInfo[transfer.fromId] === undefined ? [0, 0] :  statInfo[transfer.fromId];
+                statInfo[transfer.fromId][0] = statInfo[transfer.fromId][0] + 1;
+            }
+            if(transfer.toId !== 0) {
+                statInfo[transfer.toId] = statInfo[transfer.toId] === undefined ? [0, 0] :  statInfo[transfer.toId];
+                statInfo[transfer.toId][1] = statInfo[transfer.toId][1] + 1;
+            }
+        });
+
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_ADDR_CFX_TRANSFER_Q).then();
     }
 
     private static filter({msg}) {

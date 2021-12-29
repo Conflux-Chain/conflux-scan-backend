@@ -47,6 +47,7 @@ import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {TokenTransferHandler} from "./service/streamstat/business/TokenTransferHandler";
 import {AddrTransactionHandler} from "./service/streamstat/business/AddrTransactionHandler";
+import {AddrCfxTransferHandler} from "./service/streamstat/business/AddrCfxTransferHandler";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -87,6 +88,7 @@ export class StatApp{
     public transferTpsService: TransferTpsService;
     public tokenTransferHandler: TokenTransferHandler;
     public addrTransactionHandler: AddrTransactionHandler;
+    public addrCfxTransferHandler: AddrCfxTransferHandler;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -171,6 +173,7 @@ export class StatApp{
         this.transferTpsService = new TransferTpsService(this);
         this.tokenTransferHandler = new TokenTransferHandler(this);
         this.addrTransactionHandler = new AddrTransactionHandler(this);
+        this.addrCfxTransferHandler = new AddrCfxTransferHandler(this);
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
@@ -231,6 +234,9 @@ export class StatApp{
         }
         if(this.config.statAddrTransaction) {
             await this.addrTransactionHandler.schedule();
+        }
+        if(this.config.statAddrCfxTransfer) {
+            await this.addrCfxTransferHandler.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
