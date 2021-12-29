@@ -134,7 +134,7 @@ export async function buildErc721Transfer(obj, date) {
     obj['contractId'] = contractId
     obj['fromId'] = fromId
     obj['toId'] = toId
-    obj.value = obj.value.toString()
+    obj.value = obj.value?.toString() || '0'
     obj.txLogIndex = obj.transactionLogIndex;
     obj.tokenId = (obj.tokenId === null || obj.tokenId === undefined) ? null : obj.tokenId.toString();
     // let erc721Transfer:IErc721Transfer = {
