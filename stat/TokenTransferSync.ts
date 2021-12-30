@@ -220,7 +220,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         console.log(` local pop ${ep} end -`)
         return ep
     }
-    const loader = new PreLoader(cfx, fetchAndBuild, 500, stopBeforeEpoch);
+    const loader = new PreLoader(cfx, fetchAndBuild, 3, stopBeforeEpoch);
     loader.preLoadSize = 10;
     let firstWait = true
     async function repeat() {
