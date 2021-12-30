@@ -52,8 +52,15 @@ export class PreLoader<T> {
         console.log(`latest state epoch is ${this.latestState}, want ${want}, delay ${this.delayEpoch}`)
     }
     async get(epoch:number) : Promise<LoadedResult<T>> {
+        const wantEpoch = epoch;
+        if (this.maxFetchedEpoch === -1) {
+            this.maxFetchedEpoch = wantEpoch - 1
+            await this.updateLatestState(wantEpoch)
+            console.log(` --------- start fetch from ${wantEpoch}, pre load size ${this.preLoadSize}`)
+        }
         await this.checkPreLoadSize(epoch);
         if (epoch > this.maxFetchedEpoch) {
+            await this.updateLatestState(wantEpoch)
             return WAIT_RESULT
         }
         let loaded = this.data.get(epoch)
@@ -71,18 +78,9 @@ export class PreLoader<T> {
         return new LoadedResult<T>("ok", loaded)
     }
     async checkPreLoadSize(wantEpoch: number) {
-        let needUpdate = true;
-        if (this.maxFetchedEpoch === -1) {
-            this.maxFetchedEpoch = wantEpoch - 1
-            await this.updateLatestState(wantEpoch)
-            needUpdate = false;
-            console.log(` --------- start fetch from ${wantEpoch}, pre load size ${this.preLoadSize
-            }, data size ${this.data.size}`)
-        }
         while(this.data.size <= this.preLoadSize) {
             const fetchEpoch = this.maxFetchedEpoch + 1
             if (fetchEpoch > this.latestState - this.delayEpoch) {
-                needUpdate && await this.updateLatestState(wantEpoch)
                 break;
             }
             if (fetchEpoch === this.stopBefore) {
