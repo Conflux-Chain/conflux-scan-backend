@@ -49,7 +49,7 @@ export class PreLoader<T> {
         } catch (e) {
         }
         this.updating = false;
-        console.log(`latest state epoch is ${this.latestState}, want ${want}`)
+        console.log(`latest state epoch is ${this.latestState}, want ${want}, delay ${this.delayEpoch}`)
     }
     async get(epoch:number) : Promise<LoadedResult<T>> {
         await this.checkPreLoadSize(epoch);
