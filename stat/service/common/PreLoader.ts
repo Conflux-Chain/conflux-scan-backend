@@ -8,18 +8,19 @@ export type OK = 'ok'
 export type ACTION = WAIT|POP|OK
 class LoadedResult<T> {
     action: ACTION
-    data:Promise<T>
-    constructor(action:ACTION, data?:Promise<T>) {
+    data:T
+    constructor(action:ACTION, data?:T) {
         this.action = action
         this.data = data
     }
 }
+export class CheckPivotHashError extends Error{}
 export const WAIT_RESULT:any = new LoadedResult("wait")
 export class PreLoader<T> {
     cfx:Conflux
     fn: (epoch:number)=>any
     delayEpoch: number;
-    data = new Map<number, Promise<T>>()
+    data = new Map<number, T>()
     preLoadSize = 20
     maxFetchedEpoch = -1
     latestState:number = 0
@@ -50,31 +51,38 @@ export class PreLoader<T> {
         this.updating = false;
         console.log(`latest state epoch is ${this.latestState}, want ${want}`)
     }
-    get(epoch:number) : LoadedResult<T> {
-        this.checkPreLoadSize(epoch);
+    async get(epoch:number) : Promise<LoadedResult<T>> {
+        await this.checkPreLoadSize(epoch);
         if (epoch > this.maxFetchedEpoch) {
             return WAIT_RESULT
         }
         let loaded = this.data.get(epoch)
         if (loaded === undefined) {
             console.log(` fetch right now: ${epoch}`)
-            loaded = this.fn(epoch)
+            try {
+                loaded = await this.fn(epoch)
+            } catch (e) {
+                loaded = e;
+            }
         } else {
             // console.log(` from pre loaded ${epoch}`)
             this.data.delete(epoch)
         }
         return new LoadedResult<T>("ok", loaded)
     }
-    checkPreLoadSize(wantEpoch: number) {
+    async checkPreLoadSize(wantEpoch: number) {
+        let needUpdate = true;
         if (this.maxFetchedEpoch === -1) {
             this.maxFetchedEpoch = wantEpoch - 1
-            // this.updateLatestState().then() // will be triggered below.
-            console.log(` start fetch from ${wantEpoch}, pre load size ${this.preLoadSize}, data size ${this.data.size}`)
+            await this.updateLatestState(wantEpoch)
+            needUpdate = false;
+            console.log(` --------- start fetch from ${wantEpoch}, pre load size ${this.preLoadSize
+            }, data size ${this.data.size}`)
         }
         while(this.data.size <= this.preLoadSize) {
             const fetchEpoch = this.maxFetchedEpoch + 1
             if (fetchEpoch > this.latestState - this.delayEpoch) {
-                this.updateLatestState(wantEpoch).then()
+                needUpdate && await this.updateLatestState(wantEpoch)
                 break;
             }
             if (fetchEpoch === this.stopBefore) {
@@ -82,13 +90,19 @@ export class PreLoader<T> {
                 break;
             }
             const startMs = Date.now()
-            const v = this.fn(fetchEpoch).finally(()=>{
-                this.fetchTimes ++
-                this.lastMs = Date.now() - startMs;
-                this.usedMs += this.lastMs;
-                this.robin.push(this.lastMs)
-            })
-            // console.log(` pre load ${fetchEpoch}`)
+            let v:T;
+            try {
+                v = await this.fn(fetchEpoch)
+            } catch (e) {
+                // console.log(` pre load outer catch, ${e.message}`)
+                v = e
+            }
+            this.fetchTimes++
+            this.lastMs = Date.now() - startMs;
+            this.usedMs += this.lastMs;
+            this.robin.push(this.lastMs)
+
+            // console.log(` pre load ${fetchEpoch}, set value ${typeof v}, ${v}`)
             this.data.set(fetchEpoch, v);
             this.maxFetchedEpoch = fetchEpoch;
         }

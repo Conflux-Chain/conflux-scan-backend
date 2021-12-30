@@ -394,14 +394,19 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     loader.preLoadSize = 50
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     async function repeat() {
-        const {action, data} = loader.get(epoch)
+        const {action, data} = await loader.get(epoch)
         let delay = 0
         const epochMeasureKey = 'perEpoch';
         switch (action) {
             case "ok":
+                if (data instanceof Error) {
+                    console.log(`error data, epoch ${epoch}. `, data)
+                    delay = 10_000 // retry.
+                    break;
+                }
                 let transfers: any;
                 try {
-                    transfers = await measure.call(epochMeasureKey, ()=>data);
+                    transfers = data;
                 } catch (e) {
                     console.log(`error when load data, epoch ${epoch}. `, e)
                     delay = 10_000 // retry.
