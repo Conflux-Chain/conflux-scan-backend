@@ -50,6 +50,7 @@ import {AddrTransactionHandler} from "./service/streamstat/business/AddrTransact
 import {AddrCfxTransferHandler} from "./service/streamstat/business/AddrCfxTransferHandler";
 import {DailyCfxTransferHandler} from "./service/streamstat/business/DailyCfxTransferHandler";
 import {DailyTokenTransferHandler} from "./service/streamstat/business/DailyTokenTransferHandler";
+import {MinerBlockHandler} from "./service/streamstat/business/MinerBlockHandler";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -93,6 +94,7 @@ export class StatApp{
     public addrCfxTransferHandler: AddrCfxTransferHandler;
     public dailyCfxTransferHandler: DailyCfxTransferHandler;
     public dailyTokenTransferHandler: DailyTokenTransferHandler;
+    public minerBlockHandler: MinerBlockHandler;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -180,6 +182,7 @@ export class StatApp{
         this.addrCfxTransferHandler = new AddrCfxTransferHandler(this);
         this.dailyCfxTransferHandler = new DailyCfxTransferHandler(this);
         this.dailyTokenTransferHandler = new DailyTokenTransferHandler(this);
+        this.minerBlockHandler = new MinerBlockHandler(this);
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
@@ -249,6 +252,9 @@ export class StatApp{
         }
         if(this.config.statDailyTokenTransfer) {
             await this.dailyTokenTransferHandler.schedule();
+        }
+        if(this.config.statMinerBlock) {
+            await this.minerBlockHandler.schedule();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

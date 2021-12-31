@@ -108,6 +108,7 @@ import {AddrTransactionStat} from "../model/AddrTransactionStat";
 import {AddrCfxTransferStat} from "../model/AddrCfxTransferStat";
 import {DailyCfxTransferStat} from "../model/DailyCfxTransferStat";
 import {DailyTokenTransferStat} from "../model/DailyTokenTransferStat";
+import {MinerBlockStat} from "../model/MinerBlockStat";
 let conf
 export function createDB(config) {
     conf = config
@@ -210,6 +211,7 @@ export async function initPartialModel(sequelize) {
     AddrCfxTransferStat.register(sequelize);
     DailyCfxTransferStat.register(sequelize);
     DailyTokenTransferStat.register(sequelize);
+    MinerBlockStat.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

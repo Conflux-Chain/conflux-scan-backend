@@ -1,7 +1,10 @@
 import {
     RedisWrap,
     STREAM_STAT_ADDR_CFX_TRANSFER_Q,
-    STREAM_STAT_ADDR_TRANSACTION_Q, STREAM_STAT_DAILY_CFX_TRANSFER_Q, STREAM_STAT_DAILY_TOKEN_TRANSFER_Q,
+    STREAM_STAT_ADDR_TRANSACTION_Q,
+    STREAM_STAT_DAILY_CFX_TRANSFER_Q,
+    STREAM_STAT_DAILY_TOKEN_TRANSFER_Q,
+    STREAM_STAT_MINER_BLOCK_Q,
     STREAM_STAT_TOKEN_TRANSFER_Q
 } from "../RedisWrap";
 
@@ -72,6 +75,23 @@ export class StatNotifier {
         const statInfo = {0: [tokenTransfer.length]};
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_TOKEN_TRANSFER_Q).then();
+    }
+
+    public static async notifyStatMinerBlock({epochNumber, epochTimestamp, action, blockList}){
+        const statInfo = {};
+        blockList.forEach(block => {
+            const minerId = block.minerId;
+            if(minerId !== 0) {
+                statInfo[minerId] = statInfo[minerId] === undefined ? [0, 0, 0, 0] :  statInfo[minerId];
+                statInfo[minerId][0] = statInfo[minerId][0] + 1;
+                statInfo[minerId][1] = statInfo[minerId][1] + block.totalReward;
+                statInfo[minerId][2] = statInfo[minerId][2] + block.txFee;
+                statInfo[minerId][3] = statInfo[minerId][3] + block.difficulty;
+            }
+        });
+
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_MINER_BLOCK_Q).then();
     }
 
     private static filter({msg}) {
