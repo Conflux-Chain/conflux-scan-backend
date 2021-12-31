@@ -6,6 +6,7 @@ import {Op, QueryTypes} from "sequelize";
 import {StatBucket} from "../StatBucket";
 import {AddrTransactionStat} from "../../../model/AddrTransactionStat";
 import {Epoch} from "../../../model/Epoch";
+
 const lodash = require('lodash');
 
 export class AddrTransactionHandler extends StatHandler {
@@ -42,13 +43,14 @@ export class AddrTransactionHandler extends StatHandler {
             });
             if (statArray === null) return;
 
-            for(const stat of statArray){
+            for (const stat of statArray) {
                 const statEndTime = new Date(stat.statTime);
                 statEndTime.setMinutes(0, 0, 0);
                 statEndTime.setHours(statEndTime.getHours() + 1);
                 const bucket = new StatBucket({
                     bizValue0: BigInt(stat.sendCntr),
                     bizValue1: BigInt(stat.recvCntr),
+                    bizValue2: BigInt(stat.gasSum),
                     lowerBoundInclude: stat.statTime,
                     upperBoundExclude: statEndTime,
                     minEpochNumber: stat.minEpoch,
@@ -56,15 +58,15 @@ export class AddrTransactionHandler extends StatHandler {
                 });
 
                 let bucketArray = this.bizStatInfo.statRecords[stat.bizId];
-                if(!bucketArray){
+                if (!bucketArray) {
                     bucketArray = [bucket];
                     this.bizStatInfo.statRecords[stat.bizId] = bucketArray;
-                } else{
+                } else {
                     bucketArray.push(bucket);
                     this.bizStatInfo.statRecords[stat.bizId] = lodash.orderBy(bucketArray, ['lowerBoundInclude'], ['asc']);
                 }
             }
-            skip = (++curPage - 1) * pageSize ;
+            skip = (++curPage - 1) * pageSize;
         } while (skip <= total);
     }
 
@@ -77,6 +79,7 @@ export class AddrTransactionHandler extends StatHandler {
                 statTime: oldest.lowerBoundInclude,
                 sendCntr: oldest.bizValue0,
                 recvCntr: oldest.bizValue1,
+                gasSum: oldest.bizValue2,
                 minEpoch: oldest.minEpochNumber,
                 maxEpoch: oldest.maxEpochNumber,
             };
@@ -88,7 +91,7 @@ export class AddrTransactionHandler extends StatHandler {
 
     public async loadBucket({statId, statTime, statEpoch}) {
         let stat = null;
-        if(statTime !== undefined){
+        if (statTime !== undefined) {
             const searchTime = new Date(statTime);
             searchTime.setMinutes(0, 0, 0);
             stat = await AddrTransactionStat.findOne({
@@ -97,14 +100,19 @@ export class AddrTransactionHandler extends StatHandler {
             });
         }
 
-        if(statEpoch !== undefined){
+        if (statEpoch !== undefined) {
             stat = await AddrTransactionStat.findOne({
-                where: {bizId: statId, statType: '1h', minEpoch: {[Op.lte]: statEpoch}, maxEpoch: {[Op.gte]: statEpoch}},
+                where: {
+                    bizId: statId,
+                    statType: '1h',
+                    minEpoch: {[Op.lte]: statEpoch},
+                    maxEpoch: {[Op.gte]: statEpoch}
+                },
                 raw: true,
             });
         }
 
-        if(!stat){
+        if (!stat) {
             return stat;
         }
 
@@ -115,6 +123,7 @@ export class AddrTransactionHandler extends StatHandler {
         return new StatBucket({
             bizValue0: BigInt(stat.sendCntr),
             bizValue1: BigInt(stat.recvCntr),
+            bizValue2: BigInt(stat.gasSum),
             lowerBoundInclude: stat.statTime,
             upperBoundExclude: statEndTime,
             minEpochNumber: stat.minEpoch,
@@ -124,12 +133,12 @@ export class AddrTransactionHandler extends StatHandler {
 
     public async collectBucket() {
         const trigger = this.bizStatInfo.trigger();
-        if(!trigger) return;
+        if (!trigger) return;
 
-        const latestEpoch = await Epoch.findOne({order:[['epoch','desc']], limit: 1})
+        const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
-            const statDays = this.statLatestDays-i;
+            const statDays = this.statLatestDays - i;
             const {rangeBegin, rangeEnd} = AddrTransactionHandler.getStatRange({statEnd, statDays});
             const total = await AddrTransactionStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
@@ -146,42 +155,48 @@ export class AddrTransactionHandler extends StatHandler {
                 });
                 if (!statArray) break;
 
-                for(const statDay of statArray) {
-                    await this.doStat({bizId: statDay.bizId,statEnd, statDays: 7});
-                    if(statDays <= 3){
-                        await this.doStat({bizId: statDay.bizId,statEnd, statDays: 3});
+                for (const statDay of statArray) {
+                    await this.doStat({bizId: statDay.bizId, statEnd, statDays: 7});
+                    if (statDays <= 3) {
+                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 3});
                     }
-                    if(statDays <= 1){
-                        await this.doStat({bizId: statDay.bizId,statEnd, statDays: 1});
+                    if (statDays <= 1) {
+                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 1});
                     }
                 }
-                skip = (++curPage - 1) * pageSize ;
+                skip = (++curPage - 1) * pageSize;
             } while (skip <= total);
         }
     }
 
-    private static getStatRange({statEnd, statDays}): {rangeBegin: Date, rangeEnd: Date}{
+    private static getStatRange({statEnd, statDays}): { rangeBegin: Date, rangeEnd: Date } {
         const rangeBegin = new Date(statEnd);
         rangeBegin.setDate(statEnd.getDate() - statDays);
         const rangeEnd = new Date(statEnd);
-        rangeEnd.setDate(statEnd.getDate() - (statDays-1));
+        rangeEnd.setDate(statEnd.getDate() - (statDays - 1));
         return {rangeBegin, rangeEnd};
     }
 
-    private async doStat({bizId, statEnd, statDays}){
+    private async doStat({bizId, statEnd, statDays}) {
         const statType = `${statDays}d`;
         const statBegin = new Date(statEnd);
         statBegin.setDate(statEnd.getDate() - statDays);
         const stat = await AddrTransactionStat.findOne({where: {bizId, statType, statTime: statBegin}, raw: true});
-        if(stat !== null) return;
+        if (stat !== null) return;
 
-        const sql = `select sum(sendCntr) as statSendCntr, sum(recvCntr) as statRecvCntr, 
-                        min(minEpoch) as statMinEpoch, max(maxEpoch) as statMaxEpoch
+        const sql = `select sum(sendCntr) as statSendCntr,
+                            sum(recvCntr) as statRecvCntr,
+                            sum(gas) as statGasSum,
+                            min(minEpoch) as statMinEpoch,
+                            max(maxEpoch) as statMaxEpoch
                      from stat_addr_transaction
-                     where bizId = ? and statTime >= ? and statTime < ? and statType = '1h'`;
+                     where bizId = ?
+                       and statTime >= ?
+                       and statTime < ?
+                       and statType = '1h'`;
         const statNDaysInfo = await AddrTransactionStat.sequelize.query(sql,
-            {type: QueryTypes.SELECT, replacements:[bizId, statBegin, statEnd]}
-        ).then(arr=>{
+            {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
+        ).then(arr => {
             const item = arr[0];
             return {
                 bizId,
@@ -189,18 +204,20 @@ export class AddrTransactionHandler extends StatHandler {
                 statTime: statBegin,
                 sendCntr: item['statSendCntr'],
                 recvCntr: item['statRecvCntr'],
+                gasSum: item['statGasSum'],
                 minEpoch: item['statMinEpoch'],
                 maxEpoch: item['statMaxEpoch'],
             };
         });
 
         await AddrTransactionStat.sequelize.transaction(async (dbTx) => {
-            if(statDays === this.statLatestDays){
+            if (statDays === this.statLatestDays) {
                 await AddrTransactionStat.destroy({
-                    where: {bizId, statType: '1h', statTime: {[Op.lt]: statBegin}}, transaction: dbTx});
+                    where: {bizId, statType: '1h', statTime: {[Op.lt]: statBegin}}, transaction: dbTx
+                });
             }
-            await AddrTransactionStat.destroy({ where: {bizId, statType}, transaction: dbTx});
-            await AddrTransactionStat.create(statNDaysInfo, {transaction:dbTx});
+            await AddrTransactionStat.destroy({where: {bizId, statType}, transaction: dbTx});
+            await AddrTransactionStat.create(statNDaysInfo, {transaction: dbTx});
         });
     }
 }

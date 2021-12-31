@@ -7,6 +7,7 @@ export interface IAddrTransactionStat{
     statTime: Date;
     sendCntr: bigint;
     recvCntr: bigint;
+    gasSum: bigint;
     minEpoch: number;
     maxEpoch: number;
 }
@@ -18,6 +19,7 @@ export class AddrTransactionStat extends Model<IAddrTransactionStat> implements 
     statTime: Date;
     sendCntr: bigint;
     recvCntr: bigint;
+    gasSum: bigint;
     minEpoch: number;
     maxEpoch: number;
 
@@ -29,6 +31,7 @@ export class AddrTransactionStat extends Model<IAddrTransactionStat> implements 
             statTime: {type: DataTypes.DATE, allowNull: false},
             sendCntr: {type: DataTypes.DECIMAL(60,0), allowNull: false, defaultValue: 0},
             recvCntr: {type: DataTypes.DECIMAL(60,0), allowNull: false, defaultValue: 0},
+            gasSum: {type: DataTypes.DECIMAL(60,0), allowNull: false, defaultValue: 0},
             minEpoch: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             maxEpoch: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
         },{
@@ -50,6 +53,7 @@ export class AddrTransactionStat extends Model<IAddrTransactionStat> implements 
             statTime: addrTransactionStat.statTime,
             sendCntr: addrTransactionStat.sendCntr,
             recvCntr: addrTransactionStat.recvCntr,
+            gasSum: addrTransactionStat.gasSum,
             minEpoch: addrTransactionStat.minEpoch,
             maxEpoch: addrTransactionStat.maxEpoch,
         }, {

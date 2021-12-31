@@ -1,7 +1,7 @@
 import {
     RedisWrap,
     STREAM_STAT_ADDR_CFX_TRANSFER_Q,
-    STREAM_STAT_ADDR_TRANSACTION_Q,
+    STREAM_STAT_ADDR_TRANSACTION_Q, STREAM_STAT_DAILY_CFX_TRANSFER_Q, STREAM_STAT_DAILY_TOKEN_TRANSFER_Q,
     STREAM_STAT_TOKEN_TRANSFER_Q
 } from "../RedisWrap";
 
@@ -25,11 +25,12 @@ export class StatNotifier {
         const statInfo = {};
         txnArray.forEach(txn => {
             if(txn.fromId !== 0) {
-                statInfo[txn.fromId] = statInfo[txn.fromId] === undefined ? [0, 0] :  statInfo[txn.fromId];
+                statInfo[txn.fromId] = statInfo[txn.fromId] === undefined ? [0, 0, 0] :  statInfo[txn.fromId];
                 statInfo[txn.fromId][0] = statInfo[txn.fromId][0] + 1;
+                statInfo[txn.fromId][2] = statInfo[txn.fromId][2] + txn.gas;
             }
             if(txn.toId !== 0) {
-                statInfo[txn.toId] = statInfo[txn.toId] === undefined ? [0, 0] :  statInfo[txn.toId];
+                statInfo[txn.toId] = statInfo[txn.toId] === undefined ? [0, 0, 0] :  statInfo[txn.toId];
                 statInfo[txn.toId][1] = statInfo[txn.toId][1] + 1;
             }
         });
@@ -53,6 +54,24 @@ export class StatNotifier {
 
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return RedisWrap.sendStreamMessage(msg, STREAM_STAT_ADDR_CFX_TRANSFER_Q).then();
+    }
+
+    public static async notifyStatDailyCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
+        if(!cfxTransferArray?.length){
+            return ;
+        }
+        const statInfo = {0: [cfxTransferArray.length]};
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_CFX_TRANSFER_Q).then();
+    }
+
+    public static async notifyStatDailyTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
+        if(!tokenTransfer?.length){
+            return ;
+        }
+        const statInfo = {0: [tokenTransfer.length]};
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_TOKEN_TRANSFER_Q).then();
     }
 
     private static filter({msg}) {

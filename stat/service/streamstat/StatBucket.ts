@@ -1,6 +1,7 @@
 export class StatBucket {
     private bizValue0: bigint;
     private bizValue1: bigint;
+    private bizValue2: bigint;
     private lowerBoundInclude: Date;
     private upperBoundExclude: Date;
     private minEpochNumber: number;
@@ -12,6 +13,7 @@ export class StatBucket {
         upperBoundExclude,
         bizValue0 = BigInt(0),
         bizValue1 = BigInt(0),
+        bizValue2 = BigInt(0),
         minEpochNumber = 0,
         maxEpochNumber = 0
     }: {
@@ -19,6 +21,7 @@ export class StatBucket {
         upperBoundExclude: Date,
         bizValue0?: bigint,
         bizValue1?: bigint,
+        bizValue2?: bigint,
         minEpochNumber?: number,
         maxEpochNumber?: number
     }) {
@@ -26,6 +29,7 @@ export class StatBucket {
         this.upperBoundExclude = upperBoundExclude;
         this.bizValue0 = bizValue0;
         this.bizValue1 = bizValue1;
+        this.bizValue2 = bizValue2;
         this.minEpochNumber = minEpochNumber;
         this.maxEpochNumber = maxEpochNumber;
     }
@@ -44,6 +48,7 @@ export class StatBucket {
     public increase({epochNumber, valArray}: { epochNumber: number, valArray: bigint[] }) {
         this.bizValue0 += BigInt(valArray[0]);
         if(valArray[1]) this.bizValue1 += BigInt(valArray[1]);
+        if(valArray[2]) this.bizValue2 += BigInt(valArray[2]);
         this.minEpochNumber = this.minEpochNumber === 0 ? epochNumber : this.minEpochNumber;
         this.maxEpochNumber = epochNumber > this.maxEpochNumber ? epochNumber : this.maxEpochNumber;
     }
