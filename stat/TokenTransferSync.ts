@@ -72,9 +72,9 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
 function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[]) {
     const result = {t20:[],t721:[],t1155:[]}
-    function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex) {
+    function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex, txPos) {
         transfer['epoch'] = tx.epochNumber;
-        transfer['transactionIndex'] = tx.index;
+        transfer['transactionIndex'] = txPos;//tx.index;
         transfer['transactionLogIndex'] = txLogIndex;
         transfer['blockIndex'] = blockIdx;
         transfer['createdAt'] = dt;
@@ -83,8 +83,14 @@ function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool:
     let blockIdx = -1;
     for (let receiptsInBlock of receipts2d) {
         blockIdx ++
+        let txPos = -1; // match with the logic in TransactionSync.
         for (let txReceipt of receiptsInBlock) {
-            if (txReceipt.outcomeStatus !== 0) {
+            if (txReceipt.outcomeStatus === 0) {
+                txPos ++ // inc for status 0
+            } else if (txReceipt.outcomeStatus === 1) {
+                txPos ++ // inc for status 1 (failed)
+                continue;
+            } else { // null: not executed; 2: skipped.
                 continue;
             }
             if (txReceipt.blockHash !== blockHashes[blockIdx]) {
@@ -104,12 +110,12 @@ function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool:
                 }
                 let transfer;
                 if ((transfer = tokenTool.decodeERC20TransferPlus(log, false))) {
-                    push(result.t20, transfer, blockIdx, txReceipt, txLogIndex)
+                    push(result.t20, transfer, blockIdx, txReceipt, txLogIndex, txPos)
                 } else if ((transfer = tokenTool.decodeERC721Transfer(log, false))) {
-                    push(result.t721, transfer, blockIdx, txReceipt, txLogIndex);
+                    push(result.t721, transfer, blockIdx, txReceipt, txLogIndex, txPos);
                 } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log))) {
                     transfer.forEach(e=>{
-                        push(result.t1155, e, blockIdx, txReceipt, txLogIndex);
+                        push(result.t1155, e, blockIdx, txReceipt, txLogIndex, txPos);
                     })
                 }
             }

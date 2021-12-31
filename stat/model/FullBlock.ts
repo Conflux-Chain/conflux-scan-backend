@@ -256,6 +256,8 @@ export async function createFullTransactionTable(seq:Sequelize) {
 export class FullTransaction extends Model<IFullTransaction> implements IFullTransaction {
     epoch:number
     blockPosition:number
+    // succeed or failed tx order in the block.
+    // not the index in receipt, nor the index in all the tx list of a block
     txPosition:number
     createdAt:Date
     hash:string
