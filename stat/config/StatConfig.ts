@@ -107,6 +107,7 @@ export interface StatConfig{
     statAddrTransaction: boolean,
     statAddrCfxTransfer: boolean,
     statDailyCfxTransfer: boolean,
+    statDailyTokenTransfer: boolean,
     databaseRW: DatabaseRW,
 }
 
