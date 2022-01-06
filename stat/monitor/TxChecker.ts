@@ -84,6 +84,7 @@ async function buildTxFromReceipt(epoch: number,receipts2d: TransactionReceipt[]
                 method: t.data.substr(0, 10)
             }
             txBean['addressId'] = txBean.fromId
+            txByAddressArr.push(txBean);
             txArr.push(txBean)
             addrIdSet.add(txBean.fromId)
             const dummyTo = txBean.toId || txBean.contractCreatedId
