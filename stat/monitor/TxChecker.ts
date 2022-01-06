@@ -168,7 +168,9 @@ let startMS = 0
 async function run() {
     const [,,url,epochL, epochR] = process.argv
     cfx = new Conflux({url})
-    patchHttpProvider(cfx, {url})
+    if (!url.includes('ws')) {
+        patchHttpProvider(cfx, {url})
+    }
     const st = await cfx.getStatus()
     await init();
     console.log(`----------- network ${st.networkId} -----------`)
