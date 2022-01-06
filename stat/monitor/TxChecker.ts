@@ -186,7 +186,7 @@ async function run() {
             process.exit(9)
         })
         processed ++
-        if (processed % 100 === 0) {
+        if (processed % 1000 === 0) {
             const elapse = Date.now() - startMS
             console.log(`\n processed ${processed}, elapse ${elapse
             }, avg ${(elapse/processed).toPrecision(5)}`)
