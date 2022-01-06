@@ -104,6 +104,7 @@ import {
     PosTransaction
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
+import {CheckBlockInfo} from "../monitor/TxChecker";
 let conf
 export function createDB(config) {
     conf = config
@@ -268,6 +269,7 @@ export async function initModel(sequelize) {
     NftId.register(sequelize)
     PivotSwitch.register(sequelize)
     TestTimezone.register(sequelize);
+    CheckBlockInfo.register(sequelize)
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);
     DailyContractCreate.register(sequelize);
