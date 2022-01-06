@@ -178,7 +178,7 @@ async function run() {
     // [start, end]
     startMS = Date.now()
     let processed = 0
-    while (start <= end) {
+    while (start <= end && start<=st.latestConfirmed) {
         await check(start).catch(err=>{
             console.log(` error005, epoch ${start}.`, err)
             process.exit(9)
@@ -191,7 +191,7 @@ async function run() {
         }
         start ++;
     }
-    console.log(` check done [${veryStart}, ${end}]`)
+    console.log(` check done [${veryStart}, ${end}], latestConfirmed ${st.latestConfirmed}`)
     await FullBlock.sequelize.close()
     process.exit(0)
 }
