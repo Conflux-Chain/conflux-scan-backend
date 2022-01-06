@@ -100,7 +100,7 @@ async function buildTxFromReceipt(epoch: number,receipts2d: TransactionReceipt[]
             }
         } // tx loop end
         if (sumGasPrice) {
-            checkInfoArr[cIdx].avgGasPrice = sumGasPrice / BigInt(txPos)
+            checkInfoArr[cIdx].avgGasPrice = sumGasPrice / BigInt(txPos+1)
         }
         checkInfoArr[cIdx].epochTime = epochTime;
     }
