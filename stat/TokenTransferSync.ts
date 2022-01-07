@@ -295,7 +295,7 @@ async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155add
             batchSaveTransfer(Erc20Transfer, AddressErc20Transfer, t20, t20addr, dbTx),
             batchSaveTransfer(Erc721Transfer, AddressErc721Transfer, t721, t721addr, dbTx),
             batchSaveTransfer(Erc1155Transfer, AddressErc1155Transfer, t1155, t1155addr, dbTx),
-            EpochHashTokenTransfer.create({epoch, hash: pivotHash}),
+            EpochHashTokenTransfer.create({epoch, hash: pivotHash},{transaction: dbTx}),
             EpochTaskTokenTransfer.update(
                 {cursor: epoch, pivotHash:'not used'},
                 {where:{epoch:taskBegin}, transaction:dbTx})
@@ -345,7 +345,7 @@ async function pop(epoch:number, taskBegin: number) {
             popAction(Erc20Transfer, AddressErc20Transfer, popRef[0], dbTx).then(res=>`t20 ${res}`),
             popAction(Erc721Transfer, AddressErc721Transfer, popRef[1], dbTx).then(res=>`t721 ${res}`),
             popAction(Erc1155Transfer, AddressErc1155Transfer, popRef[2], dbTx).then(res=>`t1155 ${res}`),
-            EpochHashTokenTransfer.destroy({where: {epoch}, limit: 1,}).then((cnt)=>`PH ${cnt}`),
+            EpochHashTokenTransfer.destroy({where: {epoch}, limit: 1, transaction: dbTx}).then((cnt)=>`PH ${cnt}`),
             popTaskCursor(dbTx).then((cnt)=>`CURSOR ${cnt}`),
         ])
     }).then(res=>{
