@@ -25,18 +25,21 @@ async function check(epoch:number) {
         process.exit(0)
     }
     const checkInfo:ICheckBlockInfo[] = []
+    let needFix = false;
     for (let bIdx = 0; bIdx < blocks.length; bIdx++) {
         const exeTxCnt = receipts2d[bIdx].filter(tx=>tx.outcomeStatus === 0 || tx.outcomeStatus === 1).length
         const preExeTxCnt = blocks[bIdx].executedTxnCount;
+        checkInfo.push({epoch, blockIdx: bIdx, wrongTxCnt: preExeTxCnt,
+        rightTxCnt: exeTxCnt, epochTime: null})
         if (preExeTxCnt < exeTxCnt) {
-            checkInfo.push({epoch, blockIdx: bIdx, wrongTxCnt: preExeTxCnt,
-            rightTxCnt: exeTxCnt, epochTime: null})
+            needFix = true;
         } else if (preExeTxCnt > exeTxCnt) {
-            console.log(` ERR003, exist exeTxCnt ${preExeTxCnt} > ${exeTxCnt} in receipts, epoch ${epoch}`)
-            process.exit(0);
+            // console.log(` ERR003, exist exeTxCnt ${preExeTxCnt} > ${exeTxCnt} in receipts, epoch ${epoch}`)
+            // process.exit(0);
+            needFix = true;
         }
     }
-    if (checkInfo.length) {
+    if (needFix) {
         await fixEpoch(epoch, checkInfo, receipts2d)
         fixed ++
     } else {
@@ -168,8 +171,11 @@ let fixed = 0
 let startMS = 0
 async function run() {
     const [,,url,epochL, epochR] = process.argv
-    cfx = new Conflux({url})
-    if (!url.includes('ws')) {
+    // @ts-ignore
+    cfx = new Conflux({url, clientConfig: {maxReceivedMessageSize: 0x0FFFFFFFF}})
+    if (url.includes('ws')) {
+        // options.clientConfig.maxReceivedMessageSize=0x800000
+    } else {
         patchHttpProvider(cfx, {url})
     }
     const st = await cfx.getStatus()
@@ -198,4 +204,7 @@ async function run() {
     await FullBlock.sequelize.close()
     process.exit(0)
 }
-run().then()
+if (require.main === module) {
+    run().then()
+}
+// min 13421844 max 14025121  before fix address tx.
