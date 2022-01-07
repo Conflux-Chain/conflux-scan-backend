@@ -18,7 +18,7 @@ export class PruneHandler {
     private app: any;
     private pruneBlock: PruneBlock;
     private pruneTransaction: PruneTransaction;
-    private pruneTransfer: PruneTransfer;
+    public pruneTransfer: PruneTransfer;
     private CACHE_POOL = {};
     private CACHE_MARKER = {};
     private CACHE_COUNTER = {};
