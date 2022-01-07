@@ -53,7 +53,7 @@ export class StatBucket {
         this.bizValue0 += BigInt(valArray[0]);
         if(valArray[1]) this.bizValue1 += BigInt(valArray[1]);
         if(valArray[2]) this.bizValue2 += BigInt(valArray[2]);
-        if(valArray[3]) this.bizValue2 += BigInt(valArray[3]);
+        if(valArray[3]) this.bizValue3 += BigInt(valArray[3]);
         this.minEpochNumber = this.minEpochNumber === 0 ? epochNumber : this.minEpochNumber;
         this.maxEpochNumber = epochNumber > this.maxEpochNumber ? epochNumber : this.maxEpochNumber;
     }

@@ -530,6 +530,8 @@ export class FullBlockService {
         if (reward.length === 0) {
             return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${latestConfirm} confirmed.`}
         }
+
+        const blockStatArray = [];
         return FullBlock.sequelize.transaction(async (dbTx)=>{
             const tx = []
             reward.forEach(r=>{
@@ -539,9 +541,14 @@ export class FullBlockService {
                         {where: {epoch, hash: r["blockHash"]}, limit: 1, transaction: dbTx})
                         .then(([updated]) => updated)
                 )
+                blockStatArray.push({hash: r["blockHash"], totalReward: r["totalReward"], txFee: r.txFee});
             })
             const updatedArr = await Promise.all(tx)
             // const allModified = updatedArr.reduce((a,b)=>a+b)
+        }).then(()=>{
+            const msg = {epochNumber: epoch, epochTimestamp: undefined, action: 'push', blockList: blockStatArray};
+            StatNotifier.notifyStatMinerBlock(msg)
+                .catch(e => console.log(`epoch-sync.notifyStatMinerBlock epoch:${epoch}`, e));
         }).then(()=>{
             return {code: CODE_OK, message: 'ok'}
         })

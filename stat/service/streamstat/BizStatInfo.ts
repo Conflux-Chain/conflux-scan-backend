@@ -19,6 +19,8 @@
 //          ],
 //      }
 // }
+import {Epoch} from "../../model/Epoch";
+
 export class BizStatInfo {
     currentEpochNumber: number;
     currentEpochTimestamp: Date;
@@ -37,7 +39,13 @@ export class BizStatInfo {
         this.epochCounter = this.epochCounter === undefined ? 1 : (this.epochCounter + 1)
     }
 
-    public trigger() {
-        return this.epochCounter && this.epochCounter % 500 === 0;
+    public async trigger() {
+        const interval = 500;
+        let fire = this.epochCounter && this.epochCounter % interval === 0;
+        if (!fire) {
+            const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1});
+            fire = latestEpoch && latestEpoch.epoch % interval === 0;
+        }
+        return fire;
     }
 }

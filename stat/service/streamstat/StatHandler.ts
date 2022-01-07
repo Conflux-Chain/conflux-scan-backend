@@ -3,6 +3,7 @@ import {RedisStreamMessage, RedisWrap} from "../RedisWrap";
 import {StatMessage} from "./StatMessage";
 import {BizStatInfo} from "./BizStatInfo";
 import {StatBucket} from "./StatBucket";
+import {Epoch} from "../../model/Epoch";
 const lodash = require('lodash');
 
 export abstract class StatHandler {
@@ -14,7 +15,7 @@ export abstract class StatHandler {
         this.app = app;
     }
 
-    public async schedule(delay = 1000) {
+    public async schedule(delay = 1000 * 60 * 3) {
         await this.warmUp({reservedBuckets: this.reservedBuckets()});
         await this.listen();
 
@@ -39,11 +40,14 @@ export abstract class StatHandler {
         for (const item of data) {
             const message = item.message as StatMessage;
             const epochNumber = message.epochNumber;
+            if(!message.epochTimestamp){
+                const epochObj = await Epoch.findOne({where: {epoch: epochNumber}, raw: true})
+                message.epochTimestamp = epochObj.timestamp;
+            }
             const epochTimestamp = new Date(message.epochTimestamp);
             const action = message.action;
             if (action === 'push') {
                 await this.stat({epochNumber, epochTimestamp, message});
-                // TODO get latest epoch info
                 this.bizStatInfo.counter({epochNumber, epochTimestamp});
             }
             if (action === 'pop') {

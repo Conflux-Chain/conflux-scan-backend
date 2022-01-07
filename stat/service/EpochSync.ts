@@ -401,6 +401,8 @@ export class EpochSync extends SyncBase{
             const msg = {epochNumber, epochTimestamp, action: 'push', tokenTransfer: eventLogStat.tokenTransfer};
             StatNotifier.notifyStatTokenTransfer(msg)
                 .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e));
+            StatNotifier.notifyStatDailyTokenTransfer(msg)
+                .catch(e => console.log(`epoch-sync.notifyStatDailyTokenTransfer epoch:${epochNumber}`, e));
         }
 
         return eventLogArray

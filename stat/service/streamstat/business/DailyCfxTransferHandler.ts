@@ -110,7 +110,7 @@ export class DailyCfxTransferHandler extends StatHandler {
         const rangeEnd = new Date(refer);
         rangeEnd.setHours(0,0,0,0)
         const rangeStart = new Date(rangeEnd);
-        rangeStart.setHours(rangeEnd.getHours() - 1);
+        rangeStart.setDate(rangeEnd.getDate() - 1);
 
         const stat = await DailyCfxTransferStat.findOne({where: {statType: '1d', statTime: rangeStart}, raw: true});
         if (stat !== null) return;

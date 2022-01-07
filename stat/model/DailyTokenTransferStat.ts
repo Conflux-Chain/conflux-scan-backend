@@ -30,8 +30,8 @@ export class DailyTokenTransferStat extends Model<IDailyTokenTransferStat> imple
             tableName: 'stat_daily_token_transfer',
             timestamps: true,
             indexes: [{
-                name: "idx_bizId_statType_statTime",
-                fields: ["bizId", "statType", "statTime"],
+                name: "idx_statType_statTime",
+                fields: ["statType", "statTime"],
                 unique: true,
             }]
         })

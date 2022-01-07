@@ -30,8 +30,8 @@ export class DailyCfxTransferStat extends Model<IDailyCfxTransferStat> implement
             tableName: 'stat_daily_cfx_transfer',
             timestamps: true,
             indexes: [{
-                name: "idx_bizId_statType_statTime",
-                fields: ["bizId", "statType", "statTime"],
+                name: "idx_statType_statTime",
+                fields: ["statType", "statTime"],
                 unique: true,
             }]
         })

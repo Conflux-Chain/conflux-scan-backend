@@ -112,10 +112,10 @@ export class TokenTransferHandler extends StatHandler {
     }
 
     public async collectBucket() {
-        const trigger = this.bizStatInfo.trigger();
+        const trigger = await this.bizStatInfo.trigger();
         if(!trigger) return;
 
-        const latestEpoch = await Epoch.findOne({order:[['epoch','desc']], limit: 1})
+        const latestEpoch = await Epoch.findOne({order:[['epoch','desc']], limit: 1});
         const statEnd = latestEpoch.timestamp;
         const statStart = new Date(statEnd);
         statStart.setDate(statEnd.getDate() - this.statLatestDays);
@@ -128,7 +128,7 @@ export class TokenTransferHandler extends StatHandler {
         for (const token of tokens) {
             const statItem = await TokenTransferStat.findOne({
                 attributes: [[fn('sum', col('transferCntr')), 'transferLatest']],
-                where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.gte]: statStart}},
+                where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.gte]: statStart}}, raw: true,
                 // logging: msg => console.log(`transferLatest: ${msg}`),
             });
 

@@ -186,7 +186,7 @@ export class AddrTransactionHandler extends StatHandler {
 
         const sql = `select sum(sendCntr) as statSendCntr,
                             sum(recvCntr) as statRecvCntr,
-                            sum(gas) as statGasSum,
+                            sum(gasSum) as statGasSum,
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
                      from stat_addr_transaction

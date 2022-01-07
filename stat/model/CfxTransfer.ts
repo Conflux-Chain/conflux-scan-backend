@@ -468,9 +468,11 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     }).then(async ()=>{
         PruneNotifier.notifyCFXTransfer(addressCfxTransferArray)
             .catch(e => console.log(`transfer-sync.noticePruneTransfer, epoch:${addressCfxTransferArray[0].epoch}`, e));
-        StatNotifier.notifyStatAddrCfxTransfer({epochNumber: templates[0].epoch, epochTimestamp: date, action: 'push',
-            cfxTransferArray: templates
-        }).catch(e => console.log(`epoch-sync.noticeStatAddrCfxTransfer epoch:${templates[0].epoch}`, e));
+        const msg = {epochNumber: templates[0].epoch, epochTimestamp: date, action: 'push', cfxTransferArray: templates };
+        StatNotifier.notifyStatAddrCfxTransfer(msg)
+            .catch(e => console.log(`epoch-sync.noticeStatAddrCfxTransfer epoch:${templates[0].epoch}`, e));
+        StatNotifier.notifyStatDailyCfxTransfer(msg)
+            .catch(e => console.log(`epoch-sync.notifyStatDailyCfxTransfer epoch:${templates[0].epoch}`, e));
     });
 
     // async add address-cfx-transfer

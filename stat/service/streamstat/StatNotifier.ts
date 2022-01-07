@@ -7,6 +7,8 @@ import {
     STREAM_STAT_MINER_BLOCK_Q,
     STREAM_STAT_TOKEN_TRANSFER_Q
 } from "../RedisWrap";
+import {FullBlock} from "../../model/FullBlock";
+import {col, fn, Op} from "sequelize";
 
 export class StatNotifier {
 
@@ -19,18 +21,37 @@ export class StatNotifier {
         return RedisWrap.sendStreamMessage(msg, q).then();
     }
 
+    // stat-stat
     public static async notifyStatTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
         const msg = {epochNumber, epochTimestamp, action, statInfo: tokenTransfer};
         return RedisWrap.sendStreamMessage(msg, STREAM_STAT_TOKEN_TRANSFER_Q).then();
     }
 
+    // stat-stat
+    public static async notifyStatDailyTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
+        const addrIdArray = Object.keys(tokenTransfer)
+        if(!addrIdArray?.length){
+            return ;
+        }
+
+        let transferCntr = 0;
+        addrIdArray.forEach(addrId => {
+            transferCntr += tokenTransfer[addrId];
+        });
+
+        const statInfo = {0: [transferCntr]};
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_TOKEN_TRANSFER_Q).then();
+    }
+
+    // stat-block
     public static async notifyStatAddrTransaction({epochNumber, epochTimestamp, action, txnArray}){
         const statInfo = {};
         txnArray.forEach(txn => {
             if(txn.fromId !== 0) {
                 statInfo[txn.fromId] = statInfo[txn.fromId] === undefined ? [0, 0, 0] :  statInfo[txn.fromId];
                 statInfo[txn.fromId][0] = statInfo[txn.fromId][0] + 1;
-                statInfo[txn.fromId][2] = statInfo[txn.fromId][2] + txn.gas;
+                statInfo[txn.fromId][2] = BigInt(statInfo[txn.fromId][2]) + txn.gas;
             }
             if(txn.toId !== 0) {
                 statInfo[txn.toId] = statInfo[txn.toId] === undefined ? [0, 0, 0] :  statInfo[txn.toId];
@@ -42,6 +63,33 @@ export class StatNotifier {
         return RedisWrap.sendStreamMessage(msg, STREAM_STAT_ADDR_TRANSACTION_Q).then();
     }
 
+    // stat-block
+    public static async notifyStatMinerBlock({epochNumber, epochTimestamp, action, blockList}){
+        const blockArray = await FullBlock.findAll({
+            attributes: ['hash', 'minerId', 'difficulty'], where: {epoch: epochNumber}, raw: true,
+        });
+        const blockInfoMap = {};
+        blockArray.forEach(block => blockInfoMap[block.hash] = {minerId: block.minerId, difficulty: block.difficulty})
+
+        const statInfo = {};
+        blockList.forEach(block => {
+            const blockInfo = blockInfoMap[block.hash];
+            const minerId = blockInfo.minerId;
+            const difficulty = blockInfo.difficulty;
+            if(minerId !== 0) {
+                statInfo[minerId] = statInfo[minerId] === undefined ? [0, 0, 0, 0] :  statInfo[minerId];
+                statInfo[minerId][0] = statInfo[minerId][0] + 1;
+                statInfo[minerId][1] = BigInt(statInfo[minerId][1]) + block.totalReward;
+                statInfo[minerId][2] = BigInt(statInfo[minerId][2]) + block.txFee;
+                statInfo[minerId][3] = statInfo[minerId][3] + difficulty;
+            }
+        });
+
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_MINER_BLOCK_Q).then();
+    }
+
+    // scan-block
     public static async notifyStatAddrCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         const statInfo = {};
         cfxTransferArray.forEach(transfer => {
@@ -59,6 +107,7 @@ export class StatNotifier {
         return RedisWrap.sendStreamMessage(msg, STREAM_STAT_ADDR_CFX_TRANSFER_Q).then();
     }
 
+    // scan-block
     public static async notifyStatDailyCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         if(!cfxTransferArray?.length){
             return ;
@@ -66,32 +115,6 @@ export class StatNotifier {
         const statInfo = {0: [cfxTransferArray.length]};
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_CFX_TRANSFER_Q).then();
-    }
-
-    public static async notifyStatDailyTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
-        if(!tokenTransfer?.length){
-            return ;
-        }
-        const statInfo = {0: [tokenTransfer.length]};
-        const msg = {epochNumber, epochTimestamp, action, statInfo};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_TOKEN_TRANSFER_Q).then();
-    }
-
-    public static async notifyStatMinerBlock({epochNumber, epochTimestamp, action, blockList}){
-        const statInfo = {};
-        blockList.forEach(block => {
-            const minerId = block.minerId;
-            if(minerId !== 0) {
-                statInfo[minerId] = statInfo[minerId] === undefined ? [0, 0, 0, 0] :  statInfo[minerId];
-                statInfo[minerId][0] = statInfo[minerId][0] + 1;
-                statInfo[minerId][1] = statInfo[minerId][1] + block.totalReward;
-                statInfo[minerId][2] = statInfo[minerId][2] + block.txFee;
-                statInfo[minerId][3] = statInfo[minerId][3] + block.difficulty;
-            }
-        });
-
-        const msg = {epochNumber, epochTimestamp, action, statInfo};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_MINER_BLOCK_Q).then();
     }
 
     private static filter({msg}) {
