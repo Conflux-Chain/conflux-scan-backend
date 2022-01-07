@@ -30,7 +30,7 @@ async function check(epoch:number) {
         const exeTxCnt = receipts2d[bIdx].filter(tx=>tx.outcomeStatus === 0 || tx.outcomeStatus === 1).length
         const preExeTxCnt = blocks[bIdx].executedTxnCount;
         checkInfo.push({epoch, blockIdx: bIdx, wrongTxCnt: preExeTxCnt,
-        rightTxCnt: exeTxCnt, epochTime: null})
+        rightTxCnt: exeTxCnt, epochTime: null, avgGasPrice: BigInt(0)})
         if (preExeTxCnt < exeTxCnt) {
             needFix = true;
         } else if (preExeTxCnt > exeTxCnt) {
@@ -57,6 +57,7 @@ async function buildTxFromReceipt(epoch: number,receipts2d: TransactionReceipt[]
     const addrIdSet = new Set<number>()
     for (let cIdx = 0; cIdx < checkInfoArr.length; cIdx++) {
         const bIdx = checkInfoArr[cIdx].blockIdx
+        checkInfoArr[cIdx].epochTime = epochTime;
         const txInBlock = receipts2d[bIdx];
         if (txInBlock.length === 0) {
             continue;
@@ -106,7 +107,6 @@ async function buildTxFromReceipt(epoch: number,receipts2d: TransactionReceipt[]
         if (sumGasPrice) {
             checkInfoArr[cIdx].avgGasPrice = sumGasPrice / BigInt(txPos+1)
         }
-        checkInfoArr[cIdx].epochTime = epochTime;
     }
     return {txArr, txByAddressArr, failedTxArr, pivotBlock, addrIdArr: [...addrIdSet]}
 }
