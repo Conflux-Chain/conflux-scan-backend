@@ -205,7 +205,7 @@ export abstract class PruneBase {
         return {addressId, contractId};
     }
 
-    private async updateTransferCounter({type, addressId}){
+    protected async updateTransferCounter({type, addressId}){
         if(this.TYPE_TOKEN_TRANSFER.has(type)){
             const prunedRows = await PruneBase.getPrunedRows({type, addressId});
             if(prunedRows > 0){

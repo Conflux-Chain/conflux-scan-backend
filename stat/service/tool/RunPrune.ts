@@ -7,7 +7,9 @@ import {init} from "./FixDailyTokenStat";
 class TransferPrune extends PruneTransfer {
     constructor(app) {
         super(app);
-        this.TYPE_TOKEN_TRANSFER.clear(); // prevent update transfer count.
+    }
+    protected async updateTransferCounter({type, addressId}){
+        // prevent update transfer count.
     }
 }
 async function prune({typeStr, addrStr, del, sleep}) {
