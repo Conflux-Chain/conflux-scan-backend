@@ -138,34 +138,33 @@ export class Token extends Model<IToken> implements IToken{
 }
 export interface INftMint {
     id?:number
-    contractId:number
-    tokenId:string
-    txHashId:number
-    createdAt:Date
+    epoch: number
+    contractId: number
+    blockIndex: number
+    txIndex: number
     toId: number
-    updatedAt:Date
+    tokenId:string
 }
 export class NftMint extends Model<INftMint> implements INftMint {
     id?:number
-    contractId:number
-    tokenId:string
-    txHashId:number
-    createdAt:Date
+    epoch: number
+    contractId: number
+    blockIndex: number
+    txIndex: number
     toId: number
-    updatedAt:Date
+    tokenId:string
     static register(seq:Sequelize) {
         NftMint.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             tokenId: {type: DataTypes.STRING(78), allowNull: false, },
-            txHashId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
-            createdAt: {type: DataTypes.DATE, allowNull: false, },
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
             toId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
-            updatedAt: {type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.fn('now')},
         },{
             sequelize: seq,
-            tableName: 'nft_mint',
-            timestamps: false,
+            tableName: 'nft_mint_2',
             indexes: [
                 {name: 'idx_ctct_tid', fields:['contractId','tokenId'], unique: true},
                 {name: 'idx_ctct_update', fields:['contractId','updatedAt'], },

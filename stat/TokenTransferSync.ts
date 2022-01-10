@@ -20,6 +20,7 @@ import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {sleep} from "./service/tool/ProcessTool";
+import {NftMint} from "./model/Token";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -166,6 +167,11 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
             await fn(e, dt)
         }
     }
+    function buildNfts(list, arr) {
+        list.forEach(t=>{
+            arr.push(t)
+        })
+    }
     async function fetchAndBuild(epoch: number) {
         const [receipts, blockHashes, block] = await Promise.all([
             cfx.getEpochReceipts(epoch).then(res=>{
@@ -190,9 +196,12 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         await buildTransfer(t20, buildErc20Transfer, dt);
         await buildTransfer(t721, buildErc721Transfer, dt);
         await buildTransfer(t1155, buildErc721Transfer, dt);
+        const nfts = []
+        buildNfts(t721, nfts)
+        buildNfts(t1155, nfts)
         // build data out of transaction, reduce tx time.
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
-        return {t20, t20addr, t721, t721addr, t1155, t1155addr, dt, pivotHash, parentHash: block.parentHash}
+        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, dt, pivotHash, parentHash: block.parentHash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
@@ -286,12 +295,13 @@ async function finishTask(epoch) {
     await EpochTaskTokenTransfer.update({finished: true}, {where: {epoch}})
     console.log(` ---- finish task ${epoch} ---- `)
 }
-async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155addr, pivotHash}, taskBegin:number) {
+async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155addr, pivotHash, nfts}, taskBegin:number) {
     return KV.sequelize.transaction(dbTx=>{
         return Promise.all([
             batchSaveTransfer(Erc20Transfer, AddressErc20Transfer, t20, t20addr, dbTx),
             batchSaveTransfer(Erc721Transfer, AddressErc721Transfer, t721, t721addr, dbTx),
             batchSaveTransfer(Erc1155Transfer, AddressErc1155Transfer, t1155, t1155addr, dbTx),
+            NftMint.bulkCreate(nfts, {transaction: dbTx}),
             EpochHashTokenTransfer.create({epoch, hash: pivotHash},{transaction: dbTx}),
             EpochTaskTokenTransfer.update(
                 {cursor: epoch, },
