@@ -55,6 +55,11 @@ export class PruneTransfer extends PruneBase {
         if (this.TYPE_ADDR_TOKEN_TRANSFER.has(type) || PruneType.ADDR_CFX_TRANSFER === type) {
             return {where: {addressId}, key: {id: addressId, type}};
         }
-        return {where: undefined, key: {id: 0, type}};
+        throw new Error(`should be [address_]token_transfer.`);
+    }
+
+    protected getPruneQuery({type, where, maxToPrune}: { type: any; where: any; maxToPrune: any }): NonNullable<{ id: {} }> {
+        // do not filter by maxToPrune.id
+        return where;
     }
 }
