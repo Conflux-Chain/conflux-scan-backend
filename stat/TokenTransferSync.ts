@@ -233,9 +233,9 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
             ]);
         }
         try {
-            notifyPrune(PruneType.ERC20_TRANSFER, epoch.ids20, PruneType.ADDR_ERC20_TRANSFER).then()
-            notifyPrune(PruneType.ERC721_TRANSFER, epoch.ids20, PruneType.ADDR_ERC721_TRANSFER).then()
-            notifyPrune(PruneType.ERC1155_TRANSFER, epoch.ids20, PruneType.ADDR_ERC1155_TRANSFER).then()
+            notifyPrune(PruneType.ERC20_TRANSFER, finalData.ids20, PruneType.ADDR_ERC20_TRANSFER).then()
+            notifyPrune(PruneType.ERC721_TRANSFER, finalData.ids721, PruneType.ADDR_ERC721_TRANSFER).then()
+            notifyPrune(PruneType.ERC1155_TRANSFER, finalData.ids1155, PruneType.ADDR_ERC1155_TRANSFER).then()
         } catch (e) {
             console.log(`notify prune fail:`, e)
         }
