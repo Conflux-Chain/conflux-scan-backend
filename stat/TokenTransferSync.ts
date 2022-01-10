@@ -178,6 +178,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     }
     function buildNfts(list, arr) {
         list.forEach(t=>{
+            t.updatedAt = t.createdAt
             arr.push(t)
         })
     }
@@ -491,8 +492,11 @@ if (module === require.main) {
     // N  : use task N if it's not finished, fallback to *.
     // *  : auto create based on max task.
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
+    if (process.argv.includes('prune')) {
+        PruneNotifier.SWITCH_SYNC_PRUNE = true;
+    }
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)
         process.exit(1)
-    })
+    });
 }
