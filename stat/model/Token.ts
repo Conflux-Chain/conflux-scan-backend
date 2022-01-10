@@ -144,6 +144,7 @@ export interface INftMint {
     txIndex: number
     toId: number
     tokenId:string
+    updatedAt:Date
 }
 export class NftMint extends Model<INftMint> implements INftMint {
     id?:number
@@ -153,6 +154,7 @@ export class NftMint extends Model<INftMint> implements INftMint {
     txIndex: number
     toId: number
     tokenId:string
+    updatedAt:Date
     static register(seq:Sequelize) {
         NftMint.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
@@ -162,6 +164,7 @@ export class NftMint extends Model<INftMint> implements INftMint {
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             toId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            updatedAt: {type: DataTypes.DATE, allowNull: false, },
         },{
             sequelize: seq,
             tableName: 'nft_mint_2',

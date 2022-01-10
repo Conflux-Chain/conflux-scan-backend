@@ -21,6 +21,8 @@ import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {sleep} from "./service/tool/ProcessTool";
 import {NftMint} from "./model/Token";
+import {PruneNotifier} from "./service/prune/PruneNotifier";
+import {PruneType} from "./model/PruneInfo";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -163,9 +165,15 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     // parentHash, also indicates whether checking parent hash.
     let parentHash = await waitParentHashDB(task, task.cursor)
     async function buildTransfer(arr:any[], fn, dt) {
+        const contractIds = new Set<number>()
+        const addrIds = new Set<number>()
         for (let e of arr) {
             await fn(e, dt)
+            contractIds.add(e.contractId)
+            addrIds.add(e.fromId)
+            addrIds.add(e.toId)
         }
+        return {contractIds: [...contractIds], addrIds: [...addrIds]}
     }
     function buildNfts(list, arr) {
         list.forEach(t=>{
@@ -193,15 +201,15 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         const {t20:t20raw, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, dt, blockHashes);
         const t20 = aggregateTransfer(t20raw)
         // after all id is cached, it's almost cpu computation.
-        await buildTransfer(t20, buildErc20Transfer, dt);
-        await buildTransfer(t721, buildErc721Transfer, dt);
-        await buildTransfer(t1155, buildErc721Transfer, dt);
+        const ids20 = await buildTransfer(t20, buildErc20Transfer, dt);
+        const ids721 = await buildTransfer(t721, buildErc721Transfer, dt);
+        const ids1155 = await buildTransfer(t1155, buildErc721Transfer, dt);
         const nfts = []
         buildNfts(t721, nfts)
         buildNfts(t1155, nfts)
         // build data out of transaction, reduce tx time.
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
-        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, dt, pivotHash, parentHash: block.parentHash}
+        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, ids20, ids721, ids1155, dt, pivotHash, parentHash: block.parentHash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
@@ -213,6 +221,22 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         }
         if (parentHash) { // checking mode.
             parentHash = finalData['pivotHash'];
+        }
+        async function notifyPrune(type, {contractIds, addrIds}, addrType) {
+            if (contractIds.length === 0) {
+                return;
+            }
+            return Promise.all([
+                PruneNotifier.notifyPrune({[type]:contractIds}),
+                PruneNotifier.notifyPrune({[addrType]:addrIds}),
+            ]);
+        }
+        try {
+            notifyPrune(PruneType.ERC20_TRANSFER, epoch.ids20, PruneType.ADDR_ERC20_TRANSFER).then()
+            notifyPrune(PruneType.ERC721_TRANSFER, epoch.ids20, PruneType.ADDR_ERC721_TRANSFER).then()
+            notifyPrune(PruneType.ERC1155_TRANSFER, epoch.ids20, PruneType.ADDR_ERC1155_TRANSFER).then()
+        } catch (e) {
+            console.log(`notify prune fail:`, e)
         }
         return finalData;
     }
