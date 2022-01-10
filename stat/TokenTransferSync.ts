@@ -42,7 +42,6 @@ implements IEpochHashTokenTransfer{
 }
 export interface IEpochTokenTransfer extends IEpochTask {
     cursor:number
-    pivotHash: string
     checkPivot?: boolean
 }
 export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implements IEpochTokenTransfer{
@@ -53,7 +52,6 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
     finished: boolean
 
     cursor: number;
-    pivotHash: string
     static register(seq: Sequelize) {
         EpochTaskTokenTransfer.init({
             epoch: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
@@ -62,7 +60,6 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
             createdAt: {type: DataTypes.DATE, allowNull: false},
             updatedAt: {type: DataTypes.DATE, allowNull: false},
             finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            pivotHash: {type: DataTypes.CHAR(66), allowNull: false},
         },{
             sequelize: seq, tableName: 'epoch_token_transfer',
         })
@@ -297,7 +294,7 @@ async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155add
             batchSaveTransfer(Erc1155Transfer, AddressErc1155Transfer, t1155, t1155addr, dbTx),
             EpochHashTokenTransfer.create({epoch, hash: pivotHash},{transaction: dbTx}),
             EpochTaskTokenTransfer.update(
-                {cursor: epoch, pivotHash:'not used'},
+                {cursor: epoch, },
                 {where:{epoch:taskBegin}, transaction:dbTx})
                 // .then(res=>{
                 //     console.log(` update cursor, epoch ${epoch} result `, res)
@@ -377,7 +374,7 @@ async function fetchTask(len:number, fromEpoch: number, cfx:Conflux ) : Promise<
         const now = new Date();
         const newOne:IEpochTokenTransfer = {epoch: preEnd, range: len,
             cursor: preEnd - 1, checkPivot,
-            finished: false, createdAt: now, updatedAt: now, pivotHash: ''}
+            finished: false, createdAt: now, updatedAt: now}
         let ok = false
         await EpochTaskTokenTransfer.create(newOne).then(()=>{
             console.log(`create task, epoch ${preEnd}`)
