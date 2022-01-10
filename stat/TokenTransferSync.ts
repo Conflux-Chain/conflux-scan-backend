@@ -327,7 +327,9 @@ async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155add
             batchSaveTransfer(Erc20Transfer, AddressErc20Transfer, t20, t20addr, dbTx),
             batchSaveTransfer(Erc721Transfer, AddressErc721Transfer, t721, t721addr, dbTx),
             batchSaveTransfer(Erc1155Transfer, AddressErc1155Transfer, t1155, t1155addr, dbTx),
-            NftMint.bulkCreate(nfts, {transaction: dbTx}),
+            NftMint.bulkCreate(nfts, {transaction: dbTx,
+                updateOnDuplicate:["updatedAt","toId","epoch","blockIndex","txIndex"],
+            }),
             EpochHashTokenTransfer.create({epoch, hash: pivotHash},{transaction: dbTx}),
             EpochTaskTokenTransfer.update(
                 {cursor: epoch, },
