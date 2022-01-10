@@ -65,7 +65,7 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
             updatedAt: {type: DataTypes.DATE, allowNull: false},
             finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
-            sequelize: seq, tableName: 'epoch_token_transfer',
+            sequelize: seq, tableName: 'task_token_transfer',
         })
     }
 }
