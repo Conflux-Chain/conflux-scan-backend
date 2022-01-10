@@ -8,63 +8,34 @@ import {
     STREAM_STAT_TOKEN_TRANSFER_Q
 } from "../RedisWrap";
 import {FullBlock} from "../../model/FullBlock";
-import {col, fn, Op} from "sequelize";
 
 export class StatNotifier {
 
-    public static SWITCH_STREAM_STAT = true;
+    public static SWITCH_STREAM_STAT = false;
+    // stat-block
+    public static SWITCH_STAT_MINER_BLOCK = false;
+    public static SWITCH_STAT_ADDR_TRANSACTION = false;
+    // scan-block
+    public static SWITCH_STAT_DAILY_CFX_TRANSFER = false;
+    public static SWITCH_STAT_ADDR_CFX_TRANSFER = false;
+    // stat-stat
+    public static SWITCH_STAT_TOKEN_TRANSFER = false;
+    public static SWITCH_STAT_DAILY_TOKEN_TRANSFER = false;
+
 
     public static async notifyStat({msg, q}) {
-        if (!StatNotifier.filter({msg})) {
+        if (!StatNotifier.filter({msg, q})) {
             return;
         }
         return RedisWrap.sendStreamMessage(msg, q).then();
     }
 
-    // stat-stat
-    public static async notifyStatTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
-        const msg = {epochNumber, epochTimestamp, action, statInfo: tokenTransfer};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_TOKEN_TRANSFER_Q).then();
-    }
-
-    // stat-stat
-    public static async notifyStatDailyTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
-        const addrIdArray = Object.keys(tokenTransfer)
-        if(!addrIdArray?.length){
-            return ;
-        }
-
-        let transferCntr = 0;
-        addrIdArray.forEach(addrId => {
-            transferCntr += tokenTransfer[addrId];
-        });
-
-        const statInfo = {0: [transferCntr]};
-        const msg = {epochNumber, epochTimestamp, action, statInfo};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_TOKEN_TRANSFER_Q).then();
-    }
-
-    // stat-block
-    public static async notifyStatAddrTransaction({epochNumber, epochTimestamp, action, txnArray}){
-        const statInfo = {};
-        txnArray.forEach(txn => {
-            if(txn.fromId !== 0) {
-                statInfo[txn.fromId] = statInfo[txn.fromId] === undefined ? [0, 0, 0] :  statInfo[txn.fromId];
-                statInfo[txn.fromId][0] = statInfo[txn.fromId][0] + 1;
-                statInfo[txn.fromId][2] = BigInt(statInfo[txn.fromId][2]) + txn.gas;
-            }
-            if(txn.toId !== 0) {
-                statInfo[txn.toId] = statInfo[txn.toId] === undefined ? [0, 0, 0] :  statInfo[txn.toId];
-                statInfo[txn.toId][1] = statInfo[txn.toId][1] + 1;
-            }
-        });
-
-        const msg = {epochNumber, epochTimestamp, action, statInfo};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_ADDR_TRANSACTION_Q).then();
-    }
-
     // stat-block
     public static async notifyStatMinerBlock({epochNumber, epochTimestamp, action, blockList}){
+        if (!StatNotifier.SWITCH_STAT_MINER_BLOCK) {
+            return;
+        }
+
         const blockArray = await FullBlock.findAll({
             attributes: ['hash', 'minerId', 'difficulty'], where: {epoch: epochNumber}, raw: true,
         });
@@ -86,11 +57,53 @@ export class StatNotifier {
         });
 
         const msg = {epochNumber, epochTimestamp, action, statInfo};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_MINER_BLOCK_Q).then();
+        return StatNotifier.notifyStat({msg, q: STREAM_STAT_MINER_BLOCK_Q});
+    }
+
+    // stat-block
+    public static async notifyStatAddrTransaction({epochNumber, epochTimestamp, action, txnArray}){
+        if (!StatNotifier.SWITCH_STAT_ADDR_TRANSACTION) {
+            return;
+        }
+
+        const statInfo = {};
+        txnArray.forEach(txn => {
+            if(txn.fromId !== 0) {
+                statInfo[txn.fromId] = statInfo[txn.fromId] === undefined ? [0, 0, 0] :  statInfo[txn.fromId];
+                statInfo[txn.fromId][0] = statInfo[txn.fromId][0] + 1;
+                statInfo[txn.fromId][2] = BigInt(statInfo[txn.fromId][2]) + txn.gas;
+            }
+            if(txn.toId !== 0) {
+                statInfo[txn.toId] = statInfo[txn.toId] === undefined ? [0, 0, 0] :  statInfo[txn.toId];
+                statInfo[txn.toId][1] = statInfo[txn.toId][1] + 1;
+            }
+        });
+
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return StatNotifier.notifyStat({msg, q: STREAM_STAT_ADDR_TRANSACTION_Q});
+    }
+
+    // scan-block
+    public static async notifyStatDailyCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
+        if (!StatNotifier.SWITCH_STAT_DAILY_CFX_TRANSFER) {
+            return;
+        }
+
+        if(!cfxTransferArray?.length){
+            return ;
+        }
+
+        const statInfo = {0: [cfxTransferArray.length]};
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        return StatNotifier.notifyStat({msg, q: STREAM_STAT_DAILY_CFX_TRANSFER_Q});
     }
 
     // scan-block
     public static async notifyStatAddrCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
+        if (!StatNotifier.SWITCH_STAT_ADDR_CFX_TRANSFER) {
+            return;
+        }
+
         const statInfo = {};
         cfxTransferArray.forEach(transfer => {
             if(transfer.fromId !== 0) {
@@ -104,20 +117,40 @@ export class StatNotifier {
         });
 
         const msg = {epochNumber, epochTimestamp, action, statInfo};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_ADDR_CFX_TRANSFER_Q).then();
+        return StatNotifier.notifyStat({msg, q: STREAM_STAT_ADDR_CFX_TRANSFER_Q});
     }
 
-    // scan-block
-    public static async notifyStatDailyCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
-        if(!cfxTransferArray?.length){
+    // stat-stat
+    public static async notifyStatTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
+        if (!StatNotifier.SWITCH_STAT_TOKEN_TRANSFER) {
+            return;
+        }
+        const msg = {epochNumber, epochTimestamp, action, statInfo: tokenTransfer};
+        return StatNotifier.notifyStat({msg, q: STREAM_STAT_TOKEN_TRANSFER_Q});
+    }
+
+    // stat-stat
+    public static async notifyStatDailyTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
+        if (!StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER) {
+            return;
+        }
+
+        const addrIdArray = Object.keys(tokenTransfer)
+        if(!addrIdArray?.length){
             return ;
         }
-        const statInfo = {0: [cfxTransferArray.length]};
+
+        let transferCntr = 0;
+        addrIdArray.forEach(addrId => {
+            transferCntr += tokenTransfer[addrId];
+        });
+
+        const statInfo = {0: [transferCntr]};
         const msg = {epochNumber, epochTimestamp, action, statInfo};
-        return RedisWrap.sendStreamMessage(msg, STREAM_STAT_DAILY_CFX_TRANSFER_Q).then();
+        return StatNotifier.notifyStat({msg, q: STREAM_STAT_DAILY_TOKEN_TRANSFER_Q});
     }
 
-    private static filter({msg}) {
+    private static filter({msg, q}) {
         return StatNotifier.SWITCH_STREAM_STAT === true;
     }
 }

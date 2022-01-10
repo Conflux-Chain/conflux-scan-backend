@@ -13,7 +13,7 @@ export class AddrCfxTransferHandler extends StatHandler {
     protected app: StatApp;
     protected statLatestDays: number;
 
-    public constructor(app: StatApp) {
+    public constructor(app: any) {
         super(app);
         this.app = app;
         this.statLatestDays = 7;

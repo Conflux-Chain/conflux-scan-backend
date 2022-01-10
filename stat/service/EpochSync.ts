@@ -397,7 +397,7 @@ export class EpochSync extends SyncBase{
             RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q)
                 .catch(e => console.log(`epoch-sync.notifyTransferTps epoch:${epochNumber}`, e));
         }
-        if(this.app.config.statTokenTransfer && Object.keys(eventLogStat.tokenTransfer).length > 0){
+        if(Object.keys(eventLogStat.tokenTransfer).length > 0){
             const msg = {epochNumber, epochTimestamp, action: 'push', tokenTransfer: eventLogStat.tokenTransfer};
             StatNotifier.notifyStatTokenTransfer(msg)
                 .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e));

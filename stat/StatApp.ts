@@ -51,6 +51,7 @@ import {AddrCfxTransferHandler} from "./service/streamstat/business/AddrCfxTrans
 import {DailyCfxTransferHandler} from "./service/streamstat/business/DailyCfxTransferHandler";
 import {DailyTokenTransferHandler} from "./service/streamstat/business/DailyTokenTransferHandler";
 import {MinerBlockHandler} from "./service/streamstat/business/MinerBlockHandler";
+import {StatNotifier} from "./service/streamstat/StatNotifier";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -238,23 +239,10 @@ export class StatApp{
             await this.transferTpsService.scheduleRefreshConfig();
             await this.transferTpsService.schedule();
         }
-        if (this.config.statTokenTransfer) {
-            await this.tokenTransferHandler.schedule();
-        }
-        if(this.config.statAddrTransaction) {
-            await this.addrTransactionHandler.schedule();
-        }
-        if(this.config.statAddrCfxTransfer) {
-            await this.addrCfxTransferHandler.schedule();
-        }
-        if(this.config.statDailyCfxTransfer) {
-            await this.dailyCfxTransferHandler.schedule();
-        }
-        if(this.config.statDailyTokenTransfer) {
-            await this.dailyTokenTransferHandler.schedule();
-        }
-        if(this.config.statMinerBlock) {
-            await this.minerBlockHandler.schedule();
+        if (this.config.streamStat) {
+            StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
+            StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
+            StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
