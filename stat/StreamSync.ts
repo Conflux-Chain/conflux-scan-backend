@@ -250,7 +250,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
 async function fetchAll(addressArr, contractHex40, result:any[]) {
     let size = 100;
     do {
-        const chunks2d: PosAccount[][] = lodash.chunk(addressArr, size);
+        const chunks2d: any[][] = lodash.chunk(addressArr, size);
         for (let ids of chunks2d) {
 
             try {
