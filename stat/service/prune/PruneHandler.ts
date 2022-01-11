@@ -106,7 +106,7 @@ export class PruneHandler {
                     } else{
                         counterMap[addressId] ++;
                     }
-                    if(counterMap[addressId] % PruneHandler.NOTIFY_INTERVAL !== 0){
+                    if(counterMap[addressId] < PruneHandler.NOTIFY_INTERVAL){
                         continue;
                     }
                     delete counterMap[addressId];

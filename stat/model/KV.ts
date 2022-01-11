@@ -50,10 +50,10 @@ export class KV extends Model<IKV> implements IKV {
         return str
     }
 
-    static async getNumber(key: string): Promise<number> {
+    static async getNumber(key: string, defaultV = null): Promise<number> {
         const str = (await KV.findOne({where: {key}}) || {}).value
         if (str === null) {
-            return Promise.resolve(null);
+            return Promise.resolve(defaultV);
         }
         return Promise.resolve(parseInt(str))
     }
