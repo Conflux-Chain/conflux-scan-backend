@@ -229,8 +229,8 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         const contractHex40 = `0x${contractHex}`;
         let banList = [];
         await fetchAll(addressArr, contractHex40, banList)
-        showLog && console.log(` \n balance list:`, banList)
-        showLog && console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
+        showLog && console.log(`balance list:`, banList.length)
+        // showLog && console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
         const model = new DynamicBalanceModel(contractId)
         let i = 0
         const tasks = []

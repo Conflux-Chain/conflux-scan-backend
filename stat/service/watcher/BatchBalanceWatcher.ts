@@ -153,8 +153,8 @@ export async function addTransferInfo(arr:{fromId:number, toId:number, contractI
         item.toId !== zeroAddrId && adSet.add(item.toId)
     });
     const map = transferInfoMap;
-    updateTotalSupply(cfx, [...map.keys()]).then()
-    handleTokenTransferWithContract(map, false).then()
+    await updateTotalSupply(cfx, [...map.keys()])
+    await handleTokenTransferWithContract(map, true)
 }
 async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
     if (!tokenTool) {
