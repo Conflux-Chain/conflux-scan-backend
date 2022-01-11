@@ -15,7 +15,6 @@ export abstract class PruneBase {
     public static SLEEP_MS_PER_LOOP = 20;
     public static DEL_ROWS_PER_LOOP = 500;
     public static DEL_ROWS_MAX_PER_LOOP = 50_000;
-    public static updateTokenTransferCount = true
     public static metrics = {
         sampling: 0,
     };
@@ -207,7 +206,7 @@ export abstract class PruneBase {
     }
 
     protected async updateTransferCounter({type, addressId}){
-        if (!PruneBase.updateTokenTransferCount) {
+        if (process.env.noUpdateTokenTransferCount) {
             return;
         }
         if(this.TYPE_TOKEN_TRANSFER.has(type)){

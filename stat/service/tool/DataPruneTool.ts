@@ -138,12 +138,8 @@ async function run() {
     const app = {cfx};
     if(type === 1){
         pruneHandler = new PruneHandler(app);
-        if (process.argv.includes('noUpdateTokenTransferCount')) {
-            PruneBase.updateTokenTransferCount = false;
-        }
         await pruneHandler.scheduleRefreshConfig();
         await pruneHandler.schedule(10);
-        return
     }
     if(type === 2){
         const message = {
@@ -234,7 +230,7 @@ const args = process.argv.slice(2)
 if(args[0]){
     type = Number(args[0]);
 }
-if(args[1] && args[1] !== 'noUpdateTokenTransferCount'){
+if(args[1]){
     contractId = Number(args[1]);
 }
 if(args[2]){
