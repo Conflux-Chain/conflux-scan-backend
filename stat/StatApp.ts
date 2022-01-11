@@ -45,12 +45,6 @@ import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
-import {TokenTransferHandler} from "./service/streamstat/business/TokenTransferHandler";
-import {AddrTransactionHandler} from "./service/streamstat/business/AddrTransactionHandler";
-import {AddrCfxTransferHandler} from "./service/streamstat/business/AddrCfxTransferHandler";
-import {DailyCfxTransferHandler} from "./service/streamstat/business/DailyCfxTransferHandler";
-import {DailyTokenTransferHandler} from "./service/streamstat/business/DailyTokenTransferHandler";
-import {MinerBlockHandler} from "./service/streamstat/business/MinerBlockHandler";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 patchFormat();
 export class StatApp{
@@ -90,12 +84,6 @@ export class StatApp{
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
     public pruneHandler: PruneHandler;
     public transferTpsService: TransferTpsService;
-    public tokenTransferHandler: TokenTransferHandler;
-    public addrTransactionHandler: AddrTransactionHandler;
-    public addrCfxTransferHandler: AddrCfxTransferHandler;
-    public dailyCfxTransferHandler: DailyCfxTransferHandler;
-    public dailyTokenTransferHandler: DailyTokenTransferHandler;
-    public minerBlockHandler: MinerBlockHandler;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -178,12 +166,6 @@ export class StatApp{
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
         this.pruneHandler = new PruneHandler(this);
         this.transferTpsService = new TransferTpsService(this);
-        this.tokenTransferHandler = new TokenTransferHandler(this);
-        this.addrTransactionHandler = new AddrTransactionHandler(this);
-        this.addrCfxTransferHandler = new AddrCfxTransferHandler(this);
-        this.dailyCfxTransferHandler = new DailyCfxTransferHandler(this);
-        this.dailyTokenTransferHandler = new DailyTokenTransferHandler(this);
-        this.minerBlockHandler = new MinerBlockHandler(this);
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
@@ -233,7 +215,6 @@ export class StatApp{
         if (this.config.syncPrune) {
             PruneNotifier.SWITCH_SYNC_PRUNE = this.config.syncPrune;
             await this.pruneHandler.scheduleRefreshConfig();
-            // await this.pruneHandler.schedule();
         }
         if (this.config.syncTransferTps) {
             await this.transferTpsService.scheduleRefreshConfig();
@@ -247,6 +228,4 @@ export class StatApp{
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
     }
-
 }
-

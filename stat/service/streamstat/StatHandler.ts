@@ -22,14 +22,14 @@ export abstract class StatHandler {
         const that = this
 
         async function repeat() {
-            await that.collectBucket().catch(err => {
-                console.log(`[type=${that.bizAlias()}]stream_stat_collect_buckets fail: `, err);
+            await that.collect().catch(err => {
+                console.log(`[type=${that.bizAlias()}]stream_stat_collect fail: `, err);
             });
             setTimeout(repeat, delay);
         }
 
         repeat().then();
-        console.log(`[type=${this.bizAlias()}]schedule stream_stat_collect_buckets service in 1s interval`);
+        console.log(`[type=${this.bizAlias()}]schedule stream_stat_collect service in 1s interval`);
     }
 
     protected async listen() {
@@ -132,5 +132,5 @@ export abstract class StatHandler {
 
     protected abstract rollupBucket({statId, bucketArray, reservedBuckets});
 
-    protected abstract collectBucket();
+    protected abstract collect();
 }

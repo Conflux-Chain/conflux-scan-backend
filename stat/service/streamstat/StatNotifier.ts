@@ -22,7 +22,6 @@ export class StatNotifier {
     public static SWITCH_STAT_TOKEN_TRANSFER = false;
     public static SWITCH_STAT_DAILY_TOKEN_TRANSFER = false;
 
-
     public static async notifyStat({msg, q}) {
         if (!StatNotifier.filter({msg, q})) {
             return;

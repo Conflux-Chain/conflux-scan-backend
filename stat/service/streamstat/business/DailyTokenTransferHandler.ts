@@ -101,7 +101,7 @@ export class DailyTokenTransferHandler extends StatHandler {
         });
     }
 
-    public async collectBucket() {
+    public async collect() {
         const trigger = this.bizStatInfo.trigger();
         if(!trigger) return;
 

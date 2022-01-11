@@ -111,7 +111,7 @@ export class TokenTransferHandler extends StatHandler {
         });
     }
 
-    public async collectBucket() {
+    public async collect() {
         const trigger = await this.bizStatInfo.trigger();
         if(!trigger) return;
 
