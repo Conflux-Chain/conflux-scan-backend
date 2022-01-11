@@ -138,8 +138,12 @@ async function run() {
     const app = {cfx};
     if(type === 1){
         pruneHandler = new PruneHandler(app);
+        if (process.argv.includes('noUpdateTokenTransferCount')) {
+            PruneBase.updateTokenTransferCount = false;
+        }
         await pruneHandler.scheduleRefreshConfig();
         await pruneHandler.schedule(10);
+        return
     }
     if(type === 2){
         const message = {
