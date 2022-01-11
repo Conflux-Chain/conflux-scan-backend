@@ -6,7 +6,29 @@ import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
 import {StatApp} from "../StatApp";
 import {popPartition} from "./ErcTransfer";
-
+export interface IContractUser {
+    id?: number
+    contractId: number
+    fromId: number
+    toId: number
+}
+// used to update total supply and holder. records is deleted after processing.
+export class ContractUser extends Model<IContractUser> implements IContractUser {
+    id:number
+    contractId: number
+    fromId: number
+    toId: number
+    static register(seq:Sequelize) {
+        ContractUser.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+        }, {
+            sequelize: seq, tableName: 'contract_user'
+        })
+    }
+}
 export interface ITokenTransfer {
     createdAt: Date
     blockIndex: number;

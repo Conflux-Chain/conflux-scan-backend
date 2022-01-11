@@ -12,7 +12,7 @@ import {TokenTool} from "./service/tool/TokenTool";
 import {
     AddressErc20Transfer,
     aggregateTransfer,
-    buildErc20Transfer, buildTransferList2address,
+    buildErc20Transfer, buildTransferList2address, ContractUser,
     Erc20Transfer,
 } from "./model/Erc20Transfer";
 import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
@@ -128,6 +128,7 @@ async function batchSaveTransfer(mainModel, addrModel, arr, dataForAddr, dbTx) {
     return Promise.all([
         mainModel.bulkCreate(arr, {transaction: dbTx}),
         addrModel.bulkCreate(dataForAddr, {transaction: dbTx}),
+        ContractUser.bulkCreate(arr, {transaction: dbTx}),
     ])
 }
 async function waitParentHashDB(task: IEpochTokenTransfer, parentEpoch:number) : Promise<string> {
