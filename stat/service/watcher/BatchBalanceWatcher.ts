@@ -95,6 +95,7 @@ async function run() {
     const [,,url,limitStr] = process.argv;
     const cfx = new Conflux({url});
     patchHttpProvider(cfx, {url})
+    await cfx.updateNetworkId();
     await init();
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
