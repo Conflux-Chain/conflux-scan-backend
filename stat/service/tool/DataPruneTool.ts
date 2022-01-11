@@ -234,7 +234,7 @@ const args = process.argv.slice(2)
 if(args[0]){
     type = Number(args[0]);
 }
-if(args[1]){
+if(args[1] && args[1] !== 'noUpdateTokenTransferCount'){
     contractId = Number(args[1]);
 }
 if(args[2]){
