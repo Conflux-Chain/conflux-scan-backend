@@ -1,3 +1,4 @@
+const lodash = require('lodash');
 import {loadConfig, StatConfig} from "./config/StatConfig";
 import {
     ERC1155_TRANSFER_Q,
@@ -226,15 +227,8 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         }
         const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
         const contractHex40 = `0x${contractHex}`;
-        let banList: any;
-        try {
-            banList = await BatchBalanceWatcher.allTokenContract.getBalances(addressArr, contractHex40);
-        } catch (e) {
-            console.log(` call balance utils contract fail, [${
-                addressArr.map(addr=>format.address(addr, StatApp.networkId)).map(s=>`"${s}"`).join(',')
-            }], contract ${format.address(contractHex40, StatApp.networkId)}`, e)
-            continue
-        }
+        let banList = [];
+        await fetchAll(addressArr, contractHex40, banList)
         showLog && console.log(` \n balance list:`, banList)
         showLog && console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
         const model = new DynamicBalanceModel(contractId)
@@ -252,6 +246,27 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             }, original addresses length: ${addressIds.length}, balance list length ${banList.length}`)
         }
     }
+}
+async function fetchAll(addressArr, contractHex40, result:any[]) {
+    let size = 100;
+    do {
+        const chunks2d: PosAccount[][] = lodash.chunk(addressArr, size);
+        for (let ids of chunks2d) {
+
+            try {
+                const banList = await BatchBalanceWatcher.allTokenContract.getBalances(ids, contractHex40);
+                result.push(...banList);
+            } catch (e) {
+                console.log(` call balance utils contract fail, batch size ${size}, \n [${
+                    addressArr.map(addr => format.address(addr, StatApp.networkId)).map(s => `"${s}"`).join('\n')
+                }] \n contract ${format.address(contractHex40, StatApp.networkId)}`, e)
+                size = Math.floor(size / 2)
+                break;
+            }
+
+        }
+        break;
+    } while (size > 0)
 }
 async function setupZeroAddressId() {
     const zeroHex = '0x'+'0'.padStart(40, '0')

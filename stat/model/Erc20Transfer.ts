@@ -25,7 +25,8 @@ export class ContractUser extends Model<IContractUser> implements IContractUser 
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
         }, {
-            sequelize: seq, tableName: 'contract_user'
+            sequelize: seq, tableName: 'contract_user',
+            timestamps: false,
         })
     }
 }
