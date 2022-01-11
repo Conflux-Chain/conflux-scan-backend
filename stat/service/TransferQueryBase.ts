@@ -207,7 +207,6 @@ export abstract class TransferQueryBase {
 
         // add pruned total
         let prunedCntr = 0;
-        /* not pruned yet.
         const optionObj = {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
@@ -223,7 +222,6 @@ export abstract class TransferQueryBase {
                 prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
             }
         }
-*/
         const result = {total: (page?.count || 0) + prunedCntr, list};
         return result;
     }

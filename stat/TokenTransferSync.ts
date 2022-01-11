@@ -24,6 +24,7 @@ import {NftMint} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
+import {FullTransaction} from "./model/FullBlock";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -261,6 +262,16 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     }
     const loader = new PreLoader(cfx, fetchAndBuild, 3, stopBeforeEpoch);
     loader.preLoadSize = 10;
+    // should not higher than tx sync, otherwise the transaction hash may can not be found.
+    let maxEpochInTx = 0;
+    async function updateMaxTxEpoch() {
+        const maxE = await FullTransaction.max('epoch')
+        if (typeof maxE !== 'number') {
+            return;
+        }
+        maxEpochInTx = maxE;
+    }
+    await updateMaxTxEpoch()
     let firstWait = true
     async function repeat() {
         return repeat0().catch(err=>{
@@ -268,6 +279,11 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         })
     }
     async function repeat0() {
+        if (epoch>maxEpochInTx) {
+            await updateMaxTxEpoch();
+            setTimeout(repeat, 5_000)
+            return;
+        }
         let {action, data} = await measure.call('epoch', ()=>loader.get(epoch));
         let delay = 0
         switch (action) {
