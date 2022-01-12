@@ -12,6 +12,7 @@ import {sleep} from "./service/tool/ProcessTool";
 import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
 import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
+import {PruneNotifier} from "./service/prune/PruneNotifier";
 
 
 export interface ICfxUser {
@@ -236,6 +237,11 @@ async function processEpoch(epoch, data, taskBegin) {
         return 10_000
     }
     await save(data, epoch, taskBegin)
+    try {
+        PruneNotifier.notifyCFXTransfer(data.addrBeans).then()
+    } catch (e) {
+        console.log(` notifyCFXTransfer fail, epoch ${ epoch} .`, e)
+    }
     return 0;
 }
 async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
