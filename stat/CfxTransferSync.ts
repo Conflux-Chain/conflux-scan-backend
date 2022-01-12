@@ -174,7 +174,7 @@ async function getCfxTransferTraces(epoch: number)
     if (txInDb.size !== 0 && epoch > 0) {
         // all tx should be matched and removed in map.
         console.log(`db has more tx, remain ${txInDb.size}, epoch ${epoch}, trace count ${result.length}.`)
-        console.log(` ${[...txInDb.values()].map(tx=>`${tx.blockPosition}-${tx.txPosition}, ${tx.hash}`)}`)
+        console.log(` ${[...txInDb.values()].map(tx=>`${tx.blockPosition}-${tx.txPosition}, ${tx.hash}`).join('\n')}`)
         process.exit(9)
     }
     // removeLongData(traceArray2d);
