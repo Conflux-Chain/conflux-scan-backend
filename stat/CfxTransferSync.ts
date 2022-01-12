@@ -315,7 +315,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 }
                 if (data.code === 0) {
                     if (epoch % 100 === 0) {
-                        measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', 'save');
+                        measure.dump(` ${epoch} sync cfx trs : `, 1, 'epoch', 'save');
                     }
                     epoch++;
                 }
