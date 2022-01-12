@@ -426,6 +426,7 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
         // check whether need new task.
         const stateEpoch = await joinTask(preEnd, cfx, len * 2, model)
         const checkPivot = stateEpoch - preEnd < len * 2 || FORCE_CHECK_PIVOT
+        console.log(`checkPivot : ${stateEpoch - preEnd < len * 2} || ${FORCE_CHECK_PIVOT}`)
         const now = new Date();
         const newOne:IEpochTokenTransfer = {epoch: preEnd, range: len,
             cursor: preEnd - 1, checkPivot,

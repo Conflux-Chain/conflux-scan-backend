@@ -201,7 +201,7 @@ async function test() {
     }
 }
 async function save({result, addrBeans, pivotHash}, epoch, taskBegin:number) {
-    console.log(` ph ${pivotHash}`)
+    // console.log(` ph ${pivotHash}`)
     return TaskCfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
             KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, result.length, dbTx, ),
@@ -272,6 +272,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     }
     async function repeat0() {
         if (epoch > maxEpochInTx) {
+            console.log(` reach max tx epoch ${maxEpochInTx}`)
             await updateMaxTxEpoch();
             setTimeout(repeat, 5_000)
             return;
@@ -285,7 +286,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     delay = 5_000;
                     break;
                 }
-                console.log(` epoch ${epoch}, code ${data.code}, parentHash ${parentHash}`, data)
+                // console.log(` epoch ${epoch}, code ${data.code}, parentHash ${parentHash}`, data)
                 if (data.code === 0 && parentHash && parentHash !== data.parentHash) {
                     console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash
                     }`)
@@ -299,12 +300,15 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     epoch -= 1;
                     break;
                 }
-                delay = await processEpoch(epoch , data, taskBegin);
+                delay = await measure.call('save', ()=>processEpoch(epoch , data, taskBegin));
                 if (parentHash) {
                     parentHash = data.pivotHash
                 }
                 if (data.code === 0) {
-                    epoch++
+                    if (epoch % 10 === 0) {
+                        measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', 'save');
+                    }
+                    epoch++;
                 }
                 break;
             case "wait":
@@ -324,7 +328,7 @@ const measure = new Measure()
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch, cfx, TaskCfxTransfer)
-    console.log(` start token transfer task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
+    console.log(` start cfx transfer task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
     await new Promise(r=>{
         run(cfx, task, ()=>{
