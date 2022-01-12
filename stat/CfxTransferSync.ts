@@ -314,7 +314,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     parentHash = data.pivotHash
                 }
                 if (data.code === 0) {
-                    if (epoch % 10 === 0) {
+                    if (epoch % 100 === 0) {
                         measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', 'save');
                     }
                     epoch++;
