@@ -1,11 +1,11 @@
 import {CfxTransfer, pagingFullCfxTransfer, AddressCfxTransfer} from "../model/CfxTransfer";
-import {TransferQueryBaseForCfx} from "./TransferQueryBaseForCfx";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "../model/KV";
 import {Op} from "sequelize";
+import {TransferQueryBase} from "./TransferQueryBase";
 const CONST = require('./common/constant');
 
-export class CfxTransferQuery extends TransferQueryBaseForCfx{
+export class CfxTransferQuery extends TransferQueryBase{
     protected app;
 
     constructor(app: any) {
