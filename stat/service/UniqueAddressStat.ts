@@ -84,11 +84,11 @@ export class EpochTask extends Model<IEpochTask> implements IEpochTask{
     }
 }
 // from epoch is from startup argument, so it's safe using it when resuming task.
-export async function fetchTask(len:number, fromEpoch = 0) : Promise<IEpochTask> {
+export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : Promise<IEpochTask> {
     do {
         const [maxOne, exactOne] = await Promise.all([
-            EpochTask.findOne({order:[['epoch','desc']]}),
-            EpochTask.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
+            model.findOne({order:[['epoch','desc']]}),
+            model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
         ])
         if (exactOne) {
             console.log(` resume exists task ${fromEpoch}`)
@@ -101,7 +101,7 @@ export async function fetchTask(len:number, fromEpoch = 0) : Promise<IEpochTask>
         const now = new Date();
         const newOne:IEpochTask = {epoch: preEnd, range: len, finished: false, createdAt: now, updatedAt: now}
         let ok = false
-        await EpochTask.create(newOne).then(()=>{
+        await model.create(newOne).then(()=>{
             console.log(`create task, epoch ${preEnd}`)
             ok = true
         }).catch(err=>{

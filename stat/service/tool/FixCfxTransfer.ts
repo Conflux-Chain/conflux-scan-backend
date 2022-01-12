@@ -173,7 +173,7 @@ async function doDeletion(epoch=0) {
             process.stdout.write(`  \r\u001b[2K  delete id ${r.id}, epoch ${r.epoch}, result ${delResult}  `)
             const associateResult = await AddressCfxTransfer.destroy({
                 where: {addressId: {[Op.in]:[r.fromId, r.toId]}, epoch: r.epoch, fromId: r.fromId, toId: r.toId,
-                    createdAt: r.createdAt, value: r.value, txHashId: r.txHashId
+                    createdAt: r.createdAt, value: r.value,
                 }
             })
             const wantCnt = r.fromId === r.toId ? 1 : 2

@@ -132,12 +132,12 @@ async function batchSaveTransfer(mainModel, addrModel, arr, dataForAddr, dbTx) {
         ContractUser.bulkCreate(arr, {transaction: dbTx}),
     ])
 }
-async function waitParentHashDB(task: IEpochTokenTransfer, parentEpoch:number) : Promise<string> {
+export async function waitParentHashDB(task: IEpochTokenTransfer, parentEpoch:number, model) : Promise<string> {
     if (!task.checkPivot) {
         return ''
     }
     do {
-        const formerOne = await EpochHashTokenTransfer.findByPk(parentEpoch)
+        const formerOne = await model.findByPk(parentEpoch)
         if (formerOne === null) {
             console.log(` current task with epoch ${task.epoch
             } says: former task not finished yet, want epoch ${parentEpoch} be finished.`)
@@ -166,7 +166,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     const taskBegin = task.epoch;
     const {tokenTool} = getTokenTool(cfx)
     // parentHash, also indicates whether checking parent hash.
-    let parentHash = await waitParentHashDB(task, task.cursor)
+    let parentHash = await waitParentHashDB(task, task.cursor, EpochTaskTokenTransfer)
     async function buildTransfer(arr:any[], fn, dt) {
         const contractIds = new Set<number>()
         const addrIds = new Set<number>()
@@ -256,7 +256,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         await pop(ep, taskBegin)
         epoch = ep
         console.log(` set cursor to ${epoch}`)
-        parentHash = await waitParentHashDB(task, ep - 1)
+        parentHash = await waitParentHashDB(task, ep - 1, EpochTaskTokenTransfer)
         console.log(` local pop ${ep} end -`)
         return ep
     }
@@ -328,14 +328,14 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         if (epoch < stopBeforeEpoch) {
             setTimeout(repeat, delay)
         } else {
-            await finishTask(taskBegin);
+            await finishTask(taskBegin, EpochTaskTokenTransfer);
             endFn()
         }
     }
     repeat().then()
 }
-async function finishTask(epoch) {
-    await EpochTaskTokenTransfer.update({finished: true}, {where: {epoch}})
+export async function finishTask(epoch, model) {
+    await model.update({finished: true}, {where: {epoch}})
     console.log(` ---- finish task ${epoch} ---- `)
 }
 async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155addr, pivotHash, nfts}, taskBegin:number) {
@@ -405,11 +405,11 @@ async function pop(epoch:number, taskBegin: number) {
         return res;
     })
 }
-async function fetchTask(len:number, fromEpoch: number, cfx:Conflux ) : Promise<IEpochTokenTransfer> {
+export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, model) : Promise<IEpochTokenTransfer> {
     do {
         const [maxOne, exactOne] = await Promise.all([
-            EpochTaskTokenTransfer.findOne({order:[['epoch','desc']]}),
-            EpochTaskTokenTransfer.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
+            model.findOne({order:[['epoch','desc']]}),
+            model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
         ])
         if (exactOne) {
             console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}`)
@@ -424,14 +424,14 @@ async function fetchTask(len:number, fromEpoch: number, cfx:Conflux ) : Promise<
             preEnd = maxOne.epoch + maxOne.range
         }
         // check whether need new task.
-        const stateEpoch = await joinTask(preEnd, cfx, len * 2)
+        const stateEpoch = await joinTask(preEnd, cfx, len * 2, model)
         const checkPivot = stateEpoch - preEnd < len * 2 || FORCE_CHECK_PIVOT
         const now = new Date();
         const newOne:IEpochTokenTransfer = {epoch: preEnd, range: len,
             cursor: preEnd - 1, checkPivot,
             finished: false, createdAt: now, updatedAt: now}
         let ok = false
-        await EpochTaskTokenTransfer.create(newOne).then(()=>{
+        await model.create(newOne).then(()=>{
             console.log(`create task, epoch ${preEnd}`)
             ok = true
         }).catch(err=>{
@@ -456,7 +456,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     console.log(` ${process.argv[1]} \n network ${st.networkId}`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
-async function joinTask(targetEpoch:number, cfx: Conflux, dist:number) {
+async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {
     let stateEpoch: number;
     do {
         stateEpoch = await cfx.getEpochNumber('latest_state').catch(()=>{
@@ -466,7 +466,7 @@ async function joinTask(targetEpoch:number, cfx: Conflux, dist:number) {
     if (stateEpoch - targetEpoch >  dist) {
         return stateEpoch;
     }
-    const formerOne = await EpochTaskTokenTransfer.findOne({
+    const formerOne = await model.findOne({
         where: {
             finished: false,
             // do not search all record in the table, limit its range.
@@ -489,7 +489,7 @@ async function joinTask(targetEpoch:number, cfx: Conflux, dist:number) {
 }
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
-    const task = await fetchTask(len, fromEpoch, cfx)
+    const task = await fetchTask(len, fromEpoch, cfx, EpochTaskTokenTransfer)
     console.log(` start token transfer task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
     await new Promise(r=>{
