@@ -113,7 +113,7 @@ export class CfxTransferRowMark extends Model<ICfxTransferRowMark> implements IC
         },{
             sequelize: seq,
             timestamps: false,
-            tableName: 'cfx_transfer_row_mark',
+            tableName: 'cfx_transfer_row_mark_2',
             indexes:[
             ]
         })
