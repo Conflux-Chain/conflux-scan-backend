@@ -110,7 +110,11 @@ async function getCfxTransferTraces(epoch: number)
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
-        const {blockHash, epochNumber, transactionTraces} = traceArray2d[blkIdx];
+        let traceOfBlock = traceArray2d[blkIdx];
+        if (traceOfBlock === null) {
+            continue
+        }
+        const {blockHash, epochNumber, transactionTraces} = traceOfBlock;
         const txArr = transactionTraces as any[]
         for (let txIdx = 0; txIdx < txArr.length; txIdx++) {
             let txKey = `${blkIdx}-${txIdx}`;
@@ -186,10 +190,15 @@ async function setup() {
     await init()
     cfx0 = cfx;
     console.log(`----------${st.networkId}---------`)
-    return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
+    if (process.argv.includes('test')) {
+        await test(parseInt(fromEpoch))
+        process.exit(0)
+    } else {
+        return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
+    }
 }
-async function test() {
-    const {addrBeans, result, code} = await getCfxTransferTraces(33690933)
+async function test(ep:number) {
+    const {addrBeans, result, code} = await getCfxTransferTraces(ep)
     if (code === 404) {
         console.log(` tx not sync yet.`)
         await sleep(5_000)
