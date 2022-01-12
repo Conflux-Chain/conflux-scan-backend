@@ -79,7 +79,10 @@ export async  function scheduleDailyTokenStat() {
         .then(()=>setTimeout(scheduleDailyTokenStat, 1000*3600*4))
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
-    const tokenList = await Token.findAll()
+    const tokenList = await Token.findAll({
+        attributes: ['hex40id','symbol','name','base32'],
+        where: {auditResult: true},
+    })
     console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
     for(const token of tokenList) {
         await calcDailyToken(dt, token.hex40id)
@@ -230,30 +233,4 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
             console.log(`update daily token holder fail ${tokenBean.hex40id}:`, err)
         })
     }
-    // daily participants
-    return calcDailyTokenParticipants(tokenHexId, tokenBean.type, start, end)
-}
-export async function calcDailyTokenParticipants(tokenHexId:number,type:string = '', start:Date, end:Date) {
-    let t:any = ''
-    if (type.includes('20')) t = Erc20Transfer.getTableName()
-    else if (type.includes('721')) t = Erc20Transfer.getTableName()
-    else if (type.includes('777')) t = Erc20Transfer.getTableName()
-    else if (type.includes('1155')) t = Erc20Transfer.getTableName()
-    else return
-    const sql = `select count(*) as participants from (select fromId from ${t} where contractId=?
-            and createdAt between ? and ? union select toId from ${t} where contractId=?
-            and createdAt between ? and ?) tmp`
-    const stat:DailyToken = (await DailyToken.sequelize.query(sql, {type:QueryTypes.SELECT,
-        replacements:[
-            tokenHexId, start, end,
-            tokenHexId, start, end,
-        ],
-        // logging: console.log
-    }))[0] as DailyToken
-    const cnt = stat?.participants || 0
-    return DailyToken.update({participants: cnt}, {where: {hexId: tokenHexId, day: start}})
-        .catch(err=>{
-            console.log(`update token participants fail, ${tokenHexId}, ${start.toISOString()} ${end.toISOString()}`, err)
-        })
-
 }

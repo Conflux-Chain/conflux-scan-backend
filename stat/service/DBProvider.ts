@@ -103,6 +103,7 @@ import {
     PosRegister, PosReward,
     PosTransaction
 } from "../model/PoS";
+import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
 import {TokenTransferStat} from "../model/TokenTransferStat";
 import {AddrTransactionStat} from "../model/AddrTransactionStat";
 import {AddrCfxTransferStat} from "../model/AddrCfxTransferStat";
@@ -284,6 +285,8 @@ export async function initModel(sequelize) {
     DailyContractCreate.register(sequelize);
     DailyContractStat.register(sequelize);
     DailyContractRegister.register(sequelize);
+    EpochTask.register(sequelize);
+    UniqueAddress.register(sequelize);
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);

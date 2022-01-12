@@ -1,7 +1,15 @@
 import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {Sequelize, QueryTypes, or} from "sequelize";
 import {pickNumber} from "../model/Utils";
-import {ADDR_INFO_STATE_OK, buildHexSet, Hex64Map, T_ADDRESS, T_ADDRESS_INFO} from "../model/HexMap";
+import {
+    ADDR_INFO_STATE_OK,
+    buildHexSet,
+    fillHexId,
+    Hex64Map,
+    idHex40Map, mapProp,
+    T_ADDRESS,
+    T_ADDRESS_INFO
+} from "../model/HexMap";
 // @ts-ignore
 import {format} from 'js-conflux-sdk'
 import {StatApp} from "../StatApp";
@@ -11,6 +19,7 @@ import {AddressTransactionIndex} from "../model/FullBlock";
 import {init} from "./tool/FixDailyTokenStat";
 import {DailyToken} from "../model/Token";
 import {PruneInfo} from "../model/PruneInfo";
+import {topUnique} from "./UniqueAddressStat";
 
 export class RankService{
     private app: StatApp;
@@ -21,6 +30,15 @@ export class RankService{
     }
 
     updateTxnCache() {
+        // update unique addr cache.
+        ['senders','receivers','participants'].forEach(which=>{
+            [1,3,7].forEach(day=>{
+                this.rankTokenUniqueAddr({day, which}).catch(err=>{
+                    console.log(` update token unique addr fail.`, err)
+                })
+            })
+        })
+        //
         const cnt = 100
         this.rankCfxBalance('total', cnt, true).then(()=>{
             return this.rankCfxBalance('stakingBalance', cnt , true)
@@ -88,6 +106,35 @@ export class RankService{
         return prunedMap;
     }
 
+    tokenUniqueArrCache = {} // 1 3 7 day
+    async rankTokenUniqueAddr({day = 7, which = 'participants'}) {
+        let cached = this.tokenUniqueArrCache[day];
+        if (cached) {
+            return cached[which]
+        }
+        const {maxTimeStart, list, timeBegin} = await topUnique({limit: 10, day})
+        const [senders, receivers, participants] = await Promise.all(
+            ['sender','receiver','all'].map(k=>{
+                return this.buildUniqueAddrTop(list[k], k).then(res=>{
+                    res["maxTimeStart"] = maxTimeStart
+                    return res;
+                })
+            })
+        )
+        cached = this.tokenUniqueArrCache[day] = {maxTimeStart, timeBegin, senders, receivers, participants}
+        return cached[which]
+    }
+    async buildUniqueAddrTop(arr:any[], prop:string) {
+        const contractIdSet = buildHexSet(undefined, arr, 'contractId')
+        const idHexMap = await idHex40Map([...contractIdSet])
+        mapProp(idHexMap, arr, 'contractId', 'hex')
+        function copyProp(arr:any[], from:string, to:string) {
+            arr.forEach(r=>r[to] = r[from])
+        }
+        copyProp(arr, prop, 'valueN')
+        const netId = StatApp.networkId;
+        return this.fillInfo(arr, netId);
+    }
 
     // 9999895641981116/5000000000000000*2
     async rankByCfx(order:string, limit, networkId) {
@@ -121,50 +168,14 @@ export class RankService{
             return this.rankByToken('daily_token','transferCount', 3, limit, networkId)
         } else if (type === 'rank_contract_by_number_of_transfers_1d') {
             return this.rankByToken('daily_token','transferCount', 1, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_receivers_7d') {
-            return this.rankByToken('daily_token','uniqueReceiver', 7, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_receivers_3d') {
-            return this.rankByToken('daily_token','uniqueReceiver', 3, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_receivers_1d') {
-            return this.rankByToken('daily_token','uniqueReceiver', 1, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_senders_7d') {
-            return this.rankByToken('daily_token','uniqueSender', 7, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_senders_3d') {
-            return this.rankByToken('daily_token','uniqueSender', 3, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_senders_1d') {
-            return this.rankByToken('daily_token','uniqueSender', 1, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_participants_7d') {
-            return this.rankByToken('daily_token','participants', 7, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_participants_3d') {
-            return this.rankByToken('daily_token','participants', 3, limit, networkId)
-        } else if (type === 'rank_contract_by_number_of_participants_1d') {
-            return this.rankByToken('daily_token','participants', 1, limit, networkId)
+        } else if (type.startsWith('rank_contract_by_number_of_')) {
+            //rank_contract_by_number_of_[senders|receivers|participants]_[1d,3d,7d]
+            const [which, span] = type.substr('rank_contract_by_number_of_'.length).split("_")
+            const day = parseInt(span[0])
+            return this.rankTokenUniqueAddr({day, which})
         } else {
             return {code: 40400, message: 'no support.'}
         }
-        limit = pickNumber(limit, 10)
-        const newLine = ''
-        const maxBatchId: number = await TopBatchIndex.max('id',
-            {where: {type: type, state: STATE_OK}})
-        if (isNaN(maxBatchId)) {
-            console.log(`max batch id not found. type ${type}`)
-            return Promise.resolve({code: 501, list: [], total: 0, message: 'no data'})
-        }
-        const t_addr = T_ADDRESS
-        const sql = `select hex40 as hex, \`value\` as valueN, valueDesc, ${newLine
-        }value2, value2desc, value3, value3desc, value4, value4desc, \`percent\`, \`rank\`, ${T_ADDRESS_INFO}.name, ${T_ADDRESS_INFO}.state as nameState, ${newLine
-        } begin_time, end_time from ${T_TOP_RECORD
-        } JOIN ${T_TOP_BATCH_INDEX
-        } ON batch_id=\`${T_TOP_BATCH_INDEX}\`.id left join ${t_addr} on ${t_addr}.id = address_id ${
-            newLine} left join ${T_ADDRESS_INFO} on ${t_addr}.id = ${T_ADDRESS_INFO}.id ${newLine
-        } where batch_id=? order by \`rank\` limit ?`;
-        // console.log(`sql is : ${sql}`)
-        const list: any[] = await this.app.sequelize.query(sql, {
-            replacements: [maxBatchId, limit],
-            type: QueryTypes.SELECT,
-            // benchmark: true, logging: console.log
-        })
-        return this.fillInfo(list, networkId)
     }
     async fillInfo(list:any[], networkId) {
         const {

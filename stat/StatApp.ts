@@ -5,7 +5,7 @@ import {Sequelize} from "sequelize";
 import {TxnSync} from "./service/TxnSync";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
 import {BalanceService} from "./service/watcher/BalanceService";
@@ -45,6 +45,7 @@ import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
+import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 patchFormat();
 export class StatApp{
@@ -97,10 +98,10 @@ export class StatApp{
     public async init() {
         this.cfx = new Conflux({...this.config.conflux})
         patchHttpProvider(this.cfx, this.config.conflux, 'StatApp')
-        // @ts-ignore
         await this.cfx.updateNetworkId();
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
+        PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
         this.tokenTool = new TokenTool(this.cfx);
@@ -177,6 +178,7 @@ export class StatApp{
             await this.dailyTxnSync.schedule(); // dailyTxn
             scheduleDailyActiveAddress()
                 .then(()=>{scheduleDailyTokenStat()})
+            calcDailyUniqueAddrSchedule().then()
         }
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
