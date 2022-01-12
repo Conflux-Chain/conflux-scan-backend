@@ -79,7 +79,10 @@ export class CfxTransferQuery extends TransferQueryBase{
 
         return [
             ['epoch', 'epochNumber'],
-            ['txHashId', 'transactionHash'],
+            'blockIndex',
+            'txIndex',
+            'txLogIndex',
+            'type',
             ['fromId', 'from'],
             ['toId', 'to'],
             'value',
