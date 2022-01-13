@@ -25,7 +25,8 @@ export class EpochCfxTransferCount extends Model<IEpochCfxTransferCount> impleme
         EpochCfxTransferCount.init({
             id: {type:DataTypes.BIGINT({unsigned: true}), primaryKey: true, autoIncrement: true},
             epoch: {type:DataTypes.BIGINT({unsigned: true}), allowNull: false},
-            n: {type:DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            // when pop, it's negative.
+            n: {type:DataTypes.BIGINT(), allowNull: false},
         },{
             sequelize: seq, tableName: 'epoch_cfx_transfer_count', timestamps: false,
         })
