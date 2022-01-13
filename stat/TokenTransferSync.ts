@@ -166,7 +166,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     const taskBegin = task.epoch;
     const {tokenTool} = getTokenTool(cfx)
     // parentHash, also indicates whether checking parent hash.
-    let parentHash = await waitParentHashDB(task, task.cursor, EpochTaskTokenTransfer)
+    let parentHash = await waitParentHashDB(task, task.cursor, EpochHashTokenTransfer)
     async function buildTransfer(arr:any[], fn, dt) {
         const contractIds = new Set<number>()
         const addrIds = new Set<number>()
@@ -256,7 +256,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         await pop(ep, taskBegin)
         epoch = ep
         console.log(` set cursor to ${epoch}`)
-        parentHash = await waitParentHashDB(task, ep - 1, EpochTaskTokenTransfer)
+        parentHash = await waitParentHashDB(task, ep - 1, EpochHashTokenTransfer)
         console.log(` local pop ${ep} end -`)
         return ep
     }
