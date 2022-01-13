@@ -116,18 +116,24 @@ async function getCfxTransferTraces(epoch: number)
         }
         const {blockHash, epochNumber, transactionTraces} = traceOfBlock;
         const txArr = transactionTraces as any[]
+        let dbTxIdx = -1; // data base only stores executed txs.
         for (let txIdx = 0; txIdx < txArr.length; txIdx++) {
-            let txKey = `${blkIdx}-${txIdx}`;
+            // there are skipped txs. it's traces is empty.
+            const {traces, transactionHash, transactionPosition} = txArr[txIdx];
+            if (traces.length === 0) {
+                continue
+            }
+            dbTxIdx ++
+            let txKey = `${blkIdx}-${dbTxIdx}`;
             const txBean = txInDb.get(txKey)
             txInDb.delete(txKey)
             if (!txBean || txBean.status !== 0) {
                 continue
             }
-            const {traces, transactionHash, transactionPosition} = txArr[txIdx];
             if (txBean.hash !== transactionHash) {
                 console.log(`rpc txHash ${transactionHash} != ${txBean.hash} in db. \n epoch ${epoch
-                }, block idx ${blkIdx}, tx idx ${txIdx}`)
-                process.exit(9)
+                }, block idx ${blkIdx}, tx idx ${dbTxIdx}, full-tx-idx ${txIdx}`);
+                process.exit(9);
             }
             const traceArr = traces as any[];
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
@@ -142,7 +148,7 @@ async function getCfxTransferTraces(epoch: number)
                 }
                 if (callType !=='call' && type === 'call') {
                     console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
-                    } tx ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
+                    } tx ${dbTxIdx}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
                     process.exit(8)
                     return
                 }
@@ -152,7 +158,7 @@ async function getCfxTransferTraces(epoch: number)
                     //value should be zero, won't trigger
                 } else {
                     console.log(`unknown trace type ${type}, epoch ${epoch} block ${blockHash
-                    } tx ${txIdx}, trace ${traceIdx}`)
+                    } tx ${dbTxIdx}, trace ${traceIdx}`)
                     process.exit(8)
                     return
                 }
