@@ -105,7 +105,7 @@ import {
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
-import {CfxUser, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
+import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
 let conf
 export function createDB(config) {
     conf = config
@@ -282,6 +282,7 @@ export async function initModel(sequelize) {
     TaskCfxTransfer.register(sequelize);
     CfxUser.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
+    EpochCfxTransferCount.register(sequelize);
     UniqueAddress.register(sequelize);
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);

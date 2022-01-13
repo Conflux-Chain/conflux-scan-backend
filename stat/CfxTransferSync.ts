@@ -15,6 +15,22 @@ import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {RedisWrap} from "./service/RedisWrap";
 
+export interface IEpochCfxTransferCount {
+    id?:number; epoch:number; n:number;
+}
+// trace count, multiple task will conflict if they update counter and paging mark.
+export class EpochCfxTransferCount extends Model<IEpochCfxTransferCount> implements IEpochCfxTransferCount {
+    id?:number; epoch:number; n:number;
+    static register(seq:Sequelize) {
+        EpochCfxTransferCount.init({
+            id: {type:DataTypes.BIGINT({unsigned: true}), primaryKey: true, autoIncrement: true},
+            epoch: {type:DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            n: {type:DataTypes.BIGINT({unsigned: true}), allowNull: false},
+        },{
+            sequelize: seq, tableName: 'epoch_cfx_transfer_count', timestamps: false,
+        })
+    }
+}
 export interface ICfxUser {
     id?: number
     fromId: number
@@ -193,13 +209,21 @@ async function getCfxTransferTraces(epoch: number)
     // console.log(JSON.stringify(traceArray2d, null, 4))
     return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash}
 }
+async function runCounter() {
+    await counter();
+    setTimeout(runCounter, 1)
+}
 async function setup() {
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
-    const cfx = new Conflux({url: cfxUrl})
+    const cfg = await init()
+    if (cfxUrl === 'counter') {
+        await runCounter()
+        return
+    }
+    const cfx = new Conflux({url: cfxUrl});
     patchHttpProvider(cfx, {url: cfxUrl})
     await cfx.updateNetworkId();
     const st = await cfx.getStatus()
-    const cfg = await init()
     await RedisWrap.connect(cfg.redis)
     cfx0 = cfx;
     console.log(`----------${st.networkId}---------`)
@@ -226,7 +250,16 @@ async function save({result, addrBeans, pivotHash}, epoch, taskBegin:number) {
     // console.log(` ph ${pivotHash}`)
     return TaskCfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, result.length, dbTx, ),
+            // KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, result.length, dbTx, ),
+            new Promise(r=>{
+                if (result.length) {
+                    // save count, let standalone job to diff count.
+                    EpochCfxTransferCount.create({epoch, n:result.length},
+                        {transaction: dbTx}).then(r)
+                }else {
+                    r(void 0)
+                }
+            }),
             CfxUser.bulkCreate(result, {transaction: dbTx}),
             CfxTransfer.bulkCreate(result, {transaction: dbTx}),
             AddressCfxTransfer.bulkCreate(addrBeans, {transaction: dbTx}),
@@ -234,9 +267,7 @@ async function save({result, addrBeans, pivotHash}, epoch, taskBegin:number) {
             TaskCfxTransfer.update(
                 {cursor: epoch, },
                 {where:{epoch:taskBegin}, transaction:dbTx}),
-        ]).then(([rows,])=>{
-            return doMark(rows, epoch, console)
-        })
+        ])
     })
 }
 async function pop(epoch: number, taskBegin: number) {
@@ -250,6 +281,41 @@ async function pop(epoch: number, taskBegin: number) {
             )
         ])
     })
+}
+async function counter() {
+    const list = await EpochCfxTransferCount.findAll({
+        order: [['id','asc']], limit: 1000
+    })
+    if (list.length === 0) {
+        console.log(` ${new Date().toISOString()} cfx count table is empty.`)
+        await sleep(5_000)
+        return;
+    }
+    const {id:minId} = list[0]
+    const {id:maxId} = list[list.length-1]
+    if (maxId - minId + 1 !== list.length) {
+        // is there any gap ?
+        console.log(`EpochCfxTransferCount, there is gap between ${minId} ${maxId}, multiple task ?`)
+        await sleep(5_000)
+        return;
+    }
+    const sum = list.map(r=>r.n).reduce((a,b)=>a+b)
+    await KV.sequelize.transaction(async dbTx=>{
+        await KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, sum, undefined)
+        const cnt=await EpochCfxTransferCount.destroy({where:{epoch:{[Op.between]:[minId, maxId]}}})
+        if (cnt !== list.length) {
+            const msg = `EpochCfxTransferCount destroy count records fail. want ${list.length
+            }, actual ${cnt}, [${minId}, ${maxId}]`
+            throw Error(msg)
+        }
+    }).then(()=>{
+        console.log(`EpochCfxTransferCount ${sum} epoch ${list[0].epoch}`)
+    }).catch(err=>{
+        console.log(err)
+        process.exit(9)
+    })
+    // can not do mark here. there may be a task with lower epoch and still in progress.
+    // await doMark(row, epoch, undefined);
 }
 async function processEpoch(epoch, data, taskBegin) {
     const {code} = data;
