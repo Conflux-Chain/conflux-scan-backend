@@ -86,14 +86,14 @@ let cfx0:Conflux
 async function getCfxTransferTraces(epoch: number)
     : Promise<{result?:ICfxTransfer[], code?: number, addrBeans?:any[], pivotHash?:string, parentHash?:string}>{
     const cfx = cfx0;
-    const [hashes, txInDb, maxTx, pivotBlock] = await Promise.all([
+    const [hashes, txMapByHash, maxTx, pivotBlock] = await Promise.all([
         cfx.getBlocksByEpochNumber(epoch),
         FullTransaction.findAll({
             where: {epoch}, order: [['blockPosition', 'asc'],['txPosition', 'asc']]
         }).then(list=>{
             const txMap = new Map<string, FullTransaction>()
             list.forEach(tx=>{
-                txMap.set(`${tx.blockPosition}-${tx.txPosition}`, tx)
+                txMap.set(tx.hash, tx)
             })
             return txMap
         }),
@@ -103,9 +103,10 @@ async function getCfxTransferTraces(epoch: number)
     if (maxTx === null || epoch > maxTx.epoch) {
         return {code: 404}
     }
-    if (txInDb.size === 0) {
+    if (txMapByHash.size === 0) {
         return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
     }
+
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
@@ -116,23 +117,27 @@ async function getCfxTransferTraces(epoch: number)
         }
         const {blockHash, epochNumber, transactionTraces} = traceOfBlock;
         const txArr = transactionTraces as any[]
-        let dbTxIdx = -1; // data base only stores executed txs.
         for (let txIdx = 0; txIdx < txArr.length; txIdx++) {
             // there are skipped txs. it's traces is empty.
             const {traces, transactionHash, transactionPosition} = txArr[txIdx];
             if (traces.length === 0) {
+                // failed tx (lack of gas) may have zero trace, too.
                 continue
             }
-            dbTxIdx ++
-            let txKey = `${blkIdx}-${dbTxIdx}`;
-            const txBean = txInDb.get(txKey)
-            txInDb.delete(txKey)
-            if (!txBean || txBean.status !== 0) {
+            // track by position is hard(impossible).
+            // tracy by tx hash and check block position.
+            const txKey = transactionHash;
+            const txBean = txMapByHash.get(txKey)
+            txMapByHash.delete(txKey)
+            if (!txBean) {
+                console.log(`rpc trace at epoch ${epoch} block ${blkIdx} full-tx-idx ${txIdx
+                }, without tx in db. want tx hash ${transactionHash}`)
+            } else if (txBean.status !== 0) {
                 continue
             }
-            if (txBean.hash !== transactionHash) {
-                console.log(`rpc txHash ${transactionHash} != ${txBean.hash} in db. \n epoch ${epoch
-                }, block idx ${blkIdx}, tx idx ${dbTxIdx}, full-tx-idx ${txIdx}`);
+            if (txBean.blockPosition !== blkIdx) {
+                console.log(`rpc block pos ${blkIdx} != ${txBean.blockPosition} in db. \n epoch ${epoch
+                }, full-tx-idx ${txIdx}`);
                 process.exit(9);
             }
             const traceArr = traces as any[];
@@ -148,7 +153,7 @@ async function getCfxTransferTraces(epoch: number)
                 }
                 if (callType !=='call' && type === 'call') {
                     console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
-                    } tx ${dbTxIdx}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
+                    } tx ${txBean.txPosition}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
                     process.exit(8)
                     return
                 }
@@ -158,7 +163,7 @@ async function getCfxTransferTraces(epoch: number)
                     //value should be zero, won't trigger
                 } else {
                     console.log(`unknown trace type ${type}, epoch ${epoch} block ${blockHash
-                    } tx ${dbTxIdx}, trace ${traceIdx}`)
+                    } tx ${txBean.txPosition}, trace ${traceIdx}, tx hash ${transactionHash}`)
                     process.exit(8)
                     return
                 }
@@ -177,10 +182,11 @@ async function getCfxTransferTraces(epoch: number)
             }
         }
     }
-    if (txInDb.size !== 0 && epoch > 0) {
+    const remainOkTxCount = [...txMapByHash.values()].filter(tx=>tx.status === 0).length
+    if (remainOkTxCount !== 0 && epoch > 0) {
         // all tx should be matched and removed in map.
-        console.log(`db has more tx, remain ${txInDb.size}, epoch ${epoch}, trace count ${result.length}.`)
-        console.log(` ${[...txInDb.values()].map(tx=>`${tx.blockPosition}-${tx.txPosition}, ${tx.hash}`).join('\n')}`)
+        console.log(`db has more tx, remain ${txMapByHash.size}, epoch ${epoch}, trace count ${result.length}.`)
+        console.log(` ${[...txMapByHash.values()].map(tx=>`block ${tx.blockPosition} txPos ${tx.txPosition}, ${tx.hash}`).join('\n')}`)
         process.exit(9)
     }
     // removeLongData(traceArray2d);
