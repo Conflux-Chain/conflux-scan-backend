@@ -324,7 +324,7 @@ async function marker() {
     let avoidReOrg = 1000;
     await markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, top.cursor - avoidReOrg);
     preMarkEpoch = top.epoch;
-    console.log(`mark done. ${top}`)
+    console.log(`mark done. cursor ${top.cursor} at epoch ${top.epoch}`)
 }
 // counter , handle multiple task situation.
 async function counter() {
