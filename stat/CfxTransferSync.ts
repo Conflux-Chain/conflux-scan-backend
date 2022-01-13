@@ -304,11 +304,11 @@ async function marker() {
     const [minUnderGoingTask, maxFinished ]= await Promise.all([
         TaskCfxTransfer.findOne({
             where: {finished: 0,}, order: [['epoch','asc']]
-        }).then(res=>res?.cursor || 0),  //
+        }),  //
 
         TaskCfxTransfer.findOne({
             where: {finished: 1,}, order: [['epoch','desc']]
-        }).then(res=>(res?.cursor || 0)), // in case all task is finished, use this.
+        }), // in case all task is finished, use this.
     ])
     const top = minUnderGoingTask || maxFinished
     if (!top) {
@@ -316,14 +316,14 @@ async function marker() {
         await sleep(5_000)
         return;
     }
-    if (top === preMarkEpoch) {
+    if (top.epoch === preMarkEpoch) {
         console.log(` no [NEW] task info in db, pre mark ${preMarkEpoch}. ${minUnderGoingTask}, ${maxFinished}`)
         await sleep(5_000)
         return;
     }
     let avoidReOrg = 1000;
-    await markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, top - avoidReOrg);
-    preMarkEpoch = top;
+    await markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, top.cursor - avoidReOrg);
+    preMarkEpoch = top.epoch;
     console.log(`mark done. ${top}`)
 }
 // counter , handle multiple task situation.
