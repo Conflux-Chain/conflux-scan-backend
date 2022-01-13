@@ -303,7 +303,9 @@ async function counter() {
     const sum = list.map(r=>r.n).reduce((a,b)=>a+b)
     await KV.sequelize.transaction(async dbTx=>{
         await KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, sum, undefined)
-        const cnt=await EpochCfxTransferCount.destroy({where:{epoch:{[Op.between]:[minId, maxId]}}})
+        const cnt=await EpochCfxTransferCount.destroy({
+            where:{id:{[Op.between]:[minId, maxId]}}
+        })
         if (cnt !== list.length) {
             const msg = `EpochCfxTransferCount destroy count records fail. want ${list.length
             }, actual ${cnt}, [${minId}, ${maxId}]`
