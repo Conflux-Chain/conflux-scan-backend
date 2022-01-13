@@ -13,6 +13,7 @@ import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransfer
 import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
+import {RedisWrap} from "./service/RedisWrap";
 
 export interface ICfxUser {
     id?: number
@@ -198,7 +199,8 @@ async function setup() {
     patchHttpProvider(cfx, {url: cfxUrl})
     await cfx.updateNetworkId();
     const st = await cfx.getStatus()
-    await init()
+    const cfg = await init()
+    await RedisWrap.connect(cfg.redis)
     cfx0 = cfx;
     console.log(`----------${st.networkId}---------`)
     if (process.argv.includes('test')) {
