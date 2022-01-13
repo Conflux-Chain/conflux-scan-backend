@@ -317,7 +317,7 @@ async function marker() {
         return;
     }
     if (top.epoch === preMarkEpoch) {
-        console.log(` no [NEW] task info in db, pre mark ${preMarkEpoch}. ${minUnderGoingTask}, ${maxFinished}`)
+        console.log(` no [NEW] task info in db, pre mark ${preMarkEpoch}. ${minUnderGoingTask.epoch}, ${maxFinished.epoch}`)
         await sleep(5_000)
         return;
     }
