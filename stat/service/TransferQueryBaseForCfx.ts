@@ -2,12 +2,11 @@
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
-import {FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 const CONST = require('./common/constant');
 
-export abstract class TransferQueryBase {
+export abstract class TransferQueryBaseForCfx {
     protected app;
 
     protected constructor(app: any) {
@@ -81,7 +80,7 @@ export abstract class TransferQueryBase {
         // order
         queryOptions.order = [['epoch', 'DESC']];
         if(accountAddressId !== undefined){
-            queryOptions.order.push(['blockIndex', 'DESC'], ['txIndex','desc'],['txLogIndex','desc']);
+            queryOptions.order.push(['tracePos', 'DESC']);
         }
         if(tokenAddressIdArray.length){
             queryOptions.order.push(['createdAt', 'DESC']);
@@ -155,7 +154,7 @@ export abstract class TransferQueryBase {
         if(options.txType === CONST.TX_TYPE.CREATE){
             queryOptions.attributes.push( ['traceIndex', 'transactionLogIndex'],);
         } else if(options.accountAddress !== undefined){
-            queryOptions.attributes.push( ['txLogIndex', 'transactionLogIndex'],);
+            queryOptions.attributes.push( ['tracePos', 'transactionLogIndex'],);
         } else{
             queryOptions.attributes.push(['id', 'transactionLogIndex']);
         }
@@ -166,36 +165,19 @@ export abstract class TransferQueryBase {
         if(page?.rows){
             const hex40IdSet = new Set<number>();
             const hex64IdSet = new Set<number>();
-            const txHashQueryCondition = []
             page.rows.forEach( row => {
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['address']);
-                // tracing contract creation still use txHashId
                 hex64IdSet.add(row['transactionHash']);
-                txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
-                        blockPosition:row['blockIndex'], txPosition:row['txIndex']
-                    }]})
                 list.push(row);
             });
-            const [hex40Map,hex64Map, txMap] = await Promise.all([
-                idHex40Map(Array.from(hex40IdSet)),
-                idHex64Map(Array.from(hex64IdSet)),
-                FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash'],
-                    where: {[Op.or]: txHashQueryCondition}}).then(list=>{
-                    const map = new Map<string, FullTransaction>()
-                    list.forEach(tx=>map.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx))
-                    return map
-                })
-            ]);
+            const hex40Map = await idHex40Map(Array.from(hex40IdSet));
+            const hex64Map = await idHex64Map(Array.from(hex64IdSet));
 
             // fields mapping
             list.forEach(row=>{
-                const key:string = `${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`;
-                row['transactionHash'] = txMap.get(key)?.hash
-                    // tracing contract creation still use txHashId
-                    || `0x${hex64Map.get(row['transactionHash'])}`
-                    || '';
+                row['transactionHash'] = `0x${hex64Map.get(row['transactionHash'])}`;
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
                 row['to'] = format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId);
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
@@ -222,6 +204,7 @@ export abstract class TransferQueryBase {
                 prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
             }
         }
+
         const result = {total: (page?.count || 0) + prunedCntr, list};
         return result;
     }

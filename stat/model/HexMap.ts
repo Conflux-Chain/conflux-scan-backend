@@ -74,35 +74,52 @@ export class Hex40Map extends Model<HexMapAttributes> implements HexMapAttribute
         )
     }
 }
+const base32toHexCache = new NodeCache()
+export function formatToHex(address:string) {
+    let hex = base32toHexCache.get(address)
+    if (hex) {
+        return hex;
+    }
+    hex = format.hexAddress(address);
+    base32toHexCache.set(address, hex, cacheTtl)
+    return hex;
+}
 const dbCache = new NodeCache()
-const cacheTtl = 60 * 10 // 10 minutes
-export async function makeIdV(hex: string, dbTx: Transaction = undefined, p = undefined) : Promise<number>{
-    return makeId(hex, dbTx, p).then(res=>res.id)
+const cacheTtl = 60 * 100 // 10 minutes
+export async function makeIdV(hex: string, dbTxNotUsed: Transaction = undefined, p = undefined) : Promise<number>{
+    return makeId(hex, undefined, p).then(res=>res.id)
 }
 // https://sequelize.org/master/class/lib/model.js~Model.html#static-method-findOrCreate
-export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = undefined} = {}) {
+export async function makeId(hex: string, dbTxNotUsed: Transaction = undefined, {dt = undefined} = {}) {
     if (hex === '0x0' || hex === undefined || hex === null) {
         return {id:0};
     }
     if (hex.startsWith('0x')) {
         hex = hex.substr(2);
+    } else if (hex.startsWith('CFX') || hex.startsWith('cfx') || hex.startsWith('net') || hex.startsWith('NET')) {
+        hex = formatToHex(hex).substr(2)
     }
     let map = Hex64Map;
     switch (hex.length) {
         case 64: break;
         case 40: map = Hex40Map; break;
-        default: throw new Error(`Unsupported hex length ${hex.length}`)
+        default: throw new Error(`Unsupported hex length ${hex.length} , ${hex}`)
     }
     const cached = dbCache.get(hex)
     if (cached !== undefined && cached !== null) {
         dbCache.ttl(hex, cacheTtl)
         return cached
     }
+    const exists = await map.findOne({where:{hex}})
+    if (exists) {
+        dbCache.set(hex, exists, cacheTtl);
+        return exists
+    }
     const values:HexMapAttributes = {hex: hex};
     if (dt) values.createdAt = dt
     // console.log(`hex map for:`, values)
     let [bean, created] = await map.upsert(values, {
-        transaction: dbTx, fields:['hex'],
+        fields:['hex'],
         // logging: console.log
     });
     if (created) {
@@ -110,7 +127,11 @@ export async function makeId(hex: string, dbTx: Transaction = undefined, {dt = u
         if (dt && hex.length === 40) incDailyAddressCount(dt, 1).then().catch()
     } else {
         // exists already
-        bean = await map.findOne({where:{hex}, transaction: dbTx})
+        bean = await map.findOne({where:{hex}})
+        if (bean === null) {
+            console.log(` upsert not created, and find again returns null, hex ${hex}`)
+            throw new Error(`How could it happen?`)
+        }
     }
     dbCache.set(hex, bean, cacheTtl)
     // console.info(`created ${created}`)

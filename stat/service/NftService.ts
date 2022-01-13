@@ -46,7 +46,7 @@ export class NftService {
             return b
         })
         return NftMint.bulkCreate(beans,{
-            updateOnDuplicate:["updatedAt","toId","txHashId"],
+            updateOnDuplicate:["updatedAt","toId","epoch","blockIndex","txIndex"],
             logging: false
         })
     }
