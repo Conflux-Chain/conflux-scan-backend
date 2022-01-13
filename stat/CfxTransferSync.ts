@@ -14,7 +14,6 @@ import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 
-
 export interface ICfxUser {
     id?: number
     fromId: number
@@ -364,5 +363,8 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 if (module === require.main) {
+    if (process.argv.includes('prune')) {
+        PruneNotifier.SWITCH_SYNC_PRUNE = true;
+    }
     setup().then()
 }
