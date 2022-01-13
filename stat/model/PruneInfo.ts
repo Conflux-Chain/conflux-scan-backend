@@ -40,7 +40,8 @@ export class PruneInfo extends Model<IPrune> implements IPrune {
 export enum PruneType {
     BLOCK = 'BL', MINER_BLOCK = 'AD_BL',
     TX = 'TX', ADDR_TX = 'AD_TX',
-    CFX_TRANSFER = 'TS_CFX', ADDR_CFX_TRANSFER = 'AD_TS_CFX',
+
+    CFX_TRANSFER = 'TS_CFX_2', ADDR_CFX_TRANSFER = 'AD_TS_CFX_2',
 
     ERC20_TRANSFER = 'TS_20_2', ADDR_ERC20_TRANSFER = 'AD_TS_20_2',
     ERC721_TRANSFER = 'TS_721_2', ADDR_ERC721_TRANSFER = 'AD_TS_721_2',
