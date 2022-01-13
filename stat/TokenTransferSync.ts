@@ -308,7 +308,8 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 } catch (e) {
                     if (e instanceof UniqueConstraintError) {
                         console.log(` UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
-                        await localPop(epoch);
+                        // await localPop(epoch); // should fix manually. in case start conflict task.
+                        await sleep(10_000)
                         break;
                     }
                     console.log(`process epoch fail at ${epoch}, task start epoch ${taskBegin}, `, e)
