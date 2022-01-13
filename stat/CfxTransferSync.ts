@@ -7,7 +7,14 @@ import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
 import {FullTransaction} from "./model/FullBlock";
 import {makeIdV} from "./model/HexMap";
-import {AddressCfxTransfer, CfxTransfer, doMark, ICfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
+import {
+    AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
+    CfxTransfer,
+    doMark,
+    ICfxTransfer,
+    markCfxTransferPosition,
+    popPartitionCfxTransfer
+} from "./model/CfxTransfer";
 import {sleep} from "./service/tool/ProcessTool";
 import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
 import {PreLoader} from "./service/common/PreLoader";
@@ -220,6 +227,9 @@ async function setup() {
     if (cfxUrl === 'counter') {
         await runCounter()
         return
+    } else if (cfxUrl === 'marker') {
+        await runMarker();
+        return;
     }
     const cfx = new Conflux({url: cfxUrl});
     patchHttpProvider(cfx, {url: cfxUrl})
@@ -283,6 +293,40 @@ async function pop(epoch: number, taskBegin: number) {
         ])
     })
 }
+// marker, handle multiple task situation.
+async function runMarker() {
+    await marker();
+    setTimeout(runMarker, 0)
+}
+let preMarkEpoch = 0;
+async function marker() {
+    // all task under [TOP epoch] must be finished before mark.
+    const [minUnderGoingTask, maxFinished ]= await Promise.all([
+        TaskCfxTransfer.findOne({
+            where: {finished: 0,}, order: [['epoch','asc']]
+        }).then(res=>res?.cursor || 0),  //
+
+        TaskCfxTransfer.findOne({
+            where: {finished: 1,}, order: [['epoch','desc']]
+        }).then(res=>(res?.cursor || 0)), // in case all task is finished, use this.
+    ])
+    const top = minUnderGoingTask || maxFinished
+    if (!top) {
+        console.log(` no task info in db. ${minUnderGoingTask}, ${maxFinished}`)
+        await sleep(5_000)
+        return;
+    }
+    if (top === preMarkEpoch) {
+        console.log(` no [NEW] task info in db, pre mark ${preMarkEpoch}. ${minUnderGoingTask}, ${maxFinished}`)
+        await sleep(5_000)
+        return;
+    }
+    let avoidReOrg = 1000;
+    await markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, top - avoidReOrg);
+    preMarkEpoch = top;
+    console.log(`mark done. ${top}`)
+}
+// counter , handle multiple task situation.
 async function counter() {
     const list = await EpochCfxTransferCount.findAll({
         order: [['id','asc']], limit: 1000
