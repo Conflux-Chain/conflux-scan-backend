@@ -6,6 +6,7 @@ import {STREAM_STAT_DAILY_CFX_TRANSFER_Q} from "../../RedisWrap";
 import {StatBucket} from "../StatBucket";
 import {Epoch} from "../../../model/Epoch";
 import {DailyCfxTransferStat} from "../../../model/DailyCfxTransferStat";
+import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
 export class DailyCfxTransferHandler extends StatHandler {
     protected app: StatApp;
@@ -20,7 +21,7 @@ export class DailyCfxTransferHandler extends StatHandler {
     }
 
     public bizAlias(): string {
-        return "daily_cfx_transfer";
+        return `${DailyCfxTransferStat.getTableName()}`;
     }
 
     public async warmUp({reservedBuckets}) {

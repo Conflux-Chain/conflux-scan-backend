@@ -7,6 +7,7 @@ import {BizStatInfo} from "../BizStatInfo";
 import {STREAM_STAT_TOKEN_TRANSFER_Q} from "../../RedisWrap";
 import {StatBucket} from "../StatBucket";
 import {Epoch} from "../../../model/Epoch";
+import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
 export class TokenTransferHandler extends StatHandler {
     protected app: StatApp;
@@ -21,7 +22,7 @@ export class TokenTransferHandler extends StatHandler {
     }
 
     public bizAlias(): string {
-        return "token_transfer";
+        return `${TokenTransferStat.getTableName()}`;
     }
 
     public async warmUp({reservedBuckets}) {

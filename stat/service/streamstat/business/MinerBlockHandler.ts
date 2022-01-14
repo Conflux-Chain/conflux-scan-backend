@@ -6,6 +6,7 @@ import {Op, QueryTypes} from "sequelize";
 import {StatBucket} from "../StatBucket";
 import {Epoch} from "../../../model/Epoch";
 import {MinerBlockStat} from "../../../model/MinerBlockStat";
+import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
 const lodash = require('lodash');
 
@@ -22,7 +23,7 @@ export class MinerBlockHandler extends StatHandler {
     }
 
     public bizAlias(): string {
-        return "miner_block";
+        return `${MinerBlockStat.getTableName()}`;
     }
 
     public async warmUp({reservedBuckets}) {
@@ -193,7 +194,7 @@ export class MinerBlockHandler extends StatHandler {
                             sum(difficultySum) as statDifficultySum,
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
-                     from stat_miner_block
+                     from ${MinerBlockStat.getTableName()}
                      where bizId = ?
                        and statTime >= ?
                        and statTime < ?

@@ -6,6 +6,7 @@ import {Op, QueryTypes} from "sequelize";
 import {StatBucket} from "../StatBucket";
 import {AddrTransactionStat} from "../../../model/AddrTransactionStat";
 import {Epoch} from "../../../model/Epoch";
+import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
 const lodash = require('lodash');
 
@@ -22,7 +23,7 @@ export class AddrTransactionHandler extends StatHandler {
     }
 
     public bizAlias(): string {
-        return "addr_transaction";
+        return `${AddrTransactionStat.getTableName()}`;
     }
 
     public async warmUp({reservedBuckets}) {
@@ -189,7 +190,7 @@ export class AddrTransactionHandler extends StatHandler {
                             sum(gasSum) as statGasSum,
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
-                     from stat_addr_transaction
+                     from ${AddrTransactionStat.getTableName()}
                      where bizId = ?
                        and statTime >= ?
                        and statTime < ?

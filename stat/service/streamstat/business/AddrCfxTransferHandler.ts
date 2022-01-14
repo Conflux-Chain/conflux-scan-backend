@@ -22,7 +22,7 @@ export class AddrCfxTransferHandler extends StatHandler {
     }
 
     public bizAlias(): string {
-        return "addr_cfx_transfer";
+        return `${AddrCfxTransferStat.getTableName()}`;
     }
 
     public async warmUp({reservedBuckets}) {
@@ -185,7 +185,7 @@ export class AddrCfxTransferHandler extends StatHandler {
                             sum(recvCntr) as statRecvCntr,
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
-                     from stat_addr_cfx_transfer
+                     from ${AddrCfxTransferStat.getTableName()}
                      where bizId = ?
                        and statTime >= ?
                        and statTime < ?
