@@ -6,7 +6,7 @@ import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
 import {FullTransaction} from "./model/FullBlock";
-import {makeIdV} from "./model/HexMap";
+import {idHex40Map, makeIdV} from "./model/HexMap";
 import {
     AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
     CfxTransfer,
@@ -21,6 +21,7 @@ import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {RedisWrap} from "./service/RedisWrap";
+import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -227,6 +228,11 @@ async function setup() {
     if (cfxUrl === 'counter') {
         await runCounter()
         return
+    } else if (fromEpoch === 'holder') {
+        const cfx = new Conflux({url: cfxUrl});
+        patchHttpProvider(cfx, {url: cfxUrl})
+        await runHolder(cfx);
+        return;
     } else if (cfxUrl === 'marker') {
         await runMarker();
         return;
@@ -292,6 +298,47 @@ async function pop(epoch: number, taskBegin: number) {
             )
         ])
     })
+}
+// cfx holder
+async function runHolder(cfx:Conflux) {
+    if (!cfxWatcher) {
+        await cfx.updateNetworkId();
+        cfxWatcher = new CfxWatcher('cfx', cfx);
+    }
+    await holder().catch(err=>{
+        console.log(` cfx holder error:`, err)
+        return sleep(10_000)
+    });
+    setTimeout(()=>runHolder(cfx), 0);
+}
+let cfxWatcher:CfxWatcher;
+async function holder() {
+    const list = await CfxUser.findAll({order:[['id','asc']], limit: 100})
+    if (list.length === 0) {
+        console.log(` ${new Date().toISOString()} cfx user table is empty.`)
+        await sleep(5_000)
+        return;
+    }
+    const min = list[0].id;
+    const max = list[list.length - 1].id;
+    const idSet = new Set<number>();
+    list.forEach(row=>{
+        idSet.add(row.fromId)
+        idSet.add(row.toId)
+    })
+    const idArr = [...idSet];
+    const idHexMap = await idHex40Map(idArr)
+    let batch = []
+    for (const [id,hex] of idHexMap.entries()) {
+        batch.push(cfxWatcher.queryBalance('0x'+hex, id))
+        if (batch.length == 10) {
+            await Promise.all(batch)
+            batch = []
+        }
+    }
+    await Promise.all(batch)
+    const delCnt = await CfxUser.destroy({where: {id:{[Op.between]:[min, max]}}})
+    console.log(` check cfx holder, count ${idArr.length}, min ${min} max ${max}, deleted ${delCnt}`)
 }
 // marker, handle multiple task situation.
 async function runMarker() {
