@@ -31,6 +31,7 @@ import {batchFetchBlock} from "./common/utils";
 import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 import {PruneNotifier} from "./prune/PruneNotifier";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
+import {StatNotifier} from "./streamstat/StatNotifier";
 
 
 // Do not care the value
@@ -460,6 +461,9 @@ export class FullBlockService {
         });
         PruneNotifier.notifyTransaction(executedTxArr)
             .catch(e => console.log(`block-sync.noticePruneTx, epoch:${executedTxArr[0].epoch}`, e));
+        StatNotifier.notifyStatAddrTransaction({epochNumber: minEpochNumber, epochTimestamp: blockTime, action: 'push',
+            txnArray: executedTxArr
+        }).catch(e => console.log(`epoch-sync.noticeStatAddrTransaction epoch:${minEpochNumber}`, e));
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
@@ -530,6 +534,8 @@ export class FullBlockService {
         if (reward.length === 0) {
             return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${latestConfirm} confirmed.`}
         }
+
+        const blockStatArray = [];
         return FullBlock.sequelize.transaction(async (dbTx)=>{
             const tx = []
             reward.forEach(r=>{
@@ -539,9 +545,14 @@ export class FullBlockService {
                         {where: {epoch, hash: r["blockHash"]}, limit: 1, transaction: dbTx})
                         .then(([updated]) => updated)
                 )
+                blockStatArray.push({hash: r["blockHash"], totalReward: r["totalReward"], txFee: r.txFee});
             })
             const updatedArr = await Promise.all(tx)
             // const allModified = updatedArr.reduce((a,b)=>a+b)
+        }).then(()=>{
+            const msg = {epochNumber: epoch, epochTimestamp: undefined, action: 'push', blockList: blockStatArray};
+            StatNotifier.notifyStatMinerBlock(msg)
+                .catch(e => console.log(`epoch-sync.notifyStatMinerBlock epoch:${epoch}`, e));
         }).then(()=>{
             return {code: CODE_OK, message: 'ok'}
         })

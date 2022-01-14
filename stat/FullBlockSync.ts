@@ -8,6 +8,7 @@ import {patchHttpProvider} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
+import {StatNotifier} from "./service/streamstat/StatNotifier";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -22,6 +23,9 @@ export async function run() {
     await initModel(seq)
     const svc = new FullBlockService(cfx)
     PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
+    StatNotifier.SWITCH_STREAM_STAT = config.streamStat;
+    StatNotifier.SWITCH_STAT_MINER_BLOCK = config.statMinerBlock;
+    StatNotifier.SWITCH_STAT_ADDR_TRANSACTION = config.statAddrTransaction;
 
     if (args[0] === 'fix') {
         // batch size 10, loop 1 time:

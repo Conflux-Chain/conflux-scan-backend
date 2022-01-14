@@ -103,6 +103,15 @@ export interface StatConfig{
     syncTokenSecurityAudit: boolean,
     syncPrune: boolean,
     syncTransferTps: boolean,
+
+    streamStat: boolean,
+    statMinerBlock: boolean,
+    statAddrTransaction: boolean,
+    statDailyCfxTransfer: boolean,
+    statAddrCfxTransfer: boolean,
+    statTokenTransfer: boolean,
+    statDailyTokenTransfer: boolean,
+
     databaseRW: DatabaseRW,
 }
 

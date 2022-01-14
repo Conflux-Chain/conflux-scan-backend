@@ -46,6 +46,7 @@ import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
+import {StatNotifier} from "./service/streamstat/StatNotifier";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -216,15 +217,17 @@ export class StatApp{
         if (this.config.syncPrune) {
             PruneNotifier.SWITCH_SYNC_PRUNE = this.config.syncPrune;
             await this.pruneHandler.scheduleRefreshConfig();
-            // await this.pruneHandler.schedule();
         }
         if (this.config.syncTransferTps) {
             await this.transferTpsService.scheduleRefreshConfig();
             await this.transferTpsService.schedule();
         }
+        if (this.config.streamStat) {
+            StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
+            StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
+            StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
+        }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
     }
-
 }
-

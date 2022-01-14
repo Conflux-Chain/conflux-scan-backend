@@ -14,6 +14,7 @@ export interface IToken{
     // advance info
     type?:string
     transfer?:number
+    transferLatest?:number
     holder?:number
     // price info
     price?:number
@@ -48,6 +49,7 @@ export class Token extends Model<IToken> implements IToken{
     // advance info
     type?:string
     transfer?:number
+    transferLatest?:number
     holder:number
     // price info
     price?:number
@@ -81,6 +83,7 @@ export class Token extends Model<IToken> implements IToken{
             // advance info
             type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             transfer: {type: DataTypes.BIGINT, allowNull: true, },
+            transferLatest: {type: DataTypes.BIGINT, allowNull: true, },
             holder: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
             // price info
             price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
@@ -120,6 +123,7 @@ export class Token extends Model<IToken> implements IToken{
             // advance info
             type:token.type,
             transfer:token.transfer,
+            transferLatest: token.transferLatest,
             holder:token.holder,
             // price info
             price:token.price,

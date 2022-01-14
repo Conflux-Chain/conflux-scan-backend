@@ -104,6 +104,12 @@ import {
     PosTransaction
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
+import {TokenTransferStat} from "../model/TokenTransferStat";
+import {AddrTransactionStat} from "../model/AddrTransactionStat";
+import {AddrCfxTransferStat} from "../model/AddrCfxTransferStat";
+import {DailyCfxTransferStat} from "../model/DailyCfxTransferStat";
+import {DailyTokenTransferStat} from "../model/DailyTokenTransferStat";
+import {MinerBlockStat} from "../model/MinerBlockStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
 let conf
 export function createDB(config) {
@@ -202,6 +208,12 @@ export async function initPartialModel(sequelize) {
     CfxBalance.register(sequelize);
     TokenSecurityAudit.register(sequelize);
     PruneInfo.register(sequelize);
+    TokenTransferStat.register(sequelize);
+    AddrTransactionStat.register(sequelize);
+    AddrCfxTransferStat.register(sequelize);
+    DailyCfxTransferStat.register(sequelize);
+    DailyTokenTransferStat.register(sequelize);
+    MinerBlockStat.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
