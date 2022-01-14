@@ -19,7 +19,9 @@ export class Crc777TransferQuery extends TransferQueryBase{
     public buildQueryFields({txType}): any{
         return[
             ['epoch', 'epochNumber'],
-            ['txHashId', 'transactionHash'],
+            'blockIndex',
+            'txIndex',
+            'txLogIndex',
             ['fromId', 'from'],
             ['toId', 'to'],
             'value',

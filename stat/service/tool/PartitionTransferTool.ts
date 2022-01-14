@@ -1,4 +1,4 @@
-import {AddressErc20Transfer, build20transferList2address, Erc20Transfer} from "../../model/Erc20Transfer";
+import {AddressErc20Transfer, buildTransferList2address, Erc20Transfer} from "../../model/Erc20Transfer";
 import {init} from "./FixDailyTokenStat";
 import {Op} from 'sequelize'
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
@@ -63,7 +63,7 @@ export async function loop20transfer(times: number, full_t, partition_t) {
             })
         }).then(list=>{
             if (list.length > 0) {
-                const copies = build20transferList2address(list)
+                const copies = buildTransferList2address(list)
                 return partition_t.bulkCreate(copies,{
 
                 }).then(arr=>{

@@ -40,7 +40,7 @@ export class PivotSwitch extends Model<IPivotSwitch> implements IPivotSwitch{
             revertDepth: {type: DataTypes.BOOLEAN, allowNull:false, defaultValue: false},
         },{
             sequelize: seq,
-            tableName: 'pivot_switch',
+            tableName: 'pivot_switch_2',
             timestamps: true,
             createdAt: true,
             updatedAt: false,

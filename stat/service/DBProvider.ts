@@ -64,7 +64,7 @@ import {
     WCfxBalance
 } from "../model/Balance";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
-import {createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
+import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {
     CfxTransfer,
     createAddressCfxTransferTable,
@@ -110,6 +110,7 @@ import {AddrCfxTransferStat} from "../model/AddrCfxTransferStat";
 import {DailyCfxTransferStat} from "../model/DailyCfxTransferStat";
 import {DailyTokenTransferStat} from "../model/DailyTokenTransferStat";
 import {MinerBlockStat} from "../model/MinerBlockStat";
+import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
 let conf
 export function createDB(config) {
     conf = config
@@ -286,6 +287,9 @@ export async function initModel(sequelize) {
     DailyContractStat.register(sequelize);
     DailyContractRegister.register(sequelize);
     EpochTask.register(sequelize);
+    EpochTaskTokenTransfer.register(sequelize);
+    EpochHashTokenTransfer.register(sequelize)
+    ContractUser.register(sequelize);
     UniqueAddress.register(sequelize);
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);

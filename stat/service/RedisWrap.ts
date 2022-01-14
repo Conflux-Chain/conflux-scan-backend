@@ -13,7 +13,7 @@ export const ERC777_TRANSFER_Q = 'ERC777_TRANSFER_Q'
 export const ERC1155_TRANSFER_Q = 'ERC1155_TRANSFER_Q'
 export const CFX_TRANSFER_Q = 'CFX_TRANSFER_Q'
 export const POW_EPOCH_FOR_POS_Q = 'POW_EPOCH_FOR_POS_Q'
-export const PRUNE_Q = 'PRUNE_Q';
+export const PRUNE_Q = 'PRUNE_Q_2';
 
 export const TPS_TRANSFER_Q = 'TPS_TRANSFER_Q'
 

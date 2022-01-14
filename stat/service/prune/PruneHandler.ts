@@ -18,7 +18,7 @@ export class PruneHandler {
     private app: any;
     private pruneBlock: PruneBlock;
     private pruneTransaction: PruneTransaction;
-    private pruneTransfer: PruneTransfer;
+    public pruneTransfer: PruneTransfer;
     private CACHE_POOL = {};
     private CACHE_MARKER = {};
     private CACHE_COUNTER = {};
@@ -92,7 +92,9 @@ export class PruneHandler {
             for (const type of Object.keys(message)) {
                 const pruneInfoArray = message[type];
 
-                for (const pruneInfo of pruneInfoArray) {
+                for (const element of pruneInfoArray) {
+                    // element could be a number.
+                    const pruneInfo = isNaN(element) ? element : {addressId:element}
                     const addressId = pruneInfo?.addressId;
                     if (addressId === undefined) {
                         continue;
@@ -104,7 +106,7 @@ export class PruneHandler {
                     } else{
                         counterMap[addressId] ++;
                     }
-                    if(counterMap[addressId] % PruneHandler.NOTIFY_INTERVAL !== 0){
+                    if(counterMap[addressId] < PruneHandler.NOTIFY_INTERVAL){
                         continue;
                     }
                     delete counterMap[addressId];

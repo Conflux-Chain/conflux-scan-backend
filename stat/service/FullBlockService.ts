@@ -381,13 +381,15 @@ export class FullBlockService {
             let pos = 0
             for (const txInfo of block.transactions) {
                 // status has value, fail (!0) or success (0) or genesis epoch.
+                // status could be: null(not executed/skipped), 0(success), 1(fail);
+                // in receipt, outcomeStatus could be 2 (skipped).
                 if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
                     txInfo.fromId = hexMap.get(txInfo.from) || 0
                     txInfo.toId =  hexMap.get(txInfo.to) || 0
                     txInfo.contractCreatedId = hexMap.get(txInfo.contractCreated) || 0
                     txInfo.epoch = minEpochNumber
                     txInfo.blockPosition = block.position
-                    txInfo.txPosition = pos++
+                    txInfo.txPosition = pos++ // it's not the index in RPC data. it's computed, see desc above.
                     txInfo.createdAt = block.createdAt
                     txInfo.dripValue = txInfo.value
                     txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
