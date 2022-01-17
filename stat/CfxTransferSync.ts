@@ -112,26 +112,28 @@ async function getCfxTransferTraces(epoch: number)
     : Promise<{result?:ICfxTransfer[], code?: number, addrBeans?:any[], pivotHash?:string, parentHash?:string}>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
-    const txMapByHash = await FullTransaction.findAll({
-        where: {epoch}, order: [['blockPosition', 'asc'],['txPosition', 'asc']]
-    }).then(list=>{
-        const txMap = new Map<string, FullTransaction>()
-        list.forEach(tx=>{
-            txMap.set(tx.hash, tx)
-        })
-        return txMap
-    })
-    const [hashes, maxTx, pivotBlock] = await Promise.all([
-        cfx.getBlocksByEpochNumber(epoch),
+    const [txMapByHash, maxTx] = await Promise.all([FullTransaction.findAll({
+            where: {epoch}, order: [['blockPosition', 'asc'],['txPosition', 'asc']]
+        }).then(list=>{
+            const txMap = new Map<string, FullTransaction>()
+            list.forEach(tx=>{
+                txMap.set(tx.hash, tx)
+            })
+            return txMap
+        }),
         FullTransaction.findOne({order:[['epoch','desc']]}),
-        cfx.getBlockByEpochNumber(epoch, false)
-    ])
+        ])
     if (maxTx === null || epoch > maxTx.epoch) {
         return {code: 404}
     }
     if (txMapByHash.size === 0) {
-        return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
+        // return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
+        return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-'};
     }
+    const [hashes, pivotBlock] = await Promise.all([
+        cfx.getBlocksByEpochNumber(epoch),
+        cfx.getBlockByEpochNumber(epoch, false)
+    ])
 
     const result:ICfxTransfer[] = [];
     const addrBeans = []
