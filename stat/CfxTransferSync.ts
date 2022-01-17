@@ -108,7 +108,7 @@ export class TaskCfxTransfer extends Model<ITaskCfxTransfer> implements ITaskCfx
     }
 }
 let cfx0:Conflux
-async function getCfxTransferTraces(epoch: number)
+async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     : Promise<{result?:ICfxTransfer[], code?: number, addrBeans?:any[], pivotHash?:string, parentHash?:string}>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
@@ -126,14 +126,16 @@ async function getCfxTransferTraces(epoch: number)
     if (maxTx === null || epoch > maxTx.epoch) {
         return {code: 404}
     }
-    if (txMapByHash.size === 0) {
-        // return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
+    if (txMapByHash.size === 0 && !checkPivot) {
         return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-'};
     }
     const [hashes, pivotBlock] = await Promise.all([
         cfx.getBlocksByEpochNumber(epoch),
         cfx.getBlockByEpochNumber(epoch, false)
     ])
+    if (txMapByHash.size === 0) {
+        return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
+    }
 
     const result:ICfxTransfer[] = [];
     const addrBeans = []
@@ -255,7 +257,7 @@ async function setup() {
     }
 }
 async function test(ep:number) {
-    const {addrBeans, result, code} = await getCfxTransferTraces(ep)
+    const {addrBeans, result, code} = await getCfxTransferTraces(ep, false)
     if (code === 404) {
         console.log(` tx not sync yet.`)
         await sleep(5_000)
@@ -435,8 +437,10 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     const taskBegin = task.epoch;
     // parentHash, also indicates whether checking parent hash.
     let parentHash = await waitParentHashDB(task, task.cursor, EpochHashCfxTransfer)
-
-    const loader = new PreLoader(cfx, getCfxTransferTraces, 3, stopBeforeEpoch);
+    async function wrapFetchData(epoch:number) {
+        return getCfxTransferTraces(epoch, task.checkPivot)
+    }
+    const loader = new PreLoader(cfx, wrapFetchData, 3, stopBeforeEpoch);
     loader.preLoadSize = 10;
     // should not higher than tx sync, otherwise the transaction hash may can not be found.
     let epoch = fromEpoch;
@@ -472,7 +476,8 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     break;
                 }
                 // console.log(` epoch ${epoch}, code ${data.code}, parentHash ${parentHash}`, data)
-                if (data.code === 0 && parentHash && parentHash !== data.parentHash) {
+                // previous epoch may have not checked pivot, its pivot hash will be '-'.
+                if (data.code === 0 && parentHash && parentHash !== data.parentHash && parentHash !== '-') {
                     console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash
                     }`)
                     const [parentH] = await pop(epoch-1, taskBegin)
