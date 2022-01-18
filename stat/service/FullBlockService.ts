@@ -88,9 +88,9 @@ export class FullBlockService {
             ret = await that.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
-                    console.log(`lock time out at epoch ${maxEpoch}:`, err)
+                    console.log(`lock time out at epoch ${maxEpoch+1}:`, err)
                 } else {
-                    console.log(`sync block fail at epoch ${maxEpoch}`, err)
+                    console.log(`sync block fail at epoch ${maxEpoch+1}`, err)
                 }
                 return {code: CODE_CONTINUE}
             })
@@ -487,8 +487,10 @@ export class FullBlockService {
                 console.log(`fill block reward fail, epoch ${prePos+1}`, err)
                 return {code:CODE_CONTINUE, message:'error'}
             })
-            process.stdout.write(`\r ${new Date().toISOString()} fill block reward at epoch ${prePos+1} return ${
-                fillRet.code}, ${fillRet.message}`)
+            if (prePos + 1 % 100 === 0) {
+                console.log(`fill block reward at epoch ${prePos + 1} return ${
+                    fillRet.code}, ${fillRet.message}`)
+            }
             switch (fillRet.code) {
                 case CODE_CONTINUE:
                     await new Promise(r=>setTimeout(r, 5000))
