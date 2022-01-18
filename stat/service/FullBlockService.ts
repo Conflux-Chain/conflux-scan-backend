@@ -32,6 +32,7 @@ import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 import {PruneNotifier} from "./prune/PruneNotifier";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {StatNotifier} from "./streamstat/StatNotifier";
+import {Contract} from "../model/Contract";
 
 
 // Do not care the value
@@ -389,7 +390,16 @@ export class FullBlockService {
                     txInfo.fromId = hexMap.get(txInfo.from) || 0
                     txInfo.toId =  hexMap.get(txInfo.to) || 0
                     txInfo.contractCreatedId = hexMap.get(txInfo.receipt.contractCreated) || 0
-                    txInfo.epoch = minEpochNumber
+                    if (txInfo.contractCreatedId) {
+                        const contractBean = {
+                            hex40id: txInfo.contractCreatedId, epoch: minEpochNumber,
+                            base32:  txInfo.receipt.contractCreated,
+                        }
+                        await Contract.create(contractBean)
+                            .catch(err=>console.log(` save contract addr fail: tx ${txInfo.hash
+                            } ${JSON.stringify(contractBean)}, `, err))
+                    }
+                    txInfo.epoch = minEpochNumber;
                     txInfo.blockPosition = block.position
                     txInfo.txPosition = pos++ // it's not the index in RPC data. it's computed, see desc above.
                     txInfo.createdAt = block.createdAt
