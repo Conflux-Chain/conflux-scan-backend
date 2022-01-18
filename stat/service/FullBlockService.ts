@@ -98,11 +98,11 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again epoch ${maxEpoch+1
+                that.debugLog && console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
+                that.debugLog && console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
