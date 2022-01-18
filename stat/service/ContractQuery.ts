@@ -256,7 +256,7 @@ export class ContractQuery {
         // build response
         contractArray.forEach((contract) => {
             map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
-                name: contract.name,
+                name: contract.name || '',
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
             });
         });
