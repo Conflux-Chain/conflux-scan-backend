@@ -99,7 +99,7 @@ export class FullBlockService {
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
                 that.debugLog && console.log(` try again epoch ${maxEpoch+1
-                    }: ${ret.message}`)
+                    }: ${ret.message || 'no message'}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 that.debugLog && console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
