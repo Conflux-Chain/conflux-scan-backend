@@ -229,7 +229,8 @@ export class FullBlockService {
             for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
                 let tx = blk.transactions[txIdx];
                 tx.receipt = (receipts[idx]||[])[txIdx]
-                if (tx.status === null || tx.status === undefined || tx.receipt === undefined) {
+                const st = tx.receipt?.outcomeStatus
+                if (st != 1 && st != 0) {
                     continue
                 }
                 // check consistency
@@ -383,7 +384,8 @@ export class FullBlockService {
                 // status has value, fail (!0) or success (0) or genesis epoch.
                 // status could be: null(not executed/skipped), 0(success), 1(fail);
                 // in receipt, outcomeStatus could be 2 (skipped).
-                if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
+                const st = txInfo.receipt?.outcomeStatus
+                if (st == 0 || st == 1 || minEpochNumber === 0) {
                     txInfo.fromId = hexMap.get(txInfo.from) || 0
                     txInfo.toId =  hexMap.get(txInfo.to) || 0
                     txInfo.contractCreatedId = hexMap.get(txInfo.contractCreated) || 0
@@ -392,7 +394,7 @@ export class FullBlockService {
                     txInfo.txPosition = pos++ // it's not the index in RPC data. it's computed, see desc above.
                     txInfo.createdAt = block.createdAt
                     txInfo.dripValue = txInfo.value
-                    txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
+                    txInfo.status = minEpochNumber === 0 ? 0 : st
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gas = txInfo.receipt?.gasFee || 0// save gasFee.
                     executedTxArr.push(txInfo)
@@ -407,7 +409,7 @@ export class FullBlockService {
                     }
                     sumGasPrice += txInfo.gasPrice
                 }
-                if (txInfo.status) { // has value and is not zero: failed.
+                if (st == 1) { // has value and is not zero: failed.
                     failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo))
                 }
             }
