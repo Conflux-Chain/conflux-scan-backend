@@ -231,7 +231,9 @@ export class ContractQuery {
 
         // remove repeat
         addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address))
-            .filter((address) => address?.startsWith('0x8') || address?.startsWith('0x08')))];
+            // .filter((address) => address?.startsWith('0x8') || address?.startsWith('0x08'))
+        )
+        ];
         if (addressArray.length === 0) {
             return { total: 0, map: {} };
         }
