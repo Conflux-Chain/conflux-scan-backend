@@ -136,8 +136,11 @@ async function waitParentHashDB(task: IEpochTokenTransfer, parentEpoch:number) :
     if (!task.checkPivot) {
         return ''
     }
+    if (parentEpoch === -1) {
+        return '-'
+    }
     do {
-        const formerOne = await EpochHashTokenTransfer.findByPk(parentEpoch)
+        const formerOne = await EpochHashTokenTransfer.findByPk(parentEpoch);
         if (formerOne === null) {
             console.log(` current task with epoch ${task.epoch
             } says: former task not finished yet, want epoch ${parentEpoch} be finished.`)
