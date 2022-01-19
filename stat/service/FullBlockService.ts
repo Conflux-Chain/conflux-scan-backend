@@ -264,7 +264,7 @@ export class FullBlockService {
                 if (txInfo.to && txInfo.to !== '0x' && txInfo.to !== txInfo.from) {
                     map.add(txInfo.to)
                 }
-                if (txInfo.receipt.contractCreated && txInfo.receipt.contractCreated !== '0x') {
+                if (txInfo.receipt?.contractCreated && txInfo.receipt?.contractCreated !== '0x') {
                     map.add(txInfo.receipt.contractCreated)
                 }
             }
@@ -389,11 +389,11 @@ export class FullBlockService {
                 if (st == 0 || st == 1 || minEpochNumber === 0) {
                     txInfo.fromId = hexMap.get(txInfo.from) || 0
                     txInfo.toId =  hexMap.get(txInfo.to) || 0
-                    txInfo.contractCreatedId = hexMap.get(txInfo.receipt.contractCreated) || 0
+                    txInfo.contractCreatedId = hexMap.get(txInfo.receipt?.contractCreated) || 0
                     if (txInfo.contractCreatedId) {
                         const contractBean = {
                             hex40id: txInfo.contractCreatedId, epoch: minEpochNumber,
-                            base32:  txInfo.receipt.contractCreated,
+                            base32:  txInfo.receipt?.contractCreated,
                         }
                         await Contract.create(contractBean)
                             .catch(err=>console.log(` save contract addr fail: tx ${txInfo.hash
