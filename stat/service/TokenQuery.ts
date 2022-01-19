@@ -14,6 +14,7 @@ import {Erc1155Transfer, T_ADDRESS_ERC1155_TRANSFER} from "../model/Erc1155Trans
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {TokenBalance} from "../model/Balance";
 import {StatApp} from "../StatApp";
+import {Desensitizer} from "./Desensitizer";
 
 const lodash = require('lodash');
 const CONST = require('./common/constant');
@@ -87,6 +88,7 @@ export class TokenQuery {
         let rawList;
         let count;
         if (addressArray) {
+            delete options.where['auditResult'];
             rawList = await Token.findAll(options);
             count = rawList?.length || 0;
         } else {
@@ -128,6 +130,12 @@ export class TokenQuery {
             if (tokens?.length) {
                 list = [...list, ...tokens];
             }
+            list.forEach(item => {
+                item.name = Desensitizer.mosaicStr(item.address, item.name);
+                item.symbol = Desensitizer.mosaicStr(item.address, item.symbol);
+                item.icon = Desensitizer.mosaicIcon(item.address, item.icon);
+                item.iconUrl = Desensitizer.mosaicUri(item.address, item.iconUrl);
+            });
             count = list.length;
         }
         // add security audit

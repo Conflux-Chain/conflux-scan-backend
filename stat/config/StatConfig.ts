@@ -112,6 +112,8 @@ export interface StatConfig{
     statTokenTransfer: boolean,
     statDailyTokenTransfer: boolean,
 
+    blacklist: boolean,
+
     databaseRW: DatabaseRW,
 }
 

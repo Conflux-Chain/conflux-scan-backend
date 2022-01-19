@@ -7,6 +7,7 @@ import {Hex40Map, makeId} from "../model/HexMap";
 import {Op} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
+import {Desensitizer} from "./Desensitizer";
 
 const lodash = require('lodash');
 const CONST = require('./common/constant');
@@ -60,6 +61,9 @@ export class ContractQuery {
         let count;
         if (addressArray) {
             rawList = await Contract.findAll(options);
+            rawList?.forEach(item => {
+                item.name = Desensitizer.mosaicStr(item.address, item.name);
+            });
             count = rawList?.length || 0;
         } else{
             options.offset = skip;

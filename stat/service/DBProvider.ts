@@ -111,6 +111,7 @@ import {DailyCfxTransferStat} from "../model/DailyCfxTransferStat";
 import {DailyTokenTransferStat} from "../model/DailyTokenTransferStat";
 import {MinerBlockStat} from "../model/MinerBlockStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
+import {Blacklist} from "../model/Blacklist";
 let conf
 export function createDB(config) {
     conf = config
@@ -214,6 +215,7 @@ export async function initPartialModel(sequelize) {
     DailyCfxTransferStat.register(sequelize);
     DailyTokenTransferStat.register(sequelize);
     MinerBlockStat.register(sequelize);
+    Blacklist.register(sequelize);
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
