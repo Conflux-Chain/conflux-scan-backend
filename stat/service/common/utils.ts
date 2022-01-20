@@ -2,7 +2,7 @@ import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 const lodash = require('lodash');
-
+const addressUtil = require('js-conflux-sdk/src/util/address');
 export function patchFormat() {
     const fun = format.address;
     function saveAddress(str, networkId, verbose) {
@@ -13,6 +13,11 @@ export function patchFormat() {
         }
     }
     format.address = saveAddress;
+}
+export function noVerboseAddr(v) {
+    const obj = addressUtil.decodeCfxAddress(v)
+    const simple = format.address(obj.hexAddress, obj.netId)
+    return simple;
 }
 export function removeLongData(obj) {
     if (Array.isArray(obj)) {

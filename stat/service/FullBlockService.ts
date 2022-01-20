@@ -27,13 +27,12 @@ import {
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
 import {Epoch} from "../model/Epoch";
-import {batchFetchBlock} from "./common/utils";
+import {batchFetchBlock, noVerboseAddr} from "./common/utils";
 import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 import {PruneNotifier} from "./prune/PruneNotifier";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {Contract} from "../model/Contract";
-
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -393,7 +392,7 @@ export class FullBlockService {
                     if (txInfo.contractCreatedId) {
                         const contractBean = {
                             hex40id: txInfo.contractCreatedId, epoch: minEpochNumber,
-                            base32:  txInfo.receipt?.contractCreated,
+                            base32:  noVerboseAddr(txInfo.receipt.contractCreated),
                         }
                         await Contract.create(contractBean)
                             .catch(err=>console.log(` save contract addr fail: tx ${txInfo.hash
