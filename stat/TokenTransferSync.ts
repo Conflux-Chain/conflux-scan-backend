@@ -274,6 +274,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
             return;
         }
         maxEpochInTx = maxE;
+        console.log(` update max tx epoch to ${maxE} `)
     }
     await updateMaxTxEpoch()
     let firstWait = true
