@@ -20,7 +20,7 @@ export class DailyContractRegisterSync{
                     {createdAt: {[Op.lt]:endTime}}]}
         });
         const dailyContractRegister = new DailyContractRegister();
-        dailyContractRegister.statDay = beginTime;
+        dailyContractRegister.statDay = endTime;
         dailyContractRegister.contractCount = contractCount;
         const newRecord = await DailyContractRegister.add(dailyContractRegister);
         console.log(`count daily_contract_register record:${JSON.stringify(newRecord)}`);
