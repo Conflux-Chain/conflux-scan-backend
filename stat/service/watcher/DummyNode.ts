@@ -193,8 +193,14 @@ export class DummyNode {
                     } \n mismatch trace tx hash ${transactionHash}`)
                     process.exit(1);
                 }
-                for (const [traceIndex,{action,type}] of traces.entries()) {
-                    if (!action.value || action.space === 'evm') {
+                for (const [traceIndex, trace] of traces.entries()) {
+                    const {action,type} = trace;
+                    const { callType, fromPocket, toPocket, fromSpace, toSpace, space, value } = trace.action;
+                    console.log(` action at epoch ${epoch}`, action)
+                    if (!value || space === 'evm'
+                        || (fromSpace === 'native' && toSpace === 'evm')
+                        || (fromSpace === 'evm' && toSpace === 'native')
+                    ) {
                         continue;
                     }
                     if (action.callType === 'none'
