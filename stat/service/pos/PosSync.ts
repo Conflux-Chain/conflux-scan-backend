@@ -129,8 +129,10 @@ export class PosSync {
         }
         // next tx number is the last tx number of the block, in fact.
         const preNextTxNumber = preBlock?.nextTxNumber
+            //@ts-ignore
             || preBlockDetail?.nextTxNumber
             || await detectTxCountAtPosBlock1(this.cfx);
+        //@ts-ignore
         const txIdEndInclude = blockDetail.nextTxNumber;
         const txArr = await this.fetchTxArr(preNextTxNumber+1, txIdEndInclude);
         if (txArr === null) {
@@ -144,6 +146,7 @@ export class PosSync {
             } - ${preNextTxNumber} = ${txCountByDiff
             } , actual tx ${txArr.length}`)
             const info = [preBlockDetail,blockDetail].map(block=>{
+                //@ts-ignore
                 return ` block height [${block?.height}] nextTx [${block?.nextTxNumber
                 }], hash ${block?.hash}`;
             }).join('\n')
