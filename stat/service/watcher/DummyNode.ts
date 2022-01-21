@@ -125,12 +125,12 @@ export class DummyNode {
         return Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(async hashes=>{
                 // console.log(`hashes: \n ${hashes.join('\n')}`)
-                return batchBlockDetail(this.cfx, hashes)
-                .then(([blkArr, traceArr])=>{
-                    blkArr.forEach((blk, idx)=>{
-                        blkArr[idx].traces = traceArr[idx]
+                return batchTraceBlock(this.cfx, hashes)
+                .then((traceArr)=>{
+                    const reward = {} as any;
+                    return traceArr.map((blk, idx)=>{
+                        return { hash: hashes[idx], traces: traceArr[idx], reward, miner: '', receipts: []}
                     })
-                    return blkArr
                 })
             }),
             this.cfx.getBlockRewardInfo(epoch),
@@ -140,11 +140,11 @@ export class DummyNode {
             // console.log(`fetch all done.`)
             blockList.forEach((blk,idx)=>{
                 blk.reward = rewardList[idx]
-                if (blk.reward.author !== blk.miner) {
-                    throw new Error(`block miner doesn't match reward author.\n${
-                        blk.miner}\n${blk.reward.author}`)
+                if (blk.reward.blockHash !== blk.hash) {
+                    throw new Error(`block hash doesn't match reward hash.\n${
+                        blk.hash}\n${blk.reward.blockHash}`)
                 }
-                blk.transactions.forEach((tx, txIdx)=>tx.receipt = receipts[idx][txIdx])
+                blk.receipts = receipts[idx]
             })
             return blockList
         }).then(res=>{
@@ -159,52 +159,32 @@ export class DummyNode {
         }
         return mulV / STORAGE_DIV
     }
-    makeStorageBill(billArr:any[], receipt:any, tx:any, epoch:number, txIndex:number, blockIndex:number) {
-        // storage used
-        if (!receipt.storageCoveredBySponsor && receipt.storageCollateralized) {
-            const storageUsedBill = {
-                owner:tx.from, epoch, blockIndex, txIndex, traceIndex: 0, type:'store_u',
-                from: tx.from, to: tx.to, diffDrip: -this.computeStorageDrip(receipt.storageCollateralized),
-                seq: billArr.length,
-            }
-            billArr.push(storageUsedBill)
-        }
-    }
-    makeGasBill(billArr:any[], receipt:any, tx:any, epoch:number, txIndex:number, blockIndex:number) {
-        // tx gas used
-        if (!receipt.gasCoveredBySponsor && receipt.gasFee) {
-            const gasBill = {
-                owner:tx.from, epoch, blockIndex, txIndex, traceIndex: 0, type:GAS,
-                from: tx.from, to: tx.to, diffDrip: -receipt.gasFee,
-                seq: billArr.length,
-            }
-            billArr.push(gasBill)
-        }
-    }
+
     async buildBill(epoch, blockList:any[]) {
         const billArr = []
         for (const [blockIndex,block] of blockList.entries()) {
-            for (const [txIndex,tx] of block.transactions.entries()) {
-                const receipt = tx.receipt
-                if (!receipt && tx.status === null && tx.blockHash === null) {
-                    console.log(`tx receipt not found, epoch ${epoch} block hash ${block.hash
-                    }\n tx hash ${tx.hash} tx index ${txIndex}`)
-                    continue
+            for (const [txIndex,receipt] of block.receipts.entries()) {
+                if (receipt.outcomeStatus !== 0 && receipt.outcomeStatus !== 1) {
+                    continue; // only for failed or succeeded tx.
                 }
+                // const receipt = tx.receipt
                 if (receipt.epochNumber !== epoch) {
                     // not executed in current epoch
                     continue
                 }
-                if (receipt.outcomeStatus !== 0) {
-                    // failed, only compute gas.
-                    this.makeGasBill(billArr, receipt, tx, epoch, txIndex, blockIndex)
-                    continue
-                }
                 // traces for this tx. traces is prior to gas and storage in one epoch.
-                const transactionTraces = block.traces.transactionTraces;
+                const {transactionTraces, transactionHash} = block.traces;
+                if (transactionHash !== receipt.transactionHash) {
+                    console.log(` epoch ${epoch}, block ${blockIndex}, ${block.hash
+                    } \n receipt tx hash ${receipt.transactionHash
+                    } \n mismatch trace tx hash ${transactionHash}`)
+                    process.exit(1);
+                }
                 for (const [traceIndex,{action,type}] of transactionTraces[txIndex].traces.entries()) {
-                    if (!action.value
-                        || action.callType === 'none'
+                    if (!action.value || action.space === 'evm') {
+                        continue;
+                    }
+                    if (action.callType === 'none'
                         || action.callType === 'callcode'
                         || action.callType === 'delegatecall'
                         || action.callType === 'staticcall'
@@ -217,10 +197,14 @@ export class DummyNode {
                         process.exit(8)
                         return
                     }
+                    // https://github.com/Conflux-Chain/CIPs/issues/88  read the doc.
                     let tType = type
                     if (type === 'internal_transfer_action') {
                         tType = 'in_trans'
-                    } else if (type === 'create' || type ==='call') {
+                    } else if (type === 'create') {
+                    } else if (type ==='call') {
+                        // call type trace has no fromPocket and toPocket field. Because the pocket is always "balance".
+                        action.fromPocket = action.toPocket = 'balance'
                     } else if (type === 'create_result' || type ==='call_result') {
                         //value should be zero, won't trigger
                     } else {
@@ -228,34 +212,30 @@ export class DummyNode {
                         process.exit(8)
                         return
                     }
-                    if (type === 'create' && receipt.contractCreated && !action.to) {
-                        action.to = receipt.contractCreated
-                    }
-                    if (action.from !== action.to) {
-                        // if from eq to, then ignore, only care gas. other wise, the 'out' will cause negative result.
+                    // if (type === 'create' && receipt.contractCreated && !action.to) {
+                    //     action.to = receipt.contractCreated
+                    // }
+                    if (action.fromPocket === 'balance') {
+                        // <from> pay.
+                        tType = action.toPocket.substr(0, 8);
                         const traceBillFrom = {
                             owner:action.from, epoch, blockIndex, txIndex, traceIndex, type:tType,
                             from: action.from, to: action.to, diffDrip: -action.value, seq:billArr.length
                         };
                         billArr.push(traceBillFrom)
+                    }
+                    if (action.toPocket === 'balance') {
+                        // <to> gain.
+                        tType = action.toPocket.substr(0, 8);
                         const traceBillTo = {
-                            ...traceBillFrom, owner: action.to, diffDrip: action.value, seq:billArr.length
-                        }
+                            owner:action.to, epoch, blockIndex, txIndex, traceIndex, type:tType,
+                            from: action.from, to: action.to, diffDrip: action.value, seq:billArr.length
+                        };
                         billArr.push(traceBillTo)
                     }
                 }
-                this.makeStorageBill(billArr, receipt, tx, epoch, txIndex, blockIndex)
-                // storage released
-                for (const released of receipt.storageReleased) {
-                    const releaseBill = {
-                        owner:released.address, epoch, blockIndex, txIndex, traceIndex: 0, type:'store_r',
-                        from: '', to: released.address, diffDrip: this.computeStorageDrip(released.collaterals),
-                        seq:billArr.length
-                    }
-                    billArr.push(releaseBill)
-                }
-                this.makeGasBill(billArr, receipt, tx, epoch, txIndex, blockIndex)
             }
+            // reward for miner.
             const rewardBill = {
                 owner:block.miner, epoch, blockIndex, txIndex:0, traceIndex: 0, type:REWARD,
                 from: '', to: block.miner, diffDrip: block.reward.totalReward,
