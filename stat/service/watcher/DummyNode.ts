@@ -42,9 +42,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
 import {
-    CFX_BILL_EPOCH,
     CFX_BILL_EPOCH_3,
-    CFX_BILL_POS_EPOCH_REWARD,
     CFX_BILL_POS_EPOCH_REWARD_3,
     KV
 } from "../../model/KV";
@@ -115,7 +113,7 @@ export class DummyNode {
             // cfx:ach9eg1rk28060m3kpw44np1znvn6p9ffjkk6651nb two year
             await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 8_0000_0000, 1)
         }
-        await KV.create({key: CFX_BILL_EPOCH, value: '0'})
+        await KV.create({key: CFX_BILL_EPOCH_3, value: '0'})
         console.log(` setup epoch 0, ok.`)
     }
     preFetchedTo = 0
@@ -423,7 +421,7 @@ export class DummyNode {
             // if pos reward shows up, use the corresponding pow epoch as ceil epoch.
             // otherwise, use confirmed epoch subtract a value as ceil epoch.
             // default pos position is -1, means that we haven't use it yet.
-            const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD, '-1').then(parseInt)
+            const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD_3, '-1').then(parseInt)
             const [curPos, nextPos] = await PosEpochRewardHash.findAll({
                 where: {epoch: {[Op.gte]:posPosition}},
                 order: [['epoch','asc']], limit: 2,
