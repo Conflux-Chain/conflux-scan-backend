@@ -41,7 +41,13 @@ import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
 import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
-import {CFX_BILL_EPOCH, CFX_BILL_POS_EPOCH_REWARD, KV} from "../../model/KV";
+import {
+    CFX_BILL_EPOCH,
+    CFX_BILL_EPOCH_3,
+    CFX_BILL_POS_EPOCH_REWARD,
+    CFX_BILL_POS_EPOCH_REWARD_3,
+    KV
+} from "../../model/KV";
 import {PosEpochRewardHash} from "../../model/PoS";
 
 const DRIP_FACTOR = BigInt(1e+18)
@@ -140,6 +146,7 @@ export class DummyNode {
             // console.log(`fetch all done.`)
             blockList.forEach((blk,idx)=>{
                 blk.reward = rewardList[idx]
+                blk.miner = blk.reward.author
                 if (blk.reward.blockHash !== blk.hash) {
                     throw new Error(`block hash doesn't match reward hash.\n${
                         blk.hash}\n${blk.reward.blockHash}`)
@@ -346,7 +353,7 @@ export class DummyNode {
     async getEpochInDB() {
         console.log(`${new Date().toISOString()} begin find max epoch in db.`)
 
-        return KV.getNumber(CFX_BILL_EPOCH).then(res=>{
+        return KV.getNumber(CFX_BILL_EPOCH_3).then(res=>{
             console.log(`  cfx bill epoch position in db :`, res)
             if (isNaN(res)) {
                 throw new Error('Should setup epoch 0 automatically, or set it manually in DB.')
@@ -383,9 +390,9 @@ export class DummyNode {
         }).then(async bills=>{
             return CfxBill.sequelize.transaction(async dbTx=>{
                 const arr = await CfxBill.bulkCreate(bills, {transaction: dbTx})
-                await KV.update({value: epoch.toString()}, {where:{key: CFX_BILL_EPOCH},
+                await KV.update({value: epoch.toString()}, {where:{key: CFX_BILL_EPOCH_3},
                     transaction: dbTx})
-                await KV.upsert({key: CFX_BILL_POS_EPOCH_REWARD, value: this.curPosPosition.toString()},
+                await KV.upsert({key: CFX_BILL_POS_EPOCH_REWARD_3, value: this.curPosPosition.toString()},
                     {transaction: dbTx})
                 return arr;
             })
@@ -577,7 +584,7 @@ export interface ICfxBill {
     type:string, fromId:number, toId:number, diffDrip:number, balance:number,
     seq:number;
 }
-const T_CFX_BILL = 'cfx_bill2'
+const T_CFX_BILL = 'cfx_bill3'
 export class CfxBill extends Model<ICfxBill> implements ICfxBill{
     ownerId:number; epoch:number; blockIndex:number; txIndex:number; traceIndex:number;
     type:string; fromId:number; toId:number; diffDrip:number; balance:number;
