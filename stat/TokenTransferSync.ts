@@ -303,8 +303,12 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
                         break;
+                    } else if (data instanceof Error) {
+                        console.log(` error at epoch ${epoch}`, data)
+                        delay = 10_000;
+                        break;
                     }
-                    await processData(epoch, data)
+                    await processData(epoch, data);
                     if (epoch % dumpPerRound === 0) {
                         console.log(` sync transfer sample log, at epoch ${epoch}`);
                         measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', fetchAndBuildTag, 'save');
