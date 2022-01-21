@@ -178,14 +178,22 @@ export class DummyNode {
                     continue
                 }
                 // traces for this tx. traces is prior to gas and storage in one epoch.
-                const {transactionTraces, transactionHash} = block.traces;
+                const {transactionTraces, blockHash} = block.traces;
+                if (blockHash !== receipt.blockHash || blockHash !== block.hash) {
+                    console.log(` epoch ${epoch}, block ${blockIndex}, ${block.hash
+                    } \n receipt tx block hash ${receipt.blockHash
+                    } \n trace block hash ${blockHash
+                    } \n mismatch .`)
+                    process.exit(1);
+                }
+                const {transactionHash, traces} = transactionTraces[txIndex]
                 if (transactionHash !== receipt.transactionHash) {
                     console.log(` epoch ${epoch}, block ${blockIndex}, ${block.hash
                     } \n receipt tx hash ${receipt.transactionHash
                     } \n mismatch trace tx hash ${transactionHash}`)
                     process.exit(1);
                 }
-                for (const [traceIndex,{action,type}] of transactionTraces[txIndex].traces.entries()) {
+                for (const [traceIndex,{action,type}] of traces.entries()) {
                     if (!action.value || action.space === 'evm') {
                         continue;
                     }
