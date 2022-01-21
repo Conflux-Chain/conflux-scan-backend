@@ -196,11 +196,12 @@ export class DummyNode {
                 for (const [traceIndex, trace] of traces.entries()) {
                     const {action,type} = trace;
                     const { callType, fromPocket, toPocket, fromSpace, toSpace, space, value } = trace.action;
-                    console.log(` action at epoch ${epoch}`, action)
+                    console.log(` action at epoch ${epoch} callType ${callType}, type ${type}`, action)
                     if (!value || space === 'evm'
                         || (fromSpace === 'native' && toSpace === 'evm')
                         || (fromSpace === 'evm' && toSpace === 'native')
                     ) {
+                        console.log(`skip A ${traceIndex}`)
                         continue;
                     }
                     if (action.callType === 'none'
@@ -208,6 +209,7 @@ export class DummyNode {
                         || action.callType === 'delegatecall'
                         || action.callType === 'staticcall'
                     ) {
+                        console.log(`skip B ${traceIndex}`)
                         continue
                     }
                     // type is call, and only callType 'call' will transfer cfx.
@@ -234,7 +236,7 @@ export class DummyNode {
                     // if (type === 'create' && receipt.contractCreated && !action.to) {
                     //     action.to = receipt.contractCreated
                     // }
-                    if (action.fromPocket === 'balance') {
+                    if (fromPocket === 'balance') {
                         // <from> pay.
                         tType = action.toPocket.substr(0, 8);
                         const traceBillFrom = {
@@ -242,6 +244,7 @@ export class DummyNode {
                             from: action.from, to: action.to, diffDrip: -action.value, seq:billArr.length
                         };
                         billArr.push(traceBillFrom)
+                        console.log(` <from> pay ${value}`)
                     }
                     if (action.toPocket === 'balance') {
                         // <to> gain.
@@ -251,7 +254,9 @@ export class DummyNode {
                             from: action.from, to: action.to, diffDrip: action.value, seq:billArr.length
                         };
                         billArr.push(traceBillTo)
+                        console.log(` <to> gain ${value}`)
                     }
+                    console.log(`-----finish ${traceIndex}`)
                 }
             }
             // reward for miner.
