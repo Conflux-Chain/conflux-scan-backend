@@ -104,16 +104,16 @@ export class DummyNode {
             })
         }
 
-        if (networkId === 1029) {
-            // cfx:acb59fk6vryh8dj5vyvehj9apzhpd72rdpwsc651kz four year
-            await make('0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b', 42_0000_0000, 0)
-            // cfx:ach9eg1rk28060m3kpw44np1znvn6p9ffjkk6651nb two year
-            await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 8_0000_0000, 1)
-        } else if (networkId === 1) {
+        if (networkId === 1) { // cfx on testnet is incorrect.
             // cfxtest:aathrdjwhfsjzt88577vz42r4hkh41vmt68xu9h4vc             50 0000 0000n
             await make('0x1e768d12395c8abfdedf7b1aeb0dd1d27d5e2a7f', 5000000000000000, 0)
             // cfxtest:aar8jzybzv0fhzreav49syxnzut8s0jt1a1pdeeuwb
             await make('0x1be45681ac6c53d5a40475f7526bac1fe7590fb8', 5000000000000000, 0)
+        } else {
+            // cfx:acb59fk6vryh8dj5vyvehj9apzhpd72rdpwsc651kz four year
+            await make('0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b', 42_0000_0000, 0)
+            // cfx:ach9eg1rk28060m3kpw44np1znvn6p9ffjkk6651nb two year
+            await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 8_0000_0000, 1)
         }
         await KV.create({key: CFX_BILL_EPOCH, value: '0'})
         console.log(` setup epoch 0, ok.`)
