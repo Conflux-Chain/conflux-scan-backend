@@ -196,12 +196,12 @@ export class DummyNode {
                 for (const [traceIndex, trace] of traces.entries()) {
                     const {action,type} = trace;
                     const { callType, fromPocket, toPocket, fromSpace, toSpace, space, value } = trace.action;
-                    console.log(` action at epoch ${epoch} callType ${callType}, type ${type}`, action)
+                    // console.log(` action at epoch ${epoch} callType ${callType}, type ${type}`, action)
                     if (!value || space === 'evm'
                         || (fromSpace === 'native' && toSpace === 'evm')
                         || (fromSpace === 'evm' && toSpace === 'native')
                     ) {
-                        console.log(`skip A ${traceIndex}`)
+                        // console.log(`skip A ${traceIndex}`)
                         continue;
                     }
                     if (action.callType === 'none'
@@ -209,7 +209,7 @@ export class DummyNode {
                         || action.callType === 'delegatecall'
                         || action.callType === 'staticcall'
                     ) {
-                        console.log(`skip B ${traceIndex}`)
+                        // console.log(`skip B ${traceIndex}`)
                         continue
                     }
                     // type is call, and only callType 'call' will transfer cfx.
@@ -244,17 +244,17 @@ export class DummyNode {
                             from: action.from, to: action.to, diffDrip: -action.value, seq:billArr.length
                         };
                         billArr.push(traceBillFrom)
-                        console.log(` <from> pay ${value}`)
+                        // console.log(` <from> pay ${value}`)
                     }
                     if (action.toPocket === 'balance') {
                         // <to> gain.
-                        tType = action.toPocket.substr(0, 8);
+                        tType = action.fromPocket.substr(0, 8);
                         const traceBillTo = {
                             owner:action.to, epoch, blockIndex, txIndex, traceIndex, type:tType,
                             from: action.from, to: action.to, diffDrip: action.value, seq:billArr.length
                         };
                         billArr.push(traceBillTo)
-                        console.log(` <to> gain ${value}`)
+                        // console.log(` <to> gain ${value}`)
                     }
                     console.log(`-----finish ${traceIndex}`)
                 }
