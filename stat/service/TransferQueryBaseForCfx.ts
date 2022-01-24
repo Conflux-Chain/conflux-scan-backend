@@ -81,7 +81,7 @@ export abstract class TransferQueryBaseForCfx {
         // order
         queryOptions.order = [['epoch', sort]];
         if(accountAddressId !== undefined){
-            queryOptions.order.push(['blockIndex', sort], ['txIndex','desc'],['txLogIndex','desc']);
+            queryOptions.order.push(['tracePos', sort]);
         }
         if(tokenAddressIdArray.length){
             queryOptions.order.push(['createdAt', sort]);
