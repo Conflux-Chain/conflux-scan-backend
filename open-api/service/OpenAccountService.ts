@@ -12,7 +12,11 @@ export function polishAssertList(page) {
 }
 export function fixIconUrl(row, addressKey) {
     if (row.iconUrl) {
-        if (!row.iconUrl.startsWith('http://')) { // without prefix
+        if (row.iconUrl.startsWith('https://')) {
+            // it's ok
+        } else if (row.iconUrl.startsWith('http://')) {
+            // it's ok, too.
+        }else {// without prefix
             if (row[addressKey].startsWith('cfx:')) { // mainnet
                 row.iconUrl = 'https://confluxscan.io/stat/' + row.iconUrl
             } else if (row[addressKey].startsWith('cfxtest:')) { // testnet
