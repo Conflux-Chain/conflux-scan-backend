@@ -5,10 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "compile": "npx tsc -p ./stat",
+    "compile": "npx tsc -p ./stat/tsconfig.json",
+    "api-c": "npx tsc -b ./open-api",
     "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/dist/service/watcher/contract/",
+    "api:dev": "tsc-watch -b ./open-api --onSuccess 'node --inspect=0.0.0.0:5858 ./open-api/ApiServer.js'",
     "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'",
-    "start:dev2": "tsc-watch -p ./stat",
+    "start:dev2": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/test/Dev.js'",
     "start:tools": "tsc-watch -b ./tools --onSuccess 'node ./stat/dist/test/Dev.js'"
   },
   "dependencies": {
@@ -21,6 +23,7 @@
     "express-to-koa": "~2.0.0",
     "js-conflux-sdk": "2.0.0-beta.14",
     "koa": "2.13.1",
+    "express-to-koa": "~2.0.0",
     "koa-bodyparser": "~4.3.0",
     "koa-helmet": "6.0.0",
     "koa-router": "~10.0.0",
@@ -33,11 +36,16 @@
     "p-limit": "2.3.0",
     "pino": "^6.10.0",
     "prom-client": "~13.0.0",
+    "ratelimiter": "~3.4.1",
     "redis": "^3.1.2",
+    "request-ip": "^2.1.3",
     "sequelize": "~6.6.5",
     "superagent": "5.1.0",
     "swagger-stats": "~0.99.2",
-    "web3": "^1.6.1"
+    "web3": "^1.6.1",
+    "winston": "3.3.3",
+    "winston-daily-rotate-file": "4.5.5",
+    "yamljs": "0.3.0"
   },
   "devDependencies": {
     "@types/ali-oss": "6.0.10",

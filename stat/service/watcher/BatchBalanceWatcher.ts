@@ -85,7 +85,10 @@ export class BatchBalanceWatcher {
     }
 
     public static async getBalances(account:string, tokens:string[]) {
-        let banList = await BatchBalanceWatcher.allTokenContract.getBalances(account, tokens)
+        let banList = await BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
+            console.log(` getBalances fail: `, err.data)
+            console.log(` getBalances fail: `, err)
+        })
         return banList
     }
 }

@@ -1,0 +1,39 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Conflux Scan Open Api",
+    "description": "Conflux Scan Open Api",
+    "version": "0.0.7"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8087"
+    }
+  ],
+  "paths": {
+    "/api/": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "number"
+                    },"message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "description": "root path"
+          }
+        }
+      }
+    }
+  }
+}
