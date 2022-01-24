@@ -16,6 +16,7 @@ export class DailyBlockDataStatQuery {
         this.app = backendApp;
     }
 
+    // work in progress.
     async listMiningStat({intervalType = 'hour', skip = 0, limit = 27, sort='asc', minTimestamp = undefined
                              , maxTimestamp = undefined}) {
         let timeCol = 'statTime'

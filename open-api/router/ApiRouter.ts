@@ -40,6 +40,7 @@ async function listAccountAssets(ctx) {
     polishAssertList(assets)
     setBody(ctx, assets)
 }
+// work in progress.
 async function listMiningStat(ctx) {
     const {skip,limit} = skipLimit(ctx.request.query)
     if (skip > 60) {
