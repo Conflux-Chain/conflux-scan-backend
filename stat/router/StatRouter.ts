@@ -50,8 +50,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
     })
     router.get('/account-token-balance', async(ctx) => {
-        const {base32, tokenType} = ctx.request.query
-        const list = await BalanceService.listAccountBalance(base32, tokenType)
+        // not used by scan.
+        const {base32} = ctx.request.query
+        const list = await BalanceService.listAccountBalance(base32)
         ctx.body = {code: 0, list}
     })
     router.get('/tokens/nft-token-id-count', async (ctx)=>{

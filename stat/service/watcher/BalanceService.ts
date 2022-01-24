@@ -181,12 +181,12 @@ export class BalanceService {
         return ret;
     }
 
-    static async listAccountBalance(base32: string, tokenType: string = null) : Promise<any[]>{
-        return this.listAccountBalanceInner(base32, tokenType).then(res=>{
+    static async listAccountBalance(base32: string) : Promise<any[]>{
+        return this.listAccountBalanceInner(base32).then(res=>{
             return res.list
         })
     }
-    static async listAccountBalanceInner(base32: string, tokenType: string = undefined) :
+    static async listAccountBalanceInner(base32: string) :
         Promise<{ candidate?: number; list: any[]; message?: string }>{
         const hex = format.hexAddress(base32)
         if (hex === '0x0000000000000000000000000000000000000000') {
@@ -195,10 +195,6 @@ export class BalanceService {
         const accountBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
         if (accountBean === null) {
             return {list:[], message: 'account not found:'+hex}
-        }
-        const conditions = {}
-        if (tokenType) {
-            conditions['type'] = tokenType
         }
         const contracts = await TokenQuery.listAddress({accountAddress:base32}).then(obj=>{return obj.list})
         const tokenList = await Token.findAll({where: {
