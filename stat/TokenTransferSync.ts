@@ -424,7 +424,7 @@ async function fetchTask(len:number, fromEpoch: number, cfx:Conflux ) : Promise<
             console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}`)
             return exactOne;
         }
-        if (fromEpoch === -1 && maxOne.finished === false) {
+        if (fromEpoch === -1 && maxOne?.finished === false) {
             console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}`)
             return maxOne; // continue unfinished task.
         }
