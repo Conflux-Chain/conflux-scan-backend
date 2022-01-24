@@ -14,9 +14,10 @@ export abstract class TransferQueryBaseForCfx {
     }
 
     public buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
-                                  minTimestamp, maxTimestamp,
-                                  accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-                                  tokenId, txType, skip, limit}){
+                                 minTimestamp, maxTimestamp,
+                                 accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
+                                 tokenId, txType, skip, limit, sort='DESC'}){
+        sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // page
         const queryOptions: any = {offset: skip, limit, raw: true};
@@ -41,7 +42,7 @@ export abstract class TransferQueryBaseForCfx {
             conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
         }
         if(maxTimestamp !== undefined) {
-            conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
+            conditionArray.push({createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}});
         }
         if(fromAddressId !== undefined && toAddressId === undefined) {
             conditionArray.push({fromId: fromAddressId});
@@ -78,12 +79,12 @@ export abstract class TransferQueryBaseForCfx {
             queryOptions.where[Op.and] = conditionArray;
         }
         // order
-        queryOptions.order = [['epoch', 'DESC']];
+        queryOptions.order = [['epoch', sort]];
         if(accountAddressId !== undefined){
-            queryOptions.order.push(['tracePos', 'DESC']);
+            queryOptions.order.push(['blockIndex', sort], ['txIndex','desc'],['txLogIndex','desc']);
         }
         if(tokenAddressIdArray.length){
-            queryOptions.order.push(['createdAt', 'DESC']);
+            queryOptions.order.push(['createdAt', sort]);
         }
 
         return queryOptions;
