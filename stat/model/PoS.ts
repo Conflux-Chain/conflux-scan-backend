@@ -11,7 +11,7 @@ export interface IPosBlock {
     minerId: number
     pivotDecision: number
     createdAt: Date
-    nextTxNumber:number
+    nextTxNumber:number // lastTxNumber in fact.
     transactionCount: number
     // signatures: []string
     signatureCount: number
@@ -26,7 +26,7 @@ export class PosBlock extends Model<IPosBlock> implements IPosBlock {
     minerId: number
     pivotDecision: number
     createdAt: Date
-    nextTxNumber:number
+    nextTxNumber:number // lastTxNumber in fact.
     transactionCount: number
     signatureCount: number
     static register(seq:Sequelize) {
