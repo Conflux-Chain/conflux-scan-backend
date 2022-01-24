@@ -169,10 +169,13 @@ export class FullBlockQuery {
         const result = {total: (count ? count : 0) + prunedCntr, list, paging};
         return result;
     }
-    public async listTransaction({minEpochNumber, maxEpochNumber, blockHash, transactionHash,
-                                     nonce, minTimestamp, maxTimestamp,
-                                     accountAddress, from, to, opponentAddress,
-                                     txType, status, skip = 0, limit = 10}) {
+    public async listTransaction({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined, transactionHash = undefined,
+                                     nonce = undefined, minTimestamp = undefined, maxTimestamp = undefined,
+                                     accountAddress = undefined, from = undefined, to = undefined, opponentAddress = undefined,
+                                     txType = undefined, status = undefined, skip = 0, limit = 10,
+                                     verboseAddress = true, sort = 'DESC'
+    }) {
+        sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // parse para
         const addressMap = {};
@@ -239,7 +242,7 @@ export class FullBlockQuery {
                 conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
             }
             if(maxTimestamp !== undefined) {
-                conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
+                conditionArray.push({createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}});
             }
             if(fromAddressId !== undefined && toAddressId === undefined){
                 conditionArray.push({fromId: fromAddressId});
@@ -289,7 +292,7 @@ export class FullBlockQuery {
             options.where = {[Op.and]: conditionArray};
         }
         // order
-        options.order = [['epoch', 'DESC'], ['blockPosition', 'DESC'], ['txPosition', 'DESC']];
+        options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
         // query
         let rawList;
         let count;
@@ -355,8 +358,8 @@ export class FullBlockQuery {
 
             // fields mapping
             list.forEach(row=>{
-                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
-                row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : null;
+                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
+                row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, verboseAddress) : null;
                 if(hex40Map.get(row['contractCreated'])){
                     row['contractCreated'] = format.address(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId);
                 }

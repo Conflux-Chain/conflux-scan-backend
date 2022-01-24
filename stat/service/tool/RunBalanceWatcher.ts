@@ -1,7 +1,7 @@
 import {init} from "./FixDailyTokenStat";
-import {BalanceWatcher, Erc20Watcher} from "../watcher/BalanceWatcher";
 import {Conflux} from "js-conflux-sdk";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
+import {Token} from "../../model/Token";
 import {StatApp} from "../../StatApp";
 
 async function run() {
@@ -9,21 +9,26 @@ async function run() {
         const cfx = new Conflux(config.conflux)
         // @ts-ignore
         await cfx.updateNetworkId()
-        // @ts-ignore
-        StatApp.networkId = (await cfx.getStatus()).networkId
-        const w = new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
-        config.erc20watchList.forEach(token=>{
-            BatchBalanceWatcher.getBalances(config.erc20watchList[0].address, [token.address])
+        // init contract
+        StatApp.networkId = cfx['networkId']
+        let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
+        console.log(` net work id ${StatApp.networkId}, util contract ${ utilContract}`)
+        const w = new BatchBalanceWatcher(cfx, config.erc20watchList, null, utilContract)
+        const list = await Token.findAll({
+            where: {auditResult: true, fetchBalance: true},
+            attributes: {
+                exclude: ['icon']
+            }
+        })
+        for (const token of list) {
+            await BatchBalanceWatcher.getBalances(token.base32, [token.base32])
                 .then(()=>{
-                    console.log(`token balance ok ${token.address} ${token.name}`)
+                    console.log(`token balance ok ${token.base32} ${token.name} ${token.symbol}`)
                 })
                 .catch(err=>{
-                    console.log(`token balance ======= fail ${token.address} ${token.name}`)
+                    console.log(`token balance ======= fail ${token.base32} ${token.name} ${token.symbol}, ${err.message}`)
                 })
-        })
-        const erc20 = {"name":"conDragon","address":"0x83928828f200b79b78404dce3058ba0c8c4076c3","watchDelay":30,"tokenType":"ERC1155"}
-        const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, {tokenType: erc20.tokenType})
-        return watcher.schedule(erc20.watchDelay)
+        }
     })
 }
 run().then()

@@ -1,0 +1,13 @@
+{
+  "include": ["**/*"],
+  "compilerOptions": {
+    "rootDir": "../",
+    "module": "commonjs",
+    "incremental": true,
+    "skipLibCheck": true,
+    "lib": ["ES2020"],
+    "composite": true,
+    "declaration": true,
+    "target": "es6"
+  }
+}

@@ -20,7 +20,7 @@ export class CfxTransferQuery extends TransferQueryBaseForCfx{
     public buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
                                  minTimestamp, maxTimestamp,
                                  accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-                                 tokenId, txType, skip, limit}){
+                                 tokenId, txType, skip, limit, sort}){
         const{ logger } = this.app;
         if(txType === CONST.TX_TYPE.CREATE){
             // page
@@ -45,7 +45,7 @@ export class CfxTransferQuery extends TransferQueryBaseForCfx{
                 conditionArray.push({blockTime: { [Op.gte]: minTimestamp}});
             }
             if(maxTimestamp) {
-                conditionArray.push({blockTime: { [Op.lt]: maxTimestamp}});
+                conditionArray.push({blockTime: { [Op.lte]: maxTimestamp}});
             }
             if(conditionArray.length === 1){
                 queryOptions.where = conditionArray[0];
@@ -55,14 +55,14 @@ export class CfxTransferQuery extends TransferQueryBaseForCfx{
                 queryOptions.where[Op.and] = conditionArray;
             }
             // order
-            queryOptions.order = [['epochNumber', 'DESC'],['id', 'DESC']];
+            queryOptions.order = [['epochNumber', sort],['id', sort]];
             return queryOptions;
         }
 
        return super.buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-            tokenId, txType, skip, limit});
+            tokenId, txType, skip, limit, sort});
     }
 
     public buildQueryFields({accountAddressId, txType}): any{

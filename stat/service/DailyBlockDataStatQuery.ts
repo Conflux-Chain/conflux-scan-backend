@@ -1,4 +1,4 @@
-import {QueryTypes} from "sequelize";
+import {QueryTypes, Op, fn, col} from "sequelize";
 import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
@@ -14,6 +14,77 @@ export class DailyBlockDataStatQuery {
 
     constructor(backendApp: any) {
         this.app = backendApp;
+    }
+
+    // work in progress.
+    async listMiningStat({intervalType = 'hour', skip = 0, limit = 27, sort='asc', minTimestamp = undefined
+                             , maxTimestamp = undefined}) {
+        let timeCol = 'statTime'
+        if (intervalType === this.INTERVAL_TYPE.min) {
+            timeCol = 'createdAt'
+            if (maxTimestamp === undefined) {
+                maxTimestamp = Math.round(Date.now() / 1000)
+            }
+            if (minTimestamp === undefined) {
+                minTimestamp = maxTimestamp - 60 * limit
+            }
+            if (maxTimestamp - minTimestamp > 3600) {
+                throw new Error(`Time scope exceeds 60 minutes under minute interval.`)
+            }
+        }
+        //
+        const where = {  }
+        const range = []
+        if (minTimestamp !== undefined) {
+            range.push({[timeCol]: {[Op.gte]: new Date(minTimestamp*1000)}})
+        }
+        if (maxTimestamp !== undefined) {
+            range.push({[timeCol]: {[Op.lte]: new Date(maxTimestamp*1000)}})
+        }
+        if (range.length) {
+            where[Op.and] = range
+        }
+        if(intervalType === this.INTERVAL_TYPE.hour ||
+            intervalType === this.INTERVAL_TYPE.day) {
+            console.log(` fetch from db `)
+            const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
+            where['statType'] = type
+            const page = await DailyBlockDataStat.findAndCountAll({
+                attributes: ['statTime','blockTime',['hashrate','hashRate'], 'difficulty'],
+                where, offset: skip, limit, order: [['statTime', sort]], raw: true
+            })
+            page.rows.forEach(row=>{
+                // fix date format
+                // @ts-ignore
+                row['statTime'] = row['statTime'].toISOString().replace('T', ' ').substr(0, 19)
+            })
+            return {total: page.count, list: page.rows, intervalType}
+        }
+        // calculate real time within minutes.
+        console.log(` real time calculate `)
+        let list:any[] = await FullBlock.findAll({
+            attributes: [
+                    [fn('count', col('*')), 'blockCount'],
+                    [fn('sum', col('difficulty')), 'difficultySum'],
+                    [fn('DATE_FORMAT', col('createdAt'), '%Y-%m-%d %H:%i:00'), 'statTime'],
+            ],
+            where, raw: true,
+            group: 'statTime', order: [[col('statTime'), sort]],
+            logging: console.log,
+        })
+        const interval = this.intervalMinInSec;
+        list.forEach(row=>{
+            const {blockCount, difficultySum} = row
+            row['blockTime'] = BigFixed(interval).div(BigFixed(blockCount));
+            row['hashRate'] = BigFixed(difficultySum).div(BigFixed(interval));
+            row['difficulty'] = BigFixed(difficultySum).div(BigFixed(blockCount));
+            delete row['blockCount']
+            delete row['difficultySum']
+        })
+        if (list.length > limit) {
+            list.pop()
+        }
+        return {total: list.length, list, intervalType}
     }
 
     async listStat(intervalType, skip: number = 0, limit: number = 27) {

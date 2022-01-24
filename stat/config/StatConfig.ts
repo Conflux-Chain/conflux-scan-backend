@@ -58,6 +58,7 @@ export interface StatConfig{
     syncTraceDelay: number;
     syncTraceCreateContractDelay: number;
     port: number;
+    apiPort: number;
     conflux: ConfluxOption; // chain rpc node
     cfxWsUrl: string
     preload: number,

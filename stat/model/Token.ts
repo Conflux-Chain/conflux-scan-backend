@@ -33,6 +33,7 @@ export interface IToken{
     website?:string
     portalSupport?:boolean
     fetchBalance?:boolean
+    updatedAt?:Date
 }
 
 export const TOKEN_ERC_1155 = 'erc1155'
