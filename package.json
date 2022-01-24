@@ -19,7 +19,7 @@
     "ali-oss": "~6.16.0",
     "bigfixed": "0.0.2",
     "express-to-koa": "~2.0.0",
-    "js-conflux-sdk": "2.0.0-beta.14",
+    "js-conflux-sdk": "2.0.0-beta.15",
     "koa": "2.13.1",
     "koa-bodyparser": "~4.3.0",
     "koa-helmet": "6.0.0",
