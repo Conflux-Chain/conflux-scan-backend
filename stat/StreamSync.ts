@@ -281,7 +281,7 @@ async function fetchNftBalanceFromDB(contractId: number, addressIds: number[]) {
         ],
         where: {contractId, toId: {[Op.in]:addressIds}},
         raw: true, group: ['toId'],
-        logging: console.log,
+        // logging: console.log,
     })
     return list;
 }
