@@ -128,12 +128,19 @@ export abstract class SyncBase{
         }
 
         const that = this
+        let stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e => {
+            console.log(` SyncBase getEpochNumber error:${e}`);
+            return 0;
+        });
         async function repeat() {
-            const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
             if (traceEpochNumber <= stateEpochNumber - (config.preload)) {
                 traceEpochNumber = await that.syncForward(traceEpochNumber);
                 setTimeout(repeat, 0)
             } else {
+                stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e => {
+                    console.log(` SyncBase getEpochNumber error:${e}`);
+                    return 0;
+                });
                 setTimeout(repeat, 1000)
             }
         }
