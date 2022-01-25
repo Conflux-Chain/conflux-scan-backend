@@ -451,8 +451,8 @@ export class PosSync {
             }
         })
         async function findRoot() {
+            let position = 0;
             do {
-                let position = 0;
                 const reward = await that.cfx.pos.getRewardsByEpoch(position)
                 if (reward?.accountRewards?.length) {
                     nextEpoch = position
