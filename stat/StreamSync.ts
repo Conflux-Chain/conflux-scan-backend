@@ -13,7 +13,7 @@ import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressCfxTransfer, CfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
 import {PruneInfo, PruneType} from "./model/PruneInfo";
-import {UniqueConstraintError} from "sequelize"
+import {UniqueConstraintError, fn, col} from "sequelize"
 import {format} from 'js-conflux-sdk'
 const CONST = require('./service/common/constant');
 
@@ -227,11 +227,36 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         }
         const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
         const contractHex40 = `0x${contractHex}`;
+        const model = new DynamicBalanceModel(contractId)
         let banList = [];
         await fetchAll(addressArr, contractHex40, banList)
+        const allIsZeroFromContract = banList.filter(Boolean).length === 0
+        if (allIsZeroFromContract) {
+            const list = await fetchNftBalanceFromDB(contractId, addressIds);
+            if (list.length === 0) {
+                // should have at least one record. otherwise code below will clear associated holder.
+                console.log(`nft balance from db return 0 record. skip.`)
+                return;
+            }
+            const dbHits = new Set<number>();
+            for (let nftMint of list) {
+                await BalanceWatcher.saveModel(model, nftMint.toId, nftMint['count'], false, 0)
+                dbHits.add(nftMint.toId)
+            }
+            for (let hexId of addressIds) {
+                if (dbHits.has(hexId)) {
+                    continue
+                }
+                await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
+            }
+            if (showLog && logCount < 100) {
+                logCount++
+                console.log(` compute nft balance from DB, list length ${list.length}`)
+            }
+            return;
+        }
         showLog && console.log(`balance list:`, banList.length)
         // showLog && console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
-        const model = new DynamicBalanceModel(contractId)
         let i = 0
         const tasks = []
         for (const addr of existsAddrArr) {
@@ -246,6 +271,18 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             }, original addresses length: ${addressIds.length}, balance list length ${banList.length}`)
         }
     }
+}
+async function fetchNftBalanceFromDB(contractId: number, addressIds: number[]) {
+    const list = await NftMint.findAll({
+        attributes: [
+            'toId', 'contractId',
+            [fn('count', col('*')), 'count']
+        ],
+        where: {contractId, toId: {[Op.in]:addressIds}},
+        raw: true, group: ['toId'],
+        logging: console.log,
+    })
+    return list;
 }
 async function fetchAll(addressArr, contractHex40, result:any[]) {
     let size = 100;
@@ -280,7 +317,7 @@ import {Hex40Map, idHex40Map, makeIdV} from "./model/HexMap";
 import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "./service/common/utils";
 import {TokenTool} from "./service/tool/TokenTool";
-import {Token} from "./model/Token";
+import {NftMint, Token} from "./model/Token";
 import {Op} from "sequelize"
 import {NftService} from "./service/NftService";
 import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
