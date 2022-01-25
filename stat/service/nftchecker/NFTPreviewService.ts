@@ -1,6 +1,7 @@
 // get NFT cache info from localStorage
 import { NFTMap, NFTNames } from './NFTInfo';
 import {toBase32} from "../tool/AddressTool";
+import {Desensitizer} from "../Desensitizer";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -16,6 +17,25 @@ export class NFTPreviewService {
     }
 
     public async getNFTInfo ({
+        contractAddress,
+        tokenId
+    }: {
+        contractAddress: string;
+        tokenId: BigInt;
+    }): Promise<NFTInfoType> {
+        const address = toBase32(contractAddress) as string;
+        const nftInfo = await this.getNFTInfo0({contractAddress: address, tokenId});
+        if(!nftInfo) {
+            return nftInfo;
+        }
+
+        nftInfo.imageName.zh = Desensitizer.mosaicStr(address, nftInfo.imageName.zh);
+        nftInfo.imageName.en = Desensitizer.mosaicStr(address, nftInfo.imageName.en);
+        nftInfo.imageUri = Desensitizer.mosaicUri(address, nftInfo.imageUri);
+        return nftInfo;
+    }
+
+    private async getNFTInfo0 ({
         contractAddress,
         tokenId,
     }: {

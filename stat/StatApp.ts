@@ -47,6 +47,7 @@ import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
+import {Desensitizer} from "./service/Desensitizer";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -85,6 +86,7 @@ export class StatApp{
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
     public pruneHandler: PruneHandler;
     public transferTpsService: TransferTpsService;
+    public desensitizer: Desensitizer;
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
@@ -167,6 +169,7 @@ export class StatApp{
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
         this.pruneHandler = new PruneHandler(this);
         this.transferTpsService = new TransferTpsService(this);
+        this.desensitizer = new Desensitizer(this);
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
@@ -226,6 +229,9 @@ export class StatApp{
             StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
             StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
             StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
+        }
+        if(this.config.blacklist) {
+            await this.desensitizer.scheduleRefreshBlacklist();
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
