@@ -455,13 +455,13 @@ export class PosSync {
             do {
                 const reward = await that.cfx.pos.getRewardsByEpoch(position)
                 if (reward?.accountRewards?.length) {
+                    console.log(` has reward at ${position}`, reward)
                     nextEpoch = position
                     break;
                 }
                 console.log(`no reward at ${position}`, reward)
                 position ++;
                 if (position > 100) {
-                    console.log(` has reward at ${position}`, reward)
                     break;
                 }
                 await sleep(1_000)
