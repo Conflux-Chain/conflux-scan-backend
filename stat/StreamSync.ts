@@ -232,6 +232,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         await fetchAll(addressArr, contractHex40, banList)
         const allIsZeroFromContract = banList.filter(Boolean).length === 0
         if (allIsZeroFromContract) {
+            console.log(` util returns all zero, ${contractHex40}, `, banList)
             const list = await fetchNftBalanceFromDB(contractId, addressIds);
             if (list.length === 0) {
                 // should have at least one record. otherwise code below will clear associated holder.

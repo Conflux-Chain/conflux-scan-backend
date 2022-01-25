@@ -106,7 +106,7 @@ async function run() {
     StatApp.networkId = st.networkId;
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     new BatchBalanceWatcher(cfx, null, utilContract)
-    console.log(`-------------${st.networkId}------------`)
+    console.log(`-------------${st.networkId}------${utilContract}------`)
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {
         const cnt = await processContractUser(cfx, limit)
