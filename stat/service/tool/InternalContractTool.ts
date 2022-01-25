@@ -9,6 +9,7 @@ const Staking = require("../abi/Staking");
 // const ReentrancyConfig = require("../abi/ReentrancyConfig");
 const ConfluxContext = require("../abi/ConfluxContext");
 const PoSRegister = require("../abi/PoSRegister");
+const CrossSpaceCall = require("../abi/CrossSpaceCall");
 const fs = require('fs');
 
 let networkId;
@@ -53,6 +54,12 @@ const internalContractArray = [
         name: 'PoSRegister',
         website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
         abi: JSON.stringify(PoSRegister.abi),
+    },
+    {
+        address: '0x0888000000000000000000000000000000000006',
+        name: 'CrossSpaceCall',
+        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        abi: JSON.stringify(CrossSpaceCall.abi),
     },
 ];
 
