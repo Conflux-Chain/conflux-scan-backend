@@ -450,8 +450,28 @@ export class PosSync {
                 return res.epoch + 1
             }
         })
+        async function findRoot() {
+            let position = 0;
+            do {
+                const reward = await that.cfx.pos.getRewardsByEpoch(position)
+                if (reward?.accountRewards?.length) {
+                    console.log(` has reward at ${position}`, reward)
+                    nextEpoch = position
+                    break;
+                }
+                console.log(`no reward at ${position}`, reward)
+                position ++;
+                if (position > 100) {
+                    break;
+                }
+                await sleep(1_000)
+            } while (true)
+        }
         async function repeat() {
             try {
+                if (nextEpoch === 0) {
+                    await findRoot();
+                }
                 const inc = await that.syncRewardByEpoch(nextEpoch)
                 nextEpoch += inc
             } catch (e) {
@@ -472,22 +492,15 @@ export class PosSync {
     }
     async syncRewardByEpoch(epoch:number) {
         const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
-        if (rewardInfo === null) {
-            if (epoch === 0) {
-                const rewardEpoch1 = await this.cfx.pos.getRewardsByEpoch(1)
-                if (rewardEpoch1 !== null) {
-                    console.log(` epoch 0 has no reward but epoch 1 has, move to epoch 1.`)
-                    return 1;
-                }
-            }
-            console.log(` reward is null at epoch ${epoch}`);
+        if (!rewardInfo) {
+            console.log(` pos reward is ${rewardInfo} at epoch ${epoch}`);
             await sleep(10_000)
             return 0
         }
         const powBlock = await this.cfx.getBlockByHash(rewardInfo.powEpochHash).catch(err=>{
             console.log(` sync pos reward at epoch ${epoch}, `, err)
             return null;
-        })
+        });
         if (powBlock === null) {
             return 0;
         }

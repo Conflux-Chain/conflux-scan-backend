@@ -1,8 +1,9 @@
 import {NFTMap, NFTMapPlus} from "./NFTInfo";
 import {Token} from "../../model/Token";
-import {Op} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {KEY_NFT_FROM_DB, KV} from "../../model/KV";
 import {getNftBalances} from "../NftService";
+import {Desensitizer} from "../Desensitizer";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -20,13 +21,26 @@ export class NFTCheckerService {
         this.contract = this.cfx.Contract({abi, address: utilContractAddr || this.scanUtilContractAddress});
     }
 
-    public async getNFTBalances({ownerAddress}) {
-        const options = {
-            attributes: ['base32', 'name'],
-            where: { type: {[Op.in]: [CONST.TRANSFER_TYPE.ERC721, CONST.TRANSFER_TYPE.ERC1155]}, auditResult: true},
-            raw: true,
-        };
-        const tokenArray = await Token.findAll(options);
+    public async getNFTBalances ({ownerAddress}) {
+        const nftBalances = await this.getNFTBalances0({ownerAddress});
+        nftBalances?.forEach(nftBalance => {
+            nftBalance.type = Desensitizer.mosaicStr(nftBalance.address, nftBalance.type);
+            nftBalance.name.zh = Desensitizer.mosaicStr(nftBalance.address, nftBalance.name.zh);
+            nftBalance.name.en = Desensitizer.mosaicStr(nftBalance.address, nftBalance.name.en);
+        });
+        return nftBalances;
+    }
+
+    private async getNFTBalances0({ownerAddress}) {
+        // const options = {
+        //     attributes: ['base32', 'name'],
+        //     where: { type: {[Op.in]: [CONST.TRANSFER_TYPE.ERC721, CONST.TRANSFER_TYPE.ERC1155]}, auditResult: true},
+        //     raw: true,
+        // };
+        // const tokenArray = await Token.findAll(options);
+        const sql = `select base32, name from token where type in('ERC721', 'ERC1155') 
+                                 and (auditResult = 1 or base32 in(select address from blacklist))`;
+        const tokenArray: Token[] = await Token.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true});
         const NFTArray = tokenArray.map(token => {
             return {
                 address: token.base32,
