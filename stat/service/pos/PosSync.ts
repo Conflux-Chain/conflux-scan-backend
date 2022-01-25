@@ -461,6 +461,7 @@ export class PosSync {
                 console.log(`no reward at ${position}`, reward)
                 position ++;
                 if (position > 100) {
+                    console.log(` has reward at ${position}`, reward)
                     break;
                 }
                 await sleep(1_000)
