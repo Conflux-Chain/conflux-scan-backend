@@ -297,11 +297,13 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     if (data instanceof CheckPivotHashError) {
                         console.log(` checking pivot hash error, ${data.message}`);
                         await  localPop(epoch - 1)
+                        delay = 10_000
                         break;
                     } else if (parentHash && data.parentHash !== parentHash) {
                         console.log(` before save check, parent hash not match, on hand epoch ${epoch
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
+                        delay = 10_000
                         break;
                     } else if (data instanceof Error) {
                         console.log(` error at epoch ${epoch}`, data)
