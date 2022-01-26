@@ -170,7 +170,7 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
             hexBean = await Hex40Map.findByPk(cid);
             const sup = await tokenTool.getTokenTotalSupply('0x'+hexBean.hex)
             const [cnt] = await Token.update({totalSupply: sup}, {
-                where: {id: cid},
+                where: {hex40id: cid},
                 // logging: console.log,
             })
             console.log(` update total supply affect ${cnt}, sup ${sup} cid ${cid} hex 0x${hexBean.hex}`)
