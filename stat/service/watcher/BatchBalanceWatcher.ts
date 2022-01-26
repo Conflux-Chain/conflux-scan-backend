@@ -14,7 +14,7 @@ import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
 import {KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
 import {TokenTool} from "../tool/TokenTool";
-import {Token} from "../../model/Token";
+import {NftMint, Token} from "../../model/Token";
 import {handleTokenTransferWithContract} from "../../StreamSync";
 import {ContractUser} from "../../model/Erc20Transfer";
 import {patchHttpProvider} from "../common/utils";
@@ -168,11 +168,18 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
         let hexBean: Hex40Map;
         try {
             hexBean = await Hex40Map.findByPk(cid);
-            const sup = await tokenTool.getTokenTotalSupply('0x'+hexBean.hex)
+            let sup = await tokenTool.getTokenTotalSupply('0x'+hexBean.hex)
+            if (!sup) {
+                sup = await NftMint.count({where: {contractId: cid}})
+                console.log(` nft count for 0x${hexBean.hex} id ${cid} is ${sup}`)
+                if (!sup) {
+                    continue;
+                }
+            }
             const [cnt] = await Token.update({totalSupply: sup}, {
                 where: {id: cid},
                 // logging: console.log,
-            })
+            });
             console.log(` update total supply affect ${cnt}, sup ${sup} cid ${cid} hex 0x${hexBean.hex}`)
         } catch (e) {
             console.log(`update token total supply fail, 0x${hexBean.hex}:`, e)
