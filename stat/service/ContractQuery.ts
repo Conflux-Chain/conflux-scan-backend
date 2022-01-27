@@ -251,7 +251,7 @@ export class ContractQuery {
 
         // init
         const map = {};
-        addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
+        // addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
 
         // query contract and token
         const tokenService = tokenQuery || service.tokenRdb;
@@ -265,10 +265,11 @@ export class ContractQuery {
 
         // build response
         contractArray.forEach((contract) => {
-            map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
+            map[contract.address].contract = {
+                address: contract.address,
                 name: contract.name || '',
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
-            });
+            };
         });
         verifiedArray.forEach((verifiedAddress) => {
             map[verifiedAddress].contract = lodash.defaults(map[verifiedAddress].contract, {
@@ -276,7 +277,8 @@ export class ContractQuery {
             });
         });
         tokenArray.forEach((token) => {
-            map[token.address].token = lodash.defaults(map[token.address].token, {
+            map[token.address].token = {
+                address: token.address,
                 name: token.name,
                 symbol: token.symbol,
                 decimals: token.decimals,
@@ -284,10 +286,10 @@ export class ContractQuery {
                 iconUrl: token.iconUrl,
                 website: token.website,
                 tokenType: token.transferType,
-            });
+            };
         });
 
-        return { total: addressArray.length, map };
+        return { total: contractArray.length, map };
     }
 
     private async queryImplementation(base32){
