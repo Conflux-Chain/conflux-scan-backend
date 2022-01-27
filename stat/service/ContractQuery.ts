@@ -251,7 +251,7 @@ export class ContractQuery {
 
         // init
         const map = {};
-        // addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
+        addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
 
         // query contract and token
         const tokenService = tokenQuery || service.tokenRdb;
@@ -265,23 +265,19 @@ export class ContractQuery {
 
         // build response
         contractArray.forEach((contract) => {
-            map[contract.address] = {}
-            map[contract.address].contract = {
-                address: contract.address,
+            map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
                 name: contract.name || '',
+                isContract: true,
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
-            };
+            });
         });
         verifiedArray.forEach((verifiedAddress) => {
-            map[verifiedAddress] = map[verifiedAddress] || {}
             map[verifiedAddress].contract = lodash.defaults(map[verifiedAddress].contract, {
                 verify: { result: 1 },
             });
         });
         tokenArray.forEach((token) => {
-            map[token.address] = map[token.address] || {}
-            map[token.address].token = {
-                address: token.address,
+            map[token.address].token = lodash.defaults(map[token.address].token, {
                 name: token.name,
                 symbol: token.symbol,
                 decimals: token.decimals,
@@ -289,9 +285,13 @@ export class ContractQuery {
                 iconUrl: token.iconUrl,
                 website: token.website,
                 tokenType: token.transferType,
-            };
+            });
         });
-
+        Object.keys(map).forEach(k=>{
+            if (!map[k].contract?.isContract) {
+                delete map[k]
+            }
+        })
         return { total: contractArray.length, map };
     }
 
