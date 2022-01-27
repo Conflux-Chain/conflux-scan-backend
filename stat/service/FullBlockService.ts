@@ -563,9 +563,9 @@ export class FullBlockService {
             const updatedArr = await Promise.all(tx)
             // const allModified = updatedArr.reduce((a,b)=>a+b)
         }).then(()=>{
-            const msg = {epochNumber: epoch, epochTimestamp: undefined, action: 'push', blockList: blockStatArray};
-            StatNotifier.notifyStatMinerBlock(msg)
-                .catch(e => console.log(`epoch-sync.notifyStatMinerBlock epoch:${epoch}`, e));
+            // const msg = {epochNumber: epoch, epochTimestamp: undefined, action: 'push', blockList: blockStatArray};
+            // StatNotifier.notifyStatMinerBlock(msg)
+            //     .catch(e => console.log(`epoch-sync.notifyStatMinerBlock epoch:${epoch}`, e));
         }).then(()=>{
             return {code: CODE_OK, message: 'ok'}
         })
