@@ -265,6 +265,7 @@ export class ContractQuery {
 
         // build response
         contractArray.forEach((contract) => {
+            map[contract.address] = {}
             map[contract.address].contract = {
                 address: contract.address,
                 name: contract.name || '',
@@ -272,11 +273,13 @@ export class ContractQuery {
             };
         });
         verifiedArray.forEach((verifiedAddress) => {
+            map[verifiedAddress] = map[verifiedAddress] || {}
             map[verifiedAddress].contract = lodash.defaults(map[verifiedAddress].contract, {
                 verify: { result: 1 },
             });
         });
         tokenArray.forEach((token) => {
+            map[token.address] = map[token.address] || {}
             map[token.address].token = {
                 address: token.address,
                 name: token.name,
