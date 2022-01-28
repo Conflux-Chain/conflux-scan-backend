@@ -5,6 +5,7 @@ export interface IDailyCfxTransferStat{
     statType: string;
     statTime: Date;
     transferCntr: bigint;
+    valueSum: bigint;
     minEpoch: number;
     maxEpoch: number;
 }
@@ -14,6 +15,7 @@ export class DailyCfxTransferStat extends Model<IDailyCfxTransferStat> implement
     statType: string;
     statTime: Date;
     transferCntr: bigint;
+    valueSum: bigint;
     minEpoch: number;
     maxEpoch: number;
 
@@ -23,6 +25,7 @@ export class DailyCfxTransferStat extends Model<IDailyCfxTransferStat> implement
             statType: {type: DataTypes.CHAR(2), allowNull: false, defaultValue: '1d'},
             statTime: {type: DataTypes.DATE, allowNull: false},
             transferCntr: {type: DataTypes.DECIMAL(60,0), allowNull: false, defaultValue: 0},
+            valueSum: {type: DataTypes.DECIMAL(60,0), allowNull: false, defaultValue: 0},
             minEpoch: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             maxEpoch: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
         },{
@@ -42,6 +45,7 @@ export class DailyCfxTransferStat extends Model<IDailyCfxTransferStat> implement
             statType: dailyCfxTransferStat.statType,
             statTime: dailyCfxTransferStat.statTime,
             transferCntr: dailyCfxTransferStat.transferCntr,
+            valueSum: dailyCfxTransferStat.valueSum,
             minEpoch: dailyCfxTransferStat.minEpoch,
             maxEpoch: dailyCfxTransferStat.maxEpoch,
         }, {

@@ -4,12 +4,17 @@ import {StatMessage} from "./StatMessage";
 import {BizStatInfo} from "./BizStatInfo";
 import {StatBucket} from "./StatBucket";
 import {Epoch} from "../../model/Epoch";
+import {Op} from "sequelize";
+import {idHex40Map} from "../../model/HexMap";
+import {format} from "js-conflux-sdk";
 const lodash = require('lodash');
 
 export abstract class StatHandler {
     protected bizQueue: string;
     protected bizStatInfo: BizStatInfo;
-    protected app: StatApp;
+    protected app: any;
+
+    protected cacheStatInfo: any = {};
 
     protected constructor(app: StatApp) {
         this.app = app;
@@ -133,4 +138,63 @@ export abstract class StatHandler {
     protected abstract rollupBucket({statId, bucketArray, reservedBuckets});
 
     protected abstract collect();
+
+    protected static getStatRange({statEnd, statDays}): { rangeBegin: Date, rangeEnd: Date } {
+        const rangeBegin = new Date(statEnd);
+        rangeBegin.setDate(statEnd.getDate() - statDays);
+        const rangeEnd = new Date(statEnd);
+        rangeEnd.setDate(statEnd.getDate() - (statDays - 1));
+        return {rangeBegin, rangeEnd};
+    }
+
+    protected async clear({model, statEnd, statDays}) {
+        const statBegin = new Date(statEnd);
+        statBegin.setDate(statEnd.getDate() - statDays);
+        let delRows = 0;
+        do{
+            delRows = await model.destroy({
+                where: {statTime: {[Op.lt]: statBegin}},
+                limit: 10000,
+            });
+        } while (delRows > 0);
+    }
+
+    public async scheduleCache(delay = 1000 * 60 * 3) {
+        const that = this
+        async function repeat() {
+            await that.cache().catch(err => {
+                console.log(`[type=${that.bizAlias()}]stream_stat_cache fail: `, err);
+            });
+            setTimeout(repeat, delay);
+        }
+        repeat().then();
+        console.log(`[type=${this.bizAlias()}]schedule stream_stat_cache service in 1s interval`);
+    }
+
+    public getStat() {
+        return this.cacheStatInfo;
+    }
+
+    protected abstract cache();
+
+    protected async getStatSpan(list: any[]) {
+        const minEpochNumber = list.map(item => item.minEpoch).sort()[0];
+        const maxEpochNumber = list.map(item => item.maxEpoch).sort().reverse()[0];
+        const minEpoch = await Epoch.findOne({where: {epoch: minEpochNumber}});
+        const maxEpoch = await Epoch.findOne({where: {epoch: maxEpochNumber}});
+        const minTime = minEpoch.timestamp;
+        const maxTime = maxEpoch.timestamp;
+        return {minEpochNumber, maxEpochNumber, minTime, maxTime};
+    }
+
+    protected async convertToAddress(list: any[]) {
+        const hex40IdSet = new Set<number>();
+        list.forEach(item => hex40IdSet.add(item.bizId));
+        const idToHex40Map = await idHex40Map(Array.from(hex40IdSet));
+        list.forEach(item => {
+            item['address'] = format.address(`0x${idToHex40Map.get(item.bizId)}`, StatApp.networkId);
+            delete item['bizId'];
+        });
+        return list;
+    }
 }

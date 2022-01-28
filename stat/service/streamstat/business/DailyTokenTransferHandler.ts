@@ -1,4 +1,3 @@
-import {StatApp} from "../../../StatApp";
 import {StatHandler} from "../StatHandler";
 import {col, fn, Op} from "sequelize";
 import {BizStatInfo} from "../BizStatInfo";
@@ -6,10 +5,9 @@ import {STREAM_STAT_DAILY_TOKEN_TRANSFER_Q} from "../../RedisWrap";
 import {StatBucket} from "../StatBucket";
 import {Epoch} from "../../../model/Epoch";
 import {DailyTokenTransferStat} from "../../../model/DailyTokenTransferStat";
-import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
 export class DailyTokenTransferHandler extends StatHandler {
-    protected app: StatApp;
+    protected app: any;
     protected statLatestDays: number;
 
     public constructor(app: any) {
@@ -132,5 +130,8 @@ export class DailyTokenTransferHandler extends StatHandler {
                 maxEpoch: item['statMaxEpoch'],
         };
         await DailyTokenTransferStat.create(statDaily);
+    }
+
+    protected cache() {
     }
 }

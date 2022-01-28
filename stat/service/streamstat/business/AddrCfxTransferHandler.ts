@@ -1,5 +1,4 @@
 import {Op, QueryTypes} from "sequelize";
-import {StatApp} from "../../../StatApp";
 import {StatHandler} from "../StatHandler";
 import {StatBucket} from "../StatBucket";
 import {BizStatInfo} from "../BizStatInfo";
@@ -8,9 +7,10 @@ import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 import {STREAM_STAT_ADDR_CFX_TRANSFER_Q} from "../../RedisWrap";
 
 const lodash = require('lodash');
+const CONST = require('../../common/constant');
 
 export class AddrCfxTransferHandler extends StatHandler {
-    protected app: StatApp;
+    protected app: any;
     protected statLatestDays: number;
 
     public constructor(app: any) {
@@ -50,6 +50,8 @@ export class AddrCfxTransferHandler extends StatHandler {
                 const bucket = new StatBucket({
                     bizValue0: BigInt(stat.sendCntr),
                     bizValue1: BigInt(stat.recvCntr),
+                    bizValue2: BigInt(stat.sendValue),
+                    bizValue3: BigInt(stat.recvValue),
                     lowerBoundInclude: stat.statTime,
                     upperBoundExclude: statEndTime,
                     minEpochNumber: stat.minEpoch,
@@ -78,6 +80,8 @@ export class AddrCfxTransferHandler extends StatHandler {
                 statTime: oldest.lowerBoundInclude,
                 sendCntr: oldest.bizValue0,
                 recvCntr: oldest.bizValue1,
+                sendValue: oldest.bizValue2,
+                recvValue: oldest.bizValue3,
                 minEpoch: oldest.minEpochNumber,
                 maxEpoch: oldest.maxEpochNumber,
             };
@@ -121,6 +125,8 @@ export class AddrCfxTransferHandler extends StatHandler {
         return new StatBucket({
             bizValue0: BigInt(stat.sendCntr),
             bizValue1: BigInt(stat.recvCntr),
+            bizValue2: BigInt(stat.sendValue),
+            bizValue3: BigInt(stat.recvValue),
             lowerBoundInclude: stat.statTime,
             upperBoundExclude: statEndTime,
             minEpochNumber: stat.minEpoch,
@@ -136,7 +142,7 @@ export class AddrCfxTransferHandler extends StatHandler {
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
             const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = AddrCfxTransferHandler.getStatRange({statEnd, statDays});
+            const {rangeBegin, rangeEnd} = StatHandler.getStatRange({statEnd, statDays});
             const total = await AddrCfxTransferStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
             });
@@ -164,14 +170,7 @@ export class AddrCfxTransferHandler extends StatHandler {
                 skip = (++curPage - 1) * pageSize;
             } while (skip <= total);
         }
-    }
-
-    private static getStatRange({statEnd, statDays}): { rangeBegin: Date, rangeEnd: Date } {
-        const rangeBegin = new Date(statEnd);
-        rangeBegin.setDate(statEnd.getDate() - statDays);
-        const rangeEnd = new Date(statEnd);
-        rangeEnd.setDate(statEnd.getDate() - (statDays - 1));
-        return {rangeBegin, rangeEnd};
+        await this.clear({model: AddrCfxTransferStat, statEnd, statDays: this.statLatestDays});
     }
 
     private async doStat({bizId, statEnd, statDays}) {
@@ -183,6 +182,8 @@ export class AddrCfxTransferHandler extends StatHandler {
 
         const sql = `select sum(sendCntr) as statSendCntr,
                             sum(recvCntr) as statRecvCntr,
+                            sum(sendValue) as statSendValue,
+                            sum(recvValue) as statRecvValue,
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
                      from ${AddrCfxTransferStat.getTableName()}
@@ -200,6 +201,8 @@ export class AddrCfxTransferHandler extends StatHandler {
                 statTime: statBegin,
                 sendCntr: item['statSendCntr'],
                 recvCntr: item['statRecvCntr'],
+                sendValue: item['statSendValue'],
+                recvValue: item['statRecvValue'],
                 minEpoch: item['statMinEpoch'],
                 maxEpoch: item['statMaxEpoch'],
             };
@@ -214,5 +217,41 @@ export class AddrCfxTransferHandler extends StatHandler {
             await AddrCfxTransferStat.destroy({where: {bizId, statType}, transaction: dbTx});
             await AddrCfxTransferStat.create(statNDaysInfo, {transaction: dbTx});
         });
+    }
+
+    public async cache() {
+        const queryOptions: any = {
+            offset: 0,
+            limit: 10,
+            raw: true,
+            // logging: msg => console.log(`listCfxTransferStat: ${msg}`),
+        };
+
+        const statTypeArray = ['1d', '3d', '7d'];
+        const txTypeArray = [CONST.TX_TYPE.IN, CONST.TX_TYPE.OUT];
+        for(const statType of statTypeArray){
+            queryOptions.where = {statType};
+            for(const txType of txTypeArray){
+                const orderBy = txType === CONST.TX_TYPE.OUT ? 'sendCntr' : 'recvCntr';
+                queryOptions.attributes = ['bizId', [orderBy, 'value'], 'minEpoch', 'maxEpoch'];
+                queryOptions.order = [[orderBy, 'DESC']];
+                let list = await AddrCfxTransferStat.findAll(queryOptions);
+
+                const {minEpochNumber, maxEpochNumber, maxTime} = await this.getStatSpan(list);
+                const valueTotal = await AddrCfxTransferStat.sum(orderBy, {
+                    where: {statType, minEpoch: {[Op.gte]: minEpochNumber}, maxEpoch: {[Op.lte]: maxEpochNumber}},
+                    // logging: msg => console.log(`listCfxTransferStat.valueTotal: ${msg}`),
+                });
+
+                list = await this.convertToAddress(list);
+                list.forEach(item => {
+                    delete item['minEpoch'];
+                    delete item['maxEpoch'];
+                });
+
+                const statInfoKey = `${statType}-${txType}`;
+                this.cacheStatInfo[statInfoKey] = {maxTime, valueTotal, list};
+            }
+        }
     }
 }
