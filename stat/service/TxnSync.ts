@@ -64,7 +64,7 @@ export class TxnSync {
         const list:any[] = await FullTransaction.sequelize.query(sql, {
             replacements: [minEpoch, maxEpoch, limit],
             type: QueryTypes.SELECT,
-            benchmark: true, logging: console.log
+            // benchmark: true, logging: console.log
         })
         let sumOption = {where:{
                 epoch: {[Op.between]: [minEpoch, maxEpoch]}

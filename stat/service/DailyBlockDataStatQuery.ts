@@ -70,7 +70,7 @@ export class DailyBlockDataStatQuery {
             ],
             where, raw: true,
             group: 'statTime', order: [[col('statTime'), sort]],
-            logging: console.log,
+            // logging: console.log,
         })
         const interval = this.intervalMinInSec;
         list.forEach(row=>{

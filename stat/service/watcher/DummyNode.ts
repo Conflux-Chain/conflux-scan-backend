@@ -440,7 +440,7 @@ export class DummyNode {
             const [curPos, nextPos] = await PosEpochRewardHash.findAll({
                 where: {epoch: {[Op.gte]:posPosition}},
                 order: [['epoch','asc']], limit: 2,
-                logging: console.log,
+                // logging: console.log,
             })
             // use small one when start up. use larger one (if exists) when growing up, or stuck at current position.
             const posRewardPowEpoch = posPosition === -1 ? curPos : nextPos || curPos

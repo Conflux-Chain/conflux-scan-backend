@@ -136,7 +136,7 @@ export class PosQuery {
                     group: ['powBase32'],
                     offset: skip, limit, raw: true,
                     order: [[fn('sum', col(sortBy)), sort]],
-                    logging: console.log,
+                    // logging: console.log,
                 }),
                 PosAccount.count({col: 'powBase32',
                     distinct: true,

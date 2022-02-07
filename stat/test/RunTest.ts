@@ -109,13 +109,13 @@ async function testTimezone(sequelize: DB) {
     await TestTimezone.destroy({where: {key}})
     const date = new Date(1610076925672)
     const created = await TestTimezone.create({key, value: date},{
-        logging: console.log
+        // logging: console.log
     })
     console.log(`memory  is ${date.toISOString()}, local is ${date}`)
     console.log(`created is ${created.value.toISOString()}, local is ${created.value}`)
     // find
     const findOne = await TestTimezone.findOne({where: {value: date}, limit:1,
-        logging: console.log})
+        })
     console.log(`findOne is ${created.value.toISOString()}, local is ${created.value}`)
     // raw query
     const rawOne = await sequelize.query(`select * from testTimezone where value = ?`,
