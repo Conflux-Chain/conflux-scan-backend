@@ -511,7 +511,8 @@ export class EpochSync extends SyncBase{
 
     private async getTraceArray(epochNumber) {
         let traceArray = [];
-        if (process.env.noTrace || true) {
+        if (process.env.noTrace) {
+            // evm space has no trace for now.
             return traceArray;
         }
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
