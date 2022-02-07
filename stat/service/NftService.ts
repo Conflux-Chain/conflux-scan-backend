@@ -113,7 +113,7 @@ async function countAccountNft(cHexIds: number[], accHexId: number) {
             toId: accHexId
         },
         group: ["contractId"], raw: true,
-        logging: console.log,
+        // logging: console.log,
     })
     const set = new Set(cHexIds)
     return groupByContractList.filter(r=>set.has(r.contractId));

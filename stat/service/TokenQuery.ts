@@ -168,7 +168,9 @@ export class TokenQuery {
 
         const sql = `select hex from hex40 where id in (select distinct(contractId) from ( select contractId 
             from ${tableName} where addressId = ${addressId} order by createdAt desc limit ${latestTransfer}) tmp);`;
-        const list = await sequelize.query(sql, {type: QueryTypes.SELECT, logging: console.log });
+        const list = await sequelize.query(sql, {type: QueryTypes.SELECT,
+            // logging: console.log
+        });
         const addressArray = list.map(item=> format.address(`0x${item.hex}`, StatApp.networkId));
 
         const response = await this.list({addressArray});
@@ -197,7 +199,9 @@ export class TokenQuery {
                 .map(tableName => {
                     TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
                         where addressId = ${addressId} order by createdAt desc limit 10) tmp;`,
-                        {type: QueryTypes.SELECT, logging: console.log})
+                        {type: QueryTypes.SELECT,
+                            // logging: console.log
+                        })
                         .then(transfers => transfers?.forEach(transfer =>
                             hexIdArray.push(transfer["contractId"])));
                 }));

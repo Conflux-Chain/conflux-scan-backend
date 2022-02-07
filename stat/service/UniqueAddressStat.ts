@@ -199,12 +199,14 @@ export async function calcOneDayUniqueArr(dt:Date) {
     }
     console.log(` calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
 }
-
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index on timeStart, not timeEnd.
     const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
     if (maxUnique === null) {
-        console.log(` no unique address record found.`)
+        if (!this.___show_log){
+            console.log(` no unique address record found.`)
+            this.___show_log = true;
+        }
         return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0)}
     }
     let timeBegin = new Date(maxUnique.timeStart)

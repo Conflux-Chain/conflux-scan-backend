@@ -114,10 +114,10 @@ export class BlockAndMinerSync {
         // find the epoch with time <= endDt
         const [startEpoch, endEpoch] = await Promise.all([
             Epoch.findOne({where: {timestamp:{[Op.gte]:beginDt}}, order:[['timestamp','asc']],
-                logging: console.log,
+                // logging: console.log,
             }),
             Epoch.findOne({where: {timestamp:{[Op.lte]:endDt}}, order:[['timestamp','desc']],
-                logging: console.log,
+                // logging: console.log,
             })
         ])
         if (startEpoch === null || endEpoch === null) {
@@ -136,7 +136,7 @@ export class BlockAndMinerSync {
                 [fn('sum', col('txFee')), 'txFee'],
             ],
             group: ['minerId'], raw: true,
-            logging: console.log,
+            // logging: console.log,
         })) as any[]
         if (statByMinerIdList.length === 0) {
             console.info(`rollup hourly, no stats between ${beginDt.toISOString()} - ${endDt.toISOString()

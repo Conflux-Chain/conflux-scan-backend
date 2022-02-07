@@ -42,7 +42,7 @@ export class TxnSync {
         const maxEpoch = maxTx.epoch
         const maxTime = maxTx.createdAt
         const endTime = maxTime;
-        console.log(` end time is ${endTime}`, endTime)
+        // console.log(` end time is ${endTime}`, endTime)
         let beginTime: Date;
         try {
             beginTime = await calculateBeginTime(n, type, endTime);
@@ -64,7 +64,7 @@ export class TxnSync {
         const list:any[] = await FullTransaction.sequelize.query(sql, {
             replacements: [minEpoch, maxEpoch, limit],
             type: QueryTypes.SELECT,
-            benchmark: true, logging: console.log
+            // benchmark: true, logging: console.log
         })
         let sumOption = {where:{
                 epoch: {[Op.between]: [minEpoch, maxEpoch]}

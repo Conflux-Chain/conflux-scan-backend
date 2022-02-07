@@ -36,7 +36,7 @@ export class DailyTxnSync{
                     {status: 0}
                 ]
             },
-            logging: console.log,
+            // logging: console.log,
             raw: true
         });
         const {txCount, gasFee} = stat;
@@ -175,11 +175,12 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
                 })
             if (list.length > 0) {
                 preId = list[list.length-1].id
-            } else {
+                console.log(`token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
+                } transfer records:${list.length}  `)
+
+                } else {
                 preId = -1 // stop while
             }
-            process.stdout.write(`\r${CONST.CL} token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
-                } transfer records:${list.length}  `)
         }).catch(err=>{
             console.log(`query transfer fail: ${sql}`, err)
             preId = -1

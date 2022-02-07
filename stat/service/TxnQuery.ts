@@ -16,7 +16,7 @@ export class TxnQuery{
             where: {
                 statDay: {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`),}
             },
-            logging: console.log,
+            // logging: console.log,
         })
         return sum;
     }
@@ -33,7 +33,7 @@ export class TxnQuery{
                     'fromId',
                 ],
                 group: ['fromId'], raw: true,
-                logging: console.log,
+                // logging: console.log,
                 where: {status: 0,
                     createdAt: {[Op.gte]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}
                 },

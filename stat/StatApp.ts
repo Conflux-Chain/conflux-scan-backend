@@ -122,7 +122,6 @@ export class StatApp{
             console.log(`skip sync db schema.`)
         }
         KV.setupSwitch().then()
-        this.rankService = new RankService(this)
         this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync();
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
@@ -170,6 +169,7 @@ export class StatApp{
         this.pruneHandler = new PruneHandler(this);
         this.transferTpsService = new TransferTpsService(this);
         this.desensitizer = new Desensitizer(this);
+        this.rankService = new RankService(this)
         const powSidePosSync = new PowSidePosSync(this.cfx);
         powSidePosSync.init().then(()=>powSidePosSync.listen());
         //

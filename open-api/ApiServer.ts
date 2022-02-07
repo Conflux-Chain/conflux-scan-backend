@@ -117,7 +117,7 @@ export class ApiServer {
         apiService.logger = logger
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
-        new BatchBalanceWatcher(this.cfx, [], null, utilContract)
+        new BatchBalanceWatcher(this.cfx, null, utilContract)
         // test
         // logger.info(`simple message`, 1)
         // logger.error('what about the error ?', new Error('here is error msg'))
