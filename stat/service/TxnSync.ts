@@ -42,7 +42,7 @@ export class TxnSync {
         const maxEpoch = maxTx.epoch
         const maxTime = maxTx.createdAt
         const endTime = maxTime;
-        console.log(` end time is ${endTime}`, endTime)
+        // console.log(` end time is ${endTime}`, endTime)
         let beginTime: Date;
         try {
             beginTime = await calculateBeginTime(n, type, endTime);

@@ -205,7 +205,7 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
     if (maxUnique === null) {
         if (!this.___show_log){
             console.log(` no unique address record found.`)
-            this.___show_log = false;
+            this.___show_log = true;
         }
         return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0)}
     }
