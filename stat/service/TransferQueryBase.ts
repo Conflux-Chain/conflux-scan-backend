@@ -60,7 +60,7 @@ export abstract class TransferQueryBase {
         if(transactionHashId) {
             conditionArray.push({txHashId: transactionHashId});
         }
-        if(tokenId) {
+        if(tokenId !== undefined) {
             conditionArray.push({tokenId: tokenId.toString()});
         }
         if(accountAddressId) {

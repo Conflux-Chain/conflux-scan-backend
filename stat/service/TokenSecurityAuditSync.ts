@@ -1,4 +1,5 @@
 import {StatApp} from "../StatApp";
+import {TokenQuery} from "./TokenQuery";
 
 export class TokenSecurityAuditSync{
     private readonly app;
@@ -8,9 +9,9 @@ export class TokenSecurityAuditSync{
     }
 
     private async audit(now: Date): Promise<Boolean>{
-        const { tokenQuery } = this.app;
+        // const { tokenQuery } = this.app;
 
-        const response = await tokenQuery.listAddress();
+        const response = await TokenQuery.listAddress();
         const addressArray = response?.list;
         for(const base32 of addressArray){
             await this.auditToken(base32);

@@ -240,7 +240,9 @@ export class ContractQuery {
 
         // remove repeat
         addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address))
-            .filter((address) => address?.startsWith('0x8') || address?.startsWith('0x08')))];
+            // .filter((address) => address?.startsWith('0x8') || address?.startsWith('0x08'))
+        )
+        ];
         if (addressArray.length === 0) {
             return { total: 0, map: {} };
         }
@@ -264,7 +266,8 @@ export class ContractQuery {
         // build response
         contractArray.forEach((contract) => {
             map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
-                name: contract.name,
+                name: contract.name || '',
+                isContract: true,
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
             });
         });
@@ -284,8 +287,12 @@ export class ContractQuery {
                 tokenType: token.transferType,
             });
         });
-
-        return { total: addressArray.length, map };
+        Object.keys(map).forEach(k=>{
+            if (!map[k].contract?.isContract) {
+                delete map[k]
+            }
+        })
+        return { total: contractArray.length, map };
     }
 
     private async queryImplementation(base32){

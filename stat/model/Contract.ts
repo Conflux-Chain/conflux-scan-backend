@@ -1,4 +1,4 @@
-import {Model,Sequelize,DataTypes} from "sequelize";
+import {Model, Sequelize, DataTypes, UniqueConstraintError} from "sequelize";
 
 export interface IContract{
     id?:number
@@ -53,6 +53,12 @@ export class Contract extends Model<IContract> implements IContract{
             icon:contract.icon,
         }, {
             transaction: dbTx
+        }).catch(err=>{
+            if (err instanceof UniqueConstraintError) {
+                // contract which created by transaction directly, will be saved when sync tx.
+                return contract
+            }
+            throw err;
         })
     }
 }

@@ -3,6 +3,7 @@ const format = require('js-conflux-sdk/src/util/format');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 const lodash = require('lodash');
+const addressUtil = require('js-conflux-sdk/src/util/address');
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
     const param = {
         skip: intParam(obj, skipKey, 0),
@@ -27,6 +28,11 @@ export function patchFormat() {
         }
     }
     format.address = saveAddress;
+}
+export function noVerboseAddr(v) {
+    const obj = addressUtil.decodeCfxAddress(v)
+    const simple = format.address(obj.hexAddress, obj.netId)
+    return simple;
 }
 export function skipLimit(obj) {
     return pageParam(obj, 'skip', 'limit', 10)

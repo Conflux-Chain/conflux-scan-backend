@@ -27,12 +27,12 @@ import {
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
 import {Epoch} from "../model/Epoch";
-import {batchFetchBlock} from "./common/utils";
+import {batchFetchBlock, noVerboseAddr} from "./common/utils";
 import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 import {PruneNotifier} from "./prune/PruneNotifier";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {StatNotifier} from "./streamstat/StatNotifier";
-
+import {Contract} from "../model/Contract";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -88,9 +88,9 @@ export class FullBlockService {
             ret = await that.syncBlockByEpoch(maxEpoch+1).catch(err=>{
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
-                    console.log(`lock time out at epoch ${maxEpoch}:`, err)
+                    console.log(`lock time out at epoch ${maxEpoch+1}:`, err)
                 } else {
-                    console.log(`sync block fail at epoch ${maxEpoch}`, err)
+                    console.log(`sync block fail at epoch ${maxEpoch+1}`, err)
                 }
                 return {code: CODE_CONTINUE}
             })
@@ -98,11 +98,11 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} try again epoch ${maxEpoch+1
-                    }: ${ret.message}`)
+                that.debugLog && console.log(` try again epoch ${maxEpoch+1
+                    }: ${ret.message || 'no message'}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                that.debugLog && process.stdout.write(`\r ${new Date().toISOString()} empty block at epoch ${ret.epoch}, ${ret.message}`)
+                that.debugLog && console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await new Promise(r=>setTimeout(r, 1000))
             } else {
                 maxEpoch += 1
@@ -229,7 +229,8 @@ export class FullBlockService {
             for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
                 let tx = blk.transactions[txIdx];
                 tx.receipt = (receipts[idx]||[])[txIdx]
-                if (tx.status === null || tx.status === undefined || tx.receipt === undefined) {
+                const st = tx.receipt?.outcomeStatus
+                if (st != 1 && st != 0) {
                     continue
                 }
                 // check consistency
@@ -262,8 +263,8 @@ export class FullBlockService {
                 if (txInfo.to && txInfo.to !== '0x' && txInfo.to !== txInfo.from) {
                     map.add(txInfo.to)
                 }
-                if (txInfo.contractCreated && txInfo.contractCreated !== '0x') {
-                    map.add(txInfo.contractCreated)
+                if (txInfo.receipt?.contractCreated && txInfo.receipt?.contractCreated !== '0x') {
+                    map.add(txInfo.receipt.contractCreated)
                 }
             }
         }
@@ -383,16 +384,26 @@ export class FullBlockService {
                 // status has value, fail (!0) or success (0) or genesis epoch.
                 // status could be: null(not executed/skipped), 0(success), 1(fail);
                 // in receipt, outcomeStatus could be 2 (skipped).
-                if (txInfo.status || txInfo.status === 0 || minEpochNumber === 0) {
+                const st = txInfo.receipt?.outcomeStatus
+                if (st == 0 || st == 1 || minEpochNumber === 0) {
                     txInfo.fromId = hexMap.get(txInfo.from) || 0
                     txInfo.toId =  hexMap.get(txInfo.to) || 0
-                    txInfo.contractCreatedId = hexMap.get(txInfo.contractCreated) || 0
-                    txInfo.epoch = minEpochNumber
+                    txInfo.contractCreatedId = hexMap.get(txInfo.receipt?.contractCreated) || 0
+                    if (txInfo.contractCreatedId) {
+                        const contractBean = {
+                            hex40id: txInfo.contractCreatedId, epoch: minEpochNumber,
+                            base32:  noVerboseAddr(txInfo.receipt.contractCreated),
+                        }
+                        await Contract.create(contractBean)
+                            .catch(err=>console.log(` save contract addr fail: tx ${txInfo.hash
+                            } ${JSON.stringify(contractBean)}, `, err))
+                    }
+                    txInfo.epoch = minEpochNumber;
                     txInfo.blockPosition = block.position
                     txInfo.txPosition = pos++ // it's not the index in RPC data. it's computed, see desc above.
                     txInfo.createdAt = block.createdAt
                     txInfo.dripValue = txInfo.value
-                    txInfo.status = minEpochNumber === 0 ? 0 : txInfo.status
+                    txInfo.status = minEpochNumber === 0 ? 0 : st
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gas = txInfo.receipt?.gasFee || 0// save gasFee.
                     executedTxArr.push(txInfo)
@@ -407,7 +418,7 @@ export class FullBlockService {
                     }
                     sumGasPrice += txInfo.gasPrice
                 }
-                if (txInfo.status) { // has value and is not zero: failed.
+                if (st == 1) { // has value and is not zero: failed.
                     failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo))
                 }
             }
@@ -487,8 +498,10 @@ export class FullBlockService {
                 console.log(`fill block reward fail, epoch ${prePos+1}`, err)
                 return {code:CODE_CONTINUE, message:'error'}
             })
-            process.stdout.write(`\r ${new Date().toISOString()} fill block reward at epoch ${prePos+1} return ${
-                fillRet.code}, ${fillRet.message}`)
+            if (prePos + 1 % 100 === 0) {
+                console.log(`fill block reward at epoch ${prePos + 1} return ${
+                    fillRet.code}, ${fillRet.message}`)
+            }
             switch (fillRet.code) {
                 case CODE_CONTINUE:
                     await new Promise(r=>setTimeout(r, 5000))

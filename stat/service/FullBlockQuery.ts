@@ -173,7 +173,7 @@ export class FullBlockQuery {
                                      nonce = undefined, minTimestamp = undefined, maxTimestamp = undefined,
                                      accountAddress = undefined, from = undefined, to = undefined, opponentAddress = undefined,
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
-                                     verboseAddress = true, sort = 'DESC'
+                                     verboseAddress = false, sort = 'DESC'
     }) {
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;

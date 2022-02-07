@@ -42,7 +42,10 @@ export class PowSidePosSync {
         } catch (e) {
             if (e.message.includes('Method not found')) {
                 this.isPosRpc = false;
-                console.log(` not pos rpc, will drop all redis message.`)
+                console.log(` not pos rpc, will drop all redis message.[A]`)
+            } else if (e.message.includes('the method pos_getStatus does not exist')) {
+                this.isPosRpc = false;
+                console.log(` not pos rpc, will drop all redis message.[B]`)
             } else if (e.message.includes('PoS chain is not enabled')) {
                 //
             } else {

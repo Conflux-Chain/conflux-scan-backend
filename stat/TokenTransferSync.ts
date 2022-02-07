@@ -136,8 +136,11 @@ async function waitParentHashDB(task: IEpochTokenTransfer, parentEpoch:number) :
     if (!task.checkPivot) {
         return ''
     }
+    if (parentEpoch === -1) {
+        return '-'
+    }
     do {
-        const formerOne = await EpochHashTokenTransfer.findByPk(parentEpoch)
+        const formerOne = await EpochHashTokenTransfer.findByPk(parentEpoch);
         if (formerOne === null) {
             console.log(` current task with epoch ${task.epoch
             } says: former task not finished yet, want epoch ${parentEpoch} be finished.`)
@@ -267,9 +270,11 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     async function updateMaxTxEpoch() {
         const maxE = await FullTransaction.max('epoch')
         if (typeof maxE !== 'number') {
+            console.log(` FullTransaction is empty. ${new Date().toISOString()}`)
             return;
         }
         maxEpochInTx = maxE;
+        console.log(` update max tx epoch to ${maxE} `)
     }
     await updateMaxTxEpoch()
     let firstWait = true
@@ -292,14 +297,20 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     if (data instanceof CheckPivotHashError) {
                         console.log(` checking pivot hash error, ${data.message}`);
                         await  localPop(epoch - 1)
+                        delay = 10_000
                         break;
                     } else if (parentHash && data.parentHash !== parentHash) {
                         console.log(` before save check, parent hash not match, on hand epoch ${epoch
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
+                        delay = 10_000
+                        break;
+                    } else if (data instanceof Error) {
+                        console.log(` error at epoch ${epoch}`, data)
+                        delay = 10_000;
                         break;
                     }
-                    await processData(epoch, data)
+                    await processData(epoch, data);
                     if (epoch % dumpPerRound === 0) {
                         console.log(` sync transfer sample log, at epoch ${epoch}`);
                         measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', fetchAndBuildTag, 'save');
@@ -415,9 +426,13 @@ async function fetchTask(len:number, fromEpoch: number, cfx:Conflux ) : Promise<
             console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}`)
             return exactOne;
         }
-        if (fromEpoch === -1 && maxOne.finished === false) {
-            console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}`)
-            return maxOne; // continue unfinished task.
+        if (fromEpoch === -1) {
+            if (maxOne?.finished === false) {
+                console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}`)
+                return maxOne; // continue unfinished task.
+            } else {
+                fromEpoch = 0;
+            }
         }
         let preEnd = fromEpoch;
         if (maxOne !== null) {
