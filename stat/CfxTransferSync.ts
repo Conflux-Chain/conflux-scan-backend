@@ -163,6 +163,7 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             if (!txBean) {
                 console.log(`rpc trace at epoch ${epoch} block ${blkIdx} full-tx-idx ${txIdx
                 }, without tx in db. want tx hash ${transactionHash}`)
+                continue;
             } else if (txBean.status !== 0) {
                 continue
             }
