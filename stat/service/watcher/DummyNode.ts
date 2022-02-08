@@ -41,7 +41,11 @@ import {buildHexSet, fillHexId, makeId, makeIdV} from "../../model/HexMap";
 import {init} from "../tool/FixDailyTokenStat";
 import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
-import {CFX_BILL_EPOCH, CFX_BILL_POS_EPOCH_REWARD, KV} from "../../model/KV";
+import {
+    CFX_BILL_EPOCH_3,
+    CFX_BILL_POS_EPOCH_REWARD_3,
+    KV
+} from "../../model/KV";
 import {PosEpochRewardHash} from "../../model/PoS";
 
 const DRIP_FACTOR = BigInt(1e+18)
@@ -103,13 +107,13 @@ export class DummyNode {
             await make('0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b', 42_0000_0000, 0)
             // cfx:ach9eg1rk28060m3kpw44np1znvn6p9ffjkk6651nb two year
             await make('0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a', 8_0000_0000, 1)
-        } else if (networkId === 1) {
+        } else { // cfx on testnet is incorrect.
             // cfxtest:aathrdjwhfsjzt88577vz42r4hkh41vmt68xu9h4vc             50 0000 0000n
             await make('0x1e768d12395c8abfdedf7b1aeb0dd1d27d5e2a7f', 5000000000000000, 0)
             // cfxtest:aar8jzybzv0fhzreav49syxnzut8s0jt1a1pdeeuwb
             await make('0x1be45681ac6c53d5a40475f7526bac1fe7590fb8', 5000000000000000, 0)
         }
-        await KV.create({key: CFX_BILL_EPOCH, value: '0'})
+        await KV.create({key: CFX_BILL_EPOCH_3, value: '0'})
         console.log(` setup epoch 0, ok.`)
     }
     preFetchedTo = 0
@@ -125,12 +129,12 @@ export class DummyNode {
         return Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(async hashes=>{
                 // console.log(`hashes: \n ${hashes.join('\n')}`)
-                return batchBlockDetail(this.cfx, hashes)
-                .then(([blkArr, traceArr])=>{
-                    blkArr.forEach((blk, idx)=>{
-                        blkArr[idx].traces = traceArr[idx]
+                return batchTraceBlock(this.cfx, hashes)
+                .then((traceArr)=>{
+                    const reward = {} as any;
+                    return traceArr.map((blk, idx)=>{
+                        return { hash: hashes[idx], traces: traceArr[idx], reward, miner: '', receipts: []}
                     })
-                    return blkArr
                 })
             }),
             this.cfx.getBlockRewardInfo(epoch),
@@ -140,11 +144,12 @@ export class DummyNode {
             // console.log(`fetch all done.`)
             blockList.forEach((blk,idx)=>{
                 blk.reward = rewardList[idx]
-                if (blk.reward.author !== blk.miner) {
-                    throw new Error(`block miner doesn't match reward author.\n${
-                        blk.miner}\n${blk.reward.author}`)
+                blk.miner = blk.reward.author
+                if (blk.reward.blockHash !== blk.hash) {
+                    throw new Error(`block hash doesn't match reward hash.\n${
+                        blk.hash}\n${blk.reward.blockHash}`)
                 }
-                blk.transactions.forEach((tx, txIdx)=>tx.receipt = receipts[idx][txIdx])
+                blk.receipts = receipts[idx]
             })
             return blockList
         }).then(res=>{
@@ -159,56 +164,52 @@ export class DummyNode {
         }
         return mulV / STORAGE_DIV
     }
-    makeStorageBill(billArr:any[], receipt:any, tx:any, epoch:number, txIndex:number, blockIndex:number) {
-        // storage used
-        if (!receipt.storageCoveredBySponsor && receipt.storageCollateralized) {
-            const storageUsedBill = {
-                owner:tx.from, epoch, blockIndex, txIndex, traceIndex: 0, type:'store_u',
-                from: tx.from, to: tx.to, diffDrip: -this.computeStorageDrip(receipt.storageCollateralized),
-                seq: billArr.length,
-            }
-            billArr.push(storageUsedBill)
-        }
-    }
-    makeGasBill(billArr:any[], receipt:any, tx:any, epoch:number, txIndex:number, blockIndex:number) {
-        // tx gas used
-        if (!receipt.gasCoveredBySponsor && receipt.gasFee) {
-            const gasBill = {
-                owner:tx.from, epoch, blockIndex, txIndex, traceIndex: 0, type:GAS,
-                from: tx.from, to: tx.to, diffDrip: -receipt.gasFee,
-                seq: billArr.length,
-            }
-            billArr.push(gasBill)
-        }
-    }
+
     async buildBill(epoch, blockList:any[]) {
         const billArr = []
         for (const [blockIndex,block] of blockList.entries()) {
-            for (const [txIndex,tx] of block.transactions.entries()) {
-                const receipt = tx.receipt
-                if (!receipt && tx.status === null && tx.blockHash === null) {
-                    console.log(`tx receipt not found, epoch ${epoch} block hash ${block.hash
-                    }\n tx hash ${tx.hash} tx index ${txIndex}`)
-                    continue
+            for (const [txIndex,receipt] of block.receipts.entries()) {
+                if (receipt.outcomeStatus !== 0 && receipt.outcomeStatus !== 1) {
+                    continue; // only for failed or succeeded tx.
                 }
+                // const receipt = tx.receipt
                 if (receipt.epochNumber !== epoch) {
                     // not executed in current epoch
                     continue
                 }
-                if (receipt.outcomeStatus !== 0) {
-                    // failed, only compute gas.
-                    this.makeGasBill(billArr, receipt, tx, epoch, txIndex, blockIndex)
-                    continue
-                }
                 // traces for this tx. traces is prior to gas and storage in one epoch.
-                const transactionTraces = block.traces.transactionTraces;
-                for (const [traceIndex,{action,type}] of transactionTraces[txIndex].traces.entries()) {
-                    if (!action.value
-                        || action.callType === 'none'
+                const {transactionTraces, blockHash} = block.traces;
+                if (blockHash !== receipt.blockHash || blockHash !== block.hash) {
+                    console.log(` epoch ${epoch}, block ${blockIndex}, ${block.hash
+                    } \n receipt tx block hash ${receipt.blockHash
+                    } \n trace block hash ${blockHash
+                    } \n mismatch .`)
+                    process.exit(1);
+                }
+                const {transactionHash, traces} = transactionTraces[txIndex]
+                if (transactionHash !== receipt.transactionHash) {
+                    console.log(` epoch ${epoch}, block ${blockIndex}, ${block.hash
+                    } \n receipt tx hash ${receipt.transactionHash
+                    } \n mismatch trace tx hash ${transactionHash}`)
+                    process.exit(1);
+                }
+                for (const [traceIndex, trace] of traces.entries()) {
+                    const {action,type} = trace;
+                    const { callType, fromPocket, toPocket, fromSpace, toSpace, space, value } = trace.action;
+                    // console.log(` action at epoch ${epoch} callType ${callType}, type ${type}`, action)
+                    if (!value || space === 'evm'
+                        || (fromSpace === 'native' && toSpace === 'evm')
+                        || (fromSpace === 'evm' && toSpace === 'native')
+                    ) {
+                        // console.log(`skip A ${traceIndex}`)
+                        continue;
+                    }
+                    if (action.callType === 'none'
                         || action.callType === 'callcode'
                         || action.callType === 'delegatecall'
                         || action.callType === 'staticcall'
                     ) {
+                        // console.log(`skip B ${traceIndex}`)
                         continue
                     }
                     // type is call, and only callType 'call' will transfer cfx.
@@ -217,10 +218,14 @@ export class DummyNode {
                         process.exit(8)
                         return
                     }
+                    // https://github.com/Conflux-Chain/CIPs/issues/88  read the doc.
                     let tType = type
                     if (type === 'internal_transfer_action') {
                         tType = 'in_trans'
-                    } else if (type === 'create' || type ==='call') {
+                    } else if (type === 'create') {
+                    } else if (type ==='call') {
+                        // call type trace has no fromPocket and toPocket field. Because the pocket is always "balance".
+                        action.fromPocket = action.toPocket = 'balance'
                     } else if (type === 'create_result' || type ==='call_result') {
                         //value should be zero, won't trigger
                     } else {
@@ -228,34 +233,33 @@ export class DummyNode {
                         process.exit(8)
                         return
                     }
-                    if (type === 'create' && receipt.contractCreated && !action.to) {
-                        action.to = receipt.contractCreated
-                    }
-                    if (action.from !== action.to) {
-                        // if from eq to, then ignore, only care gas. other wise, the 'out' will cause negative result.
+                    // if (type === 'create' && receipt.contractCreated && !action.to) {
+                    //     action.to = receipt.contractCreated
+                    // }
+                    if (fromPocket === 'balance') {
+                        // <from> pay.
+                        tType = action.toPocket.substr(0, 8);
                         const traceBillFrom = {
                             owner:action.from, epoch, blockIndex, txIndex, traceIndex, type:tType,
                             from: action.from, to: action.to, diffDrip: -action.value, seq:billArr.length
                         };
                         billArr.push(traceBillFrom)
+                        // console.log(` <from> pay ${value}`)
+                    }
+                    if (action.toPocket === 'balance') {
+                        // <to> gain.
+                        tType = action.fromPocket.substr(0, 8);
                         const traceBillTo = {
-                            ...traceBillFrom, owner: action.to, diffDrip: action.value, seq:billArr.length
-                        }
+                            owner:action.to, epoch, blockIndex, txIndex, traceIndex, type:tType,
+                            from: action.from, to: action.to, diffDrip: action.value, seq:billArr.length
+                        };
                         billArr.push(traceBillTo)
+                        // console.log(` <to> gain ${value}`)
                     }
+                    console.log(`-----finish ${traceIndex}`)
                 }
-                this.makeStorageBill(billArr, receipt, tx, epoch, txIndex, blockIndex)
-                // storage released
-                for (const released of receipt.storageReleased) {
-                    const releaseBill = {
-                        owner:released.address, epoch, blockIndex, txIndex, traceIndex: 0, type:'store_r',
-                        from: '', to: released.address, diffDrip: this.computeStorageDrip(released.collaterals),
-                        seq:billArr.length
-                    }
-                    billArr.push(releaseBill)
-                }
-                this.makeGasBill(billArr, receipt, tx, epoch, txIndex, blockIndex)
             }
+            // reward for miner.
             const rewardBill = {
                 owner:block.miner, epoch, blockIndex, txIndex:0, traceIndex: 0, type:REWARD,
                 from: '', to: block.miner, diffDrip: block.reward.totalReward,
@@ -366,7 +370,7 @@ export class DummyNode {
     async getEpochInDB() {
         console.log(`${new Date().toISOString()} begin find max epoch in db.`)
 
-        return KV.getNumber(CFX_BILL_EPOCH).then(res=>{
+        return KV.getNumber(CFX_BILL_EPOCH_3).then(res=>{
             console.log(`  cfx bill epoch position in db :`, res)
             if (isNaN(res)) {
                 throw new Error('Should setup epoch 0 automatically, or set it manually in DB.')
@@ -403,9 +407,9 @@ export class DummyNode {
         }).then(async bills=>{
             return CfxBill.sequelize.transaction(async dbTx=>{
                 const arr = await CfxBill.bulkCreate(bills, {transaction: dbTx})
-                await KV.update({value: epoch.toString()}, {where:{key: CFX_BILL_EPOCH},
+                await KV.update({value: epoch.toString()}, {where:{key: CFX_BILL_EPOCH_3},
                     transaction: dbTx})
-                await KV.upsert({key: CFX_BILL_POS_EPOCH_REWARD, value: this.curPosPosition.toString()},
+                await KV.upsert({key: CFX_BILL_POS_EPOCH_REWARD_3, value: this.curPosPosition.toString()},
                     {transaction: dbTx})
                 return arr;
             })
@@ -436,7 +440,7 @@ export class DummyNode {
             // if pos reward shows up, use the corresponding pow epoch as ceil epoch.
             // otherwise, use confirmed epoch subtract a value as ceil epoch.
             // default pos position is -1, means that we haven't use it yet.
-            const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD, '-1').then(parseInt)
+            const posPosition = await KV.getString(CFX_BILL_POS_EPOCH_REWARD_3, '-1').then(parseInt)
             const [curPos, nextPos] = await PosEpochRewardHash.findAll({
                 where: {epoch: {[Op.gte]:posPosition}},
                 order: [['epoch','asc']], limit: 2,
@@ -597,7 +601,7 @@ export interface ICfxBill {
     type:string, fromId:number, toId:number, diffDrip:number, balance:number,
     seq:number;
 }
-const T_CFX_BILL = 'cfx_bill2'
+const T_CFX_BILL = 'cfx_bill3'
 export class CfxBill extends Model<ICfxBill> implements ICfxBill{
     ownerId:number; epoch:number; blockIndex:number; txIndex:number; traceIndex:number;
     type:string; fromId:number; toId:number; diffDrip:number; balance:number;
