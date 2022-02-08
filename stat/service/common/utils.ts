@@ -167,21 +167,12 @@ export function batchFetchBlock(cfx:Conflux, hashes:string[],
 }
 export function isNewFormatTrace(traceArray2d:any[]) {
     // the 1st trace is always gas payment (for now in evm hard-fork)
-    let traceOfBlock = traceArray2d.find(blk=>blk.transactionTraces.length);
+    let traceOfBlock = traceArray2d.find(blk=>blk.transactionTraces.length && blk.transactionTraces[0].traces.length);
     if (!traceOfBlock) {
-        // all block is empty (without tx).
+        // all block is empty (without tx and trace).
         return false;
     }
-    const {transactionTraces} = traceOfBlock;
-    if (transactionTraces.length === 0) {
-        // no trace.
-        return false;
-    }
-    const {traces} = transactionTraces[0];
-    if (traces.length === 0) {
-        return false;
-    }
-    const { fromPocket, toPocket, fromSpace, toSpace, space } = traces[0].action;
+    const { fromPocket, toPocket, fromSpace, toSpace, space } = traceOfBlock.transactionTraces[0].traces[0].action;
     return Boolean(fromPocket || toPocket || fromSpace || toSpace || space)
 }
 function formatTrace(arr: (object | Error)[]) {
