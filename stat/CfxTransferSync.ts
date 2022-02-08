@@ -1,7 +1,7 @@
 import {Transaction, Model,DataTypes, Sequelize, Op, UniqueConstraintError, ModelStatic} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchTraceBlock, patchHttpProvider, removeLongData} from "./service/common/utils";
+import {batchTraceBlock, isNewFormatTrace, patchHttpProvider, removeLongData} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
@@ -140,12 +140,13 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
+    const isNewTraceFormat = isNewFormatTrace(traceArray2d)
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
             continue
         }
-        const {blockHash, epochNumber, transactionTraces} = traceOfBlock;
+        const {blockHash, transactionTraces} = traceOfBlock;
         const txArr = transactionTraces as any[]
         for (let txIdx = 0; txIdx < txArr.length; txIdx++) {
             // there are skipped txs. it's traces is empty.
@@ -172,12 +173,29 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             }
             const traceArr = traces as any[];
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
-                const {action:{outcome, from, to, value, callType}, type} = traceArr[traceIdx]
+                let {action:{outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space}, type} = traceArr[traceIdx]
+                // doc https://github.com/Conflux-Chain/CIPs/issues/88
+                if (type === 'call' && isNewTraceFormat) {
+                    // 'call' type trace has no fromPocket and toPocket field. Because the pocket is always "balance".
+                    fromPocket = 'balance';
+                    toPocket = 'balance';
+                }
                 if (!value
                     || callType === 'none'
                     || callType === 'callcode'
                     || callType === 'delegatecall'
                     || callType === 'staticcall'
+                    ||
+                    (
+                        isNewTraceFormat &&
+                        (
+                            // scan doesn't save gas/storage payment as cfx transfer records.
+                            fromPocket !== 'balance' || toPocket !== 'balance'
+                        || (fromSpace === 'native' && toSpace === 'evm')
+                        || (fromSpace === 'evm' && toSpace === 'native')
+                        || (space === 'evm')
+                        )
+                    )
                 ) {
                     continue
                 }
