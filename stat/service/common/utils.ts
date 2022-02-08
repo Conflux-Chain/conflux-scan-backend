@@ -167,7 +167,11 @@ export function batchFetchBlock(cfx:Conflux, hashes:string[],
 }
 export function isNewFormatTrace(traceArray2d:any[]) {
     // the 1st trace is always gas payment (for now in evm hard-fork)
-    let traceOfBlock = traceArray2d[0];
+    let traceOfBlock = traceArray2d.find(blk=>blk.transactionTraces.length);
+    if (!traceOfBlock) {
+        // all block is empty (without tx).
+        return false;
+    }
     const {transactionTraces} = traceOfBlock;
     if (transactionTraces.length === 0) {
         // no trace.
