@@ -112,6 +112,7 @@ import {DailyTokenTransferStat} from "../model/DailyTokenTransferStat";
 import {MinerBlockStat} from "../model/MinerBlockStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
+import {CheckBlockInfo} from "../monitor/TxChecker";
 let conf
 export function createDB(config) {
     conf = config
@@ -283,6 +284,7 @@ export async function initModel(sequelize) {
     NftId.register(sequelize)
     PivotSwitch.register(sequelize)
     TestTimezone.register(sequelize);
+    CheckBlockInfo.register(sequelize)
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);
     DailyContractCreate.register(sequelize);

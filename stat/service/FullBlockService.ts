@@ -283,7 +283,7 @@ export class FullBlockService {
             return map;
         })
     }
-    syncFailedTx(epoch, txInfo) : IFailedTx {
+    static syncFailedTx(epoch, txInfo) : IFailedTx {
         const receipt = txInfo.receipt
         let msg = receipt["txExecErrorMsg"] || '';
         if (msg.length >= LEN_txExecErrorMsg) {
@@ -419,7 +419,7 @@ export class FullBlockService {
                     sumGasPrice += txInfo.gasPrice
                 }
                 if (st == 1) { // has value and is not zero: failed.
-                    failedTxArr.push(this.syncFailedTx(minEpochNumber, txInfo))
+                    failedTxArr.push(FullBlockService.syncFailedTx(minEpochNumber, txInfo))
                 }
             }
             block.executedTxnCount = pos
