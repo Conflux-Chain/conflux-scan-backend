@@ -169,7 +169,14 @@ export function isNewFormatTrace(traceArray2d:any[]) {
     // the 1st trace is always gas payment (for now in evm hard-fork)
     let traceOfBlock = traceArray2d[0];
     const {transactionTraces} = traceOfBlock;
+    if (transactionTraces.leng === 0) {
+        // no trace.
+        return false;
+    }
     const {traces} = transactionTraces[0];
+    if (traces.length === 0) {
+        return false;
+    }
     const { fromPocket, toPocket, fromSpace, toSpace, space } = traces[0].action;
     return Boolean(fromPocket || toPocket || fromSpace || toSpace || space)
 }
