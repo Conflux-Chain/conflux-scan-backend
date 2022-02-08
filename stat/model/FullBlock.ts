@@ -14,7 +14,7 @@ export interface IFullBlock {
     createdAt: Date,
     totalReward: bigint;
     txFee: bigint;
-    avgGasPrice: number;
+    avgGasPrice: bigint;
     gasLimit: number;
     gasUsed:number;
     txCount:number;
@@ -67,7 +67,7 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
     hash: string;
     totalReward: bigint;
     txFee: bigint;
-    avgGasPrice: number;
+    avgGasPrice: bigint;
     gasLimit: number;
     gasUsed:number;
     txCount:number; // all txn, include packed but not executed
