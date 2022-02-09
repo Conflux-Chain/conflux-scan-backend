@@ -113,6 +113,7 @@ import {MinerBlockStat} from "../model/MinerBlockStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
+import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
 let conf
 export function createDB(config) {
     conf = config
@@ -294,6 +295,10 @@ export async function initModel(sequelize) {
     EpochTaskTokenTransfer.register(sequelize);
     EpochHashTokenTransfer.register(sequelize)
     ContractUser.register(sequelize);
+    TaskCfxTransfer.register(sequelize);
+    CfxUser.register(sequelize);
+    EpochHashCfxTransfer.register(sequelize);
+    EpochCfxTransferCount.register(sequelize);
     UniqueAddress.register(sequelize);
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);

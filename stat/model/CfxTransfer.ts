@@ -3,35 +3,39 @@ import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {CFX_TRANSFER_ADDRESS_Q, RedisWrap} from "../service/RedisWrap";
+import {buildTransferList2address} from "./Erc20Transfer";
 import {PruneNotifier} from "../service/prune/PruneNotifier";
 import {StatNotifier} from "../service/streamstat/StatNotifier";
+import {EpochCfxTransferCount} from "../CfxTransferSync";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {
     addressId: number
     epoch: number
-    tracePos: number
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
     createdAt: Date
-    txHashId: number
     fromId: number
     toId: number
     value: number
+    type:string
 }
-export const T_ADDRESS_CFX_TRANSFER = 'address_cfx_transfer'
+export const T_ADDRESS_CFX_TRANSFER = 'address_cfx_transfer_2'
 export const T_ADDRESS_CFX_TRANSFER_SQL = `
 create table if not exists ${T_ADDRESS_CFX_TRANSFER}
 (
  \`addressId\` bigint(20) unsigned NOT NULL,
  \`epoch\` bigint(20) unsigned NOT NULL,
- \`tracePos\` smallint(6) unsigned NOT NULL,
+   \`blockIndex\` int unsigned NOT NULL,
+  \`txIndex\` mediumint unsigned NOT NULL,
+  \`txLogIndex\` mediumint unsigned NOT NULL,
  \`createdAt\` datetime NOT NULL,
- \`txHashId\` bigint(20) unsigned NOT NULL,
  \`fromId\` bigint(20) unsigned NOT NULL,
  \`toId\` bigint(20) unsigned NOT NULL,
  \`value\` decimal(36) NOT NULL,
-  PRIMARY KEY (\`addressId\` DESC, \`epoch\` DESC, \`tracePos\` DESC),
-  KEY \`idx_epoch\` (\`epoch\`),
-  KEY \`idx_datetime\` (\`createdAt\`)
+ \`type\` varchar (128) NOT NULL default '',
+  PRIMARY KEY (\`addressId\` DESC, \`epoch\` DESC, \`blockIndex\` desc, txIndex desc, txLogIndex desc)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
 partition by hash (addressId)
   PARTITIONS 97;
@@ -52,58 +56,44 @@ export async function createAddressCfxTransferTable(seq:Sequelize) {
 export class AddressCfxTransfer extends Model<IAddressCfxTransfer> implements IAddressCfxTransfer {
     addressId: number
     epoch: number
-    tracePos: number
     createdAt: Date
-    txHashId: number
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
     fromId: number
     toId: number
     value: number
+    type:string
     static register(seq) {
         AddressCfxTransfer.init(
             {
             addressId: {type: DataTypes.BIGINT, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
-            tracePos: {type: DataTypes.INTEGER, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
+            type: {type: DataTypes.STRING(128), allowNull: false, defaultValue: ''},
         }, {
             sequelize: seq,
             updatedAt: false,
             tableName: T_ADDRESS_CFX_TRANSFER,
             indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
-                {
-                    name: 'idx_datetime',
-                    fields: [{name: 'createdAt', order: "DESC"}]
-                },
             ],
         })
     }
 }
 
-export function buildCfxTransferList2address(list:any[]) : IAddressCfxTransfer[] {
-    const result : any[] = []
-    let idx = 0
-    list.forEach(row=>{
-        result.push(buildAddressCfxTransfer(row, row.fromId, idx))
-        if (row.fromId !== row.toId) {
-            result.push(buildAddressCfxTransfer(row, row.toId, idx+1))
-        }
-        idx += 10
-    })
-    return result
-}
-
-export function buildAddressCfxTransfer(row:any, addrId:number, pos:number) : any {
+export function buildAddressCfxTransfer(row:any, addrId:number) : any {
     return {
-        addressId: addrId, epoch: row.epoch, tracePos: pos, createdAt: row.createdAt,
-        txHashId: row.txHashId, fromId: row.fromId, toId: row.toId,  value: row.value
+        addressId: addrId, epoch: row.epoch, createdAt: row.createdAt,
+        fromId: row.fromId, toId: row.toId,  value: row.value,
+        blockIndex: row.blockIndex, //
+        txIndex: row.transactionIndex,
+        txLogIndex: row.txLogIndex,
     }
 }
 
@@ -125,7 +115,7 @@ export class CfxTransferRowMark extends Model<ICfxTransferRowMark> implements IC
         },{
             sequelize: seq,
             timestamps: false,
-            tableName: 'cfx_transfer_row_mark',
+            tableName: 'cfx_transfer_row_mark_2',
             indexes:[
             ]
         })
@@ -273,38 +263,50 @@ export interface ICfxTransfer {
     id?: number // data is fixed at a delayed time, so id is not consistent with epoch.
     epoch: number
     createdAt: Date
-    txHashId: number
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
     fromId: number
     toId: number
     value: number
+    type:string
 }
 // ======================== fix backup
 export interface IBakCfxTransfer {
     id?: number
     epoch: number
     createdAt: Date
-    txHashId: number
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
     fromId: number
     toId: number
     value: number
+    type:string
 }
 export class BakCfxTransfer extends Model<IBakCfxTransfer> implements IBakCfxTransfer {
     id?: number
     epoch: number
     createdAt: Date
-    txHashId: number
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
     fromId: number
     toId: number
     value: number
+    type:string
     static register(seq) {
         BakCfxTransfer.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
+            type: {type: DataTypes.STRING(128), allowNull: false, defaultValue: ''},
         }, {
             sequelize: seq,
             updatedAt: false,
@@ -319,24 +321,30 @@ export class BakCfxTransfer extends Model<IBakCfxTransfer> implements IBakCfxTra
     }
 }
 // ======================== fix backup , end
-export const T_CFX_TRANSFER = 'cfx_transfer'
+export const T_CFX_TRANSFER = 'cfx_transfer_2'
 export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
     id?: number
     epoch: number
     createdAt: Date
-    txHashId: number
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
     fromId: number
     toId: number
     value: number
+    type:string
     static register(seq) {
         CfxTransfer.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
-            txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
+            type: {type: DataTypes.STRING(128), allowNull: false},
         }, {
             sequelize: seq,
             updatedAt: false,
@@ -366,12 +374,15 @@ function buildCfxTransfer(obj, date) {
 
      */
     let cfxTransfer:ICfxTransfer = {
-        txHashId: obj.txHashId, //hashID.id,
+        blockIndex: obj.blockIndex, //
+        txIndex: obj.transactionIndex,
         fromId: obj.fromId,//fromId.id,
         toId: obj.toId,//toId.id,
         value: obj.value || 0,
         createdAt: date,
         epoch: obj.epochNumber,
+        txLogIndex: obj.transactionTraceIndex,
+        type: obj.type,
     };
     return cfxTransfer
 }
@@ -411,19 +422,19 @@ async function buildFromToId(array, dt:Date) {
     fillHexId(hexMap, array, 'to', 'toId')
     return hexMap.values()
 }
-export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
+export async function batchSaveCfxTransfer(array: any[], date, logger, dbTx) {
     if(!array?.length){
         return Promise.resolve([]);
     }
     const veryStart = Date.now()
     let templates = []
-    let date = new Date(Number(seconds)*1000)
-    const [, idSet] = await Promise.all([
-        batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'CfxTransfer', date)
-            .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart}),
+    // let date = new Date(Number(seconds)*1000)
+    const [idSet] = await Promise.all([
+        // batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'CfxTransfer', date)
+        //     .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart}),
         buildFromToId(array, date).then((res)=>{
             metrics.makeIdMs2 += Date.now() - veryStart
-            return res
+            return [...res] // copy to an array so could be reused.
         }),
     ]);
     RedisWrap.sendStreamMessage([...idSet], CFX_TRANSFER_ADDRESS_Q).catch(err=>{
@@ -436,11 +447,11 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
     metrics.transferCnt += templates.length
     let now = Date.now(); metrics.buildMs1 += now - veryStart; let start = now;
     // sync add address-cfx-transfer
-    const addressCfxTransferArray = buildCfxTransferList2address(templates);
+    const addressCfxTransferArray = buildTransferList2address(templates);
     metrics.partitionCnt += addressCfxTransferArray.length
     now = Date.now(); metrics.buildMs2 = now - start; start = now;
     const dbStart = now
-    return CfxTransfer.sequelize.transaction(async (dbTx) => {
+    return new Promise(async (resolve) => {
         const [_, rows] = await Promise.all([
             CfxTransfer.bulkCreate(templates, {transaction: dbTx}).then(res=>metrics.saveFullMs+=Date.now()-start),
             KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger).then(res=>{
@@ -452,9 +463,10 @@ export async function batchSaveCfxTransfer(array: any[], seconds, logger) {
         start = Date.now()
         const epoch = templates[0].epoch;
         await doMark(rows, epoch, logger).then(()=>metrics.markMs += Date.now()-start)
-        start = Date.now()
+        // start = Date.now()
         // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
         //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
+        resolve(0)
     }).then(()=>{
         now = Date.now()
         metrics.count += 1
@@ -503,10 +515,10 @@ export async function batchPopCfxTransfer(epoch, logger) {
     // return RedisWrap.sendStreamMessage({action:'popCfxTransfer', epoch}, CFX_TRANSFER_Q);
 }
 
-export async function popPartitionCfxTransfer(epoch, logger = undefined){
+export async function popPartitionCfxTransfer(epoch, logger = undefined, dbTx = undefined){
     const cfxTransferArray = await CfxTransfer.findAll({where: {epoch}});
     if(!cfxTransferArray?.length){
-        return;
+        return Promise.resolve();
     }
 
     const addressIds = new Set<number>()
@@ -515,17 +527,19 @@ export async function popPartitionCfxTransfer(epoch, logger = undefined){
         addressIds.add(row.toId);
     })
 
-    return CfxTransfer.sequelize.transaction(async (dbTx) => {
-        const resultArray = await Promise.all([
+    return Promise.all([
             AddressCfxTransfer.destroy({
                 where: { epoch, addressId: {[Op.in]: [...addressIds]} },
                 transaction: dbTx
             }),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
+            // KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
             CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
+            EpochCfxTransferCount.create({epoch, n: -cfxTransferArray.length}, {
+                transaction: dbTx
+            })
         ]);
         // logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
-    });
+
 }
 
 // ============= daily cfx transfer ==============
