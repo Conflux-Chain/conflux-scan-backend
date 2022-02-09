@@ -417,6 +417,11 @@ async function pop(epoch:number, taskBegin: number) {
         return res;
     })
 }
+async function setCheckPivot(task:IEpochTokenTransfer, cfx:Conflux, len:number) {
+    const stateEpoch = await cfx.getEpochNumber('latest_state')
+    const checkPivot = stateEpoch - task.epoch < len * 2 || FORCE_CHECK_PIVOT
+    task.checkPivot = checkPivot;
+}
 export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, model) : Promise<IEpochTokenTransfer> {
     do {
         const [maxOne, exactOne] = await Promise.all([
@@ -424,12 +429,14 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
             model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
         ])
         if (exactOne) {
-            console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}`)
+            await setCheckPivot(exactOne, cfx, len)
+            console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}, checkPivot ${exactOne.checkPivot}`)
             return exactOne;
         }
         if (fromEpoch === -1) {
             if (maxOne?.finished === false) {
-                console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}`)
+                await setCheckPivot(maxOne, cfx, len)
+                console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}, checkPivot ${maxOne.checkPivot}`)
                 return maxOne; // continue unfinished task.
             } else {
                 fromEpoch = 0;
@@ -449,7 +456,7 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
             finished: false, createdAt: now, updatedAt: now}
         let ok = false
         await model.create(newOne).then(()=>{
-            console.log(`create task, epoch ${preEnd}`)
+            console.log(`create task, epoch ${preEnd}, checkPivot ${checkPivot}`)
             ok = true
         }).catch(err=>{
             console.log(`create task fail, ${err}, try again`)

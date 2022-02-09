@@ -127,15 +127,17 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
         return {code: 404}
     }
     if (txMapByHash.size === 0 && !checkPivot) {
+        // catchup mode, shortcut when tx in db was empty.
         return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-'};
     }
     const [hashes, pivotBlock] = await Promise.all([
         cfx.getBlocksByEpochNumber(epoch),
         cfx.getBlockByEpochNumber(epoch, false)
     ])
-    if (txMapByHash.size === 0) {
-        return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
-    }
+    // even tx in db is empty, still go through, in benefit of checking consistency.
+    // if (txMapByHash.size === 0) {
+    //     return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
+    // }
 
     const result:ICfxTransfer[] = [];
     const addrBeans = []
