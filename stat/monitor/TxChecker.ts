@@ -11,6 +11,7 @@ import {makeIdV} from "../model/HexMap";
 import {FullBlockService} from "../service/FullBlockService";
 import {patchHttpProvider} from "../service/common/utils";
 import {init} from "../service/tool/FixDailyTokenStat";
+import {sleep} from "../service/tool/ProcessTool";
 
 async function loadData(epoch: number) {
     return Promise.all([
@@ -178,7 +179,7 @@ async function run() {
     } else {
         patchHttpProvider(cfx, {url})
     }
-    const st = await cfx.getStatus()
+    let st = await cfx.getStatus()
     await init();
     console.log(`----------- network ${st.networkId} -----------`)
     let start = parseInt(epochL)
@@ -187,7 +188,14 @@ async function run() {
     // [start, end]
     startMS = Date.now()
     let processed = 0
-    while (start <= end && start<=st.latestConfirmed) {
+    while (true) {
+        // check anchor epoch
+        while (start > st.latestConfirmed) {
+            await sleep(5_000)
+            st = await cfx.getStatus()
+            console.log(` move latestConfirmed anchor to ${st.latestConfirmed}`)
+        }
+        // check and fix
         await check(start).catch(err=>{
             console.log(` error005, epoch ${start}.`, err)
             process.exit(9)
@@ -196,9 +204,15 @@ async function run() {
         if (processed % 1000 === 0) {
             const elapse = Date.now() - startMS
             console.log(`\n processed ${processed}, elapse ${elapse
-            }, avg ${(elapse/processed).toPrecision(5)}`)
+            }, avg ${(elapse/processed).toPrecision(5)}, latestConfirmed ${st.latestConfirmed}`)
         }
         start ++;
+
+        if (end === 0){
+            // loop forever
+        } else if (start > end) {
+            break;
+        }
     }
     console.log(` check done [${veryStart}, ${end}], latestConfirmed ${st.latestConfirmed}`)
     await FullBlock.sequelize.close()
