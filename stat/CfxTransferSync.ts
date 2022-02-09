@@ -419,23 +419,13 @@ async function counter() {
     }
     const {id:minId} = list[0]
     const {id:maxId} = list[list.length-1]
-    if (maxId - minId + 1 !== list.length) {
-        // is there any gap ?
-        console.log(`EpochCfxTransferCount, there is gap between ${minId} ${maxId}, multiple task ?`)
-        await sleep(5_000)
-        return;
-    }
+
     const sum = list.map(r=>r.n).reduce((a,b)=>a+b)
     await KV.sequelize.transaction(async dbTx=>{
-        await KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, sum, undefined)
+        await KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, sum, dbTx)
         const cnt=await EpochCfxTransferCount.destroy({
-            where:{id:{[Op.between]:[minId, maxId]}}
+            where:{id:{[Op.between]:[minId, maxId]}}, transaction: dbTx
         })
-        if (cnt !== list.length) {
-            const msg = `EpochCfxTransferCount destroy count records fail. want ${list.length
-            }, actual ${cnt}, [${minId}, ${maxId}]`
-            throw Error(msg)
-        }
     }).then(()=>{
         console.log(`EpochCfxTransferCount ${sum} epoch ${list[0].epoch}`)
     }).catch(err=>{
