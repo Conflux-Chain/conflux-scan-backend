@@ -163,7 +163,15 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             if (!txBean) {
                 console.log(`rpc trace at epoch ${epoch} block ${blkIdx} full-tx-idx ${txIdx
                 }, without tx in db. want tx hash ${transactionHash}`)
-                continue;
+                // find from rpc.
+                const txByRpc = await cfx.getTransactionReceipt(transactionHash)
+                if (txByRpc) {
+                    console.log(` tx by rpc exists. wait .`)
+                    return {code: 404}
+                } else {
+                    console.log(` tx by rpc absent. SKIP .`)
+                    continue;
+                }
             } else if (txBean.status !== 0) {
                 continue
             }
