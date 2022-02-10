@@ -15,7 +15,7 @@ import {DynamicBalanceModel} from "./DynamicBalanceModel";
 import {KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
 import {TokenTool} from "../tool/TokenTool";
 import {NftMint, Token} from "../../model/Token";
-import {handleTokenTransferWithContract} from "../../StreamSync";
+import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTransferCount} from "../../StreamSync";
 import {ContractUser} from "../../model/Erc20Transfer";
 import {patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
@@ -106,7 +106,8 @@ async function run() {
     StatApp.networkId = st.networkId;
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     new BatchBalanceWatcher(cfx, null, utilContract)
-    console.log(`-------------${st.networkId}------${utilContract}------`)
+    console.log(`-------------network ${st.networkId}------${utilContract}------`)
+    scheduleTransferUpdater();
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {
         const cnt = await processContractUser(cfx, limit)
@@ -158,6 +159,7 @@ export async function addTransferInfo(arr:{fromId:number, toId:number, contractI
     const map = transferInfoMap;
     await updateTotalSupply(cfx, [...map.keys()])
     await handleTokenTransferWithContract(map, true)
+    await updateTokenTransferCount(map.keys(), false)
 }
 async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
     if (!tokenTool) {

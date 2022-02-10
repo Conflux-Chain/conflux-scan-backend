@@ -132,7 +132,7 @@ async function sendAddressIds(model, arr:{fromId:number, toId:number, contractId
 const waitUpdateTransferTokens = {
     hex40ids: new Set<number>()
 }
-function scheduleTransferUpdater() {
+export function scheduleTransferUpdater() {
     function repeat() {
         console.log(` updater works `)
         const ids = waitUpdateTransferTokens.hex40ids
@@ -148,11 +148,12 @@ const tableMap = {
     'ERC721': Erc721Transfer,
     'ERC1155': Erc1155Transfer,
 }
-async function updateTokenTransferCount(contractIds: IterableIterator<number>, force = false) {
+export async function updateTokenTransferCount(contractIds: IterableIterator<number>, force = false) {
     const tokens = await Token.findAll({
         where: {hex40id: {[Op.in]: [...contractIds]}, type: {[Op.ne]: ''}, auditResult: true},
         attributes: {
-            include: ['hex40id', 'transfer', 'base32']
+            include: ['hex40id', 'transfer', 'base32'],
+            exclude: ['icon']
         }
     })
     for (const t of tokens) {
@@ -168,7 +169,7 @@ async function updateTokenTransferCount(contractIds: IterableIterator<number>, f
         }
     }
 }
-async function updateTransferCountReal(t: Token) {
+export async function updateTransferCountReal(t: Token) {
     if (!t) {
         return
     }
@@ -176,15 +177,17 @@ async function updateTransferCountReal(t: Token) {
     if (!table) {
         return
     }
+    let x = 0;
     table.count({
         where: {contractId: t.hex40id}
     }).then(async cnt=>{
         const prunedRows = await getPrunedRowsByToken({type: t.type, hex40id: t.hex40id});
-        return Token.update({transfer: cnt + prunedRows}, {
+        x = cnt + prunedRows;
+        return Token.update({transfer: x}, {
             where: {id: t.id}
         })
     }).then(()=>{
-        console.log(` update transfer count of token ${t.base32}`)
+        console.log(` update transfer count of token ${t.name} x ${x} ${t.base32}`)
     })
 }
 
