@@ -475,6 +475,7 @@ async function updateAllTokenTransferCount(lt = 100_000) {
     })
     for (let i = 0; i < list.length; i++) {
         const token = list[i]
+        process.stdout.write(`begin update ${token.name} :`)
         await updateTransferCountReal(token)
     }
 }
