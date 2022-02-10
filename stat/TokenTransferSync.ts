@@ -478,6 +478,8 @@ async function updateAllTokenTransferCount(lt = 100_000) {
         process.stdout.write(`begin update ${token.name} :`)
         await updateTransferCountReal(token)
     }
+    await Token.sequelize.close();
+    process.exit(0)
 }
 // noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
