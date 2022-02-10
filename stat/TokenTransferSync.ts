@@ -20,11 +20,12 @@ import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {sleep} from "./service/tool/ProcessTool";
-import {NftMint} from "./model/Token";
+import {NftMint, Token} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
 import {FullTransaction} from "./model/FullBlock";
+import {updateTransferCountReal} from "./StreamSync";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -467,10 +468,28 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
         }
     } while (true)
 }
+async function updateAllTokenTransferCount(lt = 100_000) {
+    const list = await Token.findAll({
+        where: {auditResult: true, transfer: {[Op.lt]: lt}},
+        attributes: {exclude: ['icon']},
+    })
+    for (let i = 0; i < list.length; i++) {
+        const token = list[i]
+        process.stdout.write(`begin update ${token.name} :`)
+        await updateTransferCountReal(token)
+    }
+    await Token.sequelize.close();
+    process.exit(0)
+}
 // noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     const config = await init();
-    await RedisWrap.connect(config.redis)
+    if (process.argv.includes('updateAllTokenTransferCount')) {
+        await updateAllTokenTransferCount()
+        await Erc20Transfer.sequelize.close()
+        return;
+    }
+    await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
     const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
