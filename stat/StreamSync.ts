@@ -178,7 +178,7 @@ export async function updateTransferCountReal(t: Token) {
         return
     }
     let x = 0;
-    table.count({
+    return table.count({
         where: {contractId: t.hex40id}
     }).then(async cnt=>{
         const prunedRows = await getPrunedRowsByToken({type: t.type, hex40id: t.hex40id});
