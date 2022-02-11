@@ -278,7 +278,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     loader.preLoadSize = 10;
     // should not higher than block/tx sync, otherwise the transaction hash may not be found.
     let maxEpochOfBlock = 0;
-    async function updateMaxTxEpoch() {
+    async function updateMaxDbEpoch() {
         const maxE = await FullBlock.max('epoch')
         if (typeof maxE !== 'number') {
             console.log(` FullTransaction is empty. ${new Date().toISOString()}`)
@@ -287,7 +287,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         maxEpochOfBlock = maxE;
         console.log(` update max epoch of block to ${maxE} `)
     }
-    await updateMaxTxEpoch()
+    await updateMaxDbEpoch()
     let firstWait = true
     async function repeat() {
         return repeat0().catch(err=>{
@@ -296,7 +296,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     }
     async function repeat0() {
         if (epoch>maxEpochOfBlock) {
-            await updateMaxTxEpoch();
+            await updateMaxDbEpoch();
             setTimeout(repeat, 5_000)
             return;
         }

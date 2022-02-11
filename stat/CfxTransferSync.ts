@@ -5,7 +5,7 @@ import {batchTraceBlock, isNewFormatTrace, patchHttpProvider, removeLongData} fr
 import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
-import {FullTransaction} from "./model/FullBlock";
+import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {idHex40Map, makeIdV} from "./model/HexMap";
 import {
     AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
@@ -463,15 +463,15 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     loader.preLoadSize = 10;
     // should not higher than tx sync, otherwise the transaction hash may can not be found.
     let epoch = fromEpoch;
-    let maxEpochInTx = 0;
-    async function updateMaxTxEpoch() {
-        const maxE = await FullTransaction.max('epoch')
+    let maxEpochOfBlock = 0;
+    async function updateMaxDbEpoch() {
+        const maxE = await FullBlock.max('epoch')
         if (typeof maxE !== 'number') {
             return;
         }
-        maxEpochInTx = maxE;
+        maxEpochOfBlock = maxE;
     }
-    await updateMaxTxEpoch()
+    await updateMaxDbEpoch()
     async function repeat() {
         return repeat0().catch(err=>{
             console.log(` repeat error : `, err)
@@ -479,9 +479,9 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         })
     }
     async function repeat0() {
-        if (epoch > maxEpochInTx) {
-            console.log(` reach max tx epoch ${maxEpochInTx}`)
-            await updateMaxTxEpoch();
+        if (epoch > maxEpochOfBlock) {
+            console.log(` reach max block/tx epoch ${maxEpochOfBlock}`)
+            await updateMaxDbEpoch();
             setTimeout(repeat, 5_000)
             return;
         }
