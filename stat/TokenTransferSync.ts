@@ -33,7 +33,7 @@ import {NftMint, Token} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
-import {FullTransaction} from "./model/FullBlock";
+import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 
@@ -276,16 +276,16 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     }
     const loader = new PreLoader(cfx, fetchAndBuild, 3, stopBeforeEpoch);
     loader.preLoadSize = 10;
-    // should not higher than tx sync, otherwise the transaction hash may can not be found.
-    let maxEpochInTx = 0;
+    // should not higher than block/tx sync, otherwise the transaction hash may not be found.
+    let maxEpochOfBlock = 0;
     async function updateMaxTxEpoch() {
-        const maxE = await FullTransaction.max('epoch')
+        const maxE = await FullBlock.max('epoch')
         if (typeof maxE !== 'number') {
             console.log(` FullTransaction is empty. ${new Date().toISOString()}`)
             return;
         }
-        maxEpochInTx = maxE;
-        console.log(` update max tx epoch to ${maxE} `)
+        maxEpochOfBlock = maxE;
+        console.log(` update max epoch of block to ${maxE} `)
     }
     await updateMaxTxEpoch()
     let firstWait = true
@@ -295,7 +295,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         })
     }
     async function repeat0() {
-        if (epoch>maxEpochInTx) {
+        if (epoch>maxEpochOfBlock) {
             await updateMaxTxEpoch();
             setTimeout(repeat, 5_000)
             return;
