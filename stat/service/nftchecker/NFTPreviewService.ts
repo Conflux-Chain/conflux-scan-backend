@@ -305,6 +305,7 @@ export class NFTPreviewService {
                 }
                 imageUri = imageUriFormatter ? imageUriFormatter(meta) : needFetchJson ? meta.image : meta;
                 imageUri = imageUri.startsWith('ipfs://') ? this.replaceIPFSGateway(imageUri) : imageUri;
+                imageUri = imageUri.startsWith('https://gateway.pinata.cloud') ? this.replacePinataGateway(imageUri) : imageUri;
                 imageName = await this.getNFTName({address, tokenId, meta}) || {};
             }
             this.setNFTCacheInfo({ address, tokenId, imageUri, imageName });
@@ -356,6 +357,10 @@ export class NFTPreviewService {
 
     private replaceIPFSGateway(ipfsPath){
         return `https://ipfs.io/ipfs/${ipfsPath.substr(7)}`;
+    }
+
+    private replacePinataGateway(ipfsPath){
+        return `https://ipfs.io/ipfs/${ipfsPath.substr(34)}`;
     }
 }
 
