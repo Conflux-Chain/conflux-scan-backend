@@ -118,14 +118,14 @@ async function run() {
 }
 async function processContractUser(cfx:Conflux, limit:number) {
     const list = await ContractUser.findAll({
-        order: [['id', 'desc']], limit
+        order: [['id', 'asc']], limit
     })
     if (list.length === 0) {
-        console.log(` empty contract user table .`)
+        console.log(` ${new Date().toISOString()} empty contract user table .`)
         return 0;
     }
-    const [{id:maxId}] = list;
-    const minId = list[list.length - 1].id
+    const [{id:minId}] = list;
+    const maxId = list[list.length - 1].id
     const ms = Date.now();
     console.log(`${new Date().toISOString()} process ${minId}, ${maxId}, count ${list.length} begin.`)
     try {
@@ -135,13 +135,13 @@ async function processContractUser(cfx:Conflux, limit:number) {
         return 0;
     }
 
-    await ContractUser.destroy({where: {
-        id: {[Op.between]:[minId, maxId]}
+    const delCnt = await ContractUser.destroy({where: {
+        id: {[Op.in]:list.map(u=>u.id)}
     }});
     const elapse = Date.now() - ms;
     const avg = (elapse / list.length).toPrecision(5)
     console.log(`${new Date().toISOString()} process contract user, count ${list.length
-    }, [${minId},${maxId}], avg ${avg}ms.`)
+    },  deleted ${delCnt}, [${minId},${maxId}], avg ${avg}ms.`)
 }
 let tokenTool:TokenTool
 // update total supply and holder balance.

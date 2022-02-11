@@ -72,7 +72,7 @@ export async function dingMsg(msg:string, dingTalkToken:string) {
         return;
     }
     let url = 'https://oapi.dingtalk.com/robot/send?access_token='+dingTalkToken;
-    superagent.post(url,
+    return superagent.post(url,
         {
             "msgtype": "text",
             "text": {
