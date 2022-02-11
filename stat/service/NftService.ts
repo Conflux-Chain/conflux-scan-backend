@@ -80,26 +80,35 @@ export class NftService {
     }
 }
 
-export async function getRegisterNftBalances(accountBase32: string) : Promise<Map<string, number>>{
+export async function getRegisterNftBalances(accountBase32: string) {
     const accHexId = await getAddrId(format.hexAddress(accountBase32))
     const nftTokenList = await Token.findAll({
-        attributes:['base32','hex40id'],
-        where:{type: {[Op.in]:['ERC721', 'ERC1155'], auditResult: true}}
+        attributes:['base32','hex40id', 'name'],
+        where:{type: {[Op.in]:['ERC721', 'ERC1155']}, auditResult: true},
+        raw: true,
     })
-    const ret = new Map<string, number>()
+
     if (nftTokenList.length === 0 || accHexId === null) {
-        return ret;
+        return [];
     }
+
     const contractHexIds = nftTokenList.map(t=>t.hex40id);
     const balanceList = await countAccountNft(contractHexIds, accHexId)
     const tokenMap = list2map(nftTokenList, 'hex40id')
+
+    const balanceInfoObject = {};
     balanceList.forEach(bean=>{
         const token = tokenMap.get(bean.contractId);
         if (token) {
-            ret.set(token.base32, bean["balance"])
+            balanceInfoObject[token.base32] = {
+                address: token.base32,
+                balance: `${bean["balance"]}`,
+                type: token.name,
+                name: {zh: token.name, en: token.name}
+            };
         }
     })
-    return ret;
+    return Object.values(balanceInfoObject);
 }
 
 async function countAccountNft(cHexIds: number[], accHexId: number) {
