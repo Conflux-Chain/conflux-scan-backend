@@ -2,7 +2,16 @@ import {
     getTokenTool,
     IEpochTask,
 } from "./service/UniqueAddressStat";
-import {Transaction, Model,DataTypes, Sequelize, Op, UniqueConstraintError, ModelStatic} from "sequelize";
+import {
+    Transaction,
+    Model,
+    DataTypes,
+    Sequelize,
+    Op,
+    UniqueConstraintError,
+    ModelStatic,
+    DatabaseError
+} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "./service/common/utils";
@@ -24,8 +33,9 @@ import {NftMint, Token} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
-import {FullTransaction} from "./model/FullBlock";
+import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
+import {dingMsg} from "./monitor/Monitor";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -266,18 +276,18 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     }
     const loader = new PreLoader(cfx, fetchAndBuild, 3, stopBeforeEpoch);
     loader.preLoadSize = 10;
-    // should not higher than tx sync, otherwise the transaction hash may can not be found.
-    let maxEpochInTx = 0;
-    async function updateMaxTxEpoch() {
-        const maxE = await FullTransaction.max('epoch')
+    // should not higher than block/tx sync, otherwise the transaction hash may not be found.
+    let maxEpochOfBlock = 0;
+    async function updateMaxDbEpoch() {
+        const maxE = await FullBlock.max('epoch')
         if (typeof maxE !== 'number') {
             console.log(` FullTransaction is empty. ${new Date().toISOString()}`)
             return;
         }
-        maxEpochInTx = maxE;
-        console.log(` update max tx epoch to ${maxE} `)
+        maxEpochOfBlock = maxE;
+        console.log(` update max epoch of block to ${maxE} `)
     }
-    await updateMaxTxEpoch()
+    await updateMaxDbEpoch()
     let firstWait = true
     async function repeat() {
         return repeat0().catch(err=>{
@@ -285,8 +295,8 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         })
     }
     async function repeat0() {
-        if (epoch>maxEpochInTx) {
-            await updateMaxTxEpoch();
+        if (epoch>maxEpochOfBlock) {
+            await updateMaxDbEpoch();
             setTimeout(repeat, 5_000)
             return;
         }
@@ -320,11 +330,17 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 } catch (e) {
                     if (e instanceof UniqueConstraintError) {
                         console.log(` UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
-                        // await localPop(epoch); // should fix manually. in case start conflict task.
+                        await sleep(10_000)
+                        break;
+                    } else if (e instanceof DatabaseError) {
+                        const message = ` DatabaseError, epoch ${epoch}, ${e.message}`;
+                        console.log(message, e)
                         await sleep(10_000)
                         break;
                     }
-                    console.log(`process epoch fail at ${epoch}, task start epoch ${taskBegin}, `, e)
+                    const failMsg = `process epoch fail at ${epoch}, task start epoch ${taskBegin}, `;
+                    console.log(failMsg, e)
+                    await notifyError(failMsg, e);
                     process.exit(1)
                 }
                 break;
@@ -481,6 +497,7 @@ async function updateAllTokenTransferCount(lt = 100_000) {
     await Token.sequelize.close();
     process.exit(0)
 }
+let notifyError:Function
 // noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     const config = await init();
@@ -488,6 +505,9 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
         await updateAllTokenTransferCount()
         await Erc20Transfer.sequelize.close()
         return;
+    }
+    notifyError = async (msg, err)=>{
+        return dingMsg(`[${config.serverTag}] TOKEN-X-SYNC ${msg}: ${err}`, config.dingTalkToken)
     }
     await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
