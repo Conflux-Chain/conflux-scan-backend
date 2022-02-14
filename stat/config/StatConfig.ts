@@ -1,4 +1,6 @@
 // import {ConfluxOption} from "js-conflux-sdk";
+import {ISingleHostConfig} from "influx";
+
 const fs = require('fs')
 const templateConf = require('./Template')
 
@@ -51,6 +53,7 @@ export interface OssConf {
 }
 export interface StatConfig{
     redis: RedisConf
+    influxDB?: ISingleHostConfig
     oss: OssConf
     dingTalkToken: string;
     syncBlockDelay: number;
