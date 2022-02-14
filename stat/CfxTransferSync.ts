@@ -246,7 +246,8 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
         // all tx should be matched and removed in map.
         console.log(`db has more tx, remain ${txMapByHash.size}, epoch ${epoch}, trace count ${result.length}.`)
         console.log(` ${[...txMapByHash.values()].map(tx=>`block ${tx.blockPosition} txPos ${tx.txPosition}, ${tx.hash}`).join('\n')}`)
-        process.exit(9)
+        // process.exit(9)
+        return {code : 404}
     }
     // removeLongData(traceArray2d);
     // console.log(JSON.stringify(traceArray2d, null, 4))
@@ -539,6 +540,11 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch, cfx, TaskCfxTransfer)
     console.log(` start cfx transfer task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
+    if (fromEpoch === -1) {
+        // -1 means 'continue unfinished task',
+        // switch to normal(support multiple) after the first task is picked up.
+        fromEpoch = 1
+    }
     await new Promise(r=>{
         run(cfx, task, ()=>{
             r(0)

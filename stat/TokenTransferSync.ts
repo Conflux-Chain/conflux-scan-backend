@@ -555,6 +555,11 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch, cfx, EpochTaskTokenTransfer)
     console.log(` start token transfer task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
+    if (fromEpoch === -1) {
+        // -1 means 'continue unfinished task',
+        // switch to normal(support multiple) after the first task is picked up.
+        fromEpoch = 1
+    }
     await new Promise(r=>{
         run(cfx, task, ()=>{
             r(0)
