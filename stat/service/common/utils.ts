@@ -205,7 +205,6 @@ export function reverseMap(map:Map<any, any>) {
     }
     return ret;
 }
-
 export function checkExist(options, fieldArray){
     let prunedFlag = true;
     lodash.forEach(options, (value, key) => {

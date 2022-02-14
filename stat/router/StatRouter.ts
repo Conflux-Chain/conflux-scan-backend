@@ -25,7 +25,7 @@ import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
-import {listNftOfAccountByContract} from "../service/NftService";
+import {listNftOfAccountByContract, getRegisterNftBalances} from "../service/NftService";
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 import {BalanceService} from "../service/watcher/BalanceService";
@@ -435,7 +435,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // nft checker, get balances
     router.get('/nft/checker/balance', async function (ctx) {
         const {ownerAddress} = ctx.request.query
-        const balanceArray = await statApp.nftCheckerService.getNFTBalances({ownerAddress});
+        // const balanceArray = await statApp.nftCheckerService.getNFTBalances({ownerAddress});
+        const balanceArray = await getRegisterNftBalances(ownerAddress);
         ctx.body = {code: 0, data: balanceArray};
     })
 
@@ -467,8 +468,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     async function nftCountAndIds (ctx) {
         const {ownerAddress, contractAddress, skip, limit} = ctx.request.query
-        const tokens = await statApp.nftCheckerService.getNFTTokens({ownerAddress, contractAddress,
-            offset: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
+        // const tokens = await statApp.nftCheckerService.getNFTTokens({ownerAddress, contractAddress,
+        //     offset: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
+        const tokenArray = await listNftOfAccountByContract(ownerAddress, contractAddress,
+            skip? parseInt(skip): 0, limit ? parseInt(limit): 10);
+        const tokenIdArray = [];
+        tokenArray.list.forEach(item => tokenIdArray.push(item.tokenId));
+        const tokens = [];
+        tokens.push(`${tokenIdArray.length}`);
+        tokens.push(tokenIdArray);
         ctx.body = {code: 0, data: tokens};
     }
     // nft checker, get tokens
