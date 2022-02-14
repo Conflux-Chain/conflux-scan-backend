@@ -22,7 +22,8 @@ export class Monitor{
         const now = Date.now()
         const delay = (now - (maxBean.createdAt||maxBean.timestamp).getTime())/1000
         if (delay > delaySeconds) {
-            const msg = `Table ${model.getTableName()} delay, seconds ${delay} > ${delaySeconds}`;
+            const msg = `${this.serverTag} Table ${model.getTableName()
+            }, no data on chain OR sync delay, seconds ${delay} > ${delaySeconds}`;
             console.log(msg)
             await dingMsg(msg, this.dingTalkToken)
         } else {
@@ -60,7 +61,7 @@ export class Monitor{
         function repeat() {
             that.checkFullBlockSyncRunning()
         }
-        setTimeout(repeat, 60*1000) // 1 minute
+        setTimeout(repeat, 60*1000 * 10) // 10 minute
 
     }
 
