@@ -7,7 +7,7 @@ import {TaskCfxTransfer} from "../CfxTransferSync";
 import {EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
-async function copy(inf: InfluxDB, model:any, biz) {
+async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a.epoch) {
     // model = TaskCfxTransfer;
     const max = await model.findOne({order: [['epoch', 'desc']]})
     if (max === null) {
@@ -16,13 +16,13 @@ async function copy(inf: InfluxDB, model:any, biz) {
     }
     console.log(` ${new Date().toISOString()} epoch ${max.epoch}, time ${
         (max.createdAt || max.timestamp).toISOString()}, biz ${biz}`)
-    return write(inf, measurement, {epoch: max.epoch, createdAt: max.createdAt, biz})
+    return write(inf, measurement, {epoch: epochField(max), createdAt: max.createdAt || max.timestamp, biz})
 }
 async function copyAll(inf: InfluxDB) {
     await copy(inf, TaskCfxTransfer, 'task-cfx-x')
-    await copy(inf, EpochTaskTokenTransfer, 'task-token-x')
+    await copy(inf, EpochTaskTokenTransfer, 'task-token-x', a=>a.cursor)
     await copy(inf, Epoch, 'sync-epoch')
-    await copy(inf, FullBlock, 'sync-block-and-tx')
+    await copy(inf, FullBlock, 'sync-block-and-tx', a=>a.cursor)
     // influx worker itself
     await write(inf, measurement, {epoch: Date.now(), createdAt: new Date(), biz: 'influx-worker'})
     console.log(`---`)
