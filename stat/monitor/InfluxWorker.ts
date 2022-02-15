@@ -14,7 +14,7 @@ async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a
         console.log(` ${new Date().toISOString()} no data for ${biz}`)
         return;
     }
-    console.log(` ${new Date().toISOString()} epoch ${max.epoch}, time ${
+    console.log(` ${new Date().toISOString()} epoch ${epochField(max)}, time ${
         (max.createdAt || max.timestamp).toISOString()}, biz ${biz}`)
     return write(inf, measurement, {epoch: epochField(max), createdAt: max.createdAt || max.timestamp, biz})
 }
