@@ -19,10 +19,10 @@ async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a
     return write(inf, measurement, {epoch: epochField(max), createdAt: max.createdAt || max.timestamp, biz})
 }
 async function copyAll(inf: InfluxDB) {
-    await copy(inf, TaskCfxTransfer, 'task-cfx-x')
+    await copy(inf, TaskCfxTransfer, 'task-cfx-x', a=>a.cursor)
     await copy(inf, EpochTaskTokenTransfer, 'task-token-x', a=>a.cursor)
     await copy(inf, Epoch, 'sync-epoch')
-    await copy(inf, FullBlock, 'sync-block-and-tx', a=>a.cursor)
+    await copy(inf, FullBlock, 'sync-block-and-tx')
     // influx worker itself
     await write(inf, measurement, {epoch: Date.now(), createdAt: new Date(), biz: 'influx-worker'})
     console.log(`---`)
