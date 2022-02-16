@@ -14,7 +14,7 @@ export class DailyContractCreateQuery{
     }
 
     async listDeployedContractStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-        skip = 0, limit = 100}) {
+        skip = 0, limit = 10}) {
         const queryOptions: any = {
             attributes: [['statDay', 'statTime'], ['contractCount', 'count'], ['contractTotal', 'total']],
             offset: skip,

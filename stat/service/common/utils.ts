@@ -17,7 +17,22 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
     }
     return param
 }
-
+export function getPagination(requestObj: object, {defaultSkip = 0, maxSkip = 10000, defaultLimit = 10, maxLimit = 100}:
+    {defaultSkip: number, maxSkip: number, defaultLimit: number, maxLimit: number}
+    = {defaultSkip: 0, maxSkip: 10000, defaultLimit: 10, maxLimit: 100}
+) {
+    const param = {
+        skip: intParam(requestObj, 'skip', defaultSkip),
+        limit: intParam(requestObj, 'limit', defaultLimit)
+    };
+    if (param.skip > maxSkip) {
+        throw new Error(`Parameter <skip> exceeds ${maxSkip}`)
+    }
+    if (param.limit > maxLimit) {
+        throw new Error(`Parameter <limit> exceeds ${maxLimit}`)
+    }
+    return param
+}
 export function patchFormat() {
     const fun = format.address;
     function saveAddress(str, networkId, verbose) {

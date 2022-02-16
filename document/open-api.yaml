@@ -204,7 +204,8 @@ paths:
     get:
       tags:
         - 'Statistics'
-      description: "Get statistics of mining within ${limit} ${intervalType}."
+      description: "Get statistics of mining within ${limit} ${intervalType}.
+                   \nWhen intervalType is min, the maximum interval between minTimestamp and maxTimestamp is 60 minutes"
       parameters:
         - description: "Indicator calculation period, should be one of min(minute), hour or day. Default is hour."
           name: intervalType
@@ -246,7 +247,8 @@ paths:
     get:
       tags:
         - 'Statistics'
-      description: "Get statistics of tps within ${limit} ${intervalType}."
+      description: "Get statistics of tps within ${limit} ${intervalType}.
+                    \nWhen intervalType is min, the maximum interval between minTimestamp and maxTimestamp is 60 minutes"
       parameters:
         - name: intervalType
           description: "Indicate calculation period, should be one of min(minute), hour or day. Default is hour."
@@ -319,7 +321,7 @@ paths:
     get:
       tags:
         - 'Statistics'
-      description: "Get statistics of cfx holder by daily."
+      description: "Get statistics of total cfx holder by daily."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'
@@ -1008,7 +1010,7 @@ components:
                 properties:
                   count:
                     type: string
-                    description: 'daily cfx holders count.'
+                    description: 'total cfx holders count by daily'
                   statTime:
                     type: string
                     description: 'Statistics time, UTC.'
