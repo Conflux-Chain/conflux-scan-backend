@@ -410,12 +410,12 @@ async function checkOssBucket(accessId, accessKey, bucket) {
 let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: ''}
 export async function initOss(conf) {
     ossConf = conf
-    const {accessId, accessKey, bucket} = ossConf
+    const {accessId, accessKey, bucket, prefix} = ossConf
     if (!accessId) {
         console.log(`oss not configured.`)
         return
     }
-    console.log(`init oss, bucket ${bucket}`)
+    console.log(`init oss, bucket ${bucket}, prefix ${prefix}`)
     return checkOssBucket(accessId, accessKey, bucket).then(res=>{
     }).catch(err=>{
         console.log(`check oss bucket fail: `, err)

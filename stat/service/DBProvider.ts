@@ -314,7 +314,7 @@ export async function initModel(sequelize) {
 }
 
 export function createMySql(dbConf) {
-    console.log(`create mysql ${dbConf.host} ${dbConf.instanceName}`)
+    console.log(`create mysql ${dbConf.instanceName}`)
     // return new Sequelize(dbConf.database,
     //     dbConf.user,
     //     dbConf.pwd, {

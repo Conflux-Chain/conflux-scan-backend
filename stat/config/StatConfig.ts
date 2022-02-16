@@ -143,7 +143,9 @@ export function loadConfig(specified:string = undefined): StatConfig {
     // console.log(`template is 0 `, templateConf.default)
     // console.log(`specific is `, specific)
     const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
-    console.log(`database conf is host ${conf.database.host}, user ${conf.database.user} DB ${conf.databaseRW.instanceName
+    const {databaseRW:{replication:{write:{host: writeHost, username}, read:[{host:readHost}]}}} = conf
+    console.log(`database conf, host: write ${writeHost
+    } read ${readHost}, user ${username} DB ${conf.databaseRW.instanceName
     }. web port [${conf.port}].`)
     return conf;
 }
