@@ -19,6 +19,15 @@ import {TokenQuery} from "../stat/service/TokenQuery";
 import {TokenTool} from "../stat/service/tool/TokenTool";
 import {CfxTransferQuery} from "../stat/service/CfxTransferQuery";
 import {DailyBlockDataStatQuery} from "../stat/service/DailyBlockDataStatQuery";
+import {MarketDataQuery} from "../stat/service/MarketDataQuery";
+import {DailyContractCreateQuery} from "../stat/service/DailyContractCreateQuery";
+import {CfxHolderQuery} from "../stat/service/CfxHolderQuery";
+import {DailyTxnQuery} from "../stat/service/DailyTxnQuery";
+import {AddrTransactionHandler} from "../stat/service/streamstat/business/AddrTransactionHandler";
+import {MinerBlockHandler} from "../stat/service/streamstat/business/MinerBlockHandler";
+import {AddrCfxTransferHandler} from "../stat/service/streamstat/business/AddrCfxTransferHandler";
+import {TokenTransferHandler} from "../stat/service/streamstat/business/TokenTransferHandler";
+import {RankService} from "../stat/service/RankService";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -36,8 +45,17 @@ export class ApiService {
     crc721transferQuery: Crc721TransferQuery
     crc1155transferQuery: Crc1155TransferQuery
     dailyBlockDataStatQuery: DailyBlockDataStatQuery
-    logger: any
+    rankService: RankService;
     tokenQuery: TokenQuery;
+    marketDataQuery: MarketDataQuery;
+    contractCreateQuery: DailyContractCreateQuery;
+    cfxHolderQuery: CfxHolderQuery;
+    dailyTxnQuery: DailyTxnQuery;
+    addrTransactionHandler : AddrTransactionHandler;
+    minerBlockHandler : MinerBlockHandler;
+    addrCfxTransferHandler : AddrCfxTransferHandler;
+    tokenTransferHandler : TokenTransferHandler;
+    logger: any
 }
 
 export function createLogger(tag) {
@@ -104,13 +122,22 @@ export class ApiServer {
         await RedisWrap.connect(config.redis)
         setRateControlDB(redisWrap.client)
         apiService = new ApiService()
-        const apiApp = {networkId:cfxStatus.networkId};
+        const apiApp = {networkId:cfxStatus.networkId, cfx: this.cfx, service: apiService};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)
         apiService.crc20transferQuery = new Crc20TransferQuery(apiApp)
         apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
         apiService.dailyBlockDataStatQuery = new DailyBlockDataStatQuery(apiApp)
+        apiService.rankService = new RankService(apiApp)
+        apiService.marketDataQuery = new MarketDataQuery(apiApp);
+        apiService.contractCreateQuery = new DailyContractCreateQuery();
+        apiService.cfxHolderQuery = new CfxHolderQuery();
+        apiService.dailyTxnQuery = new DailyTxnQuery();
+        apiService.addrTransactionHandler = new AddrTransactionHandler(apiApp);
+        apiService.minerBlockHandler = new MinerBlockHandler(apiApp);
+        apiService.addrCfxTransferHandler = new AddrCfxTransferHandler(apiApp);
+        apiService.tokenTransferHandler = new TokenTransferHandler(apiApp);
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenQuery = new TokenQuery({tokenTool})
         apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery})
@@ -121,6 +148,10 @@ export class ApiServer {
         // test
         // logger.info(`simple message`, 1)
         // logger.error('what about the error ?', new Error('here is error msg'))
+        await apiService.addrTransactionHandler.scheduleCache();
+        await apiService.minerBlockHandler.scheduleCache();
+        await apiService.addrCfxTransferHandler.scheduleCache();
+        await apiService.tokenTransferHandler.scheduleCache();
     }
 }
 

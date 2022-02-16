@@ -1,4 +1,3 @@
-import {StatApp} from "../../../StatApp";
 import {StatHandler} from "../StatHandler";
 import {BizStatInfo} from "../BizStatInfo";
 import {STREAM_STAT_ADDR_TRANSACTION_Q} from "../../RedisWrap";
@@ -6,12 +5,12 @@ import {Op, QueryTypes} from "sequelize";
 import {StatBucket} from "../StatBucket";
 import {AddrTransactionStat} from "../../../model/AddrTransactionStat";
 import {Epoch} from "../../../model/Epoch";
-import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
 const lodash = require('lodash');
+const CONST = require('../../common/constant');
 
 export class AddrTransactionHandler extends StatHandler {
-    protected app: StatApp;
+    protected app: any;
     protected statLatestDays: number;
 
     public constructor(app: any) {
@@ -140,7 +139,7 @@ export class AddrTransactionHandler extends StatHandler {
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
             const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = AddrTransactionHandler.getStatRange({statEnd, statDays});
+            const {rangeBegin, rangeEnd} = StatHandler.getStatRange({statEnd, statDays});
             const total = await AddrTransactionStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
             });
@@ -168,14 +167,7 @@ export class AddrTransactionHandler extends StatHandler {
                 skip = (++curPage - 1) * pageSize;
             } while (skip <= total);
         }
-    }
-
-    private static getStatRange({statEnd, statDays}): { rangeBegin: Date, rangeEnd: Date } {
-        const rangeBegin = new Date(statEnd);
-        rangeBegin.setDate(statEnd.getDate() - statDays);
-        const rangeEnd = new Date(statEnd);
-        rangeEnd.setDate(statEnd.getDate() - (statDays - 1));
-        return {rangeBegin, rangeEnd};
+        await this.clear({model: AddrTransactionStat, statEnd, statDays: this.statLatestDays});
     }
 
     private async doStat({bizId, statEnd, statDays}) {
@@ -220,5 +212,56 @@ export class AddrTransactionHandler extends StatHandler {
             await AddrTransactionStat.destroy({where: {bizId, statType}, transaction: dbTx});
             await AddrTransactionStat.create(statNDaysInfo, {transaction: dbTx});
         });
+    }
+
+    public async cache() {
+        const queryOptions: any = {
+            offset: 0,
+            limit: 10,
+            raw: true,
+            // logging: msg => console.log(`listAddrTransactionStat: ${msg}`),
+        };
+
+        const statTypeArray = ['1d', '3d', '7d'];
+        const txTypeArray = [CONST.TX_TYPE.IN, CONST.TX_TYPE.OUT];
+        for(const statType of statTypeArray){
+            queryOptions.where = {statType};
+            queryOptions.attributes = ['bizId', ['gasSum', 'gas'], 'minEpoch', 'maxEpoch'];
+            queryOptions.order = [['gasSum', 'DESC']];
+            let list = await AddrTransactionStat.findAll(queryOptions);
+
+            const {maxTime} = await this.getStatSpan(list);
+            const gasTotal = list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b);
+
+            list = await this.convertToAddress(list);
+            list.forEach(item => {
+                delete item['minEpoch'];
+                delete item['maxEpoch'];
+            });
+
+            this.cacheStatInfo[statType] = {maxTime, gasTotal, list};
+
+            for(const txType of txTypeArray){
+                const orderBy = txType === CONST.TX_TYPE.OUT ? 'sendCntr' : 'recvCntr';
+                queryOptions.attributes = ['bizId', [orderBy, 'value'], 'minEpoch', 'maxEpoch'];
+                queryOptions.order = [[orderBy, 'DESC']];
+                let list = await AddrTransactionStat.findAll(queryOptions);
+
+                const {minEpochNumber, maxEpochNumber, maxTime} = await this.getStatSpan(list);
+                const valueTotal = await AddrTransactionStat.sum(orderBy, {
+                    where: {statType, minEpoch: {[Op.gte]: minEpochNumber}, maxEpoch: {[Op.lte]: maxEpochNumber}},
+                    // logging: msg => console.log(`listAddrTransactionStat.valueTotal: ${msg}`),
+                });
+
+                list = await this.convertToAddress(list);
+                list.forEach(item => {
+                    delete item['minEpoch'];
+                    delete item['maxEpoch'];
+                });
+
+                const statInfoKey = `${statType}-${txType}`;
+                this.cacheStatInfo[statInfoKey] = {maxTime, valueTotal, list};
+            }
+        }
     }
 }

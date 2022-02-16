@@ -7,6 +7,8 @@ export interface IAddrCfxTransferStat {
     statTime: Date;
     sendCntr: bigint;
     recvCntr: bigint;
+    sendValue: bigint;
+    recvValue: bigint;
     minEpoch: number;
     maxEpoch: number;
 }
@@ -18,6 +20,8 @@ export class AddrCfxTransferStat extends Model<IAddrCfxTransferStat> implements 
     statTime: Date;
     sendCntr: bigint;
     recvCntr: bigint;
+    sendValue: bigint;
+    recvValue: bigint;
     minEpoch: number;
     maxEpoch: number;
 
@@ -29,6 +33,8 @@ export class AddrCfxTransferStat extends Model<IAddrCfxTransferStat> implements 
             statTime: {type: DataTypes.DATE, allowNull: false},
             sendCntr: {type: DataTypes.DECIMAL(60, 0), allowNull: false, defaultValue: 0},
             recvCntr: {type: DataTypes.DECIMAL(60, 0), allowNull: false, defaultValue: 0},
+            sendValue: {type: DataTypes.DECIMAL(60, 0), allowNull: false, defaultValue: 0},
+            recvValue: {type: DataTypes.DECIMAL(60, 0), allowNull: false, defaultValue: 0},
             minEpoch: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             maxEpoch: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
         }, {
@@ -50,6 +56,8 @@ export class AddrCfxTransferStat extends Model<IAddrCfxTransferStat> implements 
             statTime: addrCfxTransferStat.statTime,
             sendCntr: addrCfxTransferStat.sendCntr,
             recvCntr: addrCfxTransferStat.recvCntr,
+            sendValue: addrCfxTransferStat.sendValue,
+            recvValue: addrCfxTransferStat.recvValue,
             minEpoch: addrCfxTransferStat.minEpoch,
             maxEpoch: addrCfxTransferStat.maxEpoch,
         }, {

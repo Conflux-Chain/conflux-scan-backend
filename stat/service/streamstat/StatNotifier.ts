@@ -106,12 +106,14 @@ export class StatNotifier {
         const statInfo = {};
         cfxTransferArray.forEach(transfer => {
             if(transfer.fromId !== 0) {
-                statInfo[transfer.fromId] = statInfo[transfer.fromId] === undefined ? [0, 0] :  statInfo[transfer.fromId];
+                statInfo[transfer.fromId] = statInfo[transfer.fromId] === undefined ? [0, 0, 0, 0] :  statInfo[transfer.fromId];
                 statInfo[transfer.fromId][0] = statInfo[transfer.fromId][0] + 1;
+                statInfo[transfer.fromId][2] = statInfo[transfer.fromId][2] + transfer.value;
             }
             if(transfer.toId !== 0) {
-                statInfo[transfer.toId] = statInfo[transfer.toId] === undefined ? [0, 0] :  statInfo[transfer.toId];
+                statInfo[transfer.toId] = statInfo[transfer.toId] === undefined ? [0, 0, 0, 0] :  statInfo[transfer.toId];
                 statInfo[transfer.toId][1] = statInfo[transfer.toId][1] + 1;
+                statInfo[transfer.toId][3] = statInfo[transfer.toId][3] + transfer.value;
             }
         });
 

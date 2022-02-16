@@ -15,7 +15,7 @@ export class DailyContractCreateSync{
         const record = await DailyContractCreate.findOne({where: {statDay: endTime}})
         if(record) return Promise.resolve(record);
 
-        const contractCount = await TraceCreateContract.count({
+        const dailyCount = await TraceCreateContract.count({
             where: {
                 [Op.and]:[
                     {blockTime: {
@@ -27,9 +27,11 @@ export class DailyContractCreateSync{
                 ]
             }
         });
+        const total = await TraceCreateContract.count({where: {blockTime: {[Op.lt]: endTime.getTime() / 1000}}});
         const dailyContractCreate = new DailyContractCreate();
         dailyContractCreate.statDay = endTime;
-        dailyContractCreate.contractCount = contractCount;
+        dailyContractCreate.contractCount = dailyCount;
+        dailyContractCreate.contractTotal = total;
         const newRecord = await DailyContractCreate.add(dailyContractCreate);
         console.log('count daily_contract_create record:' + JSON.stringify(newRecord));
         return Promise.resolve(newRecord);

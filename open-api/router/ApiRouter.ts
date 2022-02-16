@@ -19,6 +19,7 @@ import {polishContract} from "../service/OpenContractService";
 import {StatApp} from "../../stat/StatApp";
 
 const cors = require('@koa/cors');
+const CONST = require('../../stat/service/common/constant');
 
 async function root(ctx, tag) {
     ctx.body = {code: 0, message: `Conflux Scan Open Api 0.1 ${tag}`}
@@ -57,7 +58,7 @@ async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day'])
     const {intervalType, sort} = ctx.request.query
     const page = await getApiService().dailyBlockDataStatQuery.listMiningStat({intervalType, skip, limit,
-        sort:(sort || 'desc').toLowerCase()})
+        sort:(sort || 'DESC').toLowerCase()})
     setBody(ctx, page)
 }
 /**
@@ -112,6 +113,199 @@ async function listAccountTransfer1155(ctx) {
     return listTransfer(ctx, getApiService().crc1155transferQuery)
 }
 
+async function getSupplyStat(ctx) {
+    const marketData = await getApiService().marketDataQuery.getMarketData();
+    setBody(ctx, marketData);
+}
+
+async function listTpsStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {intervalType, minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    if (intervalType === 'min' && limit > 60) {
+        throw new Error('Parameter <limit> exceeds 60 when intervalType is min')
+    }
+    if ((intervalType === 'hour' || intervalType === 'day') && limit > 100) {
+        throw new Error('Parameter <limit> exceeds 100 when intervalType is hour/day')
+    }
+
+    const page = await getApiService().dailyBlockDataStatQuery.listTpsStat({intervalType, minTimestamp,  maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    setBody(ctx, page)
+}
+
+async function listContractStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const page = await getApiService().contractCreateQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    setBody(ctx, page)
+}
+
+async function listCfxHolderStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const page = await getApiService().cfxHolderQuery.listCfxHolderStat({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    setBody(ctx, page)
+}
+
+async function listAccountGrowthStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const page = await getApiService().cfxHolderQuery.listAccountGrowthStat({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    setBody(ctx, page)
+}
+
+async function listAccountActiveStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const page = await getApiService().cfxHolderQuery.listAccountActiveStat({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    setBody(ctx, page)
+}
+
+async function listTransactionStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const page = await getApiService().dailyTxnQuery.listDailyTransactionStat({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    setBody(ctx, page)
+}
+
+async function listCfxTransferStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const page = await getApiService().dailyTxnQuery.listDailyCfxTransferStat({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    setBody(ctx, page)
+}
+
+async function listTokenTransferStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const page = await getApiService().dailyTxnQuery.listDailyTokenTransferStat({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    setBody(ctx, page)
+}
+
+async function listGasUsedTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().addrTransactionHandler.getStat();
+    const statInfo = statObj[spanType];
+    setBody(ctx, statInfo)
+}
+
+async function listMinerTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().minerBlockHandler.getStat();
+    const statInfo = statObj[spanType];
+    setBody(ctx, statInfo)
+}
+
+async function listCfxSenderTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().addrCfxTransferHandler.getStat();
+    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.OUT}`];
+    setBody(ctx, statInfo)
+}
+
+async function listCfxReceiverTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().addrCfxTransferHandler.getStat();
+    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.IN}`];
+    setBody(ctx, statInfo)
+}
+
+async function listTransactionSenderTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().addrTransactionHandler.getStat();
+    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.OUT}`];
+    setBody(ctx, statInfo)
+}
+
+async function listTransactionReceiverTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().addrTransactionHandler.getStat();
+    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.IN}`];
+    setBody(ctx, statInfo)
+}
+
+async function listTokenTransferTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().tokenTransferHandler.getStat();
+    const statInfo = statObj[spanType];
+    setBody(ctx, statInfo)
+}
+
+async function listTokenSenderTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().tokenTransferHandler.getStat();
+    const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.OUT}`];
+    setBody(ctx, statInfo)
+}
+
+async function listTokenReceiverTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().tokenTransferHandler.getStat();
+    const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.IN}`];
+    setBody(ctx, statInfo)
+}
+
+async function listTokenParticipantTopStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    const statObj = await getApiService().tokenTransferHandler.getStat();
+    const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.ALL}`];
+    setBody(ctx, statInfo)
+}
+
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
     app.use(executionTime)
@@ -144,4 +338,25 @@ export async function register(app: Koa, apiServer: ApiServer) {
     router.get('/account/crc721/transfers', listAccountTransfer721)
     router.get('/account/crc1155/transfers', listAccountTransfer1155)
     router.get('/account/tokens', listAccountAssets)
+
+    // statistics
+    router.get('/statistics/supply', getSupplyStat);
+    router.get('/statistics/tps', listTpsStat);
+    router.get('/statistics/contract', listContractStat);
+    router.get('/statistics/account/cfx/holder', listCfxHolderStat);
+    router.get('/statistics/account/growth', listAccountGrowthStat);
+    router.get('/statistics/account/active', listAccountActiveStat);
+    router.get('/statistics/transaction', listTransactionStat);
+    router.get('/statistics/cfx/transfer', listCfxTransferStat);
+    router.get('/statistics/token/transfer', listTokenTransferStat);
+    router.get('/statistics/top/gas/used', listGasUsedTopStat);
+    router.get('/statistics/top/miner', listMinerTopStat);
+    router.get('/statistics/top/transaction/sender', listTransactionSenderTopStat);
+    router.get('/statistics/top/transaction/receiver', listTransactionReceiverTopStat);
+    router.get('/statistics/top/cfx/sender', listCfxSenderTopStat);
+    router.get('/statistics/top/cfx/receiver', listCfxReceiverTopStat);
+    router.get('/statistics/top/token/transfer', listTokenTransferTopStat);
+    router.get('/statistics/top/token/sender', listTokenSenderTopStat);
+    router.get('/statistics/top/token/receiver', listTokenReceiverTopStat);
+    router.get('/statistics/top/token/participant', listTokenParticipantTopStat);
 }

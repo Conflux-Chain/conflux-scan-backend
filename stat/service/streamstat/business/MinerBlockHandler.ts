@@ -1,4 +1,3 @@
-import {StatApp} from "../../../StatApp";
 import {StatHandler} from "../StatHandler";
 import {BizStatInfo} from "../BizStatInfo";
 import {STREAM_STAT_MINER_BLOCK_Q} from "../../RedisWrap";
@@ -6,12 +5,12 @@ import {Op, QueryTypes} from "sequelize";
 import {StatBucket} from "../StatBucket";
 import {Epoch} from "../../../model/Epoch";
 import {MinerBlockStat} from "../../../model/MinerBlockStat";
-import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
+const BigFixed = require('bigfixed');
 const lodash = require('lodash');
 
 export class MinerBlockHandler extends StatHandler {
-    protected app: StatApp;
+    protected app: any;
     protected statLatestDays: number;
 
     public constructor(app: any) {
@@ -143,7 +142,7 @@ export class MinerBlockHandler extends StatHandler {
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
             const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = MinerBlockHandler.getStatRange({statEnd, statDays});
+            const {rangeBegin, rangeEnd} = StatHandler.getStatRange({statEnd, statDays});
             const total = await MinerBlockStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
             });
@@ -171,14 +170,7 @@ export class MinerBlockHandler extends StatHandler {
                 skip = (++curPage - 1) * pageSize;
             } while (skip <= total);
         }
-    }
-
-    private static getStatRange({statEnd, statDays}): { rangeBegin: Date, rangeEnd: Date } {
-        const rangeBegin = new Date(statEnd);
-        rangeBegin.setDate(statEnd.getDate() - statDays);
-        const rangeEnd = new Date(statEnd);
-        rangeEnd.setDate(statEnd.getDate() - (statDays - 1));
-        return {rangeBegin, rangeEnd};
+        await this.clear({model: MinerBlockStat, statEnd, statDays: this.statLatestDays});
     }
 
     private async doStat({bizId, statEnd, statDays}) {
@@ -225,5 +217,39 @@ export class MinerBlockHandler extends StatHandler {
             await MinerBlockStat.destroy({where: {bizId, statType}, transaction: dbTx});
             await MinerBlockStat.create(statNDaysInfo, {transaction: dbTx});
         });
+    }
+
+    public async cache() {
+        const queryOptions: any = {
+            attributes: ['bizId', 'blockCntr', 'rewardSum', 'txFeeSum', 'difficultySum', 'minEpoch', 'maxEpoch'],
+            order: [['blockCntr', 'DESC']],
+            offset: 0,
+            limit: 10,
+            raw: true,
+            // logging: msg => console.log(`listMinerStat: ${msg}`),
+        };
+
+        const statTypeArray = ['1d', '3d', '7d'];
+        for(const statType of statTypeArray){
+            queryOptions.where = {statType};
+            let list = await MinerBlockStat.findAll(queryOptions);
+
+            const {minEpochNumber, maxEpochNumber, minTime, maxTime} = await this.getStatSpan(list);
+            const seconds = (new Date(maxTime).getTime() - new Date(minTime).getTime()) / 1000
+            list.forEach(item => { item['hashRate'] = BigFixed(item.difficultySum).div(seconds).toString();});
+            const difficultyTotal = await MinerBlockStat.sum('difficultySum', {
+                where: {statType, minEpoch: {[Op.gte]: minEpochNumber}, maxEpoch: {[Op.lte]: maxEpochNumber}},
+                // logging: msg => console.log(`listMinerStat.difficultyTotal: ${msg}`),
+            });
+
+            list = await this.convertToAddress(list);
+            list.forEach(item => {
+                delete item['difficultySum'];
+                delete item['minEpoch'];
+                delete item['maxEpoch'];
+            });
+
+            this.cacheStatInfo[statType] = {maxTime, difficultyTotal, list};
+        }
     }
 }

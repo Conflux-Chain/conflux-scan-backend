@@ -16,75 +16,203 @@ export class DailyBlockDataStatQuery {
         this.app = backendApp;
     }
 
-    // work in progress.
-    async listMiningStat({intervalType = 'hour', skip = 0, limit = 27, sort='asc', minTimestamp = undefined
+    // // work in progress.
+    // async listMiningStat({intervalType = 'hour', skip = 0, limit = 27, sort='asc', minTimestamp = undefined
+    //                          , maxTimestamp = undefined}) {
+    //     let timeCol = 'statTime'
+    //     if (intervalType === this.INTERVAL_TYPE.min) {
+    //         timeCol = 'createdAt'
+    //         if (maxTimestamp === undefined) {
+    //             maxTimestamp = Math.round(Date.now() / 1000)
+    //         }
+    //         if (minTimestamp === undefined) {
+    //             minTimestamp = maxTimestamp - 60 * limit
+    //         }
+    //         if (maxTimestamp - minTimestamp > 3600) {
+    //             throw new Error(`Time scope exceeds 60 minutes under minute interval.`)
+    //         }
+    //     }
+    //     //
+    //     const where = {  }
+    //     const range = []
+    //     if (minTimestamp !== undefined) {
+    //         range.push({[timeCol]: {[Op.gte]: new Date(minTimestamp*1000)}})
+    //     }
+    //     if (maxTimestamp !== undefined) {
+    //         range.push({[timeCol]: {[Op.lte]: new Date(maxTimestamp*1000)}})
+    //     }
+    //     if (range.length) {
+    //         where[Op.and] = range
+    //     }
+    //     if(intervalType === this.INTERVAL_TYPE.hour ||
+    //         intervalType === this.INTERVAL_TYPE.day) {
+    //         console.log(` fetch from db `)
+    //         const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
+    //         where['statType'] = type
+    //         const page = await DailyBlockDataStat.findAndCountAll({
+    //             attributes: ['statTime','blockTime',['hashrate','hashRate'], 'difficulty'],
+    //             where, offset: skip, limit, order: [['statTime', sort]], raw: true
+    //         })
+    //         page.rows.forEach(row=>{
+    //             // fix date format
+    //             // @ts-ignore
+    //             row['statTime'] = row['statTime'].toISOString().replace('T', ' ').substr(0, 19)
+    //         })
+    //         return {total: page.count, list: page.rows, intervalType}
+    //     }
+    //     // calculate real time within minutes.
+    //     console.log(` real time calculate `)
+    //     let list:any[] = await FullBlock.findAll({
+    //         attributes: [
+    //                 [fn('count', col('*')), 'blockCount'],
+    //                 [fn('sum', col('difficulty')), 'difficultySum'],
+    //                 [fn('DATE_FORMAT', col('createdAt'), '%Y-%m-%d %H:%i:00'), 'statTime'],
+    //         ],
+    //         where, raw: true,
+    //         group: 'statTime', order: [[col('statTime'), sort]],
+    //         // logging: console.log,
+    //     })
+    //     const interval = this.intervalMinInSec;
+    //     list.forEach(row=>{
+    //         const {blockCount, difficultySum} = row
+    //         row['blockTime'] = BigFixed(interval).div(BigFixed(blockCount));
+    //         row['hashRate'] = BigFixed(difficultySum).div(BigFixed(interval));
+    //         row['difficulty'] = BigFixed(difficultySum).div(BigFixed(blockCount));
+    //         delete row['blockCount']
+    //         delete row['difficultySum']
+    //     })
+    //     if (list.length > limit) {
+    //         list.pop()
+    //     }
+    //     return {total: list.length, list, intervalType}
+    // }
+
+    async listMiningStat({intervalType = 'hour', skip = 0, limit = 10, sort='asc', minTimestamp = undefined
                              , maxTimestamp = undefined}) {
-        let timeCol = 'statTime'
-        if (intervalType === this.INTERVAL_TYPE.min) {
-            timeCol = 'createdAt'
-            if (maxTimestamp === undefined) {
-                maxTimestamp = Math.round(Date.now() / 1000)
-            }
-            if (minTimestamp === undefined) {
-                minTimestamp = maxTimestamp - 60 * limit
-            }
-            if (maxTimestamp - minTimestamp > 3600) {
-                throw new Error(`Time scope exceeds 60 minutes under minute interval.`)
-            }
+        if(intervalType === this.INTERVAL_TYPE.hour || intervalType === this.INTERVAL_TYPE.day) {
+            const attributeArray = ['statTime','blockTime',['hashrate','hashRate'], 'difficulty'];
+            const page = await this.listStatByAttributeArray(attributeArray, intervalType, minTimestamp, maxTimestamp,
+                sort, skip, limit);
+            return {total: page.count, list: page.rows, intervalType};
         }
-        //
-        const where = {  }
-        const range = []
-        if (minTimestamp !== undefined) {
-            range.push({[timeCol]: {[Op.gte]: new Date(minTimestamp*1000)}})
-        }
-        if (maxTimestamp !== undefined) {
-            range.push({[timeCol]: {[Op.lte]: new Date(maxTimestamp*1000)}})
-        }
-        if (range.length) {
-            where[Op.and] = range
-        }
-        if(intervalType === this.INTERVAL_TYPE.hour ||
-            intervalType === this.INTERVAL_TYPE.day) {
-            console.log(` fetch from db `)
-            const type = intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d';
-            where['statType'] = type
-            const page = await DailyBlockDataStat.findAndCountAll({
-                attributes: ['statTime','blockTime',['hashrate','hashRate'], 'difficulty'],
-                where, offset: skip, limit, order: [['statTime', sort]], raw: true
-            })
-            page.rows.forEach(row=>{
-                // fix date format
-                // @ts-ignore
-                row['statTime'] = row['statTime'].toISOString().replace('T', ' ').substr(0, 19)
-            })
-            return {total: page.count, list: page.rows, intervalType}
-        }
-        // calculate real time within minutes.
-        console.log(` real time calculate `)
-        let list:any[] = await FullBlock.findAll({
+
+        // check paras
+        const where = this.getWhereCondition({minTimestamp, maxTimestamp, limit});
+
+        // build options
+        const queryOptions: any = {
             attributes: [
-                    [fn('count', col('*')), 'blockCount'],
-                    [fn('sum', col('difficulty')), 'difficultySum'],
-                    [fn('DATE_FORMAT', col('createdAt'), '%Y-%m-%d %H:%i:00'), 'statTime'],
+                [fn('count', col('*')), 'blockCount'],
+                [fn('sum', col('difficulty')), 'difficultySum'],
+                [fn('DATE_FORMAT', col('createdAt'), '%Y-%m-%d %H:%i:00'), 'statTime'],
             ],
-            where, raw: true,
-            group: 'statTime', order: [[col('statTime'), sort]],
-            // logging: console.log,
-        })
-        const interval = this.intervalMinInSec;
+            where,
+            group: 'statTime',
+            order: [[col('statTime'), sort]],
+            limit,
+            raw: true,
+        };
+
+        // do query
+        let list:any[] = await FullBlock.findAll(queryOptions);
         list.forEach(row=>{
             const {blockCount, difficultySum} = row
-            row['blockTime'] = BigFixed(interval).div(BigFixed(blockCount));
-            row['hashRate'] = BigFixed(difficultySum).div(BigFixed(interval));
+            row['blockTime'] = BigFixed(this.intervalMinInSec).div(BigFixed(blockCount));
+            row['hashRate'] = BigFixed(difficultySum).div(BigFixed(this.intervalMinInSec));
             row['difficulty'] = BigFixed(difficultySum).div(BigFixed(blockCount));
             delete row['blockCount']
             delete row['difficultySum']
         })
-        if (list.length > limit) {
-            list.pop()
-        }
         return {total: list.length, list, intervalType}
+    }
+
+    async listTpsStat({intervalType = 'hour', skip = 0, limit = 10, sort='desc',
+                      minTimestamp = undefined, maxTimestamp = undefined}) {
+        // process interval type: hour/day
+        if(intervalType === this.INTERVAL_TYPE.hour || intervalType === this.INTERVAL_TYPE.day) {
+            const attributeArray = ['tps', 'statTime'];
+            const page = await this.listStatByAttributeArray(attributeArray, intervalType, minTimestamp, maxTimestamp,
+                sort, skip, limit);
+            return {total: page.count, list: page.rows, intervalType};
+        }
+
+        // check paras
+        const where = this.getWhereCondition({minTimestamp, maxTimestamp, limit});
+
+        // build options
+        const queryOptions: any = {
+            attributes: [
+                [fn('count', col('*')), 'txCount'],
+                [fn('DATE_FORMAT', col('createdAt'), '%Y-%m-%d %H:%i:00'), 'statTime'],
+            ],
+            where,
+            group: 'statTime',
+            order: [[col('statTime'), sort]],
+            limit,
+            raw: true,
+        };
+
+        // do query
+        let list:any[] = await FullTransaction.findAll(queryOptions);
+        list.forEach(row=>{
+            row['tps'] = BigFixed(row.txCount).div(BigFixed(this.intervalMinInSec));
+            delete row['txCount'];
+        })
+        return {total: list.length, list, intervalType};
+    }
+
+    private async listStatByAttributeArray(attributeArray: any[], intervalType: string, minTimestamp: number,
+                                           maxTimestamp: number, sort: string, skip: number, limit: number) {
+        const queryOptions: any = {
+            attributes: attributeArray,
+            offset: skip,
+            limit,
+            order: [['statTime', sort]],
+            raw: true
+        };
+
+        const conditionArray = [];
+        conditionArray.push({statType: (intervalType === this.INTERVAL_TYPE.hour ? '1h' : '1d')});
+        if (minTimestamp !== undefined) {
+            conditionArray.push({statTime: {[Op.gte]: new Date(minTimestamp * 1000)}});
+        }
+        if (maxTimestamp !== undefined) {
+            conditionArray.push({statTime: {[Op.lte]: new Date(maxTimestamp * 1000)}});
+        }
+        if (conditionArray.length === 1) {
+            queryOptions.where = conditionArray[0];
+        }
+        if (conditionArray.length > 1) {
+            queryOptions.where = {[Op.and]: conditionArray};
+        }
+
+        const page = await DailyBlockDataStat.findAndCountAll(queryOptions);
+        page.rows.forEach(row => {
+            // @ts-ignore
+            row['statTime'] = row['statTime'].toISOString().replace('T', ' ').substr(0, 19);
+        });
+        return page;
+    }
+
+    private getWhereCondition({minTimestamp, maxTimestamp, limit}){
+        const where = {};
+
+        if (maxTimestamp === undefined) {
+            maxTimestamp = Math.round(Date.now() / 1000);
+        }
+        if (minTimestamp === undefined) {
+            minTimestamp = maxTimestamp - 60 * limit;
+        }
+        if (maxTimestamp - minTimestamp > 3600) {
+            throw new Error(`Time scope exceeds 60 minutes under minute interval.`);
+        }
+
+        const conditionArray = [];
+        conditionArray.push({createdAt: {[Op.gte]: new Date(minTimestamp*1000)}});
+        conditionArray.push({createdAt: {[Op.lte]: new Date(maxTimestamp*1000)}});
+        where[Op.and] = conditionArray;
+
+        return where;
     }
 
     async listStat(intervalType, skip: number = 0, limit: number = 27) {

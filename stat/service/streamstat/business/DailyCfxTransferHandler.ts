@@ -1,4 +1,3 @@
-import {StatApp} from "../../../StatApp";
 import {StatHandler} from "../StatHandler";
 import {col, fn, Op} from "sequelize";
 import {BizStatInfo} from "../BizStatInfo";
@@ -6,10 +5,9 @@ import {STREAM_STAT_DAILY_CFX_TRANSFER_Q} from "../../RedisWrap";
 import {StatBucket} from "../StatBucket";
 import {Epoch} from "../../../model/Epoch";
 import {DailyCfxTransferStat} from "../../../model/DailyCfxTransferStat";
-import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 
 export class DailyCfxTransferHandler extends StatHandler {
-    protected app: StatApp;
+    protected app: any;
     protected statLatestDays: number;
 
     public constructor(app: any) {
@@ -42,6 +40,7 @@ export class DailyCfxTransferHandler extends StatHandler {
             statEndTime.setHours(statEndTime.getHours() + 1);
             return new StatBucket({
                 bizValue0: BigInt(stat.transferCntr),
+                bizValue1: BigInt(stat.valueSum),
                 lowerBoundInclude: stat.statTime,
                 upperBoundExclude: statEndTime,
                 minEpochNumber: stat.minEpoch,
@@ -57,6 +56,7 @@ export class DailyCfxTransferHandler extends StatHandler {
                 statType: '1h',
                 statTime: oldest.lowerBoundInclude,
                 transferCntr: oldest.bizValue0,
+                valueSum: oldest.bizValue1,
                 minEpoch: oldest.minEpochNumber,
                 maxEpoch: oldest.maxEpochNumber,
             };
@@ -95,6 +95,7 @@ export class DailyCfxTransferHandler extends StatHandler {
         statEndTime.setHours(statEndTime.getHours() + 1);
         return new StatBucket({
             bizValue0: BigInt(stat.transferCntr),
+            bizValue1: BigInt(stat.valueSum),
             lowerBoundInclude: stat.statTime,
             upperBoundExclude: statEndTime,
             minEpochNumber: stat.minEpoch,
@@ -119,6 +120,7 @@ export class DailyCfxTransferHandler extends StatHandler {
         const item = await DailyCfxTransferStat.findOne({
             attributes: [
                 [fn('sum', col('transferCntr')), 'transferDaily'],
+                [fn('sum', col('valueSum')), 'valueDaily'],
                 [fn('min', col('minEpoch')), 'statMinEpoch'],
                 [fn('max', col('maxEpoch')), 'statMaxEpoch'],
             ],
@@ -128,9 +130,13 @@ export class DailyCfxTransferHandler extends StatHandler {
                 statType: '1d',
                 statTime: rangeStart,
                 transferCntr: item['transferDaily'],
+                valueSum: item['valueDaily'],
                 minEpoch: item['statMinEpoch'],
                 maxEpoch: item['statMaxEpoch'],
         };
         await DailyCfxTransferStat.create(statDaily);
+    }
+
+    protected cache() {
     }
 }

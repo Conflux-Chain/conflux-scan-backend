@@ -66,6 +66,7 @@ export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
         if (!/^[0-9]+$/.test(v)) {
             throw new InvalidParamError(`Invalid parameter [${k}] with value [${v}].`)
         }
+        obj[k] = parseInt(v);
         if (/imestamp/.test(k)) {
             let dt = new Date(v * 1000)
             const tm = dt.getTime();
