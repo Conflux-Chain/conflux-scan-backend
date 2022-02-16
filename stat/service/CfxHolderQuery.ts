@@ -14,7 +14,7 @@ export class CfxHolderQuery{
     }
 
     async listCfxHolderStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-                                       skip = 0, limit = 100}) {
+                                       skip = 0, limit = 10}) {
         const queryOptions: any = {
             attributes: [['statDay', 'statTime'], ['holderCount', 'count']],
             order: [['statDay', sort]],
@@ -45,7 +45,7 @@ export class CfxHolderQuery{
     }
 
     async listAccountGrowthStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-                                skip = 0, limit = 100}) {
+                                skip = 0, limit = 10}) {
         const queryOptions: any = {
             attributes: [['day', 'statTime'], ['cnt', 'count']],
             order: [['day', sort]],
@@ -76,7 +76,7 @@ export class CfxHolderQuery{
     }
 
     async listAccountActiveStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-                                    skip = 0, limit = 100}) {
+                                    skip = 0, limit = 10}) {
         const queryOptions: any = {
             attributes: [['day', 'statTime'], ['cnt', 'count']],
             order: [['day', sort]],

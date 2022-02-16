@@ -17,7 +17,7 @@ export class DailyTxnQuery{
     }
 
     async listDailyTransactionStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-                                    skip = 0, limit = 100}) {
+                                    skip = 0, limit = 10}) {
         const queryOptions: any = {
             attributes: [['statDay', 'statTime'], ['txCount', 'count']],
             order: [['statDay', sort]],
@@ -48,7 +48,7 @@ export class DailyTxnQuery{
     }
 
     async listDailyCfxTransferStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-                                       skip = 0, limit = 100}) {
+                                       skip = 0, limit = 10}) {
         const queryOptions: any = {
             attributes: [['day', 'statTime'], ['txnCount', 'transferCount'], 'userCount', 'amount'],
             order: [['day', sort]],
@@ -79,7 +79,7 @@ export class DailyTxnQuery{
     }
 
     async listDailyTokenTransferStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-                                       skip = 0, limit = 100}) {
+                                       skip = 0, limit = 10}) {
         const queryOptions: any = {
             attributes: [
                 ['day', 'statTime'],

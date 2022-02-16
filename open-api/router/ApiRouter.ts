@@ -9,6 +9,7 @@ import {BalanceService} from "../../stat/service/watcher/BalanceService";
 import {addSwagger, executionTime, handleException, rateControl, setBody} from "./middleware";
 import {listTransfer, polishTransferList} from "../service/OpenTransferService";
 import {
+    getPagination,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent,
@@ -43,22 +44,15 @@ async function listAccountAssets(ctx) {
 }
 // work in progress.
 async function listMiningStat(ctx) {
-    const {skip,limit} = skipLimit(ctx.request.query)
-    if (skip > 60) {
-        throw new Error('Parameter <skip> exceeds 60')
-    }
-    if (limit > 60) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
+
+    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+    if (intervalType === 'min' && limit > 60) {
         throw new Error('Parameter <limit> exceeds 60')
     }
-    if (limit < 2) {
-        throw new Error('Parameter <limit> should >= 2')
-    }
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp')
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day'])
-    const {intervalType, sort} = ctx.request.query
-    const page = await getApiService().dailyBlockDataStatQuery.listMiningStat({intervalType, skip, limit,
-        sort:(sort || 'DESC').toLowerCase()})
+
+    const page = await getApiService().dailyBlockDataStatQuery.listMiningStat({intervalType, minTimestamp,  maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit})
     setBody(ctx, page)
 }
 /**
@@ -120,15 +114,10 @@ async function getSupplyStat(ctx) {
 
 async function listTpsStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
 
-    const {intervalType, minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     if (intervalType === 'min' && limit > 60) {
-        throw new Error('Parameter <limit> exceeds 60 when intervalType is min')
-    }
-    if ((intervalType === 'hour' || intervalType === 'day') && limit > 100) {
-        throw new Error('Parameter <limit> exceeds 100 when intervalType is hour/day')
+        throw new Error('Parameter <limit> exceeds 60')
     }
 
     const page = await getApiService().dailyBlockDataStatQuery.listTpsStat({intervalType, minTimestamp,  maxTimestamp,
@@ -137,173 +126,139 @@ async function listTpsStat(ctx) {
 }
 
 async function listContractStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-
-    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().contractCreateQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
 }
 
 async function listCfxHolderStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-
-    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().cfxHolderQuery.listCfxHolderStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
 }
 
 async function listAccountGrowthStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-
-    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().cfxHolderQuery.listAccountGrowthStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
 }
 
 async function listAccountActiveStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-
-    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().cfxHolderQuery.listAccountActiveStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
 }
 
 async function listTransactionStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-
-    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().dailyTxnQuery.listDailyTransactionStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
 }
 
 async function listCfxTransferStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-
-    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().dailyTxnQuery.listDailyCfxTransferStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
 }
 
 async function listTokenTransferStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp','maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-
-    const {minTimestamp, maxTimestamp, sort, skip, limit} = ctx.request.query
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().dailyTxnQuery.listDailyTokenTransferStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
 }
 
 async function listGasUsedTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().addrTransactionHandler.getStat();
     const statInfo = statObj[spanType];
     setBody(ctx, statInfo)
 }
 
 async function listMinerTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().minerBlockHandler.getStat();
     const statInfo = statObj[spanType];
     setBody(ctx, statInfo)
 }
 
 async function listCfxSenderTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().addrCfxTransferHandler.getStat();
     const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.OUT}`];
     setBody(ctx, statInfo)
 }
 
 async function listCfxReceiverTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().addrCfxTransferHandler.getStat();
     const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.IN}`];
     setBody(ctx, statInfo)
 }
 
 async function listTransactionSenderTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().addrTransactionHandler.getStat();
     const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.OUT}`];
     setBody(ctx, statInfo)
 }
 
 async function listTransactionReceiverTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().addrTransactionHandler.getStat();
     const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.IN}`];
     setBody(ctx, statInfo)
 }
 
 async function listTokenTransferTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().tokenTransferHandler.getStat();
     const statInfo = statObj[spanType];
     setBody(ctx, statInfo)
 }
 
 async function listTokenSenderTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().tokenTransferHandler.getStat();
     const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.OUT}`];
     setBody(ctx, statInfo)
 }
 
 async function listTokenReceiverTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().tokenTransferHandler.getStat();
     const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.IN}`];
     setBody(ctx, statInfo)
 }
 
 async function listTokenParticipantTopStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h','3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    let {spanType} = parseTopStatParam(ctx);
     const statObj = await getApiService().tokenTransferHandler.getStat();
     const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.ALL}`];
     setBody(ctx, statInfo)
+}
+
+function parseStatParam(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp', 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
+
+    const {skip, limit} = getPagination(ctx.request.query);
+    const {intervalType, minTimestamp, maxTimestamp, sort} = ctx.request.query
+    return {skip, limit, intervalType, minTimestamp, maxTimestamp, sort};
+}
+
+function parseTopStatParam(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h', '3d', '7d']);
+
+    let {spanType} = ctx.request.query
+    spanType = spanType === '24h' ? '1d' : spanType;
+    return {spanType};
 }
 
 export async function register(app: Koa, apiServer: ApiServer) {
