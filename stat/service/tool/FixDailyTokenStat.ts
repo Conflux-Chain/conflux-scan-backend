@@ -19,7 +19,7 @@ import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
 import {Balance_K} from "../../model/Balance";
 import {redisWrap, RedisWrap, TRANSFER_ADDRESS_Q, xLen} from "../RedisWrap";
-import {calcOneDayUniqueArr} from "../UniqueAddressStat";
+import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
 export async function init() {
     const config = loadConfig('Prod')
     // let seq = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW as Options);//createDB(config.database)
@@ -116,7 +116,7 @@ async function syncDailyTxCntr(dt){
 }
 async function dailyTokenTxn() {
     const [,,cmd,dt] = process.argv;
-    await calcDailyTokenByDay(new Date(dt))
+    await calcDailyTokenOnChain(new Date(dt))
 }
 if (require.main === module) {
     const args = process.argv.slice(2)

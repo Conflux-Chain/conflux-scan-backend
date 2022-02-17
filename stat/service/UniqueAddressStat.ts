@@ -1,3 +1,5 @@
+import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
+
 process.env.TZ='UTC'
 
 import {redisWrap,RedisWrap} from "./RedisWrap";
@@ -170,6 +172,24 @@ export async function calcDailyUniqueAddr() {
     }
     await calcOneDayUniqueArr(dt)
 }
+export async function calcDailyTokenOnChain(dt: Date) {
+    console.log(`calcDailyTokenOnChain ${dt.toISOString()}`)
+    const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
+    const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+    const transferCount = await DailyToken.sum('transferCount',{
+        where: {day: dt}, raw: true,
+        logging: console.log,
+    })
+    const userCount = await UniqueAddress.count({
+            distinct: true, col: 'addr',
+            where: {timeStart: {[Op.between]: []}}
+        },
+    )
+    await DailyTokenTxn.upsert({
+        day: dt, txnCount: transferCount,
+        userCount, type: TOKEN_TYPE_ALL_4
+    })
+}
 export async function calcOneDayUniqueArr(dt:Date) {
     const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
     const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
@@ -198,6 +218,7 @@ export async function calcOneDayUniqueArr(dt:Date) {
         })
     }
     console.log(` calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
+    await calcDailyTokenOnChain(dt);
 }
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index on timeStart, not timeEnd.
