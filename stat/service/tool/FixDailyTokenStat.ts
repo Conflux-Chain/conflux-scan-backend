@@ -1,4 +1,6 @@
 process.env.TZ = 'UTC'
+import {calcDailyTokenByDay} from "../../model/Erc20Transfer";
+
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
 import {getYesterday} from "./DateTool";
 
@@ -112,7 +114,10 @@ async function syncDailyTxCntr(dt){
     const statDay = getYesterday(dt);
     return new DailyTxnSync().countDaily(statDay);
 }
-
+async function dailyTokenTxn() {
+    const [,,dt] = process.argv;
+    await calcDailyTokenByDay(new Date(dt))
+}
 if (require.main === module) {
     const args = process.argv.slice(2)
     init().then((cfg)=> {
@@ -123,6 +128,8 @@ if (require.main === module) {
             return fixParticipants()
         } else if (args[0] === 'topTokens') {
             return checkAllTokenHolderTop()
+        } else if (args[0] === 'dailyTokenTxn') {
+            return dailyTokenTxn()
         } else if (args[0] === 'test') {
             return testRank()
         } else if (args[0] === 'dailyTx') {

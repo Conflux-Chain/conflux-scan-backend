@@ -316,6 +316,13 @@ export async function rollupDailyTokenTxnCurrentAll() {
     // all four token unique user.
     await rollupDailyTokenTxnCurrent(undefined, TOKEN_TYPE_ALL_4)
 }
+export async function calcDailyTokenByDay(dt: Date) {
+    await rollupDailyTokenTxn(dt, Erc20Transfer, 'erc20')
+    await rollupDailyTokenTxn(dt, Erc721Transfer, 'erc721')
+    await rollupDailyTokenTxn(dt, Erc1155Transfer, 'erc1155')
+    // all four token unique user.
+    await rollupDailyTokenTxn(dt, undefined, TOKEN_TYPE_ALL_4)
+}
 export async function rollupDailyTokenTxnCurrent(model, type) {
     const cur = new Date()
     if (cur.getHours() === 0 && cur.getMinutes() < 30) {
