@@ -184,7 +184,7 @@ export async function calcDailyTokenOnChain(dt: Date) {
     })
     const userCount = await UniqueAddress.count({
             distinct: true, col: 'addr',
-            where: {timeStart: {[Op.between]: []}}
+            where: {timeStart: {[Op.between]: [timeBegin, timeEnd]}}
         },
     )
     await DailyTokenTxn.upsert({
