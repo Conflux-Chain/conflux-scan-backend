@@ -238,6 +238,7 @@ export async function batchPopErc20Transfer(epoch, dbTx) {
     return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
 }
 
+// stat over the chain.
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'
 export interface IDailyTokenTxn {
     id?:number
