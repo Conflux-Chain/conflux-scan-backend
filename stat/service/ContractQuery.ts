@@ -3,11 +3,12 @@ import {format} from "js-conflux-sdk";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
-import {Hex40Map, makeId} from "../model/HexMap";
+import {Hex40Map, hex40IdMap, makeId} from "../model/HexMap";
 import {Op} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
+import {TraceCreateContract} from "../model/TraceCreateContract";
 
 const lodash = require('lodash');
 const CONST = require('./common/constant');
@@ -226,26 +227,27 @@ export class ContractQuery {
         return  {total: page?.count || 0, list};
     }
 
-    /**
-     *
-     * @param addressArray
-     * @param iconUrl, if true, use icon url instead of icon(base64).
-     */
-    public async listBasic({ addressArray = [], iconUrl = false}: {
-        addressArray?: string[], iconUrl?: boolean
+    public async listBasic({ addressArray = []}: {
+        addressArray?: string[]
     }) {
         const {
             app: { tokenQuery, service },
         } = this;
 
         // remove repeat
-        addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address))
-            // .filter((address) => address?.startsWith('0x8') || address?.startsWith('0x08'))
-        )
-        ];
-        if (addressArray.length === 0) {
-            return { total: 0, map: {} };
-        }
+        addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address)))];
+        if (addressArray.length === 0) { return { total: 0, map: {} };}
+
+        const hexIdMap = await hex40IdMap(addressArray);
+        const traceCreateArray = await TraceCreateContract.findAll({where: {to: {[Op.in]: [...hexIdMap.values()]}}});
+        if (traceCreateArray.length === 0) { return { total: 0, map: {} };}
+
+        const hexIdArray = traceCreateArray.map(item => item.to);
+        const idHexMap = {};
+        hexIdMap.forEach((hexId,hex) => (idHexMap[hexId] = hex));
+        addressArray = [];
+        hexIdArray.forEach(hexId => addressArray.push(`0x${idHexMap[hexId]}`));
+
         const networkId = StatApp.networkId || this.app?.networkId;
         addressArray = addressArray.map(address => format.address(address, networkId));
 
@@ -257,17 +259,15 @@ export class ContractQuery {
         const tokenService = tokenQuery || service.tokenRdb;
         const [ contractArray, verifiedArray, tokenArray ] = await Promise.all([
             this.list({ addressArray }).then(response => response.list.map(contract => {
-                    return { address: contract.address, name: contract.name }})),
+                return { address: contract.address, name: contract.name }})),
             this.listVerify({ addressArray }).then(response => response.list.map(verified => verified.address)),
-            // , iconUrl ? [] : ['icon'] to parameters below.
             tokenService.list({addressArray}).then(response => response.list),
         ]);
 
         // build response
         contractArray.forEach((contract) => {
             map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
-                name: contract.name || '',
-                isContract: true,
+                name: contract.name,
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
             });
         });
@@ -287,12 +287,8 @@ export class ContractQuery {
                 tokenType: token.transferType,
             });
         });
-        Object.keys(map).forEach(k=>{
-            if (!map[k].contract?.isContract) {
-                delete map[k]
-            }
-        })
-        return { total: contractArray.length, map };
+
+        return {total: addressArray.length, map};
     }
 
     private async queryImplementation(base32){

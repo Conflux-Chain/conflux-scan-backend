@@ -20,7 +20,7 @@ export async function polishContract(page, needAddressInfo) {
     if (!contract.size) {
         return
     }
-    const basicInfo = await getApiService().contractQuery.listBasic({addressArray:[...contract], iconUrl: true})
+    const basicInfo = await getApiService().contractQuery.listBasic({addressArray:[...contract]})
     const map = basicInfo.map
     Object.keys(map).forEach(k=>{
         const contract = map[k].contract
