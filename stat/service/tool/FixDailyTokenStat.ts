@@ -1,5 +1,4 @@
 process.env.TZ = 'UTC'
-import {calcDailyTokenByDay} from "../../model/Erc20Transfer";
 
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
 import {getYesterday} from "./DateTool";
