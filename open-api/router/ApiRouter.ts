@@ -257,7 +257,7 @@ function parseTopStatParam(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h', '3d', '7d']);
 
     let {spanType} = ctx.request.query
-    spanType = spanType === '24h' ? '1d' : spanType;
+    spanType = (spanType === undefined || spanType === '24h') ? '1d' : spanType;
     return {spanType};
 }
 

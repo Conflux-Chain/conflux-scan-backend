@@ -121,6 +121,7 @@ export class DailyTokenTransferHandler extends StatHandler {
                 [fn('max', col('maxEpoch')), 'statMaxEpoch'],
             ],
             where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeStart}}, {statTime: {[Op.lt]: rangeEnd}}]},
+            raw: true,
         });
         const statDaily =  {
                 statType: '1d',

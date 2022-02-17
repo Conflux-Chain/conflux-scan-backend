@@ -92,7 +92,8 @@ export class StatNotifier {
             return ;
         }
 
-        const statInfo = {0: [cfxTransferArray.length]};
+        const valueSum = cfxTransferArray.map(row=>row.value).reduce((a,b)=>a+b, 0);
+        const statInfo = {0: [cfxTransferArray.length, valueSum]};
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_DAILY_CFX_TRANSFER_Q});
     }
