@@ -115,7 +115,7 @@ async function syncDailyTxCntr(dt){
     return new DailyTxnSync().countDaily(statDay);
 }
 async function dailyTokenTxn() {
-    const [,,dt] = process.argv;
+    const [,,cmd,dt] = process.argv;
     await calcDailyTokenByDay(new Date(dt))
 }
 if (require.main === module) {
