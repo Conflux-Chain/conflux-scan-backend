@@ -125,8 +125,9 @@ export class FullBlockQuery {
             }).filter(Boolean);
             count = page.count;
         } else if(minEpochNumber !== undefined &&  maxEpochNumber !== undefined &&  minEpochNumber === maxEpochNumber){
-            rawList = await FullBlock.findAll(options);
-            count = rawList?.length || 0;
+            const page = await FullBlock.findAndCountAll(options);
+            rawList = page?.rows;
+            count = page?.count || 0;
         } else{
             rawList = await FullBlock.findAll(options);
             count = paging.calcTotal || 0
