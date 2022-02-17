@@ -317,6 +317,7 @@ export async function rollupDailyTokenTxnCurrentAll() {
     await rollupDailyTokenTxnCurrent(undefined, TOKEN_TYPE_ALL_4)
 }
 export async function calcDailyTokenByDay(dt: Date) {
+    console.log(`calcDailyTokenByDay ${dt.toISOString()}`)
     await rollupDailyTokenTxn(dt, Erc20Transfer, 'erc20')
     await rollupDailyTokenTxn(dt, Erc721Transfer, 'erc721')
     await rollupDailyTokenTxn(dt, Erc1155Transfer, 'erc1155')
