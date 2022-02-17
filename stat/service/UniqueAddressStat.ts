@@ -179,6 +179,8 @@ export async function calcDailyTokenOnChain(dt: Date) {
     const transferCount = await DailyToken.sum('transferCount',{
         where: {day: dt}, raw: true,
         logging: console.log,
+    }).then(res=>{
+        return isNaN(res) ? 0: res;
     })
     const userCount = await UniqueAddress.count({
             distinct: true, col: 'addr',

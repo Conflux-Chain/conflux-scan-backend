@@ -116,7 +116,10 @@ async function syncDailyTxCntr(dt){
 }
 async function dailyTokenTxn() {
     const [,,cmd,dt] = process.argv;
-    await calcDailyTokenOnChain(new Date(dt))
+    await calcDailyTokenOnChain(new Date(dt)).then(()=>{
+        console.log(`ok.`)
+        process.exit(0)
+    })
 }
 if (require.main === module) {
     const args = process.argv.slice(2)
