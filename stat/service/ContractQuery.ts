@@ -239,10 +239,11 @@ export class ContractQuery {
         if (addressArray.length === 0) { return { total: 0, map: {} };}
 
         const hexIdMap = await hex40IdMap(addressArray);
-        const traceCreateArray = await TraceCreateContract.findAll({where: {to: {[Op.in]: [...hexIdMap.values()]}}});
-        if (traceCreateArray.length === 0) { return { total: 0, map: {} };}
+        const traceCreates = await TraceCreateContract.findAll({where: {to: {[Op.in]: [...hexIdMap.values()]}}});
+        const registeredContracts = await Contract.findAll({where: {hex40id: {[Op.in]: [...hexIdMap.values()]}}});
+        const hexIdArray = [...new Set([...traceCreates.map(item => item.to), ...registeredContracts.map(item => item.hex40id)])];
+        if (hexIdArray.length === 0) { return { total: 0, map: {} };}
 
-        const hexIdArray = traceCreateArray.map(item => item.to);
         const idHexMap = {};
         hexIdMap.forEach((hexId,hex) => (idHexMap[hexId] = hex));
         addressArray = [];
