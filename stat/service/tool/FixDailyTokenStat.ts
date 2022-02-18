@@ -1,4 +1,5 @@
 process.env.TZ = 'UTC'
+
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
 import {getYesterday} from "./DateTool";
 
@@ -17,7 +18,7 @@ import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
 import {Balance_K} from "../../model/Balance";
 import {redisWrap, RedisWrap, TRANSFER_ADDRESS_Q, xLen} from "../RedisWrap";
-import {calcOneDayUniqueArr} from "../UniqueAddressStat";
+import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
 export async function init() {
     const config = loadConfig('Prod')
     // let seq = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW as Options);//createDB(config.database)
@@ -112,7 +113,13 @@ async function syncDailyTxCntr(dt){
     const statDay = getYesterday(dt);
     return new DailyTxnSync().countDaily(statDay);
 }
-
+async function dailyTokenTxn() {
+    const [,,cmd,dt] = process.argv;
+    await calcDailyTokenOnChain(new Date(dt)).then(()=>{
+        console.log(`ok.`)
+        process.exit(0)
+    })
+}
 if (require.main === module) {
     const args = process.argv.slice(2)
     init().then((cfg)=> {
@@ -123,6 +130,8 @@ if (require.main === module) {
             return fixParticipants()
         } else if (args[0] === 'topTokens') {
             return checkAllTokenHolderTop()
+        } else if (args[0] === 'dailyTokenTxn') {
+            return dailyTokenTxn()
         } else if (args[0] === 'test') {
             return testRank()
         } else if (args[0] === 'dailyTx') {

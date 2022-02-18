@@ -238,6 +238,7 @@ export async function batchPopErc20Transfer(epoch, dbTx) {
     return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
 }
 
+// stat over the chain.
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'
 export interface IDailyTokenTxn {
     id?:number
@@ -290,42 +291,5 @@ export async function calcAllTokenUniqueUser(start:Date, end:Date) : Promise<num
         return Number(arr[0]['cnt'])
     })
 }
-export async function rollupDailyTokenTxn(dt:Date, model: any/*Model*/, type:string) {
-    dt.setHours(0,0,0,0)
-    let end = new Date(dt)
-    end.setHours(23,59,59,999)
-    if (type === TOKEN_TYPE_ALL_4) {
-        const userCount = await calcAllTokenUniqueUser(dt, end)
-        return DailyTokenTxn.upsert({
-            txnCount: 0, day: dt, type: type.toUpperCase(), userCount,
-        })
-    }
-    let count = await model.count({        where:{
-            createdAt: {[Op.between]:[dt, end]}
-        }    })
-    return DailyTokenTxn.upsert({
-        txnCount: count, day: dt, type: type.toUpperCase(), userCount: 0
-    })
-}
-export const TOKEN_TYPE_ALL_4 = '_ALL_4'
-export async function rollupDailyTokenTxnCurrentAll() {
-    await rollupDailyTokenTxnCurrent(Erc20Transfer, 'erc20')
-    await rollupDailyTokenTxnCurrent(Erc721Transfer, 'erc721')
-    await rollupDailyTokenTxnCurrent(Erc777Transfer, 'erc777')
-    await rollupDailyTokenTxnCurrent(Erc1155Transfer, 'erc1155')
-    // all four token unique user.
-    await rollupDailyTokenTxnCurrent(undefined, TOKEN_TYPE_ALL_4)
-}
-export async function rollupDailyTokenTxnCurrent(model, type) {
-    const cur = new Date()
-    if (cur.getHours() === 0 && cur.getMinutes() < 30) {
-        // rollup previous day, time point is an hour ago, calculated time span should be previous day.
-        await rollupDailyTokenTxn(new Date(cur.getTime() - 1000*3600), model, type)
-    }
-    await rollupDailyTokenTxn(cur, model, type);
-}
 
-export async function scheduleRollupDailyTokenTxn() {
-    await rollupDailyTokenTxnCurrentAll()
-    setTimeout(scheduleRollupDailyTokenTxn, 1000*60*10)// ten minutes
-}
+export const TOKEN_TYPE_ALL_4 = '_ALL_4'
