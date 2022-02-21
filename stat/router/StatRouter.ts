@@ -243,8 +243,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.set('Content-type', 'text/csv')
         const s = []
 
-        s.push(lang === 'cn' ? '地址,地址名称,余额,质押,总和,百分比,交易数'
-            : 'address,address name,balance,staking,total,percent,transactionCount')
+        s.push(lang === 'cn' ? '序号,地址,地址名称,余额,质押,总和,百分比,交易数'
+            : 'rank,address,address name,balance,staking,total,percent,transactionCount')
+        s.push('\n');
         list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
             s.push(row.base32address); s.push(',') // base32
