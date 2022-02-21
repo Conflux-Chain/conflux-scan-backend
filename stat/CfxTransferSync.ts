@@ -22,6 +22,7 @@ import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {RedisWrap} from "./service/RedisWrap";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
+import {StatNotifier} from "./service/streamstat/StatNotifier";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -445,7 +446,11 @@ async function processEpoch(epoch, data, taskBegin) {
     }
     await save(data, epoch, taskBegin)
     try {
-        PruneNotifier.notifyCFXTransfer(data.addrBeans).then()
+        PruneNotifier.notifyCFXTransfer(data.addrBeans).then();
+        const msg = {epochNumber: data.result[0].epoch, epochTimestamp: data.result[0].createdAt, action: 'push',
+            cfxTransferArray: data.result};
+        StatNotifier.notifyStatAddrCfxTransfer(msg).then();
+        StatNotifier.notifyStatDailyCfxTransfer(msg).then();
     } catch (e) {
         console.log(` notifyCFXTransfer fail, epoch ${ epoch} .`, e)
     }

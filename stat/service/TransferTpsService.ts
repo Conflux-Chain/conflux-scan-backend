@@ -128,9 +128,9 @@ export class TransferTpsService {
             const action = message['action'];
             if(action === 'push'){
                 this.checkLength();
-                const pivotBlock = await cfx.getBlockByEpochNumber(epochNumber, false);
-                const createdTime = new Date(Number(pivotBlock.timestamp) * 1000);
-                message['createdTime'] = createdTime;
+                const pivotBlock = await cfx.getBlockByEpochNumber(epochNumber, false).catch(() => undefined);
+                if(pivotBlock === undefined) continue;
+                message['createdTime'] = new Date(Number(pivotBlock.timestamp) * 1000);
                 this.TRANSFER_COUNTER[epochNumber] = message;
             }
             if(action === 'pop'){
