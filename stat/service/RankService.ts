@@ -174,7 +174,7 @@ export class RankService{
             const day = parseInt(span[0])
             return this.rankTokenUniqueAddr({day, which})
         } else {
-            return {code: 40400, message: 'no support.'}
+            return {code: 40400, message: 'no support.', type}
         }
     }
     async fillInfo(list:any[], networkId) {
