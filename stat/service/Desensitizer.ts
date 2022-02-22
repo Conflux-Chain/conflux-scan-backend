@@ -65,7 +65,7 @@ export class Desensitizer {
         blacklists?.forEach(item => {
             blacklistInfo[item.address] = item['updatedAt'];
         });
-        console.log(`blacklist_refresh blacklistInfo:${JSON.stringify(blacklistInfo)}`);
+        // console.log(`blacklist_refresh blacklistInfo:${JSON.stringify(blacklistInfo)}`);
         Desensitizer.BLACKLIST = blacklistInfo;
     }
 
