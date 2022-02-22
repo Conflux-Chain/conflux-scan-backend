@@ -11,7 +11,7 @@ export function fmtDtUTC(dt: Date) : string {
 }
 
 export function pickNumber(v, defaultV) {
-    return isNaN(v) ? defaultV : v
+    return isNaN(v) ? defaultV : parseInt(v)
 }
 export function calculateBeginTime(n: number, type: string, endDt: Date): Promise<Date> {
     let beginDt:Date;

@@ -214,6 +214,54 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = await rank.top(type, parseInt(limit), StatApp.networkId)
     })
     //
+    router.get('/top-cfx-holder-csv', async (ctx) => {
+        const rank = statApp.rankService
+        const {type, limit, lang} = ctx.request.query || {type: 'cfxSend', limit: 10, lang: 'cn'};
+        const size = pickNumber(limit, 10);
+        if (size > 5000) {
+            ctx.status = 600;
+            ctx.body = {code: 600, message: 'max record exceeds 5000.'}
+            return;
+        }
+        const name = `${type}`
+
+        const key = `top-cfx-holder_${type}_${size}`;
+        let list = dbCache.get(key);
+        if (list) {
+            // console.log(`from cache.`, list)
+        } else {
+            const data = await rank.top(type, size, StatApp.networkId);
+            list = data.list;
+            // console.log(` from db.`, data)
+            if (!list) {
+                ctx.body = data;
+                return;
+            }
+            dbCache.set(key, list, 60); // 60s
+        }
+        ctx.set('Content-disposition', 'attachment; filename=' + name + '.csv')
+        ctx.set('Content-type', 'text/csv')
+        const s = []
+
+        s.push(lang === 'cn' ? '序号,地址,地址名称,余额,质押,总和,百分比,交易数'
+            : 'rank,address,address name,balance,staking,total,percent,transactionCount')
+        s.push('\n');
+        list.forEach(row=>{
+            s.push(row.rank); s.push(',') // rank
+            s.push(row.base32address); s.push(',') // base32
+            s.push(row.name); s.push(',') // name
+            s.push(row.value2); s.push(',') // balance
+            s.push(row.value3); s.push(',') // staking
+            s.push(row.value4); s.push(',') // total
+            s.push(row.percent); s.push(',') // percent
+            s.push(row.valueN); // s.push(',')     // tx count
+
+            s.push('\n')
+        })
+
+        ctx.body = s.join('');
+    })
+    //
     router.get('/get-cfx-balance-at', async ctx=>{
         const {dt, epoch, accountBase32} = ctx.request.query
         if ( (dt === undefined && epoch === undefined) || accountBase32 === undefined) {
