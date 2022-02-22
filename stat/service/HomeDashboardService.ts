@@ -2,10 +2,18 @@
 import {Hex40Map} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {KEY_FULL_TX_COUNT, KV} from "../model/KV";
+import {FullBlock} from "../model/FullBlock";
+
+const lodash = require('lodash');
+const CONST = require('./common/constant');
 
 export class HomeDashboardService{
     protected app;
-    protected data;
+    protected data = {
+        blockchainInfo: {},
+        supplyInfo: {},
+        dagInfo: {},
+    };
 
     constructor(app: any) {
         this.app = app;
@@ -29,12 +37,56 @@ export class HomeDashboardService{
         repeat().then()
     }
 
+    private async blockchainInfo() {
+        const {
+            app: {confluxSDK},
+        } = this;
+
+        const addressCount = await Hex40Map.count({});
+        const transactionCount = await KV.getNumber(KEY_FULL_TX_COUNT);
+        const contractCount = await TraceCreateContract.count({});
+        const maxBlock = await FullBlock.findOne({order: [['epoch', 'desc']]});
+        const {blockNumber} = await confluxSDK.getStatus().catch(() => undefined);
+
+        return {addressCount, transactionCount, contractCount, epochNumber: maxBlock.epoch, blockNumber};
+    }
+
+    private async supplyInfo() {
+        const {
+            app: {confluxSDK},
+        } = this;
+
+        const supplyInfo = await confluxSDK.getSupplyInfo();
+        const nullAddressBalance = await confluxSDK.getBalance(CONST.ZERO_ADDRESS);
+        const twoYearUnlockBalance = await confluxSDK.getBalance(CONST.TWO_YEAR_UNLOCK);
+        const fourYearUnlockBalance = await confluxSDK.getBalance(CONST.FOUR_YEAR_UNLOCK);
+
+        return { ...supplyInfo, nullAddressBalance, twoYearUnlockBalance, fourYearUnlockBalance };
+    }
+
+    async dagInfo({ limit = 10 } = {}) {
+        const {
+            app: { confluxSDK },
+        } = this;
+
+        const epochNumber = await confluxSDK.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
+        const matrix = await Promise.all(lodash.range(limit).map(async (index) => {
+            const blockHashArray = await confluxSDK.getBlocksByEpochNumber(epochNumber - index);
+            const blockArray = await Promise.all(blockHashArray.map((hash) => confluxSDK.getBlockByHash(hash)));
+            return [...blockArray].reverse();
+        }));
+
+        return {total: epochNumber, list: matrix};
+    }
+
     private async run() {
-      const{ logger } = this.app;
-      const addressCount = await Hex40Map.count({});
-      const transactionCount = await KV.getNumber(KEY_FULL_TX_COUNT);;
-      const contractCount = await TraceCreateContract.count({});
-      // logger?.info({src: 'HomeDashboardService', msg: `addressCount:${addressCount}, transactionCount:${transactionCount}, contractCount:${contractCount}`})
-      this.data = {addressCount, transactionCount, contractCount};
+        const blockchainInfo = await this.blockchainInfo().catch(() => undefined);
+        blockchainInfo.blockNumber !== undefined && lodash.assign(this.data.blockchainInfo, blockchainInfo);
+
+        const supplyInfo = await this.supplyInfo().catch(() => undefined);
+        supplyInfo !== undefined && lodash.assign(this.data.supplyInfo, supplyInfo);
+
+        const dagInfo = await this.dagInfo().catch(() => undefined);
+        dagInfo !== undefined && lodash.assign(this.data.dagInfo, dagInfo);
     }
 }
