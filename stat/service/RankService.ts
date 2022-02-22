@@ -57,7 +57,7 @@ export class RankService{
     async rankCfxBalance(order:string, limit, updateTxnCache=false) {
         const sql = ` 
             select h.hex, addressId, ${order}, balance as value2, stakingBalance as value3, total as value4 from
-            (select * from cfx_balance order by ${order} desc limit ?) b
+            (select * from cfx_balance order by ${order} desc, cfx_balance.addressId asc limit ?) b
             left join hex40 h on h.id = b.addressId
             left join address_info ai on ai.id = h.id
         `
