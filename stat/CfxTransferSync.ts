@@ -181,7 +181,7 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             if (txBean.blockPosition !== blkIdx) {
                 console.log(`rpc block pos ${blkIdx} != ${txBean.blockPosition} in db. \n epoch ${epoch
                 }, full-tx-idx ${txIdx}`);
-                process.exit(9);
+                return {code : 404} // try again
             }
             const traceArr = traces as any[];
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
