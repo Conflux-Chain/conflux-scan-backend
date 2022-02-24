@@ -18,7 +18,10 @@ import {
 import {polishAssertList} from "../service/OpenAccountService";
 import {polishContract} from "../service/OpenContractService";
 import {StatApp} from "../../stat/StatApp";
+import {DailyToken, Token} from "../../stat/model/Token";
+import {pickNumber} from "../../stat/model/Utils";
 
+const lodash = require('lodash');
 const cors = require('@koa/cors');
 const CONST = require('../../stat/service/common/constant');
 
@@ -168,9 +171,41 @@ async function listCfxTransferStat(ctx) {
 }
 
 async function listTokenTransferStat(ctx) {
-    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
-    const page = await getApiService().dailyTxnQuery.listDailyTokenTransferStat({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    const {skip, limit, minTimestamp, maxTimestamp, sort, contract} = parseStatParam(ctx);
+    let page;
+    if(!contract){
+        page = await getApiService().dailyTxnQuery.listDailyTokenTransferStat({minTimestamp, maxTimestamp,
+            sort:(sort || 'DESC').toLowerCase(), skip, limit});
+    } else{
+        page = await getApiService().dailyTxnQuery.listDailyTokenAnalysis({minTimestamp, maxTimestamp,
+            sort:(sort || 'DESC').toLowerCase(), skip, limit, contract});
+        page.list = page.list.map(item => ({ statTime: item.statTime, transferCount: item.transferCount,
+            userCount: item.uniqueParticipantCount }));
+    }
+    setBody(ctx, page)
+}
+
+async function listTokenHolderStat(ctx) {
+    const page = await getTokenAnalysisData(ctx);
+    page.list = page.list.map(item => ({ statTime: item.statTime, holderCount: item.holderCount, }));
+    setBody(ctx, page)
+}
+
+async function listTokenUniqueSenderStat(ctx) {
+    const page = await getTokenAnalysisData(ctx);
+    page.list = page.list.map(item => ({ statTime: item.statTime, uniqueSenderCount: item.uniqueSenderCount, }));
+    setBody(ctx, page)
+}
+
+async function listTokenUniqueReceiverStat(ctx) {
+    const page = await getTokenAnalysisData(ctx);
+    page.list = page.list.map(item => ({ statTime: item.statTime, uniqueReceiverCount: item.uniqueReceiverCount, }));
+    setBody(ctx, page)
+}
+
+async function listTokenUniqueParticipantStat(ctx) {
+    const page = await getTokenAnalysisData(ctx);
+    page.list = page.list.map(item => ({ statTime: item.statTime, uniqueParticipantCount: item.uniqueParticipantCount, }));
     setBody(ctx, page)
 }
 
@@ -244,13 +279,67 @@ async function listTokenParticipantTopStat(ctx) {
     setBody(ctx, statInfo)
 }
 
+async function listNFTBalances(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner');
+    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
+
+    const {owner} = ctx.request.query;
+    const {skip, limit} = getPagination(ctx.request.query);
+    const data = await getApiService().nftCheckerService.getNftBalancesForOpenApi({owner, skip, limit});
+    setBody(ctx, data)
+}
+
+async function listNFTTokens(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner', 'contract');
+    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
+    mustBeEnumParamIfPresent(ctx.request.query, 'detail', ['false', 'true']);
+
+    const {owner, contract, detail} = ctx.request.query;
+    if (contract === undefined) {
+        throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
+    }
+    const {skip, limit} = getPagination(ctx.request.query);
+    const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
+
+    if(detail === 'true'){
+        await Promise.all(data?.list?.map(async (item) => {
+            const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract, tokenId: item.tokenId});
+            const data = {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc};
+            lodash.defaults(item, data);
+        }));
+    }
+
+    setBody(ctx, data)
+}
+
+async function getNFTPreview(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
+
+    const {contract, tokenId} = ctx.request.query;
+    if(contract === undefined) {
+        throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
+    }
+    if(tokenId === undefined) {
+        throw new Error(`Invalid parameter <contract> with value [${tokenId}], tokenId is required.`)
+    }
+
+    const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: contract, tokenId});
+    if(!nftInfo) {
+        // throw new Error(`NFT not found.`)
+    }
+    const data = {contract, tokenId, name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc};
+    setBody(ctx, data)
+}
+
 function parseStatParam(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp', 'skip', 'limit');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
 
     const {skip, limit} = getPagination(ctx.request.query);
-    const {intervalType, minTimestamp, maxTimestamp, sort} = ctx.request.query
-    return {skip, limit, intervalType, minTimestamp, maxTimestamp, sort};
+    const {intervalType, minTimestamp, maxTimestamp, sort, contract} = ctx.request.query
+    return {skip, limit, intervalType, minTimestamp, maxTimestamp, sort, contract};
 }
 
 function parseTopStatParam(ctx) {
@@ -259,6 +348,17 @@ function parseTopStatParam(ctx) {
     let {spanType} = ctx.request.query
     spanType = (spanType === undefined || spanType === '24h') ? '1d' : spanType;
     return {spanType};
+}
+
+async function getTokenAnalysisData(ctx){
+    const {skip, limit, minTimestamp, maxTimestamp, sort, contract} = parseStatParam(ctx);
+    if(contract === undefined) {
+        throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
+    }
+
+    const page = await getApiService().dailyTxnQuery.listDailyTokenAnalysis({minTimestamp, maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit, contract});
+    return page;
 }
 
 export async function register(app: Koa, apiServer: ApiServer) {
@@ -314,4 +414,14 @@ export async function register(app: Koa, apiServer: ApiServer) {
     router.get('/statistics/top/token/sender', listTokenSenderTopStat);
     router.get('/statistics/top/token/receiver', listTokenReceiverTopStat);
     router.get('/statistics/top/token/participant', listTokenParticipantTopStat);
+
+    router.get('/statistics/token/holder', listTokenHolderStat);
+    router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
+    router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
+    router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
+
+    // nft assets
+    router.get('/nft/balances', listNFTBalances);
+    router.get('/nft/tokens', listNFTTokens);
+    router.get('/nft/preview', getNFTPreview);
 }

@@ -2,6 +2,7 @@ import {DailyTransaction} from "../model/DailyTransaction";
 import {col, fn, Op} from "sequelize";
 import {DailyCfxTxn} from "../model/CfxTransfer";
 import {DailyTokenTxn, T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
+import {DailyToken, Token} from "../model/Token";
 
 export class DailyTxnQuery{
 
@@ -112,5 +113,52 @@ export class DailyTxnQuery{
         // @ts-ignore
         page.rows.forEach(row=>{row['statTime'] = new Date(row['statTime']).toISOString().replace('T', ' ').substr(0, 19)});
         return {total: page.count.length, list: page.rows};
+    }
+
+    async listDailyTokenAnalysis({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
+                                         skip = 0, limit = 10, contract}) {
+        const token = await Token.findOne({
+            attributes: ['name', 'symbol', 'decimals', 'granularity', 'totalSupply', 'type', 'hex40id'],
+            where: {base32: contract}
+        });
+        if (!token) {
+            throw new Error(`Token not found.`)
+        }
+
+        const queryOptions: any = {
+            attributes: [
+                ['day', 'statTime'],
+                ['uniqueSender', 'uniqueSenderCount'],
+                ['uniqueReceiver', 'uniqueReceiverCount'],
+                ['participants', 'uniqueParticipantCount'],
+                'transferCount',
+                'holderCount',
+            ],
+            order: [['day', sort]],
+            offset: skip,
+            limit,
+            raw: true,
+            logging: msg => console.log(`listDailyTokenTransferParticipantStat: ${msg}`),
+        };
+
+        const conditionArray = [];
+        conditionArray.push({hexId: token.hex40id});
+        if (minTimestamp !== undefined) {
+            conditionArray.push({day: {[Op.gte]: new Date(minTimestamp*1000)}});
+        }
+        if (maxTimestamp !== undefined) {
+            conditionArray.push({day: {[Op.lte]: new Date(maxTimestamp*1000)}});
+        }
+        if(conditionArray.length === 1){
+            queryOptions.where = conditionArray[0];
+        }
+        if(conditionArray.length > 1){
+            queryOptions.where = {[Op.and]: conditionArray};
+        }
+
+        const page: any = await DailyToken.findAndCountAll(queryOptions);
+        // @ts-ignore
+        page.rows.forEach(row=>{row['statTime'] = new Date(row['statTime']).toISOString().replace('T', ' ').substr(0, 19)});
+        return {total: page.count, list: page.rows};
     }
 }

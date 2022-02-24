@@ -484,7 +484,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/nft/checker/balance', async function (ctx) {
         const {ownerAddress} = ctx.request.query
         // const balanceArray = await statApp.nftCheckerService.getNFTBalances({ownerAddress});
-        const balanceArray = await getRegisterNftBalances(ownerAddress);
+        // const balanceArray = await getRegisterNftBalances(ownerAddress);
+        const resp = await statApp.nftCheckerService.getNftBalancesForOpenApi({owner: ownerAddress, limit: 1000});
+        const balanceArray = resp.list.map(item => ({
+            address: item.contract,
+            balance: item.balance,
+            name: {zh: item.name, en: item.name},
+            type: item.name,
+        }));
         ctx.body = {code: 0, data: balanceArray};
     })
 

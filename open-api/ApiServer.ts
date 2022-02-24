@@ -28,6 +28,8 @@ import {MinerBlockHandler} from "../stat/service/streamstat/business/MinerBlockH
 import {AddrCfxTransferHandler} from "../stat/service/streamstat/business/AddrCfxTransferHandler";
 import {TokenTransferHandler} from "../stat/service/streamstat/business/TokenTransferHandler";
 import {RankService} from "../stat/service/RankService";
+import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
+import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -51,6 +53,8 @@ export class ApiService {
     contractCreateQuery: DailyContractCreateQuery;
     cfxHolderQuery: CfxHolderQuery;
     dailyTxnQuery: DailyTxnQuery;
+    nftCheckerService: NFTCheckerService;
+    nftPreviewService: NFTPreviewService;
     addrTransactionHandler : AddrTransactionHandler;
     minerBlockHandler : MinerBlockHandler;
     addrCfxTransferHandler : AddrCfxTransferHandler;
@@ -134,6 +138,8 @@ export class ApiServer {
         apiService.contractCreateQuery = new DailyContractCreateQuery();
         apiService.cfxHolderQuery = new CfxHolderQuery();
         apiService.dailyTxnQuery = new DailyTxnQuery();
+        apiService.nftCheckerService = new NFTCheckerService(apiApp);
+        apiService.nftPreviewService = new NFTPreviewService(apiApp);
         apiService.addrTransactionHandler = new AddrTransactionHandler(apiApp);
         apiService.minerBlockHandler = new MinerBlockHandler(apiApp);
         apiService.addrCfxTransferHandler = new AddrCfxTransferHandler(apiApp);

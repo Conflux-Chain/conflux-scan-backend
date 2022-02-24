@@ -65,20 +65,60 @@ export const abi = [
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "addr",
-        "type": "address"
-      }
-    ],
-    "name": "addressToIdentifier",
-    "outputs": [
-      {
         "internalType": "bytes32",
-        "name": "",
+        "name": "indentifier",
         "type": "bytes32"
+      },
+      {
+        "internalType": "uint64",
+        "name": "votePower",
+        "type": "uint64"
+      },
+      {
+        "internalType": "bytes",
+        "name": "blsPubKey",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "vrfPubKey",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes[2]",
+        "name": "blsPubKeyProof",
+        "type": "bytes[2]"
       }
     ],
-    "stateMutability": "view",
+    "name": "register",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "votePower",
+        "type": "uint64"
+      }
+    ],
+    "name": "increaseStake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "votePower",
+        "type": "uint64"
+      }
+    ],
+    "name": "retire",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -127,60 +167,20 @@ export const abi = [
   {
     "inputs": [
       {
-        "internalType": "uint64",
-        "name": "votePower",
-        "type": "uint64"
+        "internalType": "address",
+        "name": "addr",
+        "type": "address"
       }
     ],
-    "name": "increaseStake",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+    "name": "addressToIdentifier",
+    "outputs": [
       {
         "internalType": "bytes32",
-        "name": "indentifier",
+        "name": "",
         "type": "bytes32"
-      },
-      {
-        "internalType": "uint64",
-        "name": "votePower",
-        "type": "uint64"
-      },
-      {
-        "internalType": "bytes",
-        "name": "blsPubKey",
-        "type": "bytes"
-      },
-      {
-        "internalType": "bytes",
-        "name": "vrfPubKey",
-        "type": "bytes"
-      },
-      {
-        "internalType": "bytes[2]",
-        "name": "blsPubKeyProof",
-        "type": "bytes[2]"
       }
     ],
-    "name": "register",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint64",
-        "name": "votes",
-        "type": "uint64"
-      }
-    ],
-    "name": "retire",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   }
 ]

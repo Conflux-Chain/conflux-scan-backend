@@ -101,15 +101,11 @@ export class NFTPreviewService {
                 return this.getNFTImage({ address, tokenId, method: 'uris', needFetchJson: false,
                     imageUriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url });
             default:
-                // try get image and name by 1155 spec
+                // try 1155
                 let result =  await this.getNFTImage({ address, tokenId });
-                if (result == null) {
-                    // try 721
-                    result = await this.getNFTImage({
-                        address: address,
-                        method: 'tokenURI',
-                        tokenId,
-                    });
+                // try 721
+                if (result === null) {
+                    result = await this.getNFTImage({ address, tokenId, method: 'tokenURI'});
                 }
                 return result;
         }
@@ -118,11 +114,9 @@ export class NFTPreviewService {
     // get NFT name
     private async getNFTName ({
          address,
-         tokenId,
          meta,
     }: {
          address: string;
-         tokenId?: BigInt;
          meta?: any;
     }) {
         try {
@@ -131,13 +125,13 @@ export class NFTPreviewService {
                     return NFTNames.confi[JSON.parse(meta).title.split('_')[0]];
                 case NFTMap.confiCard.address:
                     return {
-                        zh: meta.name || null,
-                        en: meta.name || null,
+                        zh: meta.name,
+                        en: meta.name,
                     };
                 case NFTMap.conDragon.address:
                     return {
-                        zh: meta.name || null,
-                        en: meta.name_en || null,
+                        zh: meta.name,
+                        en: meta.name_en,
                     };
                 case NFTMap.confluxGuardian.address:
                     return {
@@ -153,8 +147,8 @@ export class NFTPreviewService {
                     const response = await superagent.get(zhUri);
                     const responseObj = JSON.parse(response.text);
                     return {
-                        zh: responseObj.name || null,
-                        en: meta.name || null,
+                        zh: responseObj.name,
+                        en: meta.name,
                     };
                 case NFTMap.moonswapGenesis.address:
                     return {
@@ -163,8 +157,8 @@ export class NFTPreviewService {
                     };
                 case NFTMap.conHero.address:
                     return {
-                        zh: meta.name || null,
-                        en: meta.name_en || null,
+                        zh: meta.name,
+                        en: meta.name_en,
                     };
                 case NFTMap.conDragonStone.address:
                     return {
@@ -178,8 +172,8 @@ export class NFTPreviewService {
                     };
                 case NFTMap.shanhaijing.address:
                     return {
-                        zh: meta.name || null,
-                        en: meta.name || null,
+                        zh: meta.name,
+                        en: meta.name,
                     };
                 case NFTMap.shanhaichingSeriesCard.address:
                     return {
@@ -223,107 +217,91 @@ export class NFTPreviewService {
                     };
                 case NFTMap.threeKingdoms.address:
                     return {
-                        zh: meta.name || null,
-                        en: meta.name || null,
+                        zh: meta.name,
+                        en: meta.name,
                     };
                 case NFTMap.epiKProtocolKnowledgeBadge.address:
                     return {
-                        zh: meta.data.title || null,
-                        en: meta.data.title || null,
+                        zh: meta.data.title,
+                        en: meta.data.title,
                     };
                 default:
-                    // by 1155 spec
+                    // try 1155
                     if (meta) {
-                        let zh = meta.name || null;
+                        let zh;
                         if (meta?.localization?.uri) {
                             const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
                             const response = await superagent.get(zhUri);
                             const responseObj = JSON.parse(response.text);
-                            zh = responseObj.name || null;
+                            zh = responseObj.name;
                         }
-                        return { zh, en: meta.name || null };
+                        return { zh: !zh ? meta.name : zh, en: meta.name };
                     }
                     return null;
             }
         } catch (e) {
-            // console.error(e);
             return null;
         }
     };
 
-    private async getNFTImage({
-         address,
-         tokenId,
-         method = 'uri',
-         minHeight = 200,
-         needFetchJson = true,
-         jsonUriFormatter,
-         imageUriFormatter,
-    }: {
-         address: string;
-         tokenId: BigInt;
-         method?: string;
-         minHeight?: number;
-         needFetchJson?: boolean;
-         jsonUriFormatter?: any;
-         imageUriFormatter?: any;
-    }): Promise<NFTInfoType> {
+    private async getNFTImage({address, tokenId, method = 'uri', minHeight = 200, needFetchJson = true, imageUriFormatter}:
+        { address: string, tokenId: BigInt, method?: string, minHeight?: number, needFetchJson?: boolean, imageUriFormatter?: any}
+    ): Promise<NFTInfoType> {
+        let meta;
+        let imageUri;
+        let imageName;
+        let imageDesc;
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
             if (nftObj) {
-                return { imageMinHeight: minHeight, imageUri: nftObj.imageUri, imageName: nftObj.imageName || {} };
+                return {imageMinHeight: minHeight, imageUri: nftObj.imageUri, imageName: nftObj.imageName || {}, imageDesc: nftObj.imageDesc};
             }
 
+            // get uri
             const contract = await this.cfx.Contract({ abi, address });
-            let meta = await contract[method](tokenId);
+            let url = await contract[method](tokenId);
 
-            let imageUri;
-            let imageName;
-            if((typeof meta === 'string') && meta.startsWith('data:application/json;base64')){
-                try {
-                    meta = Buffer.from(meta.substr(29), 'base64').toString();
-                    meta = JSON.parse(meta);
-                    imageUri = meta.image;
-                    imageName = await this.getNFTName({address, tokenId, meta}) || {};
-                } catch (e){
-                    console.error(`nft preview encoded base64`,  e);
-                }
+            // support loot
+            if((typeof url === 'string') && url.startsWith('data:application/json;base64')){
+                meta = JSON.parse(Buffer.from(url.substr(29), 'base64').toString());
+                imageUri = meta.image;
+                imageName = await this.getNFTName({address, meta}) || {};
             } else{
+
+                // process uri
                 try {
-                    meta = JSON.parse(meta);
+                    url = JSON.parse(url);
                 } catch (e){
                 }
                 if (needFetchJson) {
-                    let url = jsonUriFormatter ? jsonUriFormatter(meta)
-                        //@ts-ignore
-                        : meta.indexOf('{id}') > -1 ? meta.replace('{id}', tokenId.toString(16)) : meta;
+                    url = url.indexOf('{id}') > -1 ? url.replace('{id}', tokenId.toString(16)) : url;
                     url = url.startsWith('ipfs://') ? this.replaceIPFSGateway(url) : url;
+
+                    // fetch meta data
                     const response = await superagent.get(url);
                     meta = JSON.parse(response.text);
                     if(meta.Image) meta.image = meta.Image;
                     if(meta.Name) meta.name = meta.Name;
                 }
+
+                // build resp
                 imageUri = imageUriFormatter ? imageUriFormatter(meta) : needFetchJson ? meta.image : meta;
                 imageUri = imageUri.startsWith('ipfs://') ? this.replaceIPFSGateway(imageUri) : imageUri;
                 imageUri = imageUri.startsWith('https://gateway.pinata.cloud') ? this.replacePinataGateway(imageUri) : imageUri;
-                imageName = await this.getNFTName({address, tokenId, meta}) || {};
+                imageName = await this.getNFTName({address, meta}) || {};
             }
-            this.setNFTCacheInfo({ address, tokenId, imageUri, imageName });
+            imageDesc = meta.description;
 
-            return { imageMinHeight: minHeight, imageUri, imageName, errorMessage: meta.error };
+            this.setNFTCacheInfo({ address, tokenId, imageUri, imageName, imageDesc });
         } catch (e) {
-            // console.error(e);
             return null;
         }
+        return { imageMinHeight: minHeight, imageUri, imageName, imageDesc, errorMessage: meta.error };
     };
 
-    private getNFTCacheInfo({
-        address,
-        tokenId,
-    }: {
-        address: string;
-        tokenId: BigInt;
-    }) {
+    private getNFTCacheInfo({ address, tokenId}:
+        { address: string, tokenId: BigInt }
+    ) {
         const nftJson = get(address, tokenId)
         if (nftJson) {
             const nftObj = JSON.parse(nftJson);
@@ -337,21 +315,12 @@ export class NFTPreviewService {
         return null;
     };
 
-    private setNFTCacheInfo({
-        address,
-        tokenId,
-        imageUri,
-        imageName,
-    }: {
-        address: string;
-        tokenId: BigInt;
-        imageUri?: string;
-        imageName?: any;
-    }) {
-        const key = `${address}-${tokenId}`;
+    private setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc}:
+        { address: string, tokenId: BigInt, imageUri?: string, imageName?: any, imageDesc?: any }
+    ) {
         if (imageUri) {
             put(address, tokenId,
-                JSON.stringify({address, tokenId, imageUri, imageName, timeout: +new Date() + 1000 * 60 * 60}));
+                JSON.stringify({address, tokenId, imageUri, imageName, imageDesc, timeout: +new Date() + 1000 * 60 * 60}));
         }
     };
 
@@ -368,5 +337,6 @@ export type NFTInfoType = {
     imageMinHeight: number;
     imageUri: string;
     imageName: any;
+    imageDesc?: any;
     errorMessage?: any;
 } | null;
