@@ -24,7 +24,7 @@ export class StatNotifier {
 
     public static async notifyStat({msg, q}) {
         if (!StatNotifier.filter({msg, q})) {
-            return;
+            return Promise.resolve(false);
         }
         return RedisWrap.sendStreamMessage(msg, q).then();
     }
@@ -32,7 +32,7 @@ export class StatNotifier {
     // stat-block
     public static async notifyStatMinerBlock({epochNumber, epochTimestamp, action, blockList}){
         if (!StatNotifier.SWITCH_STAT_MINER_BLOCK) {
-            return;
+            return Promise.resolve(false);
         }
 
         const blockArray = await FullBlock.findAll({
@@ -62,7 +62,7 @@ export class StatNotifier {
     // stat-block
     public static async notifyStatAddrTransaction({epochNumber, epochTimestamp, action, txnArray}){
         if (!StatNotifier.SWITCH_STAT_ADDR_TRANSACTION) {
-            return;
+            return Promise.resolve(false);
         }
 
         const statInfo = {};
@@ -85,11 +85,11 @@ export class StatNotifier {
     // scan-block
     public static async notifyStatDailyCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         if (!StatNotifier.SWITCH_STAT_DAILY_CFX_TRANSFER) {
-            return;
+            return Promise.resolve(false);
         }
 
         if(!cfxTransferArray?.length){
-            return ;
+            return Promise.resolve(false);
         }
 
         const valueSum = cfxTransferArray.map(row=>row.value).reduce((a,b)=>a+b, 0);
@@ -101,7 +101,7 @@ export class StatNotifier {
     // scan-block
     public static async notifyStatAddrCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         if (!StatNotifier.SWITCH_STAT_ADDR_CFX_TRANSFER) {
-            return;
+            return Promise.resolve(false);
         }
 
         const statInfo = {};
@@ -125,7 +125,7 @@ export class StatNotifier {
     // stat-stat
     public static async notifyStatTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
         if (!StatNotifier.SWITCH_STAT_TOKEN_TRANSFER) {
-            return;
+            return Promise.resolve(false);
         }
         const msg = {epochNumber, epochTimestamp, action, statInfo: tokenTransfer};
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_TOKEN_TRANSFER_Q});
@@ -134,12 +134,12 @@ export class StatNotifier {
     // stat-stat
     public static async notifyStatDailyTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
         if (!StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER) {
-            return;
+            return Promise.resolve(false);
         }
 
         const addrIdArray = Object.keys(tokenTransfer)
         if(!addrIdArray?.length){
-            return ;
+            return Promise.resolve(false);
         }
 
         let transferCntr = 0;
