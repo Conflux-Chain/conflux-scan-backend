@@ -33,6 +33,7 @@ import {PruneNotifier} from "./prune/PruneNotifier";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {Contract} from "../model/Contract";
+import {sleep} from "./tool/ProcessTool";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -194,11 +195,14 @@ export class FullBlockService {
                 }
                 return res;
             }).catch(err=>{
-                console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
+                if (!err.message?.includes('Unknown block number')) {
+                    console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
+                }
                 return []
             }),
         ])
         if (latest_state < minEpochNumber) {
+            await sleep(2_000);
             return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
         }
         if (hashes.length === 0) {
