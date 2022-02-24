@@ -239,8 +239,8 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             const list = await fetchNftBalanceFromDB(contractId, addressIds);
             if (list.length === 0) {
                 // should have at least one record. otherwise code below will clear associated holder.
-                console.log(`nft balance from db return 0 record. skip.`)
-                return;
+                console.log(`nft balance from db return 0 record. skip. ${contractHex40}`)
+                continue;
             }
             const dbHits = new Set<number>();
             for (let nftMint of list) {
