@@ -171,7 +171,7 @@ async function fixEvmPhantomTx() {
     if (cmd !== 'fixPhantom') {
         return;
     }
-    const zero = await getAddrId('0'.padEnd(40, '0'));
+    const zero = await getAddrId('0x'.padEnd(42, '0'));
     console.log(`zero addr id ${zero}`)
     const list = await FullTransaction.findAll({
         limit: 1000, where: {[Op.or]:[{fromId: zero}, {toId: zero}]},
