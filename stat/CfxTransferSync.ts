@@ -203,9 +203,9 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                         (
                             // scan doesn't save gas/storage payment as cfx transfer records.
                             fromPocket !== 'balance' || toPocket !== 'balance'
-                        || (fromSpace === 'native' && toSpace === 'evm')
-                        || (fromSpace === 'evm' && toSpace === 'native')
-                        || (space === 'evm')
+                        // || (fromSpace === 'native' && toSpace === 'evm') // they are isolated by rpc already.
+                        // || (fromSpace === 'evm' && toSpace === 'native')
+                        // || (space === 'evm')
                         )
                     )
                 ) {
