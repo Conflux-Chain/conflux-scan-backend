@@ -194,11 +194,12 @@ export class TokenQuery {
             const addressId = hex40.id;
 
             const hexIdArray = [];
-            const balanceArray = await TokenBalance.findAll({where: {addressId}})
+            const balanceArray = await TokenBalance.findAll({where: {addressId}, order: [['updatedAt', 'desc']]})
             balanceArray.forEach(balance => {
                 hexIdArray.push(balance.contractId)
                 balanceMap[balance.contractId] = balance;
             });
+            // add recent transferred token , in case balance table is not updated in time.
             await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
                 .map(tableName => {
                     TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
