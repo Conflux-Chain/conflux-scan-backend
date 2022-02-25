@@ -181,6 +181,46 @@ export class TokenQuery {
         return {total: response.total, list: tokenArray};
     }
 
+    static async listAccountTokens({ accountAddress }) {
+        const balanceMap = {};
+        const hex40 = await Hex40Map.findOne({where:{hex:format.hexAddress(accountAddress).substr(2)}});
+        if(!hex40) return { total: 0, list: [] };
+        const addressId = hex40.id;
+
+        const hexIdArray = [];
+        const balanceArray = await TokenBalance.findAll({where: {addressId}, order: [['updatedAt', 'desc']]})
+        balanceArray.forEach(balance => {
+            hexIdArray.push(balance.contractId)
+            balanceMap[balance.contractId] = balance;
+        });
+        // add recent transferred token , in case balance table is not updated in time.
+        await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
+            .map(tableName => {
+                TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
+                        where addressId = ${addressId} order by createdAt desc limit 10) tmp;`,
+                    {type: QueryTypes.SELECT,
+                        // logging: console.log
+                    })
+                    .then(transfers => transfers?.forEach(transfer =>
+                        hexIdArray.push(transfer["contractId"])));
+            }));
+
+        if(hexIdArray.length === 0) {
+            return { balanceMap, tokenArray: [] };
+        }
+
+        const options: any = {
+            attributes: ['name','symbol','decimals','base32', 'hex40id', 'iconUrl', 'type'],
+            where: { hex40id: {[Op.in]: hexIdArray}, auditResult: true }, raw: true };
+        const tokenArray = await Token.findAll(options);
+        tokenArray.forEach(t=>{
+            if (t.type?.endsWith('721') || t.type?.endsWith('1155')) {
+                t['isNFT'] = true;
+            }
+        })
+        return {balanceMap, tokenArray};
+    }
+
     static  async listAddress({ accountAddress, where = {}
     } : { accountAddress?: string, where?: object
     } = {}) {

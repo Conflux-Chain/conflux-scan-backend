@@ -253,10 +253,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 }
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
-            if (showLog && logCount < 100) {
-                logCount++
-                console.log(` compute nft balance from DB, list length ${list.length}`)
-            }
+            console.log(` compute nft balance from DB, ${contractHex40} list length ${list.length}`)
             return;
         }
         showLog && console.log(`balance list:`, banList.length)

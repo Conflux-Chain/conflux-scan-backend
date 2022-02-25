@@ -196,16 +196,16 @@ export class BalanceService {
         if (accountBean === null) {
             return {list:[], message: 'account not found:'+hex}
         }
-        const contracts = await TokenQuery.listAddress({accountAddress:base32}).then(obj=>{return obj.list})
-        const tokenList = await Token.findAll({where: {
-            auditResult: true, fetchBalance: true, name: {[Op.ne]:''}, base32: {[Op.in]:contracts}
-        }
-        });
+        const {balanceMap, tokenArray: tokenList} = await TokenQuery.listAccountTokens({accountAddress:base32});
+        const contracts = tokenList.map(t=>t.base32);
+        // fetch real time balance. 'incorrect' nft may return 0.
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []
         lodash.zip(tokenList, banList).forEach(
             ([token,ban], idx) => {
-                ban && resultList.push({
+                // use db balance for nft only
+                const fixBalance = ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0;
+                fixBalance && resultList.push({
                     name: token.name,
                     decimals: token.decimals,
                     symbol: token.symbol,
@@ -213,7 +213,7 @@ export class BalanceService {
                     tokenHex40id: token.hex40id,
                     iconUrl: token.iconUrl,
                     type: token.type,
-                    balance: ban,
+                    balance: fixBalance,
                 })
             }
         )
