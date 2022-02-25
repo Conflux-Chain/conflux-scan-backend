@@ -167,7 +167,7 @@ export class CheckBlockInfo extends Model<ICheckBlockInfo> implements ICheckBloc
     }
 }
 async function fixEvmPhantomTx() {
-    const [,,cmd, doIt] = process.argv
+    const [,,,cmd, doIt] = process.argv
     if (cmd !== 'fixPhantom') {
         return;
     }
