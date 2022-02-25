@@ -203,7 +203,8 @@ export class BalanceService {
         lodash.zip(tokenList, banList).forEach(
             ([token,ban], idx) => {
                 // use db balance for nft only
-                (ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0) && resultList.push({
+                const fixBalance = ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0;
+                fixBalance && resultList.push({
                     name: token.name,
                     decimals: token.decimals,
                     symbol: token.symbol,
@@ -211,7 +212,7 @@ export class BalanceService {
                     tokenHex40id: token.hex40id,
                     iconUrl: token.iconUrl,
                     type: token.type,
-                    balance: ban,
+                    balance: fixBalance,
                 })
             }
         )
