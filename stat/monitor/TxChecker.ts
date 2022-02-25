@@ -174,8 +174,8 @@ async function fixEvmPhantomTx() {
     const zero = await getAddrId('0x'.padEnd(42, '0'));
     console.log(`zero addr id ${zero}`)
     const list = await FullTransaction.findAll({
-        limit: 1000, where: {[Op.or]:[{fromId: zero}, {toId: zero}]},
-        order: [['blockPosition','asc'],['txPosition','asc']]}) // only 84 for that time
+        limit: 1000, where: {},
+        order: [['epoch','asc'],['txPosition','asc']]}) // only 84 for that time
     if (list.length === 1000) {
         console.log(`more records found, ${list.length}, should less than 100.`)
         process.exit(9)
@@ -200,7 +200,9 @@ async function fixEvmPhantomTx() {
             if (fixTx.hash !== receipts[j].transactionHash) {
                 if (doIt) {
                     fixTx.hash = receipts[j].transactionHash
-                    await fixTx.save()
+                    await FullTransaction.update({hash: receipts[j].transactionHash}, {
+                        where: {epoch: fixTx.epoch, txPosition: fixTx.txPosition}, limit: 1,
+                    })
                 }
                 console.log(`${doIt ? '' : 'want'} fix epoch ${fixTx.epoch} , bad ${fixTx.hash}, good ${receipts[j].transactionHash}`)
                 fixCnt ++
