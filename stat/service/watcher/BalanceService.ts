@@ -196,7 +196,8 @@ export class BalanceService {
         if (accountBean === null) {
             return {list:[], message: 'account not found:'+hex}
         }
-        const {list:contracts, balanceMap, tokenArray: tokenList} = await TokenQuery.listAddress({accountAddress:base32});
+        const {balanceMap, tokenArray: tokenList} = await TokenQuery.listAccountTokens({accountAddress:base32});
+        const contracts = tokenList.map(t=>t.base32);
         // fetch real time balance. 'incorrect' nft may return 0.
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
         const resultList = []
