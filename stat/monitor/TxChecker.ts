@@ -9,7 +9,7 @@ import {Conflux, TransactionReceipt, format} from "js-conflux-sdk";
 import {Sequelize,Model,DataTypes,fn,col,Op} from "sequelize";
 import {getAddrId, makeIdV} from "../model/HexMap";
 import {FullBlockService} from "../service/FullBlockService";
-import {patchHttpProvider} from "../service/common/utils";
+import {patchHttpProvider, removeLongData} from "../service/common/utils";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {sleep} from "../service/tool/ProcessTool";
 
@@ -192,7 +192,9 @@ async function fixEvmPhantomTx() {
             const fixTx = list[i];
             i++;
             if (fixTx.epoch !== receipts[j].epochNumber) {
-                console.log(`epoch number not match, db ${fixTx.epoch}, receipt ${receipts[j].epochNumber}`)
+                console.log(`epoch number not match, tx No ${i-1} db ${fixTx.epoch}/${tx.epoch}, receipt ${receipts[j].epochNumber}`)
+                removeLongData(receipts)
+                console.log(receipts)
                 process.exit(8)
             }
             if (fixTx.hash !== receipts[j].transactionHash) {
@@ -224,7 +226,7 @@ async function run() {
     }
     let st = await cfx.getStatus()
     await init();
-    console.log(`----------- network ${st.networkId} -----------`)
+    console.log(`----------- network ${st.networkId} ------ getClientVersion ${(await cfx.getClientVersion())} -----`)
     await fixEvmPhantomTx(); // check command inside.
     let start = parseInt(epochL)
     const veryStart = start
