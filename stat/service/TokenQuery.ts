@@ -186,7 +186,9 @@ export class TokenQuery {
     } = {}) {
 
         let tokenArray;
-        const options: any = { attributes: ['base32', 'hex40id'], where: { auditResult: true }, raw: true };
+        const options: any = {
+            attributes: ['name','symbol','decimals','base32', 'hex40id', 'iconUrl', 'type'],
+            where: { auditResult: true }, raw: true };
         const balanceMap = {};
         if(accountAddress){
             const hex40 = await Hex40Map.findOne({where:{hex:format.hexAddress(accountAddress).substr(2)}});
@@ -216,6 +218,11 @@ export class TokenQuery {
 
         options.where = lodash.defaults(options.where, where);
         tokenArray = await Token.findAll(options);
+        tokenArray.forEach(t=>{
+            if (t.type?.endsWith('721') || t.type?.endsWith('1155')) {
+                t['isNFT'] = true;
+            }
+        })
         const addressArray = tokenArray.map(item => item.base32);
 
         return {total: addressArray.length, list: addressArray, balanceMap, tokenArray};
