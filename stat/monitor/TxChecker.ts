@@ -184,9 +184,13 @@ async function fixEvmPhantomTx() {
     for (let i = 0; i < list.length;) {
         const tx = list[i]
         const [receipts] = await cfx.getEpochReceipts(tx.epoch);
+        if (receipts.length === 0) {
+            console.log(`should have receipts at epoch ${tx.epoch}`)
+            process.exit(8)
+        }
         for (let j=0; j<receipts.length; j++) {
-            const fixTx = tx[i];
-            i++
+            const fixTx = list[i];
+            i++;
             if (fixTx.epoch !== receipts[j].epochNumber) {
                 console.log(`epoch number not match, db ${fixTx.epoch}, receipt ${receipts[j].epochNumber}`)
                 process.exit(8)
