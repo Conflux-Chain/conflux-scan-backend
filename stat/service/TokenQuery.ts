@@ -184,7 +184,9 @@ export class TokenQuery {
     static async listAccountTokens({ accountAddress }) {
         const balanceMap = {};
         const hex40 = await Hex40Map.findOne({where:{hex:format.hexAddress(accountAddress).substr(2)}});
-        if(!hex40) return { total: 0, list: [] };
+        if(!hex40) {
+            return { balanceMap, tokenArray: [] };
+        }
         const addressId = hex40.id;
 
         const hexIdArray = [];
