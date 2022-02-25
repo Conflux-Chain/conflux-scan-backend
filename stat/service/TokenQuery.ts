@@ -186,15 +186,19 @@ export class TokenQuery {
     } = {}) {
 
         let tokenArray;
-        const options: any = { attributes: ['base32'], where: { auditResult: true }, raw: true };
+        const options: any = { attributes: ['base32', 'hex40id'], where: { auditResult: true }, raw: true };
+        const balanceMap = {};
         if(accountAddress){
             const hex40 = await Hex40Map.findOne({where:{hex:format.hexAddress(accountAddress).substr(2)}});
             if(!hex40) return { total: 0, list: [] };
             const addressId = hex40.id;
 
             const hexIdArray = [];
-            await TokenBalance.findAll({attributes: ['contractId'], where: {addressId}})
-                .then(balanceArray => balanceArray?.forEach(balance => hexIdArray.push(balance.contractId)));
+            const balanceArray = await TokenBalance.findAll({attributes: ['contractId'], where: {addressId}})
+            balanceArray.forEach(balance => {
+                hexIdArray.push(balance.contractId)
+                balanceMap[balance.contractId] = balance;
+            });
             await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
                 .map(tableName => {
                     TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
@@ -213,7 +217,7 @@ export class TokenQuery {
         tokenArray = await Token.findAll(options);
         const addressArray = tokenArray.map(item => item.base32);
 
-        return {total: addressArray.length, list: addressArray};
+        return {total: addressArray.length, list: addressArray, balanceMap, tokenArray};
     }
 
     public async audit({address, audit, sponsor, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap,
