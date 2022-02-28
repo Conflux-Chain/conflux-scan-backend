@@ -21,7 +21,7 @@ export class PosQuery {
         this.cfx = cfx
     }
     async posInfo() {
-        const [st, posAccountCount, posEconomics, totalPosRewardDrip, apy] = await Promise.all([
+        const [st, posAccountCount, posEconomics, totalPosRewardDrip, {apy, totalCirculating}] = await Promise.all([
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx.pos.getStatus(),
             PosAccount.count({}),
@@ -47,7 +47,7 @@ export class PosQuery {
                 totalPosStakingTokens:  '0',
                 latestVotedTime:0,pivotDecisionTime:0,lastDistributeBlockTime:0,
                 waitPosEnable: true,
-                apy: 0,
+                apy: 0, totalCirculating,
             }
         }
         const [latestVotedTime,pivotDecisionTime,lastDistributeBlockTime] = await Promise.all([
@@ -69,7 +69,7 @@ export class PosQuery {
             lastDistributeBlock: posEconomics.lastDistributeBlock.toString(),
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
-            apy,
+            apy, totalCirculating,
         }
     }
     async calculateApy() {
@@ -84,7 +84,7 @@ export class PosQuery {
         ]);
         let x = baseR * BigInt(totalPosStakingTokens) / BigInt(totalCirculating);
         const r = Math.sqrt(parseInt(x.toString()))
-        return r;
+        return {apy: r, totalCirculating};
     }
     async listPosAccountReward({skip, limit, identifier, orderBy, order}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
