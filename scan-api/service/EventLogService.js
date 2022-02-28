@@ -1,0 +1,64 @@
+const lodash = require('lodash');
+const { KV, KEY_EVENT_LOG_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+
+class EventLogService {
+  constructor(app) {
+    this.app = app;
+  }
+
+  async queryByTransactionHash({ transactionHash, aggregate }) {
+    const {
+      app: { service },
+    } = this;
+
+    const eventLogArray = await service.conflux.getLogsByTransactionHash(transactionHash);
+    const eventLog = lodash.get(eventLogArray, 0);
+    if (!eventLog) {
+      return { total: 0, list: [] };
+    }
+
+    // XXX: eventLog.epochNumber come from `service.conflux.getLogsByTransactionHash`
+    const epoch = await service.epoch.query({ epochNumber: eventLog.epochNumber }) || {};
+    const result = lodash.forEach(eventLogArray, (event) => lodash.defaults({}, event, {
+      timestamp: epoch.timestamp,
+      syncTimestamp: epoch.timestamp,
+    }));
+    return { total: result.length, list: result, aggregate };
+  }
+
+  async query({ transactionHash, transactionLogIndex }) {
+    const {
+      app: { service },
+    } = this;
+
+    const eventLogArray = await service.conflux.getLogsByTransactionHash(transactionHash);
+    const eventLog = lodash.get(eventLogArray, transactionLogIndex);
+    if (!eventLog) {
+      return null;
+    }
+
+    // XXX: eventLog.epochNumber come from `service.conflux.getLogsByTransactionHash`
+    const epoch = await service.epoch.query({ epochNumber: eventLog.epochNumber }) || {};
+    return lodash.defaults({}, eventLog, {
+      timestamp: epoch.timestamp,
+      syncTimestamp: epoch.timestamp,
+    });
+  }
+
+  async countAndList(options) {
+    const {
+      app: { syncSDK },
+    } = this;
+
+    const rdbSwitch = await KV.getSwitch(KEY_EVENT_LOG_QUERY_RDB_SWITCH);
+    if (rdbSwitch) {
+      return { total: 0, list: [] };
+    }
+
+    const result = await syncSDK.countAndListEventLog(options);
+    result.list = await Promise.all(result.list.map((object) => this.query(object)));
+    return result;
+  }
+}
+
+module.exports = EventLogService;

@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  api:
+    image: node:14.7.0
+    container_name: scan-api${HOST_PORT_SCAN_API}
+    volumes:
+      - ./:/scan
+      - ./log/api:/log
+      - ./data/api:/data
+
+    network_mode: host
+    environment:
+      SERVICE: 'api'
+      PORT: ${HOST_PORT_SCAN_API}
+
+    restart: always
+    command: node /scan/scan-api api${HOST_PORT_SCAN_API}
