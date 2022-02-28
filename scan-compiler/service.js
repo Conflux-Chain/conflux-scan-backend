@@ -182,7 +182,7 @@ class SolCompileService {
     if (!exactMatch) {
       const trimmedDeployedBytecode = runtimeCode.substr(0, runtimeCode.indexOf('a265627a'));
       const trimmedCompiledBytecode = result.runtimeCode.substr(0, result.runtimeCode.indexOf('a265627a'));
-      exactMatch = trimmedDeployedBytecode === trimmedCompiledBytecode;
+      exactMatch = (trimmedDeployedBytecode !== '') && (trimmedCompiledBytecode !== '') && (trimmedDeployedBytecode === trimmedCompiledBytecode);
     }
     const similarity = tool.calculateSimilarity(type.hexToBuffer(runtimeCode), type.hexToBuffer(result.runtimeCode));
     const { abi, bytecode } = contract;
