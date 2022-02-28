@@ -8,7 +8,7 @@ import {
     PosTransaction
 } from "../../model/PoS";
 import {col, fn,Op} from 'sequelize'
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, Drip} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 const lodash = require('lodash')
@@ -85,8 +85,8 @@ export class PosQuery {
         if (!totalPosStakingTokens) {
             return {apy: 0, totalCirculating};
         }
-        let x = BigInt(totalCirculating) / BigInt(totalPosStakingTokens);
-        const r = baseR *  Math.sqrt(parseInt(x.toString()))
+        let x = parseFloat(new Drip(totalCirculating).toCFX()) / parseFloat(new Drip(totalPosStakingTokens).toCFX());
+        const r = baseR *  Math.sqrt(x)
         return {apy: r, totalCirculating};
     }
     async listPosAccountReward({skip, limit, identifier, orderBy, order}) {
