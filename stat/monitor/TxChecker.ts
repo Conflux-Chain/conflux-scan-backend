@@ -7,9 +7,9 @@ import {Transaction} from "js-conflux-sdk/types/rpc"
 import {AddressTransactionIndex, FailedTx, FullBlock, FullTransaction, IFullTransaction} from "../model/FullBlock";
 import {Conflux, TransactionReceipt, format} from "js-conflux-sdk";
 import {Sequelize,Model,DataTypes,fn,col,Op} from "sequelize";
-import {makeIdV} from "../model/HexMap";
+import {getAddrId, makeIdV} from "../model/HexMap";
 import {FullBlockService} from "../service/FullBlockService";
-import {patchHttpProvider} from "../service/common/utils";
+import {patchHttpProvider, removeLongData} from "../service/common/utils";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {sleep} from "../service/tool/ProcessTool";
 
@@ -166,6 +166,53 @@ export class CheckBlockInfo extends Model<ICheckBlockInfo> implements ICheckBloc
         })
     }
 }
+async function fixEvmPhantomTx() {
+    const [,,,cmd, doIt] = process.argv
+    if (cmd !== 'fixPhantom') {
+        return;
+    }
+    const zero = await getAddrId('0x'.padEnd(42, '0'));
+    console.log(`zero addr id ${zero}`)
+    const list = await FullTransaction.findAll({
+        limit: 1000, where: {},
+        order: [['epoch','asc'],['txPosition','asc']]}) // only 84 for that time
+    if (list.length === 1000) {
+        console.log(`more records found, ${list.length}, should less than 100.`)
+        process.exit(9)
+    }
+    let fixCnt = 0
+    for (let i = 0; i < list.length;) {
+        const tx = list[i]
+        const [receipts] = await cfx.getEpochReceipts(tx.epoch);
+        if (receipts.length === 0) {
+            console.log(`should have receipts at epoch ${tx.epoch}`)
+            process.exit(8)
+        }
+        for (let j=0; j<receipts.length; j++) {
+            const fixTx = list[i];
+            i++;
+            if (fixTx.epoch !== receipts[j].epochNumber) {
+                console.log(`epoch number not match, tx No ${i-1} db ${fixTx.epoch}/${tx.epoch}, receipt ${receipts[j].epochNumber}`)
+                removeLongData(receipts)
+                console.log(receipts)
+                process.exit(8)
+            }
+            if (fixTx.hash !== receipts[j].transactionHash) {
+                if (doIt) {
+                    fixTx.hash = receipts[j].transactionHash
+                    await FullTransaction.update({hash: receipts[j].transactionHash}, {
+                        where: {epoch: fixTx.epoch, txPosition: fixTx.txPosition}, limit: 1,
+                    })
+                }
+                console.log(`${doIt ? '' : 'want'} fix epoch ${fixTx.epoch} , bad ${fixTx.hash}, good ${receipts[j].transactionHash}`)
+                fixCnt ++
+            }
+        }
+    }
+    console.log(`fixed count ${fixCnt}, total tx matched in db ${list.length}`)
+    await FullTransaction.sequelize.close()
+    process.exit(0)
+}
 let cfx:Conflux;
 let endEpoch = 0
 let fixed = 0
@@ -181,7 +228,8 @@ async function run() {
     }
     let st = await cfx.getStatus()
     await init();
-    console.log(`----------- network ${st.networkId} -----------`)
+    console.log(`----------- network ${st.networkId} ------ getClientVersion ${(await cfx.getClientVersion())} -----`)
+    await fixEvmPhantomTx(); // check command inside.
     let start = parseInt(epochL)
     const veryStart = start
     const end = endEpoch = parseInt(epochR)
