@@ -1,0 +1,20 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "v1.0.0",
+    "title": "conflux-scan-backend-rest-api-stat",
+    "description": ""
+  },
+  "servers": [],
+  "paths": {
+    "/supply": {
+      "get": {}
+    },
+    "/{path1}": {
+      "get": {}
+    },
+    "/{pathA}/{pathB}": {
+      "get": {}
+    }
+  }
+}

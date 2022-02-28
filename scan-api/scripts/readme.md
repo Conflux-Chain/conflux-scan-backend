@@ -1,0 +1,4 @@
+- script for deploy scan api service
+    - change env file to hide file when deploy it
+    - execute command `./start_scan_api.sh -P your_listen_port`
+    - please diff listen port when deploy multi scan_api docker containers

@@ -161,7 +161,8 @@ export async function initPartialModel(sequelize) {
     await sequelize.authenticate().then(()=>{
         console.log('DB authenticated.')
     }).catch(err=>{
-        console.log(`connect to DB fail`, err)
+        console.log(`connect to DB fail:`, err)
+        process.exit(9)
     });
     hexMapInit(sequelize);
     await Promise.all([

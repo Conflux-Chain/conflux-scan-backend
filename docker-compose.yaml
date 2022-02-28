@@ -1,6 +1,25 @@
 version: "3"
 
 services:
+  api:
+    image: node:14.7.0
+    volumes:
+      - ./:/scan
+      - ./log/api:/log
+      - ./data/api:/data
+    network_mode: host
+    restart: always
+    command: node /scan/scan-api
+
+  compiler:
+    image: node:14.7.0
+    volumes:
+      - ./:/scan
+      - ./log/compiler:/log
+      - ./data/compiler:/cache
+    network_mode: host
+    restart: always
+    command: node /scan/scan-compiler
   stat:
     image: node:14.7.0
     volumes:
