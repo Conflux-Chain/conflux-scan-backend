@@ -77,12 +77,13 @@ export class PosQuery {
         // PoS 质押奖励
         // 现有基础质押利率为 4%，而 PoS 质押奖励在此基础上添加加成系数。设 x=CFX总流通量 /CFX总质押量，加成系数为 √x .
         // 当质押量为流通量的 1/4 时，利率为 8%；当质押量为流通量 1/9 时，利率为 12%；以此类推。当参与投票的总数相对较低时，参与投票的人将获得更多的利益。
-        let baseR = 4
+        let baseR = BigInt(4)
         const [{totalCirculating}, {totalPosStakingTokens}] = await Promise.all([
             this.cfx.getSupplyInfo('latest_confirmed'),
             this.cfx.getPoSEconomics(),
         ]);
-        const r = Math.sqrt(baseR * totalPosStakingTokens / totalCirculating)
+        let x = baseR * BigInt(totalPosStakingTokens) / BigInt(totalCirculating);
+        const r = Math.sqrt(parseInt(x.toString()))
         return r;
     }
     async listPosAccountReward({skip, limit, identifier, orderBy, order}) {
