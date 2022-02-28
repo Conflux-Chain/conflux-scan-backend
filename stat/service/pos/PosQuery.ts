@@ -82,7 +82,10 @@ export class PosQuery {
             this.cfx.getSupplyInfo('latest_confirmed'),
             this.cfx.getPoSEconomics(),
         ]);
-        let x = baseR * BigInt(totalPosStakingTokens) / BigInt(totalCirculating);
+        if (!totalPosStakingTokens) {
+            return {apy: 0, totalCirculating};
+        }
+        let x = baseR *  BigInt(totalCirculating) / BigInt(totalPosStakingTokens);
         const r = Math.sqrt(parseInt(x.toString()))
         return {apy: r, totalCirculating};
     }
