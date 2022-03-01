@@ -444,7 +444,9 @@ async function checkNftDataInDb() {
     console.log(`------------ net ${st.networkId} version ${await cfx.getClientVersion()} latestState ${st.latestState} -----`)
     const [, , cmd, contractIdStr] = process.argv
     if (contractIdStr === 'all') {
-        const tokens = await Token.findAll({where: {type: {[Op.in]:['ERC721','ERC1155']}}, attributes: {exclude:['icon']}})
+        const tokens = await Token.findAll({
+            where: {type: {[Op.in]:['ERC721','ERC1155'], auditResult: true}},
+            attributes: {exclude:['icon']}})
         for (let token of tokens) {
             await checkNftMintForContract(token.hex40id, cfx)
         }
@@ -472,7 +474,11 @@ async function checkNftMintForContract(contractId: number, cfx) {
         try {
             owner = await contract['ownerOf'](tokenId);
         } catch (e) {
-            console.log(`call owner of fail, contract ${contractId} token ${tokenId}: ${e}`)
+            if (e.message.endsWith('reverted')) {
+                console.log(`can not call onwerOf for ${contractId}, ${e}`)
+                return;
+            }
+            console.log(`call owner of fail, contract ${contractId} token ${tokenId}: ${e}`);
             continue
         }
         const onChainOwnerId = await getAddrId(owner)
