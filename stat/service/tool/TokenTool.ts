@@ -6,7 +6,7 @@ import {HASH_CUSTODIAN_TOKEN, redisWrap, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
 import {StatApp} from "../../StatApp";
-import {getAddrId} from "../../model/HexMap";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
@@ -437,13 +437,22 @@ export async function uploadOss(srcFile, ossFilename) {
     })
 }
 async function checkNftDataInDb() {
-    const tool = await initTool();
+    const cfg = await init()
+    const cfx = new Conflux(cfg.conflux)
+    const st = await cfx.getStatus()
     const [,,cmd,contractIdStr] = process.argv
     const contractId = parseInt(contractIdStr)
+    const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
+    if (!token) {
+        console.log(`token not found ${contractId}`)
+        process.exit(8)
+    }
+    const contract = cfx.Contract({abi, address: token.base32});
+    console.log(`token is ${token.name} ${token.symbol}, ${token.base32}`)
     const mintList = await NftMint.findAll({where: {contractId}})
     for (let i = 0; i < mintList.length; i++) {
         const {toId, tokenId} = mintList[i]
-        const owner = await tool.contract.ownerOf(tokenId)
+        const owner = await contract['ownerOf'](tokenId)
         const onChainOwnerId = await getAddrId(owner)
         if (toId != onChainOwnerId) {
             console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner}`)
