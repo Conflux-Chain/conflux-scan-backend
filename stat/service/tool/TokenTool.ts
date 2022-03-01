@@ -1,4 +1,5 @@
 import {Conflux} from "js-conflux-sdk";
+import {Op} from 'sequelize'
 import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {patchHttpProvider} from "../common/utils";
@@ -440,9 +441,22 @@ async function checkNftDataInDb() {
     const cfg = await init()
     const cfx = new Conflux(cfg.conflux)
     const st = await cfx.getStatus()
-    console.log(`------------ ${st.networkId} -----`)
-    const [,,cmd,contractIdStr] = process.argv
-    const contractId = parseInt(contractIdStr)
+    console.log(`------------ net ${st.networkId} version ${await cfx.getClientVersion()} latestState ${st.latestState} -----`)
+    const [, , cmd, contractIdStr] = process.argv
+    if (contractIdStr === 'all') {
+        const tokens = await Token.findAll({where: {type: {[Op.in]:['ERC721','ERC1155']}}, attributes: {exclude:['icon']}})
+        for (let token of tokens) {
+            await checkNftMintForContract(token.hex40id, cfx)
+        }
+    } else {
+        const contractId = parseInt(contractIdStr)
+        await checkNftMintForContract(contractId, cfx)
+    }
+    await NftMint.sequelize.close()
+    await redisWrap.client.end()
+    process.exit(0)
+}
+async function checkNftMintForContract(contractId: number, cfx) {
     const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
     if (!token) {
         console.log(`token not found ${contractId}`)
@@ -469,9 +483,6 @@ async function checkNftDataInDb() {
         }
     }
     console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`)
-    await NftMint.sequelize.close()
-    await redisWrap.client.end()
-    process.exit(0)
 }
 if (module === require.main) {
     const args = process.argv.slice(2)
