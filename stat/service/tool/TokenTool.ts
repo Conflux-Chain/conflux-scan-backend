@@ -455,7 +455,6 @@ async function checkNftDataInDb() {
         await checkNftMintForContract(contractId, cfx)
     }
     await NftMint.sequelize.close()
-    await redisWrap.client.end()
     process.exit(0)
 }
 async function checkNftMintForContract(contractId: number, cfx) {
@@ -465,7 +464,7 @@ async function checkNftMintForContract(contractId: number, cfx) {
         process.exit(8)
     }
     const contract = cfx.Contract({abi, address: token.base32});
-    console.log(`token is ${token.name} ${token.symbol}, ${token.base32}`)
+    console.log(`token is ${token.type} ${token.name} ${token.symbol}, ${token.base32}`)
     const mintList = await NftMint.findAll({where: {contractId}})
     let matched = 0;
     for (let i = 0; i < mintList.length; i++) {
