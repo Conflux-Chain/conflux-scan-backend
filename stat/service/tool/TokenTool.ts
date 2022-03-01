@@ -445,7 +445,7 @@ async function checkNftDataInDb() {
     const [, , cmd, contractIdStr] = process.argv
     if (contractIdStr === 'all') {
         const tokens = await Token.findAll({
-            where: {type: {[Op.in]:['ERC721','ERC1155'], auditResult: true}},
+            where: {type: {[Op.in]:['ERC721','ERC1155']}, auditResult: true},
             attributes: {exclude:['icon']}})
         for (let token of tokens) {
             await checkNftMintForContract(token.hex40id, cfx)
