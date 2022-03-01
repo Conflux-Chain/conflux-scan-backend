@@ -457,7 +457,7 @@ async function checkNftDataInDb() {
         try {
             owner = await contract['ownerOf'](tokenId);
         } catch (e) {
-            console.log(`call owner of fail:`, e)
+            console.log(`call owner of fail, contract ${contractId} token ${tokenId}: ${e}`)
             continue
         }
         const onChainOwnerId = await getAddrId(owner)
