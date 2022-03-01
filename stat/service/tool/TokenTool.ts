@@ -451,6 +451,7 @@ async function checkNftDataInDb() {
     const contract = cfx.Contract({abi, address: token.base32});
     console.log(`token is ${token.name} ${token.symbol}, ${token.base32}`)
     const mintList = await NftMint.findAll({where: {contractId}})
+    let matched = 0;
     for (let i = 0; i < mintList.length; i++) {
         const {toId, tokenId} = mintList[i]
         let owner: any;
@@ -463,9 +464,11 @@ async function checkNftDataInDb() {
         const onChainOwnerId = await getAddrId(owner)
         if (toId != onChainOwnerId) {
             console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner}`)
+        } else {
+            matched ++
         }
     }
-    console.log(`done. in db mint ${mintList.length}, contract ${contractId}`)
+    console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`)
     await NftMint.sequelize.close()
     await redisWrap.client.end()
     process.exit(0)
