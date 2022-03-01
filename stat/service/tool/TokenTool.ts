@@ -440,6 +440,7 @@ async function checkNftDataInDb() {
     const cfg = await init()
     const cfx = new Conflux(cfg.conflux)
     const st = await cfx.getStatus()
+    console.log(`------------ ${st.networkId} -----`)
     const [,,cmd,contractIdStr] = process.argv
     const contractId = parseInt(contractIdStr)
     const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
@@ -452,7 +453,13 @@ async function checkNftDataInDb() {
     const mintList = await NftMint.findAll({where: {contractId}})
     for (let i = 0; i < mintList.length; i++) {
         const {toId, tokenId} = mintList[i]
-        const owner = await contract['ownerOf'](tokenId)
+        let owner: any;
+        try {
+            owner = await contract['ownerOf'](tokenId);
+        } catch (e) {
+            console.log(`call owner of fail:`, e)
+            continue
+        }
         const onChainOwnerId = await getAddrId(owner)
         if (toId != onChainOwnerId) {
             console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner}`)
