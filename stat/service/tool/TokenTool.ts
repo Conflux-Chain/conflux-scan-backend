@@ -1,11 +1,12 @@
 import {Conflux} from "js-conflux-sdk";
-import {Token} from "../../model/Token";
+import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {patchHttpProvider} from "../common/utils";
-import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
+import {HASH_CUSTODIAN_TOKEN, redisWrap, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
 import {StatApp} from "../../StatApp";
+import {getAddrId} from "../../model/HexMap";
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
@@ -435,11 +436,30 @@ export async function uploadOss(srcFile, ossFilename) {
         return res
     })
 }
-
+async function checkNftDataInDb() {
+    const tool = await initTool();
+    const [,,cmd,contractIdStr] = process.argv
+    const contractId = parseInt(contractIdStr)
+    const mintList = await NftMint.findAll({where: {contractId}})
+    for (let i = 0; i < mintList.length; i++) {
+        const {toId, tokenId} = mintList[i]
+        const owner = await tool.contract.ownerOf(tokenId)
+        const onChainOwnerId = await getAddrId(owner)
+        if (toId != onChainOwnerId) {
+            console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner}`)
+        }
+    }
+    console.log(`done. in db mint ${mintList.length}, contract ${contractId}`)
+    await NftMint.sequelize.close()
+    await redisWrap.client.end()
+    process.exit(0)
+}
 if (module === require.main) {
     const args = process.argv.slice(2)
     if (args[0] === 'custodian_token') {
         updateCustodianTokenFlag().then()
+    } else if (args[0] === 'checkNftDataInDb') {
+        checkNftDataInDb().then()
     } else if (args[0] === 'updateTotalSupply') {
         updateTotalSupply().then()
     } else if (args[0] === 'checkTokenFetchBalance') {
