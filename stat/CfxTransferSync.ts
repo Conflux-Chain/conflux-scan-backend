@@ -143,7 +143,7 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
-    const isNewTraceFormat = isNewFormatTrace(traceArray2d)
+    const isNewTraceFormat = true;//isNewFormatTrace(traceArray2d)
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
@@ -192,12 +192,12 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     fromPocket = 'balance';
                     toPocket = 'balance';
                 }
-                if (
+                /*if (
                     value && (fromPocket === 'staking_balance' || fromPocket === 'mint_or_burn' // withdraw, funds and interest
                     || toPocket === 'staking_balance') // deposit
                 ) {
                     // it's staking, save it.
-                } else if (!value
+                } else */if (!value
                     || callType === 'none'
                     || callType === 'callcode'
                     || callType === 'delegatecall'
@@ -207,7 +207,7 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                         isNewTraceFormat &&
                         (
                             // scan doesn't save gas/storage payment as cfx transfer records.
-                            fromPocket !== 'balance' || toPocket !== 'balance'
+                            fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
                         // || (fromSpace === 'native' && toSpace === 'evm') // they are isolated by rpc already.
                         // || (fromSpace === 'evm' && toSpace === 'native')
                         // || (space === 'evm')
