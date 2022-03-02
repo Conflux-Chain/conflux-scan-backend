@@ -6,7 +6,7 @@ import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
-import {idHex40Map, makeIdV} from "./model/HexMap";
+import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
     AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
     CfxTransfer,
@@ -195,6 +195,8 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     fromPocket = 'balance';
                     toPocket = 'balance';
                 }
+                from = patchPocketAddress(fromPocket, from)
+                to = patchPocketAddress(fromPocket, to)
                 /*if (
                     value && (fromPocket === 'staking_balance' || fromPocket === 'mint_or_burn' // withdraw, funds and interest
                     || toPocket === 'staking_balance') // deposit
@@ -226,6 +228,11 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     return
                 }
                 if (type === 'internal_transfer_action') {
+                    if (POCKET_ADDRESS_MAP[fromPocket]) {
+                        type = fromPocket
+                    } else if (POCKET_ADDRESS_MAP[toPocket]) {
+                        type = toPocket
+                    }
                 } else if (type === 'create' || type ==='call') {
                 } else if (type === 'create_result' || type ==='call_result') {
                     //value should be zero, won't trigger
@@ -287,6 +294,7 @@ async function setup() {
     const st = await cfx.getStatus()
     await RedisWrap.connect(cfg.redis)
     cfx0 = cfx;
+    await makeVirtualContractInfo(st.networkId);
     console.log(`----------${st.networkId}---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))
