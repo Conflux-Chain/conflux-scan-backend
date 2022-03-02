@@ -18,6 +18,7 @@ async function fixStaking() {
         where: {addressId: stakingContractAddrId}, order: [['epoch','desc']]
     })
     console.log(` tx count ${txList.length}`)
+    let fixed = 0
     for (let i = 0; i < txList.length; i++) {
         const {epoch, blockPosition: blockIndex, txPosition: txIndex} = txList[i]
         const traces = await getCfxTransferTraces(epoch, false)
@@ -25,21 +26,24 @@ async function fixStaking() {
         const dbX = await CfxTransfer.findAll({
             where: {epoch, blockIndex, txIndex}
         })
-        if (dbX.length === 0 && traces.result.length) {
+        if (traces.result.length === 0) {
+            continue
+        } else if (dbX.length === 0) {
             await CfxTransfer.sequelize.transaction(async dbTx=>{
                 await Promise.all([
                     CfxTransfer.bulkCreate(traces.result, {transaction: dbTx}),
                     AddressCfxTransfer.bulkCreate(traces.addrBeans, {transaction: dbTx}),
                 ])
             })
-            console.log(`fix it, epoch ${epoch} ${blockIndex} ${txIndex}`)
-            break
+            fixed ++
+            console.log(`fixed count ${fixed}, , epoch ${epoch} ${blockIndex} ${txIndex}`)
+            // break
         } else {
             console.log(`skip, epoch ${epoch} ${blockIndex} ${txIndex
             } db cfx-x ${dbX.length}, traces ${traces.result.length}, ${dbX[0]?.createdAt?.toISOString()}`)
         }
     }
-    console.log(`done.`)
+    console.log(`done. fixed ${fixed}`)
 }
 
 if (module === require.main) {
