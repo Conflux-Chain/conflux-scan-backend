@@ -269,8 +269,8 @@ export class ContractQuery {
         contractArray.forEach((contract) => {
             map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
                 name: contract.name,
-                isVirtual: POCKET_ADDRESS_MAP[contract.name] === format.hexAddress(contract.address),
-                v1: POCKET_ADDRESS_MAP[contract.name], v2: format.hexAddress(contract.address),
+                isVirtual: POCKET_ADDRESS_MAP[contract.name] === format.hexAddress(contract.address).toUpperCase(),
+                // v1: POCKET_ADDRESS_MAP[contract.name], v2: format.hexAddress(contract.address),
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
             });
         });
