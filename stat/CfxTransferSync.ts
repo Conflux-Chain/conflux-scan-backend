@@ -109,7 +109,10 @@ export class TaskCfxTransfer extends Model<ITaskCfxTransfer> implements ITaskCfx
     }
 }
 let cfx0:Conflux
-async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
+export function setCfxSync(cfx: Conflux) {
+    cfx0 = cfx
+}
+export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     : Promise<{result?:ICfxTransfer[], code?: number, addrBeans?:any[], pivotHash?:string, parentHash?:string}>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
