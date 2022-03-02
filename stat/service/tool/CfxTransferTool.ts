@@ -4,12 +4,15 @@ import {patchHttpProvider} from "../common/utils";
 import {FullTransaction} from "../../model/FullBlock";
 import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {getAddrId} from "../../model/HexMap";
-import {getCfxTransferTraces} from "../../CfxTransferSync";
+import {getCfxTransferTraces, setCfxSync} from "../../CfxTransferSync";
 
 async function fixStaking() {
     const cfg = await init();
     const cfx = new Conflux(cfg.conflux)
     patchHttpProvider(cfx, cfg.conflux);
+    const st = await cfx.getStatus();
+    console.log(`-----  net ${st.networkId} ------`)
+    setCfxSync(cfx)
     const stakingContractAddrId = await getAddrId('0x0888000000000000000000000000000000000002')
     const txList = await AddressCfxTransfer.findAll({
         where: {addressId: stakingContractAddrId}, order: [['epoch','desc']]
