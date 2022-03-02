@@ -35,7 +35,8 @@ async function fixStaking() {
             console.log(`fix it, epoch ${epoch} ${blockIndex} ${txIndex}`)
             break
         } else {
-            console.log(`skip, epoch ${epoch} ${blockIndex} ${txIndex} db cfx-x ${dbX.length}, traces ${traces.result.length}`)
+            console.log(`skip, epoch ${epoch} ${blockIndex} ${txIndex
+            } db cfx-x ${dbX.length}, traces ${traces.result.length}, ${dbX[0]?.createdAt?.toISOString()}`)
         }
     }
     console.log(`done.`)
