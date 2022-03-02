@@ -1,7 +1,7 @@
 import {init} from "./FixDailyTokenStat";
 import {Conflux, format} from "js-conflux-sdk";
 import {patchHttpProvider} from "../common/utils";
-import {FullTransaction} from "../../model/FullBlock";
+import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
 import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {getAddrId} from "../../model/HexMap";
 import {getCfxTransferTraces, setCfxSync} from "../../CfxTransferSync";
@@ -14,12 +14,12 @@ async function fixStaking() {
     console.log(`-----  net ${st.networkId} ------`)
     setCfxSync(cfx)
     const stakingContractAddrId = await getAddrId('0x0888000000000000000000000000000000000002')
-    const txList = await AddressCfxTransfer.findAll({
+    const txList = await AddressTransactionIndex.findAll({
         where: {addressId: stakingContractAddrId}, order: [['epoch','desc']]
     })
     console.log(` tx count ${txList.length}`)
     for (let i = 0; i < txList.length; i++) {
-        const {epoch, blockIndex, txIndex} = txList[i]
+        const {epoch, blockPosition: blockIndex, txPosition: txIndex} = txList[i]
         const traces = await getCfxTransferTraces(epoch, false)
         // do not fix full cfx table, it will
         const dbX = await CfxTransfer.findAll({
