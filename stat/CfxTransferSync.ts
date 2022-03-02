@@ -189,20 +189,10 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             const traceArr = traces as any[];
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
                 let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space}, type} = traceArr[traceIdx]
-                // doc https://github.com/Conflux-Chain/CIPs/issues/88
-                if (type === 'call' && isNewTraceFormat) {
-                    // 'call' type trace has no fromPocket and toPocket field. Because the pocket is always "balance".
-                    fromPocket = 'balance';
-                    toPocket = 'balance';
-                }
                 from = patchPocketAddress(fromPocket, from)
                 to = patchPocketAddress(fromPocket, to)
-                /*if (
-                    value && (fromPocket === 'staking_balance' || fromPocket === 'mint_or_burn' // withdraw, funds and interest
-                    || toPocket === 'staking_balance') // deposit
-                ) {
-                    // it's staking, save it.
-                } else */if (!value
+                // doc https://github.com/Conflux-Chain/CIPs/issues/88
+                if (!value
                     || callType === 'none'
                     || callType === 'callcode'
                     || callType === 'delegatecall'
@@ -213,9 +203,6 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                         (
                             // scan doesn't save gas/storage payment as cfx transfer records.
                             fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
-                        // || (fromSpace === 'native' && toSpace === 'evm') // they are isolated by rpc already.
-                        // || (fromSpace === 'evm' && toSpace === 'native')
-                        // || (space === 'evm')
                         )
                     )
                 ) {
