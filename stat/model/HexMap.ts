@@ -30,7 +30,7 @@ export async function makeVirtualContractInfo(netId: number) {
         if (isNaN(hexId)) {
            hexId = await makeIdV(hex)
         }
-        const contract = await Contract.findAll({where: {hex40id: hexId}})
+        const contract = await Contract.findOne({where: {hex40id: hexId}})
         if (contract === null) {
             const base32 = format.address(hex, netId)
             await Contract.create({epoch: 0, name, hex40id: hexId, base32})
