@@ -274,6 +274,15 @@ async function setup() {
     } else if (cfxUrl === 'marker') {
         await runMarker();
         return;
+    } else if (cfxUrl === 'cfxCounterHolderMarker') {
+        const cfx = new Conflux(cfg.conflux);
+        patchHttpProvider(cfx, cfg.conflux)
+        await Promise.all([
+            runCounter(),
+            runHolder(cfx),
+            runMarker(),
+        ])
+        return
     }
     const cfx = new Conflux({url: cfxUrl});
     patchHttpProvider(cfx, {url: cfxUrl})
