@@ -3,7 +3,7 @@ import {format} from "js-conflux-sdk";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
-import {Hex40Map, hex40IdMap, makeId} from "../model/HexMap";
+import {Hex40Map, hex40IdMap, makeId, POCKET_ADDRESS_MAP} from "../model/HexMap";
 import {Op} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
@@ -269,6 +269,8 @@ export class ContractQuery {
         contractArray.forEach((contract) => {
             map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
                 name: contract.name,
+                isVirtual: POCKET_ADDRESS_MAP[contract.name] == format.hexAddress(contract.address),
+                // v1: POCKET_ADDRESS_MAP[contract.name], v2: format.hexAddress(contract.address),
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
             });
         });

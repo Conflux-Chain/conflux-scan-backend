@@ -6,7 +6,7 @@ import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
-import {idHex40Map, makeIdV} from "./model/HexMap";
+import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
     AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
     CfxTransfer,
@@ -109,7 +109,10 @@ export class TaskCfxTransfer extends Model<ITaskCfxTransfer> implements ITaskCfx
     }
 }
 let cfx0:Conflux
-async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
+export function setCfxSync(cfx: Conflux) {
+    cfx0 = cfx
+}
+export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     : Promise<{result?:ICfxTransfer[], code?: number, addrBeans?:any[], pivotHash?:string, parentHash?:string}>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
@@ -143,7 +146,7 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
-    const isNewTraceFormat = isNewFormatTrace(traceArray2d)
+    const isNewTraceFormat = true;//isNewFormatTrace(traceArray2d)
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
@@ -185,27 +188,23 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             }
             const traceArr = traces as any[];
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
-                let {action:{outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space}, type} = traceArr[traceIdx]
+                let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space}, type} = traceArr[traceIdx]
+                from = patchPocketAddress(fromPocket, from)
+                to = patchPocketAddress(toPocket, to)
                 // doc https://github.com/Conflux-Chain/CIPs/issues/88
-                if (type === 'call' && isNewTraceFormat) {
-                    // 'call' type trace has no fromPocket and toPocket field. Because the pocket is always "balance".
-                    fromPocket = 'balance';
-                    toPocket = 'balance';
-                }
                 if (!value
                     || callType === 'none'
                     || callType === 'callcode'
                     || callType === 'delegatecall'
                     || callType === 'staticcall'
+                    // both side pocket is set , not equal to 'balance', it's sponsor mechanism.
+                    || (fromPocket && fromPocket !== 'balance' && toPocket && toPocket !== 'balance')
                     ||
                     (
                         isNewTraceFormat &&
                         (
                             // scan doesn't save gas/storage payment as cfx transfer records.
-                            fromPocket !== 'balance' || toPocket !== 'balance'
-                        // || (fromSpace === 'native' && toSpace === 'evm') // they are isolated by rpc already.
-                        // || (fromSpace === 'evm' && toSpace === 'native')
-                        // || (space === 'evm')
+                            fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
                         )
                     )
                 ) {
@@ -218,6 +217,11 @@ async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     return
                 }
                 if (type === 'internal_transfer_action') {
+                    if (POCKET_ADDRESS_MAP[fromPocket]) {
+                        type = fromPocket
+                    } else if (POCKET_ADDRESS_MAP[toPocket]) {
+                        type = toPocket
+                    }
                 } else if (type === 'create' || type ==='call') {
                 } else if (type === 'create_result' || type ==='call_result') {
                     //value should be zero, won't trigger
@@ -272,6 +276,15 @@ async function setup() {
     } else if (cfxUrl === 'marker') {
         await runMarker();
         return;
+    } else if (cfxUrl === 'cfxCounterHolderMarker') {
+        const cfx = new Conflux(cfg.conflux);
+        patchHttpProvider(cfx, cfg.conflux)
+        await Promise.all([
+            runCounter(),
+            runHolder(cfx),
+            runMarker(),
+        ])
+        return
     }
     const cfx = new Conflux({url: cfxUrl});
     patchHttpProvider(cfx, {url: cfxUrl})
@@ -279,6 +292,7 @@ async function setup() {
     const st = await cfx.getStatus()
     await RedisWrap.connect(cfg.redis)
     cfx0 = cfx;
+    await makeVirtualContractInfo(st.networkId);
     console.log(`----------${st.networkId}---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))

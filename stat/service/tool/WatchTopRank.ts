@@ -23,6 +23,7 @@ async function fixCfx(watcher: CfxWatcher, cfx: Conflux) {
     await watchCfx('stakingBalance', watcher)
     await watchCfx('total', watcher)
     console.log(` done.`)
+    process.exit(0)
 }
 
 init().then(config=>{

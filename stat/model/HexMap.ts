@@ -3,8 +3,40 @@ import {incDailyAddressCount} from "./StatAddress";
 import {delLock, waitLock} from "./Lock";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
+import {Contract} from "./Contract";
 const NodeCache = require( "node-cache" );
 
+export const CONTRACT_STAKING = '0x0888000000000000000000000000000000000002'
+// use virtual contract address to make special transfer more readable.
+export const VIRTUAL_STORAGE_COLLATERAL = '0x8f00000000000000000000000000000000000001'
+export const VIRTUAL_SPONSOR_BALANCE_FOR_GAS = '0x8f00000000000000000000000000000000000002'
+export const VIRTUAL_SPONSOR_BALANCE_FOR_COLLATERAL = '0x8f00000000000000000000000000000000000003'
+// https://developer.confluxnetwork.org/conflux-doc/docs/RPCs/trace_rpc#new-added-space-field
+export const POCKET_ADDRESS_MAP = {
+    'staking_balance': CONTRACT_STAKING,
+    'storage_collateral': VIRTUAL_STORAGE_COLLATERAL,
+    'sponsor_balance_for_gas': VIRTUAL_SPONSOR_BALANCE_FOR_GAS,
+    'sponsor_balance_for_collateral': VIRTUAL_SPONSOR_BALANCE_FOR_COLLATERAL,
+}
+export function patchPocketAddress(pocket: string, address: string) {
+    return POCKET_ADDRESS_MAP[pocket] || address;
+}
+export async function makeVirtualContractInfo(netId: number) {
+    // console.log(`makeVirtualContractInfo`)
+    for (let name of Object.keys(POCKET_ADDRESS_MAP)) {
+        // console.log(`check ${name}`)
+        const hex = POCKET_ADDRESS_MAP[name];
+        let hexId = await getAddrId(hex)
+        if (isNaN(hexId)) {
+           hexId = await makeIdV(hex)
+        }
+        const contract = await Contract.findOne({where: {hex40id: hexId}})
+        if (contract === null) {
+            const base32 = format.address(hex, netId)
+            await Contract.create({epoch: 0, name, hex40id: hexId, base32})
+        }
+    }
+}
 /**
  * mapping a hex64 to a number in DB, to decrease data length and make effective index.
  */
