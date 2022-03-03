@@ -511,36 +511,17 @@ export class EpochSync extends SyncBase{
 
     private async getTraceArray(epochNumber) {
         let traceArray = [];
-        // evm space has no trace for now.
-        if (process.env.noTrace) {
-            return traceArray;
-        }
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
         blockArray.forEach((block, idx) => {
             if (!block.transactions.length) {
                 return;
             }
 
-            const blockTrace:any[] = traceArray2d[idx]
+            const blockTrace:any = traceArray2d[idx]
             if (!blockTrace) {
                 // no trace at block
                 return traceArray;
             }
-
-            // skip evm trace
-            const cfxTransactionTraces = [];
-            let txIdx = 0;
-            // @ts-ignore
-            for (let i = 0; i < blockTrace.transactionTraces.length; i += 1) {
-                // @ts-ignore
-                const transactionTracesItem = blockTrace.transactionTraces[i];
-                if (transactionTracesItem.transactionHash === block.transactions[txIdx].hash) {
-                    cfxTransactionTraces.push(transactionTracesItem);
-                    txIdx += 1;
-                }
-            }
-            // @ts-ignore
-            blockTrace.transactionTraces = cfxTransactionTraces;
 
             // assemble traces
             // @ts-ignore
