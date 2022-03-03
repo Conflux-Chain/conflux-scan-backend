@@ -22,9 +22,9 @@ export function patchPocketAddress(pocket: string, address: string) {
     return POCKET_ADDRESS_MAP[pocket] || address;
 }
 export async function makeVirtualContractInfo(netId: number) {
-    console.log(`makeVirtualContractInfo`)
+    // console.log(`makeVirtualContractInfo`)
     for (let name of Object.keys(POCKET_ADDRESS_MAP)) {
-        console.log(`check ${name}`)
+        // console.log(`check ${name}`)
         const hex = POCKET_ADDRESS_MAP[name];
         let hexId = await getAddrId(hex)
         if (isNaN(hexId)) {
