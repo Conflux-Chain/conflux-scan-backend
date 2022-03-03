@@ -197,6 +197,8 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     || callType === 'callcode'
                     || callType === 'delegatecall'
                     || callType === 'staticcall'
+                    // both side pocket is set , not equal to 'balance', it's sponsor mechanism.
+                    || (!fromPocket && fromPocket !== 'balance' && !toPocket && toPocket !== 'balance')
                     ||
                     (
                         isNewTraceFormat &&
