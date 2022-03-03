@@ -46,11 +46,11 @@ services:
     command: node /stat-root/stat/dist/StreamSync.js
   cfxCounterHolderMarker:
     image: node:14.7.0
-      network_mode: host
-      restart: always
-      volumes:
-        - ./:/stat-root
-      command: node /stat-root/stat/dist/CfxTransferSync.js cfxCounterHolderMarker
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/CfxTransferSync.js cfxCounterHolderMarker
   bill:
     image: node:14.7.0
     network_mode: host
