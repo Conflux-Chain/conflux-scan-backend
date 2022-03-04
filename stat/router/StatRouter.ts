@@ -6,7 +6,7 @@ import {Context} from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import bodyParser = require("koa-bodyparser");
-import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
+import {IS_EVM, KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
@@ -242,17 +242,26 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.set('Content-disposition', 'attachment; filename=' + name + '.csv')
         ctx.set('Content-type', 'text/csv')
         const s = []
-
-        s.push(lang === 'cn' ? '序号,地址,地址名称,余额,质押,总和,百分比,交易数'
-            : 'rank,address,address name,balance,staking,total,percent,transactionCount')
+        const isEvm = await KV.getString(IS_EVM, '')
+        if (isEvm) {
+            s.push(lang === 'cn' ? '序号,地址,地址名称,余额百分比,交易数'
+                : 'rank,address,address name,balance,percent,transactionCount')
+        } else {
+            s.push(lang === 'cn' ? '序号,地址,地址名称,余额,质押,总和,百分比,交易数'
+                : 'rank,address,address name,balance,staking,total,percent,transactionCount')
+        }
         s.push('\n');
         list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
-            s.push(row.base32address); s.push(',') // base32
+            s.push(isEvm ? row.hex : row.base32address); s.push(',') // base32
             s.push(row.name); s.push(',') // name
             s.push(row.value2); s.push(',') // balance
-            s.push(row.value3); s.push(',') // staking
-            s.push(row.value4); s.push(',') // total
+            if (!isEvm) {
+                s.push(row.value3);
+                s.push(',') // staking
+                s.push(row.value4);
+                s.push(',') // total
+            }
             s.push(row.percent); s.push(',') // percent
             s.push(row.valueN); // s.push(',')     // tx count
 

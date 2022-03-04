@@ -43,7 +43,9 @@ module.exports = {
       address: {
         1029: 'cfx:aca514ancmbdu9u349u4m7d0u4jjdv83pyxbdunbz7', // 0x81bbe80b1282387e19d7e1a57476869081c7d965
         1: 'cfxtest:aca514ancmbdu9u349u4m7d0u4jjdv83py3muarnv1', // 0x81bbe80b1282387e19d7e1a57476869081c7d965
+        71: '0xbce4c81c526bd26d96378690c4f404b0ee573c52', // 0xbce4c81c526bd26d96378690c4f404b0ee573c52
         8888: 'net8888:aca514ancmbdu9u349u4m7d0u4jjdv83pyk5mtkf5u', // 0x81bbe80b1282387e19d7e1a57476869081c7d965
+        8889: '0xb5a10342a1594b11bfe305c45ce5b136a51789ff', // 0xb5a10342a1594b11bfe305c45ce5b136a51789ff
       },
     },
     {
