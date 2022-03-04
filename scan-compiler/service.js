@@ -179,10 +179,16 @@ class SolCompileService {
       throw new error.ContractDecompileError(e);
     });
     let exactMatch = runtimeCode === result.runtimeCode;
-    if (!exactMatch) {
-      const trimmedDeployedBytecode = runtimeCode.substr(0, runtimeCode.indexOf('a265627a'));
-      const trimmedCompiledBytecode = result.runtimeCode.substr(0, result.runtimeCode.indexOf('a265627a'));
-      exactMatch = (trimmedDeployedBytecode !== '') && (trimmedCompiledBytecode !== '') && (trimmedDeployedBytecode === trimmedCompiledBytecode);
+    // filter mata data hash, that is bzzr1 hash or ipfs hash
+    if(!exactMatch){
+      const mataDataHashPrefixArray = ['a265627a7a723158', 'a2646970667358'];
+      mataDataHashPrefixArray.forEach(prefix => {
+        if (!exactMatch && (runtimeCode.indexOf(prefix) !== -1)) {
+          const trimmedDeployedBytecode = runtimeCode.substr(0, runtimeCode.indexOf(prefix));
+          const trimmedCompiledBytecode = result.runtimeCode.substr(0, result.runtimeCode.indexOf(prefix));
+          exactMatch = (trimmedDeployedBytecode !== '') && (trimmedCompiledBytecode !== '') && (trimmedDeployedBytecode === trimmedCompiledBytecode);
+        }
+      });
     }
     const similarity = tool.calculateSimilarity(type.hexToBuffer(runtimeCode), type.hexToBuffer(result.runtimeCode));
     const { abi, bytecode } = contract;
