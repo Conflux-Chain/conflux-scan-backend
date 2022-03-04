@@ -14,6 +14,7 @@ const lodash = require('lodash');
 const CONST = require('./common/constant');
 const {Contract} = require("../model/Contract");
 const {ContractVerify} = require("../model/ContractVerify");
+const abi = require('./tool/abi');
 
 export class ContractQuery {
     protected app: any;
@@ -294,17 +295,37 @@ export class ContractQuery {
         return {total: addressArray.length, map};
     }
 
-    private async queryImplementation(base32){
-        const{ cfx, cfxSDK } = this.app;
+    private async queryImplementation(base32) {
+        const {cfx, cfxSDK} = this.app;
         const sdk = cfxSDK || cfx;
-        let result = { proxy: false };
+        let result = {proxy: false};
 
-        const implementation = await sdk.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT);
-        if(implementation === null) return result;
-        const hex40 = await Hex40Map.findOne({where: {hex: implementation.substr(26)}, raw: true});
-        if(hex40 === null) return result;
+        const [implementation, beacon] = await Promise.all([
+            sdk.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT),
+            sdk.getStorageAt(base32, CONST.POSITION_BEACON_SLOT),
+        ]);
+
+        let implHex40;
+        if (implementation !== null && implementation !== CONST.ZERO_VALUE_IN_SLOT) {
+            implHex40 = implementation.substr(26);
+        }
+        if (beacon !== null && beacon !== CONST.ZERO_VALUE_IN_SLOT) {
+            const contract = sdk.Contract({abi});
+            const impl = await contract.implementation()
+                .call({to: `0x${beacon.substr(26)}`}, undefined)
+                .catch(() => undefined);
+            implHex40 = format.hexAddress(impl).substr(2)
+        }
+        if (implHex40 === null) return result;
+
+        const hex40 = await Hex40Map.findOne({where: {hex: implHex40}, raw: true});
+        if (hex40 === null) return result;
+
         const address = format.address(`0x${hex40.hex}`, this.app?.networkId);
-
-        return lodash.assign(result, {proxy: true, implementation: address, proxyPattern: "OpenZeppelin's Unstructured Storage"});
+        return lodash.assign(result, {
+            proxy: true,
+            implementation: address,
+            proxyPattern: "OpenZeppelin's Unstructured Storage"
+        });
     }
 }

@@ -174,4 +174,17 @@ module.exports = [
     stateMutability:'view',
     type:'function'
   }, // 165
+  {
+    inputs: [],
+    name: 'implementation',
+    outputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address'
+      }
+    ],
+    stateMutability: 'view',
+    type: 'function'
+  }, // beacon
 ];
