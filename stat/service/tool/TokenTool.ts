@@ -1,11 +1,13 @@
 import {Conflux} from "js-conflux-sdk";
-import {Token} from "../../model/Token";
+import {Op} from 'sequelize'
+import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {patchHttpProvider} from "../common/utils";
-import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
+import {HASH_CUSTODIAN_TOKEN, redisWrap, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
 import {StatApp} from "../../StatApp";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
@@ -435,11 +437,64 @@ export async function uploadOss(srcFile, ossFilename) {
         return res
     })
 }
-
+async function checkNftDataInDb() {
+    const cfg = await init()
+    const cfx = new Conflux(cfg.conflux)
+    const st = await cfx.getStatus()
+    console.log(`------------ net ${st.networkId} version ${await cfx.getClientVersion()} latestState ${st.latestState} -----`)
+    const [, , cmd, contractIdStr] = process.argv
+    if (contractIdStr === 'all') {
+        const tokens = await Token.findAll({
+            where: {type: {[Op.in]:['ERC721','ERC1155']}, auditResult: true},
+            attributes: {exclude:['icon']}})
+        for (let token of tokens) {
+            await checkNftMintForContract(token.hex40id, cfx)
+        }
+    } else {
+        const contractId = parseInt(contractIdStr)
+        await checkNftMintForContract(contractId, cfx)
+    }
+    await NftMint.sequelize.close()
+    process.exit(0)
+}
+async function checkNftMintForContract(contractId: number, cfx) {
+    const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
+    if (!token) {
+        console.log(`token not found ${contractId}`)
+        process.exit(8)
+    }
+    const contract = cfx.Contract({abi, address: token.base32});
+    console.log(`token is ${token.type} ${token.name} ${token.symbol}, ${token.base32}`)
+    const mintList = await NftMint.findAll({where: {contractId}})
+    let matched = 0;
+    for (let i = 0; i < mintList.length; i++) {
+        const {toId, tokenId} = mintList[i]
+        let owner: any;
+        try {
+            owner = await contract['ownerOf'](tokenId);
+        } catch (e) {
+            if (e.message.endsWith('reverted') || e.message.includes('hex length to large') || e.message.includes('length not match')) {
+                console.log(`can not call ownerOf for ${contractId}, ${e} ${e.data || ''}`)
+                return;
+            }
+            console.log(`call owner of fail, contract ${contractId} token ${tokenId}: ${e}`);
+            continue
+        }
+        const onChainOwnerId = await getAddrId(owner)
+        if (toId != onChainOwnerId) {
+            console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner}`)
+        } else {
+            matched ++
+        }
+    }
+    console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`)
+}
 if (module === require.main) {
     const args = process.argv.slice(2)
     if (args[0] === 'custodian_token') {
         updateCustodianTokenFlag().then()
+    } else if (args[0] === 'checkNftDataInDb') {
+        checkNftDataInDb().then()
     } else if (args[0] === 'updateTotalSupply') {
         updateTotalSupply().then()
     } else if (args[0] === 'checkTokenFetchBalance') {
