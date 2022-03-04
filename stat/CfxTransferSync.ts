@@ -365,7 +365,7 @@ let cfxWatcher:CfxWatcher;
 async function holder() {
     const list = await CfxUser.findAll({order:[['id','asc']], limit: 100})
     if (list.length === 0) {
-        console.log(` ${new Date().toISOString()} cfx user table is empty.`)
+        console.log(`HOLDER: cfx user table is empty.`)
         await sleep(5_000)
         return;
     }
@@ -414,7 +414,7 @@ async function marker() {
         return;
     }
     if (top.epoch === preMarkEpoch) {
-        console.log(` no [NEW] task info in db, pre mark ${preMarkEpoch}. ${minUnderGoingTask.epoch}, ${maxFinished.epoch}`)
+        console.log(`MARKER: no [NEW] task info in db, pre mark ${preMarkEpoch}. ${minUnderGoingTask.epoch}, ${maxFinished.epoch}`)
         await sleep(5_000)
         return;
     }
@@ -429,7 +429,7 @@ async function counter() {
         order: [['id','asc']], limit: 1000
     })
     if (list.length === 0) {
-        console.log(` ${new Date().toISOString()} cfx count table is empty.`)
+        console.log(`COUNTER: cfx count table is empty.`)
         await sleep(5_000)
         return;
     }
