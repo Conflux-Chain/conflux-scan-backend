@@ -1,9 +1,11 @@
 import {NFTMap, NFTMapPlus} from "./NFTInfo";
-import {Token} from "../../model/Token";
+import {NftMint, Token} from "../../model/Token";
 import {Op, QueryTypes} from "sequelize";
 import {KEY_NFT_FROM_DB, KV} from "../../model/KV";
 import {getNftBalances} from "../NftService";
 import {Desensitizer} from "../Desensitizer";
+import {convert2base32map, getAddrId, idHex40Map} from "../../model/HexMap";
+import {TokenBalance} from "../../model/Balance";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -104,4 +106,79 @@ export class NFTCheckerService {
             return null;
         }
     };
+
+    public async getNftBalancesForOpenApi({owner, skip = 0, limit = 100}
+                                    : { owner: string, skip?: number, limit?: number }) {
+        const ownerAddressId = await getAddrId(owner);
+        const sqlCountClause = `select count(*) as cntr `;
+        const sqlSelectClause = `select t.base32, b.balance, t.name, t.symbol, t.decimals, t.type, t.webSite, t.iconUrl `;
+        const sqlFromClause = `from token_balance b left join token t on b.contractId = t.hex40id 
+            where b.addressId = ? and (t.type = 'ERC721' or t.type = 'ERC1155') and t.name is not null `;
+        const sqlLimitClause = `limit ?,? `;
+        const sqlOrderClause = `order by b.updatedAt desc `;
+
+        const count = await TokenBalance.sequelize.query(`${sqlCountClause}${sqlFromClause}`, {
+            type: QueryTypes.SELECT,
+            replacements: [ownerAddressId],
+            logging: console.info,
+        }).then(list => {
+            return Number(list[0]['cntr'])
+        })
+        const list = await TokenBalance.sequelize.query(`${sqlSelectClause}${sqlFromClause}${sqlOrderClause}${sqlLimitClause}`, {
+            type: QueryTypes.SELECT,
+            replacements: [ownerAddressId, skip, limit],
+            logging: console.info,
+        }).then(list => list.map(item => ({
+            owner,
+            contract: item['base32'],
+            balance: item['balance'],
+            name: item['name'],
+            symbol: item['symbol'],
+            type: item['type'],
+            webSite: item['webSite'],
+            iconUrl: item['iconUrl'],
+            })
+        ))
+
+        return {total: count ? count : 0, list};
+    }
+
+    public async getNftTokensForOpenApi({owner, contract, skip = 0, limit = 10}
+                                  : { owner?: string, contract: string, skip: number, limit: number }) {
+        const ownerAddressId = owner ? await getAddrId(owner) : owner;
+        const contractAddressId = contract ? await getAddrId(contract): contract;
+
+        const where = {};
+        if (ownerAddressId) {
+            where['toId'] = ownerAddressId
+        }
+        if (contractAddressId) {
+            where['contractId'] = contractAddressId
+        }
+        const options: any = {
+            where,
+            order: [['updatedAt', 'DESC']],
+            offset: skip,
+            limit,
+            raw: true,
+        };
+        const page = await NftMint.findAndCountAll(options);
+        const count = page?.count;
+        const nftMintArray = page?.rows;
+
+        let list = [];
+        if(nftMintArray){
+            list = nftMintArray.map(item => ({contractId: item.contractId, tokenId: item.tokenId}))
+
+            const hexIdSet = new Set(list.map(item => item.contractId));
+            const hexIdHexMap = await idHex40Map([...hexIdSet])
+            const hexIdBase32Map = convert2base32map(hexIdHexMap)
+            list.forEach(item => {
+                item['contract'] = hexIdBase32Map.get(item.contractId);
+                delete item.contractId;
+            });
+        }
+
+        return {total: count ? count : 0, list};
+    }
 }
