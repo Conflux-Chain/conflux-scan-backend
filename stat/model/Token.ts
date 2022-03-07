@@ -27,6 +27,7 @@ export interface IToken{
     // security info
     securityCredits?:number
     auditResult?:boolean
+    destroyed?:boolean
     // extra info
     icon?:string
     iconUrl?:string
@@ -63,6 +64,7 @@ export class Token extends Model<IToken> implements IToken{
     // security info
     securityCredits?:number
     auditResult?:boolean
+    destroyed?:boolean
     // extra info
     icon?:string
     iconUrl?:string
@@ -97,6 +99,7 @@ export class Token extends Model<IToken> implements IToken{
             // security info
             securityCredits: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
             auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             // extra info
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
             iconUrl: {type: DataTypes.STRING(128), allowNull: true, },
