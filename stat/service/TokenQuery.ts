@@ -213,7 +213,7 @@ export class TokenQuery {
 
         const options: any = {
             attributes: ['name','symbol','decimals','base32', 'hex40id', 'iconUrl', 'type'],
-            where: { hex40id: {[Op.in]: hexIdArray}, auditResult: true }, raw: true };
+            where: { hex40id: {[Op.in]: hexIdArray}, auditResult: true, destroyed: false }, raw: true };
         const tokenArray = await Token.findAll(options);
         tokenArray.forEach(t=>{
             if (t.type?.endsWith('721') || t.type?.endsWith('1155')) {
@@ -263,6 +263,10 @@ export class TokenQuery {
     }: { address: string, audit?: boolean, sponsor?: boolean, cexBinance?: string, cexHuobi?: string, cexOKEx?: string,
         dexMoonSwap?: string, trackCoinMarketCap?: string, blackList?: boolean
     }): Promise<object> {
+        const {
+            app: {cfx},
+        } = this;
+
         try {
             const base32 = toBase32(address);
             const token = await Token.findOne({attributes: ['id', 'hex40id'], where: {base32}});
@@ -277,7 +281,9 @@ export class TokenQuery {
             await TokenSecurityAudit.upsert(a);
 
             const securityCredits = await this.calSecurityCredits(base32);
-            const t = blackList ? { securityCredits, auditResult: !blackList } : { securityCredits };
+            const runtimeCode = await cfx.getCode(base32);
+            const destroyed = !runtimeCode || runtimeCode.length <= 2;
+            const t = blackList ? { securityCredits, destroyed, auditResult: !blackList } : { securityCredits, destroyed };
             await Token.update(t,{where: {id: token.id}});
 
             return Promise.resolve({code: 0, msg: `token:${address} audit success`});

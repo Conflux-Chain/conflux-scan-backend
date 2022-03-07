@@ -113,7 +113,7 @@ export class NFTCheckerService {
         const sqlCountClause = `select count(*) as cntr `;
         const sqlSelectClause = `select t.base32, b.balance, t.name, t.symbol, t.decimals, t.type, t.webSite, t.iconUrl `;
         const sqlFromClause = `from token_balance b left join token t on b.contractId = t.hex40id 
-            where b.addressId = ? and (t.type = 'ERC721' or t.type = 'ERC1155') and t.name is not null `;
+            where b.addressId = ? and (t.type = 'ERC721' or t.type = 'ERC1155') and destroyed = 0 and t.name is not null `;
         const sqlLimitClause = `limit ?,? `;
         const sqlOrderClause = `order by b.updatedAt desc `;
 
