@@ -6,8 +6,7 @@ import {AddressCfxTransfer, CfxTransfer, rollupDailyCfxTxn} from "../../model/Cf
 import {getAddrId} from "../../model/HexMap";
 import {getCfxTransferTraces, setCfxSync} from "../../CfxTransferSync";
 
-async function fixStaking() {
-    const cfg = await init();
+async function fixStaking(cfg) {
     const cfx = new Conflux(cfg.conflux)
     patchHttpProvider(cfx, cfg.conflux);
     const st = await cfx.getStatus();
@@ -57,15 +56,19 @@ async function fixDailyCfxTxn() {
     }
     console.log(`done`)
 }
-if (module === require.main) {
-    const[,,cmd] = process.argv
+async function main() {
+    const cfg = await init()
+    const [, , cmd] = process.argv
     if (cmd === 'fix-daily-cfx-txn') {
-        fixDailyCfxTxn().then(()=>{
+        fixDailyCfxTxn().then(() => {
             process.exit(0)
         })
     } else if (cmd === 'fix-staking') {
-        fixStaking().then(() => {
+        fixStaking(cfg).then(() => {
             process.exit(0)
         })
     }
+}
+if (module === require.main) {
+    main().then()
 }
