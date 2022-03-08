@@ -121,7 +121,7 @@ export class TokenTransferHandler extends StatHandler {
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
             const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = StatHandler.getStatRange({statEnd, statDays});
+            const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await TokenTransferStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
             });
@@ -175,9 +175,9 @@ export class TokenTransferHandler extends StatHandler {
                 bizId,
                 statType,
                 statTime: statBegin,
-                transferCntr: item['statTransferCntr'],
-                minEpoch: item['statMinEpoch'],
-                maxEpoch: item['statMaxEpoch'],
+                transferCntr: item['statTransferCntr'] || 0,
+                minEpoch: item['statMinEpoch'] || -1,
+                maxEpoch: item['statMaxEpoch'] || -1,
             };
         });
 

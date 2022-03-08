@@ -139,7 +139,7 @@ export class AddrTransactionHandler extends StatHandler {
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
             const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = StatHandler.getStatRange({statEnd, statDays});
+            const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await AddrTransactionStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
             });
@@ -195,11 +195,11 @@ export class AddrTransactionHandler extends StatHandler {
                 bizId,
                 statType,
                 statTime: statBegin,
-                sendCntr: item['statSendCntr'],
-                recvCntr: item['statRecvCntr'],
-                gasSum: item['statGasSum'],
-                minEpoch: item['statMinEpoch'],
-                maxEpoch: item['statMaxEpoch'],
+                sendCntr: item['statSendCntr'] || 0,
+                recvCntr: item['statRecvCntr'] || 0,
+                gasSum: item['statGasSum'] || 0,
+                minEpoch: item['statMinEpoch'] || -1,
+                maxEpoch: item['statMaxEpoch'] || -1,
             };
         });
 
@@ -231,7 +231,7 @@ export class AddrTransactionHandler extends StatHandler {
             let list = await AddrTransactionStat.findAll(queryOptions);
 
             const {maxTime} = await this.getStatSpan(list);
-            const gasTotal = list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b);
+            const gasTotal = list?.length ? list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b) : 0;
 
             list = await this.convertToAddress(list);
             list.forEach(item => {
@@ -239,7 +239,7 @@ export class AddrTransactionHandler extends StatHandler {
                 delete item['maxEpoch'];
             });
 
-            this.cacheStatInfo[statType] = {maxTime, gasTotal, list};
+            this.cacheStatInfo[statType] = {maxTime, gasTotal: gasTotal || 0, list};
 
             for(const txType of txTypeArray){
                 const orderBy = txType === CONST.TX_TYPE.OUT ? 'sendCntr' : 'recvCntr';
@@ -260,7 +260,7 @@ export class AddrTransactionHandler extends StatHandler {
                 });
 
                 const statInfoKey = `${statType}-${txType}`;
-                this.cacheStatInfo[statInfoKey] = {maxTime, valueTotal, list};
+                this.cacheStatInfo[statInfoKey] = {maxTime, valueTotal: valueTotal || 0, list};
             }
         }
     }

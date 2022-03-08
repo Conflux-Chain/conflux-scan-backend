@@ -7,9 +7,11 @@ import {Epoch} from "../../model/Epoch";
 import {Op} from "sequelize";
 import {idHex40Map} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
+import {sleep} from "../tool/ProcessTool";
 const lodash = require('lodash');
 
 export abstract class StatHandler {
+    protected dbLocked = false;
     protected bizQueue: string;
     protected bizStatInfo: BizStatInfo;
     protected app: any;
@@ -27,7 +29,7 @@ export abstract class StatHandler {
         const that = this
 
         async function repeat() {
-            await that.collect().catch(err => {
+            await that.awaitCollect().catch(err => {
                 console.log(`[type=${that.bizAlias()}]stream_stat_collect fail: `, err);
             });
             setTimeout(repeat, delay);
@@ -67,7 +69,7 @@ export abstract class StatHandler {
         for (const statId of Object.keys(statInfo)) {
             const bucket = await this.checkoutBucket({statId, statTime: epochTimestamp});
             bucket.increase({epochNumber, valArray: statInfo[statId]});
-            this.rollupBucket({statId, bucketArray: [bucket], reservedBuckets: 0});
+            await this.awaitRollupBucket({statId, bucketArray: [bucket], reservedBuckets: 0});
         }
     }
 
@@ -76,7 +78,7 @@ export abstract class StatHandler {
         for (const statId of Object.keys(statInfo)) {
             const bucket = await this.checkoutBucket({statId, statEpoch: epochNumber});
             bucket.decrease({epochNumber, valArray: statInfo[statId]});
-            this.rollupBucket({statId, bucketArray: [bucket], reservedBuckets: 0});
+            await this.awaitRollupBucket({statId, bucketArray: [bucket], reservedBuckets: 0});
         }
     }
 
@@ -108,7 +110,7 @@ export abstract class StatHandler {
         }
 
         if (bucketArray.length > this.reservedBuckets()) {
-            await this.rollupBucket({statId, bucketArray, reservedBuckets: this.reservedBuckets()});
+            await this.awaitRollupBucket({statId, bucketArray, reservedBuckets: this.reservedBuckets()});
         }
 
         return Promise.resolve(bucket);
@@ -139,12 +141,28 @@ export abstract class StatHandler {
 
     protected abstract collect();
 
-    protected static getStatRange({statEnd, statDays}): { rangeBegin: Date, rangeEnd: Date } {
+    protected async awaitRollupBucket({statId, bucketArray, reservedBuckets}) {
+        await this.waitLock();
+        await this.rollupBucket({statId, bucketArray, reservedBuckets}).finally(() => {
+            this.dbLocked = false;
+        });
+    }
+
+    protected async awaitCollect() {
+        await this.waitLock();
+        await this.collect().finally(() => {
+            this.dbLocked = false;
+        });
+    }
+
+    protected getStatRange({statEnd, statDays}): { rangeBegin: Date, rangeEnd: Date } {
         const rangeBegin = new Date(statEnd);
         rangeBegin.setDate(statEnd.getDate() - statDays);
         const rangeEnd = new Date(statEnd);
         rangeEnd.setDate(statEnd.getDate() - (statDays - 1));
-        return {rangeBegin, rangeEnd};
+        const statRange = {rangeBegin, rangeEnd};
+        console.log(`[type=${this.bizAlias()}]getStatRange statRange:${JSON.stringify(statRange)}`);
+        return statRange;
     }
 
     protected async clear({model, statEnd, statDays}) {
@@ -178,16 +196,22 @@ export abstract class StatHandler {
     protected abstract cache();
 
     protected async getStatSpan(list: any[]) {
-        const minEpochNumber = list.map(item => item.minEpoch).sort()[0];
-        const maxEpochNumber = list.map(item => item.maxEpoch).sort().reverse()[0];
+        const minEpochNumber = list.map(item => item.minEpoch).sort()[0] || -1;
+        const maxEpochNumber = list.map(item => item.maxEpoch).sort().reverse()[0] || -1;
         const minEpoch = await Epoch.findOne({where: {epoch: minEpochNumber}});
         const maxEpoch = await Epoch.findOne({where: {epoch: maxEpochNumber}});
-        const minTime = minEpoch.timestamp;
-        const maxTime = maxEpoch.timestamp;
-        return {minEpochNumber, maxEpochNumber, minTime, maxTime};
+        const minTime = minEpoch?.timestamp || null;
+        const maxTime = maxEpoch?.timestamp || null;
+        const statSpan = {minEpochNumber, maxEpochNumber, minTime, maxTime};
+        console.log(`[type=${this.bizAlias()}]getStatSpan statSpan:${JSON.stringify(statSpan)}`);
+        return statSpan;
     }
 
     protected async convertToAddress(list: any[]) {
+        if(!list?.length) {
+            return list;
+        }
+
         const hex40IdSet = new Set<number>();
         list.forEach(item => hex40IdSet.add(item.bizId));
         const idToHex40Map = await idHex40Map(Array.from(hex40IdSet));
@@ -195,6 +219,14 @@ export abstract class StatHandler {
             item['address'] = format.address(`0x${idToHex40Map.get(item.bizId)}`, StatApp.networkId);
             delete item['bizId'];
         });
+
         return list;
+    }
+
+    protected async waitLock() {
+        while (this.dbLocked) {
+            await sleep(100)
+        }
+        this.dbLocked = true;
     }
 }

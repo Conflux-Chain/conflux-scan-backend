@@ -155,7 +155,6 @@ export class ContractQuery {
 
         let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true});
         if(verified !== null){
-            verified.beacon = null;
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => logger.error({ src: 'queryVerify', msg: e.toString() }));
             if(proxyInfo?.implementation){
@@ -330,7 +329,7 @@ export class ContractQuery {
         const hex40 = await Hex40Map.findOne({where: {hex: implHex40}, raw: true});
         if (!hex40) return result;
 
-        const beaconAddress = beaconHex40 ? format.address(beaconHex40, this.app?.networkId) : undefined;
+        const beaconAddress = beaconHex40 ? format.address(beaconHex40, this.app?.networkId) : null;
         const implAddress = format.address(`0x${hex40.hex}`, this.app?.networkId);
         return lodash.assign(result, {
             proxy: true,

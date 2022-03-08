@@ -142,7 +142,7 @@ export class AddrCfxTransferHandler extends StatHandler {
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
             const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = StatHandler.getStatRange({statEnd, statDays});
+            const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await AddrCfxTransferStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
             });
@@ -199,12 +199,12 @@ export class AddrCfxTransferHandler extends StatHandler {
                 bizId,
                 statType,
                 statTime: statBegin,
-                sendCntr: item['statSendCntr'],
-                recvCntr: item['statRecvCntr'],
-                sendValue: item['statSendValue'],
-                recvValue: item['statRecvValue'],
-                minEpoch: item['statMinEpoch'],
-                maxEpoch: item['statMaxEpoch'],
+                sendCntr: item['statSendCntr'] || 0,
+                recvCntr: item['statRecvCntr'] || 0,
+                sendValue: item['statSendValue'] || 0,
+                recvValue: item['statRecvValue'] || 0,
+                minEpoch: item['statMinEpoch'] || -1,
+                maxEpoch: item['statMaxEpoch'] || -1,
             };
         });
 
@@ -250,7 +250,7 @@ export class AddrCfxTransferHandler extends StatHandler {
                 });
 
                 const statInfoKey = `${statType}-${txType}`;
-                this.cacheStatInfo[statInfoKey] = {maxTime, valueTotal, list};
+                this.cacheStatInfo[statInfoKey] = {maxTime, valueTotal: valueTotal || 0, list};
             }
         }
     }
