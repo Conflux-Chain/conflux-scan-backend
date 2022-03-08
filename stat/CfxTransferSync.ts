@@ -13,7 +13,7 @@ import {
     doMark,
     ICfxTransfer,
     markCfxTransferPosition,
-    popPartitionCfxTransfer
+    popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
 import {sleep} from "./service/tool/ProcessTool";
 import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
@@ -293,6 +293,7 @@ async function setup() {
     await RedisWrap.connect(cfg.redis)
     cfx0 = cfx;
     await makeVirtualContractInfo(st.networkId);
+    scheduleRollupDailyCfxTxn().then();
     console.log(`----------${st.networkId}---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))

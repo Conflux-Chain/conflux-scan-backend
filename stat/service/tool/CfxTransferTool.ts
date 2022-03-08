@@ -2,7 +2,7 @@ import {init} from "./FixDailyTokenStat";
 import {Conflux, format} from "js-conflux-sdk";
 import {patchHttpProvider} from "../common/utils";
 import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
-import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
+import {AddressCfxTransfer, CfxTransfer, rollupDailyCfxTxn} from "../../model/CfxTransfer";
 import {getAddrId} from "../../model/HexMap";
 import {getCfxTransferTraces, setCfxSync} from "../../CfxTransferSync";
 
@@ -46,8 +46,26 @@ async function fixStaking() {
     console.log(`done. fixed ${fixed}`)
 }
 
+async function fixDailyCfxTxn() {
+    const[,,cmd,dt] = process.argv
+    const date = new Date(dt)
+    const now = new Date();
+    while (date <= now) {
+        await rollupDailyCfxTxn(date)
+        console.log(`fixed ${date.toISOString()}`)
+        date.setDate(date.getDate()+1)
+    }
+    console.log(`done`)
+}
 if (module === require.main) {
-    fixStaking().then(()=>{
-        process.exit(0)
-    })
+    const[,,cmd] = process.argv
+    if (cmd === 'fix-daily-cfx-txn') {
+        fixDailyCfxTxn().then(()=>{
+            process.exit(0)
+        })
+    } else if (cmd === 'fix-staking') {
+        fixStaking().then(() => {
+            process.exit(0)
+        })
+    }
 }
