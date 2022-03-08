@@ -23,7 +23,7 @@ class ConfluxService {
       app: { CONST },
     } = this;
 
-    const delta = await this.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_MINED) - epochNumber;
+    const delta = await this.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_MINED).then(BigInt) - BigInt(epochNumber);
     for (const [bound, ttl] of histogram) {
       if (delta <= bound) {
         return ttl;
