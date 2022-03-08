@@ -27,8 +27,8 @@ export async function init() {
     await seq.sync({})
     return config
 }
-export async function fixDate(hexId=0) {
-    let dt = new Date('2020-10-28')
+export async function fixDate(hexId=0, dtStr = '2020-10-28') {
+    let dt = new Date(dtStr)
     let now = new Date()
     while( dt < now) {
         if (hexId) {
@@ -36,6 +36,7 @@ export async function fixDate(hexId=0) {
         } else {
             await calcAllRegisteredTokenDailyStat(dt)
         }
+        console.log(`fixed ${dt.toISOString()}`)
         dt.setDate(dt.getDate()+1)
     }
     console.log(`done.`)
@@ -121,37 +122,34 @@ async function dailyTokenTxn() {
     })
 }
 if (require.main === module) {
-    const args = process.argv.slice(2)
+    const [,,cmd,arg1,arg2] = process.argv
     init().then((cfg)=> {
         return RedisWrap.connect(cfg.redis)
     }).then(async ()=>{
-        if (args[0] === 'participants') {
+        if (cmd === 'participants') {
             // node stat/dist/service/tool/ participants
             return fixParticipants()
-        } else if (args[0] === 'topTokens') {
+        } else if (cmd === 'topTokens') {
             return checkAllTokenHolderTop()
-        } else if (args[0] === 'dailyTokenTxn') {
+        } else if (cmd === 'dailyTokenTxn') {
             return dailyTokenTxn()
-        } else if (args[0] === 'test') {
+        } else if (cmd === 'test') {
             return testRank()
-        } else if (args[0] === 'dailyTx') {
-            return syncDailyTxCntr(args[1]);
-        } else if (args[0] === 'amount') {
-            if (args.length === 3) {
-                // node this amount 2021-05-13 1
-                return calcDailyTokenAmount(new Date(args[1]), Number(args[2]))
-            } else {
-                // node this amount 1
-                return fixDateAmount(Number(args[1]));
-            }
-        } else if (args.length === 1) {
+        } else if (cmd === 'dailyTx') {
+            return syncDailyTxCntr(arg1);
+        } else if (cmd === 'amount-dt-hex') {
+            const[,,cmd,dt,hex] = process.argv
+            return calcDailyTokenAmount(new Date(dt), Number(hex))
+        } else if (cmd === 'amount') {
+            return fixDateAmount(Number(arg1));
+        } else if (cmd === 'fix-date') {
             // node this 123
-            return fixDate(Number(args[0]))
-        } else if (args[0]) {
+            return fixDate(Number(arg1))
+        } else if (cmd === 'fix-dt-hex') {
             // node this '2021-04-29' 123
-            return calcDailyToken(new Date(args[0]), Number(args[1]))
-        } else {
-            return fixDate()
+            return calcDailyToken(new Date(arg1), Number(arg2))
+        } else if (cmd ==='fix-dt'){
+            return fixDate(0, arg1)
         }
     }).then(()=>{
         redisWrap.client.end(false)
