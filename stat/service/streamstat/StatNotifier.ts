@@ -92,7 +92,7 @@ export class StatNotifier {
             return Promise.resolve(false);
         }
 
-        const valueSum = cfxTransferArray.map(row=>row.value).reduce((a,b)=>a+b, 0);
+        const valueSum = cfxTransferArray.map(row=>row.value).reduce((a,b)=>a+b, BigInt(0));
         const statInfo = {0: [cfxTransferArray.length, valueSum]};
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_DAILY_CFX_TRANSFER_Q});
@@ -109,12 +109,12 @@ export class StatNotifier {
             if(transfer.fromId !== 0) {
                 statInfo[transfer.fromId] = statInfo[transfer.fromId] === undefined ? [0, 0, 0, 0] :  statInfo[transfer.fromId];
                 statInfo[transfer.fromId][0] = statInfo[transfer.fromId][0] + 1;
-                statInfo[transfer.fromId][2] = statInfo[transfer.fromId][2] + transfer.value;
+                statInfo[transfer.fromId][2] = BigInt(statInfo[transfer.fromId][2]) + transfer.value;
             }
             if(transfer.toId !== 0) {
                 statInfo[transfer.toId] = statInfo[transfer.toId] === undefined ? [0, 0, 0, 0] :  statInfo[transfer.toId];
                 statInfo[transfer.toId][1] = statInfo[transfer.toId][1] + 1;
-                statInfo[transfer.toId][3] = statInfo[transfer.toId][3] + transfer.value;
+                statInfo[transfer.toId][3] = BigInt(statInfo[transfer.toId][3]) + transfer.value;
             }
         });
 

@@ -583,5 +583,10 @@ if (module === require.main) {
     if (process.argv.includes('prune')) {
         PruneNotifier.SWITCH_SYNC_PRUNE = true;
     }
+    if (process.argv.includes('streamStat')) {
+        StatNotifier.SWITCH_STREAM_STAT = true;
+        StatNotifier.SWITCH_STAT_DAILY_CFX_TRANSFER = true;
+        StatNotifier.SWITCH_STAT_ADDR_CFX_TRANSFER = true;
+    }
     setup().then()
 }
