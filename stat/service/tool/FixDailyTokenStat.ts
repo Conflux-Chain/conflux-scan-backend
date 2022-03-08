@@ -122,6 +122,9 @@ async function dailyTokenTxn() {
     })
 }
 if (require.main === module) {
+    main().then()
+}
+async function main() {
     const [,,cmd,arg1,arg2] = process.argv
     init().then((cfg)=> {
         return RedisWrap.connect(cfg.redis)
@@ -149,7 +152,7 @@ if (require.main === module) {
             // node this '2021-04-29' 123
             return calcDailyToken(new Date(arg1), Number(arg2))
         } else if (cmd ==='fix-dt'){
-            return fixDate(0, arg1)
+            await fixDate(0, arg1)
         }
     }).then(()=>{
         redisWrap.client.end(false)
