@@ -20,6 +20,7 @@ import {init} from "./tool/FixDailyTokenStat";
 import {DailyToken} from "../model/Token";
 import {PruneInfo} from "../model/PruneInfo";
 import {topUnique} from "./UniqueAddressStat";
+import {IS_EVM, KV} from "../model/KV";
 
 export class RankService{
     private app: StatApp;
@@ -57,7 +58,7 @@ export class RankService{
     async rankCfxBalance(order:string, limit, updateTxnCache=false) {
         const sql = ` 
             select h.hex, addressId, ${order}, balance as value2, stakingBalance as value3, total as value4 from
-            (select * from cfx_balance order by ${order} desc, cfx_balance.addressId asc limit ?) b
+            (select * from cfx_balance where ${order} > 1 order by ${order} desc, cfx_balance.addressId asc limit ?) b
             left join hex40 h on h.id = b.addressId
             left join address_info ai on ai.id = h.id
         `
@@ -139,7 +140,9 @@ export class RankService{
     // 9999895641981116/5000000000000000*2
     async rankByCfx(order:string, limit, networkId) {
         const list = await this.rankCfxBalance(order, limit)
-        const totalCfx = networkId === 1029 ? 50_0000_0000 : 5000000000000000*2
+        const isEvm = await KV.getString(IS_EVM, '')
+        const totalCfx = isEvm ? (await CfxBalance.sum('balance')) :
+            networkId === 1029 ? 50_0000_0000 : 5000000000000000*2
         list.forEach((b,idx)=>{
             b['rank'] = idx+1
             b['percent'] = b[order] / totalCfx * 100
