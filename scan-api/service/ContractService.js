@@ -260,13 +260,15 @@ class ContractService { // TODO: extends AccountService
     }
 
     let proxy = {};
+    let beacon = {};
     let implementation = {};
     if (verify.exactMatch) {
       proxy = lodash.pick(verified, ['proxy', 'proxyPattern']);
+      beacon = {address: verified.beacon, verify: { exactMatch: verified.beaconVerified }};
       implementation = { address: verified.implementation, verify: { exactMatch: verified.implementationVerified } };
     }
 
-    return lodash.defaults(account, createInfo, announceInfo, { verify }, { proxy }, { implementation });
+    return lodash.defaults(account, createInfo, announceInfo, { verify }, { proxy }, {beacon}, { implementation });
   }
 
   async _countAndListByAddressArrayPlus({
