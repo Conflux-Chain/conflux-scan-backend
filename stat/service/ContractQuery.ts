@@ -4,7 +4,7 @@ import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
 import {Hex40Map, hex40IdMap, makeId, POCKET_ADDRESS_MAP} from "../model/HexMap";
-import {Op} from "sequelize";
+import {json, Op} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
@@ -155,14 +155,21 @@ export class ContractQuery {
 
         let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true});
         if(verified !== null){
+            verified.beacon = null;
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => logger.error({ src: 'queryVerify', msg: e.toString() }));
             if(proxyInfo?.implementation){
+                verified.beacon = proxyInfo.beacon;
                 verified.implementation = proxyInfo.implementation;
             }
         }
 
         // extra info
+        if(verified?.beacon){
+            let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.beacon,
+                    verifyResult: true}, raw: true});
+            verified.beaconVerified = verifiedInfo != null ? true : false;
+        }
         if(verified?.implementation){
             let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.implementation,
                     verifyResult: true}, raw: true});
@@ -305,26 +312,30 @@ export class ContractQuery {
             sdk.getStorageAt(base32, CONST.POSITION_BEACON_SLOT),
         ]);
 
+        let beaconHex40;
         let implHex40;
         if (implementation !== null && implementation !== CONST.ZERO_VALUE_IN_SLOT) {
             implHex40 = implementation.substr(26);
         }
         if (beacon !== null && beacon !== CONST.ZERO_VALUE_IN_SLOT) {
+            beaconHex40 = `0x${beacon.substr(26)}`;
             const contract = sdk.Contract({abi});
             const impl = await contract.implementation()
-                .call({to: `0x${beacon.substr(26)}`}, undefined)
+                .call({to: beaconHex40}, undefined)
                 .catch(() => undefined);
             implHex40 = format.hexAddress(impl).substr(2)
         }
-        if (implHex40 === null) return result;
+        if (!implHex40) return result;
 
         const hex40 = await Hex40Map.findOne({where: {hex: implHex40}, raw: true});
-        if (hex40 === null) return result;
+        if (!hex40) return result;
 
-        const address = format.address(`0x${hex40.hex}`, this.app?.networkId);
+        const beaconAddress = beaconHex40 ? format.address(beaconHex40, this.app?.networkId) : undefined;
+        const implAddress = format.address(`0x${hex40.hex}`, this.app?.networkId);
         return lodash.assign(result, {
             proxy: true,
-            implementation: address,
+            beacon: beaconAddress,
+            implementation: implAddress,
             proxyPattern: "OpenZeppelin's Unstructured Storage"
         });
     }
