@@ -168,7 +168,9 @@ export async function addTransferInfo(arr:{fromId:number, toId:number, contractI
     });
     const map = transferInfoMap;
     await updateTotalSupply(cfx, [...map.keys()])
+    console.log(` ---`)
     await handleTokenTransferWithContract(map, cfx)
+    console.log(` ---`)
     await updateTokenTransferCount(map.keys(), false)
 }
 async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {

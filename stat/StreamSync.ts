@@ -108,7 +108,7 @@ let logCount = 0
  * Automatically generate holder count for token.
  */
 export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, cfx:Conflux) {
-    console.log(`handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
+    console.log(` handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
@@ -122,7 +122,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             console.log(`WANING, addresses are empty, original ids ${addressIds.join(',')}`)
             continue
         }
-        console.log(`find all address : ${existsAddrArr.length === addressIds.length
+        console.log(` find all address : ${existsAddrArr.length === addressIds.length
         } , want ${addressIds.length} acutal ${existsAddrArr.length}`)
         const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
         const contractHex40 = `0x${contractHex}`;
@@ -141,7 +141,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             }
             const dbHits = new Set<number>();
             for (let nftMint of list) {
-                console.log(`user ${nftMint.toId} holds ${nftMint['count']} of ${contractHex40}`)
+                console.log(` user ${nftMint.toId} holds ${nftMint['count']} of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, nftMint.toId, nftMint['count'], false, 0)
                 dbHits.add(nftMint.toId)
             }
@@ -149,11 +149,11 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 if (dbHits.has(hexId)) {
                     continue
                 }
-                console.log(`user ${hexId} holds 0 of ${contractHex40}`)
+                console.log(` user ${hexId} holds 0 of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
         } else {
-            console.log(`util returns balance list ${banList.join(',')} of ${contractHex40}`)
+            console.log(` util returns balance list ${banList.join(',')} of ${contractHex40}`)
             let i = 0
             const tasks = []
             for (const addr of existsAddrArr) {
@@ -163,7 +163,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 i++
             }
             await Promise.all(tasks)
-            console.log(`save balances of contract ${contractHex40}, count ${existsAddrArr.length}`)
+            console.log(` save balances of contract ${contractHex40}, count ${existsAddrArr.length}`)
         }
     }
 }
