@@ -131,7 +131,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         await fetchAll(addressArr, contractHex40, banList, cfx)
         const allIsZeroFromContract = banList.filter(Boolean).length === 0
         if (allIsZeroFromContract) {
-            console.log(` util returns all zero, ${contractHex40}, `, banList.join(','))
+            console.log(` util returns all zero, ${contractHex40}, cid ${contractId}`, banList.join(','))
             const list = await fetchNftBalanceFromDB(contractId, addressIds);
             console.log(` compute nft balance from DB, ${contractHex40} list length ${list.length}`)
             if (list.length === 0) {
@@ -141,7 +141,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             }
             const dbHits = new Set<number>();
             for (let nftMint of list) {
-                console.log(` user ${nftMint.toId} holds ${nftMint['count']} of ${contractHex40}`)
+                console.log(` user ${nftMint.toId} holds ${nftMint['count']} of ${contractHex40} cid ${contractId}`)
                 await BalanceWatcher.saveModel(model, nftMint.toId, nftMint['count'], false, 0)
                 dbHits.add(nftMint.toId)
             }
@@ -153,11 +153,11 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
         } else {
-            console.log(` util returns balance list ${banList.join(',')} of ${contractHex40}`)
+            console.log(` util returns balance list ${banList.join(',')} of ${contractHex40} cid ${contractId}`)
             let i = 0
             const tasks = []
             for (const addr of existsAddrArr) {
-                console.log(` user ${addr} holds ${banList[i]} of ${contractHex40}`)
+                console.log(` user ${addr} holds ${banList[i]} of ${contractHex40} cid ${contractId}`)
                 const t = BalanceWatcher.saveModel(model, addr, banList[i], false, 0)
                 tasks.push(t)
                 i++
@@ -255,7 +255,5 @@ if (require.main === module) {
     process.on('SIGTERM', ()=>process.exit(0));
 }
 /*
-insert into contract_user
-select 0, contractId, fromId, toId, epoch from erc1155transfer_2 where contractId=1829518;
 
  */
