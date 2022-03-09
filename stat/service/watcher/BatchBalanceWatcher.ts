@@ -139,10 +139,15 @@ async function processContractUser(cfx:Conflux, limit:number) {
         console.log(` process fail . `, e)
         return 0;
     }
-
+    const confirmedEpoch = await cfx.getEpochNumber('latest_confirmed');
     const delCnt = await ContractUser.destroy({where: {
-        id: {[Op.in]:list.map(u=>u.id)}
+        id: {[Op.in]:list.map(u=>u.id)}, epoch: {[Op.lte]: confirmedEpoch}
     }});
+    const hasUnconfirmed = list.find(r=>r.epoch>confirmedEpoch);
+    if (hasUnconfirmed) {
+        console.log(`hasUnconfirmed, wait a moment`)
+        await sleep(5_000)
+    }
     const elapse = Date.now() - ms;
     const avg = (elapse / list.length).toPrecision(5)
     console.log(`${new Date().toISOString()} process contract user, count ${list.length
@@ -163,7 +168,7 @@ export async function addTransferInfo(arr:{fromId:number, toId:number, contractI
     });
     const map = transferInfoMap;
     await updateTotalSupply(cfx, [...map.keys()])
-    await handleTokenTransferWithContract(map, true)
+    await handleTokenTransferWithContract(map, cfx)
     await updateTokenTransferCount(map.keys(), false)
 }
 async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {

@@ -1,3 +1,5 @@
+import {sleep} from "./service/tool/ProcessTool";
+
 const lodash = require('lodash');
 import {StatConfig} from "./config/StatConfig";
 import {RedisWrap} from "./service/RedisWrap";
@@ -105,7 +107,7 @@ let logCount = 0
 /**
  * Automatically generate holder count for token.
  */
-export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, showLog = true) {
+export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, cfx:Conflux) {
     console.log(`handleTokenTransferWithContract, size ${mapContract2addressSet.size}`)
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
@@ -125,7 +127,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         const contractHex40 = `0x${contractHex}`;
         const model = new DynamicBalanceModel(contractId)
         let banList = [];
-        await fetchAll(addressArr, contractHex40, banList)
+        await fetchAll(addressArr, contractHex40, banList, cfx)
         const allIsZeroFromContract = banList.filter(Boolean).length === 0
         if (allIsZeroFromContract) {
             console.log(` util returns all zero, ${contractHex40}, `, banList.join(','))
@@ -175,25 +177,37 @@ async function fetchNftBalanceFromDB(contractId: number, addressIds: number[]) {
         // logging: console.log,
     });
 }
-async function fetchAll(addressArr, contractHex40, result:any[]) {
-    let size = 100;
+// replace with batchRPC provided by SDK ?
+async function fetchAll(addressArr, contractHex40, result:any[], cfx:Conflux) {
+    let size = 10;
     do {
         const chunks2d: any[][] = lodash.chunk(addressArr, size);
+        let finished = true
         for (let ids of chunks2d) {
-
             try {
                 const banList = await BatchBalanceWatcher.allTokenContract.getBalances(ids, contractHex40);
                 result.push(...banList);
             } catch (e) {
+                // check network
+                try {
+                    await cfx.getStatus()
+                } catch (networkFail) {
+                    console.log(`network may fail. wait and try again.`, networkFail)
+                    await sleep(5_000)
+                    throw  networkFail;
+                }
                 console.log(` call balance utils contract fail, batch size ${size}, \n [${
                     addressArr.map(addr => format.address(addr, StatApp.networkId)).map(s => `"${s}"`).join('\n')
                 }] \n contract ${format.address(contractHex40, StatApp.networkId)}`, e)
                 size = Math.floor(size / 2)
+                result.length = 0 // reset
+                finished = false
                 break;
             }
-
         }
-        break;
+        if (finished) {
+            break;
+        }
     } while (size > 0)
 }
 async function setupZeroAddressId() {
