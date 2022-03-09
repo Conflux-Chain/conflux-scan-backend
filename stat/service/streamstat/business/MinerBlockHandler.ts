@@ -142,7 +142,7 @@ export class MinerBlockHandler extends StatHandler {
         const statEnd = latestEpoch.timestamp;
         for (const i of lodash.range(this.statLatestDays)) {
             const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = StatHandler.getStatRange({statEnd, statDays});
+            const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await MinerBlockStat.count({
                 where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
             });
@@ -199,12 +199,12 @@ export class MinerBlockHandler extends StatHandler {
                 bizId,
                 statType,
                 statTime: statBegin,
-                blockCntr: item['statBlockCntr'],
-                rewardSum: item['statRewardSum'],
-                txFeeSum: item['statTxFeeSum'],
-                difficultySum: item['statDifficultySum'],
-                minEpoch: item['statMinEpoch'],
-                maxEpoch: item['statMaxEpoch'],
+                blockCntr: item['statBlockCntr'] || 0,
+                rewardSum: item['statRewardSum'] || 0,
+                txFeeSum: item['statTxFeeSum'] || 0,
+                difficultySum: item['statDifficultySum'] || 0,
+                minEpoch: item['statMinEpoch'] || -1,
+                maxEpoch: item['statMaxEpoch'] || -1,
             };
         });
 
@@ -235,12 +235,14 @@ export class MinerBlockHandler extends StatHandler {
             let list = await MinerBlockStat.findAll(queryOptions);
 
             const {minEpochNumber, maxEpochNumber, minTime, maxTime} = await this.getStatSpan(list);
-            const seconds = (new Date(maxTime).getTime() - new Date(minTime).getTime()) / 1000
-            list.forEach(item => { item['hashRate'] = BigFixed(item.difficultySum).div(seconds).toString();});
             const difficultyTotal = await MinerBlockStat.sum('difficultySum', {
                 where: {statType, minEpoch: {[Op.gte]: minEpochNumber}, maxEpoch: {[Op.lte]: maxEpochNumber}},
                 // logging: msg => console.log(`listMinerStat.difficultyTotal: ${msg}`),
             });
+            if(minTime && maxTime){
+                const seconds = (new Date(maxTime).getTime() - new Date(minTime).getTime()) / 1000
+                list.forEach(item => { item['hashRate'] = BigFixed(item.difficultySum).div(seconds).toString();});
+            }
 
             list = await this.convertToAddress(list);
             list.forEach(item => {
@@ -249,7 +251,7 @@ export class MinerBlockHandler extends StatHandler {
                 delete item['maxEpoch'];
             });
 
-            this.cacheStatInfo[statType] = {maxTime, difficultyTotal, list};
+            this.cacheStatInfo[statType] = {maxTime, difficultyTotal: difficultyTotal || 0, list};
         }
     }
 }

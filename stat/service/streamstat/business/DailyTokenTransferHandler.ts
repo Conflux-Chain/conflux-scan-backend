@@ -105,13 +105,11 @@ export class DailyTokenTransferHandler extends StatHandler {
         if(!trigger) return;
 
         const latestEpoch = await Epoch.findOne({order:[['epoch','desc']], limit: 1})
-        const refer = latestEpoch.timestamp;
-        const rangeEnd = new Date(refer);
-        rangeEnd.setHours(0,0,0,0)
-        const rangeStart = new Date(rangeEnd);
-        rangeStart.setDate(rangeEnd.getDate() - 1);
+        const statEnd = new Date(latestEpoch.timestamp);
+        statEnd.setHours(0,0,0,0);
+        const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays: 1});
 
-        const stat = await DailyTokenTransferStat.findOne({where: {statType: '1d', statTime: rangeStart}, raw: true});
+        const stat = await DailyTokenTransferStat.findOne({where: {statType: '1d', statTime: rangeBegin}, raw: true});
         if (stat !== null) return;
 
         const item = await DailyTokenTransferStat.findOne({
@@ -120,15 +118,15 @@ export class DailyTokenTransferHandler extends StatHandler {
                 [fn('min', col('minEpoch')), 'statMinEpoch'],
                 [fn('max', col('maxEpoch')), 'statMaxEpoch'],
             ],
-            where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeStart}}, {statTime: {[Op.lt]: rangeEnd}}]},
+            where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
             raw: true,
         });
         const statDaily =  {
                 statType: '1d',
-                statTime: rangeStart,
-                transferCntr: item['transferDaily'],
-                minEpoch: item['statMinEpoch'],
-                maxEpoch: item['statMaxEpoch'],
+                statTime: rangeBegin,
+                transferCntr: item['transferDaily'] || 0,
+                minEpoch: item['statMinEpoch'] || -1,
+                maxEpoch: item['statMaxEpoch'] || -1,
         };
         await DailyTokenTransferStat.create(statDaily);
     }
