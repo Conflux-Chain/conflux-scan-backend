@@ -116,6 +116,8 @@ async function run() {
         }
     }
 }
+// should check rpc epoch, and only delete confirmed records.
+// in case the sync process uses a rpc with higher epoch than this program.
 async function processContractUser(cfx:Conflux, limit:number) {
     const list = await ContractUser.findAll({
         order: [['id', 'asc']], limit
@@ -124,8 +126,11 @@ async function processContractUser(cfx:Conflux, limit:number) {
         console.log(` ${new Date().toISOString()} empty contract user table .`)
         return 0;
     }
+    // const maxDbId = await ContractUser.findOne({order:[['id','desc']]}).then(res=>res.id)
     const [{id:minId}] = list;
     const maxId = list[list.length - 1].id
+    // if (maxDbId - maxId < 10) {
+    // }
     const ms = Date.now();
     console.log(`${new Date().toISOString()} process ${minId}, ${maxId}, count ${list.length} begin.`)
     try {

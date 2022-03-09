@@ -1,14 +1,24 @@
 const lodash = require('lodash');
 import {StatConfig} from "./config/StatConfig";
-import {
-    RedisWrap
-} from "./service/RedisWrap";
+import {RedisWrap} from "./service/RedisWrap";
 import {Erc20Transfer} from "./model/Erc20Transfer";
 import {Erc1155Transfer} from "./model/Erc1155Transfer";
 import {Erc721Transfer} from "./model/Erc721Transfer";
 import {PruneInfo, PruneType} from "./model/PruneInfo";
-import {UniqueConstraintError, fn, col} from "sequelize"
-import {format} from 'js-conflux-sdk'
+import {col, fn, Op} from "sequelize"
+import {Conflux, format} from 'js-conflux-sdk'
+import {init} from "./service/tool/FixDailyTokenStat";
+import {idHex40Map, makeIdV} from "./model/HexMap";
+import {patchHttpProvider} from "./service/common/utils";
+import {TokenTool} from "./service/tool/TokenTool";
+import {NftMint, Token} from "./model/Token";
+import {NftService} from "./service/NftService";
+import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
+import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
+import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
+import {StatApp} from "./StatApp";
+import {PruneNotifier} from "./service/prune/PruneNotifier";
+
 const CONST = require('./service/common/constant');
 
 const waitUpdateTransferTokens = {
@@ -94,22 +104,23 @@ let logCount = 0
 
 /**
  * Automatically generate holder count for token.
- * @param mapContract2addressSet
  */
 export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, showLog = true) {
+    console.log(`handleTokenTransferWithContract, size ${mapContract2addressSet.size}`)
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
         const contractHex = id2hexMap.get(contractId)
         if (!contractHex) {
-            console.log(`\n handleTokenTransferWithContract, contract hex not found, id ${contractId}`)
+            console.log(`WANING, contract hex not found, contractId id ${contractId}`)
             continue
         }
         const existsAddrArr = addressIds.filter(id=>id2hexMap.get(id))
         if (!existsAddrArr.length) {
-            console.log(`\n addresses are empty, original ids ${addressIds.join(',')}`)
+            console.log(`WANING, addresses are empty, original ids ${addressIds.join(',')}`)
             continue
         }
+        console.log(`find all address : ${existsAddrArr.length === addressIds.length}`)
         const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
         const contractHex40 = `0x${contractHex}`;
         const model = new DynamicBalanceModel(contractId)
@@ -117,7 +128,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         await fetchAll(addressArr, contractHex40, banList)
         const allIsZeroFromContract = banList.filter(Boolean).length === 0
         if (allIsZeroFromContract) {
-            console.log(` util returns all zero, ${contractHex40}, `, banList)
+            console.log(` util returns all zero, ${contractHex40}, `, banList.join(','))
             const list = await fetchNftBalanceFromDB(contractId, addressIds);
             if (list.length === 0) {
                 // should have at least one record. otherwise code below will clear associated holder.
@@ -126,6 +137,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             }
             const dbHits = new Set<number>();
             for (let nftMint of list) {
+                console.log(`user ${nftMint.toId} holds ${nftMint['count']} of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, nftMint.toId, nftMint['count'], false, 0)
                 dbHits.add(nftMint.toId)
             }
@@ -133,39 +145,35 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 if (dbHits.has(hexId)) {
                     continue
                 }
+                console.log(`user ${hexId} holds 0 of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
             console.log(` compute nft balance from DB, ${contractHex40} list length ${list.length}`)
-            return;
-        }
-        showLog && console.log(`balance list:`, banList.length)
-        // showLog && console.log(` address `, addressArr.join(','), '\ncontract', contractHex40)
-        let i = 0
-        const tasks = []
-        for (const addr of existsAddrArr) {
-            const t = BalanceWatcher.saveModel(model, existsAddrArr[i], banList[i], false, 0)
-            tasks.push(t)
-            i++
-        }
-        await Promise.all(tasks)
-        if (showLog && logCount < 100) {
-            logCount++
-            console.log(`\n save balances of contract ${contractId}, count ${existsAddrArr.length
-            }, original addresses length: ${addressIds.length}, balance list length ${banList.length}`)
+        } else {
+            console.log(`util returns balance list ${banList.join(',')} of ${contractHex40}`)
+            let i = 0
+            const tasks = []
+            for (const addr of existsAddrArr) {
+                console.log(`user ${addr} holds ${banList[i]} of ${contractHex40}`)
+                const t = BalanceWatcher.saveModel(model, addr, banList[i], false, 0)
+                tasks.push(t)
+                i++
+            }
+            await Promise.all(tasks)
+            console.log(`save balances of contract ${contractHex40}, count ${existsAddrArr.length}`)
         }
     }
 }
 async function fetchNftBalanceFromDB(contractId: number, addressIds: number[]) {
-    const list = await NftMint.findAll({
+    return NftMint.findAll({
         attributes: [
             'toId', 'contractId',
             [fn('count', col('*')), 'count']
         ],
-        where: {contractId, toId: {[Op.in]:addressIds}},
+        where: {contractId, toId: {[Op.in]: addressIds}},
         raw: true, group: ['toId'],
         // logging: console.log,
-    })
-    return list;
+    });
 }
 async function fetchAll(addressArr, contractHex40, result:any[]) {
     let size = 100;
@@ -192,19 +200,7 @@ async function setupZeroAddressId() {
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
 }
-import {init} from "./service/tool/FixDailyTokenStat";
-import {idHex40Map, makeIdV} from "./model/HexMap";
-import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "./service/common/utils";
-import {TokenTool} from "./service/tool/TokenTool";
-import {NftMint, Token} from "./model/Token";
-import {Op} from "sequelize"
-import {NftService} from "./service/NftService";
-import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
-import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
-import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
-import {StatApp} from "./StatApp";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
+
 let config:StatConfig
 let nftService:NftService
 let zeroAddrId = 0
