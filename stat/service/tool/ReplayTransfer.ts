@@ -8,8 +8,6 @@ import {patchHttpProvider} from "../common/utils";
 import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 
-const args = process.argv.slice(2)
-const from = parseInt(args[0])
 async function loop(from, cfx: Conflux) {
     const batch = 1000
     const model = Erc20Transfer
@@ -48,7 +46,9 @@ async function setup(config){
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     console.log(` util contract ${utilContract}`)
     new BatchBalanceWatcher(cfx,null, utilContract)
-    return loop(from, cfx)
+    //
+    const [from] = process.argv
+    return loop(parseInt(from), cfx)
 }
 init().then((config)=> {
     return setup(config)
