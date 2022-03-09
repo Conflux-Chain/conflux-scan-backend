@@ -226,7 +226,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
              })
         }
     // holder count
-    const banModel = BalanceWatcher.mapModel(tokenBean.symbol, true, tokenBean.hex40id)
+    const banModel = BalanceWatcher.mapModel('', true, tokenBean.hex40id)
     if (banModel) {
         banModel.count({}).then(cnt => {
             return DailyToken.update({holderCount: cnt}, {where: {hexId: tokenHexId, day: start}})

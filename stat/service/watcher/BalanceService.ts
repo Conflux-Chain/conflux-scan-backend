@@ -101,13 +101,13 @@ export class BalanceService {
             app: { tokenTool },
         } = this;
 
-        let token = null;//await Token.findOne({where: {base32: base32}})
+        let token = await Token.findOne({where: {base32: base32}})
         if (token == null) {
             // return {total: 0, list:[], message: 'token not found '+base32, code: 404}
             // @ts-ignore
             token = {hex40id: await getAddrId(base32), symbol: ''}
         }
-        let table = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
+        let table = BalanceWatcher.mapModel('', true, token.hex40id);
         if (table == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 6404}
         }

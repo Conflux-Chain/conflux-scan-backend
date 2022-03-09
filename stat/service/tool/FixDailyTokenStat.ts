@@ -78,7 +78,7 @@ async function testRank() {
     await svc.rankByToken('daily_token','transferCount', 1, 10, 1029);
 }
 async function checkTokenHolderTop(token: Token) {
-    const model = BalanceWatcher.mapModel(token.symbol, true, token.hex40id)
+    const model = BalanceWatcher.mapModel('', true, token.hex40id)
     if (!model) {
         return;
     }
