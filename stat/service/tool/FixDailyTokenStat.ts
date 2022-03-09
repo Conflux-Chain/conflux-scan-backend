@@ -16,8 +16,7 @@ import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
-import {Balance_K} from "../../model/Balance";
-import {redisWrap, RedisWrap, TRANSFER_ADDRESS_Q, xLen} from "../RedisWrap";
+import {redisWrap, RedisWrap, xLen} from "../RedisWrap";
 import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
 export async function init() {
     const config = loadConfig('Prod')
@@ -92,22 +91,15 @@ async function checkTokenHolderTop(token: Token) {
             arr.push(b.addressId)
         }
     })
-    if (arr.length) {
-        await RedisWrap.sendStreamMessage(arr, TRANSFER_ADDRESS_Q)
-        console.log(`want update address ${arr.length} for token ${token.symbol} ${token.name} ${model.getTableName()} ${token.base32}`)
-    } else {
-        console.log(`nothing to update, token ${model.getTableName()}, top count ${list.length}`)
-    }
+    // fixme
 }
 
 async function checkAllTokenHolderTop() {
-    const len1 = await xLen(TRANSFER_ADDRESS_Q)
     const all = await Token.findAll({where: {symbol:{[Op.ne]:null}, fetchBalance: true}})
     for (const token of all) {
         await checkTokenHolderTop(token)
     }
-    const len2 = await xLen(TRANSFER_ADDRESS_Q)
-    console.log(`transfer q len1 ${len1} len2 ${len2}`)
+
 }
 
 async function syncDailyTxCntr(dt){

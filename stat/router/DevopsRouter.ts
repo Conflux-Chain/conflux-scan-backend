@@ -20,14 +20,12 @@ import {
 import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {
-    CFX_TRANSFER_ADDRESS_Q,
     POW_EPOCH_FOR_POS_Q,
     PRUNE_Q, STREAM_STAT_ADDR_CFX_TRANSFER_Q, STREAM_STAT_ADDR_TRANSACTION_Q,
     STREAM_STAT_DAILY_CFX_TRANSFER_Q,
     STREAM_STAT_DAILY_TOKEN_TRANSFER_Q, STREAM_STAT_MINER_BLOCK_Q,
     STREAM_STAT_TOKEN_TRANSFER_Q,
     TPS_TRANSFER_Q,
-    TRANSFER_ADDRESS_Q,
     xLen
 } from "../service/RedisWrap";
 import {TxnQuery} from "../service/TxnQuery";
@@ -109,8 +107,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         const qs = [
             PRUNE_Q,
             POW_EPOCH_FOR_POS_Q,
-            TRANSFER_ADDRESS_Q,
-            CFX_TRANSFER_ADDRESS_Q,
             TPS_TRANSFER_Q,
             STREAM_STAT_TOKEN_TRANSFER_Q,
             STREAM_STAT_DAILY_TOKEN_TRANSFER_Q,
@@ -230,12 +226,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             ctx.body = await TopBatchIndex.findAll({limit: 30, order: [['id', 'desc']]})
         }
     )
-    router.get('/devops/test-balance-watcher', async (ctx) => {
-        const watcher = new BalanceWatcher('conDragon', '0x83928828f200b79b78404dce3058ba0c8c4076c3', statApp.cfx,
-            {tokenType:'ERC1155'})
-        await watcher.run()
-        ctx.body = {code: 0, message: 'ok'}
-    })
     router.get('/devops/table-size',
         checkLocal,
         async (ctx) => {
