@@ -108,7 +108,7 @@ let logCount = 0
  * Automatically generate holder count for token.
  */
 export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, cfx:Conflux) {
-    console.log(`handleTokenTransferWithContract, size ${mapContract2addressSet.size}`)
+    console.log(`handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
     for (const contractId of mapContract2addressSet.keys()) {
         const addressIds = [...mapContract2addressSet.get(contractId)]
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
@@ -122,7 +122,8 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             console.log(`WANING, addresses are empty, original ids ${addressIds.join(',')}`)
             continue
         }
-        console.log(`find all address : ${existsAddrArr.length === addressIds.length}`)
+        console.log(`find all address : ${existsAddrArr.length === addressIds.length
+        } , want ${addressIds.length} acutal ${existsAddrArr.length}`)
         const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
         const contractHex40 = `0x${contractHex}`;
         const model = new DynamicBalanceModel(contractId)
@@ -132,6 +133,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         if (allIsZeroFromContract) {
             console.log(` util returns all zero, ${contractHex40}, `, banList.join(','))
             const list = await fetchNftBalanceFromDB(contractId, addressIds);
+            console.log(` compute nft balance from DB, ${contractHex40} list length ${list.length}`)
             if (list.length === 0) {
                 // should have at least one record. otherwise code below will clear associated holder.
                 console.log(`nft balance from db return 0 record. skip. ${contractHex40}`)
@@ -150,7 +152,6 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 console.log(`user ${hexId} holds 0 of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
-            console.log(` compute nft balance from DB, ${contractHex40} list length ${list.length}`)
         } else {
             console.log(`util returns balance list ${banList.join(',')} of ${contractHex40}`)
             let i = 0
@@ -253,3 +254,8 @@ if (require.main === module) {
     process.on('SIGINT', ()=>process.exit(0));
     process.on('SIGTERM', ()=>process.exit(0));
 }
+/*
+insert into contract_user
+select 0, contractId, fromId, toId, epoch from erc1155transfer_2 where contractId=1829518;
+
+ */

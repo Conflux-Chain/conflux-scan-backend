@@ -183,7 +183,7 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
             let sup = await tokenTool.getTokenTotalSupply('0x'+hexBean.hex)
             if (!sup) {
                 sup = await NftMint.count({where: {contractId: cid}})
-                console.log(` nft count for 0x${hexBean.hex} id ${cid} is ${sup}`)
+                console.log(`updateTotalSupply, nft count for 0x${hexBean.hex} id ${cid} is ${sup}`)
                 if (!sup) {
                     continue;
                 }
