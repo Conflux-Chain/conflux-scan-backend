@@ -7,11 +7,6 @@ export const CHANNEL_TEST = 'test'
 export const TRANSFER_ADDRESS_Q = 'TRANSFER_ADDRESS_Q' // only contains address id.
 export const CFX_TRANSFER_ADDRESS_Q = 'CFX_TRANSFER_ADDRESS_Q' // only contains address id.
 // export const TRANSFER_ADDRESS_WITH_CONTRACT_Q = 'TRANSFER_ADDRESS_WITH_CONTRACT_Q' // contains address id and contract id.
-export const ERC20_TRANSFER_Q = 'ERC20_TRANSFER_Q'
-export const ERC721_TRANSFER_Q = 'ERC721_TRANSFER_Q'
-export const ERC777_TRANSFER_Q = 'ERC777_TRANSFER_Q'
-export const ERC1155_TRANSFER_Q = 'ERC1155_TRANSFER_Q'
-export const CFX_TRANSFER_Q = 'CFX_TRANSFER_Q'
 export const POW_EPOCH_FOR_POS_Q = 'POW_EPOCH_FOR_POS_Q'
 export const PRUNE_Q = 'PRUNE_Q_2';
 

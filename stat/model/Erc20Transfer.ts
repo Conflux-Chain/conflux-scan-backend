@@ -230,13 +230,6 @@ export function aggregateTransfer(array: any[]) {
     return result;
 }
 
-export async function batchPopErc20Transfer(epoch, dbTx) {
-    // return Promise.all([
-    //     Erc20Transfer.destroy({where: {epoch}, transaction: dbTx}),
-    //     RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC20_TRANSFER_Q),
-    // ])
-    return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
-}
 
 // stat over the chain.
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'

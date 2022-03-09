@@ -1,134 +1,16 @@
 const lodash = require('lodash');
-import {loadConfig, StatConfig} from "./config/StatConfig";
+import {StatConfig} from "./config/StatConfig";
 import {
-    ERC1155_TRANSFER_Q,
-    ERC20_TRANSFER_Q, ERC721_TRANSFER_Q,
-    ERC777_TRANSFER_Q, CFX_TRANSFER_Q,
-    RedisStreamMessage,
-    RedisWrap, TRANSFER_ADDRESS_Q
+    RedisWrap
 } from "./service/RedisWrap";
-import {AddressErc20Transfer, buildTransferList2address, Erc20Transfer, IErc20Transfer} from "./model/Erc20Transfer";
-import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
-import {AddressErc777Transfer, Erc777Transfer} from "./model/Erc777Transfer";
-import {AddressErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
-import {AddressCfxTransfer, CfxTransfer, popPartitionCfxTransfer} from "./model/CfxTransfer";
+import {Erc20Transfer} from "./model/Erc20Transfer";
+import {Erc1155Transfer} from "./model/Erc1155Transfer";
+import {Erc721Transfer} from "./model/Erc721Transfer";
 import {PruneInfo, PruneType} from "./model/PruneInfo";
 import {UniqueConstraintError, fn, col} from "sequelize"
 import {format} from 'js-conflux-sdk'
 const CONST = require('./service/common/constant');
 
-async function handleTokenTransfer(fullT:any, model:any, data:RedisStreamMessage[]) {
-    // console.log(`handleTokenTransfer `, data.length)
-    const list:any[] = data.map(msg=>msg.message)
-    return Promise.all(
-        list.map(transferArr=>{
-            // console.log(`receive message: `, transferArr)
-            if (transferArr.action === 'pop') {
-                return popPartition(transferArr.epoch, fullT, model).then(()=>{
-                    return RedisWrap.xDel(data)
-                });
-            }
-            if (transferArr.action === 'popCfxTransfer') {
-                return popPartitionCfxTransfer(transferArr.epoch).then(()=>{
-                    return RedisWrap.xDel(data)
-                });
-            }
-            const copies = buildTransferList2address(transferArr)
-            if (!copies.length) {
-                return RedisWrap.xDel(data)
-            }
-            setImmediate(()=>sendAddressIds(fullT, copies).catch(err=>{
-                console.log(`send address in transfer error:`, err)
-            }))
-            if (fullT === Erc1155Transfer || fullT === Erc721Transfer) {
-                nftService.saveIds(copies).then().catch(err=>{
-                    console.log(`save nft id failed`, err)
-                })
-            }
-            return model.bulkCreate(copies, {
-                updateOnDuplicate:["createdAt", 'epoch'],
-            })
-                .catch(err=>{
-                    const epoch = copies[0].epoch
-                    if (err instanceof UniqueConstraintError) {
-                        console.log(`We know and ignore this error: ${err} \n sql ${err.sql}`)
-                        StreamErrorLog.create({message: `${JSON.stringify({epoch, sql: err.sql})}`,
-                           remark:null, id:null })
-                        return []
-                    }
-                    throw err
-                })
-            .then(arr=>{
-                console.log(` ${new Date().toISOString()} bulk create transfer ${model.getTableName()} ${arr.length}    `)
-                return arr
-            }).then(()=>{
-                return RedisWrap.xDel(data)
-            }).then(()=>{
-                checkTotalSupply(fullT, copies).catch(err=>{
-                    console.log(`checkTotalSupply fail:`, err)
-                })
-            });
-        })
-    ).catch(err=>{
-        const info = data.map(msg=>msg.messageId).join(',')
-        console.log(`\n handle transfer message fail: ${data[0].stream} ${info}.`)
-        dingMsg(`[${config.serverTag}] handle transfer message fail: ${data[0].stream}: ${err}`, config.dingTalkToken)
-        throw err;
-    })
-}
-async function checkTotalSupply(model, copies:IErc20Transfer[]) {
-    if (model === Erc20Transfer || model === Erc721Transfer ) {
-    } else {
-        // console.log(`not match ${model.getTableName()}`)
-        return
-    }
-    const contractSet = new Set<number>()
-    copies.forEach(t=>{
-        // console.log(`from ${t.fromId} to ${t.toId}, zero ${zeroAddrId}`)
-        if (t.fromId === zeroAddrId || t.toId === zeroAddrId){
-            contractSet.add(t.contractId)
-        }
-    })
-    if (contractSet.size === 0) {
-        // console.log(`zero contract set.`)
-        return
-    }
-    const tokenList = await Token.findAll({where:{
-            hex40id: { [Op.in]: [...contractSet]}
-        }})
-    // console.log(`token list length ${tokenList.length}`)
-    for (const token of tokenList) {
-        const sup = await tokenTool.getTokenTotalSupply(token.base32)
-        if (sup === undefined) {
-            console.log(`\n supply undefined, ${token.symbol}`)
-            continue
-        }
-        const [cnt] = await Token.update({totalSupply: sup},{
-            where: {id: token.id}
-        })
-        console.log(`\n update total supply ${sup}, db updated ${cnt} for ${token.symbol}`)
-    }
-}
-async function sendAddressIds(model, arr:{fromId:number, toId:number, contractId:number}[]) {
-    const set = new Set<number>()
-    // key: contract id, value: set of address id
-    const addressAndContractIdMap = new Map<number,Set<number>>()
-    arr.forEach(item=>{
-        set.add(item.fromId)
-        set.add(item.toId)
-        let adSet = addressAndContractIdMap.get(item.contractId)
-        if (!adSet) {
-           adSet = new Set<number>()
-            addressAndContractIdMap.set(item.contractId, adSet)
-        }
-        adSet.add(item.fromId)
-        adSet.add(item.toId)
-    })
-    PruneNotifier.notifyTokenTransfer(model, addressAndContractIdMap)
-        .catch(e => console.log(`stream-sync.noticePruneTransfer`, e));
-    handleTokenTransferWithContract(addressAndContractIdMap).then()
-    updateTokenTransferCount(addressAndContractIdMap.keys()).then()
-}
 const waitUpdateTransferTokens = {
     hex40ids: new Set<number>()
 }
@@ -311,10 +193,7 @@ async function setupZeroAddressId() {
     zeroAddrId = await makeIdV(zeroHex)
 }
 import {init} from "./service/tool/FixDailyTokenStat";
-import {dingMsg} from "./monitor/Monitor";
-import {popPartition} from "./model/ErcTransfer";
-import {StreamErrorLog} from "./model/ErrorLog";
-import {Hex40Map, idHex40Map, makeIdV} from "./model/HexMap";
+import {idHex40Map, makeIdV} from "./model/HexMap";
 import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "./service/common/utils";
 import {TokenTool} from "./service/tool/TokenTool";
@@ -354,27 +233,6 @@ async function run() {
     tokenTool = new TokenTool(cfx)
     PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     RedisWrap.connect(config.redis).then(()=>{
-        RedisWrap.listenStreamMessage(
-            ERC20_TRANSFER_Q,
-            (data)=>handleTokenTransfer(Erc20Transfer, AddressErc20Transfer,data)
-        );
-        RedisWrap.listenStreamMessage(
-            ERC721_TRANSFER_Q,
-            (data)=>handleTokenTransfer(Erc721Transfer, AddressErc721Transfer,data)
-        );
-        RedisWrap.listenStreamMessage(
-            ERC777_TRANSFER_Q,
-            (data)=>handleTokenTransfer(Erc777Transfer, AddressErc777Transfer,data)
-        );
-        RedisWrap.listenStreamMessage(
-            ERC1155_TRANSFER_Q,
-            (data)=>handleTokenTransfer(Erc1155Transfer, AddressErc1155Transfer,data)
-        );
-        // cfx transfer doesn't trigger this, it's saved directly to db.
-        RedisWrap.listenStreamMessage(
-            CFX_TRANSFER_Q,
-            (data)=>handleTokenTransfer(CfxTransfer, AddressCfxTransfer,data)
-        );
     }).then(()=>{
         return scheduleTransferUpdater()
     })
