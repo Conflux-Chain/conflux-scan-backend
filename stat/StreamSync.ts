@@ -81,7 +81,7 @@ export async function updateTransferCountReal(t: Token) {
             where: {id: t.id}
         })
     }).then(()=>{
-        console.log(` update transfer count of token ${t.name} x ${x} ${t.base32}`)
+        console.log(` update transfer count of token [${t.name}] x ${x} ${format.hexAddress(t.base32)}`)
     })
 }
 
@@ -157,7 +157,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             let i = 0
             const tasks = []
             for (const addr of existsAddrArr) {
-                console.log(`user ${addr} holds ${banList[i]} of ${contractHex40}`)
+                console.log(` user ${addr} holds ${banList[i]} of ${contractHex40}`)
                 const t = BalanceWatcher.saveModel(model, addr, banList[i], false, 0)
                 tasks.push(t)
                 i++
