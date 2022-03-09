@@ -1,7 +1,8 @@
-import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
-
+/**
+ * Unique address for each token.
+ */
 process.env.TZ='UTC'
-
+import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {redisWrap,RedisWrap} from "./RedisWrap";
 import {sleep} from "./tool/ProcessTool";
 import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
