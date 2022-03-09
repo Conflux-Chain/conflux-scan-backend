@@ -2,7 +2,6 @@ import {QueryTypes, DataTypes, Model, Sequelize} from "sequelize";
 import {makeId, makeIdV} from "./HexMap";
 import {sleep} from "../service/tool/ProcessTool";
 import {createTable} from "../service/DBProvider";
-import {ERC20_TRANSFER_Q, ERC721_TRANSFER_Q, RedisWrap} from "../service/RedisWrap";
 import {popPartition} from "./ErcTransfer";
 import {Erc20Transfer, ITokenTransfer} from "./Erc20Transfer";
 
@@ -149,12 +148,4 @@ export async function buildErc721Transfer(obj, date) {
     //     txLogIndex: obj.transactionLogIndex,
     // };
     // return erc721Transfer
-}
-
-export async function batchPopErc721Transfer(epoch, dbTx) {
-    // return Promise.all([
-    //     Erc20Transfer.destroy({where: {epoch}, transaction: dbTx}),
-    //     RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC721_TRANSFER_Q)
-    // ])
-    return popPartition(epoch, Erc721Transfer, AddressErc721Transfer)
 }

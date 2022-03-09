@@ -21,11 +21,6 @@ import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {
     CFX_TRANSFER_ADDRESS_Q,
-    CFX_TRANSFER_Q,
-    ERC1155_TRANSFER_Q,
-    ERC20_TRANSFER_Q,
-    ERC721_TRANSFER_Q,
-    ERC777_TRANSFER_Q,
     POW_EPOCH_FOR_POS_Q,
     PRUNE_Q, STREAM_STAT_ADDR_CFX_TRANSFER_Q, STREAM_STAT_ADDR_TRANSACTION_Q,
     STREAM_STAT_DAILY_CFX_TRANSFER_Q,
@@ -111,14 +106,10 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         })
     })
     router.get('/devops/stream-queue-report', async (ctx)=>{
-        const qs = [ERC20_TRANSFER_Q,
-            ERC721_TRANSFER_Q,
-            ERC777_TRANSFER_Q,
-            ERC1155_TRANSFER_Q,
+        const qs = [
             PRUNE_Q,
             POW_EPOCH_FOR_POS_Q,
             TRANSFER_ADDRESS_Q,
-            CFX_TRANSFER_Q,
             CFX_TRANSFER_ADDRESS_Q,
             TPS_TRANSFER_Q,
             STREAM_STAT_TOKEN_TRANSFER_Q,

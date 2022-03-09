@@ -116,6 +116,8 @@ async function run() {
         }
     }
 }
+// should check rpc epoch, and only delete confirmed records.
+// in case the sync process uses a rpc with higher epoch than this program.
 async function processContractUser(cfx:Conflux, limit:number) {
     const list = await ContractUser.findAll({
         order: [['id', 'asc']], limit
@@ -124,8 +126,11 @@ async function processContractUser(cfx:Conflux, limit:number) {
         console.log(` ${new Date().toISOString()} empty contract user table .`)
         return 0;
     }
+    // const maxDbId = await ContractUser.findOne({order:[['id','desc']]}).then(res=>res.id)
     const [{id:minId}] = list;
     const maxId = list[list.length - 1].id
+    // if (maxDbId - maxId < 10) {
+    // }
     const ms = Date.now();
     console.log(`${new Date().toISOString()} process ${minId}, ${maxId}, count ${list.length} begin.`)
     try {
@@ -134,10 +139,15 @@ async function processContractUser(cfx:Conflux, limit:number) {
         console.log(` process fail . `, e)
         return 0;
     }
-
+    const confirmedEpoch = await cfx.getEpochNumber('latest_confirmed');
     const delCnt = await ContractUser.destroy({where: {
-        id: {[Op.in]:list.map(u=>u.id)}
+        id: {[Op.in]:list.map(u=>u.id)}, epoch: {[Op.lte]: confirmedEpoch}
     }});
+    const hasUnconfirmed = list.find(r=>r.epoch>confirmedEpoch);
+    if (hasUnconfirmed) {
+        console.log(`hasUnconfirmed, wait a moment`)
+        await sleep(5_000)
+    }
     const elapse = Date.now() - ms;
     const avg = (elapse / list.length).toPrecision(5)
     console.log(`${new Date().toISOString()} process contract user, count ${list.length
@@ -158,7 +168,9 @@ export async function addTransferInfo(arr:{fromId:number, toId:number, contractI
     });
     const map = transferInfoMap;
     await updateTotalSupply(cfx, [...map.keys()])
-    await handleTokenTransferWithContract(map, true)
+    console.log(` ---`)
+    await handleTokenTransferWithContract(map, cfx)
+    console.log(` ---`)
     await updateTokenTransferCount(map.keys(), false)
 }
 async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
@@ -173,7 +185,7 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
             let sup = await tokenTool.getTokenTotalSupply('0x'+hexBean.hex)
             if (!sup) {
                 sup = await NftMint.count({where: {contractId: cid}})
-                console.log(` nft count for 0x${hexBean.hex} id ${cid} is ${sup}`)
+                console.log(` updateTotalSupply, nft count for 0x${hexBean.hex} id ${cid} is ${sup}`)
                 if (!sup) {
                     continue;
                 }

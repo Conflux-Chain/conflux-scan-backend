@@ -11,19 +11,23 @@ export interface IContractUser {
     contractId: number
     fromId: number
     toId: number
+    epoch: number
 }
+// alter table contract_user add column epoch bigint unsigned not null default 0;
 // used to update total supply and holder. records is deleted after processing.
 export class ContractUser extends Model<IContractUser> implements IContractUser {
     id:number
     contractId: number
     fromId: number
     toId: number
+    epoch: number
     static register(seq:Sequelize) {
         ContractUser.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
         }, {
             sequelize: seq, tableName: 'contract_user',
             timestamps: false,
@@ -230,13 +234,6 @@ export function aggregateTransfer(array: any[]) {
     return result;
 }
 
-export async function batchPopErc20Transfer(epoch, dbTx) {
-    // return Promise.all([
-    //     Erc20Transfer.destroy({where: {epoch}, transaction: dbTx}),
-    //     RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC20_TRANSFER_Q),
-    // ])
-    return popPartition(epoch , Erc20Transfer, AddressErc20Transfer)
-}
 
 // stat over the chain.
 export const T_DAILY_TOKEN_TXN = 'daily_token_txn'

@@ -8,9 +8,7 @@ import {patchHttpProvider} from "../common/utils";
 import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 
-const args = process.argv.slice(2)
-const from = parseInt(args[0])
-async function loop(from) {
+async function loop(from, cfx: Conflux) {
     const batch = 1000
     const model = Erc20Transfer
     const maxId = await model.max('id')
@@ -28,7 +26,7 @@ async function loop(from) {
             set.add(t.fromId)
             set.add(t.toId)
         }
-        await handleTokenTransferWithContract(map, false)
+        await handleTokenTransferWithContract(map, cfx)
         process.stderr.write(`\r\u001b[2K replay: id ${from}, max ${maxId} , ${from * 100 / Number(maxId)}%    ` )
         from += batch
         if (from >= maxId) {
@@ -48,9 +46,10 @@ async function setup(config){
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     console.log(` util contract ${utilContract}`)
     new BatchBalanceWatcher(cfx,null, utilContract)
+    //
+    const [from] = process.argv
+    return loop(parseInt(from), cfx)
 }
 init().then((config)=> {
     return setup(config)
-}).then(()=>{
-    loop(from).then()
 })
