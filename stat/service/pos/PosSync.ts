@@ -624,11 +624,13 @@ if (require.main === module) {
     start().then()
 }
 async function start() {
-    const args = process.argv.slice(2)
-    const url = args[0]
+    const [urlParam] = process.argv
+    const cfg = await init()
+    const url = urlParam || cfg.conflux.url
     const cfx = new Conflux({url})
+    const st = await cfx.getStatus()
+    console.log(`------ ${url} network ${st.networkId} ------`)
     const posSync = new PosSync(cfx);
-    await init()
     await posSync.init()
     // wait pos enable
     while (true) {

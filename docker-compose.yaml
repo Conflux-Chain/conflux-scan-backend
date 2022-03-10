@@ -79,6 +79,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/CfxTransferSync.js cfxCounterHolderMarker
+  pos:
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/service/pos/PosSync.js
   bill:
     image: node:14.7.0
     network_mode: host
