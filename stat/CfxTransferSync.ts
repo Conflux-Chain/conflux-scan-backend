@@ -267,7 +267,7 @@ async function setup() {
     const [, , cfxUrlParam, fromEpoch, taskLen] = process.argv
     const cfg = await init()
     await checkCfxTransferCountKV()
-    const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (cfg.cfxTransferRcp?.url || cfg.conflux.url) : cfxUrlParam
+    const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (cfg.cfxTransferRpc?.url || cfg.conflux.url) : cfxUrlParam
     if (cfxUrl === 'counter') {
         await runCounter()
         return
