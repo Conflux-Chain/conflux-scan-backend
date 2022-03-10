@@ -524,8 +524,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 // console.log(` epoch ${epoch}, code ${data.code}, parentHash ${parentHash}`, data)
                 // previous epoch may have not checked pivot, its pivot hash will be '-'.
                 if (data.code === 0 && parentHash && parentHash !== data.parentHash && parentHash !== '-') {
-                    console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash
-                    }`)
+                    console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash}`)
                     const [parentH] = await pop(epoch-1, taskBegin)
                     if (parentH === null) {
                         console.log(` after pop, parent hash bean is null, want epoch ${epoch - 2}`)
@@ -548,6 +547,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 }
                 break;
             case "wait":
+                console.log(`fetch result is 'wait'.`)
                 delay = 5_000;
                 break;
         }

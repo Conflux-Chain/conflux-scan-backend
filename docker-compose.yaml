@@ -65,6 +65,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/UniqueAddressStat.js useConfigRpc -1 3000
+  cfx_alone: # cfx transfer sync
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000 # prune streamStat
   cfx: # cfx transfer sync
     image: node:14.7.0
     network_mode: host
