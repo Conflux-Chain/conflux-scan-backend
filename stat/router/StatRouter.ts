@@ -69,11 +69,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             list: groupList
         }
     })
-    router.get('/tokens/erc1155/balance-of', async (ctx)=>{
-        const addr = ctx.request.query.address
-        const resp = await statApp.balanceService.getERC1155balance(addr)
-        ctx.body = resp
-    })
     router.get('/tokens/daily-token-txn', async (ctx)=>{
         let limit = Math.min(1000, parseInt(ctx.request.query.limit || 1000));
         const sql = `select day, max(updatedAt) as updatedAt, sum(txnCount) as txnCount,

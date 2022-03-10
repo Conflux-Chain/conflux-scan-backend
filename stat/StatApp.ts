@@ -128,7 +128,6 @@ export class StatApp{
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx))//.schedule(this.config.cfxWatcherDelay).then()
             this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.cfxWatcher, utilContract)
-            this.batchBalanceWatcher.listenTransfer().then()
         }
         // this.config.erc20watchList.forEach(erc20=>{
             // const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, {tokenType: erc20.tokenType})

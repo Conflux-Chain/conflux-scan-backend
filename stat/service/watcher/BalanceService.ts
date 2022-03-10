@@ -33,36 +33,6 @@ export class BalanceService {
         })
     }
 
-    public async getERC1155balance(addr: string) {
-        let fullHex = format.hexAddress(addr);
-        const hex = fullHex.substr(2)
-        const hexBean = await Hex40Map.findOne({where: {hex}})
-        if (hexBean === null) {
-            return {code: 0, list:[], message: 'address not found'}
-        }
-        const list1155 = await Token.findAll({where:{type:TOKEN_ERC_1155}})
-        const banList = await Promise.all(list1155.map(token=>{
-            const ret = {name: token.name, symbol: token.symbol, base32: token.base32, ms:0}
-            let startMS = new Date().getTime()
-            try {
-                const watcher = BalanceWatcher.watcherMap.get(token.symbol)
-                if (watcher === null) {
-                    return {...ret, balance:NaN, message:'conf not found.'}
-                }
-                return watcher.queryBalanceErc1155(fullHex).then(list=>{
-                    if (list === null) {
-                        return {...ret, balance:NaN, message:'call contract return null.'}
-                    }
-                    return {...ret, balance: list.filter(n => n > 0).length, message: 'ok',
-                        ms: (new Date().getTime() - startMS)}
-                })
-            } catch (e) {
-                console.log(`fetch erc1155 balance fail:`,e)
-                return {...ret, balance:NaN, message:`exception ${e}`}
-            }
-        }))
-        return {list:banList, code:0, message: 'ok', tokenCounted: list1155.length}
-    }
     public async listToken() {
         const list = await Token.findAll({})
         return list;
@@ -92,7 +62,7 @@ export class BalanceService {
     public async updateToken(tokenBean: Token) {
         //
         let table = BalanceWatcher.mapModel('', true, tokenBean.hex40id);
-        let holder = await table.count({})
+        let holder = await table.count()
         await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
     }
 
@@ -101,17 +71,17 @@ export class BalanceService {
             app: { tokenTool },
         } = this;
 
-        let token = null;//await Token.findOne({where: {base32: base32}})
+        let token = await Token.findOne({where: {base32: base32}, attributes: {exclude: ['icon']}})
         if (token == null) {
             // return {total: 0, list:[], message: 'token not found '+base32, code: 404}
             // @ts-ignore
             token = {hex40id: await getAddrId(base32), symbol: ''}
         }
-        let table = BalanceWatcher.mapModel(token.symbol, true, token.hex40id);
+        let table = BalanceWatcher.mapModel('', true, token.hex40id);
         if (table == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 6404}
         }
-        const total = await table.count({where:{}})
+        const total = await table.count()
         if (total == 0) {
             return {total: 0, list:[], code: 0, table: table.getTableName()}
         }

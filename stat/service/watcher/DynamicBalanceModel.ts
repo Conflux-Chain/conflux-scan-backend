@@ -25,9 +25,10 @@ export class DynamicBalanceModel {
         })
     }
 
-    async findAll({where = {}, ...rest} = {}) {
+    async findAll({where = {}, order = undefined, offset = 0, limit = 10, raw = false, ...rest} = {}) {
         return TokenBalance.findAll({
             where: {contractId: this.contractId, ...where},
+            order, offset, limit, raw,
             ...rest,
         })
     }

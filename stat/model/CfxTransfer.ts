@@ -2,10 +2,6 @@ import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
-import {CFX_TRANSFER_ADDRESS_Q, RedisWrap} from "../service/RedisWrap";
-import {buildTransferList2address} from "./Erc20Transfer";
-import {PruneNotifier} from "../service/prune/PruneNotifier";
-import {StatNotifier} from "../service/streamstat/StatNotifier";
 import {EpochCfxTransferCount} from "../CfxTransferSync";
 
 // ============= partition by address table ==============
@@ -422,81 +418,6 @@ async function buildFromToId(array, dt:Date) {
     fillHexId(hexMap, array, 'to', 'toId')
     return hexMap.values()
 }
-export async function batchSaveCfxTransfer(array: any[], date, logger, dbTx) {
-    if(!array?.length){
-        return Promise.resolve([]);
-    }
-    const veryStart = Date.now()
-    let templates = []
-    // let date = new Date(Number(seconds)*1000)
-    const [idSet] = await Promise.all([
-        // batchBuildId(array, 'transactionHash', 'txHashId', Hex64Map, 'CfxTransfer', date)
-        //     .then(()=>{metrics.makeIdMs3 += Date.now() - veryStart}),
-        buildFromToId(array, date).then((res)=>{
-            metrics.makeIdMs2 += Date.now() - veryStart
-            return [...res] // copy to an array so could be reused.
-        }),
-    ]);
-    RedisWrap.sendStreamMessage([...idSet], CFX_TRANSFER_ADDRESS_Q).catch(err=>{
-        console.log(`send to TRANSFER_ADDRESS_Q fail, `, err)
-    })
-    // must wait building id finished.
-    for (const obj of array) {
-        templates.push(buildCfxTransfer(obj, date))
-    }
-    metrics.transferCnt += templates.length
-    let now = Date.now(); metrics.buildMs1 += now - veryStart; let start = now;
-    // sync add address-cfx-transfer
-    const addressCfxTransferArray = buildTransferList2address(templates);
-    metrics.partitionCnt += addressCfxTransferArray.length
-    now = Date.now(); metrics.buildMs2 = now - start; start = now;
-    const dbStart = now
-    return new Promise(async (resolve) => {
-        const [_, rows] = await Promise.all([
-            CfxTransfer.bulkCreate(templates, {transaction: dbTx}).then(res=>metrics.saveFullMs+=Date.now()-start),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx, logger).then(res=>{
-                metrics.upCntMs += Date.now() - start
-                return res
-            }),
-            AddressCfxTransfer.bulkCreate(addressCfxTransferArray, {transaction: dbTx}).then(()=>metrics.savePartitionMs += Date.now()-start),
-        ]);
-        start = Date.now()
-        const epoch = templates[0].epoch;
-        await doMark(rows, epoch, logger).then(()=>metrics.markMs += Date.now()-start)
-        // start = Date.now()
-        // logger?.info({src: `batchSaveCfxTransfer-1-----------`, 'array.length': array?.length,
-        //     'templates.length': templates?.length, 'resultArray': JSON.stringify(resultArray), 'count': JSON.stringify(countArray), 'epoch': epoch});
-        resolve(0)
-    }).then(()=>{
-        now = Date.now()
-        metrics.count += 1
-        metrics.sumMs += now - veryStart
-        metrics.commitMs += now - start
-        metrics.dbMs += now - dbStart
-        if (metrics.count === 100) {
-            console.log(`save cfx transfer, ${JSON.stringify(metrics)}`)
-            metrics.reset()
-        }
-    }).then(async ()=>{
-        PruneNotifier.notifyCFXTransfer(addressCfxTransferArray)
-            .catch(e => console.log(`transfer-sync.noticePruneTransfer, epoch:${addressCfxTransferArray[0].epoch}`, e));
-        const msg = {epochNumber: templates[0].epoch, epochTimestamp: date, action: 'push', cfxTransferArray: templates };
-        StatNotifier.notifyStatAddrCfxTransfer(msg)
-            .catch(e => console.log(`epoch-sync.noticeStatAddrCfxTransfer epoch:${templates[0].epoch}`, e));
-        StatNotifier.notifyStatDailyCfxTransfer(msg)
-            .catch(e => console.log(`epoch-sync.notifyStatDailyCfxTransfer epoch:${templates[0].epoch}`, e));
-    });
-
-    // async add address-cfx-transfer
-    // return await CfxTransfer.sequelize.transaction(async (dbTx) => {
-    //     await Promise.all([
-    //         CfxTransfer.bulkCreate(templates, {transaction: dbTx}),
-    //         KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, templates.length, dbTx),
-    //         doMark(),
-    //         RedisWrap.sendStreamMessage(templates, CFX_TRANSFER_Q),
-    //     ])
-    // });
-}
 
 export async function doMark(rows, epoch, logger){
     const [oldValue, newValue] = rows;
@@ -508,11 +429,6 @@ export async function doMark(rows, epoch, logger){
         return markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, epoch - avoidReOrg);
     }
     return Promise.resolve(0);
-}
-
-export async function batchPopCfxTransfer(epoch, logger) {
-    return popPartitionCfxTransfer(epoch, logger);
-    // return RedisWrap.sendStreamMessage({action:'popCfxTransfer', epoch}, CFX_TRANSFER_Q);
 }
 
 export async function popPartitionCfxTransfer(epoch, logger = undefined, dbTx = undefined){

@@ -13,55 +13,7 @@ import {TraceCreateContract} from "../model/TraceCreateContract";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {
-    Balance_ACGNFT,
-    Balance_ARTT,
-    Balance_cAMP,
-    Balance_cBAND,
-    Balance_cBNB,
-    Balance_cBTC,
-    Balance_cCOMP,
-    Balance_cDAI,
-    Balance_cDF,
-    Balance_cDPI,
-    Balance_cETH,
-    Balance_CF,
-    Balance_cFLUX,
-    Balance_cFOR,
-    Balance_CG,
-    Balance_cHBTC,
-    Balance_cITF,
-    Balance_cKNC,
-    Balance_cKP3R,
-    Balance_cLEND,
-    Balance_cLINK,
-    Balance_cMBTM,
-    Balance_cMOON,
-    Balance_cOKT,
-    Balance_conDragon,
-    Balance_CRCL_BTC_symbol,
-    Balance_cSNX,
-    Balance_csUSD,
-    Balance_cSWRV,
-    Balance_CTN,
-    Balance_cUMA,
-    Balance_cUSDC,
-    Balance_cYFI,
-    Balance_cYFII, Balance_DAN,
-    Balance_EPIK_NFT,
-    Balance_FC,
-    Balance_K,
-    Balance_MNNFT,
-    Balance_PHM_NFT,
-    Balance_POOLGO,
-    Balance_POS,
-    Balance_TD,
-    Balance_TREA,
-    Balance_YAO,
     CfxBalance, createTokenBalanceTable,
-    DexCfxBalance,
-    DexUSDTBalance,
-    USDTBalance,
-    WCfxBalance
 } from "../model/Balance";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
@@ -92,7 +44,7 @@ import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
-import {CfxBill, createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
+import {createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
 import {PruneInfo} from "../model/PruneInfo";
 import {
     PosAccount,
@@ -227,62 +179,6 @@ export async function initModel(sequelize) {
     TopRecord.register(sequelize);
     Address.register(sequelize)
     AddressInfo.register(sequelize);
-
-    DexCfxBalance.register(sequelize)
-    WCfxBalance.register(sequelize)
-    USDTBalance.register(sequelize)
-    DexUSDTBalance.register(sequelize)
-
-    Balance_CRCL_BTC_symbol.register(sequelize);
-    Balance_cMOON.register(sequelize);
-    // BalancecUSDT.register(sequelize);
-    Balance_cETH.register(sequelize);
-    Balance_FC.register(sequelize);
-    // BalanceWCFX.register(sequelize);
-    Balance_cDAI.register(sequelize);
-    Balance_cUSDC.register(sequelize);
-    Balance_cLEND.register(sequelize);
-    Balance_cFOR.register(sequelize);
-    Balance_cLINK.register(sequelize);
-    Balance_cCOMP.register(sequelize);
-    Balance_cBAND.register(sequelize);
-    Balance_cBTC.register(sequelize);
-    Balance_cYFI.register(sequelize);
-    Balance_cDF.register(sequelize);
-    Balance_cYFII.register(sequelize);
-    Balance_cSWRV.register(sequelize);
-    Balance_cKP3R.register(sequelize);
-    Balance_cUMA.register(sequelize);
-    Balance_cKNC.register(sequelize);
-    Balance_cSNX.register(sequelize);
-    Balance_csUSD.register(sequelize);
-    Balance_MNNFT.register(sequelize);
-    Balance_cITF.register(sequelize);
-    Balance_cAMP.register(sequelize);
-    Balance_cDPI.register(sequelize);
-    Balance_cBNB.register(sequelize);
-    Balance_cMBTM.register(sequelize);
-    Balance_cHBTC.register(sequelize);
-    Balance_TREA.register(sequelize);
-    Balance_YAO.register(sequelize);
-    Balance_cOKT.register(sequelize);
-    Balance_K.register(sequelize);
-    Balance_ACGNFT.register(sequelize);
-    Balance_EPIK_NFT.register(sequelize);
-    Balance_POOLGO.register(sequelize);
-    Balance_POS.register(sequelize);
-    Balance_ARTT.register(sequelize);
-
-    // erc1155
-    Balance_conDragon.register(sequelize);
-    Balance_CF.register(sequelize);
-    Balance_CG.register(sequelize);
-    Balance_TD.register(sequelize);
-    Balance_cFLUX.register(sequelize);
-    Balance_CTN.register(sequelize);
-    Balance_PHM_NFT.register(sequelize);
-    Balance_DAN.register(sequelize);
-
     NftId.register(sequelize)
     PivotSwitch.register(sequelize)
     TestTimezone.register(sequelize);
