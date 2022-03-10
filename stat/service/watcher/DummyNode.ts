@@ -43,6 +43,7 @@ import {createTable} from "../DBProvider";
 import {PreloadMap} from "../SyncBase";
 import {CFX_BILL_EPOCH, CFX_BILL_POS_EPOCH_REWARD, KV} from "../../model/KV";
 import {PosEpochRewardHash} from "../../model/PoS";
+import {regExitHook} from "../tool/ProcessTool";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
@@ -524,9 +525,8 @@ export class DummyNode {
     }
 }
 if (require.main === module) {
+    regExitHook()
     main()
-    process.on('SIGINT', ()=>process.exit(0));
-    process.on('SIGTERM', ()=>process.exit(0));
 }
 function main() {
     //

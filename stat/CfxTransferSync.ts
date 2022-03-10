@@ -15,7 +15,7 @@ import {
     markCfxTransferPosition,
     popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
-import {sleep} from "./service/tool/ProcessTool";
+import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
 import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
@@ -288,8 +288,6 @@ async function setup() {
         ])
         return
     }
-    process.on('SIGINT', ()=>process.exit(0));
-    process.on('SIGTERM', ()=>process.exit(0));
     const cfx = new Conflux({url: cfxUrl});
     patchHttpProvider(cfx, {url: cfxUrl})
     await cfx.updateNetworkId();
@@ -586,6 +584,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 if (module === require.main) {
+    regExitHook()
     if (process.argv.includes('prune')) {
         PruneNotifier.SWITCH_SYNC_PRUNE = true;
     }

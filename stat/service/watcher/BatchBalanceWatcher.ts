@@ -15,7 +15,7 @@ import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTra
 import {ContractUser} from "../../model/Erc20Transfer";
 import {patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
-import {sleep} from "../tool/ProcessTool";
+import {regExitHook, sleep} from "../tool/ProcessTool";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -168,5 +168,6 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
 }
 
 if (require.main === module) {
+    regExitHook()
     run().then()
 }

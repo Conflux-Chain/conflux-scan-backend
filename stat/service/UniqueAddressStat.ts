@@ -1,10 +1,11 @@
 /**
  * Unique address for each token.
  */
+
 process.env.TZ='UTC'
 import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {redisWrap,RedisWrap} from "./RedisWrap";
-import {sleep} from "./tool/ProcessTool";
+import {regExitHook, sleep} from "./tool/ProcessTool";
 import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux, format} from "js-conflux-sdk";
@@ -570,6 +571,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 if (module === require.main) {
+    regExitHook()
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)

@@ -1,6 +1,6 @@
 import {Conflux} from "js-conflux-sdk";
 const lodash = require('lodash');
-import {sleep} from "../tool/ProcessTool";
+import {regExitHook, sleep} from "../tool/ProcessTool";
 import {
     IPosAccountBlock, IPosReward,
     PosAccount,
@@ -621,6 +621,7 @@ export async function detectTxCountAtPosBlock1(cfx:Conflux) {
     return txNumber - initTxNumber;
 }
 if (require.main === module) {
+    regExitHook()
     start().then()
 }
 async function start() {
