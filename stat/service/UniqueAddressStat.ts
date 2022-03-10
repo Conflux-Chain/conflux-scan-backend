@@ -421,7 +421,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
             })).then(arr=>{
                 if (arr?.length >= logsLimit) {
                     console.log(`There may be more than ${logsLimit} logs in epoch ${epochNumber}. Plz fix code.`)
-                    return sleep(9000_0000)
+                    return sleep(9000_0000).then(()=>arr)
                 }
                 return arr;
             }),
