@@ -624,7 +624,7 @@ if (require.main === module) {
     start().then()
 }
 async function start() {
-    const [urlParam, cmd] = process.argv
+    const [,,urlParam, cmd] = process.argv
     const cfg = await init()
     const url = urlParam || cfg.conflux.url
     const cfx = new Conflux({url})
