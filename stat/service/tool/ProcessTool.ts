@@ -18,7 +18,9 @@ process.on('unhandledRejection', (e) => {
 });
 export function regExitHook() {
   const fn = (signal) => {
+    console.log(`----------------------------`)
     console.log(`receive ${signal}, exit now.`)
+    console.log(`----------------------------`)
     process.exit(0)
   };
   process.on('SIGINT', fn);
