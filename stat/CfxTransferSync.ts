@@ -512,7 +512,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
             return;
         }
         let {action, data} = await measure.call('epoch', () => loader.get(epoch));
-        console.log(`action ${action}, data:`, data)
+        // console.log(`action ${action}, data:`, data)
         let delay = 0
         switch (action) {
             case "ok":

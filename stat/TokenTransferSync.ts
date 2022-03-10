@@ -28,7 +28,7 @@ import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./mode
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
-import {sleep} from "./service/tool/ProcessTool";
+import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
@@ -574,6 +574,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
 }
 const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 if (module === require.main) {
+    regExitHook()
     // fromEpoch:
     // -1 : use former unfinished task; exclude mode.
     // N  : use task N if it's not finished, fallback to *.
