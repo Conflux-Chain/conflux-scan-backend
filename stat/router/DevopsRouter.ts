@@ -5,7 +5,6 @@ import {Context} from "koa";
 import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
-import {EventBus} from "../service/watcher/EventBus";
 import {AbiInfo, fillMethodInfo, listAllContract} from "../model/ContractInfo";
 import {DailyToken, Token} from "../model/Token";
 import {QueryTypes} from "sequelize";
@@ -48,13 +47,6 @@ async function checkLocal(ctx: Context, next) {
 }
 
 export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
-    router.get('/devops/test-processTxAddress',
-        checkLocal,
-        async (ctx) => {
-            EventBus.processTxAddress(ctx.request.query.hex)
-            ctx.body = {code: 0, message:"OK"}
-        }
-    )
     router.get('/devops/miner-stat',
         checkLocal,
         async(ctx)=>{
