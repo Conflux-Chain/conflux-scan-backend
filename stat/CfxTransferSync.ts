@@ -9,7 +9,7 @@ import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
     AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
-    CfxTransfer,
+    CfxTransfer, checkCfxTransferCountKV,
     doMark,
     ICfxTransfer,
     markCfxTransferPosition,
@@ -266,6 +266,7 @@ async function runCounter() {
 async function setup() {
     const [, , cfxUrlParam, fromEpoch, taskLen] = process.argv
     const cfg = await init()
+    await checkCfxTransferCountKV()
     const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (cfg.cfxTransferRcp?.url || cfg.conflux.url) : cfxUrlParam
     if (cfxUrl === 'counter') {
         await runCounter()
