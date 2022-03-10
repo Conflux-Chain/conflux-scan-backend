@@ -413,9 +413,18 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     const {tokenTool, topics} = getTokenTool(cfx)
     const aggregator = new Aggregator<number,string>();
     async function getLogs(epochNumber) : Promise<any>{
+        const logsLimit = 5000
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
             measure.call(false, ()=>cfx.getBlockByEpochNumber(epochNumber, false)),
-            measure.call(false, ()=>cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, topics})),
+            measure.call(false, ()=>cfx.getLogs({
+                fromEpoch: epochNumber, toEpoch: epochNumber, topics, limit: logsLimit
+            })).then(arr=>{
+                if (arr?.length >= logsLimit) {
+                    console.log(`There may be more than ${logsLimit} logs in epoch ${epochNumber}. Plz fix code.`)
+                    return sleep(9000_0000).then(()=>arr)
+                }
+                return arr;
+            }),
         ]))
         const dt = new Date(block.timestamp * 1000)
         // return {arr:[{createdAt:dt}]};
