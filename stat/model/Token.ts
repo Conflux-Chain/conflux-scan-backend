@@ -259,6 +259,10 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
     }
 
     static async calcRecentIncrease(hexId: number) : Promise<[number, DailyToken, DailyToken]> {
+        if (Date.now() < new Date('2022-03-11').getTime()) {
+            // do not show it when fixing data.
+            return [0, null, null]
+        }
         const list = await DailyToken.findAll({
                 where:{hexId: hexId},
                 order:[['day','desc']], limit: 3}
