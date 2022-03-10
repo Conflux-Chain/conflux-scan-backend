@@ -512,7 +512,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
-    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRcp || config.conflux) : {url: cfxUrl}
+    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
     let cfx = new Conflux(cfxOp)
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
