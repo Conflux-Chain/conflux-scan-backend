@@ -71,7 +71,7 @@ export class BalanceService {
             app: { tokenTool },
         } = this;
 
-        let token = await Token.findOne({where: {base32: base32}})
+        let token = await Token.findOne({where: {base32: base32}, attributes: {exclude: ['icon']}})
         if (token == null) {
             // return {total: 0, list:[], message: 'token not found '+base32, code: 404}
             // @ts-ignore
