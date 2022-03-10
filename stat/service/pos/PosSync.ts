@@ -624,7 +624,7 @@ if (require.main === module) {
     start().then()
 }
 async function start() {
-    const [urlParam] = process.argv
+    const [urlParam, cmd] = process.argv
     const cfg = await init()
     const url = urlParam || cfg.conflux.url
     const cfx = new Conflux({url})
@@ -653,12 +653,12 @@ async function start() {
         //     removeLongData(blk)
         //     console.log(` block is `, blk)
         // })
-        if (args.includes('test')) {
+        if (cmd === 'test') {
             posSync.test().then(()=>{
                 process.exit(0)
             })
             return;
-        } else if (args.includes('updateAllAccount')) {
+        } else if (cmd === 'updateAllAccount') {
             posSync.updateAllAccountVotes().then(()=>{
                 process.exit(0)
             })
