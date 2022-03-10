@@ -65,7 +65,7 @@ async function syncFullBlock(fullBlockService:FullBlockService) {
 }
 const args = process.argv.slice(2)
 let always = true;//Boolean(args[0])
-if (module === requre.main) {
+if (module === require.main) {
     regExitHook()
     run().then()
 }
