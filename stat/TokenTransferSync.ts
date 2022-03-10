@@ -512,11 +512,11 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
-    const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
-    let cfx = new Conflux(config.conflux)
+    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRcp || config.conflux) : {url: cfxUrl}
+    let cfx = new Conflux(cfxOp)
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n network ${st.networkId}`)
+    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} --------`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {

@@ -263,8 +263,9 @@ async function runCounter() {
     setTimeout(runCounter, 1)
 }
 async function setup() {
-    const [, , cfxUrl, fromEpoch, taskLen] = process.argv
+    const [, , cfxUrlParam, fromEpoch, taskLen] = process.argv
     const cfg = await init()
+    const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (cfg.cfxTransferRcp?.url || cfg.conflux.url) : cfxUrlParam
     if (cfxUrl === 'counter') {
         await runCounter()
         return
@@ -286,6 +287,8 @@ async function setup() {
         ])
         return
     }
+    process.on('SIGINT', ()=>process.exit(0));
+    process.on('SIGTERM', ()=>process.exit(0));
     const cfx = new Conflux({url: cfxUrl});
     patchHttpProvider(cfx, {url: cfxUrl})
     await cfx.updateNetworkId();
@@ -294,7 +297,7 @@ async function setup() {
     cfx0 = cfx;
     await makeVirtualContractInfo(st.networkId);
     scheduleRollupDailyCfxTxn().then();
-    console.log(`----------${st.networkId}---------`)
+    console.log(`---------- ${cfxUrl} ${st.networkId} ---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))
         process.exit(0)

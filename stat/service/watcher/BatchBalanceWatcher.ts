@@ -60,18 +60,19 @@ export class BatchBalanceWatcher {
 // ---
 let zeroAddrId = 0
 async function run() {
-    const [,,url,limitStr] = process.argv;
+    const [,,cfxUrl,limitStr] = process.argv;
+    const cfg = await init();
+    const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
     const cfx = new Conflux({url});
     patchHttpProvider(cfx, {url})
     await cfx.updateNetworkId();
-    await init();
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
     const st = await cfx.getStatus()
     StatApp.networkId = st.networkId;
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     new BatchBalanceWatcher(cfx, null, utilContract)
-    console.log(`-------------network ${st.networkId}------${utilContract}------`)
+    console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     scheduleTransferUpdater();
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {

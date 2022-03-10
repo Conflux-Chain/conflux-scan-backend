@@ -89,13 +89,22 @@ export class EpochTask extends Model<IEpochTask> implements IEpochTask{
 // from epoch is from startup argument, so it's safe using it when resuming task.
 export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : Promise<IEpochTask> {
     do {
-        const [maxOne, exactOne] = await Promise.all([
+        const [maxOne, exactOne, runningOne] = await Promise.all([
             model.findOne({order:[['epoch','desc']]}),
             model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
+            model.findOne({where: {finished: false}}), // resume running task
         ])
         if (exactOne) {
             console.log(` resume exists task ${fromEpoch}`)
             return exactOne;
+        }
+        if (fromEpoch == -1) {
+            if (runningOne) {
+                console.log(` resume running task ${runningOne.epoch}`)
+                return runningOne;
+            }else {
+                fromEpoch = 0
+            }
         }
         let preEnd = fromEpoch;
         if (maxOne !== null) {
@@ -537,11 +546,11 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     await testDaily();
     await benchmark();
     await clean();
-    const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
-    let cfx = new Conflux(config.conflux)
+    const cfxOp = cfxUrl === 'useConfigRpc' ? config.conflux : {url: cfxUrl}
+    let cfx = new Conflux(cfxOp)
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n network ${st.networkId}`)
+    console.log(` ${process.argv[1]} \n -------- network ${st.networkId} --------`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
