@@ -116,7 +116,7 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     : Promise<{result?:ICfxTransfer[], code?: number, addrBeans?:any[], pivotHash?:string, parentHash?:string}>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
-    const [txMapByHash, maxTx] = await Promise.all([FullTransaction.findAll({
+    const [txMapByHash, maxBlock] = await Promise.all([FullTransaction.findAll({
             where: {epoch}, order: [['blockPosition', 'asc'],['txPosition', 'asc']]
         }).then(list=>{
             const txMap = new Map<string, FullTransaction>()
@@ -125,10 +125,10 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             })
             return txMap
         }),
-        FullTransaction.findOne({order:[['epoch','desc']]}),
+        FullBlock.findOne({order:[['epoch','desc']]}),
         ])
-    if (maxTx === null || epoch > maxTx.epoch) {
-        console.log(`epoch violates max tx in db. ${epoch} > ${maxTx?.epoch || NaN}`)
+    if (maxBlock === null || epoch > maxBlock.epoch) {
+        console.log(`epoch violates max block in db. ${epoch} > ${maxBlock?.epoch || NaN}`)
         return {code: 404}
     }
     if (txMapByHash.size === 0 && !checkPivot) {
