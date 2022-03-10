@@ -128,6 +128,7 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
         FullTransaction.findOne({order:[['epoch','desc']]}),
         ])
     if (maxTx === null || epoch > maxTx.epoch) {
+        console.log(`epoch violates max tx in db. ${epoch} > ${maxTx?.epoch || NaN}`)
         return {code: 404}
     }
     if (txMapByHash.size === 0 && !checkPivot) {
@@ -513,6 +514,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
             return;
         }
         let {action, data} = await measure.call('epoch', () => loader.get(epoch));
+        console.log(`action ${action}, data:`, data)
         let delay = 0
         switch (action) {
             case "ok":
