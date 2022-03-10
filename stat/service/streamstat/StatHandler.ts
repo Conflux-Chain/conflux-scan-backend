@@ -47,11 +47,17 @@ export abstract class StatHandler {
         for (const item of data) {
             const message = item.message as StatMessage;
             const epochNumber = message.epochNumber;
+
+            if(epochNumber && (epochNumber % 100 === 0)){
+                console.log(`[q=${this.bizQueue}]handleStat msg:${JSON.stringify(message)}`);
+            }
+
             if(!message.epochTimestamp){
                 const epochObj = await Epoch.findOne({where: {epoch: epochNumber}, raw: true})
                 message.epochTimestamp = epochObj.timestamp;
             }
             const epochTimestamp = new Date(message.epochTimestamp);
+
             const action = message.action;
             if (action === 'push') {
                 await this.stat({epochNumber, epochTimestamp, message});

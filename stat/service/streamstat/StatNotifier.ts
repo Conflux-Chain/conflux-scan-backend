@@ -26,6 +26,12 @@ export class StatNotifier {
         if (!StatNotifier.filter({msg, q})) {
             return Promise.resolve(false);
         }
+
+        const epochNumber = msg.epochNumber;
+        if(epochNumber && (epochNumber % 100 === 0)){
+            console.log(`[q=${q}]notifyStat msg:${JSON.stringify(msg)}`);
+        }
+
         return RedisWrap.sendStreamMessage(msg, q).then();
     }
 

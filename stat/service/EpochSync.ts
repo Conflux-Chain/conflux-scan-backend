@@ -381,6 +381,7 @@ export class EpochSync extends SyncBase{
             app: { cfx },
         } = this;
 
+        const logsLimit = 5000
         const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber}).catch(async err=>{
             const msg = `${err}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -391,6 +392,9 @@ export class EpochSync extends SyncBase{
             }
             return [];
         });
+        if(eventLogArray?.length >= logsLimit){
+            console.log(`There may be more than ${logsLimit} logs in epoch ${epochNumber}. Plz fix code.`);
+        }
 
         const eventLogStat = await EpochSync.countEventLog(epochNumber, eventLogArray);
         if(TransferTpsService.TPS_TRANSFER_NOTIFY){
