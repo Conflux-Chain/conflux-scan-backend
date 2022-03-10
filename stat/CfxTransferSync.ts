@@ -9,13 +9,13 @@ import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
     AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
-    CfxTransfer,
+    CfxTransfer, checkCfxTransferCountKV,
     doMark,
     ICfxTransfer,
     markCfxTransferPosition,
     popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
-import {sleep} from "./service/tool/ProcessTool";
+import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
 import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
@@ -128,6 +128,7 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
         FullTransaction.findOne({order:[['epoch','desc']]}),
         ])
     if (maxTx === null || epoch > maxTx.epoch) {
+        console.log(`epoch violates max tx in db. ${epoch} > ${maxTx?.epoch || NaN}`)
         return {code: 404}
     }
     if (txMapByHash.size === 0 && !checkPivot) {
@@ -263,8 +264,10 @@ async function runCounter() {
     setTimeout(runCounter, 1)
 }
 async function setup() {
-    const [, , cfxUrl, fromEpoch, taskLen] = process.argv
+    const [, , cfxUrlParam, fromEpoch, taskLen] = process.argv
     const cfg = await init()
+    await checkCfxTransferCountKV()
+    const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (cfg.cfxTransferRcp?.url || cfg.conflux.url) : cfxUrlParam
     if (cfxUrl === 'counter') {
         await runCounter()
         return
@@ -294,7 +297,7 @@ async function setup() {
     cfx0 = cfx;
     await makeVirtualContractInfo(st.networkId);
     scheduleRollupDailyCfxTxn().then();
-    console.log(`----------${st.networkId}---------`)
+    console.log(`---------- ${cfxUrl} ${st.networkId} ---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))
         process.exit(0)
@@ -510,6 +513,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
             return;
         }
         let {action, data} = await measure.call('epoch', () => loader.get(epoch));
+        // console.log(`action ${action}, data:`, data)
         let delay = 0
         switch (action) {
             case "ok":
@@ -521,8 +525,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 // console.log(` epoch ${epoch}, code ${data.code}, parentHash ${parentHash}`, data)
                 // previous epoch may have not checked pivot, its pivot hash will be '-'.
                 if (data.code === 0 && parentHash && parentHash !== data.parentHash && parentHash !== '-') {
-                    console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash
-                    }`)
+                    console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash}`)
                     const [parentH] = await pop(epoch-1, taskBegin)
                     if (parentH === null) {
                         console.log(` after pop, parent hash bean is null, want epoch ${epoch - 2}`)
@@ -545,6 +548,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 }
                 break;
             case "wait":
+                console.log(`fetch result is 'wait'.`)
                 delay = 5_000;
                 break;
         }
@@ -581,6 +585,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 if (module === require.main) {
+    regExitHook()
     if (process.argv.includes('prune')) {
         PruneNotifier.SWITCH_SYNC_PRUNE = true;
     }

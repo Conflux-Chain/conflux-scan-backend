@@ -16,7 +16,16 @@ process.on('unhandledRejection', (e) => {
   console.error(`${new Date().toISOString()} ProcessTool.ts, the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
   // running = false;
 });
-
+export function regExitHook() {
+  const fn = (signal) => {
+    console.log(`----------------------------`)
+    console.log(`receive ${signal}, exit now.`)
+    console.log(`----------------------------`)
+    process.exit(0)
+  };
+  process.on('SIGINT', fn);
+  process.on('SIGTERM', fn);
+}
 
 // ----------------------------------------------------------------------------
 export function sleep(ms) {

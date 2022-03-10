@@ -9,6 +9,7 @@ import {RedisWrap} from "./service/RedisWrap";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
+import {regExitHook} from "./service/tool/ProcessTool";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -64,6 +65,7 @@ async function syncFullBlock(fullBlockService:FullBlockService) {
 }
 const args = process.argv.slice(2)
 let always = true;//Boolean(args[0])
-run().then()
-process.on('SIGINT', ()=>process.exit(0));
-process.on('SIGTERM', ()=>process.exit(0));
+if (module === require.main) {
+    regExitHook()
+    run().then()
+}

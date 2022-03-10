@@ -1,6 +1,6 @@
 import {Conflux} from "js-conflux-sdk";
 const lodash = require('lodash');
-import {sleep} from "../tool/ProcessTool";
+import {regExitHook, sleep} from "../tool/ProcessTool";
 import {
     IPosAccountBlock, IPosReward,
     PosAccount,
@@ -621,14 +621,17 @@ export async function detectTxCountAtPosBlock1(cfx:Conflux) {
     return txNumber - initTxNumber;
 }
 if (require.main === module) {
+    regExitHook()
     start().then()
 }
 async function start() {
-    const args = process.argv.slice(2)
-    const url = args[0]
+    const [,,urlParam, cmd] = process.argv
+    const cfg = await init()
+    const url = urlParam || cfg.conflux.url
     const cfx = new Conflux({url})
+    const st = await cfx.getStatus()
+    console.log(`------ ${url} network ${st.networkId} ------`)
     const posSync = new PosSync(cfx);
-    await init()
     await posSync.init()
     // wait pos enable
     while (true) {
@@ -651,12 +654,12 @@ async function start() {
         //     removeLongData(blk)
         //     console.log(` block is `, blk)
         // })
-        if (args.includes('test')) {
+        if (cmd === 'test') {
             posSync.test().then(()=>{
                 process.exit(0)
             })
             return;
-        } else if (args.includes('updateAllAccount')) {
+        } else if (cmd === 'updateAllAccount') {
             posSync.updateAllAccountVotes().then(()=>{
                 process.exit(0)
             })

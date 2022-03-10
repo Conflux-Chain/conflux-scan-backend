@@ -15,7 +15,7 @@ import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTra
 import {ContractUser} from "../../model/Erc20Transfer";
 import {patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
-import {sleep} from "../tool/ProcessTool";
+import {regExitHook, sleep} from "../tool/ProcessTool";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -60,18 +60,19 @@ export class BatchBalanceWatcher {
 // ---
 let zeroAddrId = 0
 async function run() {
-    const [,,url,limitStr] = process.argv;
+    const [,,cfxUrl,limitStr] = process.argv;
+    const cfg = await init();
+    const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
     const cfx = new Conflux({url});
     patchHttpProvider(cfx, {url})
     await cfx.updateNetworkId();
-    await init();
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
     const st = await cfx.getStatus()
     StatApp.networkId = st.networkId;
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     new BatchBalanceWatcher(cfx, null, utilContract)
-    console.log(`-------------network ${st.networkId}------${utilContract}------`)
+    console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     scheduleTransferUpdater();
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {
@@ -167,5 +168,6 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
 }
 
 if (require.main === module) {
+    regExitHook()
     run().then()
 }

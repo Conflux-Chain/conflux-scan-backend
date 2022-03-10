@@ -1,10 +1,11 @@
 /**
  * Unique address for each token.
  */
+
 process.env.TZ='UTC'
 import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {redisWrap,RedisWrap} from "./RedisWrap";
-import {sleep} from "./tool/ProcessTool";
+import {regExitHook, sleep} from "./tool/ProcessTool";
 import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux, format} from "js-conflux-sdk";
@@ -89,13 +90,22 @@ export class EpochTask extends Model<IEpochTask> implements IEpochTask{
 // from epoch is from startup argument, so it's safe using it when resuming task.
 export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : Promise<IEpochTask> {
     do {
-        const [maxOne, exactOne] = await Promise.all([
+        const [maxOne, exactOne, runningOne] = await Promise.all([
             model.findOne({order:[['epoch','desc']]}),
             model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
+            model.findOne({where: {finished: false}}), // resume running task
         ])
         if (exactOne) {
             console.log(` resume exists task ${fromEpoch}`)
             return exactOne;
+        }
+        if (fromEpoch == -1) {
+            if (runningOne) {
+                console.log(` resume running task ${runningOne.epoch}`)
+                return runningOne;
+            }else {
+                fromEpoch = 0
+            }
         }
         let preEnd = fromEpoch;
         if (maxOne !== null) {
@@ -537,11 +547,11 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     await testDaily();
     await benchmark();
     await clean();
-    const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
-    let cfx = new Conflux(config.conflux)
+    const cfxOp = cfxUrl === 'useConfigRpc' ? config.conflux : {url: cfxUrl}
+    let cfx = new Conflux(cfxOp)
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n network ${st.networkId}`)
+    console.log(` ${process.argv[1]} \n -------- network ${st.networkId} --------`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
@@ -561,6 +571,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 if (module === require.main) {
+    regExitHook()
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)

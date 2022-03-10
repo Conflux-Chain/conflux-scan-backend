@@ -63,6 +63,8 @@ export interface StatConfig{
     port: number;
     apiPort: number;
     conflux: ConfluxOption; // chain rpc node
+    cfxTransferRcp?: ConfluxOption; // for cfx transfer sync
+    tokenTransferRcp?: ConfluxOption; // for token transfer sync
     cfxWsUrl: string
     preload: number,
     scanApiUrl: string

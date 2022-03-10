@@ -1,3 +1,7 @@
+# api compiler stat block
+# token_x token_alone token_misc uniqueAddressStat
+# cfx_alone cfx cfxCounterHolderMarker
+# pos bill
 version: "3"
 
 services:
@@ -37,13 +41,55 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/FullBlockSync.js
-  stream:
+  stream: # not used
     image: node:14.7.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/StreamSync.js
+  token_transfer_alone: # token transfer sync
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000 # prune
+  token_transfer: # token transfer sync
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000 prune
+  token_misc: # token misc: holder, total supply
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/service/watcher/BatchBalanceWatcher.js useConfigRpc 500
+  uniqueAddressStat: # UniqueAddressStat
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/service/UniqueAddressStat.js useConfigRpc -1 3000
+  cfx_transfer_alone: # cfx transfer sync
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000 # prune streamStat
+  cfx_transfer: # cfx transfer sync
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000 prune streamStat
   cfxCounterHolderMarker:
     image: node:14.7.0
     network_mode: host
@@ -51,6 +97,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/CfxTransferSync.js cfxCounterHolderMarker
+  pos:
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/service/pos/PosSync.js
   bill:
     image: node:14.7.0
     network_mode: host

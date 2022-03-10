@@ -7,10 +7,12 @@ import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "../common/utils";
 import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
 
-async function loop(from, cfx: Conflux) {
+async function loop(from, cfx: Conflux, type) {
     const batch = 1000
-    const model = Erc20Transfer
+    const model = {'20':Erc20Transfer, '1155': Erc1155Transfer, '721': Erc721Transfer}[type]
     const maxId = await model.max('id')
     do {
         const list = await model.findAll({
@@ -46,9 +48,9 @@ async function setup(config){
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     console.log(` util contract ${utilContract}`)
     new BatchBalanceWatcher(cfx,null, utilContract)
-    //
-    const [from] = process.argv
-    return loop(parseInt(from), cfx)
+    // type could be 20, 721, 1155
+    const [from, type] = process.argv
+    return loop(parseInt(from), cfx, type)
 }
 init().then((config)=> {
     return setup(config)

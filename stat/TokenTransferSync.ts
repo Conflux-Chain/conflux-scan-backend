@@ -28,7 +28,7 @@ import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./mode
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
-import {sleep} from "./service/tool/ProcessTool";
+import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
@@ -512,11 +512,11 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
-    const cfxOp = cfxUrl ? {url: cfxUrl} : config.conflux
-    let cfx = new Conflux(config.conflux)
+    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRcp || config.conflux) : {url: cfxUrl}
+    let cfx = new Conflux(cfxOp)
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n network ${st.networkId}`)
+    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} --------`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {
@@ -574,6 +574,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
 }
 const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 if (module === require.main) {
+    regExitHook()
     // fromEpoch:
     // -1 : use former unfinished task; exclude mode.
     // N  : use task N if it's not finished, fallback to *.
