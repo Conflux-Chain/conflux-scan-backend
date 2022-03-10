@@ -1,5 +1,5 @@
 # api compiler stat block
-# token_x token_misc uniqueAddressStat
+# token_x token_alone token_misc uniqueAddressStat
 # cfx_alone cfx cfxCounterHolderMarker
 # pos bill
 version: "3"
@@ -48,6 +48,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/StreamSync.js
+  token_alone: # token transfer sync
+    image: node:14.7.0
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000
   token_x: # token transfer sync
     image: node:14.7.0
     network_mode: host
