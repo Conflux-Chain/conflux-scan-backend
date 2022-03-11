@@ -40,9 +40,9 @@ export class TokenQuery {
         return token;
     }
 
-    public async list({addressArray, name, transferType, fields, orderBy, reverse, skip = 0, limit = 10
+    public async list({addressArray, name, transferType, fields, orderBy, reverse, showDestroyed = true, skip = 0, limit = 10
       }: { addressArray?: string[], name?: string, transferType?: string, fields?: string[], orderBy?: string,
-        reverse?: boolean | string, skip?: number, limit?: number
+        reverse?: boolean | string, showDestroyed?: boolean, skip?: number, limit?: number
     }) {
         // fields
         const options: any = {raw: true};
@@ -66,10 +66,13 @@ export class TokenQuery {
                 where.type = transferType;
             }
         }
+        if (!showDestroyed) {
+            where.destroyed = false;
+        }
         options.where = where;
         // order
         if (name) {
-            options.order = [['totalPrice', 'DESC'], ['createdAt', 'ASC']];
+            options.order = [['totalPrice', 'DESC'], ['securityCredits', 'DESC'], ['createdAt', 'ASC']];
         } else if (addressArray?.length) {// NO-OP
         } else {
             if (orderBy) {
