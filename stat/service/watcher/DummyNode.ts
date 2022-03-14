@@ -20,7 +20,7 @@ Bill struct:
  seq is the sequence in the epoch, used in `order by` when fetching the last record of one address.
  -
  */
-import {batchBlockDetail, batchFetchBlock, batchTraceBlock, markTraceSuccess, patchHttpProvider} from "../common/utils";
+import {batchBlockDetail, batchFetchBlock, batchTraceBlock, markCallResult, patchHttpProvider} from "../common/utils";
 
 /**
  Aggregate reward:
@@ -190,7 +190,7 @@ export class DummyNode {
                     process.exit(1);
                 }
                 const {transactionHash, traces} = transactionTraces[txIndex]
-                markTraceSuccess(traces)
+                markCallResult(traces)
                 if (transactionHash !== receipt.transactionHash) {
                     console.log(` epoch ${epoch}, block ${blockIndex}, ${block.hash
                     } \n receipt tx hash ${receipt.transactionHash
@@ -198,10 +198,10 @@ export class DummyNode {
                     process.exit(1);
                 }
                 for (const [traceIndex, trace] of traces.entries()) {
-                    const {action, type, valid, markSuccess} = trace;
-                    if (!valid || markSuccess !=='success') {
+                    const {action, type, valid, markSuccess: markCallResult} = trace;
+                    if (!valid || markCallResult !=='success') {
                         const msg = `Cfx history: Trace is valid ? [${valid
-                        }], markSuccess [${markSuccess}]. epoch ${epoch} tx ${transactionHash}`;
+                        }], markSuccess [${markCallResult}]. epoch ${epoch} tx ${transactionHash}`;
                         console.log(`${msg}`);
                         this.dingToken && dingMsg(msg, this.dingToken).then();
                         process.exit(8);

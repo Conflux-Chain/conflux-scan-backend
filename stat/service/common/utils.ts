@@ -212,18 +212,18 @@ export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
         return arr
     })
 }
-export function markTraceSuccess(traces:any[]) {
+export function markCallResult(traces:any[]) {
     const stack = []
     for(let tr of traces) {
         const {type, action: {outcome}} = tr
         if (type === 'call_result') {
             const pre = stack.pop()
-            pre.markSuccess = outcome
-            tr.markSuccess = outcome
+            pre.markCallResult = outcome
+            tr.markCallResult = outcome
             continue
         }
         if (type !== 'call') {
-            tr.markSuccess = 'success';
+            tr.markCallResult = 'success';
             continue
         }
         stack.push(tr)
