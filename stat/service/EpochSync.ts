@@ -382,7 +382,7 @@ export class EpochSync extends SyncBase{
         } = this;
 
         const logsLimit = 5000
-        const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber}).catch(async err=>{
+        const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, limit: logsLimit}).catch(async err=>{
             const msg = `${err}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
                 const latest = await cfx.getEpochNumber('latest_state');
@@ -393,7 +393,7 @@ export class EpochSync extends SyncBase{
             return [];
         });
         if(eventLogArray?.length >= logsLimit){
-            console.log(`There may be more than ${logsLimit} logs in epoch ${epochNumber}. Plz fix code.`);
+            throw new Error(`There may be more than ${logsLimit} logs in epoch ${epochNumber}. Plz fix code.`);
         }
 
         const eventLogStat = await EpochSync.countEventLog(epochNumber, eventLogArray);
@@ -532,7 +532,7 @@ export class EpochSync extends SyncBase{
             lodash.zip(block.transactions, blockTrace.transactionTraces)
                 .forEach(([transaction, transactionTracesItem], transactionIndex) => {
                     const transactionTraceArray = [];
-                    transactionTracesItem.traces.forEach((trace, transactionTraceIndex) => {
+                    transactionTracesItem?.traces?.forEach((trace, transactionTraceIndex) => {
                         transactionTraceArray.push({
                             epochNumber: block.epochNumber,
                             blockHash: block.hash,

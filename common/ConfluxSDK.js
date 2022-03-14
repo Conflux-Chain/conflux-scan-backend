@@ -35,11 +35,11 @@ class ConfluxSDK extends Conflux {
   }
 
   async getToken(address, epochNumber) {
-    const cache = dbCache.get(address);
-    if (cache) {
-      dbCache.set(address, cache, cacheTtl);
-      return cache;
-    }
+    // const cache = dbCache.get(address);
+    // if (cache) {
+    //   dbCache.set(address, cache, cacheTtl);
+    //   return cache;
+    // }
     return tool.awaitObject({
       address,
       name: this.contract.name()

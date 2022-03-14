@@ -29,11 +29,11 @@ export class TokenTool {
     }
 
     async getToken(address, epochNumber = undefined): Promise<any> {
-        const cache = dbCache.get(address)
-        if (cache) {
-            dbCache.set(address, cache, cacheTtl)
-            return cache
-        }
+        // const cache = dbCache.get(address)
+        // if (cache) {
+        //     dbCache.set(address, cache, cacheTtl)
+        //     return cache
+        // }
         return this.awaitObject({
             address,
             name: this.contract.name()
