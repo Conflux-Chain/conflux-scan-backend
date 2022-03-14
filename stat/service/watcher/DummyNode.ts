@@ -233,9 +233,7 @@ export class DummyNode {
                         return
                     }
                     // https://github.com/Conflux-Chain/CIPs/issues/88  read the doc.
-                    let tType = type
                     if (type === 'internal_transfer_action') {
-                        tType = 'in_trans'
                     } else if (type === 'create') {
                     } else if (type ==='call') {
                         // call type trace has no fromPocket and toPocket field. Because the pocket is always "balance".
@@ -252,9 +250,9 @@ export class DummyNode {
                     // }
                     if (fromPocket === 'balance') {
                         // <from> pay.
-                        tType = action.toPocket.substr(0, 8);
+                        let tType = action.toPocket.substr(0, 8);
                         const traceBillFrom = {
-                            owner:action.from, epoch, blockIndex, txIndex, traceIndex, type:tType,
+                            owner:action.from, epoch, blockIndex, txIndex, traceIndex, type:toPocket,
                             from: action.from, to: action.to, diffDrip: -action.value, seq:billArr.length
                         };
                         billArr.push(traceBillFrom)
@@ -262,15 +260,15 @@ export class DummyNode {
                     }
                     if (action.toPocket === 'balance') {
                         // <to> gain.
-                        tType = action.fromPocket.substr(0, 8);
+                        let tType = action.fromPocket.substr(0, 8);
                         const traceBillTo = {
-                            owner:action.to, epoch, blockIndex, txIndex, traceIndex, type:tType,
+                            owner:action.to, epoch, blockIndex, txIndex, traceIndex, type:fromPocket,
                             from: action.from, to: action.to, diffDrip: action.value, seq:billArr.length
                         };
                         billArr.push(traceBillTo)
                         // console.log(` <to> gain ${value}`)
                     }
-                    console.log(`-----finish ${traceIndex}`)
+                    // console.log(`-----finish, debug trace index ${traceIndex}`)
                 }
             }
             // reward for miner.
@@ -543,7 +541,8 @@ export class DummyNode {
 }
 function main() {
     //
-    const [,,args0, dingToken='', verbose=''] = process.argv;
+    const [,,loop, dingToken='', verbose=''] = process.argv;
+    console.log(``)
     //
     const node = new DummyNode(undefined)
     node.verbose = Boolean(verbose)
@@ -558,7 +557,7 @@ function main() {
     }).then(epochInDB=>{
         epoch = epochInDB + 1;
         node.preFetchedTo = epoch + 10
-        if (args0) {
+        if (loop) {
             return node.loop(epoch)
         } else {
             return node.processOne(epoch).then(()=>{
