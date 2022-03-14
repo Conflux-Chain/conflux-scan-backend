@@ -146,7 +146,7 @@ export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
         return;
     }
     // @ts-ignore
-    // cfx.provider = new ScanHttpProvider(cfxConf, tag);
+    cfx.provider = new ScanHttpProvider(cfxConf, tag);
 }
 // batch fetch block detail, with transaction and trace.
 export function batchBlockDetail(cfx: Conflux, hashes: string[]) : Promise<[any[],any[]]> {
