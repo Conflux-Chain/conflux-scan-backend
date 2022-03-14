@@ -200,6 +200,10 @@ export class DummyNode {
                 for (const [traceIndex, trace] of traces.entries()) {
                     const {action, type, valid, markCallResult} = trace;
                     if (!valid || markCallResult !=='success') {
+                        if (receipt.outcomeStatus !== 0) {
+                            // tx is failed
+                            continue
+                        }
                         const msg = `Cfx history: Trace is valid ? [${valid
                         }], markCallResult [${markCallResult}]. epoch ${epoch} tx ${transactionHash
                         }. receipt outcomeStatus ${receipt.outcomeStatus}\n [scan]`;
