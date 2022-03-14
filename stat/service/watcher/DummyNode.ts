@@ -203,6 +203,7 @@ export class DummyNode {
                         const msg = `Cfx history: Trace is valid ? [${valid
                         }], markSuccess [${markCallResult}]. epoch ${epoch} tx ${transactionHash}`;
                         console.log(`${msg}`);
+                        console.log(`traces: ${JSON.stringify(traces)}`)
                         if (this.dingToken){
                             await dingMsg(msg, this.dingToken).catch(undefined);
                         }
