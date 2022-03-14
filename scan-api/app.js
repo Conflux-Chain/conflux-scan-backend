@@ -135,9 +135,9 @@ class ApiApp extends AppBase {
   }
 
   async run() {
+    const { config, confluxSDK } = this;
     const cfxStatus = await confluxSDK.getStatus();
     console.log(`================= start api , networkId ${cfxStatus.networkId} =============`);
-    const { config, confluxSDK } = this;
 
     // networkId
     await confluxSDK.updateNetworkId();
