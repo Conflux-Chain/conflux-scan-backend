@@ -201,7 +201,7 @@ export class DummyNode {
                     const {action, type, valid, markCallResult} = trace;
                     if (!valid || markCallResult !=='success') {
                         const msg = `Cfx history: Trace is valid ? [${valid
-                        }], markCallResult [${markCallResult}]. epoch ${epoch} tx ${transactionHash}`;
+                        }], markCallResult [${markCallResult}]. epoch ${epoch} tx ${transactionHash}.\n [scan]`;
                         console.log(`${msg}`);
                         console.log(`traces: ${JSON.stringify(traces)}`)
                         if (this.dingToken){
