@@ -507,6 +507,10 @@ export class DummyNode {
                 continue
             }
             const pre = preBillMapScope.get(bill.ownerId)
+            if (pre?.type === 'gas_payment') {
+                toBeDel.push(pre)
+                continue
+            }
             if (pre === null || pre === undefined || pre.type !== REWARD) {
                 // pre not found, or pre is not reward
                 continue
@@ -532,7 +536,7 @@ export class DummyNode {
         Promise.all(toBeDel.map(async pre=>{
             // inst.destroy() has wrong condition.
             CfxBill.destroy({ where: {ownerId: pre.ownerId, epoch: pre.epoch,
-                    seq: {[Op.lte]:pre.seq}, type:REWARD, /*traceIndex: pre.traceIndex*/},
+                    type:pre.type, /*traceIndex: pre.traceIndex*/},
                 logging: logIt,
             }).then(res=>{
                 if (res === 0) {
