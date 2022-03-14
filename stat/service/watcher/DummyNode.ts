@@ -55,11 +55,8 @@ const MINUS_DRIP_FACTOR = -BigInt(1e+18)
 const STORAGE_DIV = BigInt(1024)
 const ZERO_BIGINT = BigInt(0)
 const ONE_BIGINT = BigInt(1)
-const GAS = 'gas'
-const STORAGE_USED = 'store_u'
-const STORAGE_RELEASED = 'store_r'
 const REWARD = 'reward'
-const POS_REWARD = 'pos_r'
+const POS_REWARD = 'pos_reward'
 const GENESIS = 'genesis'
 const MINED_COUNT_AGGREGATE_SIZE = 1_000_000_000
 export class DummyNode {
