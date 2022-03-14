@@ -600,7 +600,7 @@ export class NegativeCfxBill extends Model<ICfxBill> implements ICfxBill{
         },{
             sequelize: seq,
             timestamps: false,
-            tableName: 'cfx_bill_negative',
+            tableName: 'cfx_bill_negative3',
             indexes:[
                 {name:'balance', fields:[
                         {name: 'balance',},
