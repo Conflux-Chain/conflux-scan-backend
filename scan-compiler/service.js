@@ -179,14 +179,30 @@ class SolCompileService {
       throw new error.ContractDecompileError(e);
     });
     let exactMatch = runtimeCode === result.runtimeCode;
+    // filter placeholder
+    let runtimeBytecode = runtimeCode;
+    let compileBytecode = result.runtimeCode;
+    if(!exactMatch){
+      const placeHolder = '0000000000000000000000000000000000000000000000000000000000000000';
+      const offset = placeHolder.length;
+      while(true){
+        const index = compileBytecode.indexOf(placeHolder);
+        if(index === -1) {
+          break;
+        }
+        runtimeBytecode = `${runtimeBytecode.slice(0, index)}${runtimeBytecode.slice(index + offset, runtimeBytecode.length)}`;
+        compileBytecode = `${compileBytecode.slice(0, index)}${compileBytecode.slice(index + offset, compileBytecode.length)}`;
+      }
+      exactMatch = (runtimeBytecode !== '') && (compileBytecode !== '') && (runtimeBytecode === compileBytecode);
+    }
     // filter mata data hash, that is bzzr1 hash or ipfs hash
     if(!exactMatch){
       const mataDataHashPrefixArray = ['a265627a7a723158', 'a2646970667358'];
       mataDataHashPrefixArray.forEach(prefix => {
-        if (!exactMatch && (runtimeCode.indexOf(prefix) !== -1)) {
-          const trimmedDeployedBytecode = runtimeCode.substr(0, runtimeCode.indexOf(prefix));
-          const trimmedCompiledBytecode = result.runtimeCode.substr(0, result.runtimeCode.indexOf(prefix));
-          exactMatch = (trimmedDeployedBytecode !== '') && (trimmedCompiledBytecode !== '') && (trimmedDeployedBytecode === trimmedCompiledBytecode);
+        if (!exactMatch && (runtimeBytecode.indexOf(prefix) !== -1)) {
+          runtimeBytecode = runtimeBytecode.substr(0, runtimeBytecode.indexOf(prefix));
+          compileBytecode = compileBytecode.substr(0, compileBytecode.indexOf(prefix));
+          exactMatch = (runtimeBytecode !== '') && (compileBytecode !== '') && (runtimeBytecode === compileBytecode);
         }
       });
     }
