@@ -198,10 +198,10 @@ export class DummyNode {
                     process.exit(1);
                 }
                 for (const [traceIndex, trace] of traces.entries()) {
-                    const {action, type, valid, markSuccess: markCallResult} = trace;
+                    const {action, type, valid, markCallResult} = trace;
                     if (!valid || markCallResult !=='success') {
                         const msg = `Cfx history: Trace is valid ? [${valid
-                        }], markSuccess [${markCallResult}]. epoch ${epoch} tx ${transactionHash}`;
+                        }], markCallResult [${markCallResult}]. epoch ${epoch} tx ${transactionHash}`;
                         console.log(`${msg}`);
                         console.log(`traces: ${JSON.stringify(traces)}`)
                         if (this.dingToken){
