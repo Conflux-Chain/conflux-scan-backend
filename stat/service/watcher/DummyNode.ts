@@ -540,7 +540,7 @@ export class DummyNode {
 }
 function main() {
     //
-    const [args0, dingToken='', verbose=''] = process.argv;
+    const [,,args0, dingToken='', verbose=''] = process.argv;
     //
     const node = new DummyNode(undefined)
     node.verbose = Boolean(verbose)
