@@ -49,6 +49,7 @@ class AppBase extends Koaflow {
     // this.logger = new Logger(config.logger);
     this.logger = new ScanLog(config.logger);
     // this.cfxSDK = new Conflux(config.conflux);
+    console.log(`rpc config `, config.conflux)
     this.confluxSDK = new ConfluxSDK(config.conflux);
     this.cfxSDK = this.confluxSDK;
     this.dingTalk = new DingTalkRobot(lodash.defaults(config.dingTalk, {
