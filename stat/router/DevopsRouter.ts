@@ -57,13 +57,19 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
         let bean:Hex40Map
-        if (hexId.toString().startsWith('cfx')) {
-            const hex = format.hexAddress(hexId)
-            bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
+        if (/\d+/.test(hexId)) {
+            bean = await Hex40Map.findByPk(hexId)
         } else if (hexId.toString().startsWith('0x')) {
             bean = await Hex40Map.findOne({where: {hex: hexId.toString().substr(2)}})
         } else {
-            bean = await Hex40Map.findByPk(hexId)
+            let hex: any;
+            try {
+                hex = format.hexAddress(hexId);
+            } catch (e) {
+                ctx.body = {code: 500, msg: `unknown address:[${hexId}]`}
+                return
+            }
+            bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
         }
         const token = await Token.findOne({where: {hex40id: bean?.id || 0}}) || {icon:''}
         token.icon = ''

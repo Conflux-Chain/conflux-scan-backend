@@ -20,7 +20,7 @@ Bill struct:
  seq is the sequence in the epoch, used in `order by` when fetching the last record of one address.
  -
  */
-import {batchBlockDetail, batchFetchBlock, batchTraceBlock, patchHttpProvider} from "../common/utils";
+import {batchBlockDetail, batchFetchBlock, batchTraceBlock, markTraceSuccess, patchHttpProvider} from "../common/utils";
 
 /**
  Aggregate reward:
@@ -48,6 +48,7 @@ import {
 } from "../../model/KV";
 import {PosEpochRewardHash} from "../../model/PoS";
 import {regExitHook} from "../tool/ProcessTool";
+import {dingMsg} from "../../monitor/Monitor";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
@@ -64,6 +65,7 @@ const MINED_COUNT_AGGREGATE_SIZE = 1_000_000_000
 export class DummyNode {
     cfx:Conflux
     verbose: boolean = false;
+    dingToken = ''
     stopAtEpoch = 0
     curPosPosition = -1
     preLoadMap:PreloadMap
@@ -188,6 +190,7 @@ export class DummyNode {
                     process.exit(1);
                 }
                 const {transactionHash, traces} = transactionTraces[txIndex]
+                markTraceSuccess(traces)
                 if (transactionHash !== receipt.transactionHash) {
                     console.log(` epoch ${epoch}, block ${blockIndex}, ${block.hash
                     } \n receipt tx hash ${receipt.transactionHash
@@ -195,12 +198,19 @@ export class DummyNode {
                     process.exit(1);
                 }
                 for (const [traceIndex, trace] of traces.entries()) {
-                    const {action,type} = trace;
+                    const {action, type, valid, markSuccess} = trace;
+                    if (!valid || markSuccess !=='success') {
+                        const msg = `Cfx history: Trace is valid ? [${valid
+                        }], markSuccess [${markSuccess}]. epoch ${epoch} tx ${transactionHash}`;
+                        console.log(`${msg}`);
+                        this.dingToken && dingMsg(msg, this.dingToken).then();
+                        process.exit(8);
+                    }
                     const { callType, fromPocket, toPocket, fromSpace, toSpace, space, value } = trace.action;
                     // console.log(` action at epoch ${epoch} callType ${callType}, type ${type}`, action)
-                    if (!value || space === 'evm'
-                        || (fromSpace === 'native' && toSpace === 'evm')
-                        || (fromSpace === 'evm' && toSpace === 'native')
+                    if (!value
+                        // both side pocket is set , not equal to 'balance', it's sponsor mechanism.
+                        || (fromPocket && fromPocket !== 'balance' && toPocket && toPocket !== 'balance')
                     ) {
                         // console.log(`skip A ${traceIndex}`)
                         continue;
@@ -528,17 +538,13 @@ export class DummyNode {
         })).then()
     }
 }
-if (require.main === module) {
-    regExitHook()
-    main()
-}
 function main() {
     //
-    const args = process.argv.slice(2)
-    const args0 = args[0]
+    const [args0, dingToken='', verbose=''] = process.argv;
     //
     const node = new DummyNode(undefined)
-    node.verbose = args.includes('verbose')
+    node.verbose = Boolean(verbose)
+    node.dingToken = dingToken
     let epoch;
     init().then(config=>{
         node.cfx = new Conflux(config.conflux)
@@ -666,7 +672,10 @@ export async function createV2CfxBillTable(seq:Sequelize) {
             process.exit(9)
         })
 }
-
+if (require.main === module) {
+    regExitHook()
+    main()
+}
 /**
  select * from cfx_bill where balance < 0 and ownerId<>98 order by balance limit 10;
  select * from cfx_bill order by epoch,seq limit 10;

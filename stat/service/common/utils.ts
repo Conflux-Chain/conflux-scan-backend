@@ -212,6 +212,26 @@ export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
         return arr
     })
 }
+export function markTraceSuccess(traces:any[]) {
+    const stack = []
+    for(let tr of traces) {
+        const {type, action: {outcome}} = tr
+        if (type === 'call_result') {
+            const pre = stack.pop()
+            pre.markSuccess = outcome
+            tr.markSuccess = outcome
+            continue
+        }
+        if (type !== 'call') {
+            tr.markSuccess = 'success';
+            continue
+        }
+        stack.push(tr)
+    }
+    if (stack.length) {
+        throw new Error(`check trace stack still has element: ${stack.length}. traces:\n ${JSON.stringify(traces)}`);
+    }
+}
 export function list2map(arr:any[], key:string) {
     const ret = new Map<any,any>()
     arr.forEach(t=>ret.set(t[key], t))
