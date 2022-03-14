@@ -592,7 +592,7 @@ export class NegativeCfxBill extends Model<ICfxBill> implements ICfxBill{
             blockIndex: {type: DataTypes.BIGINT({unsigned: true})},
             txIndex: {type: DataTypes.INTEGER({unsigned: true})},
             traceIndex: {type: DataTypes.INTEGER({unsigned: true})},
-            type: {type: DataTypes.CHAR(8)},
+            type: {type: DataTypes.STRING(32)},
             fromId: {type: DataTypes.BIGINT({unsigned: true})},
             toId: {type: DataTypes.BIGINT({unsigned: true})},
             diffDrip: {type: DataTypes.DECIMAL(36, 0)},
@@ -686,6 +686,7 @@ if (require.main === module) {
 }
 /**
  alter table cfx_bill3 modify column type varchar(32);
+ alter table cfx_bill_negative modify column type varchar(32);
  select * from cfx_bill where balance < 0 and ownerId<>98 order by balance limit 10;
  select * from cfx_bill order by epoch,seq limit 10;
  select * from cfx_bill order by epoch desc,seq desc limit 10;
