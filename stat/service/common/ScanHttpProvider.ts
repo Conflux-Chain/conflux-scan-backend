@@ -13,10 +13,10 @@ export class ScanHttpProvider extends HttpProvider {
         // this.headers = {Connection: "keep-alive"}
         this.tag = tag
     }
-    async requestBatch(dataArray) {
+    async _requestBatch(dataArray) {
         return this.request(dataArray)
     }
-    async request(data) {
+    async _doRequest(data) {
         return limit(()=>this.request0(data))
     }
     async request0(data) {
@@ -25,14 +25,16 @@ export class ScanHttpProvider extends HttpProvider {
         // this.methodTimes[data.method] = (this.methodTimes[data.method] || 0) + 1
         // console.log(` ----- ${this.tag}, total times ${this.times}: request rpc ${data.method
         // } x ${this.methodTimes[data.method]}, header `, this.headers)
-        const { body } = await superagent
+        const { body, error } = await superagent
             .post(this.url)
             .agent(this.agent)
             .retry(this.retry)
             .set(this.headers)
             .send(data)
             .timeout(this.timeout);
-
+        if (!body) {
+            console.log(`request fail, payload `, data, 'result', error )
+        }
         return body || {};
     }
 }
