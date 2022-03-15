@@ -35,6 +35,9 @@ import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
 import {format} from "js-conflux-sdk";
 import {PruneInfo} from "../model/PruneInfo";
 import {Epoch} from "../model/Epoch";
+import {Erc721Transfer} from "../model/Erc721Transfer";
+import {pickNumber} from "../model/Utils";
+import {Erc1155Transfer} from "../model/Erc1155Transfer";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -167,10 +170,13 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/view-table',
         async (ctx) => {
             const {skipStr = 0, limitStr = 10, t='full_tx'} = ctx.request.query
-            const skip = Number(skipStr)
-            const limit = Number(limitStr)
+            const skip = pickNumber(skipStr, 0)
+            const limit = pickNumber(limitStr, 10)
             let list = []
             switch(t) {
+                case 'erc721': list = await Erc721Transfer.findAll({order:[['epoch','desc']], offset: skip, limit});break;
+                case 'erc1155': list = await Erc1155Transfer.findAll({order:[['epoch','desc']], offset: skip, limit});break;
+                case 'erc20': list = await Erc20Transfer.findAll({order:[['epoch','desc']], offset: skip, limit});break;
                 case 'full_tx': list = await FullTransaction.findAll({
                     offset: skip, limit, order:[['epoch','desc']]
                 });break;

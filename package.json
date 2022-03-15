@@ -22,7 +22,7 @@
     "bigfixed": "0.0.2",
     "express-to-koa": "~2.0.0",
     "influx": "~5.9.3",
-    "js-conflux-sdk": "2.0.0-beta.15",
+    "js-conflux-sdk": "2.0.4",
     "koa": "2.13.1",
     "koa-bodyparser": "~4.3.0",
     "koa-helmet": "6.0.0",
