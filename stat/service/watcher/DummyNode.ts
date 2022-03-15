@@ -203,13 +203,14 @@ export class DummyNode {
                         }
                         const msg = `Cfx history: Trace is valid ? [${valid
                         }], markCallResult [${markCallResult}]. epoch ${epoch} tx ${transactionHash
-                        }. receipt outcomeStatus ${receipt.outcomeStatus}\n [scan]`;
+                        }. receipt outcomeStatus ${receipt.outcomeStatus}`;
                         console.log(`${msg}`);
-                        console.log(`traces: ${JSON.stringify(traces)}`)
-                        if (this.dingToken){
-                            await dingMsg(msg, this.dingToken).catch(undefined);
-                        }
-                        process.exit(8);
+                        continue
+                        // console.log(`traces: ${JSON.stringify(traces)}`)
+                        // if (this.dingToken){
+                        //     await dingMsg(msg, this.dingToken).catch(undefined);
+                        // }
+                        // process.exit(8);
                     }
                     const { callType, fromPocket, toPocket, fromSpace, toSpace, space, value } = trace.action;
                     // console.log(` action at epoch ${epoch} callType ${callType}, type ${type}`, action)
