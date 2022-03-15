@@ -189,8 +189,11 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             }
             const traceArr = traces as any[];
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
-                let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space}, type} = traceArr[traceIdx]
-                from = patchPocketAddress(fromPocket, from)
+                let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space}, type, valid} = traceArr[traceIdx]
+                if (!valid) {
+                    continue
+                }
+                from = patchPocketAddress(fromPocket, from);
                 to = patchPocketAddress(toPocket, to)
                 // doc https://github.com/Conflux-Chain/CIPs/issues/88
                 if (!value
