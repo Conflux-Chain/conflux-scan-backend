@@ -1,5 +1,6 @@
 const lodash = require('lodash');
 const { KV, KEY_ANNOUNCE_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+const { sign } = require('js-conflux-sdk');
 
 class ContractService { // TODO: extends AccountService
   constructor(app) {
@@ -103,6 +104,7 @@ class ContractService { // TODO: extends AccountService
     if (code === undefined || code === '0x') {
       return { name, sourceCode, optimizeRuns, errors: [`invalid contract's code:${code}`] };
     }
+
     const verify = await service.contractRdb.queryVerify({ address });
     if (verify !== null) {
       return { name, sourceCode, optimizeRuns, errors: ['the contract already verified!'] };
@@ -117,25 +119,15 @@ class ContractService { // TODO: extends AccountService
       result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
       result.errors = result.errors.map((v) => v.formattedMessage || v.message);
 
-      let creationData;
-      let args;
-      if (result.exactMatch) {
-        creationData = await this.getCreationData({ address });
-        args = await this.extractConstructorArgs({ creationData, bytecode: result.bytecode });
-        let inputArgs = lodash.trim(constructorArgs);
-        inputArgs = lodash.startsWith(inputArgs, '0x') ? inputArgs : `0x${inputArgs}`;
-        if (args !== inputArgs) {
-          // result.exactMatch = false;
-          // result.errors.push('constructor args not match.');
-        }
-      }
-
+      const creationDataHash = await this.getCreationDataHash({ address });
+      const bytecodeHash = sign.keccak256(Buffer.from(result.bytecode)).toString('hex');
       const updateVerify = await service.contractRdb.updateVerify({ id: newVerify.id, address,
-        version: result.version, constructorArgs: args, sourceCode, abi: JSON.stringify(result.abi),
-        verifyResult: result.exactMatch, similarity: result.similarity, creationData });
+        version: result.version, sourceCode, abi: JSON.stringify(result.abi),
+        verifyResult: result.exactMatch, similarity: result.similarity, creationDataHash, bytecodeHash});
       logger.error({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` });
       return lodash.defaults({ name, sourceCode, optimizeRuns },
         lodash.pick(result, ['version', 'warnings', 'errors', 'exactMatch', 'similarity', 'abi']));
+
     } catch (e) {
       logger.error({ src: `[${address}]verify`, error: `${e.message}` });
       return { name, sourceCode, optimizeRuns, errors: [e.message] };
@@ -217,6 +209,15 @@ class ContractService { // TODO: extends AccountService
     }
 
     return creationData;
+  }
+
+  async getCreationDataHash({ address }) {
+    const {
+      app: { service },
+    } = this;
+
+    const trace = await service.traceCreate.query(address);
+    return trace?.creationDataHash;
   }
 
   // --------------------------------------------------------------------------

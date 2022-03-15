@@ -1,5 +1,3 @@
-// @ts-ignore
-import {format} from "js-conflux-sdk";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
@@ -10,6 +8,7 @@ import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 
+const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const CONST = require('./common/constant');
 const {Contract} = require("../model/Contract");
@@ -120,7 +119,7 @@ export class ContractQuery {
     }
 
     public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult, similarity,
-        creationData}) {
+        creationDataHash, bytecodeHash}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
 
@@ -129,8 +128,8 @@ export class ContractQuery {
             logger?.error({ src: `[${address}]stat verify request`, updateError: `record.base32 not equals ${base32}` });
         }
 
-        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, creationData,
-            updatedAt: new Date()});
+        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, creationDataHash,
+            bytecodeHash, updatedAt: new Date()});
         let updateVerify = lodash.assign(dbVerify, updateInfo);
         if(verifyResult){
             const proxyInfo = await this.queryImplementation(base32)

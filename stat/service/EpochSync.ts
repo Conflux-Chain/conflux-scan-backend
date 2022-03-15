@@ -1,10 +1,8 @@
-// @ts-ignore
-import {format} from "js-conflux-sdk";
 import {Epoch} from "../model/Epoch";
 import {SyncBase, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
-import {makeId} from "../model/HexMap";
+import {Hex40Map, makeId} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
@@ -19,6 +17,8 @@ import {PruneNotifier} from "./prune/PruneNotifier";
 import {RedisWrap, STREAM_STAT_TOKEN_TRANSFER_Q, TPS_TRANSFER_Q} from "./RedisWrap";
 import {TransferTpsService} from "./TransferTpsService";
 import {StatNotifier} from "./streamstat/StatNotifier";
+import {ContractVerify} from "../model/ContractVerify";
+const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
 const CONST = require('./common/constant');
@@ -115,6 +115,11 @@ export class EpochSync extends SyncBase{
             }
         } catch (e){
             console.log(`epoch-sync, createTokenIcon url fail`, e);
+        }
+
+        const traceCreateArray = modelData.traceCreateArray;
+        for(const traceCreate of traceCreateArray){
+            await this.autoVerify(traceCreate);
         }
 
         if (epochNumber % 100 === 0) {
@@ -481,6 +486,7 @@ export class EpochSync extends SyncBase{
                 value: trace.value,
                 outcome: trace.outcome,
                 blockTime: trace.blockTime,
+                creationDataHash: trace.initHash,
             };
             traceCreateArrayDB.push(toCreate)
         }
@@ -507,6 +513,7 @@ export class EpochSync extends SyncBase{
                     value: trace.action.value,
                     outcome: trace.action.outcome,
                     blockTime: trace.blockTime,
+                    initHash: trace.action.initHash,
                 });
             }
         });
@@ -601,6 +608,7 @@ export class EpochSync extends SyncBase{
             trace.action.input = '';
         }
         if (trace.action.init) {
+            trace.action.initHash = sign.keccak256(Buffer.from(trace.action.init)).toString('hex');
             trace.action.init = '';
         }
         return trace;
@@ -631,5 +639,34 @@ export class EpochSync extends SyncBase{
             transactionTraceArray[creatTraceIndex].action.to = transaction.contractCreated;
         }
         return transactionTraceArray;
+    }
+
+    // ---------------------------- contract verify -----------------------------
+    private async autoVerify(traceCreate){
+        const toHex40Bean = await Hex40Map.findOne({where: {id: traceCreate.to}});
+        const base32 = format.address(`0x${toHex40Bean.hex}`, StatApp.networkId || this.app?.networkId);
+
+        // update creation data hash when verify happened before trace create
+        const ownerVerify = await ContractVerify.findOne({
+            where: {base32, verifyResult: true},
+            order: [['updatedAt', 'ASC']],
+            raw: true
+        });
+        if(ownerVerify){
+            await ContractVerify.update({creationDataHash: traceCreate.creationDataHash}, {where: {id: ownerVerify.id}});
+            return;
+        }
+
+        // search if exists matched verify
+        const matchVerify = await ContractVerify.findOne({
+            where: {creationDataHash: traceCreate.creationDataHash, verifyResult: true},
+            order: [['updatedAt', 'ASC']],
+            raw: true
+        });
+        if(!matchVerify) {
+            return;
+        }
+        const matchRecord = lodash.assign(matchVerify, {id: undefined, base32, bytecodeHash: null, implementation: null});
+        await ContractVerify.create(matchRecord);
     }
 }

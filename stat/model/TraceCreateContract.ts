@@ -9,6 +9,7 @@ export interface ITraceCreateContract{
     value:number
     to:number
     outcome:string
+    creationDataHash?:string
     blockTime:number
 }
 export class TraceCreateContract extends Model<ITraceCreateContract> implements ITraceCreateContract{
@@ -20,6 +21,7 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
     value:number
     to:number
     outcome:string
+    creationDataHash?:string
     blockTime:number
     static register(seq){
         TraceCreateContract.init({
@@ -31,6 +33,7 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
             to: {type: DataTypes.BIGINT, allowNull: false},
             outcome: {type: DataTypes.CHAR(10), allowNull: true},
+            creationDataHash: {type: DataTypes.CHAR(64), allowNull: true},
             blockTime: {type: DataTypes.BIGINT, allowNull: false},
         },{
             sequelize: seq,
