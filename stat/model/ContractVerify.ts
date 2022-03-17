@@ -11,6 +11,8 @@ export interface IContractVerify{
     constructorArgs?:string
     sourceCode?:string
     abi?:string
+    creationDataHash?:string
+    bytecodeHash?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
     license?:string
@@ -32,6 +34,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     constructorArgs?:string
     sourceCode?:string
     abi?:string
+    creationDataHash?:string
+    bytecodeHash?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
     license?:string
@@ -54,6 +58,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             constructorArgs: {type: DataTypes.TEXT, allowNull: true, },
             sourceCode: {type: DataTypes.TEXT({length: 'long'}), allowNull: true, },
             abi: {type: DataTypes.TEXT, allowNull: true, },
+            creationDataHash: {type: DataTypes.CHAR(64), allowNull: true, },
+            bytecodeHash: {type: DataTypes.CHAR(64), allowNull: true, },
             optimizeFlag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             optimizeRuns: {type: DataTypes.INTEGER, allowNull: true, },
             license: {type: DataTypes.CHAR(255), allowNull: true},
@@ -83,6 +89,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             constructorArgs: contract.constructorArgs,
             sourceCode:contract.sourceCode,
             abi:contract.abi,
+            creationDataHash:contract.creationDataHash,
+            bytecodeHash:contract.bytecodeHash,
             optimizeFlag:contract.optimizeFlag,
             optimizeRuns: contract.optimizeRuns,
             license:contract.license,
