@@ -1,4 +1,4 @@
-import {noVerboseAddr} from "../../stat/dist/service/common/utils";
+const {noVerboseAddr} = require("../../stat/dist/service/common/utils")
 
 const lodash = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
