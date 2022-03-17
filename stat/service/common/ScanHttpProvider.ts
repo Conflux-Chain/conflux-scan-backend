@@ -13,10 +13,10 @@ export class ScanHttpProvider extends HttpProvider {
         // this.headers = {Connection: "keep-alive"}
         this.tag = tag
     }
-    async _requestBatch(dataArray) {
+    async requestBatch(dataArray) {
         return this.request(dataArray)
     }
-    async _doRequest(data) {
+    async doRequest(data) {
         return limit(()=>this.request0(data))
     }
     async request0(data) {
