@@ -11,12 +11,14 @@ export const CONTRACT_STAKING = '0x0888000000000000000000000000000000000002'
 export const VIRTUAL_STORAGE_COLLATERAL = '0x8f00000000000000000000000000000000000001'
 export const VIRTUAL_SPONSOR_BALANCE_FOR_GAS = '0x8f00000000000000000000000000000000000002'
 export const VIRTUAL_SPONSOR_BALANCE_FOR_COLLATERAL = '0x8f00000000000000000000000000000000000003'
+export const VIRTUAL_GAS_PAYMENT = '0x8f00000000000000000000000000000000000004'
 // https://developer.confluxnetwork.org/conflux-doc/docs/RPCs/trace_rpc#new-added-space-field
 export const POCKET_ADDRESS_MAP = {
     'staking_balance': CONTRACT_STAKING,
     'storage_collateral': VIRTUAL_STORAGE_COLLATERAL,
     'sponsor_balance_for_gas': VIRTUAL_SPONSOR_BALANCE_FOR_GAS,
     'sponsor_balance_for_collateral': VIRTUAL_SPONSOR_BALANCE_FOR_COLLATERAL,
+    'gas_payment': VIRTUAL_GAS_PAYMENT,
 }
 export function patchPocketAddress(pocket: string, address: string, net = undefined) {
     const v = POCKET_ADDRESS_MAP[pocket];
