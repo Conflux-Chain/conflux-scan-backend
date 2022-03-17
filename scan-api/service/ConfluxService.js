@@ -1,3 +1,5 @@
+import {noVerboseAddr} from "../../stat/dist/service/common/utils";
+
 const lodash = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
 const { withoutCfxTransferType } = require('../../common/utils');
@@ -572,18 +574,24 @@ class ConfluxService {
         traceArray.forEach((trace) => {
           if (trace?.action?.init) trace.action.init = undefined;
           if (trace?.action?.input) trace.action.input = undefined;
-          if (trace?.action?.from) addressSet.add(trace.action.from);
-          if (trace?.action?.to) addressSet.add(trace.action.to);
+          if (trace?.action?.from) {
+            addressSet.add(trace.action.from);
+            trace.action.from = noVerboseAddr(trace.action.from)
+          }
+          if (trace?.action?.to) {
+            addressSet.add(trace.action.to);
+            trace.action.to = noVerboseAddr(trace.action.to)
+          }
           if (trace?.action?.addr) addressSet.add(trace.action.addr);
         });
-        let traceTree;
+        let result = {};
         try {
-          traceTree = tracesInTree(traceArray);
-          traceTree.addressArray = [...addressSet];
+          result.traceTree = tracesInTree(traceArray);
+          result.addressArray = [...addressSet];
         } catch (err) {
           return { code: 500, message: `parse traces fail:${err}` };
         }
-        return traceTree || {};
+        return result || {};
       },
       { ttl: 5 },
     );
