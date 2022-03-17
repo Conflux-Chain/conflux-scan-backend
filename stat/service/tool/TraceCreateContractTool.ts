@@ -1,31 +1,33 @@
+// @ts-ignore
+import {Conflux, format} from "js-conflux-sdk";
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {Hex40Map} from "../../model/HexMap";
-import {BlockTraceCreateSync} from "../BlockTraceCreateSync";
 import {ContractQuery} from "../ContractQuery";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {ContractVerify} from "../../model/ContractVerify";
-// @ts-ignore
-import {Conflux, format} from "js-conflux-sdk";
 import {TokenTool} from "./TokenTool";
 import {Op} from "sequelize";
-import {
-    AddressTransactionIndex,
-} from "../../model/FullBlock";
-import {TokenQuery} from "../TokenQuery";
+import { AddressTransactionIndex } from "../../model/FullBlock";
+import {EpochSync} from "../EpochSync";
+import {batchBlockDetail} from "../common/utils";
+import {StatApp} from "../../StatApp";
 
 const lodash = require('lodash');
 const POSITION_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
 
 let seq;
 let cfx;
-let networkId;
+
 let tokenTool;
+let epochSync;
+let contractQuery;
+
 let type; // 1-block,2-transaction
 let hash;
 let epochNumber;
-let service;
-let contractQuery;
+let minEpoch;
+let maxEpoch;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -36,9 +38,9 @@ async function init() {
 
     cfx = new Conflux({...config.conflux})
     tokenTool = new TokenTool(cfx);
-    service = new BlockTraceCreateSync(cfx);
 
-    const app = {cfx};
+    const app = {cfx, networkId: StatApp.networkId};
+    epochSync = new EpochSync(app);
     contractQuery = new ContractQuery(app);
 }
 
@@ -56,14 +58,34 @@ async function run() {
     if(type === 2) {
         result = await cfx.traceTransaction(hash);
     }
-    if(type === 3){//epoch=41696044
-        await service.syncByEpoch(epochNumber);
+    if(type === 3){
+        //evm-main-net [36935000, 37087090)
+        //evm-test-net [61465000, 66736900)
+        for(let curEpoch = minEpoch; curEpoch < maxEpoch; curEpoch++){
+            const traceCreateArray = await epochSync.getTraceCreateArrayDB(curEpoch);
+            if(traceCreateArray.length > 0){
+                await TraceCreateContract.bulkCreate(traceCreateArray);
+                for(const traceCreate of traceCreateArray){
+                    await epochSync.autoVerify(traceCreate);
+                }
+                console.log(`add trace create at epoch:${curEpoch}, traceCreateArray:${JSON.stringify(traceCreateArray)}`);
+            }
+            if(curEpoch % 1000 === 0){
+                console.log(`add trace create catch up at epoch:${curEpoch}`);
+            }
+        }
+        console.log(`done！`);
     }
     if(type === 4){
         await checkTraceCreate();
     }
     if(type === 5){
         await checkOZUnstructuredStorageProxy();
+    }
+    if(type === 6){
+        const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber);
+        const [blockArray, traceArray] = await batchBlockDetail(cfx, blockHashArray);
+        console.log(`traceArray2d------:${JSON.stringify(traceArray)}`);
     }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
@@ -78,7 +100,7 @@ async function checkTraceCreate(){
         const hex40 = await Hex40Map.findByPk(addressId.id);
         const hex40id = hex40.id;
         const hex = `0x${hex40.hex}`;
-        const base32 = format.address(hex, networkId);
+        const base32 = format.address(hex, StatApp.networkId);
 
         let deployedByteCode;
         try {
@@ -123,7 +145,7 @@ async function getTraceCreate(hex40id, base32){
     }
     // 4. 根据epochNumber同步trace_create_contract记录，并入库
     const epochNumber = tx.epoch;
-    await service.syncByEpoch(epochNumber);
+    await epochSync.getTraceCreateArrayDB(epochNumber);
 }
 
 async function checkOZUnstructuredStorageProxy(){
@@ -134,7 +156,7 @@ async function checkOZUnstructuredStorageProxy(){
         const hex40 = await Hex40Map.findByPk(addressId.id);
         const hex40id = hex40.id;
         const hex = `0x${hex40.hex}`;
-        const base32 = format.address(hex, networkId);
+        const base32 = format.address(hex, StatApp.networkId);
 
         const implementation = await cfx.getStorageAt(base32, POSITION_IMPLEMENTATION_SLOT);
         if(implementation === null){
@@ -148,7 +170,7 @@ async function checkOZUnstructuredStorageProxy(){
             if(dbVerify !== null){
                 let updateVerify = lodash.assign(dbVerify, {
                     proxy: true,
-                    implementation: format.address(`0x${implementationHex40.hex}`, networkId),
+                    implementation: format.address(`0x${implementationHex40.hex}`, StatApp.networkId),
                     proxyPattern: "OpenZeppelin's Unstructured Storage",
                     updatedAt: new Date()
                 });
@@ -169,16 +191,20 @@ async function checkOZUnstructuredStorageProxy(){
 
 
 const args = process.argv.slice(2);
-networkId = Number(args[0]);
+StatApp.networkId = Number(args[0]);
 if(args[1]){
     type = Number(args[1]);
 }
 if((type === 1 || type === 2) && args[2]){
     hash = args[2];
 }
-if(type === 3 && args[2]){
+if(type === 3 && args[2] && args[3]){
+    minEpoch = Number(args[2]);
+    maxEpoch = Number(args[3]);
+}
+if(type === 6 && args[2]){
     epochNumber = Number(args[2]);
 }
 
-console.log(`params======networkId:${networkId}======type:${type}======hash:${hash}`);
+console.log(`params======networkId:${StatApp.networkId}======type:${type}======minEpoch:${minEpoch}======maxEpoch:${maxEpoch}`);
 run().then();
