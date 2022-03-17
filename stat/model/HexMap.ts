@@ -18,8 +18,15 @@ export const POCKET_ADDRESS_MAP = {
     'sponsor_balance_for_gas': VIRTUAL_SPONSOR_BALANCE_FOR_GAS,
     'sponsor_balance_for_collateral': VIRTUAL_SPONSOR_BALANCE_FOR_COLLATERAL,
 }
-export function patchPocketAddress(pocket: string, address: string) {
-    return POCKET_ADDRESS_MAP[pocket] || address;
+export function patchPocketAddress(pocket: string, address: string, net = undefined) {
+    const v = POCKET_ADDRESS_MAP[pocket];
+    if (v) {
+        if (net !== undefined) {
+            return format.address(v, net)
+        }
+        return v;
+    }
+    return address;
 }
 export async function makeVirtualContractInfo(netId: number) {
     // console.log(`makeVirtualContractInfo`)
