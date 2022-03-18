@@ -17,7 +17,6 @@ import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenQuery} from "./service/TokenQuery";
-import {BlockTraceCreateSync} from "./service/BlockTraceCreateSync";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import { Monitor } from "./monitor/Monitor";
 import {scheduleDailyActiveAddress} from "./model/StatAddress";
@@ -66,7 +65,6 @@ export class StatApp{
     public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
     public tokenQuery: TokenQuery;
-    public traceCreateSync: BlockTraceCreateSync
     public traceCreateQuery: BlockTraceCreateQuery;
     public epochSync: EpochSync
     public contractCreateSync: DailyContractCreateSync
@@ -147,7 +145,6 @@ export class StatApp{
         this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);
-        this.traceCreateSync = new BlockTraceCreateSync(this.cfx)
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
         this.epochSync = new EpochSync(this);
         this.contractCreateSync = new DailyContractCreateSync(this.sequelize);
@@ -184,9 +181,6 @@ export class StatApp{
         }
         if (this.config.syncCfxHolderCountDaily) {
             await this.cfxHolderSync.schedule(); // dailyCfxHolder
-        }
-        if (this.config.syncTraceCreateContract) {
-            await this.traceCreateSync.schedule(this.config.syncTraceCreateContractDelay); // trace create
         }
         if (this.config.checkRankDelay) {
             let monitor = new Monitor(this.config.dingTalkToken, this.config.serverTag);

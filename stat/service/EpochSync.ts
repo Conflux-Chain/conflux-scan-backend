@@ -39,7 +39,7 @@ export class EpochSync extends SyncBase{
     private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     private erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
 
-    constructor(app: StatApp) {
+    constructor(app: StatApp | any) {
         super(app);
         this.app = app;
     }
@@ -468,12 +468,13 @@ export class EpochSync extends SyncBase{
     }
 
     // ------------------------------ trace create ------------------------------
-    private async getTraceCreateArrayDB(epochNumber) {
+    public async getTraceCreateArrayDB(epochNumber) {
         const traceCreateArray = await this.getTraceCreateArray(epochNumber);
         const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined;
 
         const traceCreateArrayDB = []
         for (const trace of traceCreateArray) {
+            if(!trace?.valid) continue;
             const txHashId =  (await makeId(trace.transactionHash)).id;
             const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
@@ -514,6 +515,7 @@ export class EpochSync extends SyncBase{
                     outcome: trace.action.outcome,
                     blockTime: trace.blockTime,
                     initHash: trace.action.initHash,
+                    valid: trace.valid,
                 });
             }
         });
@@ -642,30 +644,26 @@ export class EpochSync extends SyncBase{
     }
 
     // ---------------------------- contract verify -----------------------------
-    private async autoVerify(traceCreate){
+    public async autoVerify(traceCreate){
+        const {
+            app: { cfx },
+        } = this;
+
         const toHex40Bean = await Hex40Map.findOne({where: {id: traceCreate.to}});
-        const base32 = format.address(`0x${toHex40Bean.hex}`, StatApp.networkId || this.app?.networkId);
+        const base32 = format.address(`0x${toHex40Bean.hex}`, StatApp.networkId);
 
-        // update creation data hash when verify happened before trace create
-        const ownerVerify = await ContractVerify.findOne({
-            where: {base32, verifyResult: true},
-            order: [['updatedAt', 'ASC']],
-            raw: true
-        });
-        if(ownerVerify){
-            await ContractVerify.update({creationDataHash: traceCreate.creationDataHash}, {where: {id: ownerVerify.id}});
-            return;
-        }
+        const code = await cfx.getCode(base32);
+        const getCodeHash = sign.keccak256(Buffer.from(code)).toString('hex');
 
-        // search if exists matched verify
         const matchVerify = await ContractVerify.findOne({
-            where: {creationDataHash: traceCreate.creationDataHash, verifyResult: true},
+            where: {getCodeHash, verifyResult: true},
             order: [['updatedAt', 'ASC']],
             raw: true
         });
         if(!matchVerify) {
             return;
         }
+
         const matchRecord = lodash.assign(matchVerify, {id: undefined, base32, bytecodeHash: null, implementation: null});
         await ContractVerify.create(matchRecord);
     }

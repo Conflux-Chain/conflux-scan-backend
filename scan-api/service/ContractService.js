@@ -119,11 +119,10 @@ class ContractService { // TODO: extends AccountService
       result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
       result.errors = result.errors.map((v) => v.formattedMessage || v.message);
 
-      const creationDataHash = await this.getCreationDataHash({ address });
-      const bytecodeHash = sign.keccak256(Buffer.from(result.bytecode)).toString('hex');
+      const getCodeHash = result?.exactMatch ? sign.keccak256(Buffer.from(code)).toString('hex') : undefined;
       const updateVerify = await service.contractRdb.updateVerify({ id: newVerify.id, address,
         version: result.version, sourceCode, abi: JSON.stringify(result.abi),
-        verifyResult: result.exactMatch, similarity: result.similarity, creationDataHash, bytecodeHash});
+        verifyResult: result.exactMatch, similarity: result.similarity, getCodeHash});
       logger.error({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` });
       return lodash.defaults({ name, sourceCode, optimizeRuns },
         lodash.pick(result, ['version', 'warnings', 'errors', 'exactMatch', 'similarity', 'abi']));
