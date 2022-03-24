@@ -1,3 +1,6 @@
+import {StatApp} from "../../stat/StatApp";
+import {format} from "js-conflux-sdk";
+
 export function polishAssertList(page) {
     page?.list?.forEach(row=>{
         row.amount = row.balance
@@ -7,6 +10,10 @@ export function polishAssertList(page) {
         delete row.tokenHex40id;
         delete row.balance
         delete row.base32
+
+        if (StatApp.isEVM) {
+            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+        }
     })
     delete page?.candidate
 }

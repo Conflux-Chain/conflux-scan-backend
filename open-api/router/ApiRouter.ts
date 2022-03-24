@@ -20,6 +20,7 @@ import {polishContract} from "../service/OpenContractService";
 import {StatApp} from "../../stat/StatApp";
 import {DailyToken, Token} from "../../stat/model/Token";
 import {pickNumber} from "../../stat/model/Utils";
+import {format} from "js-conflux-sdk";
 
 const lodash = require('lodash');
 const cors = require('@koa/cors');
@@ -286,6 +287,14 @@ async function listNFTBalances(ctx) {
     const {owner} = ctx.request.query;
     const {skip, limit} = getPagination(ctx.request.query);
     const data = await getApiService().nftCheckerService.getNftBalancesForOpenApi({owner, skip, limit});
+
+    if (StatApp.isEVM) {
+        data?.list?.forEach(row => {
+            row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
+            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+        });
+    }
+
     setBody(ctx, data)
 }
 
@@ -300,6 +309,12 @@ async function listNFTTokens(ctx) {
     }
     const {skip, limit} = getPagination(ctx.request.query);
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
+
+    if (StatApp.isEVM) {
+        data?.list?.forEach(row => {
+            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+        });
+    }
 
     if(detail === 'true'){
         await Promise.all(data?.list?.map(async (item) => {
@@ -329,6 +344,11 @@ async function getNFTPreview(ctx) {
         // throw new Error(`NFT not found.`)
     }
     const data = {contract, tokenId, name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc};
+
+    if (StatApp.isEVM) {
+        data.contract = data.contract ? format.hexAddress(data.contract) : data.contract;
+    }
+
     setBody(ctx, data)
 }
 

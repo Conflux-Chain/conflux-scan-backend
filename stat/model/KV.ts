@@ -10,6 +10,7 @@ export const KEY_FULL_BLOCK_COUNT = "FULL_BLOCK_COUNT"
 export const KEY_FULL_TX_COUNT = "FULL_TX_COUNT"
 export const TOTAL_POS_REWARD = "TOTAL_POS_REWARD"
 export const IS_EVM = "IS_EVM"
+export const IS_EVM2 = "IS_EVM2"
 export const KEY_FULL_CFX_TRANSFER_COUNT = "FULL_CFX_TRANSFER_COUNT_2"
 export const KEY_FILL_BLOCK_PROPS_EPOCH = "KEY_FILL_BLOCK_PROPS_EPOCH"
 export const KEY_FILL_BLOCK_REWARD_EPOCH = "KEY_FILL_BLOCK_REWARD_EPOCH"
@@ -62,7 +63,7 @@ export class KV extends Model<IKV> implements IKV {
     static async saveNumber(key:string, value:number, dbTx:Transaction) {
         return KV.upsert({key, value: value.toString()}, {transaction: dbTx})
     }
-    static async getSwitch(key: string): Promise<Boolean> {
+    static async getSwitch(key: string): Promise<boolean> {
         const str = (await KV.findOne({where: {key}}) || {}).value
         return Promise.resolve((str || '').toLowerCase() === 'true')
     }

@@ -1,5 +1,7 @@
 import {getApiService} from "../ApiServer";
 import {fixIconUrl} from "./OpenAccountService";
+import {StatApp} from "../../stat/StatApp";
+import {format} from "js-conflux-sdk";
 
 export async function polishContract(page, needAddressInfo) {
     if ('true' !== needAddressInfo) {
@@ -16,6 +18,11 @@ export async function polishContract(page, needAddressInfo) {
         add(row, 'from')
         add(row, 'to')
         add(row, 'contract')
+        if (StatApp.isEVM) {
+            row.from = row.from ? format.hexAddress(row.from) : row.from;
+            row.to = row.to ? format.hexAddress(row.to) : row.to;
+            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+        }
     })
     if (!contract.size) {
         return
@@ -44,6 +51,12 @@ export async function polishContract(page, needAddressInfo) {
         // removeEmptyKey(map, k)  // keep address, help debugging.
     })
     page.addressInfo = basicInfo.map
+    if (StatApp.isEVM) {
+        Object.keys(page.addressInfo).forEach(k => {
+            page.addressInfo[format.hexAddress(k)] = page.addressInfo[k];
+            delete page.addressInfo[k];
+        });
+    }
 }
 export function removeEmptyKey(obj, key) {
     if (isEmptyObj(obj[key])) {
