@@ -149,10 +149,13 @@ export class ContractQuery {
     }
 
     public async queryVerify({address}) {
-        const{ logger } = this.app;
-        const base32 = toBase32(address);
+        const {logger} = this.app;
 
-        let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true});
+        // verify info
+        let verified = await this.linkVerify({address});
+
+        // real-time impl info
+        const base32 = toBase32(address);
         if(verified !== null){
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => logger.error({ src: 'queryVerify', msg: e.toString() }));
@@ -172,6 +175,42 @@ export class ContractQuery {
             let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.implementation,
                     verifyResult: true}, raw: true});
             verified.implementationVerified = verifiedInfo != null ? true : false;
+        }
+
+        return verified;
+    }
+
+    public async linkVerify({address}) {
+        const {
+            app: { cfx, cfxSDK },
+        } = this;
+
+        // own verify
+        const base32 = toBase32(address);
+        let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true});
+        if(verified) {
+            return verified;
+        }
+
+        // match verify
+        const sdk = cfx || cfxSDK;
+        const code = await sdk.getCode(base32);
+        const getCodeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+        const matchVerify = await ContractVerify.findOne({
+            where: {getCodeHash, verifyResult: true},
+            order: [['updatedAt', 'ASC']],
+            raw: true
+        });
+
+        // link verify
+        if (matchVerify) {
+            const matchRecord = lodash.assign(matchVerify, {
+                id: undefined,
+                base32,
+                bytecodeHash: null,
+                implementation: null
+            });
+            verified = await ContractVerify.create(matchRecord);
         }
 
         return verified;
