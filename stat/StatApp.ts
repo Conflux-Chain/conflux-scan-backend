@@ -39,7 +39,7 @@ import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {PruneHandler} from "./service/prune/PruneHandler";
 import {patchFormat, patchHttpProvider} from "./service/common/utils";
-import {KV} from "./model/KV";
+import {IS_EVM2, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
@@ -88,6 +88,7 @@ export class StatApp{
     public tokenTool: TokenTool;
     public static networkId = 1029
     public static readonly = false
+    public static isEVM = false;
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -120,6 +121,7 @@ export class StatApp{
             console.log(`skip sync db schema.`)
         }
         KV.setupSwitch().then()
+        StatApp.isEVM = await KV.getSwitch(IS_EVM2);
         this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync();
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();

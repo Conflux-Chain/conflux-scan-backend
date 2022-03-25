@@ -6,7 +6,7 @@ import {Context} from 'koa'
 import * as helmet from 'koa-helmet'
 import * as Router from 'koa-router'
 import bodyParser = require("koa-bodyparser");
-import {IS_EVM, KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
+import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
@@ -244,8 +244,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.set('Content-disposition', 'attachment; filename=' + name + '.csv')
         ctx.set('Content-type', 'text/csv')
         const s = []
-        const isEvm = await KV.getString(IS_EVM, '')
-        if (isEvm) {
+        if (StatApp.isEVM) {
             s.push(lang === 'cn' ? '序号,地址,地址名称,余额百分比,交易数'
                 : 'rank,address,address name,balance,percent,transactionCount')
         } else {
@@ -255,10 +254,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         s.push('\n');
         list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
-            s.push(isEvm ? row.hex : row.base32address); s.push(',') // base32
+            s.push(StatApp.isEVM ? row.hex : row.base32address); s.push(',') // base32
             s.push(row.name); s.push(',') // name
             s.push(row.value2); s.push(',') // balance
-            if (!isEvm) {
+            if (!StatApp.isEVM) {
                 s.push(row.value3);
                 s.push(',') // staking
                 s.push(row.value4);

@@ -30,6 +30,7 @@ import {TokenTransferHandler} from "../stat/service/streamstat/business/TokenTra
 import {RankService} from "../stat/service/RankService";
 import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
+import {IS_EVM2, KV} from "../stat/model/KV";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
 
@@ -125,6 +126,7 @@ export class ApiServer {
         // await sequelize.sync({})
         await RedisWrap.connect(config.redis)
         setRateControlDB(redisWrap.client)
+        StatApp.isEVM = await KV.getSwitch(IS_EVM2);
         apiService = new ApiService()
         const apiApp = {networkId:cfxStatus.networkId, cfx: this.cfx, service: apiService};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)

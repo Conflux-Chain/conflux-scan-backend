@@ -7,6 +7,7 @@ import * as path from "path";
 const yamljs = require('yamljs');
 import {koaSwagger} from "koa2-swagger-ui";
 import {InvalidParamError} from "../../stat/service/common/utils";
+import {StatApp} from "../../stat/StatApp";
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
 
@@ -84,6 +85,18 @@ export function setBody(ctx, data: any, code = 0, message = 'ok') {
 export function addSwagger(app: Koa, prefix) {
     console.log(` loading open-api.yaml`)
     const spec = yamljs.load('./document/open-api.yaml');
+    if (StatApp.isEVM) {
+        Object.keys(spec.paths).forEach(path => {
+            if (path.startsWith('/statistics')) {
+                delete spec.paths[path];
+            }
+        });
+        Object.keys(spec.components.schemas).forEach(schema => {
+            if (schema.endsWith('Stat')) {
+                delete spec.components.schemas[schema];
+            }
+        });
+    }
     console.log(` loading open-api.yaml done`)
     // metrics
     app.use(e2k(swStats.getMiddleware({
