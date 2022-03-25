@@ -144,6 +144,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         await new Promise(async r=>{
             const {name} = ctx.request.query;
             const result = await statApp.tokenQuery.list({name});
+
+            const isEvm = await KV.getString(IS_EVM, '')
+            if (isEvm) {
+                result?.list?.forEach(item => item.address = format.hexAddress(item.address));
+                result?.contractList?.forEach(item => item.address = format.hexAddress(item.address));
+            }
+
             ctx.body = result;
             r('ok')
         }).catch(err=>{
