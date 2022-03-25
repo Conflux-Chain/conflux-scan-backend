@@ -9,8 +9,8 @@ export interface ITraceCreateContract{
     value:number
     to:number
     outcome:string
-    creationDataHash?:string
     blockTime:number
+    codeHash?:string
 }
 export class TraceCreateContract extends Model<ITraceCreateContract> implements ITraceCreateContract{
     id?:number
@@ -21,8 +21,8 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
     value:number
     to:number
     outcome:string
-    creationDataHash?:string
     blockTime:number
+    codeHash?:string
     static register(seq){
         TraceCreateContract.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
@@ -33,8 +33,8 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
             to: {type: DataTypes.BIGINT, allowNull: false},
             outcome: {type: DataTypes.CHAR(10), allowNull: true},
-            creationDataHash: {type: DataTypes.CHAR(64), allowNull: true},
             blockTime: {type: DataTypes.BIGINT, allowNull: false},
+            codeHash: {type: DataTypes.CHAR(64), allowNull: true},
         },{
             sequelize: seq,
             tableName: 'trace_create_contract',

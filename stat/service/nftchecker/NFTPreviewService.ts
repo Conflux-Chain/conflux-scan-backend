@@ -247,10 +247,12 @@ export class NFTPreviewService {
     private async getNFTImage({address, tokenId, method = 'uri', minHeight = 200, needFetchJson = true, imageUriFormatter}:
         { address: string, tokenId: BigInt, method?: string, minHeight?: number, needFetchJson?: boolean, imageUriFormatter?: any}
     ): Promise<NFTInfoType> {
+        let url;
         let meta;
         let imageUri;
         let imageName;
         let imageDesc;
+        let errorMessage;
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
             if (nftObj) {
@@ -259,7 +261,7 @@ export class NFTPreviewService {
 
             // get uri
             const contract = await this.cfx.Contract({ abi, address });
-            let url = await contract[method](tokenId);
+            url = await contract[method](tokenId);
 
             // support loot
             if((typeof url === 'string') && url.startsWith('data:application/json;base64')){
@@ -294,9 +296,9 @@ export class NFTPreviewService {
 
             this.setNFTCacheInfo({ address, tokenId, imageUri, imageName, imageDesc });
         } catch (e) {
-            return null;
+            errorMessage = {funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta, error: e?.message?.substr(0, 50)};
         }
-        return { imageMinHeight: minHeight, imageUri, imageName, imageDesc, errorMessage: meta.error };
+        return { imageMinHeight: errorMessage ? undefined : minHeight, imageUri, imageName, imageDesc, errorMessage };
     };
 
     private getNFTCacheInfo({ address, tokenId}:

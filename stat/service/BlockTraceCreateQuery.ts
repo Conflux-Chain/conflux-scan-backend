@@ -34,7 +34,6 @@ export class BlockTraceCreateQuery{
             transactionHash: hex64Bean ? '0x' + hex64Bean.hex : undefined,
             from: fromHex40Bean ? '0x' + fromHex40Bean.hex : undefined,
             address,
-            creationDataHash: trace.creationDataHash,
         };
     }
 

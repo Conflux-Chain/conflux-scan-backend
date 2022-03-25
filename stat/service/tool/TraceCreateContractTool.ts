@@ -66,7 +66,10 @@ async function run() {
             if(traceCreateArray.length > 0){
                 await TraceCreateContract.bulkCreate(traceCreateArray);
                 for(const traceCreate of traceCreateArray){
-                    await epochSync.autoVerify(traceCreate);
+                    const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
+                    const address = `0x${hex40.hex}`;
+                    const codeHash = traceCreate.codeHash;
+                    await epochSync.linkVerify({address, codeHash});
                 }
                 console.log(`add trace create at epoch:${curEpoch}, traceCreateArray:${JSON.stringify(traceCreateArray)}`);
             }
