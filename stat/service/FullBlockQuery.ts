@@ -446,4 +446,30 @@ export class FullBlockQuery {
         }
         return {pagedCondition, txPage};
     }
+
+    public async batchGetTransactionList({hashArray}): Promise<{}> {
+        const {
+            app: {cfx}
+        } = this;
+
+        const txMap = {};
+        let total = hashArray?.length;
+        if (!total) {
+            return txMap;
+        }
+
+        let curPage = 1;
+        let skip = 0;
+        let pageSize = 10;
+        do {
+            const txHashArray = hashArray.slice(skip, skip + pageSize)
+            if (txHashArray?.length) {
+                const taskArray = txHashArray.map(txHash => cfx.getTransactionByHash(txHash));
+                const txArray: any[] = await Promise.all(taskArray);
+                txArray?.forEach(tx => tx && (txMap[tx.hash] = tx));
+            }
+            skip = (++curPage - 1) * pageSize;
+        } while (skip <= total);
+        return txMap;
+    }
 }

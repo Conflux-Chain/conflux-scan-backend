@@ -64,26 +64,50 @@ async function listMiningStat(ctx) {
  * @param ctx
  */
 async function listAccountTransaction(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber','minTimestamp','maxTimestamp')
+    mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,minEpochNumber,maxEpochNumber,minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo} = ctx.request.query;
+    const {account: base32,minEpochNumber,maxEpochNumber,startBlock, endBlock, minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
+
+    const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
+    const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
     const page = await getApiService().fullBlockQuery.listTransaction({accountAddress: base32, skip, limit,
-        verboseAddress: false, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort, nonce, txType
+        verboseAddress: false, minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, nonce, txType
     });
+
+    const hashArray = [];
     page?.list?.forEach(tx=>{
         delete tx.syncTimestamp
         delete tx.blockHash
+        if (StatApp.isEVM) {
+            tx['blockNumber'] = tx.epochNumber;
+            delete tx.epochNumber;
+            delete tx.blockPosition;
+            tx['contractAddress'] = tx.contractCreated;
+            delete tx.contractCreated;
+            tx['isError'] = tx.txExecErrorMsg ? '1' : '0';
+            hashArray.push(tx.hash);
+        }
     })
+
+    if (StatApp.isEVM) {
+        const txMap = await getApiService().fullBlockQuery.batchGetTransactionList({hashArray});
+        page?.list?.forEach(tx=>{
+            tx['input'] = txMap[tx.hash]?.data;
+            tx['blockHash'] = txMap[tx.hash]?.blockHash;
+        })
+    }
+
     delete page.extraInfo
     await polishContract(page, needAddressInfo)
     setBody(ctx, page)
 }
+
 async function listAccountCfxTransfer(ctx) {
     return listTransfer(ctx, getApiService().cfxTransferQuery)
 }

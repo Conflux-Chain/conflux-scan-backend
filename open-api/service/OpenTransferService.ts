@@ -20,24 +20,30 @@ export function polishTransferList(page) {
         delete row.transferType
         delete row.address
         delete row.value
+        if (StatApp.isEVM) {
+            row['blockNumber'] = row.epochNumber
+            delete row.epochNumber;
+        }
     })
     delete page?.accountId
 }
 
 export async function listTransfer(ctx, service) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber','minTimestamp','maxTimestamp')
+    mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account', 'contract')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     const {skip, limit} = skipLimit(ctx.request.query)
     // token id is not used in crc20transfer.
-    const {account: base32,minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to,sort,contract,tokenId, needAddressInfo} = ctx.request.query;
+    const {account: base32,minEpochNumber, maxEpochNumber, startBlock, endBlock, minTimestamp, maxTimestamp, from, to,sort,contract,tokenId, needAddressInfo} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
     }
+    const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
+    const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
     const page = await service.listTransfer(
         {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, tokenId,
-            minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, from, to, sort}
+            minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort}
     );
     polishTransferList(page)
     await polishContract(page, needAddressInfo)

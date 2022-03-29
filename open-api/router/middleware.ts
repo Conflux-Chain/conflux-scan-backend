@@ -13,6 +13,7 @@ const e2k = require('express-to-koa');
 
 const requestIp = require('request-ip');
 const Limiter = require('ratelimiter')
+const lodash = require('lodash');
 let db
 export function setRateControlDB(db0) {
     db = db0;
@@ -90,10 +91,31 @@ export function addSwagger(app: Koa, prefix) {
             if (path.startsWith('/statistics')) {
                 delete spec.paths[path];
             }
+            spec.paths[path]?.get?.parameters?.forEach(parameterObj => {
+                Object.keys(parameterObj).forEach(key => {
+                    const paraDefinition = parameterObj[key];
+                    if (paraDefinition.endsWith('minEpochNumberParam')) {
+                        const evmParaDefinition = paraDefinition.replace('minEpochNumberParam', 'startBlockParam')
+                        parameterObj[key] = evmParaDefinition;
+                    }
+                    if (paraDefinition.endsWith('maxEpochNumberParam')) {
+                        const evmParaDefinition = paraDefinition.replace('maxEpochNumberParam', 'endBlockParam')
+                        parameterObj[key] = evmParaDefinition;
+                    }
+                });
+            });
         });
         Object.keys(spec.components.schemas).forEach(schema => {
             if (schema.endsWith('Stat')) {
                 delete spec.components.schemas[schema];
+            }
+        });
+        Object.keys(spec.components.parameters).forEach(parameter => {
+            if (lodash.includes(['account', 'from', 'to', 'ownerParam'], parameter)) {
+                spec.components.parameters[parameter].description = `Account address, it's like 0xe47d6387edacde17804c5f5d709b73a4943a762c`;
+            }
+            if (lodash.includes(['contractParam', 'contractParamMust'], parameter)) {
+                spec.components.parameters[parameter].description = `Contract address, it's like 0x4f9e3186513224cf152016ccd86019e7b9a3c809`;
             }
         });
     }

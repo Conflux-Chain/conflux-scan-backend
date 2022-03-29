@@ -7,12 +7,20 @@ info:
       <td>Api host</td><td>Net</td><td>Mode</td><td>Scan</td>
     </tr>
     <tr>
-      <td><a href='https://api.confluxscan.net/doc'>https://api.confluxscan.net</a></td><td>Mainnet</td><td>Production</td>
+      <td><a href='https://api.confluxscan.net/doc'>https://api.confluxscan.net</a></td><td>Mainnet Core</td><td>Production</td>
       <td><a target='_blank' href='https://confluxscan.io'>https://confluxscan.io</a></td>
     </tr>
     <tr>
-      <td><a href='https://api-testnet.confluxscan.net/doc'>https://api-testnet.confluxscan.net</a></td><td>Testnet</td><td>Production</td>
+      <td><a href='https://evmapi.confluxscan.net/doc'>https://evmapi.confluxscan.net</a></td><td>Mainnet eSpace</td><td>Production</td>
+      <td><a target='_blank' href='https://evm.confluxscan.io'>https://evm.confluxscan.io</a></td>
+    </tr>
+    <tr>
+      <td><a href='https://api-testnet.confluxscan.net/doc'>https://api-testnet.confluxscan.net</a></td><td>Testnet Core</td><td>Production</td>
       <td><a target='_blank' href='https://testnet.confluxscan.io'>https://testnet.confluxscan.io</a></td>
+    </tr>
+    <tr>
+      <td><a href='https://evmapi-testnet.confluxscan.net/doc'>https://evmapi-testnet.confluxscan.net</a></td><td>Testnet eSpace</td><td>Production</td>
+      <td><a target='_blank' href='https://evmtestnet.confluxscan.io'>https://evmtestnet.confluxscan.io</a></td>
     </tr>
   </table>
   Notes:<br/>
@@ -722,11 +730,10 @@ components:
                   contract:
                     description: 'Contract address of the token.'
                     type: string
-                    example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
                   iconUrl:
                     description: 'Icon url.'
                     type: string
-                    example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/cfxtest%3Aachkx35n7vngfxgrm7akemk3ftzy47t61yk5nn270s.svg'
+                    example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/xxxxxx.svg'
                   amount:
                     description: 'The token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
@@ -750,12 +757,11 @@ components:
                     type: integer
                   transactionHash:
                     type: string
-                  "from":
-                    example: 'cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk'
+                  from:
                     type: string
-                  "to":
+                  to:
                     type: string
-                  "amount":
+                  amount:
                     type: string
                   timestamp:
                     type: integer
@@ -781,12 +787,11 @@ components:
                     type: integer
                   transactionHash:
                     type: string
-                  "from":
-                    example: 'cfx:aajj1b1gm7k51mhzm80czcx31kwxrm2f6jxvy30mvk'
+                  from:
                     type: string
-                  "to":
+                  to:
                     type: string
-                  "amount":
+                  amount:
                     type: string
                   timestamp:
                     type: integer
@@ -1364,7 +1369,6 @@ components:
                   contract:
                     description: 'Contract address of the token.'
                     type: string
-                    example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
                   balance:
                     description: "The token balance of an account, the string is not divided by the token decimal."
                     type: string
@@ -1383,7 +1387,7 @@ components:
                   iconUrl:
                     description: 'Icon url.'
                     type: string
-                    example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/cfxtest%3Aachkx35n7vngfxgrm7akemk3ftzy47t61yk5nn270s.svg'
+                    example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/xxxxxx.svg'
     NFTTokenList:
       type: object
       properties:
@@ -1403,7 +1407,6 @@ components:
                   contract:
                     description: 'Contract address of the token.'
                     type: string
-                    example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
                   tokenId:
                     description: "The token id."
                     type: string
@@ -1429,7 +1432,6 @@ components:
             contract:
               description: 'Contract address of the token.'
               type: string
-              example: 'cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx'
             tokenId:
               description: "The token id."
               type: string
@@ -1539,7 +1541,6 @@ components:
       required: true
       schema:
         type: string
-        example: ''
     from:
       name: from
       in: query
@@ -1548,7 +1549,6 @@ components:
       required: false
       schema:
         type: string
-        example: ''
     to:
       name: to
       in: query
@@ -1557,7 +1557,6 @@ components:
       required: false
       schema:
         type: string
-        example: ''
     skipParam:
       name: skip
       in: query
@@ -1592,7 +1591,6 @@ components:
       required: false
       schema:
         type: string
-        example: ''
     contractParamMust:
       name: contract
       in: query
@@ -1601,7 +1599,6 @@ components:
       required: true
       schema:
         type: string
-        example: ''
     minEpochNumberParam:
       name: minEpochNumber
       in: query
@@ -1699,7 +1696,6 @@ components:
       required: false
       schema:
         type: string
-        example: ''
     detailParam:
       description: "If show detail, the value is true/false."
       name: detail
@@ -1708,6 +1704,18 @@ components:
       schema:
         type: string
         default: 'false'
+    startBlockParam:
+      name: startBlock
+      in: query
+      required: false
+      schema:
+        type: integer
+    endBlockParam:
+      name: endBlock
+      in: query
+      required: false
+      schema:
+        type: integer
 externalDocs:
   description: 'Conflux JSON RPC Docs'
   url: 'https://developer.confluxnetwork.org/docs/conflux-doc/docs/json_rpc'
