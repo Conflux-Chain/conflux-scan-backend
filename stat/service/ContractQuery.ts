@@ -1,7 +1,7 @@
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
-import {Hex40Map, hex40IdMap, makeId, POCKET_ADDRESS_MAP} from "../model/HexMap";
+import {Hex40Map, hex40IdMap, makeId, POCKET_ADDRESS_MAP, idHex40Map, convert2base32map} from "../model/HexMap";
 import {json, Op} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
@@ -119,40 +119,75 @@ export class ContractQuery {
     }
 
     public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult, similarity,
-        getCodeHash}) {
-        const{ logger } = this.app;
+        codeHash}) {
+        const {logger} = this.app;
         const base32 = toBase32(address);
 
         const dbVerify = await ContractVerify.findOne({where: {id}, raw: true});
         if(dbVerify.base32 !== base32){
-            logger?.error({ src: `[${address}]stat verify request`, updateError: `record.base32 not equals ${base32}` });
+            logger?.error({ src: `[${address}]updateVerify`, updateError: `record.base32 not equals ${base32}` });
         }
 
-        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, getCodeHash,
+        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, codeHash,
             updatedAt: new Date()});
         let updateVerify = lodash.assign(dbVerify, updateInfo);
         if(verifyResult){
             const proxyInfo = await this.queryImplementation(base32)
-                .catch((e) => logger.error({ src: 'updateVerify', msg: e.toString() }));
+                .catch((e) => logger?.error({ src: `[${address}]updateVerify`, queryImplError: e.toString() }));
             updateVerify = lodash.assign(updateInfo, {sourceCode, abi}, proxyInfo);
-            try {
-                const abiObj = JSON.parse(abi);
-                saveAbiInfo(abiObj).then();
-            } catch (e) {
-                console.log(`error, save abi info, ${base32}`, e);
-            }
         }
         const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
-        logger?.info({ src: `[${address}]stat verify request`, updateResult: `${JSON.stringify(result)}` });
+
+        verifyResult && saveAbiInfo(abi).catch(e => console.log(`[${address}]updateVerify.saveAbiInfo`, e));
+        await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]updateVerify.linkVerify`, e));
+        logger?.info({ src: `[${address}]updateVerify`, updateResult: `${JSON.stringify(result)}` });
 
         return result;
     }
 
+    private async linkVerify({address, codeHash}) {
+        const traceCreates = await TraceCreateContract.findAll({ attributes: ['to'], where: {codeHash}, raw: true });
+        if(!traceCreates?.length){
+            return;
+        }
+
+        const hexIdArray = traceCreates.map(item => item.to);
+        const hexIdHexMap = await idHex40Map([...hexIdArray])
+        const hexIdBase32Map = convert2base32map(hexIdHexMap)
+
+        const base32Array = [...hexIdBase32Map.values()];
+        const verifiedArray = await ContractVerify.findAll({
+            attributes: ['base32'], where: {verifyResult: true, base32: {[Op.in]: base32Array}}, raw: true,
+        }).then(arr => arr.map(t => t.base32));
+        const toVerifyArray = lodash.filter(base32Array, item => !lodash.includes(verifiedArray, item));
+        if(!toVerifyArray?.length){
+            return;
+        }
+
+        const base32 = toBase32(address);
+        const matchVerify = await ContractVerify.findOne({
+            where: {base32, verifyResult: true},
+            order: [['updatedAt', 'ASC']],
+            raw: true
+        });
+        if (!matchVerify) {
+            return;
+        }
+
+        for (const base32 of toVerifyArray) {
+            const matchRecord = lodash.assign(matchVerify, { id: undefined, base32, implementation: null });
+            await ContractVerify.create(matchRecord).catch(() => undefined);
+        }
+    }
+
     public async queryVerify({address}) {
-        const{ logger } = this.app;
+        const {logger} = this.app;
         const base32 = toBase32(address);
 
+        // own verified info
         let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true});
+
+        // real-time impl info
         if(verified !== null){
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => logger.error({ src: 'queryVerify', msg: e.toString() }));

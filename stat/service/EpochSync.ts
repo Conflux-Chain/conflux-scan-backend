@@ -18,6 +18,7 @@ import {RedisWrap, STREAM_STAT_TOKEN_TRANSFER_Q, TPS_TRANSFER_Q} from "./RedisWr
 import {TransferTpsService} from "./TransferTpsService";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {ContractVerify} from "../model/ContractVerify";
+import {toBase32} from "./tool/AddressTool";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -119,7 +120,10 @@ export class EpochSync extends SyncBase{
 
         const traceCreateArray = modelData.traceCreateArray;
         for(const traceCreate of traceCreateArray){
-            await this.autoVerify(traceCreate);
+            const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
+            const address = `0x${hex40.hex}`;
+            const codeHash = traceCreate.codeHash;
+            await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
         }
 
         if (epochNumber % 100 === 0) {
@@ -478,6 +482,7 @@ export class EpochSync extends SyncBase{
             const txHashId =  (await makeId(trace.transactionHash)).id;
             const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
+            const codeHash = await this.getCodeHash(trace.to);
             const toCreate = {
                 epochNumber: trace.epochNumber,
                 txHashId,
@@ -487,15 +492,15 @@ export class EpochSync extends SyncBase{
                 value: trace.value,
                 outcome: trace.outcome,
                 blockTime: trace.blockTime,
-                creationDataHash: trace.initHash,
+                codeHash,
             };
             traceCreateArrayDB.push(toCreate)
         }
         return traceCreateArrayDB;
     }
 
-    private async getTraceCreateArray(epochNumber) {
-        const traceArray = await this.getTraceArray(epochNumber);
+    public async getTraceCreateArray(epochNumber, detail = false) {
+        const traceArray = await this.getTraceArray(epochNumber, detail);
         // filter
         const createTraceArray = [];
         traceArray.forEach((trace) => {
@@ -514,15 +519,15 @@ export class EpochSync extends SyncBase{
                     value: trace.action.value,
                     outcome: trace.action.outcome,
                     blockTime: trace.blockTime,
-                    initHash: trace.action.initHash,
                     valid: trace.valid,
+                    init: trace.action.init,
                 });
             }
         });
         return createTraceArray;
     }
 
-    private async getTraceArray(epochNumber) {
+    private async getTraceArray(epochNumber, detail = false) {
         let traceArray = [];
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
         blockArray.forEach((block, idx) => {
@@ -550,7 +555,7 @@ export class EpochSync extends SyncBase{
                             transactionIndex,
                             transactionTraceIndex,
                             status: transaction.status,
-                            ...EpochSync.parseTrace(trace),
+                            ...EpochSync.parseTrace(trace, detail),
                         });
                     });
                     traceArray = [...traceArray, ...EpochSync.matchTrace(transactionTraceArray, transaction)];
@@ -593,7 +598,7 @@ export class EpochSync extends SyncBase{
         return block;
     }
 
-    private static parseTrace(trace) {
+    private static parseTrace(trace, detail = false) {
         if (trace.action.from) {
             trace.action.from = format.hexAddress(trace.action.from);
         }
@@ -610,8 +615,9 @@ export class EpochSync extends SyncBase{
             trace.action.input = '';
         }
         if (trace.action.init) {
-            trace.action.initHash = sign.keccak256(Buffer.from(trace.action.init)).toString('hex');
-            trace.action.init = '';
+            if(!detail){
+                trace.action.init = '';
+            }
         }
         return trace;
     }
@@ -643,20 +649,19 @@ export class EpochSync extends SyncBase{
         return transactionTraceArray;
     }
 
-    // ---------------------------- contract verify -----------------------------
-    public async autoVerify(traceCreate){
+    private async getCodeHash(address){
         const {
             app: { cfx },
         } = this;
 
-        const toHex40Bean = await Hex40Map.findOne({where: {id: traceCreate.to}});
-        const base32 = format.address(`0x${toHex40Bean.hex}`, StatApp.networkId);
+        const code = await cfx.getCode(address);
+        return sign.keccak256(Buffer.from(code)).toString('hex');
+    }
 
-        const code = await cfx.getCode(base32);
-        const getCodeHash = sign.keccak256(Buffer.from(code)).toString('hex');
-
+    // ---------------------------- contract verify -----------------------------
+    public async linkVerify({address, codeHash}){
         const matchVerify = await ContractVerify.findOne({
-            where: {getCodeHash, verifyResult: true},
+            where: {codeHash, verifyResult: true},
             order: [['updatedAt', 'ASC']],
             raw: true
         });
@@ -664,7 +669,8 @@ export class EpochSync extends SyncBase{
             return;
         }
 
-        const matchRecord = lodash.assign(matchVerify, {id: undefined, base32, bytecodeHash: null, implementation: null});
-        await ContractVerify.create(matchRecord);
+        const base32 = toBase32(address);
+        const matchRecord = lodash.assign(matchVerify, {id: undefined, base32, implementation: null});
+        await ContractVerify.create(matchRecord).catch(() => undefined);
     }
 }

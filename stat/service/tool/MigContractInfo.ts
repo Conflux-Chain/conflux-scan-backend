@@ -36,25 +36,50 @@ async function parseVerified() {
     }
 }
 
-async function addCodeHash() {
+async function addCodeHashForVerify() {
     const verifyArray = await ContractVerify.findAll({
-        attributes: ['id', 'base32', 'getCodeHash'],
+        attributes: ['id', 'base32', 'codeHash'],
         where: {verifyResult: true},
         raw: true
     });
 
     for(const verify of verifyArray){
-        if(!verify.getCodeHash){
+        if(!verify.codeHash){
             const code = await cfx.getCode(verify.base32);
             if(code === '0x'){
+                console.log(`addCodeHashForVerify------base32:${verify.base32}:destroyed------code:${code}`);
                 continue;
             }
-            const getCodeHash = sign.keccak256(Buffer.from(code)).toString('hex');
-            await ContractVerify.update({getCodeHash}, {where: {id: verify.id}});
-            console.log(`addCodeHash------base32:${verify.base32}------codeHash:${getCodeHash}`);
+            const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+            await ContractVerify.update({codeHash}, {where: {id: verify.id}});
+            console.log(`addCodeHashForVerify------base32:${verify.base32}------codeLength:${code?.length}------codeHash:${codeHash}`);
         }
     }
-    console.log(`addCodeHash------done!`);
+    console.log(`addCodeHashForVerify------done!`);
+}
+
+async function addCodeHashForTrace() {
+    const traceArray = await TraceCreateContract.findAll({
+        attributes: ['id', 'to', 'codeHash'],
+        raw: true
+    });
+
+    for(const trace of traceArray){
+        if(!trace.codeHash){
+            const hex40 = await Hex40Map.findOne({where: {id: trace.to}});
+            const hex = `0x${hex40.hex}`;
+            const base32 =  format.address(hex, StatApp.networkId);
+            const code = await cfx.getCode(base32);
+            if(code === '0x'){
+                console.log(`addCodeHashForTrace------base32:${base32}:destroyed------code:${code}`);
+                continue;
+            }
+            const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+            await TraceCreateContract.update({codeHash}, {where: {id: trace.id}});
+            console.log(`addCodeHashForTrace------base32:${base32}------codeLength:${code?.length}------codeHash:${codeHash}`);
+        }
+    }
+    console.log(`addCodeHashForTrace------done!`);
 }
 
 async function addMatchedVerify() {
@@ -85,10 +110,10 @@ async function addMatchedVerify() {
         if(code === '0x'){
             continue;
         }
-        const getCodeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+        const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
 
         const matchVerify = await ContractVerify.findOne({
-            where: {getCodeHash, verifyResult: true},
+            where: {codeHash, verifyResult: true},
             order: [['updatedAt', 'ASC']],
             raw: true
         });
@@ -96,10 +121,9 @@ async function addMatchedVerify() {
             continue;
         }
 
-        const matchedBase32 = matchVerify.base32;
-        const matchRecord = lodash.assign(matchVerify, {id: undefined, base32, bytecodeHash: null, implementation: null});
+        const matchRecord = lodash.assign(matchVerify, {id: undefined, base32, implementation: null});
         await ContractVerify.create(matchRecord);
-        console.log(`addMatchedVerify------base32:${base32}------matchedContract:${matchedBase32}`);
+        console.log(`addMatchedVerify------base32:${base32}------matchedContract:${matchVerify.base32}`);
     }
     console.log(`addMatchedVerify------done!`);
 }
@@ -108,9 +132,12 @@ async function addMatchedVerify() {
 async function run() {
     await init();
     if(type === 1){
-        await addCodeHash();
+        await addCodeHashForVerify();
     }
     if(type === 2){
+        await addCodeHashForTrace();
+    }
+    if(type === 3){
         await addMatchedVerify();
     }
 }

@@ -82,7 +82,8 @@ export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
 // Refer:
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
-export async function saveAbiInfo(abi:any) {
+export async function saveAbiInfo(abiObj:any) {
+    const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
     const cfx = new Conflux({url:''})
     const contract = cfx.Contract({abi})
     const arr:IAbiInfo[] = []

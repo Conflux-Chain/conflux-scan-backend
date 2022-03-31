@@ -119,10 +119,10 @@ class ContractService { // TODO: extends AccountService
       result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
       result.errors = result.errors.map((v) => v.formattedMessage || v.message);
 
-      const getCodeHash = result?.exactMatch ? sign.keccak256(Buffer.from(code)).toString('hex') : undefined;
+      const codeHash = result?.exactMatch ? sign.keccak256(Buffer.from(code)).toString('hex') : undefined;
       const updateVerify = await service.contractRdb.updateVerify({ id: newVerify.id, address,
         version: result.version, sourceCode, abi: JSON.stringify(result.abi),
-        verifyResult: result.exactMatch, similarity: result.similarity, getCodeHash});
+        verifyResult: result.exactMatch, similarity: result.similarity, codeHash});
       logger.error({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` });
       return lodash.defaults({ name, sourceCode, optimizeRuns },
         lodash.pick(result, ['version', 'warnings', 'errors', 'exactMatch', 'similarity', 'abi']));
@@ -169,10 +169,10 @@ class ContractService { // TODO: extends AccountService
 
         // extract
         if (resp.exactMatch) {
-          const creationData = await this.getCreationData({ address });
+          const creationData = '';
           const args = await this.extractConstructorArgs({ creationData, bytecode: resp.bytecode });
           if (args !== undefined) {
-            await service.contractRdb.updateVerify({ id: verify.id, address, constructorArgs: args, creationData });
+            await service.contractRdb.updateVerify({ id: verify.id, address, constructorArgs: args });
           }
           logger.info({ src: `[${address}]recompile`, match: `${resp.exactMatch}`, args: `${args}` });
         }
@@ -186,37 +186,6 @@ class ContractService { // TODO: extends AccountService
 
   async extractConstructorArgs({ creationData, bytecode }) {
     return `0x${creationData.slice(bytecode.length)}`;
-  }
-
-  async getCreationData({ address }) {
-    const {
-      app: { service, logger },
-    } = this;
-
-    let creationData;
-    try {
-      const trace = await service.traceCreate.query(address);
-      if (trace?.transactionHash !== undefined) {
-        const transaction = await service.conflux.getTransactionByHash(trace.transactionHash);
-        creationData = transaction.data;
-      }
-
-      creationData = creationData !== undefined ? creationData : '';
-    } catch (e) {
-      creationData = '';
-      logger.error({ src: `[${address}]verify.getCreationData`, error: `${e.message}` });
-    }
-
-    return creationData;
-  }
-
-  async getCreationDataHash({ address }) {
-    const {
-      app: { service },
-    } = this;
-
-    const trace = await service.traceCreate.query(address);
-    return trace?.creationDataHash;
   }
 
   // --------------------------------------------------------------------------
@@ -250,7 +219,7 @@ class ContractService { // TODO: extends AccountService
     let verify = {};
     if (verified?.verifyResult) {
       verify = lodash.defaults({ exactMatch: true, optimization: verified.optimizeFlag, runs: verified.optimizeRuns },
-        lodash.pick(verified, ['name', 'compiler', 'version', 'license', 'constructorArgs', 'creationData']));
+        lodash.pick(verified, ['name', 'compiler', 'version', 'license', 'constructorArgs']));
       if (lodash.includes(fields, 'abi')) {
         announceInfo.abi = verified.abi;
       }

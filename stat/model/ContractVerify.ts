@@ -7,12 +7,9 @@ export interface IContractVerify{
     name:string
     compiler?:string
     version?:string
-    creationData?:string
     constructorArgs?:string
     sourceCode?:string
     abi?:string
-    creationDataHash?:string
-    bytecodeHash?:string
     getCodeHash?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
@@ -22,6 +19,7 @@ export interface IContractVerify{
     proxy?:boolean
     implementation?:string
     proxyPattern?:string
+    codeHash?:string
 }
 
 export class ContractVerify extends Model<IContractVerify> implements IContractVerify{
@@ -31,12 +29,9 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     name:string
     compiler?:string
     version?:string
-    creationData?:string
     constructorArgs?:string
     sourceCode?:string
     abi?:string
-    creationDataHash?:string
-    bytecodeHash?:string
     getCodeHash?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
@@ -46,6 +41,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     proxy?:boolean
     implementation?:string
     proxyPattern?:string
+    codeHash?:string
 
     static register(seq:Sequelize) {
         ContractVerify.init({
@@ -56,12 +52,9 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name: {type: DataTypes.CHAR(255), allowNull: false},
             compiler: {type: DataTypes.CHAR(255), allowNull: true},
             version: {type: DataTypes.CHAR(255), allowNull: true},
-            creationData: {type: DataTypes.TEXT, allowNull: true, },
             constructorArgs: {type: DataTypes.TEXT, allowNull: true, },
             sourceCode: {type: DataTypes.TEXT({length: 'long'}), allowNull: true, },
             abi: {type: DataTypes.TEXT, allowNull: true, },
-            creationDataHash: {type: DataTypes.CHAR(64), allowNull: true, },
-            bytecodeHash: {type: DataTypes.CHAR(64), allowNull: true, },
             getCodeHash: {type: DataTypes.CHAR(64), allowNull: true, },
             optimizeFlag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             optimizeRuns: {type: DataTypes.INTEGER, allowNull: true, },
@@ -73,6 +66,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             proxy: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             implementation: {type: DataTypes.CHAR(64), allowNull: true},
             proxyPattern: {type: DataTypes.CHAR(64), allowNull: true},
+            codeHash: {type: DataTypes.CHAR(64), allowNull: true, },
         },{
             tableName: 'contract_verify',
             sequelize: seq,
@@ -88,12 +82,9 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             name:contract.name,
             compiler:contract.compiler,
             version:contract.version,
-            creationData: contract.creationData,
             constructorArgs: contract.constructorArgs,
             sourceCode:contract.sourceCode,
             abi:contract.abi,
-            creationDataHash:contract.creationDataHash,
-            bytecodeHash:contract.bytecodeHash,
             getCodeHash:contract.getCodeHash,
             optimizeFlag:contract.optimizeFlag,
             optimizeRuns: contract.optimizeRuns,
@@ -105,6 +96,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             proxy:contract.proxy,
             implementation:contract.implementation,
             proxyPattern:contract.proxyPattern,
+            codeHash:contract.codeHash,
         }, {
             transaction: dbTx
         })
