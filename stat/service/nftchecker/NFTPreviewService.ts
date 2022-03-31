@@ -2,11 +2,13 @@
 import { NFTMap, NFTNames } from './NFTInfo';
 import {toBase32} from "../tool/AddressTool";
 import {Desensitizer} from "../Desensitizer";
+import {Token} from "../../model/Token";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
 const {put,get, clear} = require('./MetaInfoCache')
+const CONST = require('../common/constant');
 export class NFTPreviewService {
     private app;
     private cfx;
@@ -25,7 +27,7 @@ export class NFTPreviewService {
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
         const nftInfo = await this.getNFTInfo0({contractAddress: address, tokenId});
-        if(!nftInfo) {
+        if(!nftInfo || nftInfo.error) {
             return nftInfo;
         }
 
@@ -101,11 +103,13 @@ export class NFTPreviewService {
                 return this.getNFTImage({ address, tokenId, method: 'uris', needFetchJson: false,
                     imageUriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url });
             default:
-                // try 1155
-                let result =  await this.getNFTImage({ address, tokenId });
-                // try 721
-                if (result === null) {
+                let result;
+                const token = await Token.findOne({attributes: ['type'], where: {base32: address}});
+                if(token?.type === CONST.TRANSFER_TYPE.ERC721){
                     result = await this.getNFTImage({ address, tokenId, method: 'tokenURI'});
+                }
+                if(token?.type === CONST.TRANSFER_TYPE.ERC1155){
+                    result =  await this.getNFTImage({ address, tokenId });
                 }
                 return result;
         }
@@ -252,7 +256,7 @@ export class NFTPreviewService {
         let imageUri;
         let imageName;
         let imageDesc;
-        let errorMessage;
+        let error;
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
             if (nftObj) {
@@ -296,9 +300,9 @@ export class NFTPreviewService {
 
             this.setNFTCacheInfo({ address, tokenId, imageUri, imageName, imageDesc });
         } catch (e) {
-            errorMessage = {funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta, error: e?.message?.substr(0, 50)};
+            error = {funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta, errorMessage: e?.message?.substr(0, 50)};
         }
-        return { imageMinHeight: errorMessage ? undefined : minHeight, imageUri, imageName, imageDesc, errorMessage };
+        return { imageMinHeight: error ? undefined : minHeight, imageUri, imageName, imageDesc, error };
     };
 
     private getNFTCacheInfo({ address, tokenId}:
@@ -340,5 +344,5 @@ export type NFTInfoType = {
     imageUri: string;
     imageName: any;
     imageDesc?: any;
-    errorMessage?: any;
+    error?: any;
 } | null;

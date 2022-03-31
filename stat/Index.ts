@@ -19,7 +19,9 @@ export async function init() {
     app.use(async (ctx, next) => {
         await next();
         const rt = ctx.response.get('X-Response-Time');
-        console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
+        if(!ctx.url.endsWith('pos-info') && !ctx.url.endsWith('tps')){
+            console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
+        }
     });
 
 // x-response-time
