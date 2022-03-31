@@ -670,7 +670,10 @@ export class EpochSync extends SyncBase{
         }
 
         const base32 = toBase32(address);
-        const matchRecord = lodash.assign(matchVerify, {id: undefined, base32, implementation: null});
+        const similarMatch = matchVerify.base32;
+        const createdAt = new Date();
+        const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
+            {id: undefined, implementation: undefined, base32, similarMatch, createdAt, updatedAt: createdAt});
         await ContractVerify.create(matchRecord).catch(() => undefined);
     }
 }

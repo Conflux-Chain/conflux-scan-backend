@@ -12,7 +12,9 @@ module.exports = {
   AnnouncementNotExistError: LogicError.extend({ name: 'AnnouncementNotExistError', code: 40404 }),
 
   // contract
+  CreationDataError: LogicError.extend({ name: 'CreationDataError', code: 50403 }),
   ContractNameError: LogicError.extend({ name: 'ContractNameError', code: 50404 }),
   CompilerError: LogicError.extend({ name: 'CompilerError', code: 50600 }),
   ContractDecompileError: LogicError.extend({ name: 'ContractDecompileError', code: 50601 }),
+  ExtractMetadataError: LogicError.extend({ name: 'ExtractMetadataError', code: 50602 }),
 };

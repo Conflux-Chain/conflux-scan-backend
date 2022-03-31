@@ -2,13 +2,12 @@ const lodash = require('lodash');
 const semver = require('semver');
 const solc = require('solc');
 const cbor = require('cbor');
-// const CBOR = require('@conflux-lib/cbor');
 const superagent = require('superagent');
 require('superagent-proxy')(superagent);
 
 const OPCODES = require('../common/lib/OPCODES.json');
-
 const DOMAIN = 'https://solc-bin.ethereum.org/bin';
+const {extractEncodedConstructorArgs} = require('../common/tool');
 
 /**
  * @see https://docs.soliditylang.org/en/v0.7.5/using-the-compiler.html
@@ -100,9 +99,9 @@ class SolCompileService {
     const contracts = lodash.mapValues(
       lodash.get(output.contracts, filename, {}),
       ({ abi, evm }) => {
-        const bytecode = `0x${evm.bytecode.object}`;
-        const code = `0x${evm.deployedBytecode.object}`;
-        return { abi, code, bytecode };
+        const creationBytecode = `0x${evm.bytecode.object}`;
+        const deployedBytecode = `0x${evm.deployedBytecode.object}`;
+        return { abi, creationBytecode, deployedBytecode };
       },
     );
     const errors = lodash.filter(output.errors, (each) => each.severity === 'error');
@@ -112,14 +111,34 @@ class SolCompileService {
   }
 
   async decompile({ code }) { // XXX: async for `traceLog.traceMethod`
-    const metadataLength = Number(`0x${code.slice(-4)}`); // two-byte big-endian encoding
+    const metadataLength = Number(`0x${code.slice(-4)}`);
     const metadataHex = code.slice(-metadataLength * 2 - 4, -4);
-    // const metadata = CBOR.decode(Buffer.from(metadataHex, 'hex'));
     const metadata = cbor.decodeFirstSync(Buffer.from(metadataHex, 'hex'));
     const runtimeCode = code.slice(0, -metadataLength * 2 - 4);
     const opcodes = this._disassemble(runtimeCode);
 
     return { metadata, runtimeCode, opcodes };
+  }
+
+  async extractMetadata(bytecode) {
+    const metadataSize = parseInt(bytecode.slice(-4), 16) * 2 + 4;
+    const metadataHex = bytecode.slice(-metadataSize, -4);
+    const metadata = cbor.decodeFirstSync(Buffer.from(metadataHex, 'hex'));
+    return metadata;
+  }
+
+  _trimMetadata(bytecode) {
+    // Last 4 chars of bytecode specify byte size of metadata component
+    const metadataSize = parseInt(bytecode.slice(-4), 16) * 2 + 4;
+    let trimmedMetadata = bytecode.slice(0, bytecode.length - metadataSize);
+    // filter mata data hash, that is bzzr1 hash or ipfs hash
+    const prefixArray = ['a265627a7a723158', 'a2646970667358'];
+    prefixArray.forEach(prefix => {
+      if (trimmedMetadata.indexOf(prefix) !== -1) {
+        trimmedMetadata = trimmedMetadata.substr(0, trimmedMetadata.indexOf(prefix));
+      }
+    });
+    return trimmedMetadata;
   }
 
   _disassemble(hex) {
@@ -150,6 +169,78 @@ class SolCompileService {
   }
 
   // --------------------------------------------------------------------------
+  async verifyPlus({ address, creationData, deployedBytecode, name, ...options }) {
+    const {
+      app: {
+        CONST: {MATCH_STATUS},
+        error: {CompilerError, ExtractMetadataError, ContractNameError},
+        type, logger
+      },
+    } = this;
+
+    const match = {
+      address,
+      version: null,
+      warnings: null,
+      errors: null,
+      abi: null,
+      creationBytecode: null,
+      encodedConstructorArgs: null,
+      matchCode: null,
+      matchDesc: null,
+    };
+
+    if (!deployedBytecode || deployedBytecode === '0x') {
+      lodash.assign(match, MATCH_STATUS.CODE_NOT_FOUND, {warnings: [], errors: []});
+      return match;
+    }
+
+    const metadata = await this.extractMetadata(deployedBytecode).catch(e => {throw new ExtractMetadataError(e)});
+    options.version = type.solcVersion(metadata.solc) || options.compiler;
+    const {contracts, version, warnings, errors} = await this.compile(options).catch(e => {throw new CompilerError(e)});
+    lodash.assign(match, {version, warnings, errors});
+    if (errors?.length) {
+      lodash.assign(match, MATCH_STATUS.ERROR);
+      return match;
+    }
+
+    const recompiled = contracts[name];
+    if (!recompiled) {
+      throw new ContractNameError(`can not found contract:${name} in ${JSON.stringify(Object.keys(contracts))}`);
+    }
+    lodash.assign(match, lodash.pick(recompiled, ['abi', 'creationBytecode']));
+    const encodedConstructorArgs = extractEncodedConstructorArgs(creationData, recompiled.creationBytecode);
+    lodash.assign(match, {encodedConstructorArgs});
+
+    if (deployedBytecode === recompiled.deployedBytecode) {
+      lodash.assign(match, MATCH_STATUS.DEPLOYED_FULL);
+      return match;
+    }
+
+    const trimmedDeployedBytecode = this._trimMetadata(deployedBytecode);
+    const trimmedCompiledRuntimeBytecode = this._trimMetadata(recompiled.deployedBytecode);
+    if (trimmedDeployedBytecode === trimmedCompiledRuntimeBytecode) {
+      lodash.assign(match, MATCH_STATUS.DEPLOYED_PARTIAL);
+      return match;
+    }
+
+    if (trimmedDeployedBytecode.length === trimmedCompiledRuntimeBytecode.length) {
+      if (creationData.startsWith(recompiled.creationBytecode)) {
+        lodash.assign(match, MATCH_STATUS.CREATION_FULL);
+        return match;
+      }
+
+      const trimmedCompiledCreationBytecode = this._trimMetadata(recompiled.creationBytecode);
+      if (creationData.startsWith(trimmedCompiledCreationBytecode)) {
+        lodash.assign(match, MATCH_STATUS.CREATION_PARTIAL);
+        return match;
+      }
+    }
+
+    lodash.assign(match, MATCH_STATUS.NOT_MATCH);
+    return match;
+  }
+
   async verify({ address, code, name, ...options }) {
     const {
       app: { error, type, tool, logger },
@@ -175,7 +266,7 @@ class SolCompileService {
       throw new error.ContractNameError(`can not found contract "${name}" in ${JSON.stringify(Object.keys(contracts))}`);
     }
 
-    const result = await this.decompile(contract).catch((e) => {
+    const result = await this.decompile({code: contract.deployedBytecode}).catch((e) => {
       throw new error.ContractDecompileError(e);
     });
     let exactMatch = runtimeCode === result.runtimeCode;
@@ -207,7 +298,7 @@ class SolCompileService {
       });
     }
     const similarity = tool.calculateSimilarity(type.hexToBuffer(runtimeCode), type.hexToBuffer(result.runtimeCode));
-    const { abi, bytecode } = contract;
+    const { abi, creationBytecode: bytecode } = contract;
 
     const verifyResult = { version, warnings, errors, exactMatch, similarity, abi, bytecode };
     logger.info({ src: `[${address}]verify`, contractName: `${name}`, verifyResult: `${JSON.stringify(verifyResult)}` });

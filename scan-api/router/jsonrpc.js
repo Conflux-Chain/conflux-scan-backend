@@ -521,11 +521,12 @@ jsonrpc.method('countAndListContract',
 
 jsonrpc.method('listContractVerified',
   serializeByIP(),
-  parameter({
+  buildFlow((app) => parameter({
+    addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=100': (a) => a.length <= 100 },
     reverse: { path: '0', type: type.bool },
     limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 200 },
     skip: { path: '0', type: type.uint, default: 0 },
-  }),
+  })),
 
   cacheFlow(5 * 1000),
   concurrenceControl(5),

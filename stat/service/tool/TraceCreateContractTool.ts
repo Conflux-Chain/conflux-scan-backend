@@ -28,6 +28,7 @@ let hash;
 let epochNumber;
 let minEpoch;
 let maxEpoch;
+let toFindHexAddress;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -37,6 +38,7 @@ async function init() {
     await initModel(seq)
 
     cfx = new Conflux({...config.conflux})
+    await cfx.updateNetworkId();
     tokenTool = new TokenTool(cfx);
 
     const app = {cfx, networkId: StatApp.networkId};
@@ -59,24 +61,87 @@ async function run() {
         result = await cfx.traceTransaction(hash);
     }
     if(type === 3){
-        //evm-main-net [36935000, 37087090)
-        //evm-test-net [61465000, 66736900)
+        // ---evm-main-net [36935000, 37087090)
+        // ---evm-test-net [61465000, 66736900)
+        // for(let curEpoch = minEpoch; curEpoch < maxEpoch; curEpoch++){
+        //     const traceCreateArray = await epochSync.getTraceCreateArrayDB(curEpoch);
+        //     if(traceCreateArray.length > 0){
+        //         await TraceCreateContract.bulkCreate(traceCreateArray);
+        //         for(const traceCreate of traceCreateArray){
+        //             const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
+        //             const address = `0x${hex40.hex}`;
+        //             const codeHash = traceCreate.codeHash;
+        //             await epochSync.linkVerify({address, codeHash});
+        //         }
+        //         console.log(`add trace create at epoch:${curEpoch}, traceCreateArray:${JSON.stringify(traceCreateArray)}`);
+        //     }
+        //     if(curEpoch % 1000 === 0){
+        //         console.log(`add trace create catch up at epoch:${curEpoch}`);
+        //     }
+        // }
+
+        // ---add trace create for verified contract
+        // const base32Array = await ContractVerify.findAll({
+        //     attributes: ['base32'],
+        //     where: {verifyResult: true},
+        //     raw: true
+        // }).then(arr => arr.map(t => t.base32));
+        // console.log(`base32Array.len------${base32Array?.length}`);
+        //
+        // let cntr = 0;
+        // for(const base32 of base32Array){
+        //     cntr = cntr + 1;
+        //     const hex = format.hexAddress(base32);
+        //     const hexBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
+        //     if(!hexBean) {
+        //         console.log(`hex:${hex}[cntr=${cntr}]------hexBean not found`);
+        //         continue;
+        //     }
+        //
+        //     const hex40id = hexBean.id;
+        //     const tx = await AddressTransactionIndex.findOne({
+        //         attributes: ['epoch'],
+        //         where: {addressId: hex40id, contractCreatedId: hex40id},
+        //         raw: true
+        //     });
+        //     if(!tx) {
+        //         console.log(`hex:${hex}[cntr=${cntr}]------tx not found`);
+        //         continue;
+        //     }
+        //
+        //     const targetEpoch = tx['epoch'];
+        //     const traceCreateArrayDb = await TraceCreateContract.findAll({where : { epochNumber: targetEpoch}, raw: true});
+        //     if(traceCreateArrayDb?.length > 0){
+        //         console.log(`hex:${hex}[cntr=${cntr}]------already traced`);
+        //         continue;
+        //     }
+        //
+        //     const traceCreateArray = await epochSync.getTraceCreateArrayDB(tx['epoch']);
+        //     if(traceCreateArray.length > 0) {
+        //         await TraceCreateContract.bulkCreate(traceCreateArray);
+        //     }
+        //     console.log(`hex:${hex}[cntr=${cntr}]------processed`);
+        // }
+
+        // --- find trace create for specified address in epoch range
         for(let curEpoch = minEpoch; curEpoch < maxEpoch; curEpoch++){
             const traceCreateArray = await epochSync.getTraceCreateArrayDB(curEpoch);
             if(traceCreateArray.length > 0){
-                await TraceCreateContract.bulkCreate(traceCreateArray);
                 for(const traceCreate of traceCreateArray){
                     const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
                     const address = `0x${hex40.hex}`;
-                    const codeHash = traceCreate.codeHash;
-                    await epochSync.linkVerify({address, codeHash});
+                    if(toFindHexAddress === address){
+                        await TraceCreateContract.bulkCreate(traceCreateArray);
+                        console.log(`add trace create at epoch:${curEpoch} for address:${toFindHexAddress} finished`);
+                        return;
+                    }
                 }
-                console.log(`add trace create at epoch:${curEpoch}, traceCreateArray:${JSON.stringify(traceCreateArray)}`);
             }
             if(curEpoch % 1000 === 0){
                 console.log(`add trace create catch up at epoch:${curEpoch}`);
             }
         }
+
         console.log(`done！`);
     }
     if(type === 4){
@@ -204,10 +269,11 @@ if((type === 1 || type === 2) && args[2]){
 if(type === 3 && args[2] && args[3]){
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
+    toFindHexAddress = args[4];
 }
 if(type === 6 && args[2]){
     epochNumber = Number(args[2]);
 }
 
-console.log(`params======networkId:${StatApp.networkId}======type:${type}======minEpoch:${minEpoch}======maxEpoch:${maxEpoch}`);
+console.log(`params======networkId:${StatApp.networkId}======type:${type}======minEpoch:${minEpoch}======maxEpoch:${maxEpoch}======toFindHexAddress:${toFindHexAddress}`);
 run().then();

@@ -123,22 +123,23 @@ export class NFTPreviewService {
          address: string;
          meta?: any;
     }) {
+        let nftName;
         try {
             switch (address) {
                 case NFTMap.confi.address:
-                    return NFTNames.confi[JSON.parse(meta).title.split('_')[0]];
+                    nftName = NFTNames.confi[JSON.parse(meta).title.split('_')[0]];
                 case NFTMap.confiCard.address:
-                    return {
+                    nftName = {
                         zh: meta.name,
                         en: meta.name,
                     };
                 case NFTMap.conDragon.address:
-                    return {
+                    nftName = {
                         zh: meta.name,
                         en: meta.name_en,
                     };
                 case NFTMap.confluxGuardian.address:
-                    return {
+                    nftName = {
                         zh: '守护者勋章',
                         en: 'Guardian',
                     };
@@ -150,102 +151,101 @@ export class NFTPreviewService {
                     );
                     const response = await superagent.get(zhUri);
                     const responseObj = JSON.parse(response.text);
-                    return {
+                    nftName = {
                         zh: responseObj.name,
                         en: meta.name,
                     };
                 case NFTMap.moonswapGenesis.address:
-                    return {
+                    nftName = {
                         zh: '创世 NFT',
                         en: 'Genesis NFT',
                     };
                 case NFTMap.conHero.address:
-                    return {
+                    nftName = {
                         zh: meta.name,
                         en: meta.name_en,
                     };
                 case NFTMap.conDragonStone.address:
-                    return {
+                    nftName = {
                         zh: '龙石',
                         en: 'Dragon Stone NFT',
                     };
                 case NFTMap.satoshiGift.address:
-                    return {
+                    nftName = {
                         zh: "Satoshi's gift",
                         en: "Satoshi's gift",
                     };
                 case NFTMap.shanhaijing.address:
-                    return {
+                    nftName = {
                         zh: meta.name,
                         en: meta.name,
                     };
                 case NFTMap.shanhaichingSeriesCard.address:
-                    return {
+                    nftName = {
                         zh: '山海经卡包',
                         en: 'Shanhaiching Series Card Pack',
                     };
                 case NFTMap.shuttleflowBscNft.address:
-                    return {
+                    nftName = {
                         zh: 'ShuttleFlow-BSC NFT',
                         en: 'ShuttleFlow-BSC NFT',
                     };
                 case NFTMap.crossChainNftGloryEdition.address:
-                    return {
+                    nftName = {
                         zh: '荣耀版跨链NFT',
                         en: 'Cross-Chain NFT / Glory Edition',
                     };
                 case NFTMap.happyBirthdayToConfi.address:
-                    return {
+                    nftName = {
                         zh: 'Happy Birthday to ConFi',
                         en: 'Happy Birthday to ConFi',
                     };
                 case NFTMap.TREAGenesisFeitian.address:
-                    return {
+                    nftName = {
                         zh: 'TREA 创世飞天',
                         en: 'TREA Genesis Feitian',
                     };
                 case NFTMap.OKExNft.address:
-                    return {
+                    nftName = {
                         zh: 'OKEx NFT',
                         en: 'OKEx NFT',
                     };
                 case NFTMap.honorOfPractitioner.address:
-                    return {
+                    nftName = {
                         zh: '践行者计划',
                         en: 'Honor of Practitioner',
                     };
                 case NFTMap.confiOfSchrodinger.address:
-                    return {
+                    nftName = {
                         zh: '薛定谔的盒',
                         en: 'Confi of Schrodinger',
                     };
                 case NFTMap.threeKingdoms.address:
-                    return {
+                    nftName = {
                         zh: meta.name,
                         en: meta.name,
                     };
                 case NFTMap.epiKProtocolKnowledgeBadge.address:
-                    return {
+                    nftName = {
                         zh: meta.data.title,
                         en: meta.data.title,
                     };
                 default:
-                    // try 1155
-                    if (meta) {
+                    if (meta?.name) {
+                        nftName = { en: meta.name };
                         let zh;
-                        if (meta?.localization?.uri) {
+                        if (meta?.localization?.uri) { // try 1155
                             const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
                             const response = await superagent.get(zhUri);
                             const responseObj = JSON.parse(response.text);
                             zh = responseObj.name;
                         }
-                        return { zh: !zh ? meta.name : zh, en: meta.name };
+                        nftName = lodash.assign(nftName, {zh: zh ? zh : meta.name});
                     }
-                    return null;
             }
         } catch (e) {
-            return null;
         }
+        return nftName;
     };
 
     private async getNFTImage({address, tokenId, method = 'uri', minHeight = 200, needFetchJson = true, imageUriFormatter}:
@@ -292,12 +292,14 @@ export class NFTPreviewService {
 
                 // build resp
                 imageUri = imageUriFormatter ? imageUriFormatter(meta) : needFetchJson ? meta.image : meta;
-                imageUri = imageUri.startsWith('ipfs://') ? this.replaceIPFSGateway(imageUri) : imageUri;
-                imageUri = imageUri.startsWith('https://gateway.pinata.cloud') ? this.replacePinataGateway(imageUri) : imageUri;
+                imageUri = imageUri?.startsWith('ipfs://') ? this.replaceIPFSGateway(imageUri) : imageUri;
+                imageUri = imageUri?.startsWith('https://gateway.pinata.cloud') ? this.replacePinataGateway(imageUri) : imageUri;
                 imageName = await this.getNFTName({address, meta}) || {};
             }
             imageDesc = meta.description;
 
+            if(!imageUri) throw new Error('image not found');
+            if(!imageName) throw new Error('name not found');
             this.setNFTCacheInfo({ address, tokenId, imageUri, imageName, imageDesc });
         } catch (e) {
             error = {funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta, errorMessage: e?.message?.substr(0, 50)};

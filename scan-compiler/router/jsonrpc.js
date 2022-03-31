@@ -73,6 +73,30 @@ jsonrpc.method('decompile',
   }),
 );
 
+jsonrpc.method('verifyPlus',
+    parameter({
+        address: { path: '0', type: type.string },
+        creationData: { path: '0', type: type.hex, required: true },
+        deployedBytecode: { path: '0', type: type.hex, required: true },
+        name: { path: '0', type: type.string, required: true },
+        sourceCode: { path: '0', type: type.string, required: true },
+        compiler: { path: '0', type: type.str, default: 'latest' },
+        optimizeRuns: { path: '0', type: type.uint },
+        license: { path: '0', type: type.string },
+
+        filename: { path: '0', type: type.string },
+        libraries: { path: '0', type: type.object },
+    }),
+
+    function (options) {
+        const {
+            app: { service },
+        } = this;
+
+        return service.verifyPlus(options);
+    },
+);
+
 jsonrpc.method('verify',
   parameter({
     address: { path: '0', type: type.string },
