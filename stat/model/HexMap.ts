@@ -115,6 +115,40 @@ export class Hex40Map extends Model<HexMapAttributes> implements HexMapAttribute
         )
     }
 }
+export interface ESpaceHexMapAttributes {
+    id?: number;
+    hexId: number;
+    hex: string
+    createdAt?: Date
+}
+export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESpaceHexMapAttributes {
+    public id?: number;
+    public hexId: number;
+    public hex: string;
+    createdAt?: Date
+    static register(sequelize) {
+        ESpaceHex40Map.init(
+            {
+                id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+                hexId: {type: DataTypes.BIGINT, allowNull: false,},
+                hex: {type: DataTypes.CHAR(40), allowNull: false,},
+                createdAt: {type: DataTypes.DATE, allowNull: true,},
+            },
+            {
+                tableName: 'e_space_hex40',
+                sequelize: sequelize,
+                timestamps: false, // prevent default columns: createdAt, updatedAt
+                indexes: [
+                    {
+                        name: `index_hexId`,
+                        fields: [{name: 'hexId',}],
+                        unique: true
+                    }
+                ]
+            }
+        )
+    }
+}
 const base32toHexCache = new NodeCache()
 export function formatToHex(address:string) {
     let hex = base32toHexCache.get(address)

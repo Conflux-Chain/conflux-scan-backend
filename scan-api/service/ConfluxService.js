@@ -461,7 +461,8 @@ class ConfluxService {
     });
 
     const list = [...listERC20, ...listERC777, ...listERC721, ...listERC1155];
-    return lodash.orderBy(list, 'transactionLogIndex');
+    lodash.forEach(list, item => item.transactionLogIndexDecimal = Number(item.transactionLogIndex));
+    return lodash.orderBy(list, 'transactionLogIndexDecimal');
   }
 
   // ---------------------------------- trace ---------------------------------

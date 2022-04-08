@@ -2,7 +2,7 @@ import {Epoch} from "../model/Epoch";
 import {SyncBase, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
-import {Hex40Map, makeId} from "../model/HexMap";
+import {ESpaceHex40Map, Hex40Map, makeId} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
@@ -52,7 +52,13 @@ export class EpochSync extends SyncBase{
         const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp: epoch.timestamp});
         const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
-        const traceCreateArray = await  this.getTraceCreateArrayDB(epochNumber);
+
+        const traceArray = await this.getTraceArray(epochNumber);
+        const createArray = await this.getTraceCreateArrayPlus(traceArray);
+        const traceCreateArray = await this.getTraceCreateArrayDBPlus(createArray);
+
+        const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
+        const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
 
         PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
@@ -60,7 +66,7 @@ export class EpochSync extends SyncBase{
         return {
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
-            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray},
+            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray},
         };
     }
 
@@ -124,6 +130,18 @@ export class EpochSync extends SyncBase{
             const address = `0x${hex40.hex}`;
             const codeHash = traceCreate.codeHash;
             await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
+        }
+
+        const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
+        for(const traceCrossSpace of traceCrossSpaceArray){
+            if(traceCrossSpace.fromSpace === 'evm'){
+                await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
+                    .catch(() => undefined);
+            }
+            if(traceCrossSpace.toSpace === 'evm'){
+                await ESpaceHex40Map.create({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)})
+                    .catch(() => undefined);
+            }
         }
 
         if (epochNumber % 100 === 0) {
@@ -390,7 +408,7 @@ export class EpochSync extends SyncBase{
             app: { cfx },
         } = this;
 
-        const logsLimit = 5000
+        const logsLimit = 50000
         const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, limit: logsLimit}).catch(async err=>{
             const msg = `${err}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -472,6 +490,113 @@ export class EpochSync extends SyncBase{
     }
 
     // ------------------------------ trace create ------------------------------
+    public async getTraceCrossSpaceArray(traceArray) {
+        // filter
+        const crossSpaceTraceArray = [];
+        traceArray.forEach((trace) => {
+            if (trace.status === CONST.TX_STATUS.SUCCESS
+                && (trace.action.fromSpace === 'evm' || trace.action.toSpace === 'evm' )) {
+                crossSpaceTraceArray.push({
+                    epochNumber: trace.epochNumber,
+                    blockTime: trace.blockTime,
+                    transactionHash: trace.transactionHash,
+                    transactionTraceIndex: trace.transactionTraceIndex,
+                    type: trace.type,
+                    from: trace.action.from,
+                    to: trace.action.to,
+                    fromSpace: trace.action.fromSpace,
+                    toSpace: trace.action.toSpace,
+                    value: trace.action.value,
+                    valid: trace.valid,
+                });
+            }
+        });
+        return crossSpaceTraceArray;
+    }
+
+    public async getTraceCrossSpaceArrayDB(crossSpaceTraceArray) {
+        const blockDt = crossSpaceTraceArray.length > 0 ? new Date(crossSpaceTraceArray[0].blockTime*1000) : undefined;
+
+        const traceCrossSpaceArrayDB = []
+        for (const trace of crossSpaceTraceArray) {
+            if(!trace?.valid) continue;
+            const txHashId =  (await makeId(trace.transactionHash)).id;
+            const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
+            const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
+            const fromHex = format.hexAddress(trace.from);
+            const toHex = format.hexAddress(trace.to);
+            const toCreate = {
+                epochNumber: trace.epochNumber,
+                txHashId,
+                traceIndex: trace.transactionTraceIndex,
+                from,
+                to,
+                fromHex,
+                toHex,
+                fromSpace: trace.fromSpace,
+                toSpace: trace.toSpace,
+                value: trace.value,
+                outcome: trace.outcome,
+                blockTime: trace.blockTime,
+            };
+            traceCrossSpaceArrayDB.push(toCreate)
+        }
+        return traceCrossSpaceArrayDB;
+    }
+
+    public async getTraceCreateArrayPlus(traceArray) {
+        // filter
+        const createTraceArray = [];
+        traceArray.forEach((trace) => {
+            if (trace.status === CONST.TX_STATUS.SUCCESS && trace.type === CONST.TRACE_TYPE.CREATE) {
+                /**
+                 * create:{from,gas,init,value}
+                 * create_result:{addr,gasLeft,outcome,returnData}
+                 */
+                createTraceArray.push({
+                    epochNumber: trace.epochNumber,
+                    transactionHash: trace.transactionHash,
+                    transactionTraceIndex: trace.transactionTraceIndex,
+                    type: trace.type,
+                    from: trace.action.from,
+                    to: trace.action.to,
+                    value: trace.action.value,
+                    outcome: trace.action.outcome,
+                    blockTime: trace.blockTime,
+                    valid: trace.valid,
+                    init: trace.action.init,
+                });
+            }
+        });
+        return createTraceArray;
+    }
+
+    public async getTraceCreateArrayDBPlus(traceCreateArray) {
+        const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined;
+
+        const traceCreateArrayDB = []
+        for (const trace of traceCreateArray) {
+            if(!trace?.valid) continue;
+            const txHashId =  (await makeId(trace.transactionHash)).id;
+            const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
+            const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
+            const codeHash = await this.getCodeHash(trace.to);
+            const toCreate = {
+                epochNumber: trace.epochNumber,
+                txHashId,
+                traceIndex: trace.transactionTraceIndex,
+                from,
+                to,
+                value: trace.value,
+                outcome: trace.outcome,
+                blockTime: trace.blockTime,
+                codeHash,
+            };
+            traceCreateArrayDB.push(toCreate)
+        }
+        return traceCreateArrayDB;
+    }
+
     public async getTraceCreateArrayDB(epochNumber) {
         const traceCreateArray = await this.getTraceCreateArray(epochNumber);
         const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined;

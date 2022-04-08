@@ -1,7 +1,15 @@
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {toBase32} from "./tool/AddressTool";
-import {Hex40Map, hex40IdMap, makeId, POCKET_ADDRESS_MAP, idHex40Map, convert2base32map} from "../model/HexMap";
+import {
+    Hex40Map,
+    hex40IdMap,
+    makeId,
+    POCKET_ADDRESS_MAP,
+    idHex40Map,
+    convert2base32map,
+    ESpaceHex40Map
+} from "../model/HexMap";
 import {json, Op} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
@@ -276,6 +284,7 @@ export class ContractQuery {
         } = this;
 
         // remove repeat
+        const networkId = StatApp.networkId || this.app?.networkId;
         addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address)))];
         if (addressArray.length === 0) { return { total: 0, map: {} };}
 
@@ -283,14 +292,28 @@ export class ContractQuery {
         const traceCreates = await TraceCreateContract.findAll({where: {to: {[Op.in]: [...hexIdMap.values()]}}});
         const registeredContracts = await Contract.findAll({where: {hex40id: {[Op.in]: [...hexIdMap.values()]}}});
         const hexIdArray = [...new Set([...traceCreates.map(item => item.to), ...registeredContracts.map(item => item.hex40id)])];
-        if (hexIdArray.length === 0) { return { total: 0, map: {} };}
+
+        const eSpaceHex40Array = await ESpaceHex40Map.findAll({where: {hexId: {[Op.in]: [...hexIdMap.values()]}}});
+        const eSpaceBase32Hex40Map = {};
+        if(eSpaceHex40Array?.length){
+            for(const item of eSpaceHex40Array){
+                eSpaceBase32Hex40Map[`0x${item.hex}`] = `0x${item.hex}`;
+            }
+        }
+
+        if (hexIdArray.length === 0) {
+            const map = {};
+            Object.keys(eSpaceBase32Hex40Map).forEach((address) => {
+                map[address] = {eSpace: {address: eSpaceBase32Hex40Map[address]}}
+            });
+            const total = Object.keys(map)?.length;
+            return { total, map };
+        }
 
         const idHexMap = {};
         hexIdMap.forEach((hexId,hex) => (idHexMap[hexId] = hex));
         addressArray = [];
         hexIdArray.forEach(hexId => addressArray.push(`0x${idHexMap[hexId]}`));
-
-        const networkId = StatApp.networkId || this.app?.networkId;
         addressArray = addressArray.map(address => format.address(address, networkId));
 
         // init
@@ -330,6 +353,10 @@ export class ContractQuery {
                 website: token.website,
                 tokenType: token.transferType,
             });
+        });
+        Object.keys(eSpaceBase32Hex40Map).forEach((address) => {
+            if(!map[address]) map[address] = {};
+            map[address].eSpace = {address: eSpaceBase32Hex40Map[address]};
         });
 
         return {total: addressArray.length, map};
