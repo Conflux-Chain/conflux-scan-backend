@@ -1125,8 +1125,10 @@ router.get('/transfer',
             type: 'string', // for transferType is 'CFX'
             fromContractInfo: 'object',
             fromTokenInfo: 'object',
+            fromESpaceInfo: 'object',
             toContractInfo: 'object',
             toTokenInfo: 'object',
+            toESpaceInfo: 'object',
             transferContractInfo: 'object',
             transferTokenInfo: 'object',
           },
@@ -1139,6 +1141,10 @@ router.get('/transfer',
   jsonrpc.methodFlow('countAndListTransfer'),
 
   async function (result) {
+    const {
+      app: { type },
+    } = this;
+
     let addressArray = [];
     result.list.forEach((transfer) => {
       addressArray.push(transfer.from.toString());
@@ -1150,8 +1156,10 @@ router.get('/transfer',
     result.list.forEach((transfer) => {
       transfer.fromContractInfo = contractBasic.map[transfer.from]?.contract;
       transfer.fromTokenInfo = contractBasic.map[transfer.from]?.token;
+      transfer.fromESpaceInfo = contractBasic.map[type.address(transfer.from)]?.eSpace;
       transfer.toContractInfo = contractBasic.map[transfer.to]?.contract;
       transfer.toTokenInfo = contractBasic.map[transfer.to]?.token;
+      transfer.toESpaceInfo = contractBasic.map[type.address(transfer.to)]?.eSpace;
       transfer.transferTokenInfo = contractBasic.map[transfer.address]?.token;
       transfer.transferContractInfo = contractBasic.map[transfer.address]?.contract;
     });

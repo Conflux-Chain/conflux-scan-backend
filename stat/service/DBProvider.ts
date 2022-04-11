@@ -1,5 +1,5 @@
 import {Sequelize, QueryTypes} from "sequelize";
-import {Address, AddressInfo, Hex40Map, hexMapInit} from "../model/HexMap";
+import {Address, AddressInfo, ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
@@ -171,6 +171,7 @@ export async function initPartialModel(sequelize) {
     DailyTokenTransferStat.register(sequelize);
     MinerBlockStat.register(sequelize);
     Blacklist.register(sequelize);
+    ESpaceHex40Map.register(sequelize)
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)
