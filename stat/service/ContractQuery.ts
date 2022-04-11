@@ -105,7 +105,7 @@ export class ContractQuery {
         return {total: addressArray.length, list: addressArray};
     }
 
-    public async addVerify({name, address, compiler, version, optimizeFlag, optimizeRuns, license, verifyResult, similarity}) {
+    public async addVerify({name, address, compiler, version, optimizeFlag, optimizeRuns, license, verifyResult}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
         // const hex40id = (await makeId(address)).id;
@@ -120,14 +120,13 @@ export class ContractQuery {
         verify.optimizeRuns = optimizeRuns;
         verify.license = license;
         verify.verifyResult = verifyResult;
-        verify.similarity = similarity;
         const result = await ContractVerify.add(verify);
         logger?.info({ src: `[${address}]stat verify request`, addResult: `${JSON.stringify(result)}` });
         return result;
     }
 
-    public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult, similarity,
-        codeHash}) {
+    public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult,
+        codeHash, matchCode, matchDesc}) {
         const {logger} = this.app;
         const base32 = toBase32(address);
 
@@ -136,7 +135,7 @@ export class ContractQuery {
             logger?.error({ src: `[${address}]updateVerify`, updateError: `record.base32 not equals ${base32}` });
         }
 
-        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, similarity, codeHash,
+        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, codeHash, matchCode, matchDesc,
             updatedAt: new Date()});
         let updateVerify = lodash.assign(dbVerify, updateInfo);
         if(verifyResult){
@@ -182,8 +181,11 @@ export class ContractQuery {
             return;
         }
 
+        const similarMatch = matchVerify.base32;
+        const createdAt = new Date();
         for (const base32 of toVerifyArray) {
-            const matchRecord = lodash.assign(matchVerify, { id: undefined, base32, implementation: null });
+            const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
+                { id: undefined, implementation: undefined, base32, similarMatch, createdAt, updatedAt: createdAt });
             await ContractVerify.create(matchRecord).catch(() => undefined);
         }
     }
@@ -253,7 +255,7 @@ export class ContractQuery {
         options.where = where;
 
         // order by
-        options.order = [['updatedAt', `${reverse ? 'DESC' : 'ASC'}`]];
+        options.order = [['id', `${reverse ? 'DESC' : 'ASC'}`]];
 
         //query
         const page = await ContractVerify.findAndCountAll(options);

@@ -1,5 +1,6 @@
 const lodash = require('lodash');
 const { KV, KEY_ANNOUNCE_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+const { ContractVerify } = require('../../stat/dist/model/ContractVerify');
 const { sign } = require('js-conflux-sdk');
 
 class ContractService { // TODO: extends AccountService
@@ -95,7 +96,10 @@ class ContractService { // TODO: extends AccountService
 
   async verify({ address, ...rest }) {
     const {
-      app: { syncSDK, service, logger },
+      app: {
+        error: {CreationDataError},
+        syncSDK, service, logger
+      },
     } = this;
 
     const { name, sourceCode: sc, compiler, optimizeRuns, license, constructorArgs } = rest;
@@ -112,20 +116,25 @@ class ContractService { // TODO: extends AccountService
 
     try {
       const optimizeFlag = Number.isInteger(optimizeRuns) && optimizeRuns >= 0;
-      const newVerify = await service.contractRdb.addVerify({ address, name, compiler: 'solidity',
+      const record = await service.contractRdb.addVerify({ address, name, compiler: 'solidity',
         version: compiler, optimizeFlag, optimizeRuns, license });
 
-      const result = await syncSDK.verify({ address, code, name, sourceCode, compiler, optimizeRuns, license });
+      const creationData = await this.getCreationData({ address }).catch(e => {throw new CreationDataError(e)});
+      const result = await syncSDK.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
+        compiler, optimizeRuns});
+      result.verifyResult = this._getVerifyResult(result.matchCode);
       result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
       result.errors = result.errors.map((v) => v.formattedMessage || v.message);
 
-      const codeHash = result?.exactMatch ? sign.keccak256(Buffer.from(code)).toString('hex') : undefined;
-      const updateVerify = await service.contractRdb.updateVerify({ id: newVerify.id, address,
-        version: result.version, sourceCode, abi: JSON.stringify(result.abi),
-        verifyResult: result.exactMatch, similarity: result.similarity, codeHash});
+      const codeHash = result?.verifyResult ? sign.keccak256(Buffer.from(code)).toString('hex') : undefined;
+      const updateRecord = {id: record.id, address, sourceCode, codeHash};
+      lodash.assign(updateRecord, {abi: JSON.stringify(result.abi), constructorArgs: result.encodedConstructorArgs},
+          lodash.pick(result, ['version', 'verifyResult', 'matchCode', 'matchDesc' ]));
+      const updateVerify = await service.contractRdb.updateVerify(updateRecord);
+
       logger.error({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` });
       return lodash.defaults({ name, sourceCode, optimizeRuns },
-        lodash.pick(result, ['version', 'warnings', 'errors', 'exactMatch', 'similarity', 'abi']));
+        lodash.pick(result, ['version', 'warnings', 'errors', 'abi']), {exactMatch: result.verifyResult});
 
     } catch (e) {
       logger.error({ src: `[${address}]verify`, error: `${e.message}` });
@@ -140,52 +149,91 @@ class ContractService { // TODO: extends AccountService
     return result;
   }
 
-  async listVerify({ skip, limit, reverse }) {
+  async listVerify({ addressArray, skip, limit, reverse }) {
     const {
-      app: { service, syncSDK, type, logger },
+      app: {
+        CONST, error: {CreationDataError},
+        service, syncSDK, type, logger
+      },
     } = this;
-    const result = await service.contractRdb.listVerify({ skip, limit, reverse });
+    const result = await service.contractRdb.listVerify({ addressArray, skip, limit, reverse });
 
+    let tmpAddress;
+    let tmpCntr = 0;
     try {
       const verifyList = result.list;
       for (const verify of verifyList) {
-        // eslint-disable-next-line no-continue
-        if (verify.constructorArgs) continue;
 
-        // recompile
         const address = type.address(verify.address);
+        tmpAddress = address;
+        tmpCntr = tmpCntr + 1;
+        if (lodash.includes(CONST.INTERNAL_CONTRACT, address)) {
+          await ContractVerify.update(CONST.MATCH_STATUS.INTERNAL_CONTRACT, {where: {id: verify.id}});
+          // console.log(`[${address}][cntr=${tmpCntr}]recompile-1------internal contract---`);
+          continue;
+        }
+
+        const creationData = await this.getCreationData({ address }).catch(e => {throw new CreationDataError(e)});
         const code = await service.conflux.getCode(address);
-        // eslint-disable-next-line no-continue
-        if (code === undefined || code === '0x') continue;
-        const resp = await syncSDK.verify({
+        // console.log(`[${address}][cntr=${tmpCntr}]recompile-1------creationData.len:${creationData?.length || 0}---`);
+
+        const resp = await syncSDK.verifyPlus({
           address,
-          code,
+          creationData,
+          deployedBytecode: code,
           name: verify.name,
           sourceCode: verify.sourceCode,
           compiler: verify.version,
           optimizeRuns: verify.runs === null ? undefined : verify.runs,
-          license: verify.license,
         });
+        const warnings = resp.warnings.map((v) => v.formattedMessage || v.message);
+        const errors = resp.errors.map((v) => v.formattedMessage || v.message);
+        // console.log(`[${address}][cntr=${tmpCntr}]recompile-2------creationBytecode.len:${resp.creationBytecode?.length || 0},warnings:${JSON.stringify(warnings)},errors:${JSON.stringify(errors)}---`);
 
-        // extract
-        if (resp.exactMatch) {
-          const creationData = '';
-          const args = await this.extractConstructorArgs({ creationData, bytecode: resp.bytecode });
-          if (args !== undefined) {
-            await service.contractRdb.updateVerify({ id: verify.id, address, constructorArgs: args });
-          }
-          logger.info({ src: `[${address}]recompile`, match: `${resp.exactMatch}`, args: `${args}` });
-        }
+        const verifyRecord = lodash.assign({constructorArgs: resp.encodedConstructorArgs},
+            lodash.pick(resp, ['matchCode', 'matchDesc']));
+        await ContractVerify.update(verifyRecord, {where: {id: verify.id}});
+        const verifyResult = this._getVerifyResult(resp.matchCode);
+        // console.log(`[${address}][cntr=${tmpCntr}]recompile-3-----matchCode:${resp.matchCode},matchDesc:${resp.matchDesc},verifyResult:${verifyResult},args.len:${verifyRecord?.constructorArgs?.length || 0}---`);
       }
+
     } catch (e) {
+      // console.error(`[${tmpAddress}][cntr=${tmpCntr}]recompile-4--------`, e);
       logger.error({ src: 'recompile', error: `${e.message}` });
     }
-
     return result;
   }
 
-  async extractConstructorArgs({ creationData, bytecode }) {
-    return `0x${creationData.slice(bytecode.length)}`;
+  async getCreationData({ address }) {
+    const {
+      app: { confluxSDK, CONST, service, type },
+    } = this;
+
+    const trace = await service.traceCreate.query(address);
+    const transaction = await confluxSDK.getTransactionByHash(trace.transactionHash);
+    const transactionTraceArray = await confluxSDK.traceTransaction(transaction.hash);
+    const traceArray = await confluxSDK.matchTrace(transactionTraceArray, transaction);
+    const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
+        trace.transactionHash === transaction.hash &&
+        type.address(trace.action.to) === type.address(address)));
+    const traceCreate = creatTraceArray[0];
+
+    return traceCreate.action.init;
+  }
+
+  _getVerifyResult(matchCode) {
+    const {
+      app: {
+        CONST: {MATCH_STATUS},
+      },
+    } = this;
+
+    return matchCode === MATCH_STATUS.INTERNAL_CONTRACT.matchCode ||
+        matchCode === MATCH_STATUS.DEPLOYED_FULL.matchCode ||
+        matchCode === MATCH_STATUS.DEPLOYED_PARTIAL.matchCode ||
+        matchCode === MATCH_STATUS.CREATION_FULL.matchCode ||
+        matchCode === MATCH_STATUS.CREATION_PARTIAL.matchCode ||
+        matchCode === MATCH_STATUS.SIMILAR.matchCode;
   }
 
   // --------------------------------------------------------------------------

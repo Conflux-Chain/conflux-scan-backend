@@ -10,16 +10,17 @@ export interface IContractVerify{
     constructorArgs?:string
     sourceCode?:string
     abi?:string
-    getCodeHash?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
     license?:string
     verifyResult?:boolean
-    similarity?:number
+    matchCode?:number
+    matchDesc?:string
     proxy?:boolean
     implementation?:string
     proxyPattern?:string
     codeHash?:string
+    similarMatch?:string
 }
 
 export class ContractVerify extends Model<IContractVerify> implements IContractVerify{
@@ -32,16 +33,17 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     constructorArgs?:string
     sourceCode?:string
     abi?:string
-    getCodeHash?:string
     optimizeFlag?:boolean
     optimizeRuns?: number
     license?:string
     verifyResult?:boolean
-    similarity?:number
+    matchCode?:number
+    matchDesc?:string
     proxy?:boolean
     implementation?:string
     proxyPattern?:string
     codeHash?:string
+    similarMatch?:string
 
     static register(seq:Sequelize) {
         ContractVerify.init({
@@ -55,18 +57,18 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             constructorArgs: {type: DataTypes.TEXT, allowNull: true, },
             sourceCode: {type: DataTypes.TEXT({length: 'long'}), allowNull: true, },
             abi: {type: DataTypes.TEXT, allowNull: true, },
-            getCodeHash: {type: DataTypes.CHAR(64), allowNull: true, },
             optimizeFlag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             optimizeRuns: {type: DataTypes.INTEGER, allowNull: true, },
             license: {type: DataTypes.CHAR(255), allowNull: true},
-
             verifyResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            similarity: {type: DataTypes.DECIMAL(10, 9), allowNull: true, },
+            matchCode: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
+            matchDesc: {type: DataTypes.CHAR(20), allowNull: true},
 
             proxy: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             implementation: {type: DataTypes.CHAR(64), allowNull: true},
             proxyPattern: {type: DataTypes.CHAR(64), allowNull: true},
             codeHash: {type: DataTypes.CHAR(64), allowNull: true, },
+            similarMatch: {type: DataTypes.CHAR(64), allowNull: true},
         },{
             tableName: 'contract_verify',
             sequelize: seq,
@@ -85,18 +87,18 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             constructorArgs: contract.constructorArgs,
             sourceCode:contract.sourceCode,
             abi:contract.abi,
-            getCodeHash:contract.getCodeHash,
             optimizeFlag:contract.optimizeFlag,
             optimizeRuns: contract.optimizeRuns,
             license:contract.license,
-
             verifyResult:contract.verifyResult,
-            similarity:contract.similarity,
+            matchCode:contract.matchCode,
+            matchDesc:contract.matchDesc,
 
             proxy:contract.proxy,
             implementation:contract.implementation,
             proxyPattern:contract.proxyPattern,
             codeHash:contract.codeHash,
+            similarMatch:contract.similarMatch,
         }, {
             transaction: dbTx
         })

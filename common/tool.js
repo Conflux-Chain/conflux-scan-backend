@@ -102,22 +102,22 @@ function timestampToString(timestamp, zone = +8) {
   return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
 }
 
-function calculateSimilarity(x, y) {
-  x = Buffer.isBuffer(x) ? x.toString() : x;
-  y = Buffer.isBuffer(y) ? y.toString() : y;
-
-  let unionCount = 0;
-  let intersectionCount = 0;
-  const array = fastDiff(x, y);
-  array.forEach(([code, string]) => {
-    unionCount += string.length;
-    if (code === 0) {
-      intersectionCount += string.length;
-    }
-  });
-
-  return unionCount > 0 ? intersectionCount / unionCount : 1;
-}
+// function calculateSimilarity(x, y) {
+//   x = Buffer.isBuffer(x) ? x.toString() : x;
+//   y = Buffer.isBuffer(y) ? y.toString() : y;
+//
+//   let unionCount = 0;
+//   let intersectionCount = 0;
+//   const array = fastDiff(x, y);
+//   array.forEach(([code, string]) => {
+//     unionCount += string.length;
+//     if (code === 0) {
+//       intersectionCount += string.length;
+//     }
+//   });
+//
+//   return unionCount > 0 ? intersectionCount / unionCount : 1;
+// }
 
 // ----------------------------------------------------------------------------
 function requireJs(js, filename = '') {
@@ -202,6 +202,12 @@ function readFileToArr(filename, callback) {
 }
 
 // ----------------------------------------------------------------------------
+function extractEncodedConstructorArgs(creationData, compiledCreationBytecode) {
+  return "0x" + creationData.slice(compiledCreationBytecode.length);
+}
+
+// ----------------------------------------------------------------------------
+
 module.exports = {
   isRunning,
 
@@ -212,7 +218,7 @@ module.exports = {
   addHex,
   awaitObject,
   timestampToString,
-  calculateSimilarity,
+  // calculateSimilarity,
 
   requireJs,
   readFile,
@@ -220,6 +226,7 @@ module.exports = {
   readCommonContract,
 
   parseTransactionMessage,
+  extractEncodedConstructorArgs,
 };
 
 // const filename = 'FC.sol';

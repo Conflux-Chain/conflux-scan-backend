@@ -85,7 +85,6 @@ async function registerContract(contract) {
         sourceCode: sourceCode.toString().trim(),
         abi: contract.abi,
         verifyResult: true,
-        similarity: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
     };

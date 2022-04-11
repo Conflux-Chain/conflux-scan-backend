@@ -84,4 +84,16 @@ module.exports = {
     Apache_2_0: 'Apache 2.0',
     GNU_AGPLv3: 'GNU Affero General Public License',
   },
+
+  MATCH_STATUS: {
+    INTERNAL_CONTRACT: {matchCode: 200, matchDesc: 'internal-contract'},
+    DEPLOYED_FULL: {matchCode: 201, matchDesc: 'deployed-full'},
+    DEPLOYED_PARTIAL: {matchCode: 202, matchDesc: 'deployed-partial'},
+    CREATION_FULL: {matchCode: 203, matchDesc: 'creation-full'},
+    CREATION_PARTIAL: {matchCode: 204, matchDesc: 'creation-partial'},
+    SIMILAR: {matchCode: 205, matchDesc: 'similar-match'},
+    NOT_MATCH: {matchCode: 301, matchDesc: 'not-match'},
+    CODE_NOT_FOUND: {matchCode: 401, matchDesc: 'code-not-found'},
+    ERROR: {matchCode: 501, matchDesc: 'error'},
+  },
 };
