@@ -24,8 +24,9 @@ export class FullBlockQuery {
         this.app = app;
     }
 
-    public async listBlock({minEpochNumber, maxEpochNumber, blockHash, minTimestamp, maxTimestamp,
-                               miner, skip = 0, limit = 10}) {
+    public async listBlock({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined,
+                               minTimestamp = undefined, maxTimestamp = undefined, miner = undefined,
+                               skip = 0, limit = 10}) {
         const{ logger } = this.app;
         // parse para
         let minerId;
@@ -447,12 +448,13 @@ export class FullBlockQuery {
         return {pagedCondition, txPage};
     }
 
-    public async batchGetTransactionList({hashArray}): Promise<{}> {
+    public async batchGetTransactionList({hashArray}): Promise<any> {
         const {
             app: {cfx}
         } = this;
 
         const txMap = {};
+        const receiptMap = {};
         let total = hashArray?.length;
         if (!total) {
             return txMap;
@@ -464,12 +466,16 @@ export class FullBlockQuery {
         do {
             const txHashArray = hashArray.slice(skip, skip + pageSize)
             if (txHashArray?.length) {
-                const taskArray = txHashArray.map(txHash => cfx.getTransactionByHash(txHash));
-                const txArray: any[] = await Promise.all(taskArray);
-                txArray?.forEach(tx => tx && (txMap[tx.hash] = tx));
+                const txTaskArray = txHashArray.map(txHash => cfx.getTransactionByHash(txHash));
+                const txArray: any[] = await Promise.all(txTaskArray);
+                txArray?.forEach(item => item && (txMap[item.hash] = item));
+
+                const receiptTaskArray = txHashArray.map(txHash => cfx.getTransactionReceipt(txHash));
+                const receiptArray: any[] = await Promise.all(receiptTaskArray);
+                receiptArray?.forEach(item => item && (receiptMap[item.transactionHash] = item));
             }
             skip = (++curPage - 1) * pageSize;
         } while (skip <= total);
-        return txMap;
+        return {txMap, receiptMap};
     }
 }

@@ -17,7 +17,7 @@ export class CfxTransferQuery extends TransferQueryBase{
         return CONST.TRANSFER_TYPE.CFX;
     }
 
-    public buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
+    public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                  minTimestamp, maxTimestamp,
                                  accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
                                  tokenId, txType, skip, limit, sort}){
@@ -29,8 +29,7 @@ export class CfxTransferQuery extends TransferQueryBase{
             const conditionArray = [];
             conditionArray.push({from: accountAddressId});
             conditionArray.push({value: { [Op.gt]: 0}});
-            if(transactionHashId) {
-                conditionArray.push({txHashId: transactionHashId});
+            if(txParas) {
             }
             if(fromAddressId !== undefined) {
                 conditionArray.push({from: fromAddressId});
@@ -59,7 +58,7 @@ export class CfxTransferQuery extends TransferQueryBase{
             return queryOptions;
         }
 
-       return super.buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
+       return super.buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
             tokenId, txType, skip, limit, sort});

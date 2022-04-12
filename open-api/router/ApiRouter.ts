@@ -1,28 +1,25 @@
 import * as Koa from 'koa'
-import {ApiServer, getApiService} from '../ApiServer'
 import * as Router from "koa-router";
+import {ApiServer, getApiService} from '../ApiServer'
+import {StatApp} from "../../stat/StatApp";
+import {registerRouter as registerRouterESpace} from "./ESpaceApiRouter";
+import {addSwagger, executionTime, handleException, setBody} from "./middleware";
+import {listAccountAssets} from "../service/OpenAccountService";
+import {listAccountTransaction} from "../service/OpenTxService";
+import {listNFTBalances, listNFTTokens, getNFTPreview} from "../service/OpenNFTService";
 import {
-    CODE_PARAMETER_ABSENT,
-    CODE_PARAMETER_ABSENT_MSG,
-} from "../common/Def";
-import {BalanceService} from "../../stat/service/watcher/BalanceService";
-import {addSwagger, executionTime, handleException, rateControl, setBody} from "./middleware";
-import {listTransfer, polishTransferList} from "../service/OpenTransferService";
+    listAccountCfxTransfer,
+    listAccountTransfer20,
+    listAccountTransfer721,
+    listAccountTransfer1155
+} from "../service/OpenTransferService";
 import {
     getPagination,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent,
-    skipLimit
 } from "../../stat/service/common/utils";
-import {polishAssertList} from "../service/OpenAccountService";
-import {polishContract} from "../service/OpenContractService";
-import {StatApp} from "../../stat/StatApp";
-import {DailyToken, Token} from "../../stat/model/Token";
-import {pickNumber} from "../../stat/model/Utils";
-import {format} from "js-conflux-sdk";
 
-const lodash = require('lodash');
 const cors = require('@koa/cors');
 const CONST = require('../../stat/service/common/constant');
 
@@ -30,22 +27,23 @@ async function root(ctx, tag) {
     ctx.body = {code: 0, message: `Conflux Scan Open Api 0.1 ${tag}`}
 }
 
-/**
- * Query asserts hold by one account/address.
- * @param ctx
- */
-async function listAccountAssets(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account')
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
-    const {account: base32} = ctx.request.query;
-    // if (!Boolean(base32)) {
-    //     setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
-    //     return
-    // }
-    const assets = await BalanceService.listAccountBalanceInner(base32)
-    polishAssertList(assets)
-    setBody(ctx, assets)
-}
+// /**
+//  * Query asserts hold by one account/address.
+//  * @param ctx
+//  */
+// async function listAccountAssets(ctx) {
+//     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account')
+//     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+//     const {account: base32} = ctx.request.query;
+//     // if (!Boolean(base32)) {
+//     //     setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
+//     //     return
+//     // }
+//     const assets = await BalanceService.listAccountBalanceInner(base32)
+//     polishAssertList(assets)
+//     setBody(ctx, assets)
+// }
+
 // work in progress.
 async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -59,81 +57,82 @@ async function listMiningStat(ctx) {
         sort:(sort || 'DESC').toLowerCase(), skip, limit})
     setBody(ctx, page)
 }
-/**
- * query transactions of one account(address)
- * @param ctx
- */
-async function listAccountTransaction(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account')
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
-    const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,minEpochNumber,maxEpochNumber,startBlock, endBlock, minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo} = ctx.request.query;
-    if (!Boolean(base32)) {
-        setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
-        return
-    }
+// /**
+//  * query transactions of one account(address)
+//  * @param ctx
+//  */
+// async function listAccountTransaction(ctx) {
+//     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
+//     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account')
+//     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+//     const {skip, limit} = skipLimit(ctx.request.query)
+//     const {account: base32,minEpochNumber,maxEpochNumber,startBlock, endBlock, minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo} = ctx.request.query;
+//     if (!Boolean(base32)) {
+//         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
+//         return
+//     }
+//
+//     const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
+//     const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
+//     const page = await getApiService().fullBlockQuery.listTransaction({accountAddress: base32, skip, limit,
+//         verboseAddress: false, minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, nonce, txType
+//     });
+//
+//     const hashArray = [];
+//     page?.list?.forEach(tx=>{
+//         delete tx.syncTimestamp
+//         delete tx.blockHash
+//         if (StatApp.isEVM) {
+//             tx['blockNumber'] = tx.epochNumber;
+//             delete tx.epochNumber;
+//             delete tx.blockPosition;
+//             tx['contractAddress'] = tx.contractCreated;
+//             delete tx.contractCreated;
+//             tx['isError'] = tx.txExecErrorMsg ? '1' : '0';
+//             hashArray.push(tx.hash);
+//         }
+//     })
+//
+//     if (StatApp.isEVM) {
+//         const resp = await getApiService().fullBlockQuery.batchGetTransactionList({hashArray});
+//         const {txMap} = resp;
+//         page?.list?.forEach(tx=>{
+//             tx['input'] = txMap[tx.hash]?.data;
+//             tx['blockHash'] = txMap[tx.hash]?.blockHash;
+//         })
+//     }
+//
+//     delete page.extraInfo
+//     await polishContract(page, needAddressInfo)
+//     setBody(ctx, page)
+// }
 
-    const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
-    const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
-    const page = await getApiService().fullBlockQuery.listTransaction({accountAddress: base32, skip, limit,
-        verboseAddress: false, minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, nonce, txType
-    });
-
-    const hashArray = [];
-    page?.list?.forEach(tx=>{
-        delete tx.syncTimestamp
-        delete tx.blockHash
-        if (StatApp.isEVM) {
-            tx['blockNumber'] = tx.epochNumber;
-            delete tx.epochNumber;
-            delete tx.blockPosition;
-            tx['contractAddress'] = tx.contractCreated;
-            delete tx.contractCreated;
-            tx['isError'] = tx.txExecErrorMsg ? '1' : '0';
-            hashArray.push(tx.hash);
-        }
-    })
-
-    if (StatApp.isEVM) {
-        const txMap = await getApiService().fullBlockQuery.batchGetTransactionList({hashArray});
-        page?.list?.forEach(tx=>{
-            tx['input'] = txMap[tx.hash]?.data;
-            tx['blockHash'] = txMap[tx.hash]?.blockHash;
-        })
-    }
-
-    delete page.extraInfo
-    await polishContract(page, needAddressInfo)
-    setBody(ctx, page)
-}
-
-async function listAccountCfxTransfer(ctx) {
-    return listTransfer(ctx, getApiService().cfxTransferQuery)
-}
-/**
- * Query crc20 transfer of one account(address)
- * @param ctx
- */
-async function listAccountTransfer20(ctx) {
-    return listTransfer(ctx, getApiService().crc20transferQuery)
-}
-
-/**
- * Query crc721 transfer of one account(address)
- * @param ctx
- */
-async function listAccountTransfer721(ctx) {
-    return listTransfer(ctx, getApiService().crc721transferQuery)
-}
-
-/**
- * Query crc1155 transfer of one account(address)
- * @param ctx
- */
-async function listAccountTransfer1155(ctx) {
-    return listTransfer(ctx, getApiService().crc1155transferQuery)
-}
+// async function listAccountCfxTransfer(ctx) {
+//     return listTransfer(ctx, getApiService().cfxTransferQuery)
+// }
+// /**
+//  * Query crc20 transfer of one account(address)
+//  * @param ctx
+//  */
+// async function listAccountTransfer20(ctx) {
+//     return listTransfer(ctx, getApiService().crc20transferQuery)
+// }
+//
+// /**
+//  * Query crc721 transfer of one account(address)
+//  * @param ctx
+//  */
+// async function listAccountTransfer721(ctx) {
+//     return listTransfer(ctx, getApiService().crc721transferQuery)
+// }
+//
+// /**
+//  * Query crc1155 transfer of one account(address)
+//  * @param ctx
+//  */
+// async function listAccountTransfer1155(ctx) {
+//     return listTransfer(ctx, getApiService().crc1155transferQuery)
+// }
 
 async function getSupplyStat(ctx) {
     const marketData = await getApiService().marketDataQuery.getMarketData();
@@ -304,77 +303,77 @@ async function listTokenParticipantTopStat(ctx) {
     setBody(ctx, statInfo)
 }
 
-async function listNFTBalances(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner');
-    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-
-    const {owner} = ctx.request.query;
-    const {skip, limit} = getPagination(ctx.request.query);
-    const data = await getApiService().nftCheckerService.getNftBalancesForOpenApi({owner, skip, limit});
-
-    if (StatApp.isEVM) {
-        data?.list?.forEach(row => {
-            row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
-            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
-        });
-    }
-
-    setBody(ctx, data)
-}
-
-async function listNFTTokens(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner', 'contract');
-    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'detail', ['false', 'true']);
-
-    const {owner, contract, detail} = ctx.request.query;
-    if (contract === undefined) {
-        throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
-    }
-    const {skip, limit} = getPagination(ctx.request.query);
-    const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
-
-    if (StatApp.isEVM) {
-        data?.list?.forEach(row => {
-            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
-        });
-    }
-
-    if(detail === 'true'){
-        await Promise.all(data?.list?.map(async (item) => {
-            const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract, tokenId: item.tokenId});
-            const data = {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc};
-            lodash.defaults(item, data);
-        }));
-    }
-
-    setBody(ctx, data)
-}
-
-async function getNFTPreview(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
-    mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
-
-    const {contract, tokenId} = ctx.request.query;
-    if(contract === undefined) {
-        throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
-    }
-    if(tokenId === undefined) {
-        throw new Error(`Invalid parameter <contract> with value [${tokenId}], tokenId is required.`)
-    }
-
-    const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: contract, tokenId});
-    if(!nftInfo) {
-        // throw new Error(`NFT not found.`)
-    }
-    const data = {contract, tokenId, name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc};
-
-    if (StatApp.isEVM) {
-        data.contract = data.contract ? format.hexAddress(data.contract) : data.contract;
-    }
-
-    setBody(ctx, data)
-}
+// async function listNFTBalances(ctx) {
+//     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner');
+//     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
+//
+//     const {owner} = ctx.request.query;
+//     const {skip, limit} = getPagination(ctx.request.query);
+//     const data = await getApiService().nftCheckerService.getNftBalancesForOpenApi({owner, skip, limit});
+//
+//     if (StatApp.isEVM) {
+//         data?.list?.forEach(row => {
+//             row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
+//             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+//         });
+//     }
+//
+//     setBody(ctx, data)
+// }
+//
+// async function listNFTTokens(ctx) {
+//     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner', 'contract');
+//     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
+//     mustBeEnumParamIfPresent(ctx.request.query, 'detail', ['false', 'true']);
+//
+//     const {owner, contract, detail} = ctx.request.query;
+//     if (contract === undefined) {
+//         throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
+//     }
+//     const {skip, limit} = getPagination(ctx.request.query);
+//     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
+//
+//     if (StatApp.isEVM) {
+//         data?.list?.forEach(row => {
+//             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+//         });
+//     }
+//
+//     if(detail === 'true'){
+//         await Promise.all(data?.list?.map(async (item) => {
+//             const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract, tokenId: item.tokenId});
+//             const data = {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc};
+//             lodash.defaults(item, data);
+//         }));
+//     }
+//
+//     setBody(ctx, data)
+// }
+//
+// async function getNFTPreview(ctx) {
+//     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+//     mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
+//
+//     const {contract, tokenId} = ctx.request.query;
+//     if(contract === undefined) {
+//         throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
+//     }
+//     if(tokenId === undefined) {
+//         throw new Error(`Invalid parameter <contract> with value [${tokenId}], tokenId is required.`)
+//     }
+//
+//     const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: contract, tokenId});
+//     if(!nftInfo) {
+//         // throw new Error(`NFT not found.`)
+//     }
+//     const data = {contract, tokenId, name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc};
+//
+//     if (StatApp.isEVM) {
+//         data.contract = data.contract ? format.hexAddress(data.contract) : data.contract;
+//     }
+//
+//     setBody(ctx, data)
+// }
 
 function parseStatParam(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp', 'skip', 'limit');
@@ -408,11 +407,13 @@ async function getTokenAnalysisData(ctx){
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
     app.use(executionTime)
-    // app.use(rateControl)
     app.use(handleException)
+
     const prefix = '/open';
-    addSwagger(app, prefix)
+    const swaggerYaml = StatApp.isEVM ? './document/espace-open-api.yaml' : './document/open-api.yaml';
+    addSwagger(app, prefix, swaggerYaml)
     getApiService().logger.info(`url prefix: ${prefix}`)
+
     const router = new Router({prefix: prefix})
     let middleware = router.routes();
     app.use(middleware)
@@ -428,9 +429,16 @@ export async function register(app: Koa, apiServer: ApiServer) {
             }
         }
     })
-    //
-    router.get('/statistics/mining', listMiningStat)
-    //
+
+   if(!StatApp.isEVM){
+       registerRouter(router);
+   } else{
+       registerRouterESpace(router);
+   }
+}
+
+function registerRouter(router: Router) {
+    // accounts
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)
     router.get('/account/crc20/transfers', listAccountTransfer20)
@@ -439,6 +447,7 @@ export async function register(app: Koa, apiServer: ApiServer) {
     router.get('/account/tokens', listAccountAssets)
 
     // statistics
+    router.get('/statistics/mining', listMiningStat)
     router.get('/statistics/supply', getSupplyStat);
     router.get('/statistics/tps', listTpsStat);
     router.get('/statistics/contract', listContractStat);
@@ -458,7 +467,6 @@ export async function register(app: Koa, apiServer: ApiServer) {
     router.get('/statistics/top/token/sender', listTokenSenderTopStat);
     router.get('/statistics/top/token/receiver', listTokenReceiverTopStat);
     router.get('/statistics/top/token/participant', listTokenParticipantTopStat);
-
     router.get('/statistics/token/holder', listTokenHolderStat);
     router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
     router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
