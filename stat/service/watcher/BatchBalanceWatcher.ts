@@ -126,7 +126,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
                     const b = await rpc.balanceOf(params.accounts[i], params.tokenIds[i])
                     balanceArr.push(b)
                 } catch (e) {
-                    if (e.message.includes('owner query for nonexistent token')) {
+                    if (e.data?.includes('owner query for nonexistent token')) {
                         balanceArr.push(BigInt(0))
                         console.log(`token not exist. ${rpc.address}, id ${params.tokenIds[i]}`)
                         continue
