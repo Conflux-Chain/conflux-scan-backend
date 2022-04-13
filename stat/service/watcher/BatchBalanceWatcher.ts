@@ -130,7 +130,30 @@ async function setupSync1155data(cfx:Conflux) {
         console.log(`exists position`, lastEpoch)
     }
     //
-    const abi = []
+    const abi = [{
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "accounts",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "ids",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "balanceOfBatch",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },]
     const contract = cfx.Contract({abi})
     return contract
 }
