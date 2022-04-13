@@ -97,6 +97,7 @@ async function fix1155holderForContract(contractId: number) {
         await TokenBalance.create({contractId, addressId: row.addressId, balance: row['cnt']})
         console.log(`${contractId} create ${row.addressId} ${row['cnt']}`)
     }
+    await Token.update({holder: holderList.length}, {where: {hex40id: contractId}})
     console.log(`${contractId} finished`)
 }
 // ---
@@ -202,11 +203,20 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
                     await Erc1155Data.create({
                         contractId, addressId, tokenId, amount: b, epoch: Number(mark)
                     }, )
+                    const tokenBalance = await TokenBalance.increment('balance', {
+                        where: {contractId, addressId}, by: 1
+                    });
+                    if (!tokenBalance) {
+                        await TokenBalance.create({contractId, addressId, balance: BigInt(1)})
+                    }
                 }
             } else {
                 await Erc1155Data.destroy({
                     where: {contractId, addressId, tokenId}
                 })
+                const tokenBalance = await TokenBalance.increment('balance', {
+                    where: {contractId, addressId}, by: -1
+                });
             }
         }
     }
@@ -301,7 +311,7 @@ async function run() {
     const [, script,cfxUrl,limitStr] = process.argv;
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
-    if (cfxUrl === 'fix155holder') {
+    if (cfxUrl === 'fix1155holder') {
         await fix1155holderForContract(parseInt(limitStr))
         process.exit(0)
         return
@@ -326,6 +336,7 @@ async function run() {
     new BatchBalanceWatcher(cfx, null, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     scheduleTransferUpdater();
+    repeatSync1155data(cfx).then()
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {
         const cnt = await processContractUser(cfx, limit)

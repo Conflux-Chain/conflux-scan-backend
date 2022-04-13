@@ -110,7 +110,12 @@ let logCount = 0
 export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, cfx:Conflux) {
     console.log(` handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
     for (const contractId of mapContract2addressSet.keys()) {
-        const addressIds = [...mapContract2addressSet.get(contractId)]
+        const erc1155 = await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId, type: 'ERC1155'}})
+        if (erc1155) {
+            console.log(`skip erc1155 ${contractId}. Sync1155data will do that.`)
+            continue
+        }
+        const addressIds = [...mapContract2addressSet.get(contractId)];
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
         const contractHex = id2hexMap.get(contractId)
         if (!contractHex) {
