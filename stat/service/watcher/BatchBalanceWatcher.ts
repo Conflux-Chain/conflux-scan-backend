@@ -119,6 +119,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
                 continue
             }
             // fallback to balanceOf
+            balanceArr = []
             for (let i = 0; i < params.accounts.length; i++) {
                 try {
                     // @ts-ignore
