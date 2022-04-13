@@ -5,7 +5,7 @@ import {CfxWatcher} from "./BalanceWatcher";
 import {buildHexSet, hex40IdMap, Hex40Map, idHex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
-import {Op} from 'sequelize'
+import {Op,fn, col, QueryTypes} from 'sequelize'
 import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
 import {KEY_1155data_EPOCH, KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
@@ -17,6 +17,7 @@ import {patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {TokenBalance} from "../../model/Balance";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -57,6 +58,46 @@ export class BatchBalanceWatcher {
         })
         return banList
     }
+}
+// ---
+async function fixAll1155holder() {
+    const tokenList = await Token.findAll({attributes:['id','hex40id','type',],where: {type: 'erc1155'}})
+    console.log(`1155 count ${tokenList.length}`)
+    for (let i = 0; i < tokenList.length; i++) {
+        await fix1155holderForContract(tokenList[i].hex40id)
+    }
+}
+async function fix1155holderForContract(contractId: number) {
+    const holderList = await Erc1155Data.findAll({
+        attributes: [
+            'addressId',
+            [fn('count', col('*')), 'cnt'],
+        ],
+        where: {contractId,}, raw: true, group: 'addressId', logging: console.log
+    })
+    const map = new Map<number, any>()
+    holderList.forEach(row=>map.set(row.addressId, row))
+
+    const balanceList = await TokenBalance.findAll({where: {contractId}})
+    console.log(`${contractId} exists ${balanceList.length}, calculate ${holderList.length}`)
+    for (let i = 0; i < balanceList.length; i++) {
+        const bean = balanceList[i]
+        const newRow = map.get(bean.addressId)
+        if (!newRow) {
+            await TokenBalance.destroy({where: {contractId, addressId:bean.addressId}})
+            console.log(`${contractId} destroy ${bean.addressId}`)
+        } else if (bean.balance.toString() != newRow['cnt'].toString()) {
+            await TokenBalance.update({balance: newRow['cnt']},
+                {where: {contractId, addressId:bean.addressId}})
+            console.log(`${contractId} update ${bean.addressId} ${newRow['cnt']}`)
+        }
+        map.delete(bean.addressId)
+    }
+    for(let row of map.values()) {
+        await TokenBalance.create({contractId, addressId: row.addressId, balance: row['cnt']})
+        console.log(`${contractId} create ${row.addressId} ${row['cnt']}`)
+    }
+    console.log(`${contractId} finished`)
 }
 // ---
 const destroyedContracts = new Set<string>()
@@ -260,6 +301,15 @@ async function run() {
     const [, script,cfxUrl,limitStr] = process.argv;
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
+    if (cfxUrl === 'fix155holder') {
+        await fix1155holderForContract(parseInt(limitStr))
+        process.exit(0)
+        return
+    } else if (cfxUrl === 'fixAll1155holder') {
+        await fixAll1155holder()
+        process.exit(0)
+        return
+    }
     const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
     const cfx = new Conflux({url});
     patchHttpProvider(cfx, {url})

@@ -16,7 +16,11 @@ export class TokenBalance extends Model<ITokenBalance> implements ITokenBalance 
             addressId: {type: DataTypes.BIGINT, allowNull: false},
             balance: {type: DataTypes.STRING(78), allowNull: false},
         }, {
-            sequelize: seq, tableName: 'token_balance'
+            sequelize: seq, tableName: 'token_balance',
+            indexes: [
+                // It's a partition table. See its creation sql.
+                // {name: 'uk_contract_addr', fields: ['contractId', 'addressId']}
+            ]
         })
     }
 }
