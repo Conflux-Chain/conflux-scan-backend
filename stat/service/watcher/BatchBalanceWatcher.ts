@@ -126,7 +126,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
                     const b = await rpc.balanceOf(params.accounts[i], params.tokenIds[i])
                     balanceArr.push(b)
                 } catch (e) {
-                    console.log(`call balanceOf fail`, params.accounts[i], params.tokenIds[i], e)
+                    console.log(`call balanceOf fail`, params.accounts[i], params.tokenIds[i], e.data || e)
                     break;
                 }
             }
@@ -135,7 +135,11 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
             } else {
                 console.log(`call balanceOfBatch fail, contract ${rpc.address
                 }, accounts ${params.accounts.join(',')} ids ${params.tokenIds.join(',')}`)
-                throw err
+                if (err.data?.startsWith('VmError(OutOfStack')) {
+                    console.log(`  skip invalid contract, reason`, err.data)
+                } else {
+                    throw err
+                }
             }
         }
         let idx = -1
