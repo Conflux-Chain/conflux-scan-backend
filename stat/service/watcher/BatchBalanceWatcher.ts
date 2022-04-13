@@ -1,21 +1,22 @@
 // @ts-ignore
-import {Conflux, format} from "js-conflux-sdk";
+import {Conflux, Contract, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
 import {CfxWatcher} from "./BalanceWatcher";
-import {Hex40Map, idHex40Map, makeId, makeIdV} from "../../model/HexMap";
+import {buildHexSet, hex40IdMap, Hex40Map, idHex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
 import {Op} from 'sequelize'
 import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
-import {KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
+import {KEY_1155data_EPOCH, KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
 import {TokenTool} from "../tool/TokenTool";
-import {NftMint, Token} from "../../model/Token";
+import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTransferCount} from "../../StreamSync";
 import {ContractUser} from "../../model/Erc20Transfer";
 import {patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -58,9 +59,109 @@ export class BatchBalanceWatcher {
     }
 }
 // ---
+async function syncErc1155data(epoch: number, rpc: Contract) {
+    const mark = await Erc1155Transfer.min('epoch', {
+        where: {epoch: {[Op.gt]: epoch}},
+    })
+    if (!mark || isNaN(Number(mark))) {
+        return 0
+    }
+    const transferList = await Erc1155Transfer.findAll({
+        where: {epoch: mark}
+    })
+    const addressIds = buildHexSet(undefined, transferList, 'fromId', 'toId', 'contractId')
+    const addressMap = await idHex40Map([...addressIds])
+    const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
+    for (let trans of transferList) {
+        let params = contracts.get(trans.contractId)
+        if (!params) {
+            params = {accounts: [], tokenIds: [], addrIds: []}
+            contracts.set(trans.contractId, params)
+        }
+        // from
+        const hexFrom = `0x${addressMap.get(trans.fromId)}`;
+        if (trans.fromId != zeroAddrId) {
+            params.accounts.push(hexFrom)
+            params.tokenIds.push(BigInt(trans.tokenId))
+            params.addrIds.push(trans.fromId)
+        }
+        // to
+        const hexTo = `0x${addressMap.get(trans.toId)}`;
+        if (trans.toId != zeroAddrId) {
+            params.accounts.push(hexTo)
+            params.tokenIds.push(BigInt(trans.tokenId))
+            params.addrIds.push(trans.toId)
+        }
+    }
+    for (let contractId of contracts.keys()) {
+        const params = contracts.get(contractId)
+        rpc.address = '0x'+addressMap.get(contractId)
+        // @ts-ignore
+        const balanceArr = await rpc.balanceOfBatch(params.accounts, params.tokenIds)
+        let idx = -1
+        for (const b of balanceArr) {
+            idx ++
+            const tokenId = params.tokenIds[idx].toString()
+            const addressId = params.addrIds[idx]
+            if (b) {
+                const [affected] = await Erc1155Data.update({amount: b}, {
+                    where: {contractId, addressId, tokenId}
+                })
+                if (!affected) {
+                    await Erc1155Data.create({
+                        contractId, addressId, tokenId, amount: b
+                    })
+                }
+            } else {
+                await Erc1155Data.destroy({
+                    where: {contractId, addressId, tokenId}
+                })
+            }
+        }
+    }
+    return mark;
+}
+async function setupSync1155data(cfx:Conflux) {
+    let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -2)
+    if (lastEpoch == -2) {
+        await KV.saveNumber(KEY_1155data_EPOCH, -1, undefined)
+        console.log(`create position`, -1)
+    } else {
+        console.log(`exists position`, lastEpoch)
+    }
+    //
+    const abi = []
+    const contract = cfx.Contract({abi})
+    return contract
+}
+let contract1155: Contract = null;
+async function repeatSync1155data(cfx:Conflux) {
+    if (!contract1155) {
+        contract1155 = await setupSync1155data(cfx)
+    }
+    let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
+    const thatEpoch = await syncErc1155data(lastEpoch, contract1155).catch(err=>{
+        console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
+        return -1
+    })
+    if (thatEpoch === -1) {
+        setTimeout(()=>repeatSync1155data(cfx), 5_0000)
+    } else if (thatEpoch) {
+        await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
+        if (Number(thatEpoch) % 100 == 0) {
+            console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
+        }
+        setTimeout(()=>repeatSync1155data(cfx), 0)
+    } else {
+        console.log(` no Erc1155 data after epoch ${lastEpoch}`)
+        setTimeout(()=>repeatSync1155data(cfx), 5_0000)
+    }
+}
+// ---
 let zeroAddrId = 0
 async function run() {
-    const [,,cfxUrl,limitStr] = process.argv;
+    const [, script,cfxUrl,limitStr] = process.argv;
+    console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
     const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
     const cfx = new Conflux({url});
@@ -68,6 +169,10 @@ async function run() {
     await cfx.updateNetworkId();
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
+    if (limitStr === 'repeatSync1155data') {
+        await repeatSync1155data(cfx)
+        return
+    }
     const st = await cfx.getStatus()
     StatApp.networkId = st.networkId;
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();

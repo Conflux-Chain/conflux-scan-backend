@@ -10,7 +10,7 @@
     "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/dist/service/watcher/contract/",
     "api:dev": "tsc-watch -b ./open-api --onSuccess 'node --inspect=0.0.0.0:5858 ./open-api/ApiServer.js'",
     "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'",
-    "start:dev2": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/test/Dev.js'",
+    "start:dev2": "tsc-watch -p ./stat",
     "start:tools": "tsc-watch -b ./tools --onSuccess 'node ./stat/dist/test/Dev.js'"
   },
   "dependencies": {

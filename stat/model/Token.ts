@@ -144,6 +144,28 @@ export class Token extends Model<IToken> implements IToken{
         })
     }
 }
+//
+export interface IErc1155Data {
+    id?:number; contractId:number; addressId:number; tokenId:string; amount: number;
+}
+export class Erc1155Data extends Model<IErc1155Data> implements IErc1155Data {
+    id?:number; contractId:number; addressId:number; tokenId:string; amount: number;
+    static register(seq: Sequelize) {
+        Erc1155Data.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            tokenId: {type: DataTypes.STRING(78), allowNull: false, },
+            amount: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
+        }, {
+            sequelize: seq, tableName: 'erc1155_data',
+            indexes: [
+                {name: 'uk_contract_addr_tid', fields:['contractId','addressId','tokenId'], unique: true},
+            ]
+        })
+    }
+}
+//
 export interface INftMint {
     id?:number
     epoch: number
