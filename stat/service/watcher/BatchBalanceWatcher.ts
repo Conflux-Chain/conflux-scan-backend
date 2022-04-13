@@ -73,7 +73,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
     const addressIds = buildHexSet(undefined, transferList, 'fromId', 'toId', 'contractId')
     const addressMap = await idHex40Map([...addressIds])
     const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
-    // call contract
+    // build params before call contract
     const contractAddrTokenSet = new Set<string>()
     for (let trans of transferList) {
         let params = contracts.get(trans.contractId)
@@ -100,7 +100,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
             params.addrIds.push(trans.toId)
         }
     }
-    // save to db
+    // call contract, save to db
     for (let contractId of contracts.keys()) {
         const params = contracts.get(contractId)
         rpc.address = '0x'+addressMap.get(contractId)
@@ -118,9 +118,24 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
                 console.log(`contract code hash is empty. destroyed. ${rpc.address}`)
                 continue
             }
-            console.log(`call balanceOfBatch fail, contract ${rpc.address
-            }, accounts ${params.accounts.join(',')} ids ${params.tokenIds.join(',')}`)
-            throw err
+            // fallback to balanceOf
+            for (let i = 0; i < params.accounts.length; i++) {
+                try {
+                    // @ts-ignore
+                    const b = await rpc.balanceOf(params.accounts[i], params.tokenIds[i])
+                    balanceArr.push(b)
+                } catch (e) {
+                    console.log(`call balanceOf fail`, params.accounts[i], params.tokenIds[i], e)
+                    break;
+                }
+            }
+            if (balanceArr.length == params.accounts.length) {
+                console.log(`  fix by balanceOf , ${rpc.address}`)
+            } else {
+                console.log(`call balanceOfBatch fail, contract ${rpc.address
+                }, accounts ${params.accounts.join(',')} ids ${params.tokenIds.join(',')}`)
+                throw err
+            }
         }
         let idx = -1
         for (const b of balanceArr) {
@@ -178,6 +193,30 @@ async function setupSync1155data(cfx:Conflux) {
         ],
         "stateMutability": "view",
         "type": "function"
+    },
+        {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
     },]
     const contract = cfx.Contract({abi})
     return contract
@@ -193,7 +232,7 @@ async function repeatSync1155data(cfx:Conflux) {
         return -1
     })
     if (thatEpoch === -1) {
-        setTimeout(()=>repeatSync1155data(cfx), 5_0000)
+        setTimeout(()=>repeatSync1155data(cfx), 5_000)
     } else if (thatEpoch) {
         await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
         if (Number(thatEpoch) % 100 == 0) {
