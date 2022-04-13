@@ -72,6 +72,7 @@ async function syncErc1155data(epoch: number, rpc: Contract) {
     const addressIds = buildHexSet(undefined, transferList, 'fromId', 'toId', 'contractId')
     const addressMap = await idHex40Map([...addressIds])
     const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
+    // call contract
     for (let trans of transferList) {
         let params = contracts.get(trans.contractId)
         if (!params) {
@@ -87,12 +88,13 @@ async function syncErc1155data(epoch: number, rpc: Contract) {
         }
         // to
         const hexTo = `0x${addressMap.get(trans.toId)}`;
-        if (trans.toId != zeroAddrId) {
+        if (trans.toId != zeroAddrId && trans.toId != trans.fromId) {
             params.accounts.push(hexTo)
             params.tokenIds.push(BigInt(trans.tokenId))
             params.addrIds.push(trans.toId)
         }
     }
+    // save to db
     for (let contractId of contracts.keys()) {
         const params = contracts.get(contractId)
         rpc.address = '0x'+addressMap.get(contractId)
