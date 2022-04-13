@@ -73,6 +73,7 @@ async function syncErc1155data(epoch: number, rpc: Contract) {
     const addressMap = await idHex40Map([...addressIds])
     const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
     // call contract
+    const contractAddrTokenSet = new Set<string>()
     for (let trans of transferList) {
         let params = contracts.get(trans.contractId)
         if (!params) {
@@ -81,14 +82,18 @@ async function syncErc1155data(epoch: number, rpc: Contract) {
         }
         // from
         const hexFrom = `0x${addressMap.get(trans.fromId)}`;
-        if (trans.fromId != zeroAddrId) {
+        const duplicateKey1 = `${trans.contractId}_${trans.fromId}_${trans.tokenId}`
+        if (trans.fromId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey1)) {
+            contractAddrTokenSet.add(duplicateKey1)
             params.accounts.push(hexFrom)
             params.tokenIds.push(BigInt(trans.tokenId))
             params.addrIds.push(trans.fromId)
         }
         // to
+        const duplicateKey2 = `${trans.contractId}_${trans.toId}_${trans.tokenId}`
         const hexTo = `0x${addressMap.get(trans.toId)}`;
-        if (trans.toId != zeroAddrId && trans.toId != trans.fromId) {
+        if (trans.toId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey2)) {
+            contractAddrTokenSet.add(duplicateKey2)
             params.accounts.push(hexTo)
             params.tokenIds.push(BigInt(trans.tokenId))
             params.addrIds.push(trans.toId)
