@@ -59,7 +59,8 @@ export class BatchBalanceWatcher {
     }
 }
 // ---
-async function syncErc1155data(epoch: number, rpc: Contract) {
+const destroyedContracts = new Set<string>()
+async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
     const mark = await Erc1155Transfer.min('epoch', {
         where: {epoch: {[Op.gt]: epoch}},
     })
@@ -103,8 +104,24 @@ async function syncErc1155data(epoch: number, rpc: Contract) {
     for (let contractId of contracts.keys()) {
         const params = contracts.get(contractId)
         rpc.address = '0x'+addressMap.get(contractId)
-        // @ts-ignore
-        const balanceArr = await rpc.balanceOfBatch(params.accounts, params.tokenIds)
+        if (destroyedContracts.has(rpc.address)) {
+            continue
+        }
+        let balanceArr: any[];
+        try {
+            // @ts-ignore
+            balanceArr = await rpc.balanceOfBatch(params.accounts, params.tokenIds)
+        } catch (err) {
+            const account = await cfx.getAccount(rpc.address)
+            if (account.codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470') {
+                destroyedContracts.add(rpc.address)
+                console.log(`contract code hash is empty. destroyed. ${rpc.address}`)
+                continue
+            }
+            console.log(`call balanceOfBatch fail, contract ${rpc.address
+            }, accounts ${params.accounts.join(',')} ids ${params.tokenIds.join(',')}`)
+            throw err
+        }
         let idx = -1
         for (const b of balanceArr) {
             idx ++
@@ -171,7 +188,7 @@ async function repeatSync1155data(cfx:Conflux) {
         contract1155 = await setupSync1155data(cfx)
     }
     let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
-    const thatEpoch = await syncErc1155data(lastEpoch, contract1155).catch(err=>{
+    const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err=>{
         console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
         return -1
     })
