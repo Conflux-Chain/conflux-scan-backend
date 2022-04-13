@@ -104,13 +104,14 @@ async function syncErc1155data(epoch: number, rpc: Contract) {
             const tokenId = params.tokenIds[idx].toString()
             const addressId = params.addrIds[idx]
             if (b) {
-                const [affected] = await Erc1155Data.update({amount: b}, {
+                // at least the epoch is different.
+                const [affected] = await Erc1155Data.update({amount: b, epoch: Number(mark)}, {
                     where: {contractId, addressId, tokenId}
                 })
                 if (!affected) {
                     await Erc1155Data.create({
-                        contractId, addressId, tokenId, amount: b
-                    })
+                        contractId, addressId, tokenId, amount: b, epoch: Number(mark)
+                    }, )
                 }
             } else {
                 await Erc1155Data.destroy({
