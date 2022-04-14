@@ -49,29 +49,30 @@ export async function fetch1155balance(rpc: Contract, cfx:Conflux, params: any) 
     return balanceArr
 }
 export async function rewind() {
-    const max = await Erc1155Data.findOne({order:[['id','desc']]})
-    if (max) {
-        let upperId = max.id
-        do {
-            let lowerId = upperId - 10_000
-            const minOne = await Erc1155Data.findOne({
-                where: Sequelize.literal(` latestEpoch - epoch < ${CONFIRM_GAP
-                } and id between ${lowerId} and ${upperId} `),
-                order: [['id','asc']]
-            })
-            if (!minOne) {
-                console.log(` all record within [${lowerId} , ${upperId}] is beyond confirm gap ${CONFIRM_GAP}.`)
-                break;
-            } else if (minOne.id == lowerId) {
-                // there may be smaller one.
-                upperId = minOne.id
-                console.log(` search deeper, now at ${minOne.id}`)
-            } else {
-                // this is the smallest one, rewind
-                await KV.saveNumber(KEY_1155data_EPOCH, minOne.epoch - 1, null)
-                console.log(` Sync1155data rewind to epoch ${minOne.epoch - 1}`)
-                break;
-            }
-        } while (true)
+    const max = await Erc1155Data.findOne({order:[['epoch','desc']]})
+    if (!max) {
+        return
     }
+    let upperEpoch = max.epoch
+    do {
+        let lowerEpoch = upperEpoch - 100
+        const minOne = await Erc1155Data.findOne({
+            where: Sequelize.literal(` latestEpoch - epoch < ${CONFIRM_GAP
+            } and epoch between ${lowerEpoch} and ${upperEpoch} `),
+            order: [['epoch','asc']]
+        })
+        if (!minOne) {
+            console.log(` all record within [${lowerEpoch} , ${upperEpoch}] is beyond confirm gap ${CONFIRM_GAP}.`)
+            break;
+        } else if (minOne.epoch == lowerEpoch) {
+            // there may be smaller one.
+            upperEpoch = minOne.epoch
+            console.log(` search deeper, now at ${minOne.epoch}`)
+        } else {
+            // this is the smallest one, rewind
+            await KV.saveNumber(KEY_1155data_EPOCH, minOne.epoch - 1, null)
+            console.log(` Sync1155data rewind to epoch ${minOne.epoch - 1}`)
+            break;
+        }
+    } while (true)
 }

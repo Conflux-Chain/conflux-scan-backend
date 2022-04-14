@@ -167,6 +167,7 @@ export class Erc1155Data extends Model<IErc1155Data> implements IErc1155Data {
             sequelize: seq, tableName: 'erc1155_data',
             indexes: [
                 {name: 'uk_contract_addr_tid', fields:['contractId','addressId','tokenId'], unique: true},
+                {name: 'idx_epoch', fields:['epoch']},
             ]
         })
     }

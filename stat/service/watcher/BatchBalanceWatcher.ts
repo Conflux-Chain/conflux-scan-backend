@@ -129,6 +129,11 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
             }
         } while (true)
     }
+    // compare with exists hold records. When reOrg, some Transfer may disappear.
+    const holderList = await Erc1155Data.findAll({where: {epoch}})
+    const holderMap = new Map<string, Erc1155Data>()
+    holderList.forEach(h=>holderMap.set(`${h.contractId}_${h.addressId}_${h.tokenId}`, h))
+
     const transferList = await Erc1155Transfer.findAll({
         where: {epoch: mark}
     })
@@ -148,6 +153,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
         const duplicateKey1 = `${trans.contractId}_${trans.fromId}_${trans.tokenId}`
         if (trans.fromId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey1)) {
             contractAddrTokenSet.add(duplicateKey1)
+            holderMap.delete(duplicateKey1)
             params.accounts.push(hexFrom)
             params.tokenIds.push(BigInt(trans.tokenId))
             params.addrIds.push(trans.fromId)
@@ -157,6 +163,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
         const hexTo = `0x${addressMap.get(trans.toId)}`;
         if (trans.toId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey2)) {
             contractAddrTokenSet.add(duplicateKey2)
+            holderMap.delete(duplicateKey2)
             params.accounts.push(hexTo)
             params.tokenIds.push(BigInt(trans.tokenId))
             params.addrIds.push(trans.toId)
@@ -203,6 +210,13 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
                     where: {contractId, addressId}, by: -1, logging: isNewLatestEpoch ? console.log : false
                 });
             }
+        }
+    }
+    if (holderMap.size > 0) {
+        console.log(` ----- rare case, hold disappear epoch ${epoch}, length ${holderMap.size}---`)
+        for (let value of holderMap.values()) {
+            console.log(`destroy ${JSON.stringify(value)}`)
+            await value.destroy({logging: console.log})
         }
     }
     return mark;
