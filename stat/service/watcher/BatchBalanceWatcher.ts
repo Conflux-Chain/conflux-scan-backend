@@ -207,15 +207,16 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
                     }
                 }
             } else {
-                await Erc1155Data.destroy({
+                const deleted = await Erc1155Data.destroy({
                     where: {contractId, addressId, tokenId}
                 })
-                const tokenBalance = await TokenBalance.increment('balance', {
-                    where: {contractId, addressId}, by: -1, logging: isNewLatestEpoch ? console.log : false
-                });
-                console.log(`remain balance, contract ${contractId} addr ${addressId} [${tokenBalance?.balance}]`)
-                if (tokenBalance && Number(tokenBalance.balance) < 1) {
-                    await tokenBalance.destroy()
+                if (deleted) {
+                    // decrease balance after destroy one token_hold record
+                    await TokenBalance.increment('balance', {
+                        where: {contractId, addressId}, by: -1, logging: isNewLatestEpoch ? console.log : false
+                    });
+                    // delete if balance < 1
+                    await TokenBalance.destroy({where: {contractId, addressId, balance: {[Op.lt]: 1}}})
                 }
             }
         }
