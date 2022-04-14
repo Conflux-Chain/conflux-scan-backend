@@ -196,11 +196,17 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
                     await Erc1155Data.create({
                         contractId, addressId, tokenId, amount: b, epoch: Number(mark), latestEpoch
                     }, {logging: isNewLatestEpoch ? console.log : false})
-                    const tokenBalance = await TokenBalance.increment('balance', {
-                        where: {contractId, addressId}, by: 1
-                        , logging: isNewLatestEpoch ? console.log : false
-                    });
-                    if (!tokenBalance) {
+                    const tokenBalance = await TokenBalance.findOne({
+                        where: {contractId, addressId}
+                    })
+                    if (tokenBalance) {
+                        await TokenBalance.increment('balance', {
+                            where: {contractId, addressId}, by: 1
+                            , logging: isNewLatestEpoch ? console.log : false
+                        });
+                        console.log(` increase balance , contractId, addressId` , contractId, addressId)
+                    } else {
+                        console.log(` CREATE balance , contractId, addressId` , contractId, addressId)
                         await TokenBalance.create({contractId, addressId, balance: BigInt(1)},{
                             logging: isNewLatestEpoch ? console.log : false
                         })
