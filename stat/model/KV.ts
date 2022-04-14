@@ -15,6 +15,7 @@ export const KEY_FULL_CFX_TRANSFER_COUNT = "FULL_CFX_TRANSFER_COUNT_2"
 export const KEY_FILL_BLOCK_PROPS_EPOCH = "KEY_FILL_BLOCK_PROPS_EPOCH"
 export const KEY_FILL_BLOCK_REWARD_EPOCH = "KEY_FILL_BLOCK_REWARD_EPOCH"
 export const KEY_TX_EPOCH = "KEY_TX_EPOCH"
+export const KEY_1155data_EPOCH = "KEY_1155data_EPOCH"
 export const ERC20_TRANSFER_DELAY = "ERC20_TRANSFER_DELAY"
 export const CFX_TRANSFER_DELAY = "CFX_TRANSFER_DELAY"
 export const KEY_BLOCK_TRACE_TX_ID = "KEY_BLOCK_TRACE_TX_ID"
@@ -55,12 +56,12 @@ export class KV extends Model<IKV> implements IKV {
 
     static async getNumber(key: string, defaultV = null): Promise<number> {
         const str = (await KV.findOne({where: {key}}) || {}).value
-        if (str === null) {
+        if (!str) {
             return Promise.resolve(defaultV);
         }
         return Promise.resolve(parseInt(str))
     }
-    static async saveNumber(key:string, value:number, dbTx:Transaction) {
+    static async saveNumber(key:string, value:any, dbTx:Transaction) {
         return KV.upsert({key, value: value.toString()}, {transaction: dbTx})
     }
     static async getSwitch(key: string): Promise<boolean> {

@@ -144,6 +144,35 @@ export class Token extends Model<IToken> implements IToken{
         })
     }
 }
+// alter table erc1155_data add column latestEpoch bigint unsigned not null default 0;
+export interface IErc1155Data {
+    id?:number; contractId:number; addressId:number; tokenId:string; amount: number;
+    epoch: number;
+    // a reference to check confirmation
+    latestEpoch: bigint;
+}
+export class Erc1155Data extends Model<IErc1155Data> implements IErc1155Data {
+    id?:number; contractId:number; addressId:number; tokenId:string; amount: number;
+    epoch: number;  latestEpoch: bigint;
+    static register(seq: Sequelize) {
+        Erc1155Data.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            tokenId: {type: DataTypes.STRING(78), allowNull: false, },
+            amount: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            latestEpoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+        }, {
+            sequelize: seq, tableName: 'erc1155_data',
+            indexes: [
+                {name: 'uk_contract_addr_tid', fields:['contractId','addressId','tokenId'], unique: true},
+                {name: 'idx_epoch', fields:['epoch']},
+            ]
+        })
+    }
+}
+//
 export interface INftMint {
     id?:number
     epoch: number

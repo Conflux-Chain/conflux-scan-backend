@@ -1,21 +1,24 @@
 // @ts-ignore
-import {Conflux, format} from "js-conflux-sdk";
+import {Conflux, Contract, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
 import {CfxWatcher} from "./BalanceWatcher";
-import {Hex40Map, idHex40Map, makeId, makeIdV} from "../../model/HexMap";
+import {buildHexSet, hex40IdMap, Hex40Map, idHex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
-import {Op} from 'sequelize'
+import {Sequelize, Op,fn, col, QueryTypes} from 'sequelize'
 import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
-import {KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
+import {KEY_1155data_EPOCH, KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
 import {TokenTool} from "../tool/TokenTool";
-import {NftMint, Token} from "../../model/Token";
+import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTransferCount} from "../../StreamSync";
 import {ContractUser} from "../../model/Erc20Transfer";
 import {patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {TokenBalance} from "../../model/Balance";
+import {CONFIRM_GAP, destroyedContracts, fetch1155balance, rewind} from "./Erc1155DataSync";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -58,22 +61,302 @@ export class BatchBalanceWatcher {
     }
 }
 // ---
+async function fixAll1155holder() {
+    const tokenList = await Token.findAll({attributes:['id','hex40id','type',],where: {type: 'erc1155'}})
+    console.log(`1155 count ${tokenList.length}`)
+    for (let i = 0; i < tokenList.length; i++) {
+        await fix1155holderForContract(tokenList[i].hex40id)
+    }
+}
+async function fix1155holderForContract(contractId: number) {
+    const holderList = await Erc1155Data.findAll({
+        attributes: [
+            'addressId',
+            [fn('count', col('*')), 'cnt'],
+        ],
+        where: {contractId,}, raw: true, group: 'addressId', logging: console.log
+    })
+    const map = new Map<number, any>()
+    holderList.forEach(row=>map.set(row.addressId, row))
+
+    const balanceList = await TokenBalance.findAll({where: {contractId}})
+    console.log(`${contractId} exists ${balanceList.length}, calculate ${holderList.length}`)
+    for (let i = 0; i < balanceList.length; i++) {
+        const bean = balanceList[i]
+        const newRow = map.get(bean.addressId)
+        if (!newRow) {
+            await TokenBalance.destroy({where: {contractId, addressId:bean.addressId}})
+            console.log(`${contractId} destroy ${bean.addressId}`)
+        } else if (bean.balance.toString() != newRow['cnt'].toString()) {
+            await TokenBalance.update({balance: newRow['cnt']},
+                {where: {contractId, addressId:bean.addressId}})
+            console.log(`${contractId} update ${bean.addressId} ${newRow['cnt']}`)
+        }
+        map.delete(bean.addressId)
+    }
+    for(let row of map.values()) {
+        await TokenBalance.create({contractId, addressId: row.addressId, balance: row['cnt']})
+        console.log(`${contractId} create ${row.addressId} ${row['cnt']}`)
+    }
+    await Token.update({holder: holderList.length}, {where: {hex40id: contractId}})
+    console.log(`${contractId} finished`)
+}
+// ---
+let latestEpoch = BigInt(0)
+async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
+    const mark = await Erc1155Transfer.min('epoch', {
+        where: {epoch: {[Op.gt]: epochBase}},
+    })
+    if (!mark || isNaN(Number(mark))) {
+        return 0
+    }
+    let isNewLatestEpoch = false;
+    if (latestEpoch - BigInt(mark) < CONFIRM_GAP) {
+        do {
+            // make sure latest epoch is greater than previous epoch  mark. so the UPDATE could affect record.
+            const newLatestEpoch = await cfx.getEpochNumber('latest_state').then(res=>BigInt(res))
+            if (newLatestEpoch < Number(mark)) {
+                console.log(` rpc epoch should > ${Number(mark)}. got ${newLatestEpoch}`)
+                await sleep(5_000)
+            } else if (newLatestEpoch > latestEpoch) {
+                console.log(` set latestEpoch to`, newLatestEpoch)
+                latestEpoch = newLatestEpoch
+                isNewLatestEpoch = true
+                break;
+            } else {
+                console.log(` wait latest epoch growing. current ${latestEpoch}`)
+                await sleep(5_000)
+            }
+        } while (true)
+    }
+    // compare with exists hold records. When reOrg, some Transfer may disappear.
+    const holderList = await Erc1155Data.findAll({where: {epoch: mark}})
+    const holderMap = new Map<string, Erc1155Data>()
+    holderList.forEach(h=>holderMap.set(`${h.contractId}_${h.addressId}_${h.tokenId}`, h))
+
+    const transferList = await Erc1155Transfer.findAll({
+        where: {epoch: mark}
+    })
+    console.log(` transfer 1155 count ${transferList.length}, exists count ${holderList.length} epoch ${mark}`)
+    if (transferList.length == 0) {
+        return 0
+    }
+    const addressIds = buildHexSet(undefined, transferList, 'fromId', 'toId', 'contractId');
+    const addressMap = await idHex40Map([...addressIds])
+    const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
+    // build params before call contract
+    const contractAddrTokenSet = new Set<string>()
+    for (let trans of transferList) {
+        let params = contracts.get(trans.contractId)
+        if (!params) {
+            params = {accounts: [], tokenIds: [], addrIds: []}
+            contracts.set(trans.contractId, params)
+        }
+        // from
+        const hexFrom = `0x${addressMap.get(trans.fromId)}`;
+        const duplicateKey1 = `${trans.contractId}_${trans.fromId}_${trans.tokenId}`
+        if (trans.fromId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey1)) {
+            contractAddrTokenSet.add(duplicateKey1)
+            holderMap.delete(duplicateKey1)
+            params.accounts.push(hexFrom)
+            params.tokenIds.push(BigInt(trans.tokenId))
+            params.addrIds.push(trans.fromId)
+        }
+        // to
+        const duplicateKey2 = `${trans.contractId}_${trans.toId}_${trans.tokenId}`
+        const hexTo = `0x${addressMap.get(trans.toId)}`;
+        if (trans.toId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey2)) {
+            contractAddrTokenSet.add(duplicateKey2)
+            holderMap.delete(duplicateKey2)
+            params.accounts.push(hexTo)
+            params.tokenIds.push(BigInt(trans.tokenId))
+            params.addrIds.push(trans.toId)
+        }
+    }
+    // call contract, save to db
+    for (let contractId of contracts.keys()) {
+        const params = contracts.get(contractId)
+        rpc.address = '0x'+addressMap.get(contractId)
+        if (destroyedContracts.has(rpc.address)) {
+            continue
+        }
+        let balanceArr = await fetch1155balance(rpc, cfx, params);
+
+        let idx = -1
+        for (const b of balanceArr) {
+            idx ++
+            const tokenId = params.tokenIds[idx].toString()
+            const addressId = params.addrIds[idx]
+            if (b) {
+                // at least the epoch is different.
+                const [affected] = await Erc1155Data.update({amount: b, epoch: Number(mark), latestEpoch}, {
+                    where: {contractId, addressId, tokenId}, logging: isNewLatestEpoch ? console.log : false
+                })
+                if (!affected) {
+                    await Erc1155Data.create({
+                        contractId, addressId, tokenId, amount: b, epoch: Number(mark), latestEpoch
+                    }, {logging: isNewLatestEpoch ? console.log : false})
+                    const tokenBalance = await TokenBalance.findOne({
+                        where: {contractId, addressId}
+                    })
+                    if (tokenBalance) {
+                        await TokenBalance.increment('balance', {
+                            where: {contractId, addressId}, by: 1
+                            , logging: isNewLatestEpoch ? console.log : false
+                        });
+                        console.log(` increase balance , contractId, addressId` , contractId, addressId)
+                    } else {
+                        console.log(` CREATE balance , contractId, addressId` , contractId, addressId)
+                        await TokenBalance.create({contractId, addressId, balance: BigInt(1)},{
+                            logging: isNewLatestEpoch ? console.log : false
+                        })
+                    }
+                }
+            } else {
+                const deleted = await Erc1155Data.destroy({
+                    where: {contractId, addressId, tokenId}
+                })
+                console.log(` --- DELETE erc1155 data affect ${deleted}, contractId, addressId, tokenId`, contractId, addressId, tokenId)
+                if (deleted) {
+                    // decrease balance after destroy one token_hold record
+                    await TokenBalance.increment('balance', {
+                        where: {contractId, addressId}, by: -1, logging: isNewLatestEpoch ? console.log : false
+                    });
+                    // delete if balance < 1
+                    const delBalance = await TokenBalance.destroy({where: {contractId, addressId, balance: {[Op.lt]: 1}}})
+                    console.log(` --- DELETE TokenBalance, affected ${delBalance}`)
+                }
+            }
+        }
+    }
+    if (holderMap.size > 0) {
+        console.log(` ----- rare case, hold disappear epoch ${mark}, length ${holderMap.size}---`)
+        for (let value of holderMap.values()) {
+            console.log(`destroy ${JSON.stringify(value)}`)
+            await value.destroy({logging: console.log})
+        }
+    }
+    return mark;
+}
+async function setupSync1155data(cfx:Conflux) {
+    let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -2)
+    if (lastEpoch == -2) {
+        await KV.saveNumber(KEY_1155data_EPOCH, -1, undefined)
+        console.log(`create position`, -1)
+    } else {
+        console.log(`exists position`, lastEpoch)
+        await rewind()
+    }
+    //
+    const abi = [{
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "accounts",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint256[]",
+                "name": "ids",
+                "type": "uint256[]"
+            }
+        ],
+        "name": "balanceOfBatch",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+        {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },]
+    const contract = cfx.Contract({abi})
+    return contract
+}
+let contract1155: Contract = null;
+async function repeatSync1155data(cfx:Conflux) {
+    if (!contract1155) {
+        contract1155 = await setupSync1155data(cfx)
+    }
+    let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
+    const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err=>{
+        console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
+        return -1
+    })
+    if (thatEpoch === -1) {
+        setTimeout(()=>repeatSync1155data(cfx), 5_000)
+    } else if (thatEpoch) {
+        await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
+        if (Number(thatEpoch) % 100 == 0) {
+            console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
+        }
+        setTimeout(()=>repeatSync1155data(cfx), 0)
+    } else {
+        console.log(` no Erc1155 data after epoch ${lastEpoch}`)
+        // rewind cursor, to check records within then CONFIRM_GAP
+        await rewind()
+        setTimeout(()=>repeatSync1155data(cfx), 5_000)
+    }
+}
+// ---
 let zeroAddrId = 0
 async function run() {
-    const [,,cfxUrl,limitStr] = process.argv;
+    const [, script,cfxUrl,limitStr] = process.argv;
+    console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
+    if (cfxUrl === 'fix1155holder') {
+        await fix1155holderForContract(parseInt(limitStr))
+        process.exit(0)
+        return
+    } else if (cfxUrl === 'fixAll1155holder') {
+        await fixAll1155holder()
+        process.exit(0)
+        return
+    }
     const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
     const cfx = new Conflux({url});
     patchHttpProvider(cfx, {url})
     await cfx.updateNetworkId();
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
+    if (limitStr === 'repeatSync1155data') {
+        await repeatSync1155data(cfx)
+        return
+    }
     const st = await cfx.getStatus()
     StatApp.networkId = st.networkId;
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     new BatchBalanceWatcher(cfx, null, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
+    console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)
     scheduleTransferUpdater();
+    repeatSync1155data(cfx).then()
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {
         const cnt = await processContractUser(cfx, limit)
