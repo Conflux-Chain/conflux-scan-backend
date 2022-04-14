@@ -114,7 +114,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
     if (latestEpoch - BigInt(mark) < CONFIRM_GAP) {
         do {
             // make sure latest epoch is greater than previous epoch  mark. so the UPDATE could affect record.
-            const newLatestEpoch = await cfx.getEpochNumber().then(res=>BigInt(res))
+            const newLatestEpoch = await cfx.getEpochNumber('latest_state').then(res=>BigInt(res))
             if (newLatestEpoch > latestEpoch) {
                 console.log(` set latestEpoch to`, latestEpoch)
                 latestEpoch = newLatestEpoch
@@ -377,6 +377,7 @@ async function run() {
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     new BatchBalanceWatcher(cfx, null, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
+    console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)
     scheduleTransferUpdater();
     repeatSync1155data(cfx).then()
     const limit = limitStr ? parseInt(limitStr) : 10_000
