@@ -137,7 +137,11 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
     const transferList = await Erc1155Transfer.findAll({
         where: {epoch: mark}
     })
-    const addressIds = buildHexSet(undefined, transferList, 'fromId', 'toId', 'contractId')
+    console.log(` transfer 1155 count ${transferList.length}, exists count ${holderList.length} epoch ${mark}`)
+    if (transferList.length == 0) {
+        return 0
+    }
+    const addressIds = buildHexSet(undefined, transferList, 'fromId', 'toId', 'contractId');
     const addressMap = await idHex40Map([...addressIds])
     const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
     // build params before call contract
