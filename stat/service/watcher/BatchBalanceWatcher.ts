@@ -209,6 +209,10 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
                 const tokenBalance = await TokenBalance.increment('balance', {
                     where: {contractId, addressId}, by: -1, logging: isNewLatestEpoch ? console.log : false
                 });
+                console.log(`remain balance, contract ${contractId} addr ${addressId} [${tokenBalance?.balance}]`)
+                if (tokenBalance && Number(tokenBalance.balance) < 1) {
+                    await tokenBalance.destroy()
+                }
             }
         }
     }
