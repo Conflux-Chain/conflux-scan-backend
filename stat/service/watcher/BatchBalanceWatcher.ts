@@ -111,13 +111,15 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
     if (!mark || isNaN(Number(mark))) {
         return 0
     }
+    let isNewLatestEpoch = false;
     if (latestEpoch - BigInt(mark) < CONFIRM_GAP) {
         do {
             // make sure latest epoch is greater than previous epoch  mark. so the UPDATE could affect record.
             const newLatestEpoch = await cfx.getEpochNumber('latest_state').then(res=>BigInt(res))
             if (newLatestEpoch > latestEpoch) {
-                console.log(` set latestEpoch to`, latestEpoch)
+                console.log(` set latestEpoch to`, newLatestEpoch)
                 latestEpoch = newLatestEpoch
+                isNewLatestEpoch = true
                 break;
             } else {
                 console.log(` wait latest epoch growing. current ${latestEpoch}`)
@@ -213,17 +215,20 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
             if (b) {
                 // at least the epoch is different.
                 const [affected] = await Erc1155Data.update({amount: b, epoch: Number(mark), latestEpoch}, {
-                    where: {contractId, addressId, tokenId}
+                    where: {contractId, addressId, tokenId}, logging: isNewLatestEpoch ? console.log : false
                 })
                 if (!affected) {
                     await Erc1155Data.create({
                         contractId, addressId, tokenId, amount: b, epoch: Number(mark), latestEpoch
-                    }, )
+                    }, {logging: isNewLatestEpoch ? console.log : false})
                     const tokenBalance = await TokenBalance.increment('balance', {
                         where: {contractId, addressId}, by: 1
+                        , logging: isNewLatestEpoch ? console.log : false
                     });
                     if (!tokenBalance) {
-                        await TokenBalance.create({contractId, addressId, balance: BigInt(1)})
+                        await TokenBalance.create({contractId, addressId, balance: BigInt(1)},{
+                            logging: isNewLatestEpoch ? console.log : false
+                        })
                     }
                 }
             } else {
@@ -231,7 +236,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
                     where: {contractId, addressId, tokenId}
                 })
                 const tokenBalance = await TokenBalance.increment('balance', {
-                    where: {contractId, addressId}, by: -1
+                    where: {contractId, addressId}, by: -1, logging: isNewLatestEpoch ? console.log : false
                 });
             }
         }
