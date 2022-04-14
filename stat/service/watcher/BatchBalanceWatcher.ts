@@ -103,9 +103,9 @@ async function fix1155holderForContract(contractId: number) {
 }
 // ---
 let latestEpoch = BigInt(0)
-async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
+async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
     const mark = await Erc1155Transfer.min('epoch', {
-        where: {epoch: {[Op.gt]: epoch}},
+        where: {epoch: {[Op.gt]: epochBase}},
     })
     if (!mark || isNaN(Number(mark))) {
         return 0
@@ -130,7 +130,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
         } while (true)
     }
     // compare with exists hold records. When reOrg, some Transfer may disappear.
-    const holderList = await Erc1155Data.findAll({where: {epoch}})
+    const holderList = await Erc1155Data.findAll({where: {epoch: mark}})
     const holderMap = new Map<string, Erc1155Data>()
     holderList.forEach(h=>holderMap.set(`${h.contractId}_${h.addressId}_${h.tokenId}`, h))
 
@@ -213,7 +213,7 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
         }
     }
     if (holderMap.size > 0) {
-        console.log(` ----- rare case, hold disappear epoch ${epoch}, length ${holderMap.size}---`)
+        console.log(` ----- rare case, hold disappear epoch ${mark}, length ${holderMap.size}---`)
         for (let value of holderMap.values()) {
             console.log(`destroy ${JSON.stringify(value)}`)
             await value.destroy({logging: console.log})
