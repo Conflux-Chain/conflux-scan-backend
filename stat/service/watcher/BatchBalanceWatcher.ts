@@ -18,6 +18,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenBalance} from "../../model/Balance";
+import {CONFIRM_GAP, destroyedContracts, fetch1155balance, rewind} from "./Erc1155DataSync";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -101,8 +102,6 @@ async function fix1155holderForContract(contractId: number) {
     console.log(`${contractId} finished`)
 }
 // ---
-const destroyedContracts = new Set<string>()
-const CONFIRM_GAP = 100
 let latestEpoch = BigInt(0)
 async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
     const mark = await Erc1155Transfer.min('epoch', {
@@ -116,7 +115,10 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
         do {
             // make sure latest epoch is greater than previous epoch  mark. so the UPDATE could affect record.
             const newLatestEpoch = await cfx.getEpochNumber('latest_state').then(res=>BigInt(res))
-            if (newLatestEpoch > latestEpoch) {
+            if (newLatestEpoch < Number(mark)) {
+                console.log(` rpc epoch should > ${Number(mark)}. got ${newLatestEpoch}`)
+                await sleep(5_000)
+            } else if (newLatestEpoch > latestEpoch) {
                 console.log(` set latestEpoch to`, newLatestEpoch)
                 latestEpoch = newLatestEpoch
                 isNewLatestEpoch = true
@@ -167,46 +169,8 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
         if (destroyedContracts.has(rpc.address)) {
             continue
         }
-        let balanceArr: any[];
-        try {
-            // @ts-ignore
-            balanceArr = await rpc.balanceOfBatch(params.accounts, params.tokenIds)
-        } catch (err) {
-            const account = await cfx.getAccount(rpc.address)
-            if (account.codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470') {
-                destroyedContracts.add(rpc.address)
-                console.log(`contract code hash is empty. destroyed. ${rpc.address}`)
-                continue
-            }
-            // fallback to balanceOf
-            balanceArr = []
-            for (let i = 0; i < params.accounts.length; i++) {
-                try {
-                    // @ts-ignore
-                    const b = await rpc.balanceOf(params.accounts[i], params.tokenIds[i])
-                    balanceArr.push(b)
-                } catch (e) {
-                    if (e.data?.includes('owner query for nonexistent token')) {
-                        balanceArr.push(BigInt(0))
-                        console.log(`token not exist. ${rpc.address}, id ${params.tokenIds[i]}`)
-                        continue
-                    }
-                    console.log(`call balanceOf fail`, params.accounts[i], params.tokenIds[i], e.data || e)
-                    break;
-                }
-            }
-            if (balanceArr.length == params.accounts.length) {
-                console.log(`  fix by balanceOf , ${rpc.address}`)
-            } else {
-                console.log(`call balanceOfBatch fail, contract ${rpc.address
-                }, accounts ${params.accounts.join(',')} ids ${params.tokenIds.join(',')}`)
-                if (err.data?.startsWith('VmError(OutOfStack')) {
-                    console.log(`  skip invalid contract, reason`, err.data)
-                } else {
-                    throw err
-                }
-            }
-        }
+        let balanceArr = await fetch1155balance(rpc, cfx, params);
+
         let idx = -1
         for (const b of balanceArr) {
             idx ++
@@ -250,6 +214,7 @@ async function setupSync1155data(cfx:Conflux) {
         console.log(`create position`, -1)
     } else {
         console.log(`exists position`, lastEpoch)
+        await rewind()
     }
     //
     const abi = [{
@@ -324,31 +289,7 @@ async function repeatSync1155data(cfx:Conflux) {
     } else {
         console.log(` no Erc1155 data after epoch ${lastEpoch}`)
         // rewind cursor, to check records within then CONFIRM_GAP
-        const max = await Erc1155Data.findOne({order:[['id','desc']]})
-        if (max) {
-            let upperId = max.id
-            do {
-                let lowerId = upperId - 10_000
-                const minOne = await Erc1155Data.findOne({
-                    where: Sequelize.literal(` latestEpoch - epoch < ${CONFIRM_GAP
-                    } and id between ${lowerId} and ${upperId} `),
-                    order: [['id','asc']]
-                })
-                if (!minOne) {
-                    console.log(` all record within [${lowerId} , ${upperId}] is beyond confirm gap ${CONFIRM_GAP}.`)
-                    break;
-                } else if (minOne.id == lowerId) {
-                    // there may be smaller one.
-                    upperId = minOne.id
-                    console.log(` search deeper, now at ${minOne.id}`)
-                } else {
-                    // this is the smallest one, rewind
-                    await KV.saveNumber(KEY_1155data_EPOCH, minOne.id - 1, null)
-                    console.log(` Sync1155data rewind to ${minOne.id - 1}`)
-                    break;
-                }
-            } while (true)
-        }
+        await rewind()
         setTimeout(()=>repeatSync1155data(cfx), 5_000)
     }
 }
