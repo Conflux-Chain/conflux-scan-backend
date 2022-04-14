@@ -5,7 +5,7 @@ import {CfxWatcher} from "./BalanceWatcher";
 import {buildHexSet, hex40IdMap, Hex40Map, idHex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
-import {Op,fn, col, QueryTypes} from 'sequelize'
+import {Sequelize, Op,fn, col, QueryTypes} from 'sequelize'
 import {hex} from "../../test/GenData";
 import {DynamicBalanceModel} from "./DynamicBalanceModel";
 import {KEY_1155data_EPOCH, KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
@@ -102,12 +102,28 @@ async function fix1155holderForContract(contractId: number) {
 }
 // ---
 const destroyedContracts = new Set<string>()
+const CONFIRM_GAP = 100
+let latestEpoch = BigInt(0)
 async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
     const mark = await Erc1155Transfer.min('epoch', {
         where: {epoch: {[Op.gt]: epoch}},
     })
     if (!mark || isNaN(Number(mark))) {
         return 0
+    }
+    if (latestEpoch - BigInt(mark) < CONFIRM_GAP) {
+        do {
+            // make sure latest epoch is greater than previous epoch  mark. so the UPDATE could affect record.
+            const newLatestEpoch = await cfx.getEpochNumber().then(res=>BigInt(res))
+            if (newLatestEpoch > latestEpoch) {
+                console.log(` set latestEpoch to`, latestEpoch)
+                latestEpoch = newLatestEpoch
+                break;
+            } else {
+                console.log(` wait latest epoch growing. current ${latestEpoch}`)
+                await sleep(5_000)
+            }
+        } while (true)
     }
     const transferList = await Erc1155Transfer.findAll({
         where: {epoch: mark}
@@ -196,12 +212,12 @@ async function syncErc1155data(epoch: number, rpc: Contract, cfx:Conflux) {
             const addressId = params.addrIds[idx]
             if (b) {
                 // at least the epoch is different.
-                const [affected] = await Erc1155Data.update({amount: b, epoch: Number(mark)}, {
+                const [affected] = await Erc1155Data.update({amount: b, epoch: Number(mark), latestEpoch}, {
                     where: {contractId, addressId, tokenId}
                 })
                 if (!affected) {
                     await Erc1155Data.create({
-                        contractId, addressId, tokenId, amount: b, epoch: Number(mark)
+                        contractId, addressId, tokenId, amount: b, epoch: Number(mark), latestEpoch
                     }, )
                     const tokenBalance = await TokenBalance.increment('balance', {
                         where: {contractId, addressId}, by: 1
@@ -302,7 +318,33 @@ async function repeatSync1155data(cfx:Conflux) {
         setTimeout(()=>repeatSync1155data(cfx), 0)
     } else {
         console.log(` no Erc1155 data after epoch ${lastEpoch}`)
-        setTimeout(()=>repeatSync1155data(cfx), 5_0000)
+        // rewind cursor, to check records within then CONFIRM_GAP
+        const max = await Erc1155Data.findOne({order:[['id','desc']]})
+        if (max) {
+            let upperId = max.id
+            do {
+                let lowerId = upperId - 10_000
+                const minOne = await Erc1155Data.findOne({
+                    where: Sequelize.literal(` latestEpoch - epoch < ${CONFIRM_GAP
+                    } and id between ${lowerId} and ${upperId} `),
+                    order: [['id','asc']]
+                })
+                if (!minOne) {
+                    console.log(` all record within [${lowerId} , ${upperId}] is beyond confirm gap ${CONFIRM_GAP}.`)
+                    break;
+                } else if (minOne.id == lowerId) {
+                    // there may be smaller one.
+                    upperId = minOne.id
+                    console.log(` search deeper, now at ${minOne.id}`)
+                } else {
+                    // this is the smallest one, rewind
+                    await KV.saveNumber(KEY_1155data_EPOCH, minOne.id - 1, null)
+                    console.log(` Sync1155data rewind to ${minOne.id - 1}`)
+                    break;
+                }
+            } while (true)
+        }
+        setTimeout(()=>repeatSync1155data(cfx), 5_000)
     }
 }
 // ---
