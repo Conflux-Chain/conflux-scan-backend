@@ -1,8 +1,10 @@
-// get NFT cache info from localStorage
 import { NFTMap, NFTNames } from './NFTInfo';
 import {toBase32} from "../tool/AddressTool";
 import {Desensitizer} from "../Desensitizer";
-import {Token} from "../../model/Token";
+import {NftMint, Token} from "../../model/Token";
+import {Hex40Map} from "../../model/HexMap";
+import {format} from "js-conflux-sdk";
+import {QueryTypes} from "sequelize";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -34,6 +36,51 @@ export class NFTPreviewService {
         nftInfo.imageName.zh = Desensitizer.mosaicStr(address, nftInfo.imageName.zh);
         nftInfo.imageName.en = Desensitizer.mosaicStr(address, nftInfo.imageName.en);
         nftInfo.imageUri = Desensitizer.mosaicUri(address, nftInfo.imageUri);
+        return nftInfo;
+    }
+
+    public async getNFTDetail ({
+         contractAddress,
+         tokenId
+    }: {
+        contractAddress: string;
+        tokenId: BigInt;
+    }): Promise<NFTInfoType> {
+        const address = toBase32(contractAddress) as string;
+        const nftInfo = await this.getNFTInfo0({contractAddress: address, tokenId});
+        if(!nftInfo || nftInfo.error) {
+            return nftInfo;
+        }
+
+        const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
+            id from hex40 where hex = ?));`;
+        const hex = format.hexAddress(address);
+        const creator = await Hex40Map.sequelize
+            .query(sql, {type: QueryTypes.SELECT, replacements: [hex.substr(2)]})
+            .then(hexBeanArray => {
+                return hexBeanArray?.length ? toBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
+            });
+
+        const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) and tokenId = ?;`;
+        const minter = await NftMint.sequelize
+            .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`], logging: console.info})
+            .then(async nftMinterArray => {
+                if(!nftMinterArray?.length) return undefined;
+                const nftMinter = nftMinterArray[0];
+                const ownerHex = await Hex40Map.findOne({where: {id: nftMinter['toId']}});
+                const owner = toBase32(`0x${ownerHex['hex']}`);
+                const mintTime = nftMinter['createdAt'];
+                return {owner, mintTime};
+            });
+
+        const type = await Token.findOne({attributes: ['type'], where: {base32: address}})
+            .then(token => {return token.type});
+        lodash.assign(nftInfo, {creator, ... minter, type});
+
+        nftInfo.imageName.zh = Desensitizer.mosaicStr(address, nftInfo.imageName.zh);
+        nftInfo.imageName.en = Desensitizer.mosaicStr(address, nftInfo.imageName.en);
+        nftInfo.imageUri = Desensitizer.mosaicUri(address, nftInfo.imageUri);
+
         return nftInfo;
     }
 
@@ -80,28 +127,28 @@ export class NFTPreviewService {
             case NFTMap.conDragon.address:
                 return this.getNFTImage({ address, tokenId });
             case NFTMap.confiCard.address:
-                return this.getNFTImage({ address, tokenId, minHeight: 328 });
+                return this.getNFTImage({ address, tokenId, height: 328 });
             case NFTMap.ancientChineseGod.address:
             case NFTMap.ancientChineseGodGenesis.address:
-                return this.getNFTImage({ address, tokenId, minHeight: 377 });
+                return this.getNFTImage({ address, tokenId, height: 377 });
             case NFTMap.moonswapGenesis.address:
-                return this.getNFTImage({ address, tokenId, minHeight: 150 });
+                return this.getNFTImage({ address, tokenId, height: 150 });
             case NFTMap.conHero.address:
-                return this.getNFTImage({ address, tokenId, minHeight: 267 });
+                return this.getNFTImage({ address, tokenId, height: 267 });
             case NFTMap.shanhaijing.address:
-                return this.getNFTImage({ address, tokenId, minHeight: 267 });
+                return this.getNFTImage({ address, tokenId, height: 267 });
             case NFTMap.threeKingdoms.address:
-                return this.getNFTImage({ address, tokenId, minHeight: 286 });
+                return this.getNFTImage({ address, tokenId, height: 286 });
 
             case NFTMap.epiKProtocolKnowledgeBadge.address:
-                return this.getNFTImage({ address, tokenId, minHeight: 200,
-                    imageUriFormatter: meta => meta.data.page_url });
+                return this.getNFTImage({ address, tokenId, height: 200,
+                    uriFormatter: meta => meta.data.page_url });
             case NFTMap.TREAGenesisFeitian.address:
-                return this.getNFTImage({ address, tokenId,  minHeight: 200, method: 'uris', needFetchJson: false,
-                    imageUriFormatter: meta => meta.image });
+                return this.getNFTImage({ address, tokenId,  height: 200, method: 'uris', fetchJson: false,
+                    uriFormatter: meta => meta.image });
             case NFTMap.confi.address:
-                return this.getNFTImage({ address, tokenId, method: 'uris', needFetchJson: false,
-                    imageUriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url });
+                return this.getNFTImage({ address, tokenId, method: 'uris', fetchJson: false,
+                    uriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url });
             default:
                 let result;
                 const token = await Token.findOne({attributes: ['type'], where: {base32: address}});
@@ -248,19 +295,21 @@ export class NFTPreviewService {
         return nftName;
     };
 
-    private async getNFTImage({address, tokenId, method = 'uri', minHeight = 200, needFetchJson = true, imageUriFormatter}:
-        { address: string, tokenId: BigInt, method?: string, minHeight?: number, needFetchJson?: boolean, imageUriFormatter?: any}
+    private async getNFTImage({address, tokenId, method = 'uri', height = 200, fetchJson = true, uriFormatter}:
+        { address: string, tokenId: BigInt, method?: string, height?: number, fetchJson?: boolean, uriFormatter?: any}
     ): Promise<NFTInfoType> {
         let url;
         let meta;
         let imageUri;
         let imageName;
         let imageDesc;
+        let detail;
         let error;
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
             if (nftObj) {
-                return {imageMinHeight: minHeight, imageUri: nftObj.imageUri, imageName: nftObj.imageName || {}, imageDesc: nftObj.imageDesc};
+                const cacheInfo = {imageMinHeight: height};
+                return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));
             }
 
             // get uri
@@ -279,9 +328,9 @@ export class NFTPreviewService {
                     url = JSON.parse(url);
                 } catch (e){
                 }
-                if (needFetchJson) {
+                if (fetchJson) {
                     url = url.indexOf('{id}') > -1 ? url.replace('{id}', tokenId.toString(16)) : url;
-                    url = url.startsWith('ipfs://') ? this.replaceIPFSGateway(url) : url;
+                    url = this.replaceGateway(url);
 
                     // fetch meta data
                     const response = await superagent.get(url);
@@ -291,20 +340,27 @@ export class NFTPreviewService {
                 }
 
                 // build resp
-                imageUri = imageUriFormatter ? imageUriFormatter(meta) : needFetchJson ? meta.image : meta;
-                imageUri = imageUri?.startsWith('ipfs://') ? this.replaceIPFSGateway(imageUri) : imageUri;
-                imageUri = imageUri?.startsWith('https://gateway.pinata.cloud') ? this.replacePinataGateway(imageUri) : imageUri;
+                imageUri = uriFormatter ? uriFormatter(meta) : fetchJson ? meta.image : meta;
+                imageUri = this.replaceGateway(imageUri);
                 imageName = await this.getNFTName({address, meta}) || {};
             }
             imageDesc = meta.description;
+            detail = { funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta };
 
             if(!imageUri) throw new Error('image not found');
             if(!imageName) throw new Error('name not found');
-            this.setNFTCacheInfo({ address, tokenId, imageUri, imageName, imageDesc });
+            this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail});
         } catch (e) {
-            error = {funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta, errorMessage: e?.message?.substr(0, 50)};
+            error = e?.message?.substr(0, 50);
         }
-        return { imageMinHeight: error ? undefined : minHeight, imageUri, imageName, imageDesc, error };
+        return {
+            imageMinHeight: error ? undefined : height,
+            imageUri,
+            imageName,
+            imageDesc,
+            error,
+            detail,
+        };
     };
 
     private getNFTCacheInfo({ address, tokenId}:
@@ -323,21 +379,26 @@ export class NFTPreviewService {
         return null;
     };
 
-    private setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc}:
-        { address: string, tokenId: BigInt, imageUri?: string, imageName?: any, imageDesc?: any }
+    private setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail}:
+        { address: string, tokenId: BigInt, imageUri?: string, imageName?: any, imageDesc?: any, detail?: any }
     ) {
         if (imageUri) {
             put(address, tokenId,
-                JSON.stringify({address, tokenId, imageUri, imageName, imageDesc, timeout: +new Date() + 1000 * 60 * 60}));
+                JSON.stringify({
+                    address, tokenId, imageUri, imageName, imageDesc, detail, timeout: +new Date() + 1000 * 60 * 60
+                }));
         }
     };
 
-    private replaceIPFSGateway(ipfsPath){
-        return `https://ipfs.io/ipfs/${ipfsPath.substr(7)}`;
-    }
-
-    private replacePinataGateway(ipfsPath){
-        return `https://ipfs.io/ipfs/${ipfsPath.substr(34)}`;
+    private replaceGateway(imageUri){
+        let uri = imageUri;
+        if(uri?.startsWith('ipfs://')) {
+            uri = `https://ipfs.io/ipfs/${uri.substr(7)}`;
+        }
+        if(uri?.startsWith('https://gateway.pinata.cloud')){
+            uri = `https://ipfs.io/ipfs/${uri.substr(34)}`;
+        }
+        return uri;
     }
 }
 
@@ -346,5 +407,6 @@ export type NFTInfoType = {
     imageUri: string;
     imageName: any;
     imageDesc?: any;
+    detail?:any;
     error?: any;
 } | null;

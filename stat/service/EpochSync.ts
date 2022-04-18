@@ -34,6 +34,8 @@ const FIELDS_CONTRACT = [...['hex40id', 'base32'], ...FIELDS_CONTRACT_REGISTER];
 const TOPIC0_TRANSFER_ERC20 = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const TOPIC0_TRANSFER_ERC1155_SINGLE = '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62';
 const TOPIC0_TRANSFER_ERC1155_BATCH = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb';
+const TOPIC0_ANNOUNCE = '0x14cb751d0950ff2788201931c45f715f7472443bc197311d9e3a7a0ba566b7e6';
+const TOKEN_TRANSFER_TOPICS = [[ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH, TOPIC0_ANNOUNCE ]];
 
 export class EpochSync extends SyncBase{
     protected app;
@@ -408,8 +410,13 @@ export class EpochSync extends SyncBase{
             app: { cfx },
         } = this;
 
-        const logsLimit = 50000
-        const eventLogArray = await cfx.getLogs({fromEpoch: epochNumber, toEpoch: epochNumber, limit: logsLimit}).catch(async err=>{
+        const logsLimit = 100000
+        const eventLogArray = await cfx.getLogs({
+            fromEpoch: epochNumber,
+            toEpoch: epochNumber,
+            topics: TOKEN_TRANSFER_TOPICS,
+            limit: logsLimit
+        }).catch(async err=>{
             const msg = `${err}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
                 const latest = await cfx.getEpochNumber('latest_state');

@@ -48,6 +48,7 @@ class AnnounceService {
           nonce: Number(nonce) + index,
           from: this.announcer,
           to: announcementAddress,
+          gasPrice: 5000000000,
         }),
       ));
     } catch (e) {
@@ -63,7 +64,7 @@ class AnnounceService {
     } = this;
 
     array = array.filter((each) => each.value !== undefined);
-    array = array.map(({ key, value }) => ({ key: format.bytes(key), value: format.bytes(value) }));
+    array = array.map(({ key, value }) => ({ key: this._getBytes(key), value: this._getBytes(value) }));
 
     const groupArray = [];
 
@@ -88,6 +89,10 @@ class AnnounceService {
     groupArray.push(group);
 
     return groupArray;
+  }
+
+  _getBytes(v){
+    return Buffer.isBuffer(v) ? v : Buffer.from(v);
   }
 
   async query({ address, announcer, ...rest }) {
