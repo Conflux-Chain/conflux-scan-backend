@@ -493,7 +493,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/nft/checker/detail', async function (ctx) {
         const { contractAddress, tokenId} = ctx.request.query
         const nftDetail = await statApp.nftPreviewService.getNFTDetail({contractAddress, tokenId: BigInt(tokenId)});
-        ctx.body = {code: 0, data: nftDetail};
+
+        if(nftDetail?.error){
+            ctx.status = 600;
+            ctx.body = {code: 1, message: nftDetail.error, data: nftDetail};
+        } else{
+            ctx.body = {code: 0, data: nftDetail};
+        }
     })
 
     // nft checker, get balances
