@@ -61,7 +61,7 @@ export class NFTPreviewService {
                 return hexBeanArray?.length ? toBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
             });
 
-        const sql1 = `select * from nft_mint_2 where contractId =(select id from hex40 where hex = ?) and tokenId = ?;`;
+        const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) and tokenId = ?;`;
         const minter = await NftMint.sequelize
             .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`], logging: console.info})
             .then(async nftMinterArray => {
