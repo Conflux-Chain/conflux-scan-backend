@@ -29,6 +29,7 @@ export class NFTPreviewService {
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
         const nftInfo = await this.getNFTInfo0({contractAddress: address, tokenId});
+
         if(!nftInfo || nftInfo.error) {
             return nftInfo;
         }
@@ -48,9 +49,6 @@ export class NFTPreviewService {
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
         const nftInfo = await this.getNFTInfo0({contractAddress: address, tokenId});
-        if(!nftInfo || nftInfo.error) {
-            return nftInfo;
-        }
 
         const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
             id from hex40 where hex = ?));`;
@@ -63,7 +61,7 @@ export class NFTPreviewService {
 
         const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) and tokenId = ?;`;
         const minter = await NftMint.sequelize
-            .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`], logging: console.info})
+            .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`]})
             .then(async nftMinterArray => {
                 if(!nftMinterArray?.length) return undefined;
                 const nftMinter = nftMinterArray[0];
@@ -77,10 +75,13 @@ export class NFTPreviewService {
             .then(token => {return token.type});
         lodash.assign(nftInfo, {creator, ... minter, type});
 
+        if(!nftInfo || nftInfo.error) {
+            return nftInfo;
+        }
+
         nftInfo.imageName.zh = Desensitizer.mosaicStr(address, nftInfo.imageName.zh);
         nftInfo.imageName.en = Desensitizer.mosaicStr(address, nftInfo.imageName.en);
         nftInfo.imageUri = Desensitizer.mosaicUri(address, nftInfo.imageUri);
-
         return nftInfo;
     }
 
@@ -345,14 +346,16 @@ export class NFTPreviewService {
                 imageName = await this.getNFTName({address, meta}) || {};
             }
             imageDesc = meta.description;
-            detail = { funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta };
 
             if(!imageUri) throw new Error('image not found');
             if(!imageName) throw new Error('name not found');
-            this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail});
         } catch (e) {
             error = e?.message?.substr(0, 50);
+        } finally {
+            detail = { funcCall: `${method}(${tokenId})`, metadataURI: url, metadata: meta };
+            !error && this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail});
         }
+
         return {
             imageMinHeight: error ? undefined : height,
             imageUri,
