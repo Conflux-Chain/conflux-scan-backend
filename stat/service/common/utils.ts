@@ -35,7 +35,7 @@ export function getPagination(requestObj: object, {defaultSkip, maxSkip, default
 }
 export function getPaginationESpace(requestObj: object, {defaultPage, maxPage, defaultOffset, maxOffset}:
     {defaultPage: number, maxPage: number, defaultOffset: number, maxOffset: number}
-    = {defaultPage: 0, maxPage: 10000, defaultOffset: 10, maxOffset: 100}
+    = {defaultPage: 1, maxPage: 10000, defaultOffset: 100, maxOffset: 100}
 ) {
     const param = {
         page: intParam(requestObj, 'page', defaultPage),
