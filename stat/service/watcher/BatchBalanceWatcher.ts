@@ -356,7 +356,7 @@ async function run() {
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)
     scheduleTransferUpdater();
-    repeatSync1155data(cfx).then()
+    // repeatSync1155data(cfx).then()
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {
         const cnt = await processContractUser(cfx, limit)
