@@ -75,4 +75,20 @@ module.exports = {
     CODE_NOT_FOUND: {matchCode: 401, matchDesc: 'code-not-found'},
     ERROR: {matchCode: 501, matchDesc: 'error'},
   },
+
+  E_SPACE_OPENAPI: {
+    MODULE: {
+      ACCOUNT: 'account',
+    },
+    ACTION: {
+      BALANCE: 'balance',
+      BALANCE_MULTI: 'balancemulti',
+      TX_LIST: 'txlist',
+      TX_LIST_INTERNAL: 'txlistinternal',
+      TOKEN_TX: 'tokentx',
+      TOKEN_NFT_TX: 'tokennfttx',
+      GET_MINED_BLOCKS: 'getminedblocks',
+      BALANCE_HISTORY: 'balancehistory',
+    },
+  },
 };

@@ -8,6 +8,34 @@ import {
 } from "../../stat/service/common/utils";
 import {polishContract} from "./OpenContractService";
 import {StatApp} from "../../stat/StatApp";
+import {getApiService} from "../ApiServer";
+
+export async function listAccountCfxTransfer(ctx) {
+    return listTransfer(ctx, getApiService().cfxTransferQuery)
+}
+/**
+ * Query crc20 transfer of one account(address)
+ * @param ctx
+ */
+export async function listAccountTransfer20(ctx) {
+    return listTransfer(ctx, getApiService().crc20transferQuery)
+}
+
+/**
+ * Query crc721 transfer of one account(address)
+ * @param ctx
+ */
+export async function listAccountTransfer721(ctx) {
+    return listTransfer(ctx, getApiService().crc721transferQuery)
+}
+
+/**
+ * Query crc1155 transfer of one account(address)
+ * @param ctx
+ */
+export async function listAccountTransfer1155(ctx) {
+    return listTransfer(ctx, getApiService().crc1155transferQuery)
+}
 
 export function polishTransferList(page) {
     page?.list?.forEach(row=>{

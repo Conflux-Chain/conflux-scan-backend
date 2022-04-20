@@ -5,6 +5,7 @@ import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/H
 import {FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
+const lodash = require('lodash');
 const CONST = require('./common/constant');
 
 export abstract class TransferQueryBase {
@@ -14,7 +15,7 @@ export abstract class TransferQueryBase {
         this.app = app;
     }
 
-    public buildQueryOptions({minEpochNumber, maxEpochNumber, transactionHashId,
+    public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                   minTimestamp, maxTimestamp,
                                   accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
                                   tokenId, txType, skip, limit, sort='DESC'}){
@@ -57,8 +58,8 @@ export abstract class TransferQueryBase {
         if(opponentAddressId){
             conditionArray.push({[Op.or]: [{toId: opponentAddressId}, {fromId: opponentAddressId}]});
         }
-        if(transactionHashId) {
-            conditionArray.push({txHashId: transactionHashId});
+        if(txParas) {
+            conditionArray.push({epoch: txParas.epoch, blockIndex: txParas.blockIndex, txIndex: txParas.txIndex});
         }
         if(tokenId !== undefined) {
             conditionArray.push({tokenId: tokenId.toString()});
@@ -121,10 +122,12 @@ export abstract class TransferQueryBase {
         const fromAddressId = addressMap[from];
         const toAddressId = addressMap[to];
         const opponentAddressId = addressMap[opponentAddress];
-        let transactionHashId;
+        let txParas;
         if(transactionHash){
-            const hex64 = await Hex64Map.findOne({where: {hex: transactionHash.substr(2)}});
-            transactionHashId = hex64?.id;
+            const tx = await FullTransaction.findOne({
+                attributes: ['epoch', ['blockPosition', 'blockIndex'], ['txPosition','txIndex'], 'hash'],
+                where: {hash: transactionHash}, raw: true});
+            txParas = tx ? lodash.pick(tx, ['epoch', 'blockIndex', 'txIndex']) : undefined;
         }
         const tokenAddressIdArray = [];
         if(tokenArray?.length){
@@ -147,7 +150,7 @@ export abstract class TransferQueryBase {
 
         // queryOptions
         const queryOptions = this.buildQueryOptions({
-            minEpochNumber, maxEpochNumber, transactionHashId,
+            minEpochNumber, maxEpochNumber, txParas,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
             tokenId, txType, skip, limit, sort

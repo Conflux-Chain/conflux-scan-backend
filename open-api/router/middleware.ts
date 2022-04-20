@@ -83,60 +83,23 @@ export function setBody(ctx, data: any, code = 0, message = 'ok') {
     ctx.body = {code, message, data}
 }
 // https://swaggerstats.io/guide/conf.html#options
-export function addSwagger(app: Koa, prefix) {
-    console.log(` loading open-api.yaml`)
-    const spec = yamljs.load('./document/open-api.yaml');
-    if (StatApp.isEVM) {
-        Object.keys(spec.paths).forEach(path => {
-            if (path.startsWith('/statistics')) {
-                delete spec.paths[path];
-            }
-            spec.paths[path]?.get?.parameters?.forEach(parameterObj => {
-                Object.keys(parameterObj).forEach(key => {
-                    const paraDefinition = parameterObj[key];
-                    if (paraDefinition.endsWith('minEpochNumberParam')) {
-                        const evmParaDefinition = paraDefinition.replace('minEpochNumberParam', 'startBlockParam')
-                        parameterObj[key] = evmParaDefinition;
-                    }
-                    if (paraDefinition.endsWith('maxEpochNumberParam')) {
-                        const evmParaDefinition = paraDefinition.replace('maxEpochNumberParam', 'endBlockParam')
-                        parameterObj[key] = evmParaDefinition;
-                    }
-                });
-            });
-        });
-        Object.keys(spec.components.schemas).forEach(schema => {
-            if (schema.endsWith('Stat')) {
-                delete spec.components.schemas[schema];
-            }
-        });
-        Object.keys(spec.components.parameters).forEach(parameter => {
-            if (lodash.includes(['account', 'from', 'to', 'ownerParam'], parameter)) {
-                spec.components.parameters[parameter].description = `Account address, it's like 0xe47d6387edacde17804c5f5d709b73a4943a762c`;
-            }
-            if (lodash.includes(['contractParam', 'contractParamMust'], parameter)) {
-                spec.components.parameters[parameter].description = `Contract address, it's like 0x4f9e3186513224cf152016ccd86019e7b9a3c809`;
-            }
-        });
-    }
-    console.log(` loading open-api.yaml done`)
+export function addSwagger(app: Koa, prefix, swaggerYaml) {
+    console.log(` loading swaggerYaml:${swaggerYaml}`)
+    let spec = yamljs.load(swaggerYaml);
+    console.log(` loading swaggerYaml:${swaggerYaml} done`)
     // metrics
     app.use(e2k(swStats.getMiddleware({
-        swaggerSpec:spec,
         uriPath: `${prefix}/swagger-stats`,
         hostname: 'OpenApi', // Prevent exposure of server ip
         basePath: prefix,
+        swaggerSpec:spec,
     })));
-    const docPath = `${prefix}/doc`
-    // let apiDef = '/open-api.yaml';
-    const pwd = path.resolve('.')
-    // console.log(`pwd is ${pwd}`)
+    // swagger
     app.use(
         koaSwagger({
-            routePrefix: docPath,
+            routePrefix: `${prefix}/doc`,
             oauthOptions: {},
             swaggerOptions: {
-                // url: `${prefix}${apiDef}`,
                 title: 'open-api-doc',
                 spec
             },

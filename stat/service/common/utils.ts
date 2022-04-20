@@ -17,7 +17,7 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
     }
     return param
 }
-export function getPagination(requestObj: object, {defaultSkip = 0, maxSkip = 10000, defaultLimit = 10, maxLimit = 100}:
+export function getPagination(requestObj: object, {defaultSkip, maxSkip, defaultLimit, maxLimit}:
     {defaultSkip: number, maxSkip: number, defaultLimit: number, maxLimit: number}
     = {defaultSkip: 0, maxSkip: 10000, defaultLimit: 10, maxLimit: 100}
 ) {
@@ -30,6 +30,28 @@ export function getPagination(requestObj: object, {defaultSkip = 0, maxSkip = 10
     }
     if (param.limit > maxLimit) {
         throw new Error(`Parameter <limit> exceeds ${maxLimit}`)
+    }
+    return param
+}
+export function getPaginationESpace(requestObj: object, {defaultPage, maxPage, defaultOffset, maxOffset}:
+    {defaultPage: number, maxPage: number, defaultOffset: number, maxOffset: number}
+    = {defaultPage: 0, maxPage: 10000, defaultOffset: 10, maxOffset: 100}
+) {
+    const param = {
+        page: intParam(requestObj, 'page', defaultPage),
+        offset: intParam(requestObj, 'offset', defaultOffset)
+    };
+    if (param.page < 1) {
+        throw new Error(`Parameter <page> starts at 1`)
+    }
+    if (param.page > maxPage) {
+        throw new Error(`Parameter <page> exceeds ${maxPage}`)
+    }
+    if (param.offset < 1) {
+        throw new Error(`Parameter <offset>'s minimum value is 1`)
+    }
+    if (param.offset > maxOffset) {
+        throw new Error(`Parameter <offset> exceeds ${maxOffset}`)
     }
     return param
 }

@@ -60,6 +60,7 @@ export class ApiService {
     minerBlockHandler : MinerBlockHandler;
     addrCfxTransferHandler : AddrCfxTransferHandler;
     tokenTransferHandler : TokenTransferHandler;
+    cfx: Conflux;
     logger: any
 }
 
@@ -149,6 +150,7 @@ export class ApiServer {
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenQuery = new TokenQuery({tokenTool})
         apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery})
+        apiService.cfx = this.cfx;
         apiService.logger = logger
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
