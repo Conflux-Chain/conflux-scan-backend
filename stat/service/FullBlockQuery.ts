@@ -462,20 +462,38 @@ export class FullBlockQuery {
 
         let curPage = 1;
         let skip = 0;
-        let pageSize = 10;
+        let pageSize = 100;
         do {
             const txHashArray = hashArray.slice(skip, skip + pageSize)
             if (txHashArray?.length) {
-                const txTaskArray = txHashArray.map(txHash => cfx.getTransactionByHash(txHash));
-                const txArray: any[] = await Promise.all(txTaskArray);
-                txArray?.forEach(item => item && (txMap[item.hash] = item));
 
-                const receiptTaskArray = txHashArray.map(txHash => cfx.getTransactionReceipt(txHash));
-                const receiptArray: any[] = await Promise.all(receiptTaskArray);
+                // const txTaskArray = txHashArray.map(txHash => cfx.getTransactionByHash(txHash));
+                // const receiptTaskArray = txHashArray.map(txHash => cfx.getTransactionReceipt(txHash));
+                // const txArray: any[] = await Promise.all(txTaskArray);
+                // const receiptArray: any[] = await Promise.all(receiptTaskArray);
+                const {txArray, receiptArray} = await this.batchGetTransactionList0({hashArray: txHashArray});
+
+                txArray?.forEach(item => item && (txMap[item.hash] = item));
                 receiptArray?.forEach(item => item && (receiptMap[item.transactionHash] = item));
             }
             skip = (++curPage - 1) * pageSize;
         } while (skip <= total);
         return {txMap, receiptMap};
+    }
+
+    public async batchGetTransactionList0({hashArray}): Promise<any> {
+        const {
+            app: {cfx}
+        } = this;
+
+        const rpcTxs = hashArray.map(hash=>{return {"method": "cfx_getTransactionByHash","params": [hash]}});
+        const rpcReceipts = hashArray.map(hash=>{return {"method": "cfx_getTransactionReceipt","params": [hash]}});
+        const rpcBoth = [...rpcTxs, ...rpcReceipts];
+        const len = hashArray.length;
+        return cfx.provider.batch(rpcBoth).then(arr=>{
+            const txArray = arr.slice(0, len);
+            const receiptArray = arr.slice(len);
+            return {txArray, receiptArray};
+        });
     }
 }
