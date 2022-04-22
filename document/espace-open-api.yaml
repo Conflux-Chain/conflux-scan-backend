@@ -36,7 +36,7 @@ paths:
   '/api?module=account&action=balance':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: 'Get CFX Balance for a Single Address'
       parameters:
         - $ref: '#/components/parameters/address'
@@ -51,7 +51,7 @@ paths:
   '/api?module=account&action=balancemulti':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: 'Get CFX Balance for Multiple Addresses in a Single Call'
       parameters:
         - $ref: '#/components/parameters/address'
@@ -66,7 +66,7 @@ paths:
   '/api?module=account&action=txlist':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: "Get a list of 'Normal' Transactions By Address"
       parameters:
         - $ref: '#/components/parameters/address'
@@ -85,7 +85,7 @@ paths:
   '/api?module=account&action=txlistinternal':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: "Get a list of 'Internal' Transactions.
                     \nUsages:
                     \n1> Get 'Internal' Transactions by Address.
@@ -136,7 +136,7 @@ paths:
   '/api?module=account&action=tokentx':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: "Get a list of 'ERC20 - Token Transfer Events' by Address"
       parameters:
         - $ref: '#/components/parameters/contractaddress'
@@ -156,7 +156,7 @@ paths:
   '/api?module=account&action=tokennfttx':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: "Get a list of 'ERC721 - Token Transfer Events' by Address"
       parameters:
         - $ref: '#/components/parameters/contractaddress'
@@ -176,7 +176,7 @@ paths:
   '/api?module=account&action=getminedblocks':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: 'Get list of Blocks Mined by Address'
       parameters:
         - $ref: '#/components/parameters/address'
@@ -193,7 +193,7 @@ paths:
   '/api?module=account&action=balancehistory':
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: 'Get Historical Ether Balance for a Single Address By BlockNo'
       parameters:
         - $ref: '#/components/parameters/address'
@@ -205,6 +205,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BalanceHistory'
+  '/api?module=token&action=tokeninfo':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Get Token Info by ContractAddress'
+      parameters:
+        - $ref: '#/components/parameters/contractaddress'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenInfo'
   '/nft/balances':
     get:
       tags:
@@ -232,6 +246,8 @@ paths:
         - $ref: '#/components/parameters/skipParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/detailParam'
+        - $ref: '#/components/parameters/withBriefParam'
+        - $ref: '#/components/parameters/withMetadataParam'
       responses:
         200:
           description: ''
@@ -247,6 +263,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/contractParamMust'
         - $ref: '#/components/parameters/tokenIdParamMust'
+        - $ref: '#/components/parameters/withMetadataParam'
       responses:
         200:
           description: ''
@@ -257,7 +274,7 @@ paths:
   '/account/transactions':
     get:
       tags:
-        - 'Account(Deprecated)'
+        - 'Accounts(Deprecated)'
       description: "Get transactions associated with an account. A transaction with 'from' or 'to' equals to specified account
         is considered as 'associate'. Parameters 'from' and 'to' are [or] logic."
       parameters:
@@ -282,7 +299,7 @@ paths:
     get:
       description: 'Get cfx transfer records of an account.'
       tags:
-        - 'Account(Deprecated)'
+        - 'Accounts(Deprecated)'
       parameters:
         - $ref: '#/components/parameters/accountParam'
         - $ref: '#/components/parameters/skipParam'
@@ -305,7 +322,7 @@ paths:
     get:
       description: 'Get crc20 transfer records of an account.'
       tags:
-        - 'Account(Deprecated)'
+        - 'Accounts(Deprecated)'
       parameters:
         - $ref: '#/components/parameters/accountParam'
         - $ref: '#/components/parameters/skipParam'
@@ -329,7 +346,7 @@ paths:
     description: 'Get crc721 transfer records of an account'
     get:
       tags:
-        - 'Account(Deprecated)'
+        - 'Accounts(Deprecated)'
       parameters:
         - $ref: '#/components/parameters/accountParam'
         - $ref: '#/components/parameters/skipParam'
@@ -354,7 +371,7 @@ paths:
     description: 'Get crc1155 transfer records of an account'
     get:
       tags:
-        - 'Account(Deprecated)'
+        - 'Accounts(Deprecated)'
       parameters:
         - $ref: '#/components/parameters/accountParam'
         - $ref: '#/components/parameters/skipParam'
@@ -379,7 +396,7 @@ paths:
     get:
       description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
       tags:
-        - 'Account(Deprecated)'
+        - 'Accounts(Deprecated)'
       parameters:
         - $ref: '#/components/parameters/accountParam'
       responses:
@@ -628,6 +645,61 @@ components:
           type: string
         result:
           type: string
+    TokenInfo:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              contractAddress:
+                type: string
+              tokenName:
+                type: string
+              symbol:
+                type: string
+              divisor:
+                type: string
+              tokenType:
+                type: string
+              totalSupply:
+                type: string
+              blueCheckmark:
+                type: string
+              description:
+                type: string
+              website:
+                type: string
+              email:
+                type: string
+              blog:
+                type: string
+              reddit:
+                type: string
+              slack:
+                type: string
+              facebook:
+                type: string
+              twitter:
+                type: string
+              bitcointalk:
+                type: string
+              github:
+                type: string
+              telegram:
+                type: string
+              wechat:
+                type: string
+              linkedin:
+                type: string
+              discord:
+                type: string
+              whitepaper:
+                type: string
     NFTBalanceList:
       type: object
       properties:
@@ -697,6 +769,20 @@ components:
                   description:
                     description: 'The description of NFT'
                     type: string
+                  rawData:
+                    type: object
+                    properties:
+                      funcCall:
+                        description: 'The function of contract which is called'
+                        type: string
+                      tokenUri:
+                        description: "uri representing the location of the NFT's original metadata blob. This is a backup for you to parse when the metadata field is not automatically populated."
+                        type: string
+                      metadata:
+                        description: "relevant metadata for NFT contract. This is useful for viewing image url, traits, etc. without having to follow the metadata url in tokenUri to parse manually"
+                  error:
+                    description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
+                    type: string
     NFTPreview:
       type: object
       properties:
@@ -721,6 +807,20 @@ components:
               type: string
             description:
               description: 'The description of NFT'
+              type: string
+            rawData:
+              type: object
+              properties:
+                funcCall:
+                  description: 'The function of contract which is called'
+                  type: string
+                tokenUri:
+                  description: "uri representing the location of the NFT's original metadata blob. This is a backup for you to parse when the metadata field is not automatically populated."
+                  type: string
+                metadata:
+                  description: "relevant metadata for NFT contract. This is useful for viewing image url, traits, etc. without having to follow the metadata url in tokenUri to parse manually"
+            error:
+              description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
               type: string
     AddressInfo:
       type: object
@@ -1147,8 +1247,24 @@ components:
       schema:
         type: string
     detailParam:
-      description: "If show detail, the value is true/false."
+      description: "(Deprecated, see 'withBrief' parameter)If show detail, the value is true/false."
       name: detail
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
+    withBriefParam:
+      description: "If show brief which contains name，image and description, the value is true/false."
+      name: withBrief
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
+    withMetadataParam:
+      description: "If show metadata, the value is true/false."
+      name: withMetadata
       in: query
       required: false
       schema:
