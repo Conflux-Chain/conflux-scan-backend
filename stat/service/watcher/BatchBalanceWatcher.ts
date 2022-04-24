@@ -61,15 +61,24 @@ export class BatchBalanceWatcher {
     }
 }
 // ---
-async function fixAll1155holder() {
+async function fixAll1155holder(byMintTable:boolean) {
     const tokenList = await Token.findAll({attributes:['id','hex40id','type',],where: {type: 'erc1155'}})
     console.log(`1155 count ${tokenList.length}`)
     for (let i = 0; i < tokenList.length; i++) {
-        await fix1155holderForContract(tokenList[i].hex40id)
+        await fix1155holderForContract(tokenList[i].hex40id, byMintTable)
     }
 }
-async function fix1155holderForContract(contractId: number) {
-    const holderList = await Erc1155Data.findAll({
+async function fix1155holderForContract(contractId: number, byMintTable:boolean) {
+    const holderList = byMintTable ?
+        await NftMint.findAll({
+            attributes: [
+                ['toId', 'addressId'],
+                [fn('count', col('*')), 'cnt'],
+            ],
+            where: {contractId,}, raw: true, group: 'addressId', logging: console.log
+        })
+        :
+        await Erc1155Data.findAll({
         attributes: [
             'addressId',
             [fn('count', col('*')), 'cnt'],
@@ -331,11 +340,13 @@ async function run() {
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
     if (cfxUrl === 'fix1155holder') {
-        await fix1155holderForContract(parseInt(limitStr))
+        const byMintTable = limitStr === 'byMintTable'
+        await fix1155holderForContract(parseInt(limitStr), byMintTable)
         process.exit(0)
         return
     } else if (cfxUrl === 'fixAll1155holder') {
-        await fixAll1155holder()
+        const byMintTable = limitStr === 'byMintTable'
+        await fixAll1155holder(byMintTable)
         process.exit(0)
         return
     }
