@@ -11,6 +11,9 @@ const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
 const {put,get, clear} = require('./MetaInfoCache')
 const CONST = require('../common/constant');
+const TIMEOUT_CONN = 30000;
+const TIMEOUT_READ = 60000;
+
 export class NFTPreviewService {
     private app;
     private cfx;
@@ -59,7 +62,8 @@ export class NFTPreviewService {
                 return hexBeanArray?.length ? toBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
             });
 
-        const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) and tokenId = ?;`;
+        const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) 
+            and tokenId = ?;`;
         const minter = await NftMint.sequelize
             .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`]})
             .then(async nftMinterArray => {
@@ -141,14 +145,11 @@ export class NFTPreviewService {
             case NFTMap.threeKingdoms.address:
                 return this.getNFTImage({ address, tokenId, height: 286 });
 
-            case NFTMap.epiKProtocolKnowledgeBadge.address:
-                return this.getNFTImage({ address, tokenId, height: 200,
-                    uriFormatter: meta => meta.data.page_url });
             case NFTMap.TREAGenesisFeitian.address:
-                return this.getNFTImage({ address, tokenId,  height: 200, method: 'uris', fetchJson: false,
+                return this.getNFTImage({ address, tokenId,  height: 200, method: 'uris',
                     uriFormatter: meta => meta.image });
             case NFTMap.confi.address:
-                return this.getNFTImage({ address, tokenId, method: 'uris', fetchJson: false,
+                return this.getNFTImage({ address, tokenId, method: 'uris',
                     uriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url });
             default:
                 let result;
@@ -316,16 +317,19 @@ export class NFTPreviewService {
         return nftName;
     };
 
-    private async getNFTImage({address, tokenId, method = 'uri', height = 200, fetchJson = true, uriFormatter}:
-        { address: string, tokenId: BigInt, method?: string, height?: number, fetchJson?: boolean, uriFormatter?: any}
+    private async getNFTImage({address, tokenId, method = 'uri', height = 200, uriFormatter}:
+        { address: string, tokenId: BigInt, method?: string, height?: number, uriFormatter?: any}
     ): Promise<NFTInfoType> {
-        let url;
+        let rawUrl;
+        let gatewayUrl;
+        let rawMeta;
         let meta;
         let imageUri;
         let imageName;
         let imageDesc;
         let detail;
         let error;
+
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
             if (nftObj) {
@@ -335,46 +339,39 @@ export class NFTPreviewService {
 
             // get uri
             const contract = await this.cfx.Contract({ abi, address });
-            url = await contract[method](tokenId);
+            rawUrl = await contract[method](tokenId);
+            rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
+            gatewayUrl = this.replaceGateway(rawUrl);
 
-            // support loot
-            if((typeof url === 'string') && url.startsWith('data:application/json;base64')){
-                meta = JSON.parse(Buffer.from(url.substr(29), 'base64').toString());
-                imageUri = meta.image;
-                imageName = await this.getNFTName({address, meta}) || {};
+            // get metadata
+            if(uriFormatter){
+                rawMeta = gatewayUrl;
+            } else if((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')){
+                rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
             } else{
-
-                // process uri
-                try {
-                    url = JSON.parse(url);
-                } catch (e){
-                }
-                if (fetchJson) {
-                    url = url.indexOf('{id}') > -1 ? url.replace('{id}', tokenId.toString(16)) : url;
-                    url = this.replaceGateway(url);
-
-                    // fetch meta data
-                    const response = await superagent.get(url);
-                    meta = JSON.parse(response.text);
-                    if(meta.Image) meta.image = meta.Image;
-                    if(meta.Name) meta.name = meta.Name;
-                } else{
-                    meta = url;
-                }
-
-                // build resp
-                imageUri = uriFormatter ? uriFormatter(meta) : fetchJson ? meta.image : meta;
-                imageUri = this.replaceGateway(imageUri);
-                imageName = await this.getNFTName({address, meta}) || {};
+                const resp = await superagent.get(gatewayUrl).timeout({response: TIMEOUT_CONN, deadline: TIMEOUT_READ});
+                rawMeta = resp.text;
             }
-            imageDesc = meta?.description;
+            rawMeta = JSON.parse(rawMeta);
+            meta = {...rawMeta};
 
+            // build resp
+            lodash.defaults(meta, {image: meta.Image, name: meta.Name, description: meta.Description});
+            imageUri = uriFormatter ? uriFormatter(meta) : meta.image;
+            imageUri = this.replaceGateway(imageUri);
+            imageName = await this.getNFTName({address, meta}) || {};
+            imageDesc = meta.description;
             if(!imageUri) throw new Error('image not found');
             if(!imageName) throw new Error('name not found');
+
         } catch (e) {
-            error = e?.message?.substr(0, 50);
+            error = e?.code === 'ABORTED' ? `Timeout` : e?.message?.substr(0, 50);
         } finally {
-            detail = { funcCall: `${method}(${tokenId})`, tokenUri: url, metadata: meta };
+            detail = {
+                funcCall: `${method}(${tokenId})`,
+                tokenUri: {raw: rawUrl, gateway: gatewayUrl !== rawUrl ? gatewayUrl : ''},
+                metadata: rawMeta
+            };
             !error && this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail});
         }
 

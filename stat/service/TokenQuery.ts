@@ -72,7 +72,7 @@ export class TokenQuery {
         options.where = where;
         // order
         if (name) {
-            options.order = [['totalPrice', 'DESC'], ['securityCredits', 'DESC'], ['createdAt', 'ASC']];
+            options.order = [['totalPrice', 'DESC'], ['securityCredits', 'DESC'], ['transfer', 'DESC']];
         } else if (addressArray?.length) {// NO-OP
         } else {
             if (orderBy) {
