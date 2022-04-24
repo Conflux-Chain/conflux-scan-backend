@@ -20,6 +20,7 @@ import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {StatApp} from "./StatApp";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
+import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
 
 const CONST = require('./service/common/constant');
 
@@ -109,12 +110,14 @@ let logCount = 0
  */
 export async function handleTokenTransferWithContract(mapContract2addressSet: Map<number,Set<number>>, cfx:Conflux) {
     console.log(` handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
+    const useLegacyNftMint = await KV.getSwitch(KEY_NFT_FROM_MINT_TABLE)
     for (const contractId of mapContract2addressSet.keys()) {
-        // const erc1155 = await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId, type: 'ERC1155'}})
-        // if (erc1155) {
-        //     console.log(`skip erc1155 ${contractId}. Sync1155data will do that.`)
-        //     continue
-        // }
+        const erc1155 = useLegacyNftMint ? false :
+            await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId, type: 'ERC1155'}})
+        if (erc1155) {
+            console.log(`skip erc1155 ${contractId}. Sync1155data will do that.`)
+            continue
+        }
         const addressIds = [...mapContract2addressSet.get(contractId)];
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
         const contractHex = id2hexMap.get(contractId)

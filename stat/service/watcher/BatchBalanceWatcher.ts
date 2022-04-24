@@ -6,9 +6,7 @@ import {buildHexSet, hex40IdMap, Hex40Map, idHex40Map, makeId, makeIdV} from "..
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
 import {Sequelize, Op,fn, col, QueryTypes} from 'sequelize'
-import {hex} from "../../test/GenData";
-import {DynamicBalanceModel} from "./DynamicBalanceModel";
-import {KEY_1155data_EPOCH, KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
+import {KEY_1155data_EPOCH, KEY_NFT_FROM_MINT_TABLE, KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
 import {TokenTool} from "../tool/TokenTool";
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTransferCount} from "../../StreamSync";
@@ -367,7 +365,10 @@ async function run() {
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)
     scheduleTransferUpdater();
-    // repeatSync1155data(cfx).then()
+    const useLegacyNftMint = await KV.getSwitch(KEY_NFT_FROM_MINT_TABLE)
+    if (!useLegacyNftMint) {
+        repeatSync1155data(cfx).then()
+    }
     const limit = limitStr ? parseInt(limitStr) : 10_000
     while(true) {
         const cnt = await processContractUser(cfx, limit)
