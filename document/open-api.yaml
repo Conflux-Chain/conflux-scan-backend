@@ -50,7 +50,7 @@ paths:
   /account/transactions:
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       description: "Get transactions associated with an account. A transaction with 'from' or 'to' equals to specified account
       is considered as 'associate'. Parameters 'from' and 'to' are [or] logic."
       parameters:
@@ -78,7 +78,7 @@ paths:
     get:
       description: 'Get cfx transfer records of an account.'
       tags:
-        - 'Account'
+        - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -102,7 +102,7 @@ paths:
     get:
       description: 'Get crc20 transfer records of an account.'
       tags:
-        - 'Account'
+        - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -127,7 +127,7 @@ paths:
     description: 'Get crc721 transfer records of an account'
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -153,7 +153,7 @@ paths:
     description: 'Get crc1155 transfer records of an account'
     get:
       tags:
-        - 'Account'
+        - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
         - $ref: '#/components/parameters/skipParam'
@@ -179,7 +179,7 @@ paths:
     get:
       description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
       tags:
-        - 'Account'
+        - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
       responses:
@@ -189,6 +189,72 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/AssetsOfAccount"
+  '/token/tokeninfo':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Get Token Info by ContractAddress'
+      parameters:
+        - $ref: '#/components/parameters/contractParam'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenInfo'
+  /nft/balances:
+    get:
+      tags:
+        - 'NFT Assets'
+      description: "Get balances of NFT assets for account address."
+      parameters:
+        - $ref: '#/components/parameters/ownerParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTBalanceList"
+  /nft/tokens:
+    get:
+      tags:
+        - 'NFT Assets'
+      description: "Get token id array of specified NFT contract for account address."
+      parameters:
+        - $ref: '#/components/parameters/ownerParam'
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/detailParam'
+        - $ref: '#/components/parameters/withBriefParam'
+        - $ref: '#/components/parameters/withMetadataParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTTokenList"
+  /nft/preview:
+    get:
+      tags:
+        - 'NFT Assets'
+      description: "View the NFT for the specified contract address and tokenID."
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/tokenIdParamMust'
+        - $ref: '#/components/parameters/withMetadataParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTPreview"
   /statistics/supply:
     get:
       tags:
@@ -549,55 +615,6 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TokenParticipantTopStat"
-  /nft/balances:
-    get:
-      tags:
-        - 'NFT assets'
-      description: "Get balances of NFT assets for account address."
-      parameters:
-        - $ref: '#/components/parameters/ownerParam'
-        - $ref: '#/components/parameters/skipParamWithoutMaximum'
-        - $ref: '#/components/parameters/limitParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/NFTBalanceList"
-  /nft/tokens:
-    get:
-      tags:
-        - 'NFT assets'
-      description: "Get token id array of specified NFT contract for account address."
-      parameters:
-        - $ref: '#/components/parameters/ownerParam'
-        - $ref: '#/components/parameters/contractParamMust'
-        - $ref: '#/components/parameters/skipParamWithoutMaximum'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/detailParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/NFTTokenList"
-  /nft/preview:
-    get:
-      tags:
-        - 'NFT assets'
-      description: "View the NFT for the specified contract address and tokenID."
-      parameters:
-        - $ref: '#/components/parameters/contractParamMust'
-        - $ref: '#/components/parameters/tokenIdParamMust'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/NFTPreview"
   /statistics/token/holder:
     get:
       tags:
@@ -737,6 +754,60 @@ components:
                   amount:
                     description: 'The token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
+    TokenInfo:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            contractAddress:
+              type: string
+            tokenName:
+              type: string
+            symbol:
+              type: string
+            divisor:
+              type: string
+            tokenType:
+              type: string
+            totalSupply:
+              type: string
+            blueCheckmark:
+              type: string
+            description:
+              type: string
+            website:
+              type: string
+            email:
+              type: string
+            blog:
+              type: string
+            reddit:
+              type: string
+            slack:
+              type: string
+            facebook:
+              type: string
+            twitter:
+              type: string
+            bitcointalk:
+              type: string
+            github:
+              type: string
+            telegram:
+              type: string
+            wechat:
+              type: string
+            linkedin:
+              type: string
+            discord:
+              type: string
+            whitepaper:
+              type: string
     TransferCfxList:
       type: object
       properties:
@@ -1419,6 +1490,20 @@ components:
                   description:
                     description: 'The description of NFT'
                     type: string
+                  rawData:
+                    type: object
+                    properties:
+                      funcCall:
+                        description: 'The function of contract which is called'
+                        type: string
+                      tokenUri:
+                        description: "uri representing the location of the NFT's original metadata blob. This is a backup for you to parse when the metadata field is not automatically populated."
+                        type: string
+                      metadata:
+                        description: "relevant metadata for NFT contract. This is useful for viewing image url, traits, etc. without having to follow the metadata url in tokenUri to parse manually"
+                  error:
+                    description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
+                    type: string
     NFTPreview:
       type: object
       properties:
@@ -1443,6 +1528,20 @@ components:
               type: string
             description:
               description: 'The description of NFT'
+              type: string
+            rawData:
+              type: object
+              properties:
+                funcCall:
+                  description: 'The function of contract which is called'
+                  type: string
+                tokenUri:
+                  description: "uri representing the location of the NFT's original metadata blob. This is a backup for you to parse when the metadata field is not automatically populated."
+                  type: string
+                metadata:
+                  description: "relevant metadata for NFT contract. This is useful for viewing image url, traits, etc. without having to follow the metadata url in tokenUri to parse manually"
+            error:
+              description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
               type: string
     TokenHolderStat:
       type: object
@@ -1699,6 +1798,22 @@ components:
     detailParam:
       description: "If show detail, the value is true/false."
       name: detail
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
+    withBriefParam:
+      description: "If show brief which contains name，image and description, the value is true/false."
+      name: withBrief
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
+    withMetadataParam:
+      description: "If show metadata, the value is true/false."
+      name: withMetadata
       in: query
       required: false
       schema:

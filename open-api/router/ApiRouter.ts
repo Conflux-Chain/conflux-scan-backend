@@ -19,6 +19,8 @@ import {
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent,
 } from "../../stat/service/common/utils";
+import {address} from "js-conflux-sdk";
+import {queryTokenInfo} from "../service/OpenTokenService";
 
 const cors = require('@koa/cors');
 const CONST = require('../../stat/service/common/constant');
@@ -43,6 +45,14 @@ async function root(ctx, tag) {
 //     polishAssertList(assets)
 //     setBody(ctx, assets)
 // }
+
+async function getTokenInfo(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    const {contract} = ctx.request.query;
+
+    const result = await queryTokenInfo(contract);
+    setBody(ctx, result)
+}
 
 // work in progress.
 async function listMiningStat(ctx) {
@@ -445,6 +455,9 @@ function registerRouter(router: Router) {
     router.get('/account/crc721/transfers', listAccountTransfer721)
     router.get('/account/crc1155/transfers', listAccountTransfer1155)
     router.get('/account/tokens', listAccountAssets)
+
+    // token
+    router.get('/token/tokeninfo', getTokenInfo);
 
     // statistics
     router.get('/statistics/mining', listMiningStat)

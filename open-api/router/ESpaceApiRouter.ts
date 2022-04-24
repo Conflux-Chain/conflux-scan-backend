@@ -17,6 +17,7 @@ import {
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent, mustBeIntParamIfPresent,
 } from "../../stat/service/common/utils";
+import {queryTokenInfo} from "../service/OpenTokenService";
 
 const lodash = require('lodash');
 const CONST = require('../../stat/service/common/constant');
@@ -55,6 +56,15 @@ async function gateway(ctx) {
                     break;
                 case ACTION.BALANCE_HISTORY:
                     handler = getBalanceHistory;
+                    break;
+                default:
+                    return Promise.reject(`unknown action:${action} of module:${module}`);
+            }
+            break;
+        case MODULE.TOKEN:
+            switch (action) {
+                case ACTION.TOKEN_INFO:
+                    handler = getTokenInfo;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -238,6 +248,15 @@ async function getBalanceHistory(ctx) {
     const {address, blockno: epochNumber} = ctx.request.query;
 
     const result = await getApiService().cfx.getBalance(address, epochNumber);
+    setBody(ctx, result)
+}
+
+async function getTokenInfo(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
+    const {contractaddress} = ctx.request.query;
+
+    const tokenInfo = await queryTokenInfo(contractaddress);
+    const result = [tokenInfo];
     setBody(ctx, result)
 }
 

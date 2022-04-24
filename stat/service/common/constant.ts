@@ -79,6 +79,7 @@ module.exports = {
   E_SPACE_OPENAPI: {
     MODULE: {
       ACCOUNT: 'account',
+      TOKEN: 'token',
     },
     ACTION: {
       BALANCE: 'balance',
@@ -89,6 +90,7 @@ module.exports = {
       TOKEN_NFT_TX: 'tokennfttx',
       GET_MINED_BLOCKS: 'getminedblocks',
       BALANCE_HISTORY: 'balancehistory',
+      TOKEN_INFO: 'tokeninfo',
     },
   },
 };
