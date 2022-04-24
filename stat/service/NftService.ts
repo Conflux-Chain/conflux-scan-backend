@@ -127,7 +127,8 @@ async function countAccountNft(cHexIds: number[], accHexId: number) {
     const set = new Set(cHexIds)
     return groupByContractList.filter(r=>set.has(r.contractId));
 }
-export async function listNftOfAccountByContract(accountBase32:string, contractBase32:string, skip:number, limit:number) {
+export async function listNftOfAccountByContract(accountBase32:string, contractBase32:string, skip:number, limit:number)
+    : Promise<{count: number, list:{tokenId:string}[]}>{
     const [accHexId,contractId, fromMintTable] = await Promise.all([
         getAddrId(format.hexAddress(accountBase32)),
         new Promise(resolve => {
