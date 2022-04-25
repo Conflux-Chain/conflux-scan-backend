@@ -5,10 +5,21 @@ import {Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
+
+async function fetchBalance(addrId:number, tokenId:string, nftContract:any) {
+    return Hex40Map.findByPk(addrId).then(res=>'0x'+res.hex)
+        .then(hex=>{
+            return nftContract.balanceOf(hex, BigInt(tokenId)).then(b=>{
+                return {hex, balance:b}
+            })
+        })
+}
+
 async function checkNftMint(contractId:number) {
     const token = await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId,
             // type: 'ERC1155'
     }})
+    console.log(`token is ${token.base32} [${token.name}] ${token.type}`)
     if (token.type !== 'ERC1155') {
         console.log(`not 1155: ${token.type}`)
         process.exit(9)
@@ -27,23 +38,26 @@ async function checkNftMint(contractId:number) {
     let fixCnt = 0
     for (let i = 0; i < mintList.length; i++) {
         const mint = mintList[i]
-        const data = dataMap.get(mint.tokenId)
+        let data = dataMap.get(mint.tokenId)
         if (!data) {
             console.log(`not found in erc1155data. token ${mint.tokenId}`)
-            process.exit(9)
+            // process.exit(9)
+            // @ts-ignore
+            const {hex, balance} = await fetchBalance(mint.toId, mint.tokenId, nftContract)
+            console.log(`mint table ${hex } holds ${mint.tokenId} x ${balance}`)
+            if (balance <= 0) {
+
+            }
+            continue
         }
         if (data.addressId === mint.toId) {
             // console.log(`match ${mint.tokenId}`)
             continue
         }
-        const [dataHex, mintHex] = await Promise.all([
-            Hex40Map.findByPk(data.addressId).then(res=>'0x'+res.hex),
-            Hex40Map.findByPk(mint.toId).then(res=>'0x'+res.hex),
-        ])
         if (token.type === 'ERC1155') {
-            const [dataBalance, mintBalance] = await Promise.all([
-                nftContract.balanceOf(dataHex, BigInt(data.tokenId)),
-                nftContract.balanceOf(mintHex, BigInt(data.tokenId)),
+            const [{hex: dataHex, balance: dataBalance}, {hex:mintHex, balance: mintBalance}] = await Promise.all([
+                fetchBalance(data.addressId, data.tokenId, nftContract),
+                fetchBalance(mint.toId, data.tokenId, nftContract),
             ])
             console.log(`token id ${data.tokenId}`)
             console.log(`nftData    ${dataHex} holds ${dataBalance}`)
