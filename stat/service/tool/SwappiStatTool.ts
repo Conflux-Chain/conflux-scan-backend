@@ -6,6 +6,7 @@ import {createDB, initModel} from "../DBProvider";
 import {StatApp} from "../../StatApp";
 import {AbiInfo} from "../../model/ContractInfo";
 import {Op} from "sequelize";
+import {PpiLiquidity} from "./PpiLiquidity";
 
 const ADDRESS_SWAPPI = 'net1030:abvnbb3um092w5s2rhu1eep2sg0cknzdaygtpjcjt5';
 
@@ -46,12 +47,26 @@ async function listTxWithAddLiquidity(epoch) {
         }
     ).then(list => list.map(item => item.hash));
     console.log(`hashArray:${hashArray.length}`);
+    return hashArray
 }
 
 async function run() {
     await init();
+    //
+    // const [,,csv] = process.argv
+    const ppi = new PpiLiquidity(cfx)
+    //
     if(type === 1){
-        await listTxWithAddLiquidity(startEpoch);
+        const arr = await listTxWithAddLiquidity(startEpoch);
+        for(const hash of arr) {
+            await ppi.processTx(hash)
+        }
+        if (process.argv.includes('csv')) {
+            ppi.dumpCsv()
+        } else {
+            ppi.dumpInfo()
+        }
+        process.exit(0)
     }
     if(type === 2){
     }
