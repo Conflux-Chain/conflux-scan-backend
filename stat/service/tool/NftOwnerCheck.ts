@@ -24,7 +24,7 @@ async function checkNftMint(contractId:number) {
     //
     const dataMap = new Map<any, Erc1155Data>()
     dataList.forEach(d=>dataMap.set(d.tokenId, d))
-
+    let fixCnt = 0
     for (let i = 0; i < mintList.length; i++) {
         const mint = mintList[i]
         const data = dataMap.get(mint.tokenId)
@@ -49,13 +49,18 @@ async function checkNftMint(contractId:number) {
             console.log(`nftData    ${dataHex} holds ${dataBalance}`)
             console.log(`mint table ${mintHex} holds ${mintBalance}`)
             if (dataBalance > 0 && mintBalance <= 0) {
-                console.log(`           need fix`)
+                fixCnt+=1
+                console.log(`           need fix ${fixCnt}`)
+                await NftMint.update({toId: data.addressId, epoch: data.epoch, updatedAt: data['updatedAt']}, {
+                    where: {id: mint.id}
+                })
                 // process.exit(8)
             }
         } else {
             console.log(`--- ? should be 1155`)
         }
     }
+    console.log(`fix cnt ${fixCnt}`)
 }
 let nftContract;
 let cfx;
@@ -67,6 +72,7 @@ async function main() {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)
         await NftMint.sequelize.close()
+        process.exit(0)
         return
     } else {
         console.log(`unknown command [${cmd}]`)
