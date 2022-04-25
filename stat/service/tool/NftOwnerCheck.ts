@@ -23,6 +23,7 @@ async function checkNftMint(contractId:number) {
     //
     const dataMap = new Map<any, Erc1155Data>()
     dataList.forEach(d=>dataMap.set(d.tokenId, d))
+
     for (let i = 0; i < mintList.length; i++) {
         const mint = mintList[i]
         const data = dataMap.get(mint.tokenId)
@@ -34,16 +35,24 @@ async function checkNftMint(contractId:number) {
             console.log(`match ${mint.tokenId}`)
             continue
         }
-        const hex = await Hex40Map.findByPk(data.addressId).then(res=>'0x'+res.hex)
+        const [dataHex, mintHex] = await Promise.all([
+            Hex40Map.findByPk(data.addressId).then(res=>'0x'+res.hex),
+            Hex40Map.findByPk(mint.toId).then(res=>'0x'+res.hex),
+        ])
         if (token.type === 'ERC1155') {
-            const balance = await nftContract.balanceOf(hex, BigInt(data.tokenId))
-            console.log(`check balance, ${hex} holds ${data.tokenId} x ${balance}`)
-            if (balance < 0) {
+            const [dataBalance, mintBalance] = await Promise.all([
+                nftContract.balanceOf(dataHex, BigInt(data.tokenId)),
+                nftContract.balanceOf(mintHex, BigInt(data.tokenId)),
+            ])
+            console.log(`token id ${data.tokenId}`)
+            console.log(`nftData ${dataHex} holds ${dataBalance}`)
+            console.log(`nftData ${mintHex} holds ${mintBalance}`)
+            if (dataBalance > 0 && mintBalance < 0) {
                 console.log(`need fix`)
                 process.exit(8)
             }
         } else {
-
+            console.log(`--- ? should be 1155`)
         }
     }
 }
