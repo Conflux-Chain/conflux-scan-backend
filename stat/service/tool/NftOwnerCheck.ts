@@ -48,9 +48,9 @@ async function checkNftMint(contractId:number) {
             console.log(`token id ${data.tokenId}`)
             console.log(`nftData    ${dataHex} holds ${dataBalance}`)
             console.log(`mint table ${mintHex} holds ${mintBalance}`)
-            if (dataBalance > 0 && mintBalance < 0) {
-                console.log(`need fix`)
-                process.exit(8)
+            if (dataBalance > 0 && mintBalance <= 0) {
+                console.log(`           need fix`)
+                // process.exit(8)
             }
         } else {
             console.log(`--- ? should be 1155`)
