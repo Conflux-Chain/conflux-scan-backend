@@ -2,6 +2,7 @@ import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {QueryTypes} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {Hex40Map} from "../../model/HexMap";
+import {init} from "./FixDailyTokenStat";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 async function checkNftMint(contractId:number) {
@@ -59,8 +60,9 @@ async function checkNftMint(contractId:number) {
 let nftContract;
 let cfx;
 async function main() {
-    const [,,cmd,cfxUrl,contractId] = process.argv
-    cfx = new Conflux({url: cfxUrl})
+    const cfg = await init();
+    const [,,cmd,contractId] = process.argv
+    cfx = new Conflux(cfg.conflux)
     if (cmd === 'checkNftMint') {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)
@@ -74,3 +76,6 @@ async function main() {
 if (module === require.main) {
     main().then()
 }
+/*
+ node stat/dist/service/tool/NftOwnerCheck.js checkNftMint 996251
+ */
