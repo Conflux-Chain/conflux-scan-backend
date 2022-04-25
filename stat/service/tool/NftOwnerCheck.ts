@@ -33,7 +33,7 @@ async function checkNftMint(contractId:number) {
             process.exit(9)
         }
         if (data.addressId === mint.toId) {
-            console.log(`match ${mint.tokenId}`)
+            // console.log(`match ${mint.tokenId}`)
             continue
         }
         const [dataHex, mintHex] = await Promise.all([
@@ -46,8 +46,8 @@ async function checkNftMint(contractId:number) {
                 nftContract.balanceOf(mintHex, BigInt(data.tokenId)),
             ])
             console.log(`token id ${data.tokenId}`)
-            console.log(`nftData ${dataHex} holds ${dataBalance}`)
-            console.log(`nftData ${mintHex} holds ${mintBalance}`)
+            console.log(`nftData    ${dataHex} holds ${dataBalance}`)
+            console.log(`mint table ${mintHex} holds ${mintBalance}`)
             if (dataBalance > 0 && mintBalance < 0) {
                 console.log(`need fix`)
                 process.exit(8)
