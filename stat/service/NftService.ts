@@ -10,14 +10,14 @@ import {
     makeIdV,
     mapProp
 } from "../model/HexMap";
-import {NftMint, Token} from "../model/Token";
+import {Erc1155Data, NftMint, Token} from "../model/Token";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {init} from "./tool/FixDailyTokenStat";
 import {format} from "js-conflux-sdk";
 import {list2map, reverseMap} from "./common/utils";
 import {StatApp} from "../StatApp";
 const lodash = require('lodash');
-import {KEY_NFT_FROM_DB, KV} from "../model/KV";
+import {KEY_NFT_FROM_DB, KEY_NFT_FROM_MINT_TABLE, KV} from "../model/KV";
 
 export class NftService {
     zeroAddrId:number
@@ -127,8 +127,9 @@ async function countAccountNft(cHexIds: number[], accHexId: number) {
     const set = new Set(cHexIds)
     return groupByContractList.filter(r=>set.has(r.contractId));
 }
-export async function listNftOfAccountByContract(accountBase32:string, contractBase32:string, skip:number, limit:number) {
-    const [accHexId,contractId] = await Promise.all([
+export async function listNftOfAccountByContract(accountBase32:string, contractBase32:string, skip:number, limit:number)
+    : Promise<{count: number, list:{tokenId:string}[]}>{
+    const [accHexId,contractId, fromMintTable] = await Promise.all([
         getAddrId(format.hexAddress(accountBase32)),
         new Promise(resolve => {
             if (contractBase32) {
@@ -136,11 +137,26 @@ export async function listNftOfAccountByContract(accountBase32:string, contractB
             }else {
                 resolve(false)
             }
-        })
+        }),
+        KV.getSwitch(KEY_NFT_FROM_MINT_TABLE)
     ])
     const where = {toId: accHexId};
     if (contractId) {
         where['contractId'] = contractId
+        if (!fromMintTable) { // from erc1155 data table.
+            const token1155 = await Token.findOne({
+                where: {hex40id: contractId, type: 'ERC1155'},
+                attributes: ['type', 'base32']
+            })
+            if (token1155) {
+                const page = await Erc1155Data.findAndCountAll({
+                    where: {contractId, addressId: accHexId}, raw: true,
+                })
+                const {rows: list, count} = page;
+                list.forEach(row => row['contractBase32'] = token1155.base32)
+                return {count, list}
+            }
+        }
     }
     const list = await NftMint.findAll({
         where: where, offset:skip, limit, raw: true,
