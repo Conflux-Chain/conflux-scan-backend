@@ -151,6 +151,7 @@ export async function listNftOfAccountByContract(accountBase32:string, contractB
             if (token1155) {
                 const page = await Erc1155Data.findAndCountAll({
                     where: {contractId, addressId: accHexId}, raw: true,
+                    order:[['epoch','desc']], offset: skip, limit,
                 })
                 const {rows: list, count} = page;
                 list.forEach(row => row['contractBase32'] = token1155.base32)
