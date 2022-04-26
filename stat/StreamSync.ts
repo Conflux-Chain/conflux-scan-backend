@@ -112,11 +112,13 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
     console.log(` handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
     const useLegacyNftMint = await KV.getSwitch(KEY_NFT_FROM_MINT_TABLE)
     for (const contractId of mapContract2addressSet.keys()) {
-        const erc1155 = useLegacyNftMint ? false :
-            await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId, type: 'ERC1155'}})
-        if (erc1155) {
-            console.log(`skip erc1155 ${contractId}. Sync1155data will do that.`)
-            continue
+        if (!useLegacyNftMint) {
+            // use erc 1155 data, only for 1155
+            const erc1155 = await Token.findOne({attributes: {exclude: ['icon']}, where: {hex40id: contractId, type: 'ERC1155'}})
+            if (erc1155) {
+                console.log(`skip erc1155 ${contractId}. Sync1155data will do that.`)
+                continue
+            }
         }
         const addressIds = [...mapContract2addressSet.get(contractId)];
         const id2hexMap = await idHex40Map([contractId, ...addressIds])
