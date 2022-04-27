@@ -468,7 +468,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         console.log(`token is null`)
         return
     }
-    console.log(`Token is ${token.type} ${token.name} ${token.symbol}, ${token.base32} hex id [${token.hex40id}]`);
+    console.log(`Token is ${token.type} [${token.name}] [${token.symbol}] , ${token.base32} hex id [${token.hex40id}]`);
     if (token.type !== 'ERC721') {
         console.log(`It's not ERC721 token. ${token.base32} [${token.name}] [${token.type}]`)
         return
@@ -477,7 +477,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
     const mintList = await NftMint.findAll({where: {contractId}})
     let matched = 0;
     for (let i = 0; i < mintList.length; i++) {
-        const {toId, tokenId} = mintList[i]
+        const {toId, tokenId, updatedAt, id} = mintList[i]
         let owner: any;
         try {
             owner = await contract['ownerOf'](tokenId);
@@ -492,11 +492,16 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         const onChainOwnerId = await getAddrId(owner)
         if (toId != onChainOwnerId) {
             console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner}`)
+            await NftMint.update({toId: onChainOwnerId, updatedAt},{where: {id}})
         } else {
             matched ++
         }
     }
-    console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`)
+    if (mintList.length === matched) {
+        console.log(`ALL is MATCHED`)
+        return;
+    }
+    console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`);
 }
 // node stat/dist/service/tool/TokenTool.js check721OwnerInDb 1
 if (module === require.main) {
