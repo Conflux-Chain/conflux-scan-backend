@@ -464,10 +464,14 @@ async function check721OwnerInDb() {
     console.log(`done`)
 }
 async function checkNftMintForContract(contractId: number, cfx, token:Token) {
-    console.log(`Token is ${token.type} ${token.name} ${token.symbol}, ${token.base32}`)
+    if (!token) {
+        console.log(`token is null`)
+        return
+    }
+    console.log(`Token is ${token.type} ${token.name} ${token.symbol}, ${token.base32}`);
     if (token.type !== 'ERC721') {
         console.log(`It's not ERC721 token. ${token.base32} [${token.name}] [${token.type}]`)
-        process.exit(8)
+        return
     }
     const contract = cfx.Contract({abi, address: token.base32});
     const mintList = await NftMint.findAll({where: {contractId}})
@@ -494,6 +498,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
     }
     console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`)
 }
+// node stat/dist/service/tool/TokenTool.js check721OwnerInDb 1
 if (module === require.main) {
     const args = process.argv.slice(2)
     if (args[0] === 'custodian_token') {
