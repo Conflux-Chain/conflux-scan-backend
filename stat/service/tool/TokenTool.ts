@@ -485,7 +485,11 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
             if ((e.message+e.data).includes('owner query for nonexistent token')) {
                 owner = '0x0000000000000000000000000000000000000000'
             } else if (e.message.includes('length not match')) {
-                owner = '0x0000000000000000000000000000000000000000'
+                const account = await cfx.getAccount(token.base32);
+                if (account.codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470') {
+                    console.log(`contract destroyed.`)
+                    return
+                }
             } else if (e.message.endsWith('reverted') || e.message.includes('hex length to large')) {
                 console.log(`can not call ownerOf for ${contractId}, ${e} ${e.data || ''}`)
                 return;
