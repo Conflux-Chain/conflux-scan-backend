@@ -338,12 +338,13 @@ async function run() {
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
     if (cfxUrl === 'fixNftHolder') {
-        const byMintTable = true;//opt === 'byMintTable'
+        let byMintTable = opt === 'byMintTable'
         const contractId = limitStr
         const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
-        if (token?.type?.toLowerCase().includes('721') && !byMintTable) {
-            console.log(`Must use <byMintTable> for 721 token`)
-            process.exit(0)
+        if (token?.type?.toLowerCase().includes('721')) {
+            // console.log(`Must use <byMintTable> for 721 token`)
+            // process.exit(0)
+            byMintTable = true;
         }
         await fixHolderForContract(parseInt(limitStr), byMintTable)
         process.exit(0)
