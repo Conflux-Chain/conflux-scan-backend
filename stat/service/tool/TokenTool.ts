@@ -482,12 +482,15 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         try {
             owner = await contract['ownerOf'](tokenId);
         } catch (e) {
-            if (e.message.endsWith('reverted') || e.message.includes('hex length to large') || e.message.includes('length not match')) {
+            if (e.message.includes('owner query for nonexistent token')) {
+                owner = '0x0000000000000000000000000000000000000000'
+            } else if (e.message.endsWith('reverted') || e.message.includes('hex length to large') || e.message.includes('length not match')) {
                 console.log(`can not call ownerOf for ${contractId}, ${e} ${e.data || ''}`)
                 return;
+            } else {
+                console.log(`call owner of fail, contract ${contractId} token ${tokenId}: ${e}`);
+                continue
             }
-            console.log(`call owner of fail, contract ${contractId} token ${tokenId}: ${e}`);
-            continue
         }
         const onChainOwnerId = await getAddrId(owner)
         if (toId != onChainOwnerId) {
