@@ -13,7 +13,7 @@ export class PosDailyStatMix extends Model<IPosDailyStatMix> implements IPosDail
     id?:number; day:Date; v:number; biz: BIZ
     static register(seq:Sequelize) {
         PosDailyStatMix.init({
-            id: {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
+            id: {type: DataTypes.BIGINT({unsigned: true}), autoIncrement: true, primaryKey: true},
             day: {type: DataTypes.DATEONLY},
             v: {type: DataTypes.DECIMAL(65, 18)},
             biz: {type: DataTypes.STRING(64)},
