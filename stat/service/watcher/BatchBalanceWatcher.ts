@@ -334,16 +334,22 @@ async function repeatSync1155data(cfx:Conflux) {
 // ---
 let zeroAddrId = 0
 async function run() {
-    const [, script,cfxUrl,limitStr] = process.argv;
+    const [, script,cfxUrl,limitStr, opt] = process.argv;
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
     if (cfxUrl === 'fix1155holder') {
-        const byMintTable = limitStr === 'byMintTable'
+        const byMintTable = opt === 'byMintTable'
+        const contractId = limitStr
+        const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
+        if (token?.type?.toLowerCase().includes('721') && !byMintTable) {
+            console.log(`Must use <byMintTable> for 721 token`)
+            process.exit(0)
+        }
         await fix1155holderForContract(parseInt(limitStr), byMintTable)
         process.exit(0)
         return
     } else if (cfxUrl === 'fixAll1155holder') {
-        const byMintTable = limitStr === 'byMintTable'
+        const byMintTable = opt === 'byMintTable'
         await fixAll1155holder(byMintTable)
         process.exit(0)
         return
