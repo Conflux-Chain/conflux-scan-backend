@@ -66,6 +66,7 @@ import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSy
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
 import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
+import {PosDailyStatMix} from "./pos/PosStat";
 let conf
 export function createDB(config) {
     conf = config
@@ -210,6 +211,7 @@ export async function initModel(sequelize) {
     PosEpochRewardHash.register(sequelize)
     PosReward.register(sequelize)
     PosDailyStat.register(sequelize)
+    PosDailyStatMix.register(sequelize)
 }
 
 export function createMySql(dbConf) {
