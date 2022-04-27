@@ -59,14 +59,14 @@ export class BatchBalanceWatcher {
     }
 }
 // ---
-async function fixAll1155holder(byMintTable:boolean) {
-    const tokenList = await Token.findAll({attributes:['id','hex40id','type',],where: {type: 'erc1155'}})
+async function fixAllNftHolder(byMintTable:boolean, type: string) {
+    const tokenList = await Token.findAll({attributes:['id','hex40id','type',],where: {type}})
     console.log(`1155 count ${tokenList.length}`)
     for (let i = 0; i < tokenList.length; i++) {
-        await fix1155holderForContract(tokenList[i].hex40id, byMintTable)
+        await fixHolderForContract(tokenList[i].hex40id, byMintTable)
     }
 }
-async function fix1155holderForContract(contractId: number, byMintTable:boolean) {
+async function fixHolderForContract(contractId: number, byMintTable:boolean) {
     const holderList = byMintTable ?
         await NftMint.findAll({
             attributes: [
@@ -337,7 +337,7 @@ async function run() {
     const [, script,cfxUrl,limitStr, opt] = process.argv;
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
-    if (cfxUrl === 'fix1155holder') {
+    if (cfxUrl === 'fixNftHolder') {
         const byMintTable = opt === 'byMintTable'
         const contractId = limitStr
         const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
@@ -345,12 +345,16 @@ async function run() {
             console.log(`Must use <byMintTable> for 721 token`)
             process.exit(0)
         }
-        await fix1155holderForContract(parseInt(limitStr), byMintTable)
+        await fixHolderForContract(parseInt(limitStr), byMintTable)
+        process.exit(0)
+        return
+    } else if (cfxUrl === 'fixAll721holder') {
+        await fixAllNftHolder(true, 'ERC721')
         process.exit(0)
         return
     } else if (cfxUrl === 'fixAll1155holder') {
         const byMintTable = opt === 'byMintTable'
-        await fixAll1155holder(byMintTable)
+        await fixAllNftHolder(byMintTable, 'ERC1155')
         process.exit(0)
         return
     }
