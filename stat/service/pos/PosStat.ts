@@ -86,7 +86,7 @@ export class PosStat {
             day: new Date(), v: epochGap, biz: "finalize_epoch_gap"
         })
         await PosDailyStatMix.upsert({
-            day: new Date(), v: epochGap, biz: "finalize_second_gap"
+            day: new Date(), v: secondGap2, biz: "finalize_second_gap"
         })
     }
 }
