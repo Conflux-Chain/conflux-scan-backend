@@ -2,6 +2,8 @@ import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {pickNumber} from "../model/Utils";
 import {skipLimit, skipLimitAny} from "./ParamChecker";
+import {PosDailyStat} from "../model/PoS";
+import {Drip} from "js-conflux-sdk";
 
 export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-pos-account-by-reward', async (ctx)=>{
@@ -80,6 +82,13 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {height} = ctx.request.query;
         const {count: total, rows: list} = await statApp.posQuery.listTxInBlock({skip, limit, blockHeight: height});
         ctx.body = { code: 0, total, list }
+    })
+    router.get('/pos-daily-staking', async (ctx)=>{
+        const list = await PosDailyStat.findAll({attributes: ['stakingAmount','statDay'], order:['statDay','asc']})
+        list.forEach(row=>{
+            row.stakingAmount = parseFloat(new Drip(row.stakingAmount).toCFX())
+        })
+        ctx.body = {code: 0, list, total: list.length}
     })
     router.get('/list-pos-daily-stat', async (ctx)=>{
         const {skip,limit} = skipLimit(ctx.request.query)
