@@ -484,7 +484,9 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         } catch (e) {
             if ((e.message+e.data).includes('owner query for nonexistent token')) {
                 owner = '0x0000000000000000000000000000000000000000'
-            } else if (e.message.endsWith('reverted') || e.message.includes('hex length to large') || e.message.includes('length not match')) {
+            } else if (e.message.includes('length not match')) {
+                owner = '0x0000000000000000000000000000000000000000'
+            } else if (e.message.endsWith('reverted') || e.message.includes('hex length to large')) {
                 console.log(`can not call ownerOf for ${contractId}, ${e} ${e.data || ''}`)
                 return;
             } else {
