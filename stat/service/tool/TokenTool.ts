@@ -468,7 +468,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         console.log(`token is null`)
         return
     }
-    console.log(`Token is ${token.type} ${token.name} ${token.symbol}, ${token.base32}`);
+    console.log(`Token is ${token.type} ${token.name} ${token.symbol}, ${token.base32} hex id [${token.hex40id}]`);
     if (token.type !== 'ERC721') {
         console.log(`It's not ERC721 token. ${token.base32} [${token.name}] [${token.type}]`)
         return
