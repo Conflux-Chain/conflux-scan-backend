@@ -1,6 +1,7 @@
 import {Token} from "../model/Token";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {Op} from 'sequelize'
+import {toBase32} from "./tool/AddressTool";
 const lodash = require('lodash');
 const superagent = require('superagent');
 const BigFixed = require('bigfixed');
@@ -16,6 +17,11 @@ export class QuoteSync {
   private viaWCFXSet = new Set<string>(['cITF', 'cFLUX', 'TREA', 'YAO', 'POOLGO', 'DAN', 'POS']);
   private viaCETHSet = new Set<string>(['cFOR']);
   private viaCETHUnilateralSet = new Set<string>(['cLEND']);
+
+  private swappiRouteAddress = '0x62b0873055bf896dd869e172119871ac24aea305';
+  private usdtAddress = "0xfe97e85d13abd9c1c33384e796f10b73905637ce";
+  private TOKEN_PPI = {address: "0x22f41abf77905f50df398f21213290597e7414dd", name: 'Swappi Token', symbol: 'PPI'};
+
 
   constructor(app: any) {
     this.app = app;
@@ -50,6 +56,7 @@ export class QuoteSync {
     await this.updateFromMoonDex(tokenList).catch((e) => console.log({ src: 'updateFromMoonDex', msg: e }));
     await this.updateFromBinance(tokenList).catch((e) => console.log({ src: 'updateFromBinance', msg: e }));
     await this.updateFromMoonSwap(tokenList).catch((e) => console.log({ src: 'updateFromMoonSwap', msg: e }));
+    await this.updateFromSwappi(tokenList).catch((e) => console.log({ src: 'updateFromSwappi', msg: e }));
   }
 
   //======================================================================
@@ -224,6 +231,34 @@ export class QuoteSync {
       price = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0]))).toNumber();
     }
     return price;
+  }
+
+  //======================================================================
+  private async updateFromSwappi(tokenList) {
+    const tokenArray = tokenList?.filter((token) => token.swappiSymbol);
+    tokenArray.push(this.TOKEN_PPI);
+    if (tokenArray.length === 0) {
+      return;
+    }
+
+    const quoteArray = await Promise.all(tokenArray.map(async ({ address, name, symbol }) => {
+      const quote = await this.getFromSwappiContract(symbol, address);
+      return {
+        address: toBase32(address),
+        name,
+        symbol,
+        convertSymbol: 'USDT',
+        price: quote || null,
+      };
+    }));
+    await this.upsertQuote(quoteArray);
+  }
+
+  private async getFromSwappiContract(symbol = undefined, address = undefined){
+    const contract = this.cfx.Contract({ address : this.swappiRouteAddress, abi});
+
+    const [amount0, amount1] = await contract.getAmountsOut(100000, [address, this.usdtAddress]);
+    return BigFixed(amount1).div(BigFixed(amount0)).toNumber();
   }
 
   //======================================================================
