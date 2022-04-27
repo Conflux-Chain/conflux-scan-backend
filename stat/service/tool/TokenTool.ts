@@ -500,7 +500,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         }
         const onChainOwnerId = await getAddrId(owner)
         if (toId != onChainOwnerId) {
-            console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner}`)
+            console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner} token id ${tokenId}`)
             await NftMint.update({toId: onChainOwnerId, updatedAt},{where: {id}})
         } else {
             matched ++
