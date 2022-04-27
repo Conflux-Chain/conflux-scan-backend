@@ -18,7 +18,7 @@ export class PosDailyStatMix extends Model<IPosDailyStatMix> implements IPosDail
             v: {type: DataTypes.DECIMAL(65, 18)},
             biz: {type: DataTypes.STRING(64)},
         }, {
-            sequelize: seq, tableName: 'pos_daily_stat',
+            sequelize: seq, tableName: 'pos_daily_stat_mix',
             indexes:[
                 {name:'uk_biz_day', fields: ['biz', 'day'], unique: true}
             ]
