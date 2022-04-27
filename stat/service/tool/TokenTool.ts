@@ -1,11 +1,13 @@
 import {Conflux} from "js-conflux-sdk";
-import {Token} from "../../model/Token";
+import {Op} from 'sequelize'
+import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {patchHttpProvider} from "../common/utils";
-import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
+import {HASH_CUSTODIAN_TOKEN, redisWrap, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
 import {StatApp} from "../../StatApp";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
@@ -435,11 +437,88 @@ export async function uploadOss(srcFile, ossFilename) {
         return res
     })
 }
-
+async function check721OwnerInDb() {
+    const cfg = await init()
+    const cfx = new Conflux(cfg.conflux)
+    const st = await cfx.getStatus()
+    console.log(`------------ net ${st.networkId} version ${await cfx.getClientVersion()} latestState ${st.latestState} -----`)
+    const [, , cmd, contractIdStr] = process.argv
+    if (contractIdStr) {
+        const contractId = parseInt(contractIdStr)
+        const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
+        await checkNftMintForContract(contractId, cfx, token)
+    } else {
+        const tokens = await Token.findAll({
+            where: {type: {[Op.in]: [
+                'ERC721',
+                        // 'ERC1155'
+                    ]}, auditResult: true},
+            attributes: {exclude: ['icon']}
+        })
+        for (let token of tokens) {
+            await checkNftMintForContract(token.hex40id, cfx, token)
+        }
+    }
+    await NftMint.sequelize.close()
+    process.exit(0)
+    console.log(`done`)
+}
+async function checkNftMintForContract(contractId: number, cfx, token:Token) {
+    if (!token) {
+        console.log(`token is null`)
+        return
+    }
+    console.log(`Token is ${token.type} [${token.name}] [${token.symbol}] , ${token.base32} hex id [${token.hex40id}]`);
+    if (token.type !== 'ERC721') {
+        console.log(`It's not ERC721 token. ${token.base32} [${token.name}] [${token.type}]`)
+        return
+    }
+    const contract = cfx.Contract({abi, address: token.base32});
+    const mintList = await NftMint.findAll({where: {contractId}})
+    let matched = 0;
+    for (let i = 0; i < mintList.length; i++) {
+        const {toId, tokenId, updatedAt, id} = mintList[i]
+        let owner: any;
+        try {
+            owner = await contract['ownerOf'](tokenId);
+        } catch (e) {
+            if ((e.message+e.data).includes('owner query for nonexistent token')) {
+                owner = '0x0000000000000000000000000000000000000000'
+            } else if (e.message.includes('length not match')) {
+                const account = await cfx.getAccount(token.base32);
+                if (account.codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470') {
+                    console.log(`contract destroyed.`)
+                    return
+                }
+            } else if (e.message.endsWith('reverted') || e.message.includes('hex length to large')) {
+                console.log(`can not call ownerOf for ${contractId}, ${e} ${e.data || ''}`)
+                return;
+            } else {
+                console.log(`call owner of fail, contract ${contractId} token ${tokenId}: ${e}`);
+                continue
+            }
+        }
+        const onChainOwnerId = await getAddrId(owner)
+        if (toId != onChainOwnerId) {
+            console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner} token id ${tokenId}`)
+            await NftMint.update({toId: onChainOwnerId, updatedAt},{where: {id}})
+        } else {
+            matched ++
+        }
+    }
+    if (mintList.length === matched) {
+        console.log(`ALL is MATCHED`)
+        return;
+    }
+    console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`);
+}
+// node stat/dist/service/tool/TokenTool.js check721OwnerInDb 1
 if (module === require.main) {
     const args = process.argv.slice(2)
     if (args[0] === 'custodian_token') {
         updateCustodianTokenFlag().then()
+    } else if (args[0] === 'check721OwnerInDb') {
+        check721OwnerInDb().then()
     } else if (args[0] === 'updateTotalSupply') {
         updateTotalSupply().then()
     } else if (args[0] === 'checkTokenFetchBalance') {
