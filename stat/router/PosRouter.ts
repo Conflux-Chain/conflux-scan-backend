@@ -84,7 +84,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = { code: 0, total, list }
     })
     router.get('/pos-daily-staking', async (ctx)=>{
-        const list = await PosDailyStat.findAll({attributes: ['stakingAmount','statDay'], order:['statDay','asc']})
+        const list = await PosDailyStat.findAll({attributes: ['stakingAmount','statDay'], order:[['statDay','asc']]})
         list.forEach(row=>{
             row.stakingAmount = parseFloat(new Drip(row.stakingAmount).toCFX())
         })
