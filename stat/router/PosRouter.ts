@@ -2,9 +2,11 @@ import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {pickNumber} from "../model/Utils";
 import {skipLimit, skipLimitAny} from "./ParamChecker";
-import {PosDailyStat} from "../model/PoS";
+import {PosAccount, PosDailyStat, recentPosRewardRank} from "../model/PoS";
 import {Drip} from "js-conflux-sdk";
 import {PosDailyStatMix} from "../service/pos/PosStat";
+import {intParam, list2map} from "../service/common/utils";
+import {Op} from "sequelize";
 
 export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-pos-account-by-reward', async (ctx)=>{
@@ -112,6 +114,20 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/pos-daily-total-reward', async (ctx)=>{
         await fetchDailyStatMix('pos_total_reward', ctx)
+    })
+    router.get('/pos-recent-reward-rank', async (ctx)=>{
+        const day = intParam(ctx.request.query, 'day', 1)
+        const dt = new Date()
+        dt.setDate(dt.getDate() - day)
+        const list = await recentPosRewardRank(dt, 10)
+        const accountList = await PosAccount.findAll({
+            where: {id: {[Op.in]: list.map(row=>row.accountId)}}
+        })
+        const map = list2map(accountList, 'accountId')
+        list.forEach(row=>{
+            row["accountInfo"] = map.get(row.accountId)
+        })
+        return {code: 0, list, total: list.length}
     })
     router.get('/list-pos-daily-stat', async (ctx)=>{
         const {skip,limit} = skipLimit(ctx.request.query)

@@ -1,4 +1,4 @@
-import {DataTypes, Model, Sequelize} from "sequelize";
+import {DataTypes, Model, Sequelize, fn, col, Op} from "sequelize";
 import {sleep} from "../service/tool/ProcessTool";
 
 export interface IPosBlock {
@@ -196,6 +196,16 @@ export class PosReward extends Model<IPosReward> implements IPosReward {
             ]
         })
     }
+}
+export async function recentPosRewardRank(afterTime: Date, limit = 10) {
+    return PosReward.findAll({
+        attributes: [
+            [fn('sum', col('reward')), 'reward'],
+            'accountId',
+        ],
+        where: {createdAt: {[Op.gte]: afterTime}},
+        group: ['accountId'], order: [['reward', 'desc']], limit, raw: true,
+    })
 }
 export interface IPosAccountBlock {
     id: number
