@@ -120,7 +120,7 @@ export async function syncFinalizeGap() {
         console.log(`powEpochAtThatTime not found , want before time ${createdAt.toISOString()}`)
         return 0
     }
-    const secondsGap = Math.round((finalizedEpoch.timestamp.getTime() - createdAt.getTime() )/1000)
+    const secondsGap = Math.round((createdAt.getTime() - finalizedEpoch.timestamp.getTime())/1000)
     await PosGap.upsert({height: posBlock.height, epochGap: powEpochAtThatTime.epoch - pivotDecision,
         secondsGap, powEpoch: powEpochAtThatTime.epoch})
     return 1
