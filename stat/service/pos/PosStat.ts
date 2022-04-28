@@ -1,8 +1,10 @@
 import {Conflux, Drip} from "js-conflux-sdk";
-import {PosAccount, PosBlock} from "../../model/PoS";
+import {PosAccount, PosBlock, PosGap} from "../../model/PoS";
 import {DataTypes, Model, Sequelize, Op, fn, col} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
+import {Epoch} from "../../model/Epoch";
+import {init} from "../tool/FixDailyTokenStat";
 
 export interface IPosDailyStatMix {
     id?:number; day:Date; v:number; biz: BIZ
@@ -99,6 +101,26 @@ export async function scheduleDailyStatMix(cfx:Conflux) {
         }, 60_000
     );
 }
+export async function syncFinalizeGap() {
+    const maxGapBean = await PosGap.findOne({order: [['height','desc']]})
+    let maxGapHeight = maxGapBean?.height || 1 // pos block 1 is root block, without useful information
+    const posBlock = await PosBlock.findOne({where:{height: maxGapHeight + 1}})
+    if (posBlock === null) {
+        return 0
+    }
+    const {pivotDecision, createdAt} = posBlock
+    const powEpochAtThatTime = await Epoch.findOne({where: {
+        timestamp: {[Op.lte]: createdAt},
+        }, order: [['epoch', 'desc']]})
+    if (powEpochAtThatTime === null) {
+        console.log(`powEpochAtThatTime not found , want before time ${createdAt.toISOString()}`)
+        return 0
+    }
+    const secondsGap = Math.round((powEpochAtThatTime.timestamp.getTime() - createdAt.getTime() )/1000)
+    await PosGap.upsert({height: posBlock.height, epochGap: powEpochAtThatTime.epoch - pivotDecision,
+        secondsGap, powEpoch: powEpochAtThatTime.epoch})
+    return 1
+}
 export async function fixDailyPosAccountCount() {
     const startAtDay = await PosAccount.findOne({order:[['id','asc']]})
     if (!startAtDay) {
@@ -120,10 +142,15 @@ export async function fixDailyPosAccountCount() {
 }
 async function main() {
     const [,,cmd] = process.argv
-    let url = ''
-    url = 'https://main.confluxrpc.com'
-    const cfx = new Conflux({url})
-    const svc = new PosStat(cfx)
+    if (cmd === 'testGap') {
+        await init()
+        await syncFinalizeGap()
+        console.log('pos gap count', await PosGap.count())
+    }
+    // let url = ''
+    // url = 'https://main.confluxrpc.com'
+    // const cfx = new Conflux({url})
+    // const svc = new PosStat(cfx)
     // await svc.updateFinalizeGap()
     // await svc.updatePosStaking()
     // await svc.updateApy()
