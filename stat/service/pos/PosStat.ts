@@ -1,6 +1,6 @@
 import {Conflux, Drip} from "js-conflux-sdk";
-import {PosAccount} from "../../model/PoS";
-import {DataTypes, Model, Sequelize} from 'sequelize'
+import {PosAccount, PosBlock} from "../../model/PoS";
+import {DataTypes, Model, Sequelize, Op, fn, col} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 
@@ -98,6 +98,24 @@ export async function scheduleDailyStatMix(cfx:Conflux) {
         })
         }, 60_000
     );
+}
+export async function fixDailyPosAccountCount() {
+    const startAtDay = await PosAccount.findOne({order:[['id','asc']]})
+    if (!startAtDay) {
+        console.log(`base block not found`)
+        return
+    }
+    const {createdAt} = startAtDay
+    let begin = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate()
+        ,23,59,99)
+    while (begin.getTime() < Date.now()) {
+        const cnt = await PosBlock.count({where: {
+            createdAt: {[Op.lt]: begin}
+            }})
+        await PosDailyStatMix.upsert({v: cnt, day: begin, biz: "account_count"})
+        console.log(`${begin.toISOString()} account count`, cnt)
+    }
+    console.log(`done`)
 }
 async function main() {
     const [,,cmd] = process.argv

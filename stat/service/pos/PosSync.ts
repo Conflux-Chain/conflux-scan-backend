@@ -15,7 +15,7 @@ import {fn, col, Op, QueryTypes} from "sequelize";
 import {PosQuery} from "./PosQuery";
 import {removeLongData} from "../common/utils";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
-import {PosStat, scheduleDailyStatMix} from "./PosStat";
+import {fixDailyPosAccountCount, PosStat, scheduleDailyStatMix} from "./PosStat";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -665,6 +665,9 @@ async function start() {
                 process.exit(0)
             })
             return;
+        } else if (cmd === 'fixAccCnt') {
+            await fixDailyPosAccountCount()
+            return
         } else if (cmd === 'testDailyStatMix') {
             const svc = new PosStat(cfx)
             await svc.update()
