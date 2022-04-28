@@ -127,7 +127,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         list.forEach(row=>{
             row["accountInfo"] = map.get(row.accountId)
         })
-        return {code: 0, list, total: list.length}
+        ctx.body = {code: 0, list, total: list.length}
     })
     router.get('/list-pos-daily-stat', async (ctx)=>{
         const {skip,limit} = skipLimit(ctx.request.query)
