@@ -114,6 +114,7 @@ export async function fixDailyPosAccountCount() {
             }})
         await PosDailyStatMix.upsert({v: cnt, day: begin, biz: "account_count"})
         console.log(`${begin.toISOString()} account count`, cnt)
+        begin.setDate(begin.getDate()+1)
     }
     console.log(`done`)
 }
