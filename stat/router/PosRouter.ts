@@ -2,6 +2,9 @@ import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {pickNumber} from "../model/Utils";
 import {skipLimit, skipLimitAny} from "./ParamChecker";
+import {PosDailyStat} from "../model/PoS";
+import {Drip} from "js-conflux-sdk";
+import {PosDailyStatMix} from "../service/pos/PosStat";
 
 export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-pos-account-by-reward', async (ctx)=>{
@@ -80,6 +83,35 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {height} = ctx.request.query;
         const {count: total, rows: list} = await statApp.posQuery.listTxInBlock({skip, limit, blockHeight: height});
         ctx.body = { code: 0, total, list }
+    })
+    router.get('/pos-daily-staking', async (ctx)=>{
+        const list = await PosDailyStat.findAll({attributes: ['stakingAmount','statDay'],
+            order:[['statDay','asc']], raw: true})
+        list.forEach(row=>{
+            row['v'] = parseFloat(new Drip(row.stakingAmount).toCFX())
+            delete row.stakingAmount
+        })
+        ctx.body = {code: 0, list, total: list.length}
+    })
+    async function fetchDailyStatMix(biz: string, ctx:any) {
+        const list = await PosDailyStatMix.findAll({where: {biz}, order: [['day','asc']]})
+        ctx.body = { code: 0, total:list.length, list }
+        return list;
+    }
+    router.get('/pos-daily-apy', async (ctx)=>{
+        await fetchDailyStatMix('pos_apy', ctx)
+    })
+    router.get('/pos-daily-account', async (ctx)=>{
+        await fetchDailyStatMix('account_count', ctx)
+    })
+    router.get('/pos-daily-finalize-epoch-gap', async (ctx)=>{
+        await fetchDailyStatMix('finalize_epoch_gap', ctx)
+    })
+    router.get('/pos-daily-finalize-second-gap', async (ctx)=>{
+        await fetchDailyStatMix('finalize_second_gap', ctx)
+    })
+    router.get('/pos-daily-total-reward', async (ctx)=>{
+        await fetchDailyStatMix('pos_total_reward', ctx)
     })
     router.get('/list-pos-daily-stat', async (ctx)=>{
         const {skip,limit} = skipLimit(ctx.request.query)
