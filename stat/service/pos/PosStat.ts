@@ -107,7 +107,7 @@ export async function fixDailyPosAccountCount() {
     }
     const {createdAt} = startAtDay
     let begin = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate()
-        ,23,59,99)
+        ,23,59,59)
     while (begin.getTime() < Date.now()) {
         const cnt = await PosAccount.count({where: {
             createdAt: {[Op.lte]: begin}
