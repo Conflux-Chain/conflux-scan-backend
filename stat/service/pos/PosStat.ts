@@ -110,8 +110,10 @@ export async function syncFinalizeGap() {
     }
     const {pivotDecision, createdAt} = posBlock
     const powEpochAtThatTime = await Epoch.findOne({where: {
-        timestamp: {[Op.lte]: createdAt},
-        }, order: [['epoch', 'desc']]})
+        timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+10_000]},
+        }, order: [['epoch', 'desc']],
+        logging: console.log, benchmark: true
+    })
     if (powEpochAtThatTime === null) {
         console.log(`powEpochAtThatTime not found , want before time ${createdAt.toISOString()}`)
         return 0
