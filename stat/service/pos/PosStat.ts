@@ -109,16 +109,18 @@ export async function syncFinalizeGap() {
         return 0
     }
     const {pivotDecision, createdAt} = posBlock
-    const powEpochAtThatTime = await Epoch.findOne({where: {
-        timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+10_000]},
-        }, order: [['epoch', 'desc']],
-        logging: console.log, benchmark: true
-    })
+    const [powEpochAtThatTime, finalizedEpoch] = await Promise.all([Epoch.findOne({where: {
+            timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+10_000]},
+            }, order: [['epoch', 'desc']],
+            // logging: console.log, benchmark: true
+            }),
+        Epoch.findOne({where:{epoch: pivotDecision}})
+    ])
     if (powEpochAtThatTime === null) {
         console.log(`powEpochAtThatTime not found , want before time ${createdAt.toISOString()}`)
         return 0
     }
-    const secondsGap = Math.round((powEpochAtThatTime.timestamp.getTime() - createdAt.getTime() )/1000)
+    const secondsGap = Math.round((finalizedEpoch.timestamp.getTime() - createdAt.getTime() )/1000)
     await PosGap.upsert({height: posBlock.height, epochGap: powEpochAtThatTime.epoch - pivotDecision,
         secondsGap, powEpoch: powEpochAtThatTime.epoch})
     return 1
