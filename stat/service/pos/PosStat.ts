@@ -109,8 +109,8 @@ export async function fixDailyPosAccountCount() {
     let begin = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate()
         ,23,59,99)
     while (begin.getTime() < Date.now()) {
-        const cnt = await PosBlock.count({where: {
-            createdAt: {[Op.lt]: begin}
+        const cnt = await PosAccount.count({where: {
+            createdAt: {[Op.lte]: begin}
             }})
         await PosDailyStatMix.upsert({v: cnt, day: begin, biz: "account_count"})
         console.log(`${begin.toISOString()} account count`, cnt)
