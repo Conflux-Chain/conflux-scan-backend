@@ -123,7 +123,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const accountList = await PosAccount.findAll({
             where: {id: {[Op.in]: list.map(row=>row.accountId)}}
         })
-        const map = list2map(accountList, 'accountId')
+        const map = list2map(accountList, 'id')
         list.forEach(row=>{
             row["accountInfo"] = map.get(row.accountId)
         })
