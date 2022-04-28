@@ -492,9 +492,14 @@ export class PosSync {
         })
     }
     async syncRewardByEpoch(epoch:number) {
-        const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
+        let rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (!rewardInfo) {
             console.log(` pos reward is ${rewardInfo} at epoch ${epoch}`);
+            const rewardInfoNext = await this.cfx.pos.getRewardsByEpoch(epoch+1)
+            if (rewardInfoNext) {
+                console.log(`skip to next`)
+                return 1;
+            }
             await sleep(10_000)
             return 0
         }
