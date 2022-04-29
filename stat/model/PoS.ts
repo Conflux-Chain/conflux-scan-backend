@@ -14,7 +14,7 @@ export class PosGap extends Model<IPosGap> implements IPosGap {
             epochGap: {type: DataTypes.INTEGER({unsigned: true}), allowNull: false},
             secondsGap: {type: DataTypes.INTEGER({unsigned: true}), allowNull: false},
         }, {
-            sequelize: seq, tableName: 'pos_gap', timestamps: false,
+            sequelize: seq, tableName: 'pos_gap', updatedAt: false
         })
     }
 }
