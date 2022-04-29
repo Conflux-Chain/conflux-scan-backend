@@ -1,8 +1,10 @@
 import {Conflux, Drip} from "js-conflux-sdk";
-import {PosAccount} from "../../model/PoS";
-import {DataTypes, Model, Sequelize} from 'sequelize'
+import {PosAccount, PosBlock, PosGap} from "../../model/PoS";
+import {DataTypes, Model, Sequelize, Op, fn, col} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
+import {Epoch} from "../../model/Epoch";
+import {init} from "../tool/FixDailyTokenStat";
 
 export interface IPosDailyStatMix {
     id?:number; day:Date; v:number; biz: BIZ
@@ -99,12 +101,78 @@ export async function scheduleDailyStatMix(cfx:Conflux) {
         }, 60_000
     );
 }
+export async function syncFinalizeGap() {
+    const maxGapBean = await PosGap.findOne({order: [['height','desc']]})
+    let maxGapHeight = maxGapBean?.height || 1 // pos block 1 is root block, without useful information
+    const posBlock = await PosBlock.findOne({where:{height: maxGapHeight + 1}})
+    if (posBlock === null) {
+        return 0
+    }
+    const {pivotDecision, createdAt, height} = posBlock
+    const [powEpochAtThatTime, finalizedEpoch] = await Promise.all([
+        Epoch.findOne({where: {
+            timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+2_000]},
+            }, order: [['epoch', 'desc']],
+            // logging: console.log, benchmark: true
+        }),
+        Epoch.findOne({where:{epoch: pivotDecision}})
+    ])
+    if (powEpochAtThatTime === null) {
+        console.log(`powEpochAtThatTime not found , want before time ${createdAt.toISOString()
+        }, pos block height ${height} , pivotDecision ${pivotDecision
+        }, finalizedEpoch time ${finalizedEpoch.timestamp.toISOString()}`)
+        if (process.argv.includes('skip')){// 8888 hits it
+            await PosGap.upsert({height: posBlock.height, powEpoch: pivotDecision, secondsGap:0, epochGap:0,
+            createdAt: posBlock.createdAt})
+            return 1
+        }
+        return 0
+    }
+    const secondsGap = Math.round((createdAt.getTime() - finalizedEpoch.timestamp.getTime())/1000)
+    await PosGap.upsert({height: posBlock.height, epochGap: powEpochAtThatTime.epoch - pivotDecision,
+        secondsGap, powEpoch: powEpochAtThatTime.epoch, createdAt})
+    if (height % 100 === 0) {
+        console.log(`pos gap at height `, height)
+    }
+    return 1
+}
+export async function scheduleSyncPosGap() {
+    async function repeat() {
+        const have = await syncFinalizeGap()
+        setTimeout(repeat, have ? 0 : 50_000)
+    }
+    repeat().then()
+}
+export async function fixDailyPosAccountCount() {
+    const startAtDay = await PosAccount.findOne({order:[['id','asc']]})
+    if (!startAtDay) {
+        console.log(`base block not found`)
+        return
+    }
+    const {createdAt} = startAtDay
+    let begin = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate()
+        ,23,59,59)
+    while (begin.getTime() < Date.now()) {
+        const cnt = await PosAccount.count({where: {
+            createdAt: {[Op.lte]: begin}
+            }})
+        await PosDailyStatMix.upsert({v: cnt, day: begin, biz: "account_count"})
+        console.log(`${begin.toISOString()} account count`, cnt)
+        begin.setDate(begin.getDate()+1)
+    }
+    console.log(`done`)
+}
 async function main() {
     const [,,cmd] = process.argv
-    let url = ''
-    url = 'https://main.confluxrpc.com'
-    const cfx = new Conflux({url})
-    const svc = new PosStat(cfx)
+    if (cmd === 'testGap') {
+        await init()
+        while(await syncFinalizeGap());
+        console.log('pos gap count', await PosGap.count())
+    }
+    // let url = ''
+    // url = 'https://main.confluxrpc.com'
+    // const cfx = new Conflux({url})
+    // const svc = new PosStat(cfx)
     // await svc.updateFinalizeGap()
     // await svc.updatePosStaking()
     // await svc.updateApy()

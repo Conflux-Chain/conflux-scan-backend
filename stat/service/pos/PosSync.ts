@@ -15,7 +15,7 @@ import {fn, col, Op, QueryTypes} from "sequelize";
 import {PosQuery} from "./PosQuery";
 import {removeLongData} from "../common/utils";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
-import {PosStat, scheduleDailyStatMix} from "./PosStat";
+import {fixDailyPosAccountCount, PosStat, scheduleDailyStatMix, scheduleSyncPosGap} from "./PosStat";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -492,9 +492,14 @@ export class PosSync {
         })
     }
     async syncRewardByEpoch(epoch:number) {
-        const rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
+        let rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (!rewardInfo) {
             console.log(` pos reward is ${rewardInfo} at epoch ${epoch}`);
+            const rewardInfoNext = await this.cfx.pos.getRewardsByEpoch(epoch+1)
+            if (rewardInfoNext) {
+                console.log(`skip to next`)
+                return 1;
+            }
             await sleep(10_000)
             return 0
         }
@@ -660,6 +665,9 @@ async function start() {
                 process.exit(0)
             })
             return;
+        } else if (cmd === 'fixAccCnt') {
+            await fixDailyPosAccountCount()
+            return
         } else if (cmd === 'testDailyStatMix') {
             const svc = new PosStat(cfx)
             await svc.update()
@@ -677,6 +685,7 @@ async function start() {
         // cfx['pos'].getAccount('0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055').then(console.log)
         // posSync.patchCreatedAccount(0, '0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055')
         scheduleDailyStatMix(cfx).then()
+        scheduleSyncPosGap().then()
         return Promise.all([
             // posSync.test(),
             posSync.repeatSyncBlock(),
