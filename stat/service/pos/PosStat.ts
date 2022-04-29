@@ -109,11 +109,12 @@ export async function syncFinalizeGap() {
         return 0
     }
     const {pivotDecision, createdAt, height} = posBlock
-    const [powEpochAtThatTime, finalizedEpoch] = await Promise.all([Epoch.findOne({where: {
+    const [powEpochAtThatTime, finalizedEpoch] = await Promise.all([
+        Epoch.findOne({where: {
             timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+10_000]},
             }, order: [['epoch', 'desc']],
             // logging: console.log, benchmark: true
-            }),
+        }),
         Epoch.findOne({where:{epoch: pivotDecision}})
     ])
     if (powEpochAtThatTime === null) {
@@ -125,6 +126,9 @@ export async function syncFinalizeGap() {
     const secondsGap = Math.round((createdAt.getTime() - finalizedEpoch.timestamp.getTime())/1000)
     await PosGap.upsert({height: posBlock.height, epochGap: powEpochAtThatTime.epoch - pivotDecision,
         secondsGap, powEpoch: powEpochAtThatTime.epoch})
+    if (height % 100 === 0) {
+        console.log(`pos gap at height `, height)
+    }
     return 1
 }
 export async function fixDailyPosAccountCount() {
