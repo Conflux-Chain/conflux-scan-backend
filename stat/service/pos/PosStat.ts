@@ -118,7 +118,8 @@ export async function syncFinalizeGap() {
     ])
     if (powEpochAtThatTime === null) {
         console.log(`powEpochAtThatTime not found , want before time ${createdAt.toISOString()
-        }, pos block height ${height} , pivotDecision ${pivotDecision}`)
+        }, pos block height ${height} , pivotDecision ${pivotDecision
+        }, finalizedEpoch time ${finalizedEpoch.timestamp.toISOString()}`)
         return 0
     }
     const secondsGap = Math.round((createdAt.getTime() - finalizedEpoch.timestamp.getTime())/1000)
