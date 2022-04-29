@@ -110,6 +110,10 @@ export class NFTCheckerService {
     public async getNftBalancesForOpenApi({owner, skip = 0, limit = 100}
                                     : { owner: string, skip?: number, limit?: number }) {
         const ownerAddressId = await getAddrId(owner);
+        if(owner && !ownerAddressId) {
+            return {total: 0, list: []};
+        }
+
         const sqlCountClause = `select count(*) as cntr `;
         const sqlSelectClause = `select t.base32, b.balance, t.name, t.symbol, t.decimals, t.type, t.webSite, t.iconUrl `;
         const sqlFromClause = `from token_balance b left join token t on b.contractId = t.hex40id 
@@ -147,6 +151,9 @@ export class NFTCheckerService {
                                   : { owner?: string, contract: string, skip: number, limit: number }) {
         const ownerAddressId = owner ? await getAddrId(owner) : owner;
         const contractAddressId = contract ? await getAddrId(contract): contract;
+        if((owner && !ownerAddressId) || (contract && !contractAddressId)) {
+            return {total: 0, list: []};
+        }
 
         const where = {};
         if (ownerAddressId) {
