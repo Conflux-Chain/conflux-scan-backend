@@ -125,7 +125,7 @@ export async function syncFinalizeGap() {
     }
     const secondsGap = Math.round((createdAt.getTime() - finalizedEpoch.timestamp.getTime())/1000)
     await PosGap.upsert({height: posBlock.height, epochGap: powEpochAtThatTime.epoch - pivotDecision,
-        secondsGap, powEpoch: powEpochAtThatTime.epoch})
+        secondsGap, powEpoch: powEpochAtThatTime.epoch, createdAt})
     if (height % 100 === 0) {
         console.log(`pos gap at height `, height)
     }

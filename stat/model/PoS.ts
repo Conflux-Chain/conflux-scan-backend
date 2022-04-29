@@ -2,17 +2,18 @@ import {DataTypes, Model, Sequelize, fn, col, Op} from "sequelize";
 import {sleep} from "../service/tool/ProcessTool";
 export interface IPosGap {
     height: number // it's block number.
-    powEpoch: number; epochGap: number; secondsGap:number
+    powEpoch: number; epochGap: number; secondsGap:number, createdAt: Date;
 }
 export class PosGap extends Model<IPosGap> implements IPosGap {
     height: number // it's block number.
-    powEpoch: number; epochGap: number; secondsGap:number
+    powEpoch: number; epochGap: number; secondsGap:number;createdAt: Date;
     static register(seq: Sequelize) {
         PosGap.init({
             height: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, primaryKey: true},
             powEpoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             epochGap: {type: DataTypes.INTEGER({unsigned: true}), allowNull: false},
             secondsGap: {type: DataTypes.INTEGER({unsigned: true}), allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             sequelize: seq, tableName: 'pos_gap', updatedAt: false
         })
