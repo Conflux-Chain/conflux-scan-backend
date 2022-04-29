@@ -111,7 +111,7 @@ export async function syncFinalizeGap() {
     const {pivotDecision, createdAt, height} = posBlock
     const [powEpochAtThatTime, finalizedEpoch] = await Promise.all([
         Epoch.findOne({where: {
-            timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+10_000]},
+            timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+2_000]},
             }, order: [['epoch', 'desc']],
             // logging: console.log, benchmark: true
         }),
@@ -130,6 +130,13 @@ export async function syncFinalizeGap() {
         console.log(`pos gap at height `, height)
     }
     return 1
+}
+export async function scheduleSyncPosGap() {
+    async function repeat() {
+        const have = await syncFinalizeGap()
+        setTimeout(repeat, have ? 0 : 50_000)
+    }
+    repeat().then()
 }
 export async function fixDailyPosAccountCount() {
     const startAtDay = await PosAccount.findOne({order:[['id','asc']]})
@@ -154,7 +161,7 @@ async function main() {
     const [,,cmd] = process.argv
     if (cmd === 'testGap') {
         await init()
-        await syncFinalizeGap()
+        while(await syncFinalizeGap());
         console.log('pos gap count', await PosGap.count())
     }
     // let url = ''
