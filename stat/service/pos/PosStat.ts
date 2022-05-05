@@ -189,8 +189,9 @@ async function calcDailyParticipation(dt:Date) {
  select count(*) as cnt, epoch from ${pos_block} where createdAt BETWEEN ? AND ? group by epoch) t
  on t.epoch = m.epochNumber`
     const shouldVotes = await PosCommittee.sequelize.query(sql,
-        {type: QueryTypes.SELECT, replacements: [dayStart, dayEnd]}
-        )
+        {type: QueryTypes.SELECT, replacements: [dayStart, dayEnd],
+            logging: console.log, benchmark: true,
+        })
         .then(res=>Number(res))
     //
     let rate = votes/shouldVotes;
