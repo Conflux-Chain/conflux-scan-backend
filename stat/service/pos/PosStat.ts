@@ -193,7 +193,7 @@ async function calcDailyStaking(dt: Date) {
         attributes:[
             [fn('sum', col('value')), 'value'],
             // [fn('count', col('*')), 'count'],
-            [literal('IF(fromId=?, "withdraw", "deposit")'), 'type'],
+            [literal('IF(fromId=?, "withdraw", "deposit")'), 'biz_type'],
         ],
         where: {[Op.and]:[
                 {createdAt: {[Op.between]: [dayStart, dayEnd]}},
@@ -201,13 +201,13 @@ async function calcDailyStaking(dt: Date) {
                 {fromId:{[Op.ne]: FCCFX}},
                 {toId:{[Op.ne]: FCCFX}},
             ]},
-        group: ['type'], raw: true,
+        group: ['biz_type'], raw: true,
         replacements:[stakingAddrId],
         // logging: console.log, benchmark: true
     })
     const typeSet = new Set(['staking_deposit', 'staking_withdraw'])
     for(const row of sumList) {
-        let biz = (row['type'] === 'deposit' ? 'staking_deposit': "staking_withdraw") as BIZ;
+        let biz = (row['biz_type'] === 'deposit' ? 'staking_deposit': "staking_withdraw") as BIZ;
         let unit = parseFloat(new Drip(row['value']).toCFX());
         await PosDailyStatMix.upsert({
             day: dt, biz: biz,
