@@ -1,4 +1,5 @@
 import {Conflux} from "js-conflux-sdk";
+import {ethers} from "ethers";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -49,6 +50,7 @@ export class ApiService {
     crc1155transferQuery: Crc1155TransferQuery
     dailyBlockDataStatQuery: DailyBlockDataStatQuery
     rankService: RankService;
+    tokenTool: TokenTool;
     tokenQuery: TokenQuery;
     marketDataQuery: MarketDataQuery;
     contractCreateQuery: DailyContractCreateQuery;
@@ -61,6 +63,7 @@ export class ApiService {
     addrCfxTransferHandler : AddrCfxTransferHandler;
     tokenTransferHandler : TokenTransferHandler;
     cfx: Conflux;
+    eth;
     logger: any
 }
 
@@ -106,12 +109,14 @@ export function createLogger(tag) {
 }
 createLogger('apiServer')
 export class ApiServer {
-    cfx: Conflux;
     config: StatConfig
+    cfx: Conflux;
+    eth;
 
     constructor() {
         this.config = config
         this.cfx = new Conflux(config.conflux)
+        this.eth = new ethers.providers.JsonRpcProvider(config.ether.url)
     }
 
     public async init() {
@@ -148,9 +153,11 @@ export class ApiServer {
         apiService.addrCfxTransferHandler = new AddrCfxTransferHandler(apiApp);
         apiService.tokenTransferHandler = new TokenTransferHandler(apiApp);
         const tokenTool = new TokenTool(this.cfx)
+        apiService.tokenTool = tokenTool
         apiService.tokenQuery = new TokenQuery({tokenTool})
-        apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery})
+        apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery, cfx: this.cfx})
         apiService.cfx = this.cfx;
+        apiService.eth = this.eth;
         apiService.logger = logger
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)

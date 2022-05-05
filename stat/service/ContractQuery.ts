@@ -200,7 +200,7 @@ export class ContractQuery {
         // real-time impl info
         if(verified !== null){
             const proxyInfo = await this.queryImplementation(base32)
-                .catch((e) => logger.error({ src: 'queryVerify', msg: e.toString() }));
+                .catch((e) => logger?.error({ src: 'queryVerify', msg: e.toString() }));
             if(proxyInfo?.implementation){
                 verified.beacon = proxyInfo.beacon;
                 verified.implementation = proxyInfo.implementation;

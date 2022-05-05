@@ -79,9 +79,15 @@ module.exports = {
   E_SPACE_OPENAPI: {
     MODULE: {
       ACCOUNT: 'account',
+      CONTRACT: 'contract',
+      TRANSACTION: 'transaction',
+      BLOCK: 'block',
+      LOGS: 'logs',
       TOKEN: 'token',
+      STATS: 'stats',
     },
     ACTION: {
+      // account
       BALANCE: 'balance',
       BALANCE_MULTI: 'balancemulti',
       TX_LIST: 'txlist',
@@ -90,7 +96,23 @@ module.exports = {
       TOKEN_NFT_TX: 'tokennfttx',
       GET_MINED_BLOCKS: 'getminedblocks',
       BALANCE_HISTORY: 'balancehistory',
+      TOKEN_BALANCE: 'tokenbalance',
+      TOKEN_BALANCE_HISTORY: 'tokenbalancehistory',
+      // contract
+      GET_ABI: 'getabi',
+      GET_SOURCECODE: 'getsourcecode',
+      // transaction
+      GET_STATUS: 'getstatus',
+      GET_TX_RECEIPT_STATUS: 'gettxreceiptstatus',
+      // block
+      GET_BLOCK_NO_BY_TIME: 'getblocknobytime',
+      // logs
+      GET_LOGS: 'getLogs',
+      // token
       TOKEN_INFO: 'tokeninfo',
+      // stats
+      TOKEN_SUPPLY: 'tokensupply',
+      TOKEN_SUPPLY_HISTORY: 'tokensupplyhistory',
     },
   },
 };
