@@ -1,6 +1,6 @@
 import {Conflux, Drip} from "js-conflux-sdk";
 import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosGap} from "../../model/PoS";
-import {DataTypes, Model, Sequelize, Op, fn, col, literal} from 'sequelize'
+import {DataTypes, Model, QueryTypes, Sequelize, Op, fn, col, literal} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Epoch} from "../../model/Epoch";
@@ -184,10 +184,11 @@ async function calcDailyParticipation(dt:Date) {
     const votes = await PosAccountBlock.sum('votes', {where: {blockNumber: {[Op.between]:[minHeight, maxHeight]}},
         logging: console.log, benchmark: true,
     })
-    const shouldVotes = await PosCommittee.sum('totalVotingPower', {
-        where: {epochNumber: {[Op.between]:[minEpoch, maxEpoch]}},
-        logging: console.log, benchmark: true,
-    })
+    const [pos_committee, pos_block] = [PosCommittee.getTableName(), PosBlock.getTableName()]
+    const sql = `select sum(m.totalVotingPower * t.cnt), sum(t.cnt)*300, m.epochNumber from ${pos_committee} m join (
+ select count(*) as cnt, epoch from ${pos_block} where createdAt BETWEEN ? AND ? group by epoch) t
+ on t.epoch = m.epochNumber`
+    const shouldVotes = await PosCommittee.sequelize.query(sql, {type: QueryTypes.SELECT}).then(res=>Number(res))
     //
     let rate = votes/shouldVotes;
     await PosDailyStatMix.upsert({
