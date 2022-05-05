@@ -192,7 +192,10 @@ async function calcDailyParticipation(dt:Date) {
         {type: QueryTypes.SELECT, replacements: [dayStart, dayEnd], raw: true,
             logging: console.log, benchmark: true,
         })
-        .then(res=>Number(res['v']))
+        .then(res=>{
+            console.log('result is', res, typeof res['v'])
+            return Number(res['v'])
+        })
     //
     let rate = votes/shouldVotes;
     await PosDailyStatMix.upsert({
