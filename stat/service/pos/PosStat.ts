@@ -1,5 +1,5 @@
 import {Conflux, Drip} from "js-conflux-sdk";
-import {PosAccount, PosBlock, PosGap} from "../../model/PoS";
+import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosGap} from "../../model/PoS";
 import {DataTypes, Model, Sequelize, Op, fn, col, literal} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
@@ -12,7 +12,7 @@ export interface IPosDailyStatMix {
     id?:number; day:Date; v:number; biz: BIZ
 }
 export declare type BIZ = 'account_count' | 'finalize_epoch_gap' | 'finalize_second_gap'
-    | 'pos_staking' | 'pos_apy' | 'pos_total_reward' | 'staking_deposit' | 'staking_withdraw'
+    | 'pos_staking' | 'pos_apy' | 'pos_total_reward' | 'staking_deposit' | 'staking_withdraw' | 'participation_rate'
 export class PosDailyStatMix extends Model<IPosDailyStatMix> implements IPosDailyStatMix{
     id?:number; day:Date; v:number; biz: BIZ
     static register(seq:Sequelize) {
@@ -166,6 +166,36 @@ export async function fixDailyPosAccountCount() {
 }
 
 //======
+async function calcDailyParticipation(dt:Date) {
+    const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
+    const blockRange = await PosBlock.findOne({
+        attributes:[
+            [fn('min', col('height')), 'minHeight'],
+            [fn('max', col('height')), 'maxHeight'],
+            [fn('min', col('epoch')), 'minEpoch'],
+            [fn('max', col('epoch')), 'maxEpoch'],
+        ], raw: true,
+        where: {createdAt: {[Op.between]:[dayStart, dayEnd]}},
+        logging: console.log, benchmark: true,
+    })
+    //
+    const {minHeight, maxHeight, minEpoch, maxEpoch} = blockRange as any
+    const votes = await PosAccountBlock.sum('votes', {where: {blockNumber: {[Op.between]:[minHeight, maxHeight]}},
+        logging: console.log, benchmark: true,
+    })
+    const shouldVotes = await PosCommittee.sum('totalVotingPower', {
+        where: {epochNumber: {[Op.between]:[minEpoch, maxEpoch]}},
+        logging: console.log, benchmark: true,
+    })
+    //
+    let rate = votes/shouldVotes;
+    await PosDailyStatMix.upsert({
+        v: rate, biz: 'participation_rate', day: dayStart,
+    })
+    console.log(` participation_rate ${dayStart.toISOString()} ${rate}`)
+}
+//======
 export async function scheduleDailyStakingDepositWithdraw(){
     async function repeat() {
         const now = new Date()
@@ -231,6 +261,14 @@ async function main() {
         await init()
         while(await syncFinalizeGap());
         console.log('pos gap count', await PosGap.count())
+    } else if (cmd === 'calcDailyVoting') {
+        await init()
+        let dt = new Date('2020-10-29')
+        while (dt.getTime() < Date.now()) {
+            await calcDailyParticipation(dt)
+            dt.setDate(dt.getDate() + 1)
+        }
+        console.log(`done`)
     } else if (cmd === 'calcDailyStaking') {
         await init()
         // await calcDailyStaking(new Date('2022-04-29'))
