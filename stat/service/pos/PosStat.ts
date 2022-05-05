@@ -1,16 +1,18 @@
 import {Conflux, Drip} from "js-conflux-sdk";
 import {PosAccount, PosBlock, PosGap} from "../../model/PoS";
-import {DataTypes, Model, Sequelize, Op, fn, col} from 'sequelize'
+import {DataTypes, Model, Sequelize, Op, fn, col, literal} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Epoch} from "../../model/Epoch";
 import {init} from "../tool/FixDailyTokenStat";
+import {CfxTransfer} from "../../model/CfxTransfer";
+import {makeIdV} from "../../model/HexMap";
 
 export interface IPosDailyStatMix {
     id?:number; day:Date; v:number; biz: BIZ
 }
-declare type BIZ = 'account_count' | 'finalize_epoch_gap' | 'finalize_second_gap'
-    | 'pos_staking' | 'pos_apy' | 'pos_total_reward'
+export declare type BIZ = 'account_count' | 'finalize_epoch_gap' | 'finalize_second_gap'
+    | 'pos_staking' | 'pos_apy' | 'pos_total_reward' | 'staking_deposit' | 'staking_withdraw'
 export class PosDailyStatMix extends Model<IPosDailyStatMix> implements IPosDailyStatMix{
     id?:number; day:Date; v:number; biz: BIZ
     static register(seq:Sequelize) {
@@ -162,12 +164,83 @@ export async function fixDailyPosAccountCount() {
     }
     console.log(`done`)
 }
+
+//======
+export async function scheduleDailyStakingDepositWithdraw(){
+    async function repeat() {
+        const now = new Date()
+        await calcDailyStaking(now)
+        if (now.getUTCHours() === 0 && now.getUTCMinutes() < 30) {
+            now.setDate(now.getDate()-1)// previous day
+            await calcDailyStaking(now)
+        }
+    }
+    repeat().then(()=>{
+        setInterval(repeat, 600_000)// 10 minutes
+    })
+}
+let stakingAddrId = 0
+let FCCFX = 0
+async function calcDailyStaking(dt: Date) {
+    if (!stakingAddrId) {
+        stakingAddrId = await makeIdV('0x0888000000000000000000000000000000000002')
+        FCCFX = await makeIdV('0x86d1f0072e8aa1a38d34b4bfa7521cdb5293849f') // net1029. do not care net 1
+        console.log(`stakingAddrId `, stakingAddrId)
+    }
+    const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
+    const sumList = await CfxTransfer.findAll({
+        attributes:[
+            [fn('sum', col('value')), 'value'],
+            // [fn('count', col('*')), 'count'],
+            [literal('IF(fromId=?, "withdraw", "deposit")'), 'biz_type'],
+        ],
+        where: {[Op.and]:[
+                {createdAt: {[Op.between]: [dayStart, dayEnd]}},
+                {[Op.or]:[{fromId: stakingAddrId}, {toId: stakingAddrId}]},
+                {fromId:{[Op.ne]: FCCFX}},
+                {toId:{[Op.ne]: FCCFX}},
+            ]},
+        group: ['biz_type'], raw: true,
+        replacements:[stakingAddrId],
+        // logging: console.log, benchmark: true
+    })
+    const typeSet = new Set(['staking_deposit', 'staking_withdraw'])
+    for(const row of sumList) {
+        let biz = (row['biz_type'] === 'deposit' ? 'staking_deposit': "staking_withdraw") as BIZ;
+        let unit = parseFloat(new Drip(row['value']).toCFX());
+        await PosDailyStatMix.upsert({
+            day: dt, biz: biz,
+            v: unit,
+        })
+        typeSet.delete(biz)
+        console.log(`${dt.toISOString()} ${biz}`, unit)
+    }
+    for(const type of typeSet) {
+        await PosDailyStatMix.upsert({
+            day: dt, biz: type as BIZ,
+            v: 0,
+        })
+        console.log(`${dt.toISOString()} ${type}`, 0)
+    }
+}
+//======
 async function main() {
     const [,,cmd] = process.argv
     if (cmd === 'testGap') {
         await init()
         while(await syncFinalizeGap());
         console.log('pos gap count', await PosGap.count())
+    } else if (cmd === 'calcDailyStaking') {
+        await init()
+        // await calcDailyStaking(new Date('2022-04-29'))
+        // await calcDailyStaking(new Date('2022-02-23'))
+        let dt = new Date('2020-10-29')
+        while (dt.getTime() < Date.now()) {
+            await calcDailyStaking(dt)
+            dt.setDate(dt.getDate() + 1)
+        }
+        console.log(`done`)
     }
     // let url = ''
     // url = 'https://main.confluxrpc.com'
