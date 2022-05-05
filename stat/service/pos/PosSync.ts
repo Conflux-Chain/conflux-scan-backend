@@ -15,7 +15,13 @@ import {fn, col, Op, QueryTypes} from "sequelize";
 import {PosQuery} from "./PosQuery";
 import {removeLongData} from "../common/utils";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
-import {fixDailyPosAccountCount, PosStat, scheduleDailyStatMix, scheduleSyncPosGap} from "./PosStat";
+import {
+    fixDailyPosAccountCount,
+    PosStat,
+    scheduleDailyStakingDepositWithdraw,
+    scheduleDailyStatMix,
+    scheduleSyncPosGap
+} from "./PosStat";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -686,6 +692,7 @@ async function start() {
         // posSync.patchCreatedAccount(0, '0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055')
         scheduleDailyStatMix(cfx).then()
         scheduleSyncPosGap().then()
+        scheduleDailyStakingDepositWithdraw().then()
         return Promise.all([
             // posSync.test(),
             posSync.repeatSyncBlock(),
