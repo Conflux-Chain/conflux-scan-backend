@@ -115,7 +115,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/pos-daily-total-reward', async (ctx)=>{
         await fetchDailyStatMix('pos_total_reward', ctx)
     })
-    router.get('/pos-daily-staking', async (ctx)=>{
+    router.get('/pos-daily-deposit', async (ctx)=>{
         await fetchDailyStatMix('staking_deposit', ctx)
     })
     router.get('/pos-daily-withdraw', async (ctx)=>{
