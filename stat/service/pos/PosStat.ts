@@ -193,7 +193,7 @@ async function calcDailyParticipation(dt:Date) {
     await PosDailyStatMix.upsert({
         v: rate, biz: 'participation_rate', day: dayStart,
     })
-    console.log(` participation_rate ${dayStart.toISOString()} ${rate}`)
+    console.log(` participation_rate ${dayStart.toISOString()} ${votes} / ${shouldVotes} = ${rate}`)
 }
 //======
 export async function scheduleDailyStakingDepositWithdraw(){
@@ -263,7 +263,7 @@ async function main() {
         console.log('pos gap count', await PosGap.count())
     } else if (cmd === 'calcDailyVoting') {
         await init()
-        let dt = new Date('2020-10-29')
+        let dt = new Date('2022-01-24')
         while (dt.getTime() < Date.now()) {
             await calcDailyParticipation(dt)
             dt.setDate(dt.getDate() + 1)
