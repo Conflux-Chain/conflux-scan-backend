@@ -1796,7 +1796,7 @@ components:
       schema:
         type: string
     detailParam:
-      description: "If show detail, the value is true/false."
+      description: "(Deprecated, see 'withBrief' parameter)If show detail, the value is true/false."
       name: detail
       in: query
       required: false

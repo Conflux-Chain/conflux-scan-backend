@@ -67,7 +67,7 @@ export async function handleException(ctx, next) {
         if (err instanceof KnownError) {
             return
         }
-        if (err.message.includes('path="", not match "hex40"')) {
+        if (err?.message?.includes('path="", not match "hex40"')) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG)
             return
         }

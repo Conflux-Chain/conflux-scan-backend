@@ -124,6 +124,19 @@ export function mustBeEnumParamIfPresent(obj, key: string, options:string[]) {
     }
     throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
 }
+export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[]) {
+    for (const key of keys) {
+        const v = obj[key]
+        if (v === undefined || v === null) {
+            return
+        }
+        const has = options.includes(v)
+        if (has) {
+            return
+        }
+        throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
+    }
+}
 export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
     for(const k of keys) {
         const v = obj[k];
@@ -142,6 +155,17 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
         }
         if (/contract/.test(k) && addr.type !== 'contract') {
             throw new InvalidParamError(`Invalid contract parameter [${k}] with value [${v}], it's not a contract address.`);
+        }
+    }
+}
+export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
+    for (const k of keys) {
+        const v = obj[k];
+        if (v === undefined || v === null) {
+            continue
+        }
+        if (!/0x[0-9a-fA-F]{64}/.test(v)) {
+            throw new InvalidParamError(`Invalid Hex64 parameter with value [${v}].`);
         }
     }
 }

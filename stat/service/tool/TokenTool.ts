@@ -65,6 +65,13 @@ export class TokenTool {
             .catch(() => undefined);
     }
 
+    async getTokenBalance(address, accountAddress, epochNumber) {
+        return this.contract.balanceOf(accountAddress)
+            .call({ to: address }, epochNumber)
+            .then(BigInt)
+            .catch(() => undefined);
+    }
+
     async awaitObject(object): Promise<any> {
         const result = {};
         await Promise.all(lodash.map(object, async (promise, key) => {

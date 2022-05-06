@@ -15,9 +15,12 @@ import {
 import {
     getPaginationESpace,
     mustBeAddressParamIfPresent,
-    mustBeEnumParamIfPresent, mustBeIntParamIfPresent,
+    mustBeEnumParamIfPresent, mustBeEnumParamsIfPresent, mustBeHex64ParamIfPresent, mustBeIntParamIfPresent,
 } from "../../stat/service/common/utils";
 import {queryTokenInfo} from "../service/OpenTokenService";
+import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
+import {Epoch} from "../../stat/model/Epoch";
+import {Op} from "sequelize";
 
 const lodash = require('lodash');
 const CONST = require('../../stat/service/common/constant');
@@ -57,6 +60,54 @@ async function gateway(ctx) {
                 case ACTION.BALANCE_HISTORY:
                     handler = getBalanceHistory;
                     break;
+                case ACTION.TOKEN_BALANCE:
+                    handler = getTokenBalance;
+                    break;
+                case ACTION.TOKEN_BALANCE_HISTORY:
+                    handler = getTokenBalanceHistory;
+                    break;
+                default:
+                    return Promise.reject(`unknown action:${action} of module:${module}`);
+            }
+            break;
+        case MODULE.CONTRACT:
+            switch (action) {
+                case ACTION.GET_ABI:
+                    handler = getABI;
+                    break;
+                case ACTION.GET_SOURCECODE:
+                    handler = getSourceCode;
+                    break;
+                default:
+                    return Promise.reject(`unknown action:${action} of module:${module}`);
+            }
+            break;
+        case MODULE.TRANSACTION:
+            switch (action) {
+                case ACTION.GET_STATUS:
+                    handler = getStatus;
+                    break;
+                case ACTION.GET_TX_RECEIPT_STATUS:
+                    handler = getTxReceiptStatus;
+                    break;
+                default:
+                    return Promise.reject(`unknown action:${action} of module:${module}`);
+            }
+            break;
+        case MODULE.BLOCK:
+            switch (action) {
+                case ACTION.GET_BLOCK_NO_BY_TIME:
+                    handler = getBlockNoByTime;
+                    break;
+                default:
+                    return Promise.reject(`unknown action:${action} of module:${module}`);
+            }
+            break;
+        case MODULE.LOGS:
+            switch (action) {
+                case ACTION.GET_LOGS:
+                    handler = getLogs;
+                    break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
             }
@@ -65,6 +116,18 @@ async function gateway(ctx) {
             switch (action) {
                 case ACTION.TOKEN_INFO:
                     handler = getTokenInfo;
+                    break;
+                default:
+                    return Promise.reject(`unknown action:${action} of module:${module}`);
+            }
+            break;
+        case MODULE.STATS:
+            switch (action) {
+                case ACTION.TOKEN_SUPPLY:
+                    handler = getTokenSupply;
+                    break;
+                case ACTION.TOKEN_SUPPLY_HISTORY:
+                    handler = getTokenSupplyHistory;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -251,12 +314,166 @@ async function getBalanceHistory(ctx) {
     setBody(ctx, result)
 }
 
+async function getTokenBalance(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
+    const {contractaddress, address} = ctx.request.query;
+
+    const result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, undefined);
+    setBody(ctx, result)
+}
+
+async function getTokenBalanceHistory(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
+    mustBeIntParamIfPresent(ctx.request.query, 'blockno');
+    const {contractaddress, address, blockno: epochNumber} = ctx.request.query;
+
+    let result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, epochNumber);
+    result = result === undefined ? '0' : result;
+    setBody(ctx, result)
+}
+
+async function getABI(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    const {address} = ctx.request.query;
+
+    const contract = await getApiService().contractQuery.queryVerify({address})
+
+    const result = contract.abi;
+    setBody(ctx, result)
+}
+
+async function getSourceCode(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    const {address} = ctx.request.query;
+
+    const contract = await getApiService().contractQuery.queryVerify({address})
+
+    const contractItem = lodash.defaults({}, {
+        SourceCode: contract.sourceCode,
+        ABI: contract.abi,
+        ContractName: contract.name,
+        CompilerVersion: contract.version,
+        OptimizationUsed: contract.optimizeFlag ? '1' : '0',
+        Runs: contract.optimizeRuns,
+        ConstructorArguments: contract.constructorArgs,
+        EVMVersion: "Default",
+        Library: "",
+        LicenseType: contract.license,
+        Proxy: contract.proxy ? '1' : '0',
+        Implementation: contract.implementation,
+        SwarmSource: "",
+    });
+    const result = [contractItem];
+    setBody(ctx, result)
+}
+
+async function getStatus(ctx) {
+    const {txhash} = ctx.request.query;
+    if (!/0x[0-9a-fA-F]{64}/.test(txhash)) {
+        throw new InvalidParamError(`Invalid txhash parameter with value [${txhash}].`);
+    }
+
+    const tx = await FullTransaction.findOne({where: {hash: txhash}});
+
+    let result;
+    if(tx.status === 0){
+        result = {isError: '0'};
+    } else{
+        const failedTx = await FailedTx.findOne({where: lodash.pick(tx, ['epoch', 'blockPosition', 'txPosition'])});
+        result = {isError: '1', errDescription: failedTx.txExecErrorMsg};
+    }
+    setBody(ctx, result)
+}
+
+async function getTxReceiptStatus(ctx) {
+    mustBeHex64ParamIfPresent(ctx.request.query, 'txhash')
+    const {txhash} = ctx.request.query;
+
+    const tx = await FullTransaction.findOne({where: {hash: txhash}});
+
+    const result = { status: tx.status === 0 ? '1' : '0'};
+    setBody(ctx, result)
+}
+
+async function getBlockNoByTime(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'timestamp');
+    mustBeEnumParamIfPresent(ctx.request.query, 'closest', ['before', 'after']);
+    let {timestamp, closest} = ctx.request.query;
+    closest = closest === undefined ? 'before' : closest;
+
+    const comparator = closest === 'before' ? Op.lte : Op.gte;
+    const datetime =  new Date(timestamp * 1000);
+    console.log(`timestamp:${timestamp},UTC:${datetime.toUTCString()},TimezoneOffset:${datetime.getTimezoneOffset()}`);
+    const epoch = await Epoch.findOne({
+        where: {timestamp: {[comparator]: datetime}},
+        order: [['epoch', 'DESC']],
+    });
+
+    const result = epoch.epoch;
+    setBody(ctx, result)
+}
+
+async function getLogs(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    mustBeHex64ParamIfPresent(ctx.request.query, 'topic0', 'topic1', 'topic2', 'topic3');
+    let {
+        fromBlock, toBlock, address,
+        topic0, topic1, topic2, topic3,
+    } = ctx.request.query;
+
+    // check block range param
+    if(fromBlock === undefined || (!/^[0-9]+$/.test(fromBlock) && fromBlock !== 'latest')) {
+        throw new InvalidParamError(`Invalid fromBlock parameter with value [${fromBlock}].`);
+    }
+    if(toBlock === undefined || (!/^[0-9]+$/.test(toBlock) && toBlock !== 'latest')) {
+        throw new InvalidParamError(`Invalid toBlock parameter with value [${toBlock}].`);
+    }
+    fromBlock = fromBlock === 'latest' ? fromBlock : parseInt(fromBlock);
+    toBlock = toBlock === 'latest' ? toBlock : parseInt(toBlock);
+
+    // check address param and topic param
+    if(address === undefined && topic0 === undefined && topic1 === undefined && topic2 === undefined
+        && topic3 === undefined){
+        throw new InvalidParamError(`An address and/or topic(X) parameters are required.`);
+    }
+
+    const topics = [null, null, null, null];
+    topic0 && (topics[0] = topic0);
+    topic1 && (topics[1] = topic1);
+    topic2 && (topics[2] = topic2);
+    topic3 && (topics[3] = topic3);
+    const limit = 1000;
+    const options = {fromBlock, toBlock, address, topics, limit};
+    const logArray = await getApiService().eth.getLogs(options);
+    console.log(`[getLogs]options:${JSON.stringify(options)},logs:${JSON.stringify(logArray)}`);
+    const result = logArray.slice(0, limit);
+    setBody(ctx, result)
+}
+
 async function getTokenInfo(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
     const {contractaddress} = ctx.request.query;
 
     const tokenInfo = await queryTokenInfo(contractaddress);
     const result = [tokenInfo];
+    setBody(ctx, result)
+}
+
+async function getTokenSupply(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
+    const {contractaddress} = ctx.request.query;
+
+    const result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, undefined);
+    setBody(ctx, result)
+}
+
+async function getTokenSupplyHistory(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
+    mustBeIntParamIfPresent(ctx.request.query, 'blockno');
+    const {contractaddress, blockno: epochNumber} = ctx.request.query;
+
+    let result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, epochNumber);
+    result = result === undefined ? '0' : result;
     setBody(ctx, result)
 }
 

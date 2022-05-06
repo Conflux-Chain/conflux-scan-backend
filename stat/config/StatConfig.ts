@@ -13,6 +13,9 @@ export interface ConfluxOption {
     defaultGasRatio?: number,
     defaultStorageRatio?: number,
 }
+export interface EtherOption {
+    url: string,
+}
 export interface Database{
     host: string;
     port: number;
@@ -63,6 +66,7 @@ export interface StatConfig{
     port: number;
     apiPort: number;
     conflux: ConfluxOption; // chain rpc node
+    ether: EtherOption;
     cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
     tokenTransferRpc?: ConfluxOption; // for token transfer sync
     cfxWsUrl: string

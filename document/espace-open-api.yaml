@@ -47,7 +47,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Balance'
+                $ref: '#/components/schemas/CommonResponse'
   '/api?module=account&action=balancemulti':
     get:
       tags:
@@ -194,7 +194,7 @@ paths:
     get:
       tags:
         - 'Accounts'
-      description: 'Get Historical Ether Balance for a Single Address By BlockNo'
+      description: 'Get Historical CFX Balance for a Single Address By BlockNo'
       parameters:
         - $ref: '#/components/parameters/address'
         - $ref: '#/components/parameters/blockno'
@@ -205,6 +205,157 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BalanceHistory'
+  '/api?module=contract&action=getabi':
+    get:
+      tags:
+        - 'Contracts'
+      description: 'Get Contract ABI for Verified Contract Source Codes'
+      parameters:
+        - $ref: '#/components/parameters/address'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=contract&action=getsourcecode':
+    get:
+      tags:
+        - 'Contracts'
+      description: 'Get Contract Source Code for Verified Contract Source Codes'
+      parameters:
+        - $ref: '#/components/parameters/address'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractInfo'
+  '/api?module=transaction&action=getstatus':
+    get:
+      tags:
+        - 'Transactions'
+      description: 'Check Contract Execution Status'
+      parameters:
+        - $ref: '#/components/parameters/txhash'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractExecutionStatus'
+  '/api?module=transaction&action=gettxreceiptstatus':
+    get:
+      tags:
+        - 'Transactions'
+      description: 'Check Transaction Receipt Status'
+      parameters:
+        - $ref: '#/components/parameters/txhash'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionReceiptStatus'
+  '/api?module=block&action=getblocknobytime':
+    get:
+      tags:
+        - 'Blocks'
+      description: 'Get Block Number by Timestamp'
+      parameters:
+        - $ref: '#/components/parameters/timestamp'
+        - $ref: '#/components/parameters/closest'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=logs&action=getLogs':
+    get:
+      tags:
+        - 'Logs'
+      description: 'The Event Log API was designed to provide an alternative to the native eth_getLogs'
+      parameters:
+        - $ref: '#/components/parameters/fromBlock'
+        - $ref: '#/components/parameters/toBlock'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/topic0'
+        - $ref: '#/components/parameters/topic1'
+        - $ref: '#/components/parameters/topic2'
+        - $ref: '#/components/parameters/topic3'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=stats&action=tokensupply':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Get ERC20-Token TotalSupply by ContractAddress'
+      parameters:
+        - $ref: '#/components/parameters/contractaddress'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=account&action=tokenbalance':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Get ERC20-Token Account Balance for TokenContractAddress'
+      parameters:
+        - $ref: '#/components/parameters/contractaddress'
+        - $ref: '#/components/parameters/address'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=stats&action=tokensupplyhistory':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Get Historical ERC20-Token TotalSupply by ContractAddress & BlockNo'
+      parameters:
+        - $ref: '#/components/parameters/contractaddress'
+        - $ref: '#/components/parameters/blockno'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=account&action=tokenbalancehistory':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Get Historical ERC20-Token Account Balance for TokenContractAddress by BlockNo'
+      parameters:
+        - $ref: '#/components/parameters/contractaddress'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/blockno'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
   '/api?module=token&action=tokeninfo':
     get:
       tags:
@@ -408,7 +559,7 @@ paths:
                 $ref: "#/components/schemas/AssetsOfAccountResp"
 components:
   schemas:
-    Balance:
+    CommonResponse:
       type: object
       properties:
         status:
@@ -645,6 +796,72 @@ components:
           type: string
         result:
           type: string
+    ContractInfo:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              SourceCode:
+                type: string
+              ABI:
+                type: string
+              ContractName:
+                type: string
+              CompilerVersion:
+                type: string
+              OptimizationUsed:
+                type: string
+              Runs:
+                type: string
+              ConstructorArguments:
+                type: string
+              EVMVersion:
+                type: string
+              Library:
+                type: string
+              LicenseType:
+                type: string
+              Proxy:
+                type: string
+              Implementation:
+                type: string
+              SwarmSource:
+                type: string
+    ContractExecutionStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            isError:
+              type: string
+              description: 'The isError field returns 0 for successful transactions and 1 for failed transactions'
+            errDescription:
+              type: string
+              description: 'Error description'
+    TransactionReceiptStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            status:
+              type: string
+              description: 'The status field returns 0 for failed transactions and 1 for successful transactions'
     TokenInfo:
       type: object
       properties:
@@ -1108,6 +1325,63 @@ components:
       required: false
       schema:
         type: integer
+    fromBlock:
+      name: fromBlock
+      in: query
+      description: "the integer block number eg. 12697906"
+      required: false
+      schema:
+        type: integer
+    toBlock:
+      name: toBlock
+      in: query
+      description: "the integer block number eg. 12697906"
+      required: false
+      schema:
+        type: integer
+    topic0:
+      name: topic0
+      in: query
+      description: "32 Bytes per topic"
+      required: false
+      schema:
+        type: string
+    topic1:
+      name: topic1
+      in: query
+      description: "32 Bytes per topic"
+      required: false
+      schema:
+        type: string
+    topic2:
+      name: topic2
+      in: query
+      description: "32 Bytes per topic"
+      required: false
+      schema:
+        type: string
+    topic3:
+      name: topic3
+      in: query
+      description: "32 Bytes per topic"
+      required: false
+      schema:
+        type: string
+    timestamp:
+      description: 'the integer representing the Unix timestamp in seconds'
+      name: timestamp
+      in: query
+      required: false
+      schema:
+        type: integer
+    closest:
+      description: "the closest available block to the provided timestamp, either before or after"
+      name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'before'
     startblock:
       name: startblock
       in: query
