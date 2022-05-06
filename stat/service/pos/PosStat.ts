@@ -166,6 +166,23 @@ export async function fixDailyPosAccountCount() {
 }
 
 //======
+async function scheduleDaily(fn:(dt: Date)=>Promise<void>) {
+    async function repeat() {
+        const now = new Date()
+        await fn(now)
+        if (now.getUTCHours() === 0 && now.getUTCMinutes() < 30) {
+            now.setDate(now.getDate()-1)// previous day
+            await fn(now)
+        }
+    }
+    repeat().then(()=>{
+        setInterval(repeat, 600_000)// 10 minutes
+    })
+}
+//======
+export async function scheduleDailyParticipation(){
+    return scheduleDaily(calcDailyParticipation)
+}
 async function calcDailyParticipation(dt:Date) {
     const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
     const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
@@ -193,8 +210,8 @@ async function calcDailyParticipation(dt:Date) {
             logging: console.log, benchmark: true,
         })
         .then(res=>{
-            console.log('result is', res, typeof res['v'])
-            return Number(res['v'])
+            // console.log('result is', res, typeof res[0]['v'])
+            return Number(res[0]['v'])
         })
     //
     let rate = votes/shouldVotes;
@@ -205,17 +222,7 @@ async function calcDailyParticipation(dt:Date) {
 }
 //======
 export async function scheduleDailyStakingDepositWithdraw(){
-    async function repeat() {
-        const now = new Date()
-        await calcDailyStaking(now)
-        if (now.getUTCHours() === 0 && now.getUTCMinutes() < 30) {
-            now.setDate(now.getDate()-1)// previous day
-            await calcDailyStaking(now)
-        }
-    }
-    repeat().then(()=>{
-        setInterval(repeat, 600_000)// 10 minutes
-    })
+    return scheduleDaily(calcDailyStaking)
 }
 let stakingAddrId = 0
 let FCCFX = 0
