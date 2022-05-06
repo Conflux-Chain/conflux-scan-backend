@@ -194,12 +194,12 @@ async function calcDailyParticipation(dt:Date) {
             [fn('max', col('epoch')), 'maxEpoch'],
         ], raw: true,
         where: {createdAt: {[Op.between]:[dayStart, dayEnd]}},
-        logging: console.log, benchmark: true,
+        // logging: console.log, benchmark: true,
     })
     //
     const {minHeight, maxHeight, minEpoch, maxEpoch} = blockRange as any
     const votes = await PosAccountBlock.sum('votes', {where: {blockNumber: {[Op.between]:[minHeight, maxHeight]}},
-        logging: console.log, benchmark: true,
+        // logging: console.log, benchmark: true,
     })
     const [pos_committee, pos_block] = [PosCommittee.getTableName(), PosBlock.getTableName()]
     const sql = `select sum(m.totalVotingPower * t.cnt) as v from ${pos_committee} m join (
@@ -207,7 +207,7 @@ async function calcDailyParticipation(dt:Date) {
  on t.epoch = m.epochNumber`
     const shouldVotes = await PosCommittee.sequelize.query(sql,
         {type: QueryTypes.SELECT, replacements: [dayStart, dayEnd], raw: true,
-            logging: console.log, benchmark: true,
+            // logging: console.log, benchmark: true,
         })
         .then(res=>{
             // console.log('result is', res, typeof res[0]['v'])
