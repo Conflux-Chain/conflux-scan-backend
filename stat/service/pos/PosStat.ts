@@ -1,6 +1,6 @@
 import {Conflux, Drip} from "js-conflux-sdk";
-import {PosAccount, PosBlock, PosGap} from "../../model/PoS";
-import {DataTypes, Model, Sequelize, Op, fn, col, literal} from 'sequelize'
+import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosGap} from "../../model/PoS";
+import {DataTypes, Model, QueryTypes, Sequelize, Op, fn, col, literal} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Epoch} from "../../model/Epoch";
@@ -12,7 +12,7 @@ export interface IPosDailyStatMix {
     id?:number; day:Date; v:number; biz: BIZ
 }
 export declare type BIZ = 'account_count' | 'finalize_epoch_gap' | 'finalize_second_gap'
-    | 'pos_staking' | 'pos_apy' | 'pos_total_reward' | 'staking_deposit' | 'staking_withdraw'
+    | 'pos_staking' | 'pos_apy' | 'pos_total_reward' | 'staking_deposit' | 'staking_withdraw' | 'participation_rate'
 export class PosDailyStatMix extends Model<IPosDailyStatMix> implements IPosDailyStatMix{
     id?:number; day:Date; v:number; biz: BIZ
     static register(seq:Sequelize) {
@@ -166,18 +166,63 @@ export async function fixDailyPosAccountCount() {
 }
 
 //======
-export async function scheduleDailyStakingDepositWithdraw(){
+async function scheduleDaily(fn:(dt: Date)=>Promise<void>) {
     async function repeat() {
         const now = new Date()
-        await calcDailyStaking(now)
+        await fn(now)
         if (now.getUTCHours() === 0 && now.getUTCMinutes() < 30) {
             now.setDate(now.getDate()-1)// previous day
-            await calcDailyStaking(now)
+            await fn(now)
         }
     }
     repeat().then(()=>{
         setInterval(repeat, 600_000)// 10 minutes
     })
+}
+//======
+export async function scheduleDailyParticipation(){
+    return scheduleDaily(calcDailyParticipation)
+}
+async function calcDailyParticipation(dt:Date) {
+    const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
+    const blockRange = await PosBlock.findOne({
+        attributes:[
+            [fn('min', col('height')), 'minHeight'],
+            [fn('max', col('height')), 'maxHeight'],
+            [fn('min', col('epoch')), 'minEpoch'],
+            [fn('max', col('epoch')), 'maxEpoch'],
+        ], raw: true,
+        where: {createdAt: {[Op.between]:[dayStart, dayEnd]}},
+        // logging: console.log, benchmark: true,
+    })
+    //
+    const {minHeight, maxHeight, minEpoch, maxEpoch} = blockRange as any
+    const votes = await PosAccountBlock.sum('votes', {where: {blockNumber: {[Op.between]:[minHeight, maxHeight]}},
+        // logging: console.log, benchmark: true,
+    })
+    const [pos_committee, pos_block] = [PosCommittee.getTableName(), PosBlock.getTableName()]
+    const sql = `select sum(m.totalVotingPower * t.cnt) as v from ${pos_committee} m join (
+ select count(*) as cnt, epoch from ${pos_block} where createdAt BETWEEN ? AND ? group by epoch) t
+ on t.epoch = m.epochNumber`
+    const shouldVotes = await PosCommittee.sequelize.query(sql,
+        {type: QueryTypes.SELECT, replacements: [dayStart, dayEnd], raw: true,
+            // logging: console.log, benchmark: true,
+        })
+        .then(res=>{
+            // console.log('result is', res, typeof res[0]['v'])
+            return Number(res[0]['v'])
+        })
+    //
+    let rate = votes/shouldVotes * 100;
+    await PosDailyStatMix.upsert({
+        v: rate, biz: 'participation_rate', day: dayStart,
+    })
+    console.log(` participation_rate ${dayStart.toISOString()} ${votes} / ${shouldVotes} = ${rate}`)
+}
+//======
+export async function scheduleDailyStakingDepositWithdraw(){
+    return scheduleDaily(calcDailyStaking)
 }
 let stakingAddrId = 0
 let FCCFX = 0
@@ -231,6 +276,14 @@ async function main() {
         await init()
         while(await syncFinalizeGap());
         console.log('pos gap count', await PosGap.count())
+    } else if (cmd === 'calcDailyVoting') {
+        await init()
+        let dt = new Date('2022-01-24')
+        while (dt.getTime() < Date.now()) {
+            await calcDailyParticipation(dt)
+            dt.setDate(dt.getDate() + 1)
+        }
+        console.log(`done`)
     } else if (cmd === 'calcDailyStaking') {
         await init()
         // await calcDailyStaking(new Date('2022-04-29'))

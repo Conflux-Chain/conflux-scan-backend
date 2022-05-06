@@ -121,6 +121,9 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/pos-daily-withdraw', async (ctx)=>{
         await fetchDailyStatMix('staking_withdraw', ctx)
     })
+    router.get('/pos-daily-participation-rate', async (ctx)=>{
+        await fetchDailyStatMix('participation_rate', ctx)
+    })
     router.get('/pos-recent-reward-rank', async (ctx)=>{
         const day = intParam(ctx.request.query, 'day', 1)
         const dt = new Date()

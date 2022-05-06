@@ -66,6 +66,9 @@ export class PosBlock extends Model<IPosBlock> implements IPosBlock {
             tableName: 'pos_block',
             sequelize: seq,
             timestamps: false,
+            indexes: [{
+                name:'idx_date', fields: ['createdAt']
+            }]
         })
     }
 }
