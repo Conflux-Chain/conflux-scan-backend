@@ -214,7 +214,7 @@ async function calcDailyParticipation(dt:Date) {
             return Number(res[0]['v'])
         })
     //
-    let rate = votes/shouldVotes;
+    let rate = votes/shouldVotes * 100;
     await PosDailyStatMix.upsert({
         v: rate, biz: 'participation_rate', day: dayStart,
     })
