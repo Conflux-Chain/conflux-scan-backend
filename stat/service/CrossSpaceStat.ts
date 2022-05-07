@@ -40,7 +40,7 @@ export async function calcDailyCfxFromEvm(dt: Date) {
     const sumV = await CfxTransfer.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true,
         replacements: [dayStart, dayEnd],
         logging: console.log, benchmark: true,
-    }).then(res=>res[0]['amt'])
+    }).then(res=>res[0]['amt'] || 0)
 
     const [bean] = await CrossSpaceStat.upsert({
         biz: "DailyCfxFromEVM", v: parseFloat(new Drip(sumV).toCFX()), day: dt,
