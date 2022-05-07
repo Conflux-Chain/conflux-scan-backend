@@ -15,7 +15,7 @@ import {
 import {
     getPaginationESpace,
     mustBeAddressParamIfPresent,
-    mustBeEnumParamIfPresent, mustBeEnumParamsIfPresent, mustBeHex64ParamIfPresent, mustBeIntParamIfPresent,
+    mustBeEnumParamIfPresent, mustBeHex64ParamIfPresent, mustBeIntParamIfPresent,
 } from "../../stat/service/common/utils";
 import {queryTokenInfo} from "../service/OpenTokenService";
 import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
@@ -77,6 +77,12 @@ async function gateway(ctx) {
                     break;
                 case ACTION.GET_SOURCECODE:
                     handler = getSourceCode;
+                    break;
+                case ACTION.VERIFY_SOURCECODE:
+                    handler = verifySourcecode;
+                    break;
+                case ACTION.CHECK_VERIFY_STATUS:
+                    handler = checkVerifyStatus;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -477,13 +483,58 @@ async function getTokenSupplyHistory(ctx) {
     setBody(ctx, result)
 }
 
+async function verifySourcecode(ctx) {
+    const {
+        contractaddress, sourceCode, codeformat, contractname, compilerversion, optimizationUsed, runs,
+        constructorArguements, evmversion, licenseType
+    } = ctx.request.body;
+
+    const options = {
+        address: contractaddress,
+        name: contractname,
+        sourcecode: sourceCode,
+        compiler: compilerversion,
+        optimizeRuns: runs,
+        license: CONST.LICENSE[licenseType].code,
+        constructorArgs: constructorArguements
+    };
+
+    const submitResp = await getApiService().contractQuery.submitVerify(options);
+    setBody(ctx, submitResp.guid, submitResp.error ? "0" : '1', submitResp.error);
+}
+
+async function checkVerifyStatus(ctx) {
+    const {guid} = ctx.request.query;
+
+    const verify = await getApiService().contractQuery.checkVerify({guid});
+    const result = [
+        {
+            SourceCode: verify.sourceCode,
+            ABI: verify.abi,
+            ContractName: verify.name,
+            CompilerVersion: verify.version,
+            OptimizationUsed: verify.optimizeFlag,
+            Runs: verify.optimizeRuns,
+            ConstructorArguments: verify.constructorArgs === '0x' ? '' : verify.constructorArgs,
+            EVMVersion: "Default",
+            Library: "",
+            LicenseType: lodash.findKey(CONST.LICENSE, (v) => v.code === verify.license),
+            Proxy: verify.proxy,
+            Implementation: verify.implementation,
+            SwarmSource:"",
+        }
+    ];
+    setBody(ctx, result)
+}
+
 // -----------------------------------tool---------------------------------------
 function parseGatewayParam(ctx) {
     const {E_SPACE_OPENAPI: {MODULE, ACTION}} = CONST;
-    mustBeEnumParamIfPresent(ctx.request.query, 'module', Object.values(MODULE) as string[]);
-    mustBeEnumParamIfPresent(ctx.request.query, 'action', Object.values(ACTION) as string[]);
+    const requestData = Object.keys(ctx.request.query).length ? ctx.request.query : ctx.request.body;
+    mustBeEnumParamIfPresent(requestData, 'module', Object.values(MODULE) as string[]);
+    mustBeEnumParamIfPresent(requestData, 'action', Object.values(ACTION) as string[]);
 
-    const {module, action} = ctx.request.query
+    const {module, action} = requestData
     return {module, action};
 }
 
@@ -514,6 +565,7 @@ function setBody(ctx, result: any, status = "1", message = 'OK') {
 // -----------------------------------router---------------------------------------
 export function registerRouter(router: Router) {
     router.get('/api', gateway)
+    router.post('/api', gateway)
 
     // nft assets
     router.get('/nft/balances', listNFTBalances);

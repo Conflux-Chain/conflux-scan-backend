@@ -233,6 +233,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContractInfo'
+  '/api':
+    post:
+      tags:
+        - 'Contracts'
+      requestBody:
+        description: 'Verify Source Code - Source Code Submission Gist'
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifySourcecode'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=contract&action=checkverifystatus':
+    get:
+      tags:
+        - 'Contracts'
+      description: 'Verify Source Code - Check Source Code Verification Submission Status'
+      parameters:
+        - $ref: '#/components/parameters/guid'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractInfo'
   '/api?module=transaction&action=getstatus':
     get:
       tags:
@@ -1262,6 +1293,65 @@ components:
                   amount:
                     description: 'The token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
+    VerifySourcecode:
+      type: object
+      properties:
+        module:
+          type: string
+          default: 'contract'
+        action:
+          type: string
+          default: 'verifysourcecode'
+        contractaddress:
+          description: "Contract Address starts with 0x... "
+          type: string
+        sourceCode:
+          description: "Contract Source Code (Flattened if necessary)"
+          type: string
+        codeformat:
+          description: "solidity-single-file only supported"
+          type: string
+          default: 'solidity-single-file'
+        contractname:
+          description: "contract name"
+          type: string
+        compilerversion:
+          description: "compiler version"
+          type: string
+        optimizationUsed:
+          description: "0 = No Optimization, 1 = Optimization used (applicable when codeformat=solidity-single-file)"
+          type: string
+          default: 0
+        runs:
+          description: "set to 200 as default unless otherwise  (applicable when codeformat=solidity-single-file) "
+          type: string
+          default: 200
+        constructorArguements:
+          description: "if applicable"
+          type: string
+          default: ''
+        evmversion:
+          description: "leave blank for compiler default, homestead, tangerineWhistle, spuriousDragon, byzantium, constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file)"
+          type: string
+          default: 'istanbul'
+        licenseType:
+          description: "Valid codes 1-14 where
+                              1.  No License (None)
+                              2.  The Unlicense (Unlicense)
+                              3. 	MIT License (MIT)
+                              4. 	GNU General Public License v2.0 (GNU GPLv2)
+                              5. 	GNU General Public License v3.0 (GNU GPLv3)
+                              6. 	GNU Lesser General Public License v2.1 (GNU LGPLv2.1)
+                              7. 	GNU Lesser General Public License v3.0 (GNU LGPLv3)
+                              8. 	BSD 2-clause 'Simplified' license (BSD-2-Clause)
+                              9. 	BSD 3-clause 'New' Or 'Revised' license* (BSD-3-Clause)
+                              10. Mozilla Public License 2.0 (MPL-2.0)
+                              11. Open Software License 3.0 (OSL-3.0)
+                              12. Apache 2.0 (Apache-2.0)
+                              13. GNU Affero General Public License (GNU AGPLv3)
+                              14. Business Source License (BSL 1.1)"
+          type: string
+          default: 1
   parameters:
     address:
       name: address
@@ -1281,6 +1371,13 @@ components:
       name: contractaddress
       in: query
       description: "the string representing the token contract address to check for balance"
+      required: false
+      schema:
+        type: string
+    guid:
+      name: guid
+      in: query
+      description: "Upon successful submission, a GUID is returned, which can be used to check for submission status."
       required: false
       schema:
         type: string

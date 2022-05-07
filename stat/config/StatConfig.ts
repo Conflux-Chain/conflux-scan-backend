@@ -54,6 +54,10 @@ export interface OssConf {
     bucket: string
     prefix: string // mainnet testnet dev stress pos
 }
+export interface JSONRpcOption {
+    url: string,
+    proxy: object,
+}
 export interface StatConfig{
     redis: RedisConf
     influxDB?: ISingleHostConfig
@@ -125,6 +129,9 @@ export interface StatConfig{
     blacklist: boolean,
 
     databaseRW: DatabaseRW,
+    jsonRpc: JSONRpcOption,
+    asyncVerifySourcecode: boolean,
+    asyncVerifySourcecodeDelay: number,
 }
 
 export interface Erc20WatchList{

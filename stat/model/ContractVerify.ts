@@ -21,6 +21,10 @@ export interface IContractVerify{
     proxyPattern?:string
     codeHash?:string
     similarMatch?:string
+    guid?:string
+    taskStatus?: number // 20(submitted), 21(processing), 22(done)
+    warnings?:string
+    errors?:string
 }
 
 export class ContractVerify extends Model<IContractVerify> implements IContractVerify{
@@ -44,6 +48,10 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     proxyPattern?:string
     codeHash?:string
     similarMatch?:string
+    guid?:string
+    taskStatus?: number
+    warnings?:string
+    errors?:string
 
     static register(seq:Sequelize) {
         ContractVerify.init({
@@ -69,6 +77,10 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             proxyPattern: {type: DataTypes.CHAR(64), allowNull: true},
             codeHash: {type: DataTypes.CHAR(64), allowNull: true, },
             similarMatch: {type: DataTypes.CHAR(64), allowNull: true},
+            guid: {type: DataTypes.CHAR(50), allowNull: true},
+            taskStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 21},
+            warnings: {type: DataTypes.TEXT, allowNull: true, },
+            errors: {type: DataTypes.TEXT, allowNull: true, },
         },{
             tableName: 'contract_verify',
             sequelize: seq,
@@ -99,6 +111,10 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             proxyPattern:contract.proxyPattern,
             codeHash:contract.codeHash,
             similarMatch:contract.similarMatch,
+            guid:contract.guid,
+            taskStatus:contract.taskStatus,
+            warnings:contract.warnings,
+            errors:contract.errors,
         }, {
             transaction: dbTx
         })

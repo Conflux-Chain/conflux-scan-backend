@@ -34,6 +34,7 @@ import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 import {IS_EVM2, KV} from "../stat/model/KV";
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
+const JsonRPCSDK = require('../common/JsonRPCSDK');
 
 const config = loadConfig('Prod')
 let apiService: ApiService
@@ -64,6 +65,7 @@ export class ApiService {
     tokenTransferHandler : TokenTransferHandler;
     cfx: Conflux;
     eth;
+    jsonRpc;
     logger: any
 }
 
@@ -155,20 +157,20 @@ export class ApiServer {
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenTool = tokenTool
         apiService.tokenQuery = new TokenQuery({tokenTool})
-        apiService.contractQuery = new ContractQuery({tokenQuery: apiService.tokenQuery, cfx: this.cfx})
+        apiService.jsonRpc = new JsonRPCSDK(config.jsonRpc);
+        apiService.contractQuery = new ContractQuery({cfx: this.cfx, jsonRpc: apiService.jsonRpc,
+            tokenQuery: apiService.tokenQuery})
         apiService.cfx = this.cfx;
         apiService.eth = this.eth;
         apiService.logger = logger
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
         new BatchBalanceWatcher(this.cfx, null, utilContract)
-        // test
-        // logger.info(`simple message`, 1)
-        // logger.error('what about the error ?', new Error('here is error msg'))
         await apiService.addrTransactionHandler.scheduleCache();
         await apiService.minerBlockHandler.scheduleCache();
         await apiService.addrCfxTransferHandler.scheduleCache();
         await apiService.tokenTransferHandler.scheduleCache();
+        config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
     }
 }
 

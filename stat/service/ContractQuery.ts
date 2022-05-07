@@ -8,13 +8,14 @@ import {
     POCKET_ADDRESS_MAP,
     idHex40Map,
     convert2base32map,
-    ESpaceHex40Map
+    ESpaceHex40Map, Hex64Map
 } from "../model/HexMap";
-import {json, Op} from "sequelize";
+import {json, Op, QueryTypes} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
+import {EpochSync} from "./EpochSync";
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -105,13 +106,15 @@ export class ContractQuery {
         return {total: addressArray.length, list: addressArray};
     }
 
-    public async addVerify({name, address, compiler, version, optimizeFlag, optimizeRuns, license, verifyResult}) {
+    public async addVerify({address, sourceCode = undefined, name, compiler, version, optimizeFlag, optimizeRuns,
+        license, taskStatus = CONST.TASK_STATUS.PROCESSING, verifyResult = undefined, codeHash = undefined}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
         // const hex40id = (await makeId(address)).id;
 
         const verify = new ContractVerify();
         verify.base32 = base32;
+        verify.sourceCode = sourceCode;
         // verify.hex40id = hex40id;
         verify.name = name;
         verify.compiler = compiler;
@@ -119,14 +122,22 @@ export class ContractQuery {
         verify.optimizeFlag = optimizeFlag;
         verify.optimizeRuns = optimizeRuns;
         verify.license = license;
+        verify.taskStatus = taskStatus;
         verify.verifyResult = verifyResult;
+        verify.codeHash = codeHash;
+
+        const plain = `${base32}${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        const random = sign.keccak256(Buffer.from(plain)).toString('hex');
+        verify.guid = random.substr(0, 50);
+
         const result = await ContractVerify.add(verify);
         logger?.info({ src: `[${address}]stat verify request`, addResult: `${JSON.stringify(result)}` });
         return result;
     }
 
-    public async updateVerify({id, address, version, constructorArgs, sourceCode, abi, verifyResult,
-        codeHash, matchCode, matchDesc}) {
+    public async updateVerify({id, address = undefined, version = undefined, constructorArgs = undefined,
+        abi = undefined, verifyResult = undefined, matchCode = undefined, matchDesc = undefined,
+        taskStatus = undefined, warnings = undefined, errors = undefined}){
         const {logger} = this.app;
         const base32 = toBase32(address);
 
@@ -135,18 +146,22 @@ export class ContractQuery {
             logger?.error({ src: `[${address}]updateVerify`, updateError: `record.base32 not equals ${base32}` });
         }
 
-        const updateInfo = lodash.defaults({}, {version, constructorArgs, verifyResult, codeHash, matchCode, matchDesc,
-            updatedAt: new Date()});
-        let updateVerify = lodash.assign(dbVerify, updateInfo);
+        const updateVerify = lodash.defaults({}, {version, constructorArgs, verifyResult, matchCode, matchDesc,
+            taskStatus, warnings, errors, updatedAt: new Date()});
         if(verifyResult){
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => logger?.error({ src: `[${address}]updateVerify`, queryImplError: e.toString() }));
-            updateVerify = lodash.assign(updateInfo, {sourceCode, abi}, proxyInfo);
+            lodash.assign(updateVerify, {abi}, proxyInfo);
+        } else{
+            lodash.assign(updateVerify, {sourceCode: null});
         }
         const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
 
-        verifyResult && saveAbiInfo(abi).catch(e => console.log(`[${address}]updateVerify.saveAbiInfo`, e));
-        await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]updateVerify.linkVerify`, e));
+        if(verifyResult){
+            saveAbiInfo(abi).catch(e => console.log(`[${address}]updateVerify.saveAbiInfo`, e));
+            await this.linkVerify({address, codeHash: dbVerify.codeHash})
+                .catch(e => console.log(`[${address}]updateVerify.linkVerify`, e));
+        }
         logger?.info({ src: `[${address}]updateVerify`, updateResult: `${JSON.stringify(result)}` });
 
         return result;
@@ -400,5 +415,189 @@ export class ContractQuery {
             implementation: implAddress,
             proxyPattern: "OpenZeppelin's Unstructured Storage"
         });
+    }
+
+    // verify sourcecode
+    public async verify({ address, name, sourcecode, compiler, optimizeRuns, license, constructorArgs }) {
+        const { cfx, cfxSDK, jsonRpc } = this.app;
+        const sdk = cfxSDK || cfx;
+
+        const sourceCode = this.rmRedundantLicense(sourcecode);
+        const response = { name, sourceCode, optimizeRuns };
+
+        const code = await sdk.getCode(address);
+        if (code === undefined || code === '0x') {
+            return lodash.assign(response, { errors: [`invalid contract's code:${code}`] });
+        }
+        const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+
+        const verify = await this.queryVerify({ address });
+        if (verify !== null) {
+            return lodash.assign(response, { errors: ['the contract already verified!'] });
+        }
+
+        try {
+            const optimizeFlag = Number.isInteger(optimizeRuns) && optimizeRuns >= 0;
+            const record = await this.addVerify({address, sourceCode, name, compiler: 'solidity', version: compiler,
+                optimizeFlag, optimizeRuns, license, codeHash});
+
+            const creationData = await this.getCreationData({ address })
+                .catch(e => {throw new Error(`name:'CreationDataError', code:50403, error:${e}`)});
+            const result = await jsonRpc.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
+                compiler, optimizeRuns});
+            result.verifyResult = this.getVerifyResult(result.matchCode);
+            result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
+            result.errors = result.errors.map((v) => v.formattedMessage || v.message);
+
+            const updateRecord = {id: record.id, address, abi: JSON.stringify(result.abi),
+                constructorArgs: result.encodedConstructorArgs};
+            lodash.assign(updateRecord, lodash.pick(result, ['version', 'verifyResult', 'matchCode', 'matchDesc' ]));
+            const updateVerify = await this.updateVerify(updateRecord);
+
+            console.log(JSON.stringify({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` }));
+            return lodash.assign(response, lodash.pick(result, ['version', 'warnings', 'errors', 'abi']),
+                {exactMatch: result.verifyResult});
+        } catch (e) {
+            console.log(JSON.stringify({ src: `[${address}]verify`, error: `${e.message}` }));
+            return lodash.assign(response, { errors: [e.message] });
+        }
+    }
+
+    public async submitVerify({ address, name, sourcecode, compiler, optimizeRuns, license, constructorArgs }) {
+        const { cfx, cfxSDK } = this.app;
+        const sdk = cfxSDK || cfx;
+
+        try{
+            address = format.hexAddress(address);
+            await this.queryVerify({ address }).catch(() => {throw new Error(`the contract already verified`)});
+            const code = await sdk.getCode(address).catch(() => {throw new Error(`invalid contract's code:${code}`)});
+
+            const sourceCode = this.rmRedundantLicense(sourcecode);
+            const optimizeFlag = Number.isInteger(optimizeRuns) && optimizeRuns >= 0;
+            const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+
+            const record = await this.addVerify({address, sourceCode, name, compiler: 'solidity', version: compiler,
+                optimizeFlag, optimizeRuns, license, codeHash, taskStatus: CONST.TASK_STATUS.SUBMITTED});
+            return { address, guid: record.guid };
+
+        }catch (e) {
+            console.log(JSON.stringify({ src: `[${address}]submitVerify`, error: `${e.message}` }));
+            return { address, error: e.message };
+        }
+    }
+
+    public async doVerify({ id, address, name, sourceCode, compiler, optimizeRuns, license, constructorArgs }) {
+        const { cfx, cfxSDK, jsonRpc } = this.app;
+        const sdk = cfxSDK || cfx;
+
+        try {
+            address = format.hexAddress(address);
+            await this.queryVerify({ address }).catch(() => {throw new Error(`the contract already verified`)});
+            const code = await sdk.getCode(address).catch(() => {throw new Error(`invalid contract's code:${code}`)});
+            const creationData = await this.getCreationData({ address })
+                .catch(e => {throw new Error(`get creation data error:${e}`)});
+
+            const updateVerify = {taskStatus: CONST.TASK_STATUS.PROCESSING};
+            const lockResult = await ContractVerify.update(updateVerify, {where: { id,
+                    taskStatus: CONST.TASK_STATUS.SUBMITTED}});
+            if(!lockResult[0]){
+                console.log(JSON.stringify({ src: `[${address}]doVerify`, error: `acquire lock fail` }));
+                return;
+            }
+
+            const result = await jsonRpc.verifyPlus({address, sourceCode, name, compiler, optimizeRuns,
+                creationData, deployedBytecode: code});
+            result.verifyResult = this.getVerifyResult(result.matchCode);
+            result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
+            result.errors = result.errors.map((v) => v.formattedMessage || v.message);
+
+            const updateRecord = {
+                id, address,
+                abi: JSON.stringify(result.abi),
+                constructorArgs: result.encodedConstructorArgs,
+                warnings: JSON.stringify(result.warnings),
+                errors: JSON.stringify(result.errors),
+            };
+            lodash.assign(updateRecord, lodash.pick(result, ['version', 'verifyResult', 'matchCode', 'matchDesc' ]));
+            lodash.assign(updateRecord, {taskStatus: CONST.TASK_STATUS.DONE});
+            await this.updateVerify(updateRecord);
+
+        } catch (e) {
+            console.log(JSON.stringify({ src: `[${address}]doVerify`, error: `${e.message}` }));
+            const updateRecord = {
+                id, address,
+                verifyResult: false,
+                errors: e.message,
+            };
+            lodash.assign(updateRecord, CONST.MATCH_STATUS.ERROR);
+            lodash.assign(updateRecord, {taskStatus: CONST.TASK_STATUS.DONE});
+            await this.updateVerify(updateRecord).catch((e) => console.log(e));
+        }
+    }
+
+    public async checkVerify({ guid }) {
+        let verified = await ContractVerify.findOne({where: {guid}, raw: true});
+        return verified;
+    }
+
+    private rmRedundantLicense(sourceCode) {
+        let result = sourceCode.replace('SPDX-License-Identifier', '__license__');
+        result = result.replace(/SPDX-License-Identifier/gi, 'SLI');
+        result = result.replace('__license__', 'SPDX-License-Identifier');
+        return result;
+    }
+
+    private async getCreationData({ address }) {
+        const { cfx, cfxSDK } = this.app;
+        const sdk = cfxSDK || cfx;
+
+        const hexAddress = format.hexAddress(address);
+        const sql = "select * from hex64 where id = (select txHashId from trace_create_contract where `to` = (select id from hex40 where hex = ?))";
+        const array = await Hex64Map.sequelize.query(sql, {type: QueryTypes.SELECT,
+            replacements:[hexAddress.substr(2)], logging: console.log }) as Hex64Map[];
+        const transactionHash = array?.length ? '0x' + array[0].hex : undefined;
+
+        const transaction = await sdk.getTransactionByHash(transactionHash);
+        const transactionTraceArray = await sdk.traceTransaction(transaction.hash);
+        const traceArray = await EpochSync.matchTrace(transactionTraceArray, transaction);
+        const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
+            trace.transactionHash === transaction.hash &&
+            format.hexAddress(trace.action.to) === hexAddress));
+        const traceCreate = creatTraceArray[0];
+
+        return traceCreate.action.init;
+    }
+
+    private getVerifyResult(matchCode) {
+        return matchCode === CONST.MATCH_STATUS.INTERNAL_CONTRACT.matchCode ||
+            matchCode === CONST.MATCH_STATUS.DEPLOYED_FULL.matchCode ||
+            matchCode === CONST.MATCH_STATUS.DEPLOYED_PARTIAL.matchCode ||
+            matchCode === CONST.MATCH_STATUS.CREATION_FULL.matchCode ||
+            matchCode === CONST.MATCH_STATUS.CREATION_PARTIAL.matchCode ||
+            matchCode === CONST.MATCH_STATUS.SIMILAR.matchCode;
+    }
+
+    public async schedule(delay: number = 3000) {
+        console.log(`schedule doVerify with delay: ${delay}`);
+        const that = this;
+        async function repeat() {
+            await that.run().catch(e => console.log(`schedule doVerify error: ${e.message}`));
+            setTimeout(repeat, delay)
+        }
+        repeat().then();
+    }
+
+    private async run() {
+        let submitVerify = await ContractVerify.findOne({
+            where: {taskStatus: CONST.TASK_STATUS.SUBMITTED},
+            order: [['createdAt', 'ASC']],
+            raw: true
+        });
+        if(!submitVerify) {
+            return;
+        }
+
+        submitVerify.address = submitVerify.base32;
+        await this.doVerify(submitVerify);
     }
 }

@@ -754,7 +754,7 @@ export class EpochSync extends SyncBase{
         return trace;
     }
 
-    private static matchTrace(transactionTraceArray, transaction){
+    public static matchTrace(transactionTraceArray, transaction){
         if (!transactionTraceArray.length) {
             return[];
         }
