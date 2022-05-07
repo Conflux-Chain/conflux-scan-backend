@@ -2,7 +2,7 @@ import {CfxTransfer} from "../model/CfxTransfer";
 import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes} from 'sequelize'
 import {Conflux, Drip} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
-import {makeIdV} from "../model/HexMap";
+import {Hex40Map, makeIdV} from "../model/HexMap";
 import {FullTransaction} from "../model/FullBlock";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
@@ -29,13 +29,15 @@ export async function calcDailyCfxFromEvm(dt: Date) {
     const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
     const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
     const evm = chainId == 8888 ? 'eth8889' : 'evm'
+    const evmZeroId = await CfxTransfer.sequelize.query(`select id from ${evm}.${Hex40Map.getTableName()
+    } where hex=${'0'.padStart(40, '0')}`, {}).then(res=>res[0]['id'])
     const [cfx_transfer_2, full_tx] = [CfxTransfer.getTableName(), FullTransaction.getTableName()]
     // const sql = `select x.fromId, x.toId, x.value,x.type, tx.hash, tx.gasPrice
 
     const sql = `select sum(x.value) as amt
     from ${evm}.${cfx_transfer_2} x left join ${evm}.${full_tx} tx 
     on tx.epoch=x.epoch and tx.blockPosition=x.blockIndex and tx.txPosition=x.txIndex
-    where x.createdAt between ? and ? and tx.toId=${crossSpaceContractId} and tx.gasPrice=0`
+    where x.createdAt between ? and ? and tx.toId=${evmZeroId} and tx.gasPrice=0`
 
     const sumV = await CfxTransfer.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true,
         replacements: [dayStart, dayEnd],
