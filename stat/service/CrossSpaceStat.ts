@@ -32,7 +32,7 @@ export async function calcDailyCfxFromEvm(dt: Date) {
     const evm = chainId == 8888 ? 'eth8889' : 'evm'
     evmZeroId = evmZeroId || await CfxTransfer.sequelize.query(`select id from ${evm}.${Hex40Map.getTableName()
     } where hex='${'0'.padStart(40, '0')}'`, {type: QueryTypes.SELECT, raw: true,
-        logging: console.log,
+        // logging: console.log,
     }).then(res=>res[0]['id'])
 
     const [cfx_transfer_2, full_tx] = [CfxTransfer.getTableName(), FullTransaction.getTableName()]
@@ -45,7 +45,7 @@ export async function calcDailyCfxFromEvm(dt: Date) {
 
     const sumV = await CfxTransfer.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true,
         replacements: [dayStart, dayEnd],
-        logging: console.log, benchmark: true,
+        // logging: console.log, benchmark: true,
     }).then(res=>res[0]['amt'] || 0)
 
     const [bean] = await CrossSpaceStat.upsert({
