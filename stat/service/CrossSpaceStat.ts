@@ -26,6 +26,8 @@ export class CrossSpaceStat extends Model<ICrossSpaceStat> implements ICrossSpac
     }
 }
 export async function calcDailyCfxFromEvm(dt: Date) {
+    const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
     const evm = chainId == 8888 ? 'eth8889' : 'evm'
     const [cfx_transfer_2, full_tx] = [CfxTransfer.getTableName(), FullTransaction.getTableName()]
     // const sql = `select x.fromId, x.toId, x.value,x.type, tx.hash, tx.gasPrice
@@ -36,6 +38,7 @@ export async function calcDailyCfxFromEvm(dt: Date) {
     where x.createdAt between ? and ? and tx.toId=${crossSpaceContractId} and tx.gasPrice=0`
 
     const sumV = await CfxTransfer.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true,
+        replacements: [dayStart, dayEnd],
         logging: console.log, benchmark: true,
     }).then(res=>res[0]['amt'])
 
