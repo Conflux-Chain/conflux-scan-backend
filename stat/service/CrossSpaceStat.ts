@@ -30,7 +30,10 @@ export async function calcDailyCfxFromEvm(dt: Date) {
     const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
     const evm = chainId == 8888 ? 'eth8889' : 'evm'
     const evmZeroId = await CfxTransfer.sequelize.query(`select id from ${evm}.${Hex40Map.getTableName()
-    } where hex=${'0'.padStart(40, '0')}`, {}).then(res=>res[0]['id'])
+    } where hex=${'0'.padStart(40, '0')}`, {type: QueryTypes.SELECT, raw: true,
+        logging: console.log,
+    }).then(res=>res[0]['id'])
+
     const [cfx_transfer_2, full_tx] = [CfxTransfer.getTableName(), FullTransaction.getTableName()]
     // const sql = `select x.fromId, x.toId, x.value,x.type, tx.hash, tx.gasPrice
 
