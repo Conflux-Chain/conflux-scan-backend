@@ -25,12 +25,13 @@ export class CrossSpaceStat extends Model<ICrossSpaceStat> implements ICrossSpac
         })
     }
 }
+let evmZeroId = 0
 export async function calcDailyCfxFromEvm(dt: Date) {
     const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
     const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
     const evm = chainId == 8888 ? 'eth8889' : 'evm'
-    const evmZeroId = await CfxTransfer.sequelize.query(`select id from ${evm}.${Hex40Map.getTableName()
-    } where hex=${'0'.padStart(40, '0')}`, {type: QueryTypes.SELECT, raw: true,
+    evmZeroId = evmZeroId || await CfxTransfer.sequelize.query(`select id from ${evm}.${Hex40Map.getTableName()
+    } where hex='${'0'.padStart(40, '0')}'`, {type: QueryTypes.SELECT, raw: true,
         logging: console.log,
     }).then(res=>res[0]['id'])
 
