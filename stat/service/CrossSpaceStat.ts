@@ -2,6 +2,7 @@ import {CfxTransfer} from "../model/CfxTransfer";
 import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes} from 'sequelize'
 import {Conflux, Drip} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
+import {makeIdV} from "../model/HexMap";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM'
 export interface ICrossSpaceStat {
@@ -42,9 +43,11 @@ async function main() {
     const cfg = await init()
     const cfx = new Conflux(cfg.conflux)
     const st = await cfx.getStatus()
-    console.log(`------- ${st.chainId} ------`)
+    console.log(`------- ${st.chainId} ------ crossSpaceContractId ${crossSpaceContractId}`)
     const [,,cmd] = process.argv
+    crossSpaceContractId = await makeIdV('0x0888000000000000000000000000000000000006')
     if (cmd === 'calcDailyCfxToEvm') {
+        // node stat/dist/service/CrossSpaceStat.js calcDailyCfxToEvm
         let dt = new Date('2022-02-21')
         while(dt.getTime() < Date.now()) {
             await calcDailyCfxToEvm(dt)
