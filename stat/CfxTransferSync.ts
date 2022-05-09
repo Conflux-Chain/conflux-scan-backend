@@ -23,6 +23,7 @@ import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {RedisWrap} from "./service/RedisWrap";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
+import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -305,6 +306,7 @@ async function setup() {
         await test(parseInt(fromEpoch))
         process.exit(0)
     } else {
+        scheduleCrossSpaceStat(cfx).then()
         return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
     }
 }
