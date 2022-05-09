@@ -84,6 +84,7 @@ async function setup(cfx:Conflux) {
     console.log(`------- net ${st.chainId} ------ crossSpaceContractId ${crossSpaceContractId}`)
 }
 export async function scheduleCrossSpaceStat(cfx:Conflux) {
+    await setup(cfx)
     const isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
     if (isEvm) {
         return;
