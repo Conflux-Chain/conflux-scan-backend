@@ -166,11 +166,11 @@ export async function fixDailyPosAccountCount() {
 }
 
 //======
-async function scheduleDaily(fn:(dt: Date)=>Promise<void>) {
+export async function scheduleDaily(fn:(dt: Date)=>Promise<void>) {
     async function repeat() {
         const now = new Date()
         await fn(now)
-        if (now.getUTCHours() === 0 && now.getUTCMinutes() < 30) {
+        if (now.getUTCHours() === 0 && now.getUTCMinutes() < 15) {
             now.setDate(now.getDate()-1)// previous day
             await fn(now)
         }

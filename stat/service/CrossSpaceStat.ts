@@ -4,6 +4,8 @@ import {Conflux, Drip} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
 import {Hex40Map, makeIdV} from "../model/HexMap";
 import {FullTransaction} from "../model/FullBlock";
+import {IS_EVM, IS_EVM2, KV} from "../model/KV";
+import {scheduleDaily} from "./pos/PosStat";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
 export interface ICrossSpaceStat {
@@ -66,17 +68,36 @@ export async function calcDailyCfxToEvm(dt: Date) {
     })
     console.log(`DailyCfxToEVM ${dt.toISOString()} ${bean?.v}`)
 }
-
+export async function listCrossSpaceStat(biz: CrossSpaceStat_BIZ, receiver: any=undefined) {
+    const list = await CrossSpaceStat.findAll({where: {biz}, order: [['day', 'asc']]})
+    if(receiver){
+        receiver.body = {code: 0, list, total: list.length}
+    }
+    return list;
+}
 let crossSpaceContractId = 0
 let chainId = 0
+async function setup(cfx:Conflux) {
+    const st = await cfx.getStatus()
+    chainId = st.chainId
+    crossSpaceContractId = await makeIdV('0x0888000000000000000000000000000000000006')
+    console.log(`------- net ${st.chainId} ------ crossSpaceContractId ${crossSpaceContractId}`)
+}
+export async function scheduleCrossSpaceStat(cfx:Conflux) {
+    const isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
+    if (isEvm) {
+        return;
+    }
+    return scheduleDaily(async (dt)=>{
+        await calcDailyCfxToEvm(dt)
+        await calcDailyCfxFromEvm(dt)
+    })
+}
 async function main() {
     const cfg = await init()
     const cfx = new Conflux(cfg.conflux)
-    const st = await cfx.getStatus()
-    chainId = st.chainId
+    await setup(cfx)
     const [,,cmd] = process.argv
-    crossSpaceContractId = await makeIdV('0x0888000000000000000000000000000000000006')
-    console.log(`------- net ${st.chainId} ------ crossSpaceContractId ${crossSpaceContractId}`)
     if (cmd === 'calcDailyCfxToEvm') {
         // node stat/dist/service/CrossSpaceStat.js calcDailyCfxToEvm
         let dt = new Date('2022-02-21')
