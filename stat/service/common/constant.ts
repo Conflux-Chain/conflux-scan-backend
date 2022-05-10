@@ -127,6 +127,8 @@ module.exports = {
       GET_SOURCECODE: 'getsourcecode',
       VERIFY_SOURCECODE: 'verifysourcecode',
       CHECK_VERIFY_STATUS: 'checkverifystatus',
+      VERIFY_PROXY_CONTRACT: 'verifyproxycontract',
+      CHECK_PROXY_VERIFICATION: 'checkproxyverification',
       // transaction
       GET_STATUS: 'getstatus',
       GET_TX_RECEIPT_STATUS: 'gettxreceiptstatus',

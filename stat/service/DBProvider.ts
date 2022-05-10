@@ -38,7 +38,7 @@ import {DailyContractCreate} from "../model/DailyContractCreate";
 import {DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {DailyContractRegister} from "../model/DailyContractRegister";
-import {ContractVerify} from "../model/ContractVerify";
+import {ContractVerify, ProxyVerify} from "../model/ContractVerify";
 import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
@@ -163,6 +163,7 @@ export async function initPartialModel(sequelize) {
     KV.register(sequelize);
     Epoch.register(sequelize);
     ContractVerify.register(sequelize);
+    ProxyVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
     CfxBalance.register(sequelize);
     TokenSecurityAudit.register(sequelize);

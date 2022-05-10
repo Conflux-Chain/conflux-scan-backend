@@ -16,6 +16,7 @@ import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {EpochSync} from "./EpochSync";
+import {ProxyVerify} from "../model/ContractVerify";
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -110,12 +111,10 @@ export class ContractQuery {
         license, taskStatus = CONST.TASK_STATUS.PROCESSING, verifyResult = undefined, codeHash = undefined}) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
-        // const hex40id = (await makeId(address)).id;
 
         const verify = new ContractVerify();
         verify.base32 = base32;
         verify.sourceCode = sourceCode;
-        // verify.hex40id = hex40id;
         verify.name = name;
         verify.compiler = compiler;
         verify.version = version;
@@ -125,10 +124,7 @@ export class ContractQuery {
         verify.taskStatus = taskStatus;
         verify.verifyResult = verifyResult;
         verify.codeHash = codeHash;
-
-        const plain = `${base32}${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        const random = sign.keccak256(Buffer.from(plain)).toString('hex');
-        verify.guid = random.substr(0, 50);
+        verify.guid = this.genGUID(base32);
 
         const result = await ContractVerify.add(verify);
         logger?.info({ src: `[${address}]stat verify request`, addResult: `${JSON.stringify(result)}` });
@@ -536,8 +532,33 @@ export class ContractQuery {
     }
 
     public async checkVerify({ guid }) {
-        let verified = await ContractVerify.findOne({where: {guid}, raw: true});
-        return verified;
+        return ContractVerify.findOne({where: {guid}, raw: true});
+    }
+
+    public async submitVerifyProxy({ address, expectedImpl }) {
+        const{ logger } = this.app;
+        const base32 = toBase32(address);
+
+        const verify = await ProxyVerify.findOne({where: {base32, expectedImpl: !expectedImpl ? null : expectedImpl}});
+        if(verify) {
+            return {address, guid: verify.guid};
+        }
+
+        const guid = this.genGUID(base32);
+        const record = await ProxyVerify.add({base32, expectedImpl, guid} as ProxyVerify);
+        logger?.info({ src: `[${address}]stat submitVerifyProxy request`, addResult: `${JSON.stringify(record)}` });
+        return { address, guid: record.guid };;
+    }
+
+    public async checkVerifyProxy({ guid }) {
+        const record = await ProxyVerify.findOne({where: {guid}, raw: true});
+        if(!record) {
+            throw new Error(`guid not exist`);
+        }
+
+        const implInfo =  await this.queryImplementation(record.base32);
+        return lodash.assign(lodash.pick(record, ['guid', 'base32', 'expectedImpl']),
+            lodash.pick(implInfo, ['proxy', 'implementation']));
     }
 
     private rmRedundantLicense(sourceCode) {
@@ -575,6 +596,12 @@ export class ContractQuery {
             matchCode === CONST.MATCH_STATUS.CREATION_FULL.matchCode ||
             matchCode === CONST.MATCH_STATUS.CREATION_PARTIAL.matchCode ||
             matchCode === CONST.MATCH_STATUS.SIMILAR.matchCode;
+    }
+
+    private genGUID(base32){
+        const plain = `${base32}${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        const random = sign.keccak256(Buffer.from(plain)).toString('hex');
+        return random.substr(0, 50);
     }
 
     public async schedule(delay: number = 3000) {
