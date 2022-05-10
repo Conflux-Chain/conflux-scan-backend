@@ -102,22 +102,25 @@ class ContractService { // TODO: extends AccountService
       },
     } = this;
 
-    const { name, sourceCode: sc, compiler, optimizeRuns, license, constructorArgs } = rest;
-    const sourceCode = this._rmRedundantLicense(sc);
+    let { name, sourceCode, compiler, optimizeRuns, license, constructorArgs } = rest;
+    sourceCode = this._rmRedundantLicense(sourceCode);
+    const response = { name, sourceCode, optimizeRuns };
+
     const code = await service.conflux.getCode(address);
     if (code === undefined || code === '0x') {
-      return { name, sourceCode, optimizeRuns, errors: [`invalid contract's code:${code}`] };
+      return lodash.assign(response, { errors: [`invalid contract's code:${code}`] });
     }
+    const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
 
     const verify = await service.contractRdb.queryVerify({ address });
     if (verify !== null) {
-      return { name, sourceCode, optimizeRuns, errors: ['the contract already verified!'] };
+      return lodash.assign(response, { errors: ['the contract already verified!'] });
     }
 
     try {
       const optimizeFlag = Number.isInteger(optimizeRuns) && optimizeRuns >= 0;
-      const record = await service.contractRdb.addVerify({ address, name, compiler: 'solidity',
-        version: compiler, optimizeFlag, optimizeRuns, license });
+      const record = await service.contractRdb.addVerify({ address, sourceCode, name, compiler: 'solidity',
+        version: compiler, optimizeFlag, optimizeRuns, license, codeHash });
 
       const creationData = await this.getCreationData({ address }).catch(e => {throw new CreationDataError(e)});
       const result = await syncSDK.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
@@ -126,19 +129,18 @@ class ContractService { // TODO: extends AccountService
       result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
       result.errors = result.errors.map((v) => v.formattedMessage || v.message);
 
-      const codeHash = result?.verifyResult ? sign.keccak256(Buffer.from(code)).toString('hex') : undefined;
-      const updateRecord = {id: record.id, address, sourceCode, codeHash};
-      lodash.assign(updateRecord, {abi: JSON.stringify(result.abi), constructorArgs: result.encodedConstructorArgs},
-          lodash.pick(result, ['version', 'verifyResult', 'matchCode', 'matchDesc' ]));
+      const updateRecord = {id: record.id, address, abi: JSON.stringify(result.abi),
+        constructorArgs: result.encodedConstructorArgs};
+      lodash.assign(updateRecord, lodash.pick(result, ['version', 'verifyResult', 'matchCode', 'matchDesc' ]));
       const updateVerify = await service.contractRdb.updateVerify(updateRecord);
 
       logger.error({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` });
-      return lodash.defaults({ name, sourceCode, optimizeRuns },
-        lodash.pick(result, ['version', 'warnings', 'errors', 'abi']), {exactMatch: result.verifyResult});
+      return lodash.assign(response, lodash.pick(result, ['version', 'warnings', 'errors', 'abi']),
+          {exactMatch: result.verifyResult});
 
     } catch (e) {
       logger.error({ src: `[${address}]verify`, error: `${e.message}` });
-      return { name, sourceCode, optimizeRuns, errors: [e.message] };
+      return lodash.assign(response, { errors: [e.message] });
     }
   }
 

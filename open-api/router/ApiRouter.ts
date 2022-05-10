@@ -1,5 +1,6 @@
 import * as Koa from 'koa'
 import * as Router from "koa-router";
+import bodyParser = require("koa-bodyparser");
 import {ApiServer, getApiService} from '../ApiServer'
 import {StatApp} from "../../stat/StatApp";
 import {registerRouter as registerRouterESpace} from "./ESpaceApiRouter";
@@ -416,6 +417,7 @@ async function getTokenAnalysisData(ctx){
 
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
+    app.use(bodyParser())
     app.use(executionTime)
     app.use(handleException)
 

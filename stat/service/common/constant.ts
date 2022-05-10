@@ -65,6 +65,29 @@ module.exports = {
     '0x0888000000000000000000000000000000000006', // CrossSpaceCall
   ],
 
+  LICENSE: {
+    '1': {code: 'None', desc: 'No License'},
+    '2': {code: 'Unlicense', desc: 'The Unlicense'},
+    '3': {code: 'MIT', desc: 'MIT License'},
+    '4': {code: 'GNU_GPLv2', desc: 'GNU General Public License v2.0'},
+    '5': {code: 'GNU_GPLv3', desc: 'GNU General Public License v3.0'},
+    '6': {code: 'GNU_LGPLv2_1', desc: 'GNU Lesser General Public License v2.1'},
+    '7': {code: 'GNU_LGPLv3', desc: 'GNU Lesser General Public License v3.0'},
+    '8': {code: 'BSD_2_Clause', desc: 'BSD 2-clause "Simplified" license'},
+    '9': {code: 'BSD_3_Clause', desc: 'BSD 3-clause "New" Or "Revised" license*'},
+    '10': {code: 'MPL_2_0', desc: 'Mozilla Public License 2.0'},
+    '11': {code: 'OSL_3_0', desc: 'Open Software License 3.0'},
+    '12': {code: 'Apache_2_0', desc: 'Apache 2.0'},
+    '13': {code: 'GNU_AGPLv3', desc: 'GNU Affero General Public License'},
+    '14': {code: 'BSL_1_1', desc: 'Business Source License'},
+  },
+
+  TASK_STATUS: {
+    SUBMITTED: 20,
+    PROCESSING: 21,
+    DONE: 22,
+  },
+
   MATCH_STATUS: {
     INTERNAL_CONTRACT: {matchCode: 200, matchDesc: 'internal-contract'},
     DEPLOYED_FULL: {matchCode: 201, matchDesc: 'deployed-full'},
@@ -102,6 +125,8 @@ module.exports = {
       // contract
       GET_ABI: 'getabi',
       GET_SOURCECODE: 'getsourcecode',
+      VERIFY_SOURCECODE: 'verifysourcecode',
+      CHECK_VERIFY_STATUS: 'checkverifystatus',
       // transaction
       GET_STATUS: 'getstatus',
       GET_TX_RECEIPT_STATUS: 'gettxreceiptstatus',
