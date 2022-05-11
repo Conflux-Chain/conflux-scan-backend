@@ -264,6 +264,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContractInfo'
+  '/api?module=contract&action=verifyproxycontract':
+    get:
+      tags:
+        - 'Contracts'
+      description: 'Verifying Proxy Contract using cURL'
+      parameters:
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/expectedimplementation'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=contract&action=checkproxyverification':
+    get:
+      tags:
+        - 'Contracts'
+      description: 'Checking Proxy Contract Verification Submission Status using cURL'
+      parameters:
+        - $ref: '#/components/parameters/guid'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
   '/api?module=transaction&action=getstatus':
     get:
       tags:
@@ -1357,6 +1386,13 @@ components:
       name: address
       in: query
       description: "the string representing the address to check for balance"
+      required: false
+      schema:
+        type: string
+    expectedimplementation:
+      name: expectedimplementation
+      in: query
+      description: "proxy's implementation contract address"
       required: false
       schema:
         type: string

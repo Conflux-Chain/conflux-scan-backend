@@ -23,10 +23,13 @@ import {Epoch} from "../../stat/model/Epoch";
 import {Op} from "sequelize";
 
 const lodash = require('lodash');
+const util = require('util');
 const CONST = require('../../stat/service/common/constant');
 
 const EPOCH_NUMBER_LABEL_ARRAY = ['latest_mined', 'latest_state', 'latest_finalized', 'latest_confirmed',
     'latest_checkpoint', 'earliest'];
+const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortunately not detected for the proxy address";
+const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";
 // -----------------------------------biz---------------------------------------
 async function gateway(ctx) {
     const {E_SPACE_OPENAPI: {MODULE, ACTION}} = CONST;
@@ -83,6 +86,12 @@ async function gateway(ctx) {
                     break;
                 case ACTION.CHECK_VERIFY_STATUS:
                     handler = checkVerifyStatus;
+                    break;
+                case ACTION.VERIFY_PROXY_CONTRACT:
+                    handler = verifyProxyContract;
+                    break;
+                case ACTION.CHECK_PROXY_VERIFICATION:
+                    handler = checkProxyVerification;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -498,8 +507,8 @@ async function verifySourcecode(ctx) {
         license: CONST.LICENSE[licenseType].code,
         constructorArgs: constructorArguements
     };
-
     const submitResp = await getApiService().contractQuery.submitVerify(options);
+
     setBody(ctx, submitResp.guid, submitResp.error ? "0" : '1', submitResp.error);
 }
 
@@ -525,6 +534,35 @@ async function checkVerifyStatus(ctx) {
         }
     ];
     setBody(ctx, result)
+}
+
+async function verifyProxyContract(ctx) {
+    const {address, expectedimplementation} = ctx.request.query;
+
+    const options = {address, expectedImpl: expectedimplementation};
+    const submitResp = await getApiService().contractQuery.submitVerifyProxy(options);
+
+    const result = submitResp.guid
+    setBody(ctx, result);
+}
+
+async function checkProxyVerification(ctx) {
+    const {guid} = ctx.request.query;
+
+    try{
+        const verify = await getApiService().contractQuery.checkVerifyProxy({guid});
+        if(!verify.proxy || (verify.expectedImpl && verify.implementation !== verify.expectedImpl)){
+            setBody(ctx, MSG_IMPL_NO_MATCH, '0', 'NOTOK');
+            return;
+        }
+
+        const proxy = format.hexAddress(verify.base32);
+        const impl = format.hexAddress(verify.implementation);
+        const result = util.format(MSG_IMPL_MATCH, proxy, impl);
+        setBody(ctx, result);
+    } catch (e){
+        setBody(ctx, e.message, '0', 'NOTOK');
+    }
 }
 
 // -----------------------------------tool---------------------------------------
