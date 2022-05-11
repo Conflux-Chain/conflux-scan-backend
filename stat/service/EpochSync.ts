@@ -527,7 +527,7 @@ export class EpochSync extends SyncBase{
         const traceCrossSpaceArrayDB = []
         for (const trace of crossSpaceTraceArray) {
             if(!trace?.valid) continue;
-            const txHashId =  (await makeId(trace.transactionHash)).id;
+            const txHashId = 0; // (await makeId(trace.transactionHash)).id;
             const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
             const fromHex = format.hexAddress(trace.from);
