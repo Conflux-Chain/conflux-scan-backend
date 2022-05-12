@@ -68,7 +68,7 @@ export class CfxTransferQuery extends TransferQueryBase{
         if(txType === CONST.TX_TYPE.CREATE){
             return [
                 'epochNumber',
-                ['txHashId', 'transactionHash'],
+                ['txHash', 'transactionHash'],
                 'from',
                 'to',
                 'value',

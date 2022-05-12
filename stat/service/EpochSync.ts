@@ -527,14 +527,14 @@ export class EpochSync extends SyncBase{
         const traceCrossSpaceArrayDB = []
         for (const trace of crossSpaceTraceArray) {
             if(!trace?.valid) continue;
-            const txHashId = 0; // (await makeId(trace.transactionHash)).id;
+            const txHash = trace.transactionHash.substr(2);
             const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
             const fromHex = format.hexAddress(trace.from);
             const toHex = format.hexAddress(trace.to);
             const toCreate = {
                 epochNumber: trace.epochNumber,
-                txHashId,
+                txHash,
                 traceIndex: trace.transactionTraceIndex,
                 from,
                 to,
@@ -584,13 +584,15 @@ export class EpochSync extends SyncBase{
         const traceCreateArrayDB = []
         for (const trace of traceCreateArray) {
             if(!trace?.valid) continue;
-            const txHashId =  (await makeId(trace.transactionHash)).id;
+            const txHashId = 0; // (await makeId(trace.transactionHash)).id;
+            const txHash = trace.transactionHash.substr(2);
             const from = (await makeId(trace.from, undefined, {dt:blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt:blockDt})).id;
             const codeHash = await this.getCodeHash(trace.to);
             const toCreate = {
                 epochNumber: trace.epochNumber,
                 txHashId,
+                txHash,
                 traceIndex: trace.transactionTraceIndex,
                 from,
                 to,

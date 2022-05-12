@@ -169,22 +169,18 @@ export abstract class TransferQueryBase {
         const list = [];
         if(page?.rows){
             const hex40IdSet = new Set<number>();
-            const hex64IdSet = new Set<number>();
             const txHashQueryCondition = []
             page.rows.forEach( row => {
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['address']);
-                // tracing contract creation still use txHashId
-                hex64IdSet.add(row['transactionHash']);
                 txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
                         blockPosition:row['blockIndex'], txPosition:row['txIndex']
                     }]})
                 list.push(row);
             });
-            const [hex40Map,hex64Map, txMap] = await Promise.all([
+            const [hex40Map, txMap] = await Promise.all([
                 idHex40Map(Array.from(hex40IdSet)),
-                idHex64Map(Array.from(hex64IdSet)),
                 FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash'],
                     where: {[Op.or]: txHashQueryCondition}}).then(list=>{
                     const map = new Map<string, FullTransaction>()
@@ -197,15 +193,14 @@ export abstract class TransferQueryBase {
             list.forEach(row=>{
                 const key:string = `${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`;
                 row['transactionHash'] = txMap.get(key)?.hash
-                    // tracing contract creation still use txHashId
-                    || `0x${hex64Map.get(row['transactionHash'])}`
+                    || `0x${row['transactionHash']}`
                     || '';
                 row['from'] = hex40Map.get(row['from']) ? format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId) : '';
                 row['to'] = hex40Map.get(row['to']) ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : '';
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
                     : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];
-                this.processQueryResult(row, hex40Map, hex64Map);
+                this.processQueryResult(row, hex40Map, undefined);
             })
         }
 

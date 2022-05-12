@@ -4,6 +4,7 @@ export interface ITraceCreateContract{
     id?:number
     epochNumber:number
     txHashId?:number
+    txHash?:string
     traceIndex?:number
     from:number
     value:number
@@ -16,6 +17,7 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
     id?:number
     epochNumber:number
     txHashId?:number
+    txHash?:string
     traceIndex?:number
     from:number
     value:number
@@ -28,6 +30,7 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
             epochNumber: {type: DataTypes.BIGINT, allowNull: false},
             txHashId: {type: DataTypes.BIGINT, allowNull: false},
+            txHash: {type: DataTypes.CHAR(64), allowNull: true},
             traceIndex: {type: DataTypes.BIGINT, allowNull: false},
             from: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
