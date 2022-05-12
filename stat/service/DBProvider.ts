@@ -135,6 +135,7 @@ export async function initPartialModel(sequelize) {
     ])
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
+    ENS.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)
@@ -203,7 +204,6 @@ export async function initModel(sequelize) {
     EpochCfxTransferCount.register(sequelize);
     UniqueAddress.register(sequelize);
     CrossSpaceStat.register(sequelize)
-    ENS.register(sequelize)
     SearchText.register(sequelize)
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);
