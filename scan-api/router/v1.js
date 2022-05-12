@@ -434,6 +434,7 @@ router.get('/transaction',
       200: {
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
+        ensInfo: 'object',
         list: [{
           blockHash: 'string',
           method: 'string',

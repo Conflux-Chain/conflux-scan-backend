@@ -1,3 +1,5 @@
+import {fetchEnsMap} from "../../stat/service/ens/EnsService";
+
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const { KV, KEY_TX_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
@@ -98,6 +100,7 @@ class TransactionService {
       },
       { limit: 100 },
     );
+    result.ensInfo = await fetchEnsMap(result.list)
 
     return result;
   }
