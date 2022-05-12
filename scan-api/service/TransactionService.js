@@ -86,7 +86,7 @@ class TransactionService {
       // logger.info({ src: 'fullTXquery------------', rdbSwitch: JSON.stringify(rdbSwitch) });
       if (rdbSwitch) {
         result = await service.fullBlock.listTransaction(options);
-        result.ensInfo = await fetchEnsMap(result.list)
+        result.ensInfo = await fetchEnsMap(result.list,'from','to')
         // logger.info({ src: 'fullTXquery------------', result: JSON.stringify(result) });
         return lodash.defaults({ rdb: rdbSwitch }, result);
       }
@@ -100,7 +100,7 @@ class TransactionService {
       },
       { limit: 100 },
     );
-    result.ensInfo = await fetchEnsMap(result.list)
+    result.ensInfo = await fetchEnsMap(result.list,'from','to')
 
     return result;
   }

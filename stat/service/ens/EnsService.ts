@@ -4,6 +4,7 @@ import {sleep} from "../tool/ProcessTool";
 import {queryEnsOfName} from "./ENS";
 import {list2map} from "../common/utils";
 import {buildHexSet} from "../../model/HexMap";
+import {format} from "js-conflux-sdk";
 export interface IENS {
     id?:number; name:string; resolver:string; addr:string;// ttl:number;
 }
@@ -44,7 +45,7 @@ export class SearchText extends Model<ISearchText> implements ISearchText{
     }
 }
 export async function fetchEnsMap(list:any[], ...keys:string[]) {
-    const hexArr = [...buildHexSet(undefined, list, ...keys)]
+    const hexArr = [...buildHexSet(undefined, list, ...keys)].map(addr=>format.hexAddress(addr))
     if (hexArr.length === 0) {
         return {}
     }
