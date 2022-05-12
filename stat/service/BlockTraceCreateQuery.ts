@@ -27,12 +27,11 @@ export class BlockTraceCreateQuery{
             return {msg: `get create trace, no create trace found for contract ${address}`};
         }
 
-        const hex64Bean = await Hex64Map.findOne({where: {id: trace.txHashId}});
         const fromHex40Bean = await Hex40Map.findOne({where: {id: trace.from}});
         return {
             epochNumber: trace.epochNumber,
-            transactionHash: hex64Bean ? '0x' + hex64Bean.hex : undefined,
-            from: fromHex40Bean ? '0x' + fromHex40Bean.hex : undefined,
+            transactionHash: `0x${trace.txHash}`,
+            from: fromHex40Bean ? `0x${fromHex40Bean.hex}` : undefined,
             address,
         };
     }
@@ -65,7 +64,7 @@ export class BlockTraceCreateQuery{
         const options: any = {offset: skip, limit, raw: true};
         options.attributes = [
             'epochNumber',
-            ['txHashId', 'transactionHash'],
+            ['txHash', 'transactionHash'],
             'from',
             ['to', 'address'],
         ];
@@ -100,18 +99,15 @@ export class BlockTraceCreateQuery{
         const list = [];
         if(page?.rows){
             const hex40IdSet = new Set<number>();
-            const hex64IdSet = new Set<number>();
             page.rows.forEach( row => {
-                hex64IdSet.add(row['transactionHash']);
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['address']);
                 list.push(row);
             });
             const hex40Map = await idHex40Map(Array.from(hex40IdSet));
-            const hex64Map = await idHex64Map(Array.from(hex64IdSet));
             // fields mapping
             list.forEach(row=>{
-                row['transactionHash'] = `0x${hex64Map.get(row['transactionHash'])}`;
+                row['transactionHash'] = `0x${row['transactionHash']}`;
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
                 row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
             })

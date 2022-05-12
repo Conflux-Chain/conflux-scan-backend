@@ -573,10 +573,10 @@ export class ContractQuery {
         const sdk = cfxSDK || cfx;
 
         const hexAddress = format.hexAddress(address);
-        const sql = "select * from hex64 where id = (select txHashId from trace_create_contract where `to` = (select id from hex40 where hex = ?))";
-        const array = await Hex64Map.sequelize.query(sql, {type: QueryTypes.SELECT,
-            replacements:[hexAddress.substr(2)], logging: console.log }) as Hex64Map[];
-        const transactionHash = array?.length ? '0x' + array[0].hex : undefined;
+        const sql = "select * from trace_create_contract where `to` = (select id from hex40 where hex = ?)";
+        const array = await TraceCreateContract.sequelize.query(sql, {type: QueryTypes.SELECT,
+            replacements:[hexAddress.substr(2)], logging: console.log }) as TraceCreateContract[];
+        const transactionHash = array?.length ? '0x' + array[0].txHash : undefined;
 
         const transaction = await sdk.getTransactionByHash(transactionHash);
         const transactionTraceArray = await sdk.traceTransaction(transaction.hash);

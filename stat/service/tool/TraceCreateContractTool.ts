@@ -2,7 +2,7 @@
 import {Conflux, format} from "js-conflux-sdk";
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
-import {Hex40Map} from "../../model/HexMap";
+import {Hex40Map, Hex64Map} from "../../model/HexMap";
 import {ContractQuery} from "../ContractQuery";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {ContractVerify} from "../../model/ContractVerify";
@@ -155,6 +155,9 @@ async function run() {
         const [blockArray, traceArray] = await batchBlockDetail(cfx, blockHashArray);
         console.log(`traceArray2d------:${JSON.stringify(traceArray)}`);
     }
+    if(type === 7){
+        await addTxHashForTraceCreate();
+    }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
     await close();
@@ -255,6 +258,23 @@ async function checkOZUnstructuredStorageProxy(){
     proxyAddressIdArray:${JSON.stringify(proxyAddressIdArray)},
     verifiedCntr:${verifiedProxyAddressIdArray.length},
     verifiedProxyAddressIdArray:${JSON.stringify(verifiedProxyAddressIdArray)}`);
+}
+
+async function addTxHashForTraceCreate(){
+    const traceCreateArray = await TraceCreateContract.findAll({
+        attributes: ['id', 'txHashId'],
+        order: [['blockTime', 'ASC']],
+        raw: true
+    });
+
+    for(const traceCreate of traceCreateArray) {
+        const hex64Bean = await Hex64Map.findOne({where: {id: traceCreate.txHashId}});
+        if(!hex64Bean){
+            console.log(`addTxHashForTraceCreate------traceCreateId:${traceCreate.id}, hex64Bean not exist!`);
+            continue;
+        }
+        await TraceCreateContract.update({txHash: hex64Bean.hex}, {where: {id: traceCreate.id}});
+    }
 }
 
 
