@@ -106,7 +106,7 @@ module.exports = {
       CONTRACT: 'contract',
       TRANSACTION: 'transaction',
       BLOCK: 'block',
-      LOGS: 'logs',
+      // LOGS: 'logs',
       TOKEN: 'token',
       STATS: 'stats',
     },
@@ -135,7 +135,7 @@ module.exports = {
       // block
       GET_BLOCK_NO_BY_TIME: 'getblocknobytime',
       // logs
-      GET_LOGS: 'getLogs',
+      // GET_LOGS: 'getLogs',
       // token
       TOKEN_INFO: 'tokeninfo',
       // stats

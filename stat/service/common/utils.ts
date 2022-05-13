@@ -169,6 +169,15 @@ export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
         }
     }
 }
+export function checkPresent(options, fieldArray){
+    lodash.forEach(options, (value, key) => {
+        if(lodash.includes(fieldArray, key)){
+            if(!value){
+                throw new InvalidParamError(`Invalid ${key} parameter with value [${value}], ${key} is required.`);
+            }
+        }
+    });
+}
 export function removeLongData(obj) {
     if (Array.isArray(obj)) {
         obj.forEach(i=>removeLongData(i))

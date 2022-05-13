@@ -13,6 +13,7 @@ import {
     listAccountTransfer1155
 } from "../service/OpenTransferService";
 import {
+    checkPresent,
     getPaginationESpace,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent, mustBeHex64ParamIfPresent, mustBeIntParamIfPresent,
@@ -118,15 +119,15 @@ async function gateway(ctx) {
                     return Promise.reject(`unknown action:${action} of module:${module}`);
             }
             break;
-        case MODULE.LOGS:
-            switch (action) {
-                case ACTION.GET_LOGS:
-                    handler = getLogs;
-                    break;
-                default:
-                    return Promise.reject(`unknown action:${action} of module:${module}`);
-            }
-            break;
+        // case MODULE.LOGS:
+        //     switch (action) {
+        //         case ACTION.GET_LOGS:
+        //             handler = getLogs;
+        //             break;
+        //         default:
+        //             return Promise.reject(`unknown action:${action} of module:${module}`);
+        //     }
+        //     break;
         case MODULE.TOKEN:
             switch (action) {
                 case ACTION.TOKEN_INFO:
@@ -159,6 +160,7 @@ async function getBalance(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
     mustBeEnumParamIfPresent(ctx.request.query, 'tag', EPOCH_NUMBER_LABEL_ARRAY);
     const {address, tag} = ctx.request.query;
+    checkPresent({address}, ['address']);
 
     const result = await getApiService().cfx.getBalance(address, tag);
     setBody(ctx, result)
@@ -167,10 +169,9 @@ async function getBalance(ctx) {
 async function listBalance(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'tag', EPOCH_NUMBER_LABEL_ARRAY);
     const {address, tag} = ctx.request.query;
+    checkPresent({address}, ['address']);
+
     const addressArray = address?.split(',') || [];
-    if(!addressArray.length){
-        throw new InvalidParamError(`Invalid address parameter [${address}] with value [${address}].`);
-    }
     addressArray.forEach(item => {
         if (!/0x[0-9a-fA-F]{40}/.test(item)) {
             throw new InvalidParamError(`Invalid address parameter [${item}] with value [${item}].`);
@@ -185,6 +186,8 @@ async function listBalance(ctx) {
 
 async function listTx(ctx) {
     const {address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
+    checkPresent({address}, ['address']);
+
     const skip = (page - 1) * offset;
     const pagedTxs = await getApiService().fullBlockQuery.listTransaction({accountAddress: address,
         minEpochNumber: startblock, maxEpochNumber: endblock, sort, skip, limit: offset
@@ -231,9 +234,12 @@ async function listTx(ctx) {
 
 async function listTransferCfx(ctx) {
     const {txhash, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
-    const skip = (page - 1) * offset;
+    if(!(txhash !== undefined ||  address !== undefined || (startblock !== undefined && endblock !== undefined))){
+        throw new InvalidParamError(`The txhash or address and/or block range parameters are required.`);
+    }
 
     let options;
+    const skip = (page - 1) * offset;
     if (txhash) {
         options = {transactionHash: txhash};
     } else if (address) {
@@ -263,6 +269,10 @@ async function listTransferCfx(ctx) {
 
 async function listTransfer20(ctx) {
     const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
+    if(contractaddress === undefined && address === undefined){
+        throw new InvalidParamError(`The contractaddress and/or address parameters are required.`);
+    }
+
     const skip = (page - 1) * offset;
     const pagedTransfers = await getApiService().crc20transferQuery.listTransfer({ accountAddress: address,
         address: contractaddress, minEpochNumber: startblock, maxEpochNumber: endblock, sort, skip, limit: offset});
@@ -282,6 +292,10 @@ async function listTransfer20(ctx) {
 
 async function listTransfer721(ctx) {
     const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
+    if(contractaddress === undefined && address === undefined){
+        throw new InvalidParamError(`The contractaddress and/or address parameters are required.`);
+    }
+
     const skip = (page - 1) * offset;
     const pagedTransfers = await getApiService().crc721transferQuery.listTransfer({ accountAddress: address,
         address: contractaddress, minEpochNumber: startblock, maxEpochNumber: endblock, sort, skip, limit: offset});
@@ -301,12 +315,11 @@ async function listTransfer721(ctx) {
 
 async function listBlock(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
-    mustBeEnumParamIfPresent(ctx.request.query, 'blocktype', ['blocks', 'uncles']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'blocktype', ['blocks']);
     mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset');
     const {address} = ctx.request.query;
-    if (address === undefined) {
-        throw new Error(`Invalid parameter <address> with value [${address}], address is required.`)
-    }
+    checkPresent({address}, ['address']);
+
     const {page, offset} = getPaginationESpace(ctx.request.query);
 
     const skip = (page - 1) * offset;
@@ -324,6 +337,7 @@ async function getBalanceHistory(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {address, blockno: epochNumber} = ctx.request.query;
+    checkPresent({address, blockno: epochNumber}, ['address', 'blockno']);
 
     const result = await getApiService().cfx.getBalance(address, epochNumber);
     setBody(ctx, result)
@@ -332,6 +346,7 @@ async function getBalanceHistory(ctx) {
 async function getTokenBalance(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
     const {contractaddress, address} = ctx.request.query;
+    checkPresent({contractaddress, address}, ['contractaddress', 'address']);
 
     const result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, undefined);
     setBody(ctx, result)
@@ -341,6 +356,7 @@ async function getTokenBalanceHistory(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {contractaddress, address, blockno: epochNumber} = ctx.request.query;
+    checkPresent({contractaddress, address, blockno: epochNumber}, ['contractaddress', 'address', 'blockno']);
 
     let result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, epochNumber);
     result = result === undefined ? '0' : result;
@@ -350,8 +366,13 @@ async function getTokenBalanceHistory(ctx) {
 async function getABI(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
     const {address} = ctx.request.query;
+    checkPresent({address}, ['address']);
 
     const contract = await getApiService().contractQuery.queryVerify({address})
+    if(!contract){
+        setBody(ctx, undefined, '0', `contract ${address} not verified` );
+        return;
+    }
 
     const result = contract.abi;
     setBody(ctx, result)
@@ -360,8 +381,13 @@ async function getABI(ctx) {
 async function getSourceCode(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
     const {address} = ctx.request.query;
+    checkPresent({address}, ['address']);
 
     const contract = await getApiService().contractQuery.queryVerify({address})
+    if(!contract){
+        setBody(ctx, undefined, '0', `contract ${address} not verified` );
+        return;
+    }
 
     const contractItem = lodash.defaults({}, {
         SourceCode: contract.sourceCode,
@@ -383,12 +409,15 @@ async function getSourceCode(ctx) {
 }
 
 async function getStatus(ctx) {
+    mustBeHex64ParamIfPresent(ctx.request.query, 'txhash')
     const {txhash} = ctx.request.query;
-    if (!/0x[0-9a-fA-F]{64}/.test(txhash)) {
-        throw new InvalidParamError(`Invalid txhash parameter with value [${txhash}].`);
-    }
+    checkPresent({txhash}, ['txhash']);
 
     const tx = await FullTransaction.findOne({where: {hash: txhash}});
+    if(!tx){
+        setBody(ctx, undefined, '0', `tx ${txhash} not found` );
+        return;
+    }
 
     let result;
     if(tx.status === 0){
@@ -403,8 +432,13 @@ async function getStatus(ctx) {
 async function getTxReceiptStatus(ctx) {
     mustBeHex64ParamIfPresent(ctx.request.query, 'txhash')
     const {txhash} = ctx.request.query;
+    checkPresent({txhash}, ['txhash']);
 
     const tx = await FullTransaction.findOne({where: {hash: txhash}});
+    if(!tx){
+        setBody(ctx, undefined, '0', `tx ${txhash} not found` );
+        return;
+    }
 
     const result = { status: tx.status === 0 ? '1' : '0'};
     setBody(ctx, result)
@@ -414,6 +448,8 @@ async function getBlockNoByTime(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'timestamp');
     mustBeEnumParamIfPresent(ctx.request.query, 'closest', ['before', 'after']);
     let {timestamp, closest} = ctx.request.query;
+    checkPresent({timestamp}, ['timestamp']);
+
     closest = closest === undefined ? 'before' : closest;
 
     const comparator = closest === 'before' ? Op.lte : Op.gte;
@@ -423,6 +459,10 @@ async function getBlockNoByTime(ctx) {
         where: {timestamp: {[comparator]: datetime}},
         order: [['epoch', 'DESC']],
     });
+    if(!epoch){
+        setBody(ctx, undefined, '0', `blockno ${closest} timestamp ${timestamp} not found` );
+        return;
+    }
 
     const result = epoch.epoch;
     setBody(ctx, result)
@@ -459,7 +499,7 @@ async function getLogs(ctx) {
     topic3 && (topics[3] = topic3);
     const limit = 1000;
     const options = {fromBlock, toBlock, address, topics, limit};
-    const logArray = await getApiService().eth.getLogs(options);
+    const logArray = (await getApiService().eth.getLogs(options)) || [];
     console.log(`[getLogs]options:${JSON.stringify(options)},logs:${JSON.stringify(logArray)}`);
     const result = logArray.slice(0, limit);
     setBody(ctx, result)
@@ -468,8 +508,14 @@ async function getLogs(ctx) {
 async function getTokenInfo(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
     const {contractaddress} = ctx.request.query;
+    checkPresent({contractaddress}, ['contractaddress']);
 
     const tokenInfo = await queryTokenInfo(contractaddress);
+    if(!tokenInfo){
+        setBody(ctx, undefined, '0', `token ${contractaddress} not found` );
+        return;
+    }
+
     const result = [tokenInfo];
     setBody(ctx, result)
 }
@@ -477,6 +523,7 @@ async function getTokenInfo(ctx) {
 async function getTokenSupply(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
     const {contractaddress} = ctx.request.query;
+    checkPresent({contractaddress}, ['contractaddress']);
 
     const result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, undefined);
     setBody(ctx, result)
@@ -486,6 +533,7 @@ async function getTokenSupplyHistory(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {contractaddress, blockno: epochNumber} = ctx.request.query;
+    checkPresent({contractaddress, blockno: epochNumber}, ['contractaddress', 'blockno']);
 
     let result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, epochNumber);
     result = result === undefined ? '0' : result;
@@ -497,6 +545,8 @@ async function verifySourcecode(ctx) {
         contractaddress, sourceCode, codeformat, contractname, compilerversion, optimizationUsed, runs,
         constructorArguements, evmversion, licenseType
     } = ctx.request.body;
+    checkPresent({contractaddress, sourceCode, contractname, compilerversion, optimizationUsed, runs, licenseType},
+        ['contractaddress', 'sourceCode', 'contractname', 'compilerversion', 'optimizationUsed', 'runs', 'licenseType']);
 
     const options = {
         address: contractaddress,
@@ -514,8 +564,14 @@ async function verifySourcecode(ctx) {
 
 async function checkVerifyStatus(ctx) {
     const {guid} = ctx.request.query;
+    checkPresent({guid}, ['guid']);
 
     const verify = await getApiService().contractQuery.checkVerify({guid});
+    if(!verify){
+        setBody(ctx, undefined, '0', `verify with GUID ${guid} not found` );
+        return;
+    }
+
     const result = [
         {
             SourceCode: verify.sourceCode,
@@ -538,6 +594,7 @@ async function checkVerifyStatus(ctx) {
 
 async function verifyProxyContract(ctx) {
     const {address, expectedimplementation} = ctx.request.query;
+    checkPresent({address}, ['address']);
 
     const options = {address, expectedImpl: expectedimplementation};
     const submitResp = await getApiService().contractQuery.submitVerifyProxy(options);
@@ -548,9 +605,14 @@ async function verifyProxyContract(ctx) {
 
 async function checkProxyVerification(ctx) {
     const {guid} = ctx.request.query;
+    checkPresent({guid}, ['guid']);
 
     try{
         const verify = await getApiService().contractQuery.checkVerifyProxy({guid});
+        if(!verify){
+            setBody(ctx, undefined, '0', `verify with GUID ${guid} not found` );
+            return;
+        }
         if(!verify.proxy || (verify.expectedImpl && verify.implementation !== verify.expectedImpl)){
             setBody(ctx, MSG_IMPL_NO_MATCH, '0', 'NOTOK');
             return;

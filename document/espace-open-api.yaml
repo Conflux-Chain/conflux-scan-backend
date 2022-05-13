@@ -39,7 +39,7 @@ paths:
         - 'Accounts'
       description: 'Get CFX Balance for a Single Address'
       parameters:
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/addressMust'
         - $ref: '#/components/parameters/tag'
       responses:
         200:
@@ -54,7 +54,7 @@ paths:
         - 'Accounts'
       description: 'Get CFX Balance for Multiple Addresses in a Single Call'
       parameters:
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/addressMust'
         - $ref: '#/components/parameters/tag'
       responses:
         200:
@@ -69,7 +69,7 @@ paths:
         - 'Accounts'
       description: "Get a list of 'Normal' Transactions By Address"
       parameters:
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/addressMust'
         - $ref: '#/components/parameters/startblock'
         - $ref: '#/components/parameters/endblock'
         - $ref: '#/components/parameters/page'
@@ -87,7 +87,7 @@ paths:
       tags:
         - 'Accounts'
       description: "Get a list of 'Internal' Transactions.
-                    \nUsages:
+                    \nUsage:
                     \n1> Get 'Internal' Transactions by Address.
                     \n   example:
                     \n       https://evmapi.confluxscan.net/api
@@ -137,7 +137,11 @@ paths:
     get:
       tags:
         - 'Accounts'
-      description: "Get a list of 'ERC20 - Token Transfer Events' by Address"
+      description: "Get a list of 'ERC20 - Token Transfer Events' by Address
+                    \nUsage:
+                    \n1> ERC-20 transfers from an address, specify the address parameter
+                    \n2> ERC-20 transfers from a contract address, specify the contract address parameter
+                    \n3> ERC-20 transfers from an address filtered by a token contract, specify both address and contract address parameters."
       parameters:
         - $ref: '#/components/parameters/contractaddress'
         - $ref: '#/components/parameters/address'
@@ -157,7 +161,11 @@ paths:
     get:
       tags:
         - 'Accounts'
-      description: "Get a list of 'ERC721 - Token Transfer Events' by Address"
+      description: "Get a list of 'ERC721 - Token Transfer Events' by Address
+                    \nUsage:
+                    \n1> ERC-721 transfers from an address, specify the address parameter
+                    \n2> ERC-721 transfers from a contract address, specify the contract address parameter
+                    \n3> ERC-721 transfers from an address filtered by a token contract, specify both address and contract address parameters."
       parameters:
         - $ref: '#/components/parameters/contractaddress'
         - $ref: '#/components/parameters/address'
@@ -179,7 +187,7 @@ paths:
         - 'Accounts'
       description: 'Get list of Blocks Mined by Address'
       parameters:
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/addressMust'
         - $ref: '#/components/parameters/blocktype'
         - $ref: '#/components/parameters/page'
         - $ref: '#/components/parameters/offset'
@@ -196,8 +204,8 @@ paths:
         - 'Accounts'
       description: 'Get Historical CFX Balance for a Single Address By BlockNo'
       parameters:
-        - $ref: '#/components/parameters/address'
-        - $ref: '#/components/parameters/blockno'
+        - $ref: '#/components/parameters/addressMust'
+        - $ref: '#/components/parameters/blocknoMust'
       responses:
         200:
           description: ''
@@ -211,7 +219,7 @@ paths:
         - 'Contracts'
       description: 'Get Contract ABI for Verified Contract Source Codes'
       parameters:
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/addressMust'
       responses:
         200:
           description: ''
@@ -225,7 +233,7 @@ paths:
         - 'Contracts'
       description: 'Get Contract Source Code for Verified Contract Source Codes'
       parameters:
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/addressMust'
       responses:
         200:
           description: ''
@@ -256,7 +264,7 @@ paths:
         - 'Contracts'
       description: 'Verify Source Code - Check Source Code Verification Submission Status'
       parameters:
-        - $ref: '#/components/parameters/guid'
+        - $ref: '#/components/parameters/guidMust'
       responses:
         200:
           description: ''
@@ -270,7 +278,7 @@ paths:
         - 'Contracts'
       description: 'Verifying Proxy Contract using cURL'
       parameters:
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/addressMust'
         - $ref: '#/components/parameters/expectedimplementation'
       responses:
         200:
@@ -285,7 +293,7 @@ paths:
         - 'Contracts'
       description: 'Checking Proxy Contract Verification Submission Status using cURL'
       parameters:
-        - $ref: '#/components/parameters/guid'
+        - $ref: '#/components/parameters/guidMust'
       responses:
         200:
           description: ''
@@ -299,7 +307,7 @@ paths:
         - 'Transactions'
       description: 'Check Contract Execution Status'
       parameters:
-        - $ref: '#/components/parameters/txhash'
+        - $ref: '#/components/parameters/txhashMust'
       responses:
         200:
           description: ''
@@ -313,7 +321,7 @@ paths:
         - 'Transactions'
       description: 'Check Transaction Receipt Status'
       parameters:
-        - $ref: '#/components/parameters/txhash'
+        - $ref: '#/components/parameters/txhashMust'
       responses:
         200:
           description: ''
@@ -327,7 +335,7 @@ paths:
         - 'Blocks'
       description: 'Get Block Number by Timestamp'
       parameters:
-        - $ref: '#/components/parameters/timestamp'
+        - $ref: '#/components/parameters/timestampMust'
         - $ref: '#/components/parameters/closest'
       responses:
         200:
@@ -336,33 +344,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommonResponse'
-  '/api?module=logs&action=getLogs':
-    get:
-      tags:
-        - 'Logs'
-      description: 'The Event Log API was designed to provide an alternative to the native eth_getLogs'
-      parameters:
-        - $ref: '#/components/parameters/fromBlock'
-        - $ref: '#/components/parameters/toBlock'
-        - $ref: '#/components/parameters/address'
-        - $ref: '#/components/parameters/topic0'
-        - $ref: '#/components/parameters/topic1'
-        - $ref: '#/components/parameters/topic2'
-        - $ref: '#/components/parameters/topic3'
-      responses:
-        200:
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommonResponse'
+#  '/api?module=logs&action=getLogs':
+#    get:
+#      tags:
+#        - 'Logs'
+#      description: 'The Event Log API was designed to provide an alternative to the native eth_getLogs'
+#      parameters:
+#        - $ref: '#/components/parameters/fromBlockMust'
+#        - $ref: '#/components/parameters/toBlockMust'
+#        - $ref: '#/components/parameters/address'
+#        - $ref: '#/components/parameters/topic0'
+#        - $ref: '#/components/parameters/topic1'
+#        - $ref: '#/components/parameters/topic2'
+#        - $ref: '#/components/parameters/topic3'
+#      responses:
+#        200:
+#          description: ''
+#          content:
+#            application/json:
+#              schema:
+#                $ref: '#/components/schemas/CommonResponse'
   '/api?module=stats&action=tokensupply':
     get:
       tags:
         - 'Tokens'
       description: 'Get ERC20-Token TotalSupply by ContractAddress'
       parameters:
-        - $ref: '#/components/parameters/contractaddress'
+        - $ref: '#/components/parameters/contractaddressMust'
       responses:
         200:
           description: ''
@@ -376,8 +384,8 @@ paths:
         - 'Tokens'
       description: 'Get ERC20-Token Account Balance for TokenContractAddress'
       parameters:
-        - $ref: '#/components/parameters/contractaddress'
-        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/contractaddressMust'
+        - $ref: '#/components/parameters/addressMust'
       responses:
         200:
           description: ''
@@ -391,8 +399,8 @@ paths:
         - 'Tokens'
       description: 'Get Historical ERC20-Token TotalSupply by ContractAddress & BlockNo'
       parameters:
-        - $ref: '#/components/parameters/contractaddress'
-        - $ref: '#/components/parameters/blockno'
+        - $ref: '#/components/parameters/contractaddressMust'
+        - $ref: '#/components/parameters/blocknoMust'
       responses:
         200:
           description: ''
@@ -406,9 +414,9 @@ paths:
         - 'Tokens'
       description: 'Get Historical ERC20-Token Account Balance for TokenContractAddress by BlockNo'
       parameters:
-        - $ref: '#/components/parameters/contractaddress'
-        - $ref: '#/components/parameters/address'
-        - $ref: '#/components/parameters/blockno'
+        - $ref: '#/components/parameters/contractaddressMust'
+        - $ref: '#/components/parameters/addressMust'
+        - $ref: '#/components/parameters/blocknoMust'
       responses:
         200:
           description: ''
@@ -422,7 +430,7 @@ paths:
         - 'Tokens'
       description: 'Get Token Info by ContractAddress'
       parameters:
-        - $ref: '#/components/parameters/contractaddress'
+        - $ref: '#/components/parameters/contractaddressMust'
       responses:
         200:
           description: ''
@@ -1327,43 +1335,58 @@ components:
       properties:
         module:
           type: string
+          required: true
+          description: "request module"
           default: 'contract'
         action:
           type: string
+          required: true
+          description: "request action"
           default: 'verifysourcecode'
         contractaddress:
+          type: string
+          required: true
           description: "Contract Address starts with 0x... "
-          type: string
         sourceCode:
+          type: string
+          required: true
           description: "Contract Source Code (Flattened if necessary)"
-          type: string
         codeformat:
-          description: "solidity-single-file only supported"
           type: string
+          required: false
+          description: "only support 'solidity-single-file' format"
           default: 'solidity-single-file'
         contractname:
+          type: string
+          required: true
           description: "contract name"
-          type: string
         compilerversion:
+          type: string
+          required: true
           description: "compiler version"
-          type: string
         optimizationUsed:
-          description: "0 = No Optimization, 1 = Optimization used (applicable when codeformat=solidity-single-file)"
           type: string
+          required: true
+          description: "0 = No Optimization, 1 = Optimization used (applicable when codeformat=solidity-single-file)"
           default: 0
         runs:
-          description: "set to 200 as default unless otherwise  (applicable when codeformat=solidity-single-file) "
           type: string
+          required: true
+          description: "set to 200 as default unless otherwise  (applicable when codeformat=solidity-single-file) "
           default: 200
         constructorArguements:
-          description: "if applicable"
           type: string
+          required: false
+          description: "if applicable"
           default: ''
         evmversion:
-          description: "leave blank for compiler default, homestead, tangerineWhistle, spuriousDragon, byzantium, constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file)"
           type: string
+          required: false
+          description: "leave blank for compiler default, homestead, tangerineWhistle, spuriousDragon, byzantium, constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file)"
           default: 'istanbul'
         licenseType:
+          type: string
+          required: true
           description: "Valid codes 1-14 where
                               1.  No License (None)
                               2.  The Unlicense (Unlicense)
@@ -1379,9 +1402,15 @@ components:
                               12. Apache 2.0 (Apache-2.0)
                               13. GNU Affero General Public License (GNU AGPLv3)
                               14. Business Source License (BSL 1.1)"
-          type: string
           default: 1
   parameters:
+    addressMust:
+      name: address
+      in: query
+      description: "the string representing the address to check for balance"
+      required: true
+      schema:
+        type: string
     address:
       name: address
       in: query
@@ -1396,11 +1425,25 @@ components:
       required: false
       schema:
         type: string
+    txhashMust:
+      name: txhash
+      in: query
+      description: "the string representing the transaction hash to check for internal transactions"
+      required: true
+      schema:
+        type: string
     txhash:
       name: txhash
       in: query
       description: "the string representing the transaction hash to check for internal transactions"
       required: false
+      schema:
+        type: string
+    contractaddressMust:
+      name: contractaddress
+      in: query
+      description: "the string representing the token contract address to check for balance"
+      required: true
       schema:
         type: string
     contractaddress:
@@ -1410,11 +1453,11 @@ components:
       required: false
       schema:
         type: string
-    guid:
+    guidMust:
       name: guid
       in: query
       description: "Upon successful submission, a GUID is returned, which can be used to check for submission status."
-      required: false
+      required: true
       schema:
         type: string
     tag:
@@ -1428,7 +1471,7 @@ components:
     blocktype:
       name: blocktype
       in: query
-      description: "the string pre-defined block type, either blocks for canonical blocks or uncles for uncle blocks only"
+      description: "the string pre-defined block type, only support 'blocks' type"
       required: false
       schema:
         type: string
@@ -1451,6 +1494,13 @@ components:
         type: integer
         maximum: 100
         default: 100
+    blocknoMust:
+      name: blockno
+      in: query
+      description: "the integer block number to check balance for eg. 12697906"
+      required: true
+      schema:
+        type: integer
     blockno:
       name: blockno
       in: query
@@ -1458,18 +1508,18 @@ components:
       required: false
       schema:
         type: integer
-    fromBlock:
+    fromBlockMust:
       name: fromBlock
       in: query
       description: "the integer block number eg. 12697906"
-      required: false
+      required: true
       schema:
         type: integer
-    toBlock:
+    toBlockMust:
       name: toBlock
       in: query
       description: "the integer block number eg. 12697906"
-      required: false
+      required: true
       schema:
         type: integer
     topic0:
@@ -1500,11 +1550,11 @@ components:
       required: false
       schema:
         type: string
-    timestamp:
+    timestampMust:
       description: 'the integer representing the Unix timestamp in seconds'
       name: timestamp
       in: query
-      required: false
+      required: true
       schema:
         type: integer
     closest:
