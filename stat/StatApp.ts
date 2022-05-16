@@ -47,6 +47,7 @@ import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {Desensitizer} from "./service/Desensitizer";
+import {setupEnsChecker} from "./service/ens/EnsService";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -122,6 +123,7 @@ export class StatApp{
         }
         KV.setupSwitch().then()
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+        await setupEnsChecker(this.cfx)
         this.txnSync = new TxnSync(this);
         this.blockAndMinerSync = new BlockAndMinerSync();
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();

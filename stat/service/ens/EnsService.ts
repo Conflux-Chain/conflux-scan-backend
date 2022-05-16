@@ -64,7 +64,10 @@ export async function setupEnsChecker(cfx:Conflux) {
     }
 }
 export async function matchNamesOnChain(addrArr: string[]) {
-    const ret = {ens, reverse}
+    if (!isEvm) {
+        return {isEvm}
+    }
+    const ret = {ens, reverse};
     const nameArr = await contract.matchNames(ens, reverse, addrArr).catch(err=>{
         console.log(`ens matchNames fail`, err)
         ret["error"] = err;
@@ -88,8 +91,8 @@ export async function fetchEnsMap(list:any[], ...keys:string[]) {
             let hex = addr
             if (!addr.startsWith('0x')) {
                 hex = format.hexAddress(addr)
-                row[`${key}Hex`] = hex
             }
+            row[`${key}Hex`] = hex
             hexSet.add(hex)
         }
     }
