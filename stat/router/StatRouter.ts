@@ -431,14 +431,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const page = await statApp.contractCreateQuery.listContractCreateDaily(skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
 
-        let totalContract = 0;
-        if(page?.rows){
-            const len = page.rows.length;
-            for(let i = len-1; i >= 0; i--){
-                totalContract = page.rows[i].contractCount + totalContract;
-                (page.rows[i])['contractTotalCount'] = totalContract;
-            }
-        }
+        // let totalContract = 0;
+        // if(page?.rows){
+        //     const len = page.rows.length;
+        //     for(let i = len-1; i >= 0; i--){
+        //         totalContract = page.rows[i].contractCount + totalContract;
+        //         (page.rows[i])['contractTotalCount'] = totalContract;
+        //     }
+        // }
         ctx.body = {code: 0, data: page};
     });
 
