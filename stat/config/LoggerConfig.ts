@@ -17,9 +17,9 @@ function parseAppEntryName(str) {
 export function redirectLog() {
     const [,entry,] = process.argv
     let entryName = parseAppEntryName(entry);
-    console.log('entry is',entryName)
+    console.log('entry is',entry,entryName)
 
-    const dir = entryName.startsWith('/') ? '/log' : './log'
+    const dir = entry.startsWith('/Users') ? './log' : `/${entry.split('/')[1]}/log`
     const dateStr = `${new Date().toISOString().substring(0, 10)}`
     const logFilePath = `${dir}/${entryName}/${dateStr}.log`
     console.log(`log to ${logFilePath}`)
