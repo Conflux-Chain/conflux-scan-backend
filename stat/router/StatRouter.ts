@@ -31,7 +31,7 @@ const swStats = require('swagger-stats');
 import {BalanceService} from "../service/watcher/BalanceService";
 import {listCrossSpaceStat} from "../service/CrossSpaceStat";
 import {queryEnsOfName} from "../service/ens/ENS";
-import {ENS} from "../service/ens/EnsService";
+import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -585,15 +585,20 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             await nftCountAndIds(ctx)
         }
     });
-    router.get('/ens/query-by-name', async (ctx)=>{
+    router.get('/ens-query-by-name', async (ctx)=>{
         const {name} = ctx.query
         const info = await queryEnsOfName(name)
         ctx.body = info
     })
-    router.get('/ens/query-by-addr', async (ctx)=>{
+    router.get('/ens-query-by-addr', async (ctx)=>{
         const {addr} = ctx.query
         const {rows:list, count} = await ENS.findAndCountAll({where: {addr}, limit: 100, order:[['updatedAt','desc']]})
         ctx.body = {list, total: count, addr}
+    })
+    router.get('/ens-query-on-chain', async (ctx)=>{
+        const {addr} = ctx.query
+        const map = await matchNamesOnChain(addr.split(','))
+        ctx.body = map;
     })
     router.get('/transfer/tps', async function (ctx) {
         const tps = await statApp.transferTpsService.getTps();

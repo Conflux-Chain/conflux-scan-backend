@@ -1,5 +1,6 @@
 const lodash = require('lodash');
 const limitMap = require('limit-map');
+const {fetchEnsMap} = require("../../stat/dist/service/ens/EnsService");
 const { KV, KEY_TRANSFER_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 const TOKEN_FIELDS = ['name', 'symbol', 'decimals', 'granularity'];
@@ -49,10 +50,12 @@ class TransferService {
       const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
       if (rdbSwitch) {
         result = await this._countAndListByRdb(options);
+        await fetchEnsMap(result.list,'from','to')
         return lodash.defaults({ rdb: rdbSwitch }, result);
       }
       result = await this._countAndListBySync(options);
     }
+    await fetchEnsMap(result.list,'from','to')
     return result;
   }
 

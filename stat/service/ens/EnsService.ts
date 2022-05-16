@@ -64,7 +64,10 @@ export async function setupEnsChecker(cfx:Conflux) {
     }
 }
 export async function matchNamesOnChain(addrArr: string[]) {
-    const ret = {ens, reverse}
+    if (!isEvm) {
+        return {isEvm}
+    }
+    const ret = {ens, reverse};
     const nameArr = await contract.matchNames(ens, reverse, addrArr).catch(err=>{
         console.log(`ens matchNames fail`, err)
         ret["error"] = err;
@@ -78,13 +81,42 @@ export async function fetchEnsMap(list:any[], ...keys:string[]) {
     if (!isEvm) {
         return {isEvm};
     }
-    const hexArr = [...buildHexSet(undefined, list, ...keys)]
+    const hexSet = new Set<string>()
+    for(const row of list) {
+        for(const key of keys) {
+            const addr = row[key] || ''
+            if (addr.length < 42) {
+                continue
+            }
+            let hex = addr
+            if (!addr.startsWith('0x')) {
+                hex = format.hexAddress(addr)
+            }
+            row[`${key}Hex`] = hex
+            hexSet.add(hex)
+        }
+    }
+    const hexArr = [...hexSet]
         .filter(addr=>addr?.length >= 42)
         .map(addr => format.hexAddress(addr));
     if (hexArr.length === 0) {
         return {}
     }
-    return matchNamesOnChain(hexArr);
+    const ensMap = await matchNamesOnChain(hexArr);
+    for(const row of list) {
+        for (const key of keys) {
+            let hexKey = `${key}Hex`;
+            const hex = row[hexKey]
+            delete row[hexKey]
+            if (!hex){
+                continue
+            }
+            row[`${key}EnsInfo`] = {
+                hex, name: ensMap[hex]
+            }
+        }
+    }
+    return ensMap
 }
 async function matchInDb(hexArr: string[]) {
     const ensList = await ENS.findAll({
