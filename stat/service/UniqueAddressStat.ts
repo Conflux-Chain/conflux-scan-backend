@@ -3,6 +3,7 @@
  */
 
 process.env.TZ='UTC'
+import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {redisWrap,RedisWrap} from "./RedisWrap";
 import {regExitHook, sleep} from "./tool/ProcessTool";
@@ -580,6 +581,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 if (module === require.main) {
+    redirectLog()
     regExitHook()
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {

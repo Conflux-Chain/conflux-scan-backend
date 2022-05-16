@@ -1,3 +1,4 @@
+import {redirectLog} from "./config/LoggerConfig";
 import {loadConfig, StatConfig} from "./config/StatConfig";
 import {createDB, initModel} from "./service/DBProvider";
 import {Conflux, format} from "js-conflux-sdk";
@@ -66,6 +67,7 @@ async function syncFullBlock(fullBlockService:FullBlockService) {
 const args = process.argv.slice(2)
 let always = true;//Boolean(args[0])
 if (module === require.main) {
+    redirectLog()
     regExitHook()
     run().then()
 }

@@ -49,6 +49,7 @@ import {
 import {PosEpochRewardHash} from "../../model/PoS";
 import {regExitHook} from "../tool/ProcessTool";
 import {dingMsg} from "../../monitor/Monitor";
+import {redirectLog} from "../../config/LoggerConfig";
 
 const DRIP_FACTOR = BigInt(1e+18)
 const MINUS_DRIP_FACTOR = -BigInt(1e+18)
@@ -682,6 +683,7 @@ export async function createV2CfxBillTable(seq:Sequelize) {
         })
 }
 if (require.main === module) {
+    redirectLog()
     regExitHook()
     main()
 }

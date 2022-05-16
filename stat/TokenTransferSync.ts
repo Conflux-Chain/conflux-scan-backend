@@ -1,3 +1,4 @@
+import {redirectLog} from "./config/LoggerConfig";
 import {
     getTokenTool,
     IEpochTask,
@@ -574,6 +575,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
 }
 const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 if (module === require.main) {
+    redirectLog()
     regExitHook()
     // fromEpoch:
     // -1 : use former unfinished task; exclude mode.

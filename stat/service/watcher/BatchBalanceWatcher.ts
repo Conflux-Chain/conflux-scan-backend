@@ -1,3 +1,4 @@
+import {redirectLog} from "../../config/LoggerConfig";
 // @ts-ignore
 import {Conflux, Contract, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
@@ -474,6 +475,7 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
 }
 
 if (require.main === module) {
+    redirectLog()
     regExitHook()
     run().then()
 }

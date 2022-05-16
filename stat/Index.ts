@@ -1,3 +1,4 @@
+import {redirectLog} from "./config/LoggerConfig";
 import {StatApp} from "./StatApp";
 import {loadConfig} from "./config/StatConfig";
 import {register} from "./router/StatRouter";
@@ -15,6 +16,7 @@ const path = require('path')
 // app.use(serve('.'));
 
 export async function init() {
+    redirectLog()
 // logger
     app.use(async (ctx, next) => {
         await next();
