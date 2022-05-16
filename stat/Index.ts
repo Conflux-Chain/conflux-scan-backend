@@ -16,7 +16,7 @@ const path = require('path')
 // app.use(serve('.'));
 
 export async function init() {
-    redirectLog()
+    redirectLog({mainPath:'stat'})
 // logger
     app.use(async (ctx, next) => {
         await next();

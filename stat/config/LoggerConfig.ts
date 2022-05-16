@@ -14,14 +14,14 @@ function ensureDirectoryExistence(filePath) {
 function parseAppEntryName(str) {
     return str.split('/').slice(-1)[0].split('.')[0]
 }
-export function redirectLog(subPath='') {
+export function redirectLog({subPath='', mainPath = ''} = {}) {
     const [,entry,] = process.argv
     let entryName = parseAppEntryName(entry);
     // console.log('entry is',entry,entryName)
 
     const dir = entry.startsWith('/Users') ? './log' : `/${entry.split('/')[1]}/log`
     const dateStr = `${new Date().toISOString().substring(0, 10)}`
-    const logFilePath = `${dir}/${entryName}/${dateStr}${subPath}.log`
+    const logFilePath = `${dir}/${mainPath || entryName}/${dateStr}${subPath}.log`
     // console.log(`log to ${logFilePath}`)
     ensureDirectoryExistence(logFilePath)
     // Or 'w' to truncate the file every time the process starts.
