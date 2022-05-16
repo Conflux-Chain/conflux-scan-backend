@@ -1,7 +1,7 @@
 import {NFTMap, NFTMapPlus} from "./NFTInfo";
-import {NftMint, Token} from "../../model/Token";
+import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {Op, QueryTypes} from "sequelize";
-import {KEY_NFT_FROM_DB, KV} from "../../model/KV";
+import {KEY_NFT_FROM_DB, KEY_NFT_FROM_MINT_TABLE, KV} from "../../model/KV";
 import {getNftBalances} from "../NftService";
 import {Desensitizer} from "../Desensitizer";
 import {convert2base32map, getAddrId, idHex40Map} from "../../model/HexMap";
@@ -155,6 +155,21 @@ export class NFTCheckerService {
             return {total: 0, list: []};
         }
 
+        if (contractAddressId) {
+            const token = await Token.findOne({
+                where: {hex40id: contractAddressId, type: 'ERC1155'},
+                attributes: ['type', 'base32']
+            })
+            if (token) {
+                const page = await Erc1155Data.findAndCountAll({
+                    where: {contractId: contractAddressId, addressId: ownerAddressId}, raw: true,
+                    order:[['epoch','desc']], offset: skip, limit,
+                })
+                const list = page?.rows?.map(item => ({contract: token.base32, tokenId: item.tokenId}))
+                return {total:  page?.count || 0, list: list || []};
+            }
+        }
+
         const where = {};
         if (ownerAddressId) {
             where['toId'] = ownerAddressId
@@ -176,7 +191,6 @@ export class NFTCheckerService {
         let list = [];
         if(nftMintArray){
             list = nftMintArray.map(item => ({contractId: item.contractId, tokenId: item.tokenId}))
-
             const hexIdSet = new Set(list.map(item => item.contractId));
             const hexIdHexMap = await idHex40Map([...hexIdSet])
             const hexIdBase32Map = convert2base32map(hexIdHexMap)

@@ -19,7 +19,7 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
 }
 export function getPagination(requestObj: object, {defaultSkip, maxSkip, defaultLimit, maxLimit}:
     {defaultSkip: number, maxSkip: number, defaultLimit: number, maxLimit: number}
-    = {defaultSkip: 0, maxSkip: 10000, defaultLimit: 10, maxLimit: 100}
+    = {defaultSkip: 0, maxSkip: 10000, defaultLimit: 10, maxLimit: 10000}
 ) {
     const param = {
         skip: intParam(requestObj, 'skip', defaultSkip),
