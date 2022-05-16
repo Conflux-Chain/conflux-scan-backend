@@ -99,7 +99,7 @@ export async function fetchEnsMap(list:any[], ...keys:string[]) {
     if (hexArr.length === 0) {
         return {}
     }
-    const ensMap = matchNamesOnChain(hexArr);
+    const ensMap = await matchNamesOnChain(hexArr);
     for(const row of list) {
         for (const key of keys) {
             let hexKey = `${key}Hex`;
