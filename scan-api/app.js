@@ -15,6 +15,7 @@ const serviceLoader = require('./service');
 const router = require('./router');
 const jsonrpc = require('./router/jsonrpc');
 const { StatApp } = require('../stat/dist/StatApp');
+const {setupEnsChecker} = require("../stat/dist/service/ens/EnsService");
 const { initPartialModel } = require('../stat/dist/service/DBProvider');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
@@ -157,6 +158,7 @@ class ApiApp extends AppBase {
     // backend service
     this.syncSDK = new JsonRPCSDK(config.sync);
     this.service = serviceLoader(this);
+    await setupEnsChecker(this.confluxSDK)
     this.startLog();
     this.startPrometheus();
 
