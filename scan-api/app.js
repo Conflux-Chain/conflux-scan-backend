@@ -158,7 +158,6 @@ class ApiApp extends AppBase {
     // backend service
     this.syncSDK = new JsonRPCSDK(config.sync);
     this.service = serviceLoader(this);
-    await setupEnsChecker(this.confluxSDK)
     this.startLog();
     this.startPrometheus();
 
@@ -171,6 +170,7 @@ class ApiApp extends AppBase {
     } else {
       console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
     }
+    await setupEnsChecker(this.confluxSDK)
     await this.service.homeDashboard.schedule().catch(() => undefined);
     if (this.config.blacklist) {
       await this.service.desensitizer.scheduleRefreshBlacklist();
