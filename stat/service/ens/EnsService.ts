@@ -1,10 +1,11 @@
 import {DataTypes, Model, QueryTypes, Sequelize, Op, fn, col, literal} from 'sequelize'
-import {ENS_SEARCH_TEXT_CURSOR, KV} from "../../model/KV";
+import {ENS_SEARCH_TEXT_CURSOR, IS_EVM, IS_EVM2, KV} from "../../model/KV";
 import {sleep} from "../tool/ProcessTool";
 import {queryEnsOfName} from "./ENS";
 import {list2map} from "../common/utils";
 import {buildHexSet} from "../../model/HexMap";
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
+import {abi} from "./EnsCheckerAbi";
 export interface IENS {
     id?:number; name:string; resolver:string; addr:string;// ttl:number;
 }
@@ -44,16 +45,55 @@ export class SearchText extends Model<ISearchText> implements ISearchText{
         })
     }
 }
+
+// ----
+let contract = null;
+let isEvm = false
+let ens = '0xC7b7224F76dD98bE23b717668d55cB40E9B3DF7f' // net71
+let reverse = '0x03eD9a24B0c38D1903E34d7787B1EB69B4F8ccfA' //net71
+export async function setupEnsChecker(cfx:Conflux) {
+    isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
+    const {chainId} = await cfx.getStatus()
+    if (!isEvm || chainId != 71) {
+        return
+    }
+    isEvm = true;
+    if (!contract) {
+        let address = '0x14c5eD9a711A44ccEecE0d504B25300E1ac36E2F'
+        contract = cfx.Contract({abi, address})
+    }
+}
+export async function matchNamesOnChain(addrArr: string[]) {
+    const ret = {ens, reverse}
+    const nameArr = await contract.matchNames(ens, reverse, addrArr).catch(err=>{
+        console.log(`ens matchNames fail`, err)
+        ret["error"] = err;
+    })
+    for (let i = 0; i < addrArr.length; i++) {
+        ret[addrArr[i]] = nameArr[i] || ''
+    }
+    return ret;
+}
 export async function fetchEnsMap(list:any[], ...keys:string[]) {
-    const hexArr = [...buildHexSet(undefined, list, ...keys)].map(addr=>format.hexAddress(addr))
+    if (!isEvm) {
+        return {isEvm};
+    }
+    const hexArr = [...buildHexSet(undefined, list, ...keys)].map(addr => format.hexAddress(addr));
     if (hexArr.length === 0) {
         return {}
     }
+    return matchNamesOnChain(hexArr);
+}
+async function matchInDb(hexArr: string[]) {
     const ensList = await ENS.findAll({
         where: {addr: {[Op.in]: hexArr}}, raw: true,
         logging: console.log,
     })
-    return list2map(ensList, 'addr')
+    const ret = {}
+    ensList.forEach(ens=>{
+        ret[ens.addr] = {name: ens.name}
+    })
+    return ret
 }
 export async function syncSearchText() {
     let preCursor = await KV.getNumber(ENS_SEARCH_TEXT_CURSOR, -1)
