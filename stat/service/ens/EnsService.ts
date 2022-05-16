@@ -78,7 +78,9 @@ export async function fetchEnsMap(list:any[], ...keys:string[]) {
     if (!isEvm) {
         return {isEvm};
     }
-    const hexArr = [...buildHexSet(undefined, list, ...keys)].map(addr => format.hexAddress(addr));
+    const hexArr = [...buildHexSet(undefined, list, ...keys)]
+        .filter(addr=>addr?.length >= 42)
+        .map(addr => format.hexAddress(addr));
     if (hexArr.length === 0) {
         return {}
     }
