@@ -1,3 +1,4 @@
+import {redirectLog} from "./config/LoggerConfig";
 import {Transaction, Model,DataTypes, Sequelize, Op, UniqueConstraintError, ModelStatic} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
@@ -273,17 +274,21 @@ async function setup() {
     await checkCfxTransferCountKV()
     const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (cfg.cfxTransferRpc?.url || cfg.conflux.url) : cfxUrlParam
     if (cfxUrl === 'counter') {
+        redirectLog({subPath:'.counter'})
         await runCounter()
         return
     } else if (fromEpoch === 'holder') {
+        redirectLog({subPath:'.holder'})
         const cfx = new Conflux({url: cfxUrl});
         patchHttpProvider(cfx, {url: cfxUrl})
         await runHolder(cfx);
         return;
     } else if (cfxUrl === 'marker') {
+        redirectLog({subPath:'.marker'})
         await runMarker();
         return;
     } else if (cfxUrl === 'cfxCounterHolderMarker') {
+        redirectLog({subPath:'.cfxCounterHolderMarker'})
         const cfx = new Conflux(cfg.conflux);
         patchHttpProvider(cfx, cfg.conflux)
         await Promise.all([
@@ -293,6 +298,7 @@ async function setup() {
         ])
         return
     }
+    redirectLog()
     const cfx = new Conflux({url: cfxUrl});
     patchHttpProvider(cfx, {url: cfxUrl})
     await cfx.updateNetworkId();
