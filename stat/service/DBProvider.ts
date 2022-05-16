@@ -68,6 +68,7 @@ import {CheckBlockInfo} from "../monitor/TxChecker";
 import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
 import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
+import {ENS, SearchText} from "./ens/EnsService";
 let conf
 export function createDB(config) {
     conf = config
@@ -134,6 +135,7 @@ export async function initPartialModel(sequelize) {
     ])
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
+    ENS.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)
@@ -203,6 +205,7 @@ export async function initModel(sequelize) {
     EpochCfxTransferCount.register(sequelize);
     UniqueAddress.register(sequelize);
     CrossSpaceStat.register(sequelize)
+    SearchText.register(sequelize)
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);

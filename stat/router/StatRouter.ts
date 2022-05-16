@@ -30,6 +30,8 @@ const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 import {BalanceService} from "../service/watcher/BalanceService";
 import {listCrossSpaceStat} from "../service/CrossSpaceStat";
+import {queryEnsOfName} from "../service/ens/ENS";
+import {ENS} from "../service/ens/EnsService";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -583,7 +585,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             await nftCountAndIds(ctx)
         }
     });
-
+    router.get('/ens/query-by-name', async (ctx)=>{
+        const {name} = ctx.query
+        const info = await queryEnsOfName(name)
+        ctx.body = info
+    })
+    router.get('/ens/query-by-addr', async (ctx)=>{
+        const {addr} = ctx.query
+        const {rows:list, count} = await ENS.findAndCountAll({where: {addr}, limit: 100, order:[['updatedAt','desc']]})
+        ctx.body = {list, total: count, addr}
+    })
     router.get('/transfer/tps', async function (ctx) {
         const tps = await statApp.transferTpsService.getTps();
         ctx.body = {code: 0, data: {...tps}};

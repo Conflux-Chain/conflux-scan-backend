@@ -15,6 +15,7 @@ const serviceLoader = require('./service');
 const router = require('./router');
 const jsonrpc = require('./router/jsonrpc');
 const { StatApp } = require('../stat/dist/StatApp');
+const {setupEnsChecker} = require("../stat/dist/service/ens/EnsService");
 const { initPartialModel } = require('../stat/dist/service/DBProvider');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
@@ -169,6 +170,7 @@ class ApiApp extends AppBase {
     } else {
       console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
     }
+    await setupEnsChecker(this.confluxSDK)
     await this.service.homeDashboard.schedule().catch(() => undefined);
     if (this.config.blacklist) {
       await this.service.desensitizer.scheduleRefreshBlacklist();
