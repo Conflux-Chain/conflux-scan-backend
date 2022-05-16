@@ -11,16 +11,19 @@ const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
 const {put,get, clear} = require('./MetaInfoCache')
 const CONST = require('../common/constant');
+const IPFS_GATEWAY_ARRAY = require('../../config/IPFSGateway');
 const TIMEOUT_CONN = 30000;
 const TIMEOUT_READ = 60000;
 
 export class NFTPreviewService {
     private app;
     private cfx;
+    private ipfsGatewaySet;
 
     constructor(app: any) {
         this.app = app;
         this.cfx = app.cfx;
+        this.ipfsGatewaySet = new Set(IPFS_GATEWAY_ARRAY);
     }
 
     public async getNFTInfo ({
@@ -31,7 +34,7 @@ export class NFTPreviewService {
         tokenId: BigInt;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
-        const nftInfo = await this.getNFTInfo0({contractAddress: address, tokenId});
+        const nftInfo = await this.getNFTInfo0({address, tokenId});
 
         if(!nftInfo || nftInfo.error) {
             return nftInfo;
@@ -51,7 +54,7 @@ export class NFTPreviewService {
         tokenId: BigInt;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
-        const nftInfo = await this.getNFTInfo0({contractAddress: address, tokenId});
+        const nftInfo = await this.getNFTInfo0({address, tokenId});
 
         const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
             id from hex40 where hex = ?));`;
@@ -90,13 +93,14 @@ export class NFTPreviewService {
     }
 
     private async getNFTInfo0 ({
-        contractAddress,
+        address,
         tokenId,
     }: {
-        contractAddress: string;
+        address: string;
         tokenId: BigInt;
     }): Promise<NFTInfoType> {
-        const address = toBase32(contractAddress) as string;
+        const token = await Token.findOne({attributes: ['type', 'ipfsGateway'], where: {base32: address}});
+        const tokenBasic = { address, tokenId, gateway: token.ipfsGateway };
         switch (address) {
             case NFTMap.confluxGuardian.address:
                 return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
@@ -130,35 +134,34 @@ export class NFTPreviewService {
                     imageUri: 'https://cj.yzbbanban.com/purplerr.jpeg' };
 
             case NFTMap.conDragon.address:
-                return this.getNFTImage({ address, tokenId });
+                return this.getNFTImage(tokenBasic);
             case NFTMap.confiCard.address:
-                return this.getNFTImage({ address, tokenId, height: 328 });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 328 }));
             case NFTMap.ancientChineseGod.address:
             case NFTMap.ancientChineseGodGenesis.address:
-                return this.getNFTImage({ address, tokenId, height: 377 });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 377 }));
             case NFTMap.moonswapGenesis.address:
-                return this.getNFTImage({ address, tokenId, height: 150 });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 150 }));
             case NFTMap.conHero.address:
-                return this.getNFTImage({ address, tokenId, height: 267 });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 267 }));
             case NFTMap.shanhaijing.address:
-                return this.getNFTImage({ address, tokenId, height: 267 });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 267 }));
             case NFTMap.threeKingdoms.address:
-                return this.getNFTImage({ address, tokenId, height: 286 });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 286 }));
 
             case NFTMap.TREAGenesisFeitian.address:
-                return this.getNFTImage({ address, tokenId,  height: 200, method: 'uris',
-                    uriFormatter: meta => meta.image });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 200, method: 'uris',
+                    uriFormatter: meta => meta.image }));
             case NFTMap.confi.address:
-                return this.getNFTImage({ address, tokenId, method: 'uris',
-                    uriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url });
+                return this.getNFTImage(lodash.defaults(tokenBasic, { method: 'uris',
+                    uriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url }));
             default:
                 let result;
-                const token = await Token.findOne({attributes: ['type'], where: {base32: address}});
                 if(token?.type === CONST.TRANSFER_TYPE.ERC721){
-                    result = await this.getNFTImage({ address, tokenId, method: 'tokenURI'});
+                    result = await this.getNFTImage(lodash.defaults(tokenBasic, { method: 'tokenURI'}));
                 }
                 if(token?.type === CONST.TRANSFER_TYPE.ERC1155){
-                    result =  await this.getNFTImage({ address, tokenId });
+                    result =  await this.getNFTImage(tokenBasic);
                 }
                 return result;
         }
@@ -317,8 +320,8 @@ export class NFTPreviewService {
         return nftName;
     };
 
-    private async getNFTImage({address, tokenId, method = 'uri', height = 200, uriFormatter}:
-        { address: string, tokenId: BigInt, method?: string, height?: number, uriFormatter?: any}
+    private async getNFTImage({address, tokenId, gateway, method = 'uri', height = 200, uriFormatter}:
+        { address: string, tokenId: BigInt, gateway?: string, method?: string, height?: number, uriFormatter?: any}
     ): Promise<NFTInfoType> {
         let rawUrl;
         let gatewayUrl;
@@ -341,7 +344,7 @@ export class NFTPreviewService {
             const contract = await this.cfx.Contract({ abi, address });
             rawUrl = await contract[method](tokenId);
             rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
-            gatewayUrl = this.replaceGateway(rawUrl);
+            gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
             // get metadata
             if(uriFormatter){
@@ -358,7 +361,7 @@ export class NFTPreviewService {
             // build resp
             lodash.defaults(meta, {image: meta.Image, name: meta.Name, description: meta.Description});
             imageUri = uriFormatter ? uriFormatter(meta) : meta.image;
-            imageUri = this.replaceGateway(imageUri);
+            imageUri = this.replaceGateway({gateway, rawUrl: imageUri});
             imageName = await this.getNFTName({address, meta}) || {};
             imageDesc = meta.description;
             if(!imageUri) throw new Error('image not found');
@@ -412,14 +415,20 @@ export class NFTPreviewService {
         }
     };
 
-    private replaceGateway(imageUri){
-        let uri = imageUri;
+    private replaceGateway({gateway, rawUrl}){
+        let uri = rawUrl;
         if(uri?.startsWith('ipfs://')) {
             uri = `https://ipfs.io/ipfs/${uri.substr(7)}`;
         }
         if(uri?.startsWith('https://gateway.pinata.cloud')){
             uri = `https://ipfs.io/ipfs/${uri.substr(34)}`;
         }
+        if(gateway){
+            const uriSegments = gateway.split("//");
+            const gatewayExists = uriSegments?.length > 1 && this.ipfsGatewaySet.has(uriSegments[1]);
+            uri = gatewayExists ? `${gateway}${uri.substr(15)}` : uri;
+        }
+
         return uri;
     }
 }

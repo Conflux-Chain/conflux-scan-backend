@@ -17,6 +17,7 @@ class TokenService {
       quoteUrl: type.string,
       moonDexSymbol: type.string,
       binanceSymbol: type.string,
+      ipfsGateway: type.string,
     }, { pick: true });
 
     this.unzip = type({
@@ -25,6 +26,7 @@ class TokenService {
       quoteUrl: { key: type.base64ToString, value: type.base64ToString },
       moonDexSymbol: { key: type.base64ToString, value: type.base64ToString },
       binanceSymbol: { key: type.base64ToString, value: type.base64ToString },
+      ipfsGateway: { key: type.base64ToString, value: type.base64ToString },
     });
   }
 

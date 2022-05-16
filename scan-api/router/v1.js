@@ -896,6 +896,7 @@ router.post('/token',
       quoteUrl: { type: 'string' },
       moonDexSymbol: { type: 'string' },
       binanceSymbol: { type: 'string' },
+      ipfsGateway: { type: 'string' },
     },
     output: {
       200: [
