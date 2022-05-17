@@ -156,7 +156,7 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             continue
         }
         const {blockHash, transactionTraces} = traceOfBlock;
-        const txArr = transactionTraces as any[]
+        const txArr = (transactionTraces || []) as any[]
         for (let txIdx = 0; txIdx < txArr.length; txIdx++) {
             // there are skipped txs. it's traces is empty.
             const {traces, transactionHash, transactionPosition} = txArr[txIdx];

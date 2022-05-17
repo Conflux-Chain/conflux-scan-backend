@@ -252,6 +252,10 @@ export function isNewFormatTrace(traceArray2d:any[] = []) {
 }
 function formatTrace(arr: (object | Error)[]) {
     arr.forEach((t, idx) => {
+        const isError = t instanceof Error;
+        if (isError) {
+            console.log('trace error:', t)
+        }
         arr[idx] = format.blockTraces(t);
     })
 }
