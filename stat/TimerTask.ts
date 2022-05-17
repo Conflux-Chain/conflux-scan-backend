@@ -13,9 +13,12 @@ import {DailyContractStatSync} from "./service/DailyContractStatSync";
 import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
+import {regExitHook} from "./service/tool/ProcessTool";
 
 async function main() {
     redirectLog()
+    regExitHook()
+
     const cfg = await init()
     const cfx = new Conflux(cfg.conflux)
     patchHttpProvider(cfx, cfg.conflux, 'TimerTask')
