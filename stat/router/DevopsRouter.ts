@@ -2,6 +2,7 @@ import * as Router from "koa-router";
 const addressSdk = require('js-conflux-sdk/src/util/address')
 import {StatApp} from "../StatApp";
 import {Context} from "koa";
+const proxy = require('koa-proxy');
 import {setAddressInfo} from "../service/ConfigService";
 import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
@@ -50,6 +51,10 @@ async function checkLocal(ctx: Context, next) {
 }
 
 export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
+    router.use(proxy({
+        host:  'http://127.0.0.1', // config local nginx to do your job
+        match: /^\/devops\/rpc-proxy\//        // ...just the /static folder
+    }));
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
         let bean:Hex40Map
