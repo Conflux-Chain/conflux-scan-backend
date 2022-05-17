@@ -19,7 +19,7 @@ import Application = require("koa");
 import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer, countRecentTokenTransferAccount} from "../service/DailyTxnSync";
-import {countRecentMiner} from "../service/BlockAndMinerSync";
+import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 import {buildHexSet, convert2base32map, fillHexId, hex40IdMap, Hex40Map, idHex40Map, mapProp} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
@@ -313,11 +313,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     // miner topN
     router.get('/miner/top-by-type', async (ctx)=>{
-        const blockService = statApp.blockAndMinerSync;
         const { span, type, rows } = ctx.request.query;
-        const {list,allDifficulty} = await blockService.topByType(parseInt(span), type, parseInt(rows || 10));
-        const timeRange = blockService.calculateTimeRange(list);
-        const seconds = blockService.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
+        const {list,allDifficulty} = await BlockAndMinerSync.topByType(parseInt(span), type, parseInt(rows || 10));
+        const timeRange = BlockAndMinerSync.calculateTimeRange(list);
+        const seconds = BlockAndMinerSync.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {
             code: 0, message: 'ok',
             list,

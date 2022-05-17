@@ -23,6 +23,8 @@ import {
     scheduleDailyStatMix,
     scheduleSyncPosGap
 } from "./PosStat";
+import {PowSidePosSync} from "./PowSidePosSync";
+import {RedisWrap} from "../RedisWrap";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -637,16 +639,7 @@ if (require.main === module) {
     regExitHook()
     start().then()
 }
-async function start() {
-    const [,,urlParam, cmd] = process.argv
-    const cfg = await init()
-    const url = urlParam || cfg.conflux.url
-    const cfx = new Conflux({url})
-    const st = await cfx.getStatus()
-    console.log(`------ ${url} network ${st.networkId} ------`)
-    const posSync = new PosSync(cfx);
-    await posSync.init()
-    // wait pos enable
+async function waitPosEnable(cfx:Conflux) {
     while (true) {
         try {
             await cfx.pos.getStatus()
@@ -661,6 +654,16 @@ async function start() {
             throw e;
         }
     }
+}
+async function start() {
+    const [,,urlParam, cmd] = process.argv
+    const cfg = await init()
+    const url = urlParam || cfg.conflux.url
+    const cfx = new Conflux({url})
+    const st = await cfx.getStatus()
+    console.log(`------ ${url} network ${st.networkId} ------`)
+    const posSync = new PosSync(cfx);
+    await posSync.init()
     await posSync.updateLatestBlockNumber()
     {
         // cfx.getBlockByEpochNumber(345000).then(blk=>{
@@ -668,6 +671,7 @@ async function start() {
         //     console.log(` block is `, blk)
         // })
         if (cmd === 'test') {
+            await waitPosEnable(cfx)
             posSync.test().then(()=>{
                 process.exit(0)
             })
@@ -692,6 +696,13 @@ async function start() {
         // cfx['pos'].getAccount('0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055').then(console.log)
         // posSync.patchCreatedAccount(0, '0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055')
         redirectLog()
+
+        await RedisWrap.connect(cfg.redis)
+        const powSidePosSync = new PowSidePosSync(cfx);
+        powSidePosSync.init().then(()=>powSidePosSync.listen());
+
+        await waitPosEnable(cfx)
+
         scheduleDailyStatMix(cfx).then()
         scheduleSyncPosGap().then()
         scheduleDailyStakingDepositWithdraw().then()

@@ -82,8 +82,6 @@ async function run(){
     console.log('---------------init models done------------')
 
     // let blockAndMinerSync = new BlockAndMinerSync(sequelize, config.conflux);
-    // await blockAndMinerSync.checkPosition();
-    // await blockAndMinerSync.syncBlockByEpoch()
     // await new DataBlockService(sequelize).rollup();
     // await new DataBlockService(sequelize).rollupStatPerHour().then(()=>{
     //     console.info(`rollup per hour done. `)

@@ -3,32 +3,26 @@ import {createDB, initModel} from "./service/DBProvider";
 import {Sequelize} from "sequelize";
 // import * as pino from 'pino'
 import {TxnSync} from "./service/TxnSync";
-import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {RankService} from "./service/RankService";
 import {Conflux, format} from "js-conflux-sdk";
 import {initOss, TokenTool} from "./service/tool/TokenTool";
-import {CfxWatcher, Erc20Watcher} from "./service/watcher/BalanceWatcher";
+import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {BalanceService} from "./service/watcher/BalanceService";
 import {ContractService} from "./service/contract/ContractService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
-import {DailyTxnSync, scheduleDailyTokenStat} from "./service/DailyTxnSync";
 import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenQuery} from "./service/TokenQuery";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
-import { Monitor } from "./monitor/Monitor";
-import {scheduleDailyActiveAddress} from "./model/StatAddress";
 import {EpochSync} from "./service/EpochSync";
-import {DailyContractCreateSync} from "./service/DailyContractCreateSync";
 import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 import {ReportService} from "./service/ReportService";
-import {redisWrap, RedisWrap} from "./service/RedisWrap";
+import {RedisWrap} from "./service/RedisWrap";
 import {QuoteSync} from "./service/QuoteSync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
-import {DailyContractStatSync} from "./service/DailyContractStatSync";
 import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
 import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
@@ -44,7 +38,6 @@ import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
-import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {Desensitizer} from "./service/Desensitizer";
 import {setupEnsChecker} from "./service/ens/EnsService";
@@ -52,7 +45,6 @@ patchFormat();
 export class StatApp{
     public config: StatConfig;
     public sequelize: Sequelize;
-    public blockAndMinerSync: BlockAndMinerSync;
     public balanceService: BalanceService;
     public rankService: RankService;
     public txnSync: TxnSync;
@@ -60,25 +52,19 @@ export class StatApp{
     public contractService: ContractService;
     public batchBalanceWatcher: BatchBalanceWatcher;
     public cfxWatcher:CfxWatcher;
-    public dailyTxnSync: DailyTxnSync;
     public posQuery: PosQuery
     public dailyTxnQuery: DailyTxnQuery;
-    public cfxHolderSync: CfxHolderSync;
     public cfxHolderQuery: CfxHolderQuery;
     public tokenQuery: TokenQuery;
     public traceCreateQuery: BlockTraceCreateQuery;
     public epochSync: EpochSync
-    public contractCreateSync: DailyContractCreateSync
     public contractCreateQuery: DailyContractCreateQuery;
     public siteVerify: ReportService;
     public quoteSync: QuoteSync;
     public homeDashboardService: HomeDashboardService;
     public contractQuery: ContractQuery;
-    public contractStatSync: DailyContractStatSync;
     public contractStatQuery: DailyContractStatQuery;
-    public contractRegisterSync: DailyContractRegisterSync
     public contractRegisterQuery: DailyContractRegisterQuery;
-    public blockDataStatSync: DailyBlockDataStatSync;
     public blockDataStatQuery: DailyBlockDataStatQuery;
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
@@ -125,7 +111,6 @@ export class StatApp{
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
         await setupEnsChecker(this.cfx)
         this.txnSync = new TxnSync(this);
-        this.blockAndMinerSync = new BlockAndMinerSync();
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx))//.schedule(this.config.cfxWatcherDelay).then()
@@ -143,25 +128,19 @@ export class StatApp{
         this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)
         this.contractService.schedule()
         //
-        this.dailyTxnSync = new DailyTxnSync();
         this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);
-        this.cfxHolderSync = new CfxHolderSync(this.sequelize);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
         this.epochSync = new EpochSync(this);
-        this.contractCreateSync = new DailyContractCreateSync(this.sequelize);
         this.contractCreateQuery = new DailyContractCreateQuery();
         this.siteVerify = new ReportService(this);
         this.quoteSync = new QuoteSync(this);
         this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
-        this.contractStatSync = new DailyContractStatSync(this.sequelize);
         this.contractStatQuery = new DailyContractStatQuery();
-        this.contractRegisterSync = new DailyContractRegisterSync(this.sequelize);
         this.contractRegisterQuery = new DailyContractRegisterQuery();
-        this.blockDataStatSync = new DailyBlockDataStatSync();
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
@@ -170,46 +149,16 @@ export class StatApp{
         this.transferTpsService = new TransferTpsService(this);
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)
-        const powSidePosSync = new PowSidePosSync(this.cfx);
-        powSidePosSync.init().then(()=>powSidePosSync.listen());
         //
-        if (this.config.syncBlock) {
-            await this.blockAndMinerSync.schedule()
-        }
         this.txnSync.scheduleCache()
-        if (this.config.syncTxnCountDaily) {
-            await this.dailyTxnSync.schedule(); // dailyTxn
-            scheduleDailyActiveAddress()
-                .then(()=>{scheduleDailyTokenStat()})
-            calcDailyUniqueAddrSchedule().then()
-        }
-        if (this.config.syncCfxHolderCountDaily) {
-            await this.cfxHolderSync.schedule(); // dailyCfxHolder
-        }
-        if (this.config.checkRankDelay) {
-            let monitor = new Monitor(this.config.dingTalkToken, this.config.serverTag);
-            monitor.checkFullBlockSyncRunning().then()
-        }
-        if (this.config.syncContractCreateCountDaily) {
-            await this.contractCreateSync.schedule(); // dailyContractCreate
-        }
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote
         }
         if (this.config.syncHomeDashboardData) {
             await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
         }
-        if (this.config.syncContractStatInfoDaily) {
-            await this.contractStatSync.schedule();
-        }
         if (this.config.syncEpoch) {
             await this.epochSync.run(this.config.syncEpochNumber);
-        }
-        if (this.config.syncContractRegisterCountDaily) {
-            await this.contractRegisterSync.schedule(); // dailyContractRegister
-        }
-        if (this.config.syncBlockDataStatDaily) {
-            await this.blockDataStatSync.schedule(); // daily block data stat
         }
         if (this.config.syncTokenSecurityAudit) {
             await this.tokenSecurityAuditSync.schedule();
