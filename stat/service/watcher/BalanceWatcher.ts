@@ -73,5 +73,3 @@ export class CfxWatcher extends BalanceWatcher{
         }
     }
 }
-export class Erc20Watcher extends BalanceWatcher{
-}
