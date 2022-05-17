@@ -49,6 +49,7 @@ async function main() {
     //
     const blockDataStatSync = new DailyBlockDataStatSync();
     await blockDataStatSync.schedule(); // daily block data stat
+    console.log(`Timer tasks scheduled.`)
 }
 main().then().catch(err=>{
     console.log(`Timer task fail:`, err)
