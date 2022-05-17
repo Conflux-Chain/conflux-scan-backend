@@ -490,6 +490,442 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/NFTPreview"
+  /statistics/supply:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Return supply info about CFX on Conflux Network.
+                      \ntotalIssued: Total issued balance in Drip,
+                      \ntotalCirculating: Total circulating balance in Drip,
+                      \ntotalStaking: Total staking balance in Drip,
+                      \ntotalCollateral: Total collateral balance in Drip,
+                      \nnullAddressBalance: Zero address's balance in Drip,
+                      \ntwoYearUnlockBalance: Two year unlock address's balance in Drip,
+                      \nfourYearUnlockBalance: Four year unlock address's balance in Drip."
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketStat'
+  /statistics/mining:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of mining within ${limit} ${intervalType}.
+                   \nWhen intervalType is min, the maximum interval between minTimestamp and maxTimestamp is 60 minutes"
+      parameters:
+        - description: "Indicator calculation period, should be one of min(minute), hour or day. Default is hour."
+          name: intervalType
+          in: query
+          required: false
+          schema:
+            type: string
+            default: hour
+            enum:
+              - min
+              - hour
+              - day
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - name: limit
+          in: query
+          description: "The number of records displayed on the page. The maximum value is 60 when the intervalType is min, and 100 when the intervalType is hour/day."
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            default: 10
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/MiningStat"
+  /statistics/tps:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of tps within ${limit} ${intervalType}.
+                    \nWhen intervalType is min, the maximum interval between minTimestamp and maxTimestamp is 60 minutes"
+      parameters:
+        - name: intervalType
+          description: "Indicate calculation period, should be one of min(minute), hour or day. Default is hour."
+          in: query
+          required: false
+          schema:
+            type: string
+            default: hour
+            enum:
+              - min
+              - hour
+              - day
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - name: limit
+          description: "The number of records displayed on the page. The maximum value is 60 when the intervalType is min, and 100 when the intervalType is hour/day."
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            default: 10
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TpsStat"
+  /statistics/contract:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of deployed contract."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ContractDeployedStat"
+  /statistics/account/cfx/holder:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of total cfx holder by daily."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/CfxHolderStat"
+  /statistics/account/growth:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of account growth by daily."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AccountGrowthStat"
+  /statistics/account/active:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of active account by daily."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AccountActiveStat"
+  /statistics/transaction:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of transaction account by daily."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TransactionStat"
+  /statistics/cfx/transfer:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of cfx transfer by daily."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/CfxTransferStat"
+  /statistics/token/transfer:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of token transfer by daily."
+      parameters:
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenTransferStat"
+  /statistics/top/gas/used:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of gas used for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/GasUsedTopStat"
+  /statistics/top/miner:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of miner for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/MinerTopStat"
+  /statistics/top/transaction/sender:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of transaction sender for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AddressTransactionTopStat"
+  /statistics/top/transaction/receiver:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of transaction receiver for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AddressTransactionTopStat"
+  /statistics/top/cfx/sender:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of cfx sender for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AddressCfxTransferTopStat"
+  /statistics/top/cfx/receiver:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of cfx receiver for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AddressCfxTransferTopStat"
+  /statistics/top/token/transfer:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of token transfer for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenTransferTopStat"
+  /statistics/top/token/sender:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of token sender for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenSenderStat"
+  /statistics/top/token/receiver:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of token receiver for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenReceiverTopStat"
+  /statistics/top/token/participant:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of token participant for top 10."
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenParticipantTopStat"
+  /statistics/token/holder:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of holder count for token transfer by daily."
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenHolderStat"
+  /statistics/token/unique/sender:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of unique sender count for token transfer by daily."
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenTransferUniqueSenderStat"
+  /statistics/token/unique/receiver:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of unique receiver count for token transfer by daily."
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenTransferUniqueReceiverStat"
+  /statistics/token/unique/participant:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of unique participant count for token transfer by daily."
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TokenTransferUniqueParticipantStat"
   '/account/transactions':
     get:
       tags:
@@ -1403,6 +1839,530 @@ components:
                               13. GNU Affero General Public License (GNU AGPLv3)
                               14. Business Source License (BSL 1.1)"
           default: 1
+    MarketStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            totalIssued:
+              type: string
+              description: 'Total issued balance in Drip'
+            totalCirculating:
+              type: string
+              description: 'Total circulating balance in Drip'
+            totalStaking:
+              type: string
+              description: 'Total staking balance in Drip'
+            totalCollateral:
+              type: string
+              description: 'Total collateral balance in Drip'
+            nullAddressBalance:
+              type: string
+              description: "Zero address's balance in Drip"
+            twoYearUnlockBalance:
+              type: string
+              description: "Two year unlock address's balance in Drip"
+            fourYearUnlockBalance:
+              type: string
+              description: "Four year unlock address's balance in `Drip`"
+    MiningStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  blockTime:
+                    type: string
+                    description: ''
+                  hashRate:
+                    type: string
+                    description: ''
+                  difficulty:
+                    type: string
+                    description: ''
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    TpsStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  tps:
+                    type: string
+                    description: ''
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    ContractDeployedStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'daily deployed contracts.'
+                  total:
+                    type: string
+                    description: 'total deployed contracts.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    CfxHolderStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'total cfx holders count by daily'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    AccountGrowthStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'daily account growth count.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    AccountActiveStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'daily active account count.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    TransactionStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'daily transaction count.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    CfxTransferStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  transferCount:
+                    type: string
+                    description: 'daily cfx transfer count.'
+                  userCount:
+                    type: string
+                    description: 'daily user count.'
+                  amount:
+                    type: string
+                    description: 'daily amount of cfx transfer.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    TokenTransferStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  transferCount:
+                    type: string
+                    description: 'daily token transfer count.'
+                  userCount:
+                    type: string
+                    description: 'daily user count.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    GasUsedTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            totalGas:
+              type: string
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'account address.'
+                  gas:
+                    type: string
+                    description: 'gas used.'
+    MinerTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            minTime:
+              type: string
+            maxTime:
+              type: string
+            difficultyTotal:
+              type: string
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'account address.'
+                  blockCntr:
+                    type: string
+                    description: 'block count'
+                  rewardSum:
+                    type: string
+                    description: 'reward sum'
+                  txFeeSum:
+                    type: string
+                    description: 'tx fee sum'
+                  hashRate:
+                    type: string
+                    description: 'hash rate'
+    AddressCfxTransferTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            minTime:
+              type: string
+            maxTime:
+              type: string
+            valueTotal:
+              type: string
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'account address.'
+                  value:
+                    type: string
+                    description: 'address transfer value.'
+    AddressTransactionTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            minTime:
+              type: string
+            maxTime:
+              type: string
+            valueTotal:
+              type: string
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'account address.'
+                  value:
+                    type: string
+                    description: 'address transaction count.'
+    TokenTransferTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'token address.'
+                  value:
+                    type: string
+                    description: 'token transfer count.'
+    TokenSenderTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'token address.'
+                  value:
+                    type: string
+                    description: 'token sender count.'
+    TokenReceiverTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'token address.'
+                  value:
+                    type: string
+                    description: 'token receiver count.'
+    TokenParticipantTopStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    description: 'token address.'
+                  value:
+                    type: string
+                    description: 'token participant count.'
+    TokenHolderStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+                  holderCount:
+                    type: string
+                    description: 'daily holder count of token.'
+    TokenTransferUniqueSenderStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+                  uniqueSender:
+                    type: string
+                    description: 'daily unique sender count of token transfer.'
+    TokenTransferUniqueReceiverStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+                  uniqueReceiver:
+                    type: string
+                    description: 'daily unique receiver count of token transfer.'
+    TokenTransferUniqueParticipantStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+                  uniqueParticipant:
+                    type: string
+                    description: 'daily unique participant count of token transfer.'
   parameters:
     addressMust:
       name: address
@@ -1739,6 +2699,22 @@ components:
       required: false
       schema:
         type: integer
+    sortByDefaultDescParam:
+      description: "Sort in DESC or ASC order."
+      name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'DESC'
+    spanParam:
+      description: "Calculates the ranking in the specified time span 24h, 3d or 7d. If not provided, default value is 24h"
+      name: spanType
+      in: query
+      required: false
+      schema:
+        type: string
+        default: '24h'
 externalDocs:
   description: 'Conflux JSON RPC Docs'
   url: 'https://developer.confluxnetwork.org/docs/conflux-doc/docs/json_rpc'
