@@ -15,10 +15,10 @@ export class StatNotifier {
     // stat-block
     public static SWITCH_STAT_MINER_BLOCK = false;
     public static SWITCH_STAT_ADDR_TRANSACTION = false;
-    // scan-block
+    // scan-cfx-transfer
     public static SWITCH_STAT_DAILY_CFX_TRANSFER = false;
     public static SWITCH_STAT_ADDR_CFX_TRANSFER = false;
-    // stat-stat
+    // stat-epoch
     public static SWITCH_STAT_TOKEN_TRANSFER = false;
     public static SWITCH_STAT_DAILY_TOKEN_TRANSFER = false;
 
@@ -88,7 +88,7 @@ export class StatNotifier {
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_ADDR_TRANSACTION_Q});
     }
 
-    // scan-block
+    // scan-cfx-transfer
     public static async notifyStatDailyCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         if (!StatNotifier.SWITCH_STAT_DAILY_CFX_TRANSFER) {
             return Promise.resolve(false);
@@ -104,7 +104,7 @@ export class StatNotifier {
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_DAILY_CFX_TRANSFER_Q});
     }
 
-    // scan-block
+    // scan-cfx-transfer
     public static async notifyStatAddrCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         if (!StatNotifier.SWITCH_STAT_ADDR_CFX_TRANSFER) {
             return Promise.resolve(false);
@@ -128,7 +128,7 @@ export class StatNotifier {
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_ADDR_CFX_TRANSFER_Q});
     }
 
-    // stat-stat
+    // stat-epoch
     public static async notifyStatTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
         if (!StatNotifier.SWITCH_STAT_TOKEN_TRANSFER) {
             return Promise.resolve(false);
@@ -137,7 +137,7 @@ export class StatNotifier {
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_TOKEN_TRANSFER_Q});
     }
 
-    // stat-stat
+    // stat-epoch
     public static async notifyStatDailyTokenTransfer({epochNumber, epochTimestamp, action, tokenTransfer}) {
         if (!StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER) {
             return Promise.resolve(false);

@@ -125,3 +125,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/pos/PosSync.js http://192.168.8.165:12537 345000
+  epoch:
+    image: node:14.7.0
+    volumes:
+      - ./:/stat-root
+      - ./log/:/log
+    network_mode: host
+    environment:
+      PORT: 8087
+    restart: always
+    command: node /stat-root/stat/dist/FullEpochSync.js

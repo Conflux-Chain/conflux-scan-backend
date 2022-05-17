@@ -1,7 +1,6 @@
 import {StatConfig} from "./config/StatConfig";
 import {createDB, initModel} from "./service/DBProvider";
 import {Sequelize} from "sequelize";
-// import * as pino from 'pino'
 import {TxnSync} from "./service/TxnSync";
 import {RankService} from "./service/RankService";
 import {Conflux, format} from "js-conflux-sdk";
@@ -12,11 +11,9 @@ import {ContractService} from "./service/contract/ContractService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {DailyTxnQuery} from "./service/DailyTxnQuery";
-import {CfxHolderSync} from "./service/CfxHolderSync";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenQuery} from "./service/TokenQuery";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
-import {EpochSync} from "./service/EpochSync";
 import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 import {ReportService} from "./service/ReportService";
 import {RedisWrap} from "./service/RedisWrap";
@@ -24,9 +21,7 @@ import {QuoteSync} from "./service/QuoteSync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
 import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
-import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
-import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
@@ -37,8 +32,6 @@ import {IS_EVM2, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
-import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {Desensitizer} from "./service/Desensitizer";
 import {setupEnsChecker} from "./service/ens/EnsService";
 patchFormat();
@@ -57,7 +50,6 @@ export class StatApp{
     public cfxHolderQuery: CfxHolderQuery;
     public tokenQuery: TokenQuery;
     public traceCreateQuery: BlockTraceCreateQuery;
-    public epochSync: EpochSync
     public contractCreateQuery: DailyContractCreateQuery;
     public siteVerify: ReportService;
     public quoteSync: QuoteSync;
@@ -93,7 +85,6 @@ export class StatApp{
         StatApp.readonly = this.config.database.readonly
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
         this.tokenTool = new TokenTool(this.cfx);
-        // const logger = pino()
         this.sequelize = createDB(this.config.databaseRW);
         const {sequelize} = this;
         await Promise.all([
@@ -124,16 +115,13 @@ export class StatApp{
         this.balanceService = new BalanceService(this, [], StatApp.networkId)
         this.balanceService.schedule(60_000)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
-        //
         this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)
         this.contractService.schedule()
-        //
         this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
-        this.epochSync = new EpochSync(this);
         this.contractCreateQuery = new DailyContractCreateQuery();
         this.siteVerify = new ReportService(this);
         this.quoteSync = new QuoteSync(this);
@@ -149,7 +137,6 @@ export class StatApp{
         this.transferTpsService = new TransferTpsService(this);
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)
-        //
         this.txnSync.scheduleCache()
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote
@@ -157,24 +144,12 @@ export class StatApp{
         if (this.config.syncHomeDashboardData) {
             await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
         }
-        if (this.config.syncEpoch) {
-            await this.epochSync.run(this.config.syncEpochNumber);
-        }
         if (this.config.syncTokenSecurityAudit) {
             await this.tokenSecurityAuditSync.schedule();
-        }
-        if (this.config.syncPrune) {
-            PruneNotifier.SWITCH_SYNC_PRUNE = this.config.syncPrune;
-            await this.pruneHandler.scheduleRefreshConfig();
         }
         if (this.config.syncTransferTps) {
             await this.transferTpsService.scheduleRefreshConfig();
             await this.transferTpsService.schedule();
-        }
-        if (this.config.streamStat) {
-            StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
-            StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
-            StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
         }
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
