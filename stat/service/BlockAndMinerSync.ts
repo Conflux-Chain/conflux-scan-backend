@@ -29,12 +29,12 @@ export class BlockAndMinerSync {
         repeat().then()
     }
 
-    public calculateTimeRange(list:IMinerBlock[]) {
+    static calculateTimeRange(list:IMinerBlock[]) {
         return {beginTime: list.map(blk=>blk.beginTime).sort()[0],
             endTime: list.map(blk=>blk.endTime).sort().reverse()[0]}
     }
 
-    public calculateHashRate(list: IMinerBlock[], beginTime: string|Date, endTime: string|Date) {
+    static calculateHashRate(list: IMinerBlock[], beginTime: string|Date, endTime: string|Date) {
         if (beginTime === undefined || endTime === undefined) {
             console.log(`time is empty`, beginTime, endTime)
             return 0
@@ -48,7 +48,7 @@ export class BlockAndMinerSync {
         return seconds
     }
 
-    async topByType(n: number, type: string, limit: number = 10): Promise<{list:IMinerBlock[], allDifficulty:number}>{
+    static async topByType(n: number, type: string, limit: number = 10): Promise<{list:IMinerBlock[], allDifficulty:number}>{
         console.log(`top by type : ${n} ${type} limit ${limit}`)
         if (n <= 0) {
             return Promise.reject(`invalid span ${n}`)
@@ -65,10 +65,10 @@ export class BlockAndMinerSync {
         } catch (err) {
             return Promise.reject(`${err}`)
         }
-        return this.topByTime(beginDt, endDt, timeWindow, limit)
+        return BlockAndMinerSync.topByTime(beginDt, endDt, timeWindow, limit)
     }
 
-    async topByTime(beginDt: Date, endDt: Date, timeWindow: string, limit: number): Promise<{list:IMinerBlock[], allDifficulty:number}> {
+    static async topByTime(beginDt: Date, endDt: Date, timeWindow: string, limit: number): Promise<{list:IMinerBlock[], allDifficulty:number}> {
         const sumFn = getSumFunction();
         const list:IMinerBlock[] = await MinerBlock.sequelize.query(
     `select minerId, hex as miner, sum(blockCount) as blockCount, 
