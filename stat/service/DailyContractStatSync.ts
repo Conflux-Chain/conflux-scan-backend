@@ -24,7 +24,9 @@ export class DailyContractStatSync {
         const contractList = await TraceCreateContract.findAll({attributes: ['to', 'blockTime'], raw: true}) || [];
         await DailyContractStatSync.addInternalContract(contractList);
 
+        let idx = 0
         for(const contract of contractList){
+            idx ++;
             const stat = await this.statDailyByAddress(contract, day);
             if(!stat){
                 continue;
@@ -39,7 +41,9 @@ export class DailyContractStatSync {
             } else{
                 let statNew = lodash.assign(new DailyContractStat(), stat);
                 await DailyContractStat.add(statNew);
-                console.log(`daily_contract_stat record:${JSON.stringify(stat)}`);
+                if (idx % 1000 == 0) {
+                    console.log(` sample daily_contract_stat record:${JSON.stringify(stat)}`);
+                }
             }
         }
         return Promise.resolve(1);
