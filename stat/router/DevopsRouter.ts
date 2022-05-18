@@ -51,10 +51,13 @@ async function checkLocal(ctx: Context, next) {
 }
 
 export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
-    router.use(proxy({
-        host:  'http://127.0.0.1', // config local nginx to do your job
-        match: /^\/devops\/rpc-proxy\//        // ...just the /static folder
-    }));
+    router.post('/devops/rpc-proxy', async (ctx, next)=>{
+        const p = proxy({
+            url:  'http://127.0.0.1/rpc-proxy', // config local nginx to do your job
+            host: `http://${ctx.hostname}`,
+        })
+        await p(ctx,next)
+    });
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
         let bean:Hex40Map
