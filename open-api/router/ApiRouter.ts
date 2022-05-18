@@ -15,6 +15,32 @@ import {
     listAccountTransfer1155
 } from "../service/OpenTransferService";
 import {
+    listMiningStat,
+    getSupplyStat,
+    listTpsStat,
+    listContractStat,
+    listCfxHolderStat,
+    listAccountGrowthStat,
+    listAccountActiveStat,
+    listTransactionStat,
+    listCfxTransferStat,
+    listTokenTransferStat,
+    listGasUsedTopStat,
+    listMinerTopStat,
+    listTransactionSenderTopStat,
+    listTransactionReceiverTopStat,
+    listCfxSenderTopStat,
+    listCfxReceiverTopStat,
+    listTokenTransferTopStat,
+    listTokenSenderTopStat,
+    listTokenReceiverTopStat,
+    listTokenParticipantTopStat,
+    listTokenHolderStat,
+    listTokenUniqueSenderStat,
+    listTokenUniqueReceiverStat,
+    listTokenUniqueParticipantStat,
+} from "../service/OpenStatService";
+import {
     getPagination,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
@@ -55,7 +81,7 @@ async function getTokenInfo(ctx) {
     setBody(ctx, result)
 }
 
-// work in progress.
+/*// work in progress.
 async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
 
@@ -67,7 +93,7 @@ async function listMiningStat(ctx) {
     const page = await getApiService().dailyBlockDataStatQuery.listMiningStat({intervalType, minTimestamp,  maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit})
     setBody(ctx, page)
-}
+}*/
 // /**
 //  * query transactions of one account(address)
 //  * @param ctx
@@ -145,7 +171,7 @@ async function listMiningStat(ctx) {
 //     return listTransfer(ctx, getApiService().crc1155transferQuery)
 // }
 
-async function getSupplyStat(ctx) {
+/*async function getSupplyStat(ctx) {
     const marketData = await getApiService().marketDataQuery.getMarketData();
     setBody(ctx, marketData);
 }
@@ -312,7 +338,7 @@ async function listTokenParticipantTopStat(ctx) {
     const statObj = await getApiService().tokenTransferHandler.getStat();
     const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.ALL}`];
     setBody(ctx, statInfo)
-}
+}*/
 
 // async function listNFTBalances(ctx) {
 //     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner');
@@ -386,7 +412,7 @@ async function listTokenParticipantTopStat(ctx) {
 //     setBody(ctx, data)
 // }
 
-function parseStatParam(ctx) {
+/*function parseStatParam(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp', 'skip', 'limit');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
@@ -413,7 +439,7 @@ async function getTokenAnalysisData(ctx){
     const page = await getApiService().dailyTxnQuery.listDailyTokenAnalysis({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit, contract});
     return page;
-}
+}*/
 
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
@@ -461,6 +487,11 @@ function registerRouter(router: Router) {
     // token
     router.get('/token/tokeninfo', getTokenInfo);
 
+    // nft assets
+    router.get('/nft/balances', listNFTBalances);
+    router.get('/nft/tokens', listNFTTokens);
+    router.get('/nft/preview', getNFTPreview);
+
     // statistics
     router.get('/statistics/mining', listMiningStat)
     router.get('/statistics/supply', getSupplyStat);
@@ -486,9 +517,4 @@ function registerRouter(router: Router) {
     router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
     router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
     router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
-
-    // nft assets
-    router.get('/nft/balances', listNFTBalances);
-    router.get('/nft/tokens', listNFTTokens);
-    router.get('/nft/preview', getNFTPreview);
 }
