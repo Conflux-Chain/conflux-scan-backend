@@ -49,7 +49,7 @@ export class TokenQuery {
         let attributes: any = ['hex40id', ['base32', 'address'],
             'name', 'symbol', 'decimals', 'granularity', 'totalSupply',
             ['type', 'transferType'], ['holder', 'holderCount'], ['transfer', 'transferCount'],
-            'price', 'totalPrice', 'quoteUrl', 'iconUrl', 'website', 'securityCredits'];
+            'price', 'totalPrice', 'quoteUrl', 'iconUrl', 'website', 'ipfsGateway', 'securityCredits'];
         if (lodash.includes(fields, 'icon')) {
             attributes.push('icon');
         }
