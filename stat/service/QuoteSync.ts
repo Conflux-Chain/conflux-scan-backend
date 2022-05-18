@@ -2,6 +2,7 @@ import {Token} from "../model/Token";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {Op} from 'sequelize'
 import {toBase32} from "./tool/AddressTool";
+import {StatApp} from "../StatApp";
 const lodash = require('lodash');
 const superagent = require('superagent');
 const BigFixed = require('bigfixed');
@@ -56,7 +57,9 @@ export class QuoteSync {
     await this.updateFromMoonDex(tokenList).catch((e) => console.log({ src: 'updateFromMoonDex', msg: e }));
     await this.updateFromBinance(tokenList).catch((e) => console.log({ src: 'updateFromBinance', msg: e }));
     await this.updateFromMoonSwap(tokenList).catch((e) => console.log({ src: 'updateFromMoonSwap', msg: e }));
-    await this.updateFromSwappi(tokenList).catch((e) => console.log({ src: 'updateFromSwappi', msg: e }));
+    if(StatApp.networkId === 1030){
+      await this.updateFromSwappi(tokenList).catch((e) => console.log({ src: 'updateFromSwappi', msg: e }));
+    }
   }
 
   //======================================================================

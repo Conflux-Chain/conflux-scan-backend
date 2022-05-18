@@ -587,6 +587,7 @@ jsonrpc.method('registerToken',
     quoteUrl: { path: '0', type: type.string },
     moonDexSymbol: { path: '0', type: type.string },
     binanceSymbol: { path: '0', type: type.string },
+    ipfsGateway: { path: '0', type: type.string },
   })),
 
   checkPassword,

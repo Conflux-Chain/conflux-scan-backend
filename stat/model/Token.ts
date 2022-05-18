@@ -32,6 +32,7 @@ export interface IToken{
     icon?:string
     iconUrl?:string
     website?:string
+    ipfsGateway?:string
     portalSupport?:boolean
     fetchBalance?:boolean
     updatedAt?:Date
@@ -69,6 +70,7 @@ export class Token extends Model<IToken> implements IToken{
     icon?:string
     iconUrl?:string
     website?:string
+    ipfsGateway?:string
     portalSupport?:boolean
     fetchBalance?:boolean
 
@@ -104,6 +106,7 @@ export class Token extends Model<IToken> implements IToken{
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
             iconUrl: {type: DataTypes.STRING(128), allowNull: true, },
             website: {type: DataTypes.CHAR(255), allowNull: true},
+            ipfsGateway: {type: DataTypes.CHAR(255), allowNull: true},
             portalSupport: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
