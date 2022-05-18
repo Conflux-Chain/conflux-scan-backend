@@ -22,6 +22,28 @@ import {queryTokenInfo} from "../service/OpenTokenService";
 import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
 import {Epoch} from "../../stat/model/Epoch";
 import {Op} from "sequelize";
+import {
+    getSupplyStat,
+    listAccountActiveStat,
+    listAccountGrowthStat,
+    listCfxHolderStat,
+    listCfxReceiverTopStat,
+    listCfxSenderTopStat,
+    listCfxTransferStat,
+    listContractStat,
+    listGasUsedTopStat,
+    listMinerTopStat,
+    listMiningStat, listTokenHolderStat,
+    listTokenParticipantTopStat,
+    listTokenReceiverTopStat,
+    listTokenSenderTopStat,
+    listTokenTransferStat,
+    listTokenTransferTopStat, listTokenUniqueParticipantStat, listTokenUniqueReceiverStat, listTokenUniqueSenderStat,
+    listTpsStat,
+    listTransactionReceiverTopStat,
+    listTransactionSenderTopStat,
+    listTransactionStat
+} from "../service/OpenStatService";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -671,6 +693,32 @@ export function registerRouter(router: Router) {
     router.get('/nft/balances', listNFTBalances);
     router.get('/nft/tokens', listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
+
+    // statistics
+    router.get('/statistics/mining', listMiningStat)
+    router.get('/statistics/supply', getSupplyStat);
+    router.get('/statistics/tps', listTpsStat);
+    router.get('/statistics/contract', listContractStat);
+    router.get('/statistics/account/cfx/holder', listCfxHolderStat);
+    router.get('/statistics/account/growth', listAccountGrowthStat);
+    router.get('/statistics/account/active', listAccountActiveStat);
+    router.get('/statistics/transaction', listTransactionStat);
+    router.get('/statistics/cfx/transfer', listCfxTransferStat);
+    router.get('/statistics/token/transfer', listTokenTransferStat);
+    router.get('/statistics/top/gas/used', listGasUsedTopStat);
+    router.get('/statistics/top/miner', listMinerTopStat);
+    router.get('/statistics/top/transaction/sender', listTransactionSenderTopStat);
+    router.get('/statistics/top/transaction/receiver', listTransactionReceiverTopStat);
+    router.get('/statistics/top/cfx/sender', listCfxSenderTopStat);
+    router.get('/statistics/top/cfx/receiver', listCfxReceiverTopStat);
+    router.get('/statistics/top/token/transfer', listTokenTransferTopStat);
+    router.get('/statistics/top/token/sender', listTokenSenderTopStat);
+    router.get('/statistics/top/token/receiver', listTokenReceiverTopStat);
+    router.get('/statistics/top/token/participant', listTokenParticipantTopStat);
+    router.get('/statistics/token/holder', listTokenHolderStat);
+    router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
+    router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
+    router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
 
     // account(deprecated)
     router.get('/account/transactions', listAccountTransaction)
