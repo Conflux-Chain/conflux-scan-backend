@@ -222,7 +222,7 @@ export async function list1155inventory({contractAddr = '', // query by contract
         where, raw: true, order, offset, limit, logging
     });
     const set = buildHexSet(undefined, rows, 'addressId')
-    const isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
+    const isEvm = StatApp.isEVM
     let hexMap = await idHex40Map([...set], isEvm)
     if (!isEvm) {
         hexMap = convert2base32map(hexMap)

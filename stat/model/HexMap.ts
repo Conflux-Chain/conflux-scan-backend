@@ -388,3 +388,20 @@ export async function idHex64Map(idArray: Array<number>): Promise<Map<number, st
     })
     return idHex64Map;
 }
+
+export function patchBase32prop(list:any[], fromKey: string, toKey: string, isEvm:boolean, netId: number) {
+    const base32arr = []
+    for(const row of list) {
+        const hex = row[fromKey]
+        if (hex?.length < 42) {
+            continue
+        }
+        if (isEvm) {
+            row[toKey] = format.address(row[fromKey], netId)
+        } else {
+            row[toKey] = row[fromKey]
+        }
+        base32arr.push(row[toKey])
+    }
+    return base32arr
+}
