@@ -13,6 +13,7 @@ export class Stopwatch {
     public stop() {
         const now = new Date().getTime()
         this.last.finish(now)
+        this.entries.push(this.last)
         this.last = null
     }
 
