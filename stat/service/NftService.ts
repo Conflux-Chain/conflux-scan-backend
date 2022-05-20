@@ -17,7 +17,7 @@ import {format} from "js-conflux-sdk";
 import {list2map, reverseMap} from "./common/utils";
 import {StatApp} from "../StatApp";
 const lodash = require('lodash');
-import {KEY_NFT_FROM_DB, KEY_NFT_FROM_MINT_TABLE, KV} from "../model/KV";
+import {IS_EVM, IS_EVM2, KEY_NFT_FROM_DB, KEY_NFT_FROM_MINT_TABLE, KV} from "../model/KV";
 
 export class NftService {
     zeroAddrId:number
@@ -194,13 +194,63 @@ export async function getNftBalances(accountBase32:string, contractsBase32:strin
     return contractsBase32.map(base32=>map[base32]?.balance || 0)
 }
 
-
-if (module === require.main) {
-    init().then(cfg=>{
+export async function list1155inventory({contractAddr = '', // query by contract
+                                            userAddr = '', // query token ids held by user of contract
+                                            tokenId = '', // query holders of one item
+                                            logging = undefined,
+                                            offset=0, limit=10}) {
+    // contract addr must be present
+    const contractId = await getAddrId(contractAddr) || 0
+    if (!contractId || contractId < 0) {
+        return {total: 0, list: [], message: `contractAddr not found [${contractAddr}]`}
+    }
+    const userId = userAddr ?  (await getAddrId(userAddr) || 0) : 0
+    if (userAddr && !userId) {
+        return {total: 0, list: [], message: `userAddr not found [${userAddr}]`}
+    }
+    const where = {contractId, addressId: userId, tokenId}
+    if (!userId) {
+        delete where.addressId
+    }
+    let order = [['epoch','desc']] as any
+    if (tokenId) {
+        order = [['amount', 'desc']] as any
+    } else {
+        delete where.tokenId
+    }
+    const {rows, count} = await Erc1155Data.findAndCountAll({
+        where, raw: true, order, offset, limit, logging
+    });
+    const set = buildHexSet(undefined, rows, 'addressId')
+    const isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
+    let hexMap = await idHex40Map([...set], isEvm)
+    if (!isEvm) {
+        hexMap = convert2base32map(hexMap)
+    }
+    mapProp(hexMap, rows, 'addressId', 'owner')
+    let totalSupply = ''
+    if (tokenId && count) {
+        totalSupply = await Erc1155Data.sum('amount', {
+            where: {contractId, tokenId}, logging,
+        }).then(res=>res.toString())
+    }
+    return {total: count, list: rows, totalSupply, tokenId}
+}
+async function main() {
+    const [,,cmd,p1,p2,p3] = process.argv
+    const cfg = await init()
+    if (cmd === 'check') {
         const args = process.argv.slice(2)
         let from = args[0]
-        return new NftService().checkAll(Number(from))
-    }).then(()=>{
-        return NftMint.sequelize.close()
-    })
+        await new NftService().checkAll(Number(from))
+    } else if (cmd === 'testQuery') {
+        const ret = await list1155inventory({contractAddr: p1, userAddr: p2, tokenId: p3, logging: console.log})
+        console.log(`result `, ret)
+    }
+    await NftMint.sequelize.close()
+    console.log(`done`)
+    process.exit(0)
+}
+if (module === require.main) {
+    main().then()
 }
