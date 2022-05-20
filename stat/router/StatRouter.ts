@@ -20,18 +20,29 @@ import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer, countRecentTokenTransferAccount} from "../service/DailyTxnSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
-import {buildHexSet, convert2base32map, fillHexId, hex40IdMap, Hex40Map, idHex40Map, mapProp} from "../model/HexMap";
+import {
+    buildHexSet,
+    convert2base32map,
+    fillHexId,
+    hex40IdMap,
+    Hex40Map,
+    idHex40Map, mapExtInfo,
+    mapProp,
+    patchBase32prop
+} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
-import {listNftOfAccountByContract, getRegisterNftBalances} from "../service/NftService";
+import {listNftOfAccountByContract, getRegisterNftBalances, list1155inventory} from "../service/NftService";
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 import {BalanceService} from "../service/watcher/BalanceService";
 import {listCrossSpaceStat} from "../service/CrossSpaceStat";
 import {queryEnsOfName} from "../service/ens/ENS";
 import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
+import {skipLimit} from "./ParamChecker";
+import {Stopwatch} from "../service/Stopwatch";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -524,6 +535,17 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {code: 0, data: balanceArray};
     })
 
+    router.get('/nft/list1155inventory', async function (ctx) {
+        const {contractAddr, userAddr, tokenId} = ctx.request.query
+        const {skip: offset, limit} = skipLimit(ctx.request.query)
+        const result = await list1155inventory({contractAddr, userAddr, tokenId, offset, limit})
+        const base32arr = patchBase32prop(result.list, 'owner', 'ownerBase32', StatApp.isEVM, StatApp.networkId)
+        const contractBasic = await statApp.contractQuery.listBasic({addressArray: base32arr});
+        mapExtInfo(result.list, contractBasic.map, 'ownerBase32',
+            'ownerTokenInfo', 'ownerContractInfo')
+        result.list.forEach(row=>delete row.ownerBase32)
+        ctx.body = result
+    })
     router.get('/nft/active-token-ids', async function (ctx) {
         const {contractAddress, skip = 0, limit = 10} = ctx.request.query
         const hex = format.hexAddress(contractAddress)

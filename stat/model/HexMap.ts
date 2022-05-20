@@ -367,13 +367,13 @@ export function convert2base32map(map: Map<any, string>) : Map<any, string> {
     }
     return base32map
 }
-export async function idHex40Map(idArray: Array<number|string>): Promise<Map<number, string>>{
+export async function idHex40Map(idArray: Array<number|string>, with0x=false): Promise<Map<number, string>>{
     const result = await Hex40Map.findAll({
         where: {id: { [Op.in]: idArray}},
     })
     const idHex40Map = new Map<number, string>()
     result.forEach(hex40=>{
-        idHex40Map.set(hex40.id, hex40.hex)
+        idHex40Map.set(hex40.id, with0x ? `0x${hex40.hex}` : hex40.hex)
     })
     return idHex40Map;
 }
@@ -387,4 +387,26 @@ export async function idHex64Map(idArray: Array<number>): Promise<Map<number, st
         idHex64Map.set(hex64.id, hex64.hex)
     })
     return idHex64Map;
+}
+export function mapExtInfo(list:any[], map:object, indexKey:string, tokenKey:string, contractKey:string){
+    list.forEach(item => {
+        item[tokenKey] = map[item[indexKey]]?.token || {};
+        item[contractKey] = map[item[indexKey]]?.contract || {};
+    });
+}
+export function patchBase32prop(list:any[], fromKey: string, toKey: string, isEvm:boolean, netId: number) {
+    const base32arr = []
+    for(const row of list) {
+        const hex = row[fromKey]
+        if (hex?.length < 42) {
+            continue
+        }
+        if (isEvm) {
+            row[toKey] = format.address(row[fromKey], netId)
+        } else {
+            row[toKey] = row[fromKey]
+        }
+        base32arr.push(row[toKey])
+    }
+    return base32arr
 }
