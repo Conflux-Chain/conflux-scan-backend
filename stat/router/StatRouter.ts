@@ -546,8 +546,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         watch.stop()
         watch.dump('----')
         result.list.forEach(item => {
-            item.tokenInfo = contractBasic.map[item.base32]?.token || {};
-            item.contractInfo = contractBasic.map[item.base32]?.contract || {};
+            item.ownerTokenInfo = contractBasic.map[item.base32]?.token || {};
+            item.ownerContractInfo = contractBasic.map[item.base32]?.contract || {};
         });
         ctx.body = result
     })
