@@ -26,7 +26,7 @@ import {
     fillHexId,
     hex40IdMap,
     Hex40Map,
-    idHex40Map,
+    idHex40Map, mapExtInfo,
     mapProp,
     patchBase32prop
 } from "../model/HexMap";
@@ -540,15 +540,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {skip: offset, limit} = skipLimit(ctx.request.query)
         const result = await list1155inventory({contractAddr, userAddr, tokenId, offset, limit})
         const base32arr = patchBase32prop(result.list, 'owner', 'ownerBase32', StatApp.isEVM, StatApp.networkId)
-        const watch = new Stopwatch()
-        watch.start('listBasic')
         const contractBasic = await statApp.contractQuery.listBasic({addressArray: base32arr});
-        watch.stop()
-        watch.dump('----')
-        result.list.forEach(item => {
-            item.ownerTokenInfo = contractBasic.map[item.base32]?.token || {};
-            item.ownerContractInfo = contractBasic.map[item.base32]?.contract || {};
-        });
+        mapExtInfo(result.list, contractBasic.map, 'ownerBase32',
+            'ownerTokenInfo', 'ownerContractInfo')
+        result.list.forEach(row=>delete row.ownerBase32)
         ctx.body = result
     })
     router.get('/nft/active-token-ids', async function (ctx) {

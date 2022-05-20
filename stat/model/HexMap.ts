@@ -388,7 +388,12 @@ export async function idHex64Map(idArray: Array<number>): Promise<Map<number, st
     })
     return idHex64Map;
 }
-
+export function mapExtInfo(list:any[], map:object, indexKey:string, tokenKey:string, contractKey:string){
+    list.forEach(item => {
+        item[tokenKey] = map[item[indexKey]]?.token || {};
+        item[contractKey] = map[item[indexKey]]?.contract || {};
+    });
+}
 export function patchBase32prop(list:any[], fromKey: string, toKey: string, isEvm:boolean, netId: number) {
     const base32arr = []
     for(const row of list) {
