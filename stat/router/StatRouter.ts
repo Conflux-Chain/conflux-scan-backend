@@ -528,7 +528,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/nft/list1155inventory', async function (ctx) {
         const {contractAddr, userAddr, tokenId} = ctx.request.query
         const {skip: offset, limit} = skipLimit(ctx.request.query)
-        ctx.body = list1155inventory({contractAddr, userAddr, tokenId, offset, limit})
+        ctx.body = await list1155inventory({contractAddr, userAddr, tokenId, offset, limit})
     })
     router.get('/nft/active-token-ids', async function (ctx) {
         const {contractAddress, skip = 0, limit = 10} = ctx.request.query
