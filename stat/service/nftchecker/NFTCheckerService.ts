@@ -161,8 +161,12 @@ export class NFTCheckerService {
                 attributes: ['type', 'base32']
             })
             if (token) {
+                const where = {contractId: contractAddressId, addressId: ownerAddressId};
+                if (!ownerAddressId) {
+                    delete where.addressId
+                }
                 const page = await Erc1155Data.findAndCountAll({
-                    where: {contractId: contractAddressId, addressId: ownerAddressId}, raw: true,
+                    where, raw: true,
                     order:[['epoch','desc']], offset: skip, limit,
                 })
                 const list = page?.rows?.map(item => ({contract: token.base32, tokenId: item.tokenId}))

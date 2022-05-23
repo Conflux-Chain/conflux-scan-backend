@@ -51,9 +51,10 @@ let contract = null;
 let isEvm = false
 let ens = '0xC7b7224F76dD98bE23b717668d55cB40E9B3DF7f' // net71
 let reverse = '0x03eD9a24B0c38D1903E34d7787B1EB69B4F8ccfA' //net71
+let chainId;
 export async function setupEnsChecker(cfx:Conflux) {
     isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
-    const {chainId} = await cfx.getStatus()
+    chainId = await cfx.getStatus()
     if (!isEvm || chainId != 71) {
         return
     }
@@ -78,7 +79,7 @@ export async function matchNamesOnChain(addrArr: string[]) {
     return ret;
 }
 export async function fetchEnsMap(list:any[], ...keys:string[]) {
-    if (!isEvm) {
+    if (!isEvm || chainId != 71) {
         return {isEvm};
     }
     const hexSet = new Set<string>()
