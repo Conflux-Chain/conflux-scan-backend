@@ -144,46 +144,57 @@ module.exports = {
   },
 
   E_SPACE_OPENAPI: {
-    MODULE: {
-      ACCOUNT: 'account',
-      CONTRACT: 'contract',
-      TRANSACTION: 'transaction',
-      BLOCK: 'block',
-      // LOGS: 'logs',
-      TOKEN: 'token',
-      STATS: 'stats',
+    ACCOUNT: {
+      module: 'account',
+      action: {
+        BALANCE: 'balance',
+        BALANCE_MULTI: 'balancemulti',
+        TX_LIST: 'txlist',
+        TX_LIST_INTERNAL: 'txlistinternal',
+        TOKEN_TX: 'tokentx',
+        TOKEN_NFT_TX: 'tokennfttx',
+        GET_MINED_BLOCKS: 'getminedblocks',
+        BALANCE_HISTORY: 'balancehistory',
+        TOKEN_BALANCE: 'tokenbalance',
+        TOKEN_BALANCE_HISTORY: 'tokenbalancehistory',
+      }
     },
-    ACTION: {
-      // account
-      BALANCE: 'balance',
-      BALANCE_MULTI: 'balancemulti',
-      TX_LIST: 'txlist',
-      TX_LIST_INTERNAL: 'txlistinternal',
-      TOKEN_TX: 'tokentx',
-      TOKEN_NFT_TX: 'tokennfttx',
-      GET_MINED_BLOCKS: 'getminedblocks',
-      BALANCE_HISTORY: 'balancehistory',
-      TOKEN_BALANCE: 'tokenbalance',
-      TOKEN_BALANCE_HISTORY: 'tokenbalancehistory',
-      // contract
-      GET_ABI: 'getabi',
-      GET_SOURCECODE: 'getsourcecode',
-      VERIFY_SOURCECODE: 'verifysourcecode',
-      CHECK_VERIFY_STATUS: 'checkverifystatus',
-      VERIFY_PROXY_CONTRACT: 'verifyproxycontract',
-      CHECK_PROXY_VERIFICATION: 'checkproxyverification',
-      // transaction
-      GET_STATUS: 'getstatus',
-      GET_TX_RECEIPT_STATUS: 'gettxreceiptstatus',
-      // block
-      GET_BLOCK_NO_BY_TIME: 'getblocknobytime',
-      // logs
-      // GET_LOGS: 'getLogs',
-      // token
-      TOKEN_INFO: 'tokeninfo',
-      // stats
-      TOKEN_SUPPLY: 'tokensupply',
-      TOKEN_SUPPLY_HISTORY: 'tokensupplyhistory',
+    CONTRACT: {
+      module: 'contract',
+      action: {
+        GET_ABI: 'getabi',
+        GET_SOURCECODE: 'getsourcecode',
+        VERIFY_SOURCECODE: 'verifysourcecode',
+        CHECK_VERIFY_STATUS: 'checkverifystatus',
+        VERIFY_PROXY_CONTRACT: 'verifyproxycontract',
+        CHECK_PROXY_VERIFICATION: 'checkproxyverification',
+      }
+    },
+    TRANSACTION: {
+      module: 'transaction',
+      action: {
+        GET_STATUS: 'getstatus',
+        GET_TX_RECEIPT_STATUS: 'gettxreceiptstatus',
+      }
+    },
+    BLOCK: {
+      module: 'block',
+      action: {
+        GET_BLOCK_NO_BY_TIME: 'getblocknobytime',
+      }
+    },
+    TOKEN: {
+      module: 'token',
+      action: {
+        TOKEN_INFO: 'tokeninfo',
+      }
+    },
+    STATS: {
+      module: 'stats',
+      action: {
+        TOKEN_SUPPLY: 'tokensupply',
+        TOKEN_SUPPLY_HISTORY: 'tokensupplyhistory',
+      }
     },
   },
 };

@@ -24,8 +24,10 @@ function getDB() {
 export async function executionTime(ctx, next) {
     const start = Date.now()
     return next().finally(()=>{
-        ctx.set('execution-time', Date.now() - start)
-    })
+        const elapsed = Date.now() - start
+        ctx.set('execution-time', elapsed)
+        getApiService().metrics.metric({ctx, elapsed}).then().catch(e => console.log(`metrics error:`, e))
+    });
 }
 export async function rateControl(ctx, next) {
     // https://www.npmjs.com/package/ratelimiter

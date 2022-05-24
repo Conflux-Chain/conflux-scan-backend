@@ -55,116 +55,107 @@ const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortuna
 const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";
 // -----------------------------------biz---------------------------------------
 async function gateway(ctx) {
-    const {E_SPACE_OPENAPI: {MODULE, ACTION}} = CONST;
+    const {E_SPACE_OPENAPI: {ACCOUNT, CONTRACT, TRANSACTION, BLOCK, TOKEN, STATS}} = CONST;
     const {module, action} = parseGatewayParam(ctx);
 
     let handler;
     switch (module) {
-        case MODULE.ACCOUNT:
+        case ACCOUNT.module:
             switch (action) {
-                case ACTION.BALANCE:
+                case ACCOUNT.action.BALANCE:
                     handler = getBalance;
                     break;
-                case ACTION.BALANCE_MULTI:
+                case ACCOUNT.action.BALANCE_MULTI:
                     handler = listBalance;
                     break;
-                case ACTION.TX_LIST:
+                case ACCOUNT.action.TX_LIST:
                     handler = listTx;
                     break;
-                case ACTION.TX_LIST_INTERNAL:
+                case ACCOUNT.action.TX_LIST_INTERNAL:
                     handler = listTransferCfx;
                     break;
-                case ACTION.TOKEN_TX:
+                case ACCOUNT.action.TOKEN_TX:
                     handler = listTransfer20;
                     break;
-                case ACTION.TOKEN_NFT_TX:
+                case ACCOUNT.action.TOKEN_NFT_TX:
                     handler = listTransfer721;
                     break;
-                case ACTION.GET_MINED_BLOCKS:
+                case ACCOUNT.action.GET_MINED_BLOCKS:
                     handler = listBlock;
                     break;
-                case ACTION.BALANCE_HISTORY:
+                case ACCOUNT.action.BALANCE_HISTORY:
                     handler = getBalanceHistory;
                     break;
-                case ACTION.TOKEN_BALANCE:
+                case ACCOUNT.action.TOKEN_BALANCE:
                     handler = getTokenBalance;
                     break;
-                case ACTION.TOKEN_BALANCE_HISTORY:
+                case ACCOUNT.action.TOKEN_BALANCE_HISTORY:
                     handler = getTokenBalanceHistory;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
             }
             break;
-        case MODULE.CONTRACT:
+        case CONTRACT.module:
             switch (action) {
-                case ACTION.GET_ABI:
+                case CONTRACT.action.GET_ABI:
                     handler = getABI;
                     break;
-                case ACTION.GET_SOURCECODE:
+                case CONTRACT.action.GET_SOURCECODE:
                     handler = getSourceCode;
                     break;
-                case ACTION.VERIFY_SOURCECODE:
+                case CONTRACT.action.VERIFY_SOURCECODE:
                     handler = verifySourcecode;
                     break;
-                case ACTION.CHECK_VERIFY_STATUS:
+                case CONTRACT.action.CHECK_VERIFY_STATUS:
                     handler = checkVerifyStatus;
                     break;
-                case ACTION.VERIFY_PROXY_CONTRACT:
+                case CONTRACT.action.VERIFY_PROXY_CONTRACT:
                     handler = verifyProxyContract;
                     break;
-                case ACTION.CHECK_PROXY_VERIFICATION:
+                case CONTRACT.action.CHECK_PROXY_VERIFICATION:
                     handler = checkProxyVerification;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
             }
             break;
-        case MODULE.TRANSACTION:
+        case TRANSACTION.module:
             switch (action) {
-                case ACTION.GET_STATUS:
+                case TRANSACTION.action.GET_STATUS:
                     handler = getStatus;
                     break;
-                case ACTION.GET_TX_RECEIPT_STATUS:
+                case TRANSACTION.action.GET_TX_RECEIPT_STATUS:
                     handler = getTxReceiptStatus;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
             }
             break;
-        case MODULE.BLOCK:
+        case BLOCK.module:
             switch (action) {
-                case ACTION.GET_BLOCK_NO_BY_TIME:
+                case BLOCK.action.GET_BLOCK_NO_BY_TIME:
                     handler = getBlockNoByTime;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
             }
             break;
-        // case MODULE.LOGS:
-        //     switch (action) {
-        //         case ACTION.GET_LOGS:
-        //             handler = getLogs;
-        //             break;
-        //         default:
-        //             return Promise.reject(`unknown action:${action} of module:${module}`);
-        //     }
-        //     break;
-        case MODULE.TOKEN:
+        case TOKEN.module:
             switch (action) {
-                case ACTION.TOKEN_INFO:
+                case TOKEN.action.TOKEN_INFO:
                     handler = getTokenInfo;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
             }
             break;
-        case MODULE.STATS:
+        case STATS.module:
             switch (action) {
-                case ACTION.TOKEN_SUPPLY:
+                case STATS.action.TOKEN_SUPPLY:
                     handler = getTokenSupply;
                     break;
-                case ACTION.TOKEN_SUPPLY_HISTORY:
+                case STATS.action.TOKEN_SUPPLY_HISTORY:
                     handler = getTokenSupplyHistory;
                     break;
                 default:
@@ -651,10 +642,9 @@ async function checkProxyVerification(ctx) {
 
 // -----------------------------------tool---------------------------------------
 function parseGatewayParam(ctx) {
-    const {E_SPACE_OPENAPI: {MODULE, ACTION}} = CONST;
     const requestData = Object.keys(ctx.request.query).length ? ctx.request.query : ctx.request.body;
-    mustBeEnumParamIfPresent(requestData, 'module', Object.values(MODULE) as string[]);
-    mustBeEnumParamIfPresent(requestData, 'action', Object.values(ACTION) as string[]);
+    mustBeEnumParamIfPresent(requestData, 'module', [... getApiService().moduleSet]);
+    mustBeEnumParamIfPresent(requestData, 'action', [... getApiService().actionSet]);
 
     const {module, action} = requestData
     return {module, action};

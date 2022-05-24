@@ -1,8 +1,5 @@
 import {Conflux} from "js-conflux-sdk";
 import {ethers} from "ethers";
-
-const Koa = require('koa');
-const app = new Koa();
 import {loadConfig, StatConfig} from "../stat/config/StatConfig";
 import {patchHttpProvider} from "../stat/service/common/utils";
 import {StatApp} from "../stat/StatApp";
@@ -32,8 +29,13 @@ import {RankService} from "../stat/service/RankService";
 import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 import {IS_EVM2, KV} from "../stat/model/KV";
+import {Metrics} from "./common/Metrics";
+
+const Koa = require('koa');
+const app = new Koa();
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
+const CONST = require('../stat/service/common/constant');
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 
 const config = loadConfig('Prod')
@@ -67,6 +69,9 @@ export class ApiService {
     eth;
     jsonRpc;
     logger: any
+    moduleSet: Set<string>;
+    actionSet: Set<string>;
+    metrics: Metrics;
 }
 
 export function createLogger(tag) {
@@ -128,13 +133,17 @@ export class ApiServer {
         await this.cfx.updateNetworkId();
         const cfxStatus:any = await this.cfx.getStatus()
         StatApp.networkId = cfxStatus.networkId
+
         StatApp.readonly = config.database.readonly
         const sequelize = createDB(config.databaseRW)
         await initModel(sequelize)
         // await sequelize.sync({})
+
         await RedisWrap.connect(config.redis)
         setRateControlDB(redisWrap.client)
+
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+
         apiService = new ApiService()
         const apiApp = {networkId:cfxStatus.networkId, cfx: this.cfx, service: apiService};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)
@@ -163,6 +172,9 @@ export class ApiServer {
         apiService.cfx = this.cfx;
         apiService.eth = this.eth;
         apiService.logger = logger
+        await this.initModule();
+        await this.initMetrics(apiService);
+
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
         new BatchBalanceWatcher(this.cfx, null, utilContract)
@@ -171,6 +183,20 @@ export class ApiServer {
         await apiService.addrCfxTransferHandler.scheduleCache();
         await apiService.tokenTransferHandler.scheduleCache();
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
+    }
+
+    private initModule(){
+        apiService.moduleSet = new Set<string>();
+        apiService.actionSet = new Set<string>();
+        Object.values(CONST.E_SPACE_OPENAPI).forEach(item => {
+            apiService.moduleSet.add(item['module'])
+            Object.values(item['action']).forEach(action => apiService.actionSet.add(action as string));
+        });
+    }
+
+    private async initMetrics(apiService: ApiService){
+        apiService.metrics = new Metrics(config);
+        await apiService.metrics.init();
     }
 }
 
