@@ -323,6 +323,7 @@ export class NFTPreviewService {
     private async getNFTImage({address, tokenId, gateway, method = 'uri', height = 200, uriFormatter}:
         { address: string, tokenId: BigInt, gateway?: string, method?: string, height?: number, uriFormatter?: any}
     ): Promise<NFTInfoType> {
+        const { ERROR } = CONST;
         let rawUrl;
         let gatewayUrl;
         let rawMeta;
@@ -332,6 +333,7 @@ export class NFTPreviewService {
         let imageDesc;
         let detail;
         let error;
+        let code;
 
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
@@ -342,7 +344,8 @@ export class NFTPreviewService {
 
             // get uri
             const contract = await this.cfx.Contract({ abi, address });
-            rawUrl = await contract[method](tokenId);
+            rawUrl = await contract[method](tokenId)
+                .catch(e => {code = ERROR.FailedToQueryTokenURI.code; throw e;});
             rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
             gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
@@ -352,7 +355,8 @@ export class NFTPreviewService {
             } else if((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')){
                 rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
             } else{
-                const resp = await superagent.get(gatewayUrl).timeout({response: TIMEOUT_CONN, deadline: TIMEOUT_READ});
+                const resp = await superagent.get(gatewayUrl).timeout({response: TIMEOUT_CONN, deadline: TIMEOUT_READ})
+                    .catch(e => {code = ERROR.FailedToQueryNFTMetadata.code; throw e;});
                 rawMeta = resp.text;
             }
             rawMeta = JSON.parse(rawMeta);
@@ -368,7 +372,15 @@ export class NFTPreviewService {
             if(!imageName) throw new Error('name not found');
 
         } catch (e) {
-            error = e?.code === 'ABORTED' ? `Timeout` : e?.message?.substr(0, 50);
+            code = !code ? ERROR.BizError.code : code;
+            error = e?.message?.substr(0, 255);
+            if(code === ERROR.FailedToQueryNFTMetadata.code){
+                error = `${gatewayUrl} ${error}`;
+            }
+            if(code === ERROR.FailedToQueryTokenURI.code){
+                code = ERROR.FailedToQueryNFTMetadata.code;
+                error = `call ${method}(${tokenId}) ${error}`;
+            }
         } finally {
             detail = {
                 funcCall: `${method}(${tokenId})`,
@@ -383,6 +395,7 @@ export class NFTPreviewService {
             imageUri,
             imageName,
             imageDesc,
+            code,
             error,
             detail,
         };
@@ -439,5 +452,6 @@ export type NFTInfoType = {
     imageName: any;
     imageDesc?: any;
     detail?:any;
+    code?: number;
     error?: any;
 } | null;
