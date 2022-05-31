@@ -153,6 +153,10 @@ export class PruneHandler {
             }
             this.CACHE_MARKER[type].delete(addressId);
 
+            // skip prune if crc721/crc1155
+            if (type === PruneType.ERC721_TRANSFER || type === PruneType.ERC1155_TRANSFER) {
+                continue;
+            }
 
             const task = {type, pruneInfo};
             console.log(`prune_handle[type=${type}][addressId=${addressId}],task:${JSON.stringify(task)},qLen:${queue.length}`);

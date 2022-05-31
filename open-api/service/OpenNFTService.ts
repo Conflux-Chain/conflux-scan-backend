@@ -44,7 +44,8 @@ export async function listNFTTokens(ctx) {
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
 
     if(withBrief === 'true' || withMetadata === 'true'){
-        await Promise.all(data?.list?.map(async (item) => {
+        await batchGetTransactionList({nftList: data?.list, withBrief, withMetadata});
+/*        await Promise.all(data?.list?.map(async (item) => {
             const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
                 tokenId: BigInt(item.tokenId)});
             const brief = withBrief === 'true' ? {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri,
@@ -52,7 +53,7 @@ export async function listNFTTokens(ctx) {
             const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;
             const data = {...brief, ...metadata, error: nftInfo?.error};
             lodash.defaults(item, data);
-        }));
+        }));*/
     }
 
     if (StatApp.isEVM) {
@@ -62,6 +63,32 @@ export async function listNFTTokens(ctx) {
     }
 
     setBody(ctx, data)
+}
+
+async function batchGetTransactionList({nftList, withBrief, withMetadata}){
+    let total = nftList?.length;
+    if (!total) {
+        return;
+    }
+
+    let curPage = 1;
+    let skip = 0;
+    let pageSize = 10;
+    do {
+        const nftArray = nftList.slice(skip, skip + pageSize)
+        if (nftArray?.length) {
+            await Promise.all(nftArray?.map(async (item) => {
+                const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
+                    tokenId: BigInt(item.tokenId)});
+                const brief = withBrief === 'true' ? {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri,
+                    description: nftInfo?.imageDesc} : undefined;
+                const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;
+                const data = {...brief, ...metadata, error: nftInfo?.error};
+                lodash.defaults(item, data);
+            }));
+        }
+        skip = (++curPage - 1) * pageSize;
+    } while (skip <= total);
 }
 
 export async function getNFTPreview(ctx) {
