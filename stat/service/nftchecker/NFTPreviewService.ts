@@ -5,6 +5,7 @@ import {NftMint, Token} from "../../model/Token";
 import {Hex40Map} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
 import {QueryTypes} from "sequelize";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -78,10 +79,22 @@ export class NFTPreviewService {
                 return {owner, mintTime};
             });
 
-        const type = await Token.findOne({attributes: ['type'], where: {base32: address}})
-            .then(token => {return token.type});
-        lodash.assign(nftInfo, {creator, ... minter, type});
+        const token = await Token.findOne({attributes: ['hex40id','type'], where: {base32: address}});
+        const type = token.type;
+        let owner;
+        if(type === CONST.TRANSFER_TYPE.ERC721){
+            const ownerId = await Erc721Transfer.findOne({
+                where: {contractId: token.hex40id, tokenId: `${tokenId}`},
+                order: [['epoch', 'DESC']],
+                limit: 1,
+                raw: true
+            }).then(item => item.toId);
+            const ownerHex = await Hex40Map.findOne({where: {id: ownerId}});
+            owner = toBase32(`0x${ownerHex['hex']}`);
+        }
 
+        lodash.assign(nftInfo, {creator, ... minter, type});
+        lodash.assign(nftInfo, {owner});
         if(!nftInfo || nftInfo.error) {
             return nftInfo;
         }
