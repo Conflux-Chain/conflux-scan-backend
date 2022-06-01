@@ -514,7 +514,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
         if(nftDetail?.error){
             ctx.status = 600;
-            ctx.body = {code: 1, message: nftDetail.error, data: nftDetail};
+            ctx.body = {code: nftDetail.code, message: nftDetail.error, data: nftDetail};
         } else{
             ctx.body = {code: 0, data: nftDetail};
         }

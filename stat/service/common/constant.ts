@@ -100,47 +100,101 @@ module.exports = {
     ERROR: {matchCode: 501, matchDesc: 'error'},
   },
 
+  ERROR: {
+    ParameterError:{ code: 10001, name: 'ParameterError' },
+    PermissionsError: { code: 10403, name: 'PermissionsError' },
+    AssertError: { code: 10501, name: 'AssertError' },
+    ApiBusyError: { code: 10503, name: 'ApiBusyError' },
+
+    AnnounceTooLongError: { code: 40414, name: 'AnnounceTooLongError' },
+    SendAnnounceError: { code: 40400, name: 'SendAnnounceError' },
+    AnnouncementNotExistError: { code: 40404, name: 'AnnouncementNotExistError' },
+
+    BizError: { code: 50100, name: 'BizError' },
+    FailedToCallNFTContract: { code: 50301, name: 'Failed to call NFT contract' },
+    FailedToQueryNFTMetadata: { code: 50302, name: 'Failed to query NFT metadata' },
+    FailedToParseNFTMetadata: { code: 50303, name: 'Failed to parse NFT metadata' },
+    FailedToQueryNFTLocalName: { code: 50304, name: 'Failed to query NFT local name' },
+    FailedToQueryTokenURI: { code: 50305, name: 'Failed to query token URI' },
+
+    CreationDataError: { code: 50403, name: 'CreationDataError' },
+    ContractNameError: { code: 50404, name: 'ContractNameError' },
+    CompilerError: { code: 50600, name: 'CompilerError' },
+    ContractDecompileError: { code: 50601, name: 'ContractDecompileError' },
+    ExtractMetadataError: { code: 50602, name: 'ExtractMetadataError' },
+
+    UnknowError: { code: 20000, name: 'UnknowError'},
+    ResponseDataParsingError: { code: 20001, name: 'ResponseDataParsingError'},
+    RequestTimeout: { code: 20002, name: 'RequestTimeout'},
+    RequestAbort: { code: 20003, name: 'RequestAbort'},
+    NetworkError: { code: 20004, name: 'NetworkError'},
+    RPCCallError: { code: 30001, name: 'RPCCallError'},
+    TraceParsingError: { code: 60002, name: 'TraceParsingError'},
+
+    BadRequest: { code: 400, name: 'BadRequest'},
+    Unauthorized: { code: 401, name: 'Unauthorized'},
+    Forbidden: { code: 403, name: 'Forbidden'},
+    NotFound: { code: 404, name: 'NotFound'},
+    MethodNotAllowed: { code: 405, name: 'MethodNotAllowed'},
+    InternalServerError: { code: 500, name: 'InternalServerError'},
+    NotImplemented: { code: 501, name: 'NotImplemented'},
+    BadGateway: { code: 502, name: 'BadGateway'},
+    ServiceUnavailable: { code: 503, name: 'ServiceUnavailable'},
+    GatewayTimeout: { code: 504, name: 'GatewayTimeout'},
+  },
+
   E_SPACE_OPENAPI: {
-    MODULE: {
-      ACCOUNT: 'account',
-      CONTRACT: 'contract',
-      TRANSACTION: 'transaction',
-      BLOCK: 'block',
-      // LOGS: 'logs',
-      TOKEN: 'token',
-      STATS: 'stats',
+    ACCOUNT: {
+      module: 'account',
+      action: {
+        BALANCE: 'balance',
+        BALANCE_MULTI: 'balancemulti',
+        TX_LIST: 'txlist',
+        TX_LIST_INTERNAL: 'txlistinternal',
+        TOKEN_TX: 'tokentx',
+        TOKEN_NFT_TX: 'tokennfttx',
+        GET_MINED_BLOCKS: 'getminedblocks',
+        BALANCE_HISTORY: 'balancehistory',
+        TOKEN_BALANCE: 'tokenbalance',
+        TOKEN_BALANCE_HISTORY: 'tokenbalancehistory',
+      }
     },
-    ACTION: {
-      // account
-      BALANCE: 'balance',
-      BALANCE_MULTI: 'balancemulti',
-      TX_LIST: 'txlist',
-      TX_LIST_INTERNAL: 'txlistinternal',
-      TOKEN_TX: 'tokentx',
-      TOKEN_NFT_TX: 'tokennfttx',
-      GET_MINED_BLOCKS: 'getminedblocks',
-      BALANCE_HISTORY: 'balancehistory',
-      TOKEN_BALANCE: 'tokenbalance',
-      TOKEN_BALANCE_HISTORY: 'tokenbalancehistory',
-      // contract
-      GET_ABI: 'getabi',
-      GET_SOURCECODE: 'getsourcecode',
-      VERIFY_SOURCECODE: 'verifysourcecode',
-      CHECK_VERIFY_STATUS: 'checkverifystatus',
-      VERIFY_PROXY_CONTRACT: 'verifyproxycontract',
-      CHECK_PROXY_VERIFICATION: 'checkproxyverification',
-      // transaction
-      GET_STATUS: 'getstatus',
-      GET_TX_RECEIPT_STATUS: 'gettxreceiptstatus',
-      // block
-      GET_BLOCK_NO_BY_TIME: 'getblocknobytime',
-      // logs
-      // GET_LOGS: 'getLogs',
-      // token
-      TOKEN_INFO: 'tokeninfo',
-      // stats
-      TOKEN_SUPPLY: 'tokensupply',
-      TOKEN_SUPPLY_HISTORY: 'tokensupplyhistory',
+    CONTRACT: {
+      module: 'contract',
+      action: {
+        GET_ABI: 'getabi',
+        GET_SOURCECODE: 'getsourcecode',
+        VERIFY_SOURCECODE: 'verifysourcecode',
+        CHECK_VERIFY_STATUS: 'checkverifystatus',
+        VERIFY_PROXY_CONTRACT: 'verifyproxycontract',
+        CHECK_PROXY_VERIFICATION: 'checkproxyverification',
+      }
+    },
+    TRANSACTION: {
+      module: 'transaction',
+      action: {
+        GET_STATUS: 'getstatus',
+        GET_TX_RECEIPT_STATUS: 'gettxreceiptstatus',
+      }
+    },
+    BLOCK: {
+      module: 'block',
+      action: {
+        GET_BLOCK_NO_BY_TIME: 'getblocknobytime',
+      }
+    },
+    TOKEN: {
+      module: 'token',
+      action: {
+        TOKEN_INFO: 'tokeninfo',
+      }
+    },
+    STATS: {
+      module: 'stats',
+      action: {
+        TOKEN_SUPPLY: 'tokensupply',
+        TOKEN_SUPPLY_HISTORY: 'tokensupplyhistory',
+      }
     },
   },
 };
