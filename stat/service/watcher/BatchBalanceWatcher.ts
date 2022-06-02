@@ -339,13 +339,24 @@ async function run() {
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
     if (cfxUrl === 'fixNftHolder') {
-        let byMintTable = opt === 'byMintTable'
+        let byMintTable// = opt === 'byMintTable'
         const contractId = limitStr
         const token = await Token.findOne({where: {hex40id: contractId}, attributes: {exclude: ['icon']}})
-        if (token?.type?.toLowerCase().includes('721')) {
+        if (!token || !token.type) {
+            console.log(`bad token [${contractId}]`, token)
+            process.exit(0)
+            return;
+        }
+        if (token.type.includes('721')) {
             // console.log(`Must use <byMintTable> for 721 token`)
             // process.exit(0)
             byMintTable = true;
+        } else if (token.type.includes('1155')) {
+            byMintTable = false;
+        } else {
+            console.log(`bad token type`, token)
+            process.exit(0)
+            return;
         }
         await fixHolderForContract(parseInt(limitStr), byMintTable)
         process.exit(0)
@@ -355,7 +366,7 @@ async function run() {
         process.exit(0)
         return
     } else if (cfxUrl === 'fixAll1155holder') {
-        const byMintTable = opt === 'byMintTable'
+        const byMintTable = false//opt === 'byMintTable'
         await fixAllNftHolder(byMintTable, 'ERC1155')
         process.exit(0)
         return
