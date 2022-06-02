@@ -1,7 +1,7 @@
 import {QueryTypes, DataTypes, Model, Op, Sequelize} from "sequelize";
 import {batchBuildId, Hex64Map, makeId, makeIdV} from "./HexMap";
 import {Erc721Transfer} from "./Erc721Transfer";
-import {Erc777Transfer} from "./Erc777Transfer";
+// import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
 import {StatApp} from "../StatApp";
@@ -267,14 +267,14 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
     }
 }
 export async function calcAllTokenUniqueUser(start:Date, end:Date) : Promise<number> {
-    const sqlInner = [Erc20Transfer, Erc721Transfer, Erc777Transfer, Erc1155Transfer].map(
+    const sqlInner = [Erc20Transfer, Erc721Transfer/*, Erc777Transfer*/, Erc1155Transfer].map(
         token=>`select fromId from ${token.getTableName()} where createdAt between ? and ?
             union select toId from ${token.getTableName()} where createdAt between ? and ?`
     ).join(' union ');
     const replace = [
         start, end, start, end,
         start, end, start, end,
-        start, end, start, end,
+        // start, end, start, end,
         start, end, start, end,
     ]
     const sql = `select count(*) as cnt from (

@@ -1,5 +1,5 @@
 const lodash = require('lodash');
-const { KV, KEY_EVENT_LOG_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+// const { KV, KEY_EVENT_LOG_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 class EventLogService {
   constructor(app) {
@@ -50,14 +50,14 @@ class EventLogService {
       app: { syncSDK },
     } = this;
 
-    const rdbSwitch = await KV.getSwitch(KEY_EVENT_LOG_QUERY_RDB_SWITCH);
-    if (rdbSwitch) {
+    // const rdbSwitch = await KV.getSwitch(KEY_EVENT_LOG_QUERY_RDB_SWITCH);
+    // if (rdbSwitch) {
       return { total: 0, list: [] };
-    }
+    // }
 
-    const result = await syncSDK.countAndListEventLog(options);
-    result.list = await Promise.all(result.list.map((object) => this.query(object)));
-    return result;
+    // const result = await syncSDK.countAndListEventLog(options);
+    // result.list = await Promise.all(result.list.map((object) => this.query(object)));
+    // return result;
   }
 }
 

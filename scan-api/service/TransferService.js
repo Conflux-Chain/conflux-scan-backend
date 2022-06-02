@@ -1,7 +1,7 @@
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const {fetchEnsMap} = require("../../stat/dist/service/ens/EnsService");
-const { KV, KEY_TRANSFER_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+// const { KV, KEY_TRANSFER_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 const TOKEN_FIELDS = ['name', 'symbol', 'decimals', 'granularity'];
 
@@ -47,13 +47,13 @@ class TransferService {
     if (options.transactionHash !== undefined) {
       result = await this._countAndListByTransactionHash(options);
     } else {
-      const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
-      if (rdbSwitch) {
+      // const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
+      // if (rdbSwitch) {
         result = await this._countAndListByRdb(options);
         await fetchEnsMap(result.list,'from','to')
         return lodash.defaults({ rdb: rdbSwitch }, result);
-      }
-      result = await this._countAndListBySync(options);
+      // }
+      // result = await this._countAndListBySync(options);
     }
     await fetchEnsMap(result.list,'from','to')
     return result;
@@ -283,9 +283,9 @@ class TransferService {
       case CONST.TRANSFER_TYPE.ERC721:
         iterator = service.crc721Transfer;
         break;
-      case CONST.TRANSFER_TYPE.ERC777:
+/*      case CONST.TRANSFER_TYPE.ERC777:
         iterator = service.crc777Transfer;
-        break;
+        break;*/
       case CONST.TRANSFER_TYPE.ERC1155:
         iterator = service.crc1155Transfer;
         break;

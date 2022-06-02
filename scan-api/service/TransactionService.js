@@ -1,7 +1,7 @@
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const {fetchEnsMap} = require("../../stat/dist/service/ens/EnsService");
-const { KV, KEY_TX_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+// const { KV, KEY_TX_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 const RECEIPT_FIELDS = [
   'gasCoveredBySponsor',
@@ -82,15 +82,15 @@ class TransactionService {
 
       result = await this._countAndListByBlockHash(options);
     } else {
-      const rdbSwitch = await KV.getSwitch(KEY_TX_QUERY_RDB_SWITCH);
+      // const rdbSwitch = await KV.getSwitch(KEY_TX_QUERY_RDB_SWITCH);
       // logger.info({ src: 'fullTXquery------------', rdbSwitch: JSON.stringify(rdbSwitch) });
-      if (rdbSwitch) {
+      // if (rdbSwitch) {
         result = await service.fullBlock.listTransaction(options);
         result.ensInfo = await fetchEnsMap(result.list,'from','to')
         // logger.info({ src: 'fullTXquery------------', result: JSON.stringify(result) });
         return lodash.defaults({ rdb: rdbSwitch }, result);
-      }
-      result = await syncSDK.countAndListTransaction(options);
+      // }
+      // result = await syncSDK.countAndListTransaction(options);
     }
 
     result.list = await limitMap(result.list,

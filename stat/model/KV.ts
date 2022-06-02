@@ -24,14 +24,14 @@ export const KEY_BLOCK_TRACE_CREATE_EPOCH = "KEY_BLOCK_TRACE_CREATE_EPOCH"
 export const KEY_ANNOUNCE_SYNC_EPOCH = "KEY_ANNOUNCE_SYNC_EPOCH"
 export const KEY_TOKEN_AUTO_DETECT_EPOCH = "KEY_TOKEN_AUTO_DETECT_EPOCH"
 export const KEY_NFT_TOKEN_ID_POS = "NFT_TOKEN_ID_POS_"
-export const KEY_EPOCH_QUERY_RDB_SWITCH = "SWITCH_EPOCH_QUERY_RDB"
+/*export const KEY_EPOCH_QUERY_RDB_SWITCH = "SWITCH_EPOCH_QUERY_RDB"
 export const KEY_BLOCK_QUERY_RDB_SWITCH = "SWITCH_BLOCK_QUERY_RDB"
 export const KEY_TX_QUERY_RDB_SWITCH = "SWITCH_TX_QUERY_RDB"
 export const KEY_TRANSFER_QUERY_RDB_SWITCH = "SWITCH_TRANSFER_QUERY_RDB"
 export const KEY_CONTRACT_QUERY_RDB_SWITCH = "SWITCH_CONTRACT_QUERY_RDB"
 export const KEY_ANNOUNCE_QUERY_RDB_SWITCH = "SWITCH_ANNOUNCE_QUERY_RDB"
 export const KEY_EVENT_LOG_QUERY_RDB_SWITCH = "SWITCH_EVENT_LOG_QUERY_RDB"
-export const KEY_BLOCK_DATA_STAT_RDB_SWITCH = "SWITCH_BLOCK_DATA_STAT_QUERY_RDB"
+export const KEY_BLOCK_DATA_STAT_RDB_SWITCH = "SWITCH_BLOCK_DATA_STAT_QUERY_RDB"*/
 export const KEY_TOKEN_SYNC_BY_SCAN_SWITCH = "SWITCH_TOKEN_SYNC_BY_SCAN"
 export const KEY_NFT_FROM_DB = "SWITCH_NFT_FROM_DB"
 export const KEY_NFT_FROM_MINT_TABLE = "SWITCH_NFT_FROM_MINT_TABLE"
@@ -83,7 +83,7 @@ export class KV extends Model<IKV> implements IKV {
     }
 
     static async setupSwitch() {
-        const anyOne = await KV.findOne({where: {key: KEY_TX_QUERY_RDB_SWITCH}})
+/*        const anyOne = await KV.findOne({where: {key: KEY_TX_QUERY_RDB_SWITCH}})
         if (anyOne) {
             return
         }
@@ -98,7 +98,7 @@ export class KV extends Model<IKV> implements IKV {
             {key: KEY_TX_QUERY_RDB_SWITCH, value: 'true'},
             {key: KEY_BLOCK_DATA_STAT_RDB_SWITCH, value: 'true'},
             {key: KEY_EVENT_LOG_QUERY_RDB_SWITCH, value: 'true'},
-        ]);
+        ]);*/
     }
 
     static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined): Promise<[number, number]> {

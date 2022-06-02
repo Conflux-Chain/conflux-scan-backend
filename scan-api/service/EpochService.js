@@ -1,5 +1,5 @@
 const lodash = require('lodash');
-const { KV, KEY_EPOCH_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+// const { KV, KEY_EPOCH_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 class EpochService {
   constructor(app) {
@@ -18,15 +18,15 @@ class EpochService {
     return ttlMap.cache(`EpochService.query(${epochNumber})`,
       async () => {
         let epoch;
-        const rdbSwitch = await KV.getSwitch(KEY_EPOCH_QUERY_RDB_SWITCH);
-        if (rdbSwitch) {
+        // const rdbSwitch = await KV.getSwitch(KEY_EPOCH_QUERY_RDB_SWITCH);
+        // if (rdbSwitch) {
           epoch = await service.epochRdb.query(epochNumber);
           if (epoch) {
             epoch.timestamp = epoch.timestamp.getTime() / 1000;
           }
-        } else {
-          epoch = await syncSDK.queryEpoch({ epochNumber });
-        }
+        // } else {
+        //   epoch = await syncSDK.queryEpoch({ epochNumber });
+        // }
 
         return epoch || service.conflux.getEpochByEpochNumber(epochNumber);
       },
