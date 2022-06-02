@@ -1,14 +1,14 @@
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {QueryTypes} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
-import {Hex40Map} from "../../model/HexMap";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 const abi = require('./abi');
-async function fetchOwner(tokenId:string, nftContract:any) {
 
-}
+
 async function fetchBalance(addrId:number, tokenId:string, nftContract:any) {
     return Hex40Map.findByPk(addrId).then(res=>'0x'+res.hex)
         .then(hex=>{
@@ -22,15 +22,36 @@ async function checkNftMint721(contractId:number) {
     const token = await Token.findOne({
         attributes: {exclude: ['icon']}, where: {
             hex40id: contractId,
-            // type: 'ERC1155'
         }
     })
     console.log(`token is ${token.base32} [${token.name}] ${token.type}`)
-    if (token.type !== 'ERC1155') {
-        console.log(`not 1155: ${token.type}`)
+    if (token.type !== 'ERC721') {
+        console.log(`not 721: ${token.type}`)
         process.exit(9)
     }
-    nftContract = cfx.Contract({abi: abi1155, address: token.base32});
+    nftContract = cfx.Contract({abi, address: token.base32});
+    const mintList = await NftMint.findAll({
+        where: {contractId}
+    })
+
+    let fixed = 0
+    for (let i = 0; i < mintList.length; i++) {
+        const {tokenId, toId} = mintList[i]
+        const owner = await nftContract.ownerOf(BigInt(tokenId)).catch(err=>{
+            console.log(`owner of fail`, err)
+        })
+        if (!owner) {
+            continue
+        }
+        const ownerId = await getAddrId(owner)
+        if (ownerId === toId) {
+            console.log(`match, token id ${tokenId}, owner ${ownerId} ${owner}`)
+        } else {
+            console.log(`fix token id ${tokenId}, owner ${ownerId} ${owner}, wrong owner ${toId}`)
+            fixed++
+        }
+    }
+    console.log(`total ${mintList.length}, fixed ${fixed}`)
 }
 //
 async function checkNftMint(contractId:number) {
@@ -83,9 +104,9 @@ async function checkNftMint(contractId:number) {
             if (dataBalance > 0 && mintBalance <= 0) {
                 fixCnt+=1
                 console.log(`           need fix ${fixCnt}`)
-                await NftMint.update({toId: data.addressId, epoch: data.epoch, updatedAt: data['updatedAt']}, {
-                    where: {id: mint.id}
-                })
+                // await NftMint.update({toId: data.addressId, epoch: data.epoch, updatedAt: data['updatedAt']}, {
+                //     where: {id: mint.id}
+                // })
                 // process.exit(8)
             }
         } else {
@@ -103,12 +124,13 @@ async function main() {
     if (cmd === 'checkNftMint') {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)
-        await NftMint.sequelize.close()
-        process.exit(0)
-        return
+    } else if (cmd === 'checkNftMint721') {
+        await checkNftMint721(parseInt(contractId))
     } else {
         console.log(`unknown command [${cmd}]`)
     }
+    await NftMint.sequelize.close()
+    process.exit(0)
 }
 
 if (module === require.main) {
