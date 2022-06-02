@@ -444,7 +444,7 @@ export async function uploadOss(srcFile, ossFilename) {
         return res
     })
 }
-async function check721OwnerInDb() {
+export async function check721OwnerInDb() {
     const cfg = await init()
     const cfx = new Conflux(cfg.conflux)
     const st = await cfx.getStatus()
@@ -483,6 +483,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
     const contract = cfx.Contract({abi, address: token.base32});
     const mintList = await NftMint.findAll({where: {contractId}})
     let matched = 0;
+    let fixed = 0;
     for (let i = 0; i < mintList.length; i++) {
         const {toId, tokenId, updatedAt, id} = mintList[i]
         let owner: any;
@@ -509,6 +510,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         if (toId != onChainOwnerId) {
             console.log(`owner not match, contract ${contractId}, owner on chain ${onChainOwnerId} != ${toId} in db, on chain ${owner} token id ${tokenId}`)
             await NftMint.update({toId: onChainOwnerId, updatedAt},{where: {id}})
+            fixed ++
         } else {
             matched ++
         }
@@ -517,7 +519,8 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
         console.log(`ALL is MATCHED`)
         return;
     }
-    console.log(`done. in db mint ${mintList.length}, contract ${contractId}, owner matched ${matched}`);
+    console.log(`done. in db mint ${mintList.length}, contract ${contractId
+    }, owner matched ${matched}, fixed ${fixed}`);
 }
 // node stat/dist/service/tool/TokenTool.js check721OwnerInDb 1
 if (module === require.main) {

@@ -3,7 +3,7 @@ import {QueryTypes} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {getAddrId, Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
-import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {check721OwnerInDb} from "./TokenTool";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 const abi = require('./abi');
@@ -18,46 +18,6 @@ async function fetchBalance(addrId:number, tokenId:string, nftContract:any) {
         })
 }
 //
-async function checkNftMint721(contractId:number) {
-    const token = await Token.findOne({
-        attributes: {exclude: ['icon']}, where: {
-            hex40id: contractId,
-        }
-    })
-    console.log(`token is ${token.base32} [${token.name}] ${token.type}`)
-    if (token.type !== 'ERC721') {
-        console.log(`not 721: ${token.type}`)
-        process.exit(9)
-    }
-    nftContract = cfx.Contract({abi, address: token.base32});
-    const mintList = await NftMint.findAll({
-        where: {contractId}
-    })
-
-    let fixed = 0
-    for (let i = 0; i < mintList.length; i++) {
-        const {tokenId, toId} = mintList[i]
-        const owner = await nftContract.ownerOf(BigInt(tokenId)).catch(err=>{
-            if (err.data?.includes('ERC721: owner query for nonexistent token')) {
-                console.log(`nonexistent token ${tokenId}`)
-                return ''
-            }
-            console.log(`owner of fail, token id ${tokenId}`, err)
-
-        })
-        if (!owner) {
-            continue
-        }
-        const ownerId = await getAddrId(owner)
-        if (ownerId === toId) {
-            console.log(`match, token id ${tokenId}, owner ${ownerId} ${owner}`)
-        } else {
-            console.log(`fix token id ${tokenId}, owner ${ownerId} ${owner}, wrong owner ${toId}`)
-            fixed++
-        }
-    }
-    console.log(`total ${mintList.length}, fixed ${fixed}`)
-}
 //
 async function checkNftMint(contractId:number) {
     const token = await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId,
@@ -123,14 +83,15 @@ async function checkNftMint(contractId:number) {
 let nftContract;
 let cfx;
 async function main() {
-    const cfg = await init();
     const [,,cmd,contractId] = process.argv
+    if (cmd === 'check721OwnerInDb') {
+        return check721OwnerInDb();
+    }
+    const cfg = await init();
     cfx = new Conflux(cfg.conflux)
     if (cmd === 'checkNftMint') {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)
-    } else if (cmd === 'checkNftMint721') {
-        await checkNftMint721(parseInt(contractId))
     } else {
         console.log(`unknown command [${cmd}]`)
     }
