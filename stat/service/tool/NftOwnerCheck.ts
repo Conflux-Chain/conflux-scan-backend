@@ -85,6 +85,8 @@ let cfx;
 async function main() {
     const [,,cmd,contractId] = process.argv
     if (cmd === 'check721OwnerInDb') {
+        // after fixing owner, plz fix holder by
+        // node stat/dist/service/watcher/BatchBalanceWatcher.js fixNftHolder 123
         return check721OwnerInDb();
     }
     const cfg = await init();
