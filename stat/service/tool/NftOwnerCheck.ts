@@ -38,7 +38,12 @@ async function checkNftMint721(contractId:number) {
     for (let i = 0; i < mintList.length; i++) {
         const {tokenId, toId} = mintList[i]
         const owner = await nftContract.ownerOf(BigInt(tokenId)).catch(err=>{
-            console.log(`owner of fail`, err)
+            if (err.data?.includes('ERC721: owner query for nonexistent token')) {
+                console.log(`nonexistent token ${tokenId}`)
+                return ''
+            }
+            console.log(`owner of fail, token id ${tokenId}`, err)
+
         })
         if (!owner) {
             continue
@@ -138,4 +143,5 @@ if (module === require.main) {
 }
 /*
  node stat/dist/service/tool/NftOwnerCheck.js checkNftMint 996251
+ node stat/dist/service/tool/NftOwnerCheck.js checkNftMint721 71452195
  */
