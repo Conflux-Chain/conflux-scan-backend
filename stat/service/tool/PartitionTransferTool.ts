@@ -2,7 +2,7 @@ import {AddressErc20Transfer, buildTransferList2address, Erc20Transfer} from "..
 import {init} from "./FixDailyTokenStat";
 import {Op} from 'sequelize'
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
-import {AddressErc777Transfer, Erc777Transfer} from "../../model/Erc777Transfer";
+// import {AddressErc777Transfer, Erc777Transfer} from "../../model/Erc777Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 
@@ -89,8 +89,8 @@ init().then(()=>{
             return loop20transfer(Number(args[1] || 1), Erc20Transfer, AddressErc20Transfer)
         case 'erc721':
             return loop20transfer(Number(args[1] || 1), Erc721Transfer, AddressErc721Transfer)
-        case 'erc777':
-            return loop20transfer(Number(args[1] || 1), Erc777Transfer, AddressErc777Transfer)
+        // case 'erc777':
+        //     return loop20transfer(Number(args[1] || 1), Erc777Transfer, AddressErc777Transfer)
         case 'erc1155':
             return loop20transfer(Number(args[1] || 1), Erc1155Transfer, AddressErc1155Transfer)
         case 'cfx':

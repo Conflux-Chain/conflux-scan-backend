@@ -24,7 +24,7 @@ import {
     CfxTransferRowMark, BakCfxTransfer,
 } from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
-import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
+// import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
@@ -123,7 +123,7 @@ export async function initPartialModel(sequelize) {
     await Promise.all([
         createAddressErc20TransferTable(sequelize),
         create721partition(sequelize),
-        createAddressErc777TransferTable(sequelize),
+        // createAddressErc777TransferTable(sequelize),
         createAddressErc1155TransferTable(sequelize),
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
@@ -143,7 +143,7 @@ export async function initPartialModel(sequelize) {
     AbiInfo.register(sequelize)
     Erc20Transfer.register(sequelize)
     Erc721Transfer.register(sequelize)
-    Erc777Transfer.register(sequelize)
+    // Erc777Transfer.register(sequelize)
     Erc1155Transfer.register(sequelize)
     Erc1155Data.register(sequelize)
     DailyTokenTxn.register(sequelize)

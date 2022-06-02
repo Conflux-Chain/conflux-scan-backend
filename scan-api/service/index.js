@@ -18,7 +18,7 @@ const { FullBlockQuery } = require('../../stat/dist/service/FullBlockQuery');
 const { CfxTransferQuery } = require('../../stat/dist/service/CfxTransferQuery');
 const { Crc20TransferQuery } = require('../../stat/dist/service/Crc20TransferQuery');
 const { Crc721TransferQuery } = require('../../stat/dist/service/Crc721TransferQuery');
-const { Crc777TransferQuery } = require('../../stat/dist/service/Crc777TransferQuery');
+/*const { Crc777TransferQuery } = require('../../stat/dist/service/Crc777TransferQuery');*/
 const { Crc1155TransferQuery } = require('../../stat/dist/service/Crc1155TransferQuery');
 const { BlockTraceCreateQuery } = require('../../stat/dist/service/BlockTraceCreateQuery');
 const { ContractQuery } = require('../../stat/dist/service/ContractQuery');
@@ -46,7 +46,7 @@ function serviceLoader(app) {
     cfxTransfer: new CfxTransferQuery(app),
     crc20Transfer: new Crc20TransferQuery(app),
     crc721Transfer: new Crc721TransferQuery(app),
-    crc777Transfer: new Crc777TransferQuery(app),
+/*    crc777Transfer: new Crc777TransferQuery(app),*/
     crc1155Transfer: new Crc1155TransferQuery(app),
     traceCreate: new BlockTraceCreateQuery(app),
     contractRdb: new ContractQuery(app),

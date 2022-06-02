@@ -9,7 +9,7 @@ import {Contract} from "../model/Contract";
 import {ContractVerify} from "../model/ContractVerify";
 import {Erc20Transfer, T_ADDRESS_ERC20TRANSFER} from "../model/Erc20Transfer";
 import {Erc721Transfer, T_ADDRESS_ERC721_TRANSFER} from "../model/Erc721Transfer";
-import {Erc777Transfer} from "../model/Erc777Transfer";
+// import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer, T_ADDRESS_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {TokenBalance} from "../model/Balance";
@@ -317,17 +317,8 @@ export class TokenQuery {
         if (addressId === undefined)
             return {transferCount: 0};
 
-        const [erc20Count, erc721Count, erc777Count, erc1155Count] = await Promise.all([
-            Erc20Transfer.count({where: {contractId: addressId}}),
-            Erc721Transfer.count({where: {contractId: addressId}}),
-            Erc777Transfer.count({where: {contractId: addressId}}),
-            Erc1155Transfer.count({where: {contractId: addressId}}),
-        ]);
-
-        if (erc20Count) return {transferType: CONST.TRANSFER_TYPE.ERC20, transferCount: erc20Count};
-        if (erc721Count) return {transferType: CONST.TRANSFER_TYPE.ERC721, transferCount: erc721Count};
-        if (erc777Count) return {transferType: CONST.TRANSFER_TYPE.ERC777, transferCount: erc777Count};
-        if (erc1155Count) return {transferType: CONST.TRANSFER_TYPE.ERC1155, transferCount: erc1155Count};
+        const token = await Token.findOne({attributes: ['type', 'transfer'], where: {hex40id: addressId}});
+        return {transferType: token.type, transferCount: token.transfer};
     }
 
     private async getAuditBasic(base32): Promise<{ zeroAdmin: boolean, verify: boolean }>{

@@ -1,7 +1,7 @@
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const BigFixed = require('bigfixed');
-const { KV, KEY_BLOCK_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+// const { KV, KEY_BLOCK_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 const DETAIL_FIELDS = ['newTransactionCount', 'avgGasPrice'];
 const PIVOT_FIELDS = ['blockIndex', 'pivotHash'];
@@ -139,16 +139,16 @@ class BlockService {
     if (options.referredBy !== undefined) {
       result = await this._countAndListRefereeByHash(options);
     } else {
-      const rdbSwitch = await KV.getSwitch(KEY_BLOCK_QUERY_RDB_SWITCH);
-      if (rdbSwitch) {
+      // const rdbSwitch = await KV.getSwitch(KEY_BLOCK_QUERY_RDB_SWITCH);
+      // if (rdbSwitch) {
         result = service.fullBlock.listBlock(options);
         return result;
-      }
-      tool.checkExist(options, {
-        epochNumber: false, referredBy: false, miner: undefined,
-        minTimestamp: undefined, maxTimestamp: undefined, minEpochNumber: undefined, maxEpochNumber: undefined,
-      });
-      result = await syncSDK.countAndListBlock(options);
+      // }
+      // tool.checkExist(options, {
+      //   epochNumber: false, referredBy: false, miner: undefined,
+      //   minTimestamp: undefined, maxTimestamp: undefined, minEpochNumber: undefined, maxEpochNumber: undefined,
+      // });
+      // result = await syncSDK.countAndListBlock(options);
     }
 
     let list = await limitMap(result.list,
