@@ -5,7 +5,10 @@ import {Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
+const abi = require('./abi');
+async function fetchOwner(tokenId:string, nftContract:any) {
 
+}
 async function fetchBalance(addrId:number, tokenId:string, nftContract:any) {
     return Hex40Map.findByPk(addrId).then(res=>'0x'+res.hex)
         .then(hex=>{
@@ -14,7 +17,22 @@ async function fetchBalance(addrId:number, tokenId:string, nftContract:any) {
             })
         })
 }
-
+//
+async function checkNftMint721(contractId:number) {
+    const token = await Token.findOne({
+        attributes: {exclude: ['icon']}, where: {
+            hex40id: contractId,
+            // type: 'ERC1155'
+        }
+    })
+    console.log(`token is ${token.base32} [${token.name}] ${token.type}`)
+    if (token.type !== 'ERC1155') {
+        console.log(`not 1155: ${token.type}`)
+        process.exit(9)
+    }
+    nftContract = cfx.Contract({abi: abi1155, address: token.base32});
+}
+//
 async function checkNftMint(contractId:number) {
     const token = await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId,
             // type: 'ERC1155'
