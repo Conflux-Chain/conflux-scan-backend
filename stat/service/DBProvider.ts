@@ -237,7 +237,7 @@ export function createMySql(dbConf) {
     // });
 
     const seq = new Sequelize(dbConf.instanceName, null, null, dbConf);
-    autoAddPartition(seq).then()
+    //autoAddPartition(seq).then()
     setInterval(()=>autoAddPartition(seq), 600_000)
     return seq
 }
