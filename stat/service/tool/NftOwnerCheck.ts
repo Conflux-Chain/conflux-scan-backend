@@ -1,10 +1,13 @@
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {QueryTypes} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
-import {Hex40Map} from "../../model/HexMap";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
+import {check721OwnerInDb} from "./TokenTool";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
+const abi = require('./abi');
+
 
 async function fetchBalance(addrId:number, tokenId:string, nftContract:any) {
     return Hex40Map.findByPk(addrId).then(res=>'0x'+res.hex)
@@ -14,7 +17,8 @@ async function fetchBalance(addrId:number, tokenId:string, nftContract:any) {
             })
         })
 }
-
+//
+//
 async function checkNftMint(contractId:number) {
     const token = await Token.findOne({attributes:{exclude: ['icon']},where:{hex40id: contractId,
             // type: 'ERC1155'
@@ -65,9 +69,9 @@ async function checkNftMint(contractId:number) {
             if (dataBalance > 0 && mintBalance <= 0) {
                 fixCnt+=1
                 console.log(`           need fix ${fixCnt}`)
-                await NftMint.update({toId: data.addressId, epoch: data.epoch, updatedAt: data['updatedAt']}, {
-                    where: {id: mint.id}
-                })
+                // await NftMint.update({toId: data.addressId, epoch: data.epoch, updatedAt: data['updatedAt']}, {
+                //     where: {id: mint.id}
+                // })
                 // process.exit(8)
             }
         } else {
@@ -79,18 +83,22 @@ async function checkNftMint(contractId:number) {
 let nftContract;
 let cfx;
 async function main() {
-    const cfg = await init();
     const [,,cmd,contractId] = process.argv
+    if (cmd === 'check721OwnerInDb') {
+        // after fixing owner, plz fix holder by
+        // node stat/dist/service/watcher/BatchBalanceWatcher.js fixNftHolder 123
+        return check721OwnerInDb();
+    }
+    const cfg = await init();
     cfx = new Conflux(cfg.conflux)
     if (cmd === 'checkNftMint') {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)
-        await NftMint.sequelize.close()
-        process.exit(0)
-        return
     } else {
         console.log(`unknown command [${cmd}]`)
     }
+    await NftMint.sequelize.close()
+    process.exit(0)
 }
 
 if (module === require.main) {
@@ -98,4 +106,5 @@ if (module === require.main) {
 }
 /*
  node stat/dist/service/tool/NftOwnerCheck.js checkNftMint 996251
+ node stat/dist/service/tool/NftOwnerCheck.js checkNftMint721 71452195
  */
