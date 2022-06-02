@@ -5,7 +5,7 @@ import {AddressCfxTransfer} from "../model/CfxTransfer";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
-import {Erc777Transfer} from "../model/Erc777Transfer";
+// import {Erc777Transfer} from "../model/Erc777Transfer";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {makeId} from "../model/HexMap";
@@ -95,16 +95,16 @@ export class DailyContractStatSync {
     }
 
     private async getTokenTransferStat(contractId, beginTime, endTime) {
-        const [erc20Record, erc721Record, erc777Record, erc1155Record] = await Promise.all([
+        const [erc20Record, erc721Record,/* erc777Record,*/ erc1155Record] = await Promise.all([
             Erc20Transfer.count({ where: { contractId }}),
             Erc721Transfer.count({ where: { contractId }}),
-            Erc777Transfer.count({ where: { contractId }}),
+            // Erc777Transfer.count({ where: { contractId }}),
             Erc1155Transfer.count({ where: { contractId }}),
         ]);
         let type;
         if(erc20Record) type = CONST.TRANSFER_TYPE.ERC20;
         if(erc721Record) type = CONST.TRANSFER_TYPE.ERC721;
-        if(erc777Record) type = CONST.TRANSFER_TYPE.ERC777;
+        // if(erc777Record) type = CONST.TRANSFER_TYPE.ERC777;
         if(erc1155Record) type = CONST.TRANSFER_TYPE.ERC1155;
 
         const model = DailyContractStatSync.getTokenTransferModel(type);
@@ -122,7 +122,7 @@ export class DailyContractStatSync {
         switch(transferType) {
             case CONST.TRANSFER_TYPE.ERC20: model = Erc20Transfer; break;
             case CONST.TRANSFER_TYPE.ERC721: model = Erc721Transfer; break;
-            case CONST.TRANSFER_TYPE.ERC777: model = Erc777Transfer; break;
+            // case CONST.TRANSFER_TYPE.ERC777: model = Erc777Transfer; break;
             case CONST.TRANSFER_TYPE.ERC1155: model = Erc1155Transfer; break;
             default:
                 return undefined;

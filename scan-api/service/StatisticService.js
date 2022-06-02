@@ -1,6 +1,6 @@
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
-const { KV, KEY_BLOCK_DATA_STAT_RDB_SWITCH } = require('../../stat/dist/model/KV');
+// const { KV, KEY_BLOCK_DATA_STAT_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 class StatisticService {
   constructor(app) {
@@ -72,11 +72,11 @@ class StatisticService {
 
   async plot({ interval, limit = 1 } = {}) {
     const {
-      app: { syncSDK, service },
+      app: { /*syncSDK, */service },
     } = this;
 
-    const rdbSwitch = await KV.getSwitch(KEY_BLOCK_DATA_STAT_RDB_SWITCH);
-    if (rdbSwitch) {
+    // const rdbSwitch = await KV.getSwitch(KEY_BLOCK_DATA_STAT_RDB_SWITCH);
+    // if (rdbSwitch) {
       const intervalType = service.blockData.INTERVAL_TYPE;
       let type;
       if (interval === 133 || interval === 514) {
@@ -88,10 +88,10 @@ class StatisticService {
       }
       const response = await service.blockData.listStat(type, 0, limit + 1);
       return response.list.slice(0, response.list.length - 1);
-    }
+    // }
 
-    const list = await syncSDK.plotStatistic({ limit: limit + 1, interval }); // +1 for diff
-    return this._diff(list);
+    // const list = await syncSDK.plotStatistic({ limit: limit + 1, interval }); // +1 for diff
+    // return this._diff(list);
   }
 
   async trend({ interval } = {}) {

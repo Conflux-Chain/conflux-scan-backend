@@ -1,6 +1,6 @@
 const lodash = require('lodash');
 const { TokenQuery } = require('../../stat/dist/service/TokenQuery');
-const { KV, KEY_ANNOUNCE_QUERY_RDB_SWITCH, SCAN_UTIL_CONTRACT } = require('../../stat/dist/model/KV');
+const { /*KV, KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/dist/model/KV');
 
 class TokenService {
   constructor(app) {
@@ -56,22 +56,22 @@ class TokenService {
       app: { service, ttlMap, dingTalk, type },
     } = this;
 
-    const rdbSwitch = await KV.getSwitch(KEY_ANNOUNCE_QUERY_RDB_SWITCH);
-    if (rdbSwitch) {
+    // const rdbSwitch = await KV.getSwitch(KEY_ANNOUNCE_QUERY_RDB_SWITCH);
+    // if (rdbSwitch) {
       const token = await service.tokenRdb.query({ address });
       // logger.info({src: `TokenService.deregister.rdb`, msg: `${JSON.stringify(token)}`});
       if (token && type.address(token.base32) !== address) {
         return null;
       }
-    }
+    // }
 
     const key = `token/list/${address}`;
-    if (!rdbSwitch) {
+/*    if (!rdbSwitch) {
       const { value } = await service.announce.query({ key });
       if (value !== address) {
         return null;
       }
-    }
+    }*/
 
     const result = await service.announce.send([{ key, value: '' }]);
     ttlMap.delete(this.LIST_CACHE_KEY); // not strict drop list cache

@@ -5,7 +5,7 @@ import {DailyTokenTxn, Erc20Transfer, T_ERC20_TRANSFER} from "../model/Erc20Tran
 import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
-import {Erc777Transfer, T_ERC777_TRANSFER} from "../model/Erc777Transfer";
+// import {Erc777Transfer, T_ERC777_TRANSFER} from "../model/Erc777Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
 import {FullTransaction} from "../model/FullBlock";
@@ -126,7 +126,7 @@ export async  function countRecentTokenTransferAccount(days:number) {
     return Promise.all([
         countAccount(T_ERC20_TRANSFER),
         countAccount(T_ERC721_TRANSFER),
-        countAccount(T_ERC777_TRANSFER),
+        // countAccount(T_ERC777_TRANSFER),
         countAccount(T_ERC1155_TRANSFER),
     ]).then(arr=>arr.reduce((a,b)=>a+b))
 }
@@ -141,7 +141,7 @@ export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
         switch(tokenBean.type.toLowerCase()) {
             case 'erc20': model = Erc20Transfer; break;
             case 'erc721': model = Erc721Transfer; break;
-            case 'erc777': model = Erc777Transfer; break;
+            // case 'erc777': model = Erc777Transfer; break;
             case 'erc1155': model = Erc1155Transfer; break;
             default:
                 // console.log(`unknown token type [${tokenBean.type}], ${tokenBean.base32}, ${tokenBean.symbol}`)
