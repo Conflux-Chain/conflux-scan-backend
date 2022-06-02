@@ -44,7 +44,7 @@ export async function listNFTTokens(ctx) {
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
 
     if(withBrief === 'true' || withMetadata === 'true'){
-        await batchGetTransactionList({nftList: data?.list, withBrief, withMetadata});
+        await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
 /*        await Promise.all(data?.list?.map(async (item) => {
             const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
                 tokenId: BigInt(item.tokenId)});
@@ -65,7 +65,7 @@ export async function listNFTTokens(ctx) {
     setBody(ctx, data)
 }
 
-async function batchGetTransactionList({nftList, withBrief, withMetadata}){
+async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
     let total = nftList?.length;
     if (!total) {
         return;
