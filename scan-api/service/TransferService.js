@@ -47,13 +47,14 @@ class TransferService {
     if (options.transactionHash !== undefined) {
       result = await this._countAndListByTransactionHash(options);
     } else {
-      // const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
-      // if (rdbSwitch) {
+/*      const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
+      if (rdbSwitch) {*/
         result = await this._countAndListByRdb(options);
         await fetchEnsMap(result.list,'from','to')
-        return lodash.defaults({ rdb: rdbSwitch }, result);
-      // }
-      // result = await this._countAndListBySync(options);
+        return result;
+      /*  return lodash.defaults({ rdb: rdbSwitch }, result);
+      }
+      result = await this._countAndListBySync(options);*/
     }
     await fetchEnsMap(result.list,'from','to')
     return result;
@@ -210,12 +211,12 @@ class TransferService {
       app: { CONST, tool },
     } = this;
 
-    const accountAddressArray = [];
+/*    const accountAddressArray = [];
     const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
-    if (rdbSwitch) {
+    if (rdbSwitch) {*/
       const page = this._listAccountAddressByRdb({ transferType, address, limit: CONST.LIST_LIMIT });
       return page?.list;
-    }
+   /* }
 
     for (let minAccountAddress = CONST.NULL_ADDRESS; minAccountAddress; minAccountAddress = tool.addHex(minAccountAddress, 1)) {
       const addressArray = await this._listAccountAddress({
@@ -229,7 +230,7 @@ class TransferService {
       accountAddressArray.push(...addressArray);
     }
 
-    return accountAddressArray;
+    return accountAddressArray;*/
   }
 
   async _listAccountAddressByRdb({ transferType, ...options }) {
