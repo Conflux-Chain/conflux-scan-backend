@@ -108,18 +108,10 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         await fetchDailyStatMix('pos_total_reward', ctx)
     })
     router.get('/pos-daily-deposit-withdraw', async (ctx)=>{
-        const limit = intParam(ctx.request.query, 'limit', 0)
         await queryPosStatMix('staking_deposit','staking_withdraw', ctx, ` and day >= '2022-02-27' `)
-        if (limit && ctx.body.list?.length > limit) {
-            ctx.body.list = ctx.body.list.slice(-limit)
-        }
     })
     router.get('/pos-daily-participation-rate', async (ctx)=>{
-        const limit = intParam(ctx.request.query, 'limit', 0)
         await fetchDailyStatMix('participation_rate', ctx, new Date('2022-02-27'))
-        if (limit && ctx.body.list?.length > limit) {
-            ctx.body.list = ctx.body.list.slice(-limit)
-        }
     })
     router.get('/pos-recent-reward-rank', async (ctx)=>{
         const day = intParam(ctx.request.query, 'day', 1)

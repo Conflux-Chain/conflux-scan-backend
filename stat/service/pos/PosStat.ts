@@ -7,6 +7,7 @@ import {Epoch} from "../../model/Epoch";
 import {init} from "../tool/FixDailyTokenStat";
 import {CfxTransfer} from "../../model/CfxTransfer";
 import {makeIdV} from "../../model/HexMap";
+import {intParam} from "../common/utils";
 
 export interface IPosDailyStatMix {
     id?:number; day:Date; v:number; biz: BIZ
@@ -101,7 +102,14 @@ export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = n
     }
     const list = await PosDailyStatMix.findAll({where, order: [['day','asc']]})
     ctx.body = { code: 0, total:list.length, list }
+    limitListOnBody(ctx)
     return list;
+}
+function limitListOnBody(ctx: any) {
+    const limit = intParam(ctx.request.query, 'limit', 0)
+    if (limit && ctx.body.list?.length > limit) {
+        ctx.body.list = ctx.body.list.slice(-limit)
+    }
 }
 export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any, dayCondition = '') {
     const t = PosDailyStatMix.getTableName()
@@ -112,6 +120,7 @@ export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any, dayConditio
         type: QueryTypes.SELECT, raw: true
     })
     ctx.body = { code: 0, total:list.length, list }
+    limitListOnBody(ctx)
     return list;
 }
 export async function scheduleDailyStatMix(cfx:Conflux) {
