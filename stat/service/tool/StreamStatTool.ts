@@ -47,12 +47,12 @@ async function run() {
             StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = config.statTokenTransfer;
             StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = config.statDailyTokenTransfer;
 
-            await tokenTransferHandler.schedule();
-            await minerBlockHandler.schedule();
-            await addrTransactionHandler.schedule();
-            await addrCfxTransferHandler.schedule();
-            await dailyCfxTransferHandler.schedule();
-            await dailyTokenTransferHandler.schedule();
+            config.statTokenTransfer && (await tokenTransferHandler.schedule());
+            config.statMinerBlock && (await minerBlockHandler.schedule());
+            config.statAddrTransaction && (await addrTransactionHandler.schedule());
+            config.statAddrCfxTransfer && (await addrCfxTransferHandler.schedule());
+            config.statDailyCfxTransfer && (await dailyCfxTransferHandler.schedule());
+            config.statDailyTokenTransfer && (await dailyTokenTransferHandler.schedule());
         }
     }
 }

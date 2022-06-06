@@ -8,10 +8,12 @@ import {Op} from "sequelize";
 import {idHex40Map} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
 import {sleep} from "../tool/ProcessTool";
+import {FullBlock} from "../../model/FullBlock";
 const lodash = require('lodash');
 
 export abstract class StatHandler {
     protected dbLocked = false;
+    protected needWarmup = false;
     protected bizQueue: string;
     protected bizStatInfo: BizStatInfo;
     protected app: any;
@@ -23,11 +25,13 @@ export abstract class StatHandler {
     }
 
     public async schedule(delay = 1000 * 60 * 3) {
-        await this.warmUp({reservedBuckets: this.reservedBuckets()});
+        if(this.needWarmup){
+            await this.warmUp({reservedBuckets: this.reservedBuckets()});
+            console.log(`[type=${this.bizAlias()}]stream_stat_warmUp finished`);
+        }
         await this.listen();
 
         const that = this
-
         async function repeat() {
             await that.awaitCollect().catch(err => {
                 console.log(`[type=${that.bizAlias()}]stream_stat_collect fail: `, err);
@@ -53,8 +57,9 @@ export abstract class StatHandler {
             }
 
             if(!message.epochTimestamp){
-                const epochObj = await Epoch.findOne({where: {epoch: epochNumber}, raw: true})
-                message.epochTimestamp = epochObj.timestamp;
+                const block = await FullBlock.findOne({where: {epoch: epochNumber, pivot: true}, raw: true});
+                if(!block) continue;
+                message.epochTimestamp = block.createdAt;
             }
             const epochTimestamp = new Date(message.epochTimestamp);
 
@@ -89,6 +94,7 @@ export abstract class StatHandler {
     }
 
     protected async checkoutBucket({statId, statTime = undefined, statEpoch = undefined}): Promise<StatBucket> {
+        this.evictLru({statRecords: this.bizStatInfo.statRecords});
         if (statTime) {
             return this.checkoutBucketForPush({statId, statTime});
         }
@@ -234,5 +240,25 @@ export abstract class StatHandler {
             await sleep(100)
         }
         this.dbLocked = true;
+    }
+
+    protected evictLru({statRecords, maxCache = 100}){
+        const len = Object.keys(statRecords).length;
+        if(len <= maxCache) return statRecords;
+
+        let statInfoArray = Object.keys(statRecords).map(bizId => {
+            const bucketArray = statRecords[bizId];
+            const maxEpochNumber = bucketArray[bucketArray.length-1]['maxEpochNumber'];
+            return {bizId, maxEpochNumber}
+        });
+        statInfoArray = lodash.orderBy(statInfoArray, ['maxEpochNumber']);
+
+        const rmArray = statInfoArray.slice(0, statInfoArray.length - maxCache);
+        rmArray.forEach(item => {
+            delete statRecords[item.bizId];
+        });
+        // console.log(`[type=${this.bizAlias()}]evictLru form:${len},to:${Object.keys(statRecords).length}`);
+
+        return statRecords;
     }
 }

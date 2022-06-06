@@ -154,7 +154,8 @@ export class PruneHandler {
             this.CACHE_MARKER[type].delete(addressId);
 
             // skip prune if crc721/crc1155
-            if (type === PruneType.ERC721_TRANSFER || type === PruneType.ERC1155_TRANSFER) {
+            if (type === PruneType.ERC721_TRANSFER || type === PruneType.ERC1155_TRANSFER ||
+                type === PruneType.ADDR_ERC721_TRANSFER || type === PruneType.ADDR_ERC1155_TRANSFER) {
                 continue;
             }
 
