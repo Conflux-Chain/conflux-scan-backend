@@ -227,7 +227,7 @@ export async function recentPosRewardRank(afterTime: Date, limit = 10) {
             'accountId',
         ],
         where: {createdAt: {[Op.gte]: afterTime}},
-        group: ['accountId'], order: [['rewardSum', 'desc']], limit, raw: true,
+        group: ['accountId'], order: [[col('rewardSum'), 'desc']], limit, raw: true,
         logging: debug ? console.log : false,
     }).then(res=>{
         res.forEach(row=>{
