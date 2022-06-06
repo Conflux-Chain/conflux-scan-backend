@@ -27,6 +27,17 @@ export class CrossSpaceStat extends Model<ICrossSpaceStat> implements ICrossSpac
         })
     }
 }
+export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossSpaceStat_BIZ, ctx:any) {
+    const t = CrossSpaceStat.getTableName()
+    const sql = `select day, v  from ${t} where biz='${biz1}'`
+    const sql2 = `select day, v from ${t} where biz='${biz2}'`
+    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2} from (${sql}) t join (${sql2}) t2 using(day)`
+    const list = await CrossSpaceStat.sequelize.query(join, {
+        type: QueryTypes.SELECT, raw: true
+    })
+    ctx.body = { code: 0, total:list.length, list }
+    return list;
+}
 let evmZeroId = 0
 export async function calcDailyCfxFromEvm(dt: Date) {
     const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());

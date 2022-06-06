@@ -38,7 +38,7 @@ import {listNftOfAccountByContract, getRegisterNftBalances, list1155inventory} f
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 import {BalanceService} from "../service/watcher/BalanceService";
-import {listCrossSpaceStat} from "../service/CrossSpaceStat";
+import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {queryEnsOfName} from "../service/ens/ENS";
 import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
 import {skipLimit} from "./ParamChecker";
@@ -431,11 +431,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
         ctx.body = {code: 0, data: page};
     });
-    router.get('/cross-space-cfx-to-evm', async (ctx)=>{
-        await listCrossSpaceStat('DailyCfxToEVM', ctx)
-    })
-    router.get('/cross-space-cfx-from-evm', async (ctx)=>{
-        await listCrossSpaceStat('DailyCfxFromEVM', ctx)
+    router.get('/cross-space-cfx', async (ctx)=>{
+        await queryCrossSpaceStat('DailyCfxToEVM', 'DailyCfxFromEVM', ctx)
     })
     // deployed contract statistic
     router.get('/contract/deploy/list', async function (ctx) {
