@@ -318,7 +318,7 @@ export class TokenQuery {
             return {transferCount: 0};
 
         const token = await Token.findOne({attributes: ['type', 'transfer'], where: {hex40id: addressId}});
-        return {transferType: token.type, transferCount: token.transfer};
+        return {transferType: token?.type, transferCount: token?.transfer};
     }
 
     private async getAuditBasic(base32): Promise<{ zeroAdmin: boolean, verify: boolean }>{

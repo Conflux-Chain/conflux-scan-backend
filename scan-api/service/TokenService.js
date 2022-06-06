@@ -1,6 +1,6 @@
 const lodash = require('lodash');
 const { TokenQuery } = require('../../stat/dist/service/TokenQuery');
-const { /*KV, KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/dist/model/KV');
+const { KV, /*KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/dist/model/KV');
 
 class TokenService {
   constructor(app) {
