@@ -95,7 +95,7 @@ export class PosStat {
     }
 }
 export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = null) {
-    const where = {biz, day: dayCondition}
+    const where = {biz, day: {[Op.gte]:dayCondition}}
     if (dayCondition === null) {
         delete where.day
     }
