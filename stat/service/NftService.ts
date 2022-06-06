@@ -35,7 +35,10 @@ export class NftService {
 
     // sync from exists transfer record from DB
     async checkByEpoch(from, range, model) : Promise<Erc721Transfer[]> {
-        return model.findAll({where:{fromId: this.zeroAddrId, epoch:{[Op.between]:[from, from+range]}}})
+        return model.findAll({where:{
+            // fromId: this.zeroAddrId,
+            epoch:{[Op.between]:[from, from+range]}
+        }, order:[['epoch', 'asc']]})
     }
     async saveIds(list:any/*Erc721Transfer*/[]) {
         const beans:any[] = list.map(t=>{
@@ -240,6 +243,8 @@ async function main() {
     const [,,cmd,p1,p2,p3] = process.argv
     const cfg = await init()
     if (cmd === 'check') {
+        // use it only when nft mint table is crashed.
+        // during rebuilding, data is inconsistent with on-chain.
         const args = process.argv.slice(2)
         let from = args[0]
         await new NftService().checkAll(Number(from))

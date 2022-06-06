@@ -1,6 +1,6 @@
 import {Conflux, Drip} from "js-conflux-sdk";
 import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosGap} from "../../model/PoS";
-import {DataTypes, Model, QueryTypes, Sequelize, Op, fn, col, literal} from 'sequelize'
+import {col, DataTypes, QueryTypes, fn, literal, Model, Op, Sequelize} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Epoch} from "../../model/Epoch";
@@ -93,6 +93,26 @@ export class PosStat {
             day: new Date(), v: secondGap2, biz: "finalize_second_gap"
         })
     }
+}
+export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = null) {
+    const where = {biz, day: {[Op.gte]:dayCondition}}
+    if (dayCondition === null) {
+        delete where.day
+    }
+    const list = await PosDailyStatMix.findAll({where, order: [['day','asc']]})
+    ctx.body = { code: 0, total:list.length, list }
+    return list;
+}
+export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any, dayCondition = '') {
+    const t = PosDailyStatMix.getTableName()
+    const sql = `select day, v  from ${t} where biz='${biz1}' ${dayCondition}`
+    const sql2 = `select day, v from ${t} where biz='${biz2}' ${dayCondition}`
+    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2} from (${sql}) t join (${sql2}) t2 using(day)`
+    const list = await PosDailyStatMix.sequelize.query(join, {
+        type: QueryTypes.SELECT, raw: true
+    })
+    ctx.body = { code: 0, total:list.length, list }
+    return list;
 }
 export async function scheduleDailyStatMix(cfx:Conflux) {
     const svc = new PosStat(cfx)
@@ -276,6 +296,9 @@ async function main() {
         await init()
         while(await syncFinalizeGap());
         console.log('pos gap count', await PosGap.count())
+    } else if (cmd === 'testQuery') {
+        await init()
+        await queryPosStatMix('finalize_epoch_gap','finalize_second_gap', {})
     } else if (cmd === 'calcDailyVoting') {
         await init()
         let dt = new Date('2022-01-24')
@@ -293,8 +316,8 @@ async function main() {
             await calcDailyStaking(dt)
             dt.setDate(dt.getDate() + 1)
         }
-        console.log(`done`)
     }
+    console.log(`done`)
     // let url = ''
     // url = 'https://main.confluxrpc.com'
     // const cfx = new Conflux({url})
