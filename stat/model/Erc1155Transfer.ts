@@ -12,7 +12,7 @@ export interface IAddressErc1155Transfer extends ITokenTransfer{
     batchIndex: number
 }
 
-export const T_ADDRESS_ERC1155_TRANSFER = "address_erc1155transfer_2"
+export const T_ADDRESS_ERC1155_TRANSFER = "address_erc1155transfer_3"
 const T_ADDRESS_ERC1155_TRANSFER_SQL = `
 create table if not exists ${T_ADDRESS_ERC1155_TRANSFER}
 (
@@ -87,7 +87,7 @@ export interface IErc1155Transfer extends ITokenTransfer{
     tokenId:string
 }
 
-export const T_ERC1155_TRANSFER = "erc1155transfer_2"
+export const T_ERC1155_TRANSFER = "erc1155transfer_3"
 
 export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155Transfer {
     id?: number

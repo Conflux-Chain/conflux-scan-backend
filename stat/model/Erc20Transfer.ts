@@ -54,7 +54,7 @@ export interface IAddressErc20Transfer extends ITokenTransfer{
     addressId:number
     value: string
 }
-export const T_ADDRESS_ERC20TRANSFER = 'address_erc20transfer_2'
+export const T_ADDRESS_ERC20TRANSFER = 'address_erc20transfer_3'
 const ADDRESS_ERC20TRANSFER_SQL = `
     CREATE table if not exists ${T_ADDRESS_ERC20TRANSFER} (
   \`addressId\` bigint unsigned NOT NULL,
@@ -131,7 +131,7 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
     }
 }
 
-export const T_ERC20_TRANSFER = "erc20transfer_2"
+export const T_ERC20_TRANSFER = "erc20transfer_3"
 
 export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transfer {
     id?: number
