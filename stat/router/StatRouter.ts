@@ -43,6 +43,7 @@ import {queryEnsOfName} from "../service/ens/ENS";
 import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
 import {skipLimit} from "./ParamChecker";
 import {Stopwatch} from "../service/Stopwatch";
+import {intParam} from "../service/common/utils";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -432,7 +433,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {code: 0, data: page};
     });
     router.get('/cross-space-cfx', async (ctx)=>{
+        const limit = intParam(ctx.request.query, 'limit', 0)
         await queryCrossSpaceStat('DailyCfxToEVM', 'DailyCfxFromEVM', ctx)
+        if (limit && ctx.body.list?.length > limit) {
+            ctx.body.list = ctx.body.list.slice(-limit)
+        }
     })
     // deployed contract statistic
     router.get('/contract/deploy/list', async function (ctx) {
