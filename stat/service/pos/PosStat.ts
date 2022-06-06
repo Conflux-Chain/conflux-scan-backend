@@ -99,10 +99,10 @@ export async function fetchDailyStatMix(biz: BIZ, ctx:any) {
     ctx.body = { code: 0, total:list.length, list }
     return list;
 }
-export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any) {
+export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any, dayCondition = '') {
     const t = PosDailyStatMix.getTableName()
-    const sql = `select day, v  from ${t} where biz='${biz1}'`
-    const sql2 = `select day, v from ${t} where biz='${biz2}'`
+    const sql = `select day, v  from ${t} where biz='${biz1}' ${dayCondition}`
+    const sql2 = `select day, v from ${t} where biz='${biz2}' ${dayCondition}`
     const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2} from (${sql}) t join (${sql2}) t2 using(day)`
     const list = await PosDailyStatMix.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
