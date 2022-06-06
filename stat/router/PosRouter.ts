@@ -116,7 +116,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/pos-daily-participation-rate', async (ctx)=>{
         const limit = intParam(ctx.request.query, 'limit', 0)
-        await fetchDailyStatMix('participation_rate', ctx)
+        await fetchDailyStatMix('participation_rate', ctx, new Date('2022-02-27'))
         if (limit && ctx.body.list?.length > limit) {
             ctx.body.list = ctx.body.list.slice(-limit)
         }

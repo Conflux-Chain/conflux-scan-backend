@@ -94,8 +94,12 @@ export class PosStat {
         })
     }
 }
-export async function fetchDailyStatMix(biz: BIZ, ctx:any) {
-    const list = await PosDailyStatMix.findAll({where: {biz}, order: [['day','asc']]})
+export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = null) {
+    const where = {biz, day: dayCondition}
+    if (dayCondition === null) {
+        delete where.day
+    }
+    const list = await PosDailyStatMix.findAll({where, order: [['day','asc']]})
     ctx.body = { code: 0, total:list.length, list }
     return list;
 }
