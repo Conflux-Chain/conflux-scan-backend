@@ -105,7 +105,7 @@ export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = n
     limitListOnBody(ctx)
     return list;
 }
-function limitListOnBody(ctx: any) {
+export function limitListOnBody(ctx: any) {
     const limit = intParam(ctx.request.query, 'limit', 0)
     if (limit && ctx.body.list?.length > limit) {
         ctx.body.list = ctx.body.list.slice(-limit)
