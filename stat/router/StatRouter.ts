@@ -543,7 +543,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const contractBasic = await statApp.contractQuery.listBasic({addressArray: base32arr});
         mapExtInfo(result.list, contractBasic.map, 'ownerBase32',
             'ownerTokenInfo', 'ownerContractInfo')
-        result.list.forEach(row=>delete row.ownerBase32)
+        result.list.forEach(row=>delete row["ownerBase32"])
         ctx.body = result
     })
     router.get('/nft/active-token-ids', async function (ctx) {
