@@ -5,6 +5,7 @@ import {abi as posAbi} from "../abi/PoSRegister";
 import {patchHttpProvider, removeLongData} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {POW_EPOCH_FOR_POS_Q, RedisStreamMessage, RedisWrap} from "../RedisWrap";
+import {sleep} from "../tool/ProcessTool";
 
 export class PowSidePosSync {
     // will be set when system startup.
@@ -70,7 +71,13 @@ export class PowSidePosSync {
                 });
                 console.log(` PosRegister pop: ${msg.epoch} `);
             } else {
-                await this.sync(msg.epoch);
+                try {
+                    await this.sync(msg.epoch);
+                } catch (e) {
+                    console.log(`error listenPowEpoch:`, e)
+                    await sleep(20_000)
+                    return
+                }
             }
         }
         return RedisWrap.xDel(data)
