@@ -223,18 +223,12 @@ export async function recentPosRewardRank(afterTime: Date, limit = 10) {
     let debug = false;
     return PosReward.findAll({
         attributes: [
-            [fn('sum', col('reward')), 'rewardSum'],
+            [fn('sum', col('reward')), 'reward'],
             'accountId',
         ],
         where: {createdAt: {[Op.gte]: afterTime}},
-        group: ['accountId'], order: [[col('rewardSum'), 'desc']], limit, raw: true,
+        group: ['accountId'], order: [[col('reward'), 'desc']], limit, raw: true,
         logging: debug ? console.log : false,
-    }).then(res=>{
-        res.forEach(row=>{
-            row.reward = row['rewardSum']
-            delete row['rewardSum']
-        })
-        return res;
     })
 }
 export interface IPosAccountBlock {
