@@ -52,7 +52,7 @@ implements IEpochHashTokenTransfer{
             epoch : {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
             hash: {type: DataTypes.CHAR(66), allowNull: false},
         },{
-            sequelize: seq, tableName: 'epoch_hash_token_transfer',
+            sequelize: seq, tableName: 'epoch_hash_token_transfer_3',
             updatedAt: false,
         })
     }
@@ -78,7 +78,7 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
             updatedAt: {type: DataTypes.DATE, allowNull: false},
             finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
-            sequelize: seq, tableName: 'task_token_transfer',
+            sequelize: seq, tableName: 'task_token_transfer_3',
         })
     }
 }

@@ -9,7 +9,7 @@ export interface IAddressErc721Transfer extends ITokenTransfer{
     addressId: number
     tokenId:string
 }
-export const T_ADDRESS_ERC721_TRANSFER = "address_erc721transfer_2"
+export const T_ADDRESS_ERC721_TRANSFER = "address_erc721transfer_3"
 const T_ADDRESS_ERC721_TRANSFER_SQL = `
     create table if not exists ${T_ADDRESS_ERC721_TRANSFER}
 (
@@ -77,7 +77,7 @@ export interface IErc721Transfer extends ITokenTransfer{
     tokenId:string
 }
 
-export const T_ERC721_TRANSFER = "erc721transfer_2"
+export const T_ERC721_TRANSFER = "erc721transfer_3"
 
 export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Transfer {
     id?: number

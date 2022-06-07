@@ -90,10 +90,10 @@ async function getPrunedRowsByToken({type, hex40id}) {
     let pruneType;
     if(type === CONST.TRANSFER_TYPE.ERC20){
         pruneType = PruneType.ERC20_TRANSFER;
-    } else if (type === CONST.TRANSFER_TYPE.ERC721){
+   /* } else if (type === CONST.TRANSFER_TYPE.ERC721){
         pruneType = PruneType.ERC721_TRANSFER;
     } else if (type === CONST.TRANSFER_TYPE.ERC1155){
-        pruneType = PruneType.ERC1155_TRANSFER;
+        pruneType = PruneType.ERC1155_TRANSFER;*/
     } else {
         return 0;
     }
