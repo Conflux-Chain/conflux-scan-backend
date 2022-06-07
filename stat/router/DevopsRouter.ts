@@ -49,7 +49,10 @@ async function checkLocal(ctx: Context, next) {
         ctx.body = {code: 401, message: `local address only. ${ip}`}
     }
 }
-async function proxyPath(ctx: any, next:any) {
+export async function proxyPath(ctx: any, next:any) {
+    if (!ctx.url.startsWith('/stat/phpmyadmin/')) {
+        return next()
+    }
     let path = ctx.url.substring('/stat/'.length)
     const p = proxy({
         url:  `http://127.0.0.1:8011/${path}`, // config local nginx to do your job
@@ -65,9 +68,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         })
         await p(ctx,next)
     });
-    router.use(/^phpmyadmin/, async(ctx,next)=>{
-        await proxyPath(ctx, next)
-    })
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
         let bean:Hex40Map
