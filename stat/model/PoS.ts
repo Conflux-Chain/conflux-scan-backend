@@ -220,13 +220,15 @@ export class PosReward extends Model<IPosReward> implements IPosReward {
     }
 }
 export async function recentPosRewardRank(afterTime: Date, limit = 10) {
+    let debug = false;
     return PosReward.findAll({
         attributes: [
             [fn('sum', col('reward')), 'reward'],
             'accountId',
         ],
         where: {createdAt: {[Op.gte]: afterTime}},
-        group: ['accountId'], order: [['reward', 'desc']], limit, raw: true,
+        group: ['accountId'], order: [[col('reward'), 'desc']], limit, raw: true,
+        logging: debug ? console.log : false,
     })
 }
 export interface IPosAccountBlock {
