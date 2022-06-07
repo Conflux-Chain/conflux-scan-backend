@@ -65,7 +65,9 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         })
         await p(ctx,next)
     });
-    router.use(/^phpmyadmin/, proxyPath)
+    router.use(/^phpmyadmin/, async(ctx,next)=>{
+        await proxyPath(ctx, next)
+    })
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query
         let bean:Hex40Map
