@@ -50,14 +50,15 @@ export class StatNotifier {
         const statInfo = {};
         blockList.forEach(block => {
             const blockInfo = blockInfoMap[block.hash];
+            if(!blockInfo) return;
             const minerId = blockInfo.minerId;
             const difficulty = blockInfo.difficulty;
             if(minerId !== 0) {
                 statInfo[minerId] = statInfo[minerId] === undefined ? [0, 0, 0, 0] :  statInfo[minerId];
                 statInfo[minerId][0] = statInfo[minerId][0] + 1;
-                statInfo[minerId][1] = BigInt(statInfo[minerId][1]) + block.totalReward;
-                statInfo[minerId][2] = BigInt(statInfo[minerId][2]) + block.txFee;
-                statInfo[minerId][3] = statInfo[minerId][3] + difficulty;
+                statInfo[minerId][1] = BigInt(statInfo[minerId][1]) + BigInt(block.totalReward);
+                statInfo[minerId][2] = BigInt(statInfo[minerId][2]) + BigInt(block.txFee);
+                statInfo[minerId][3] = BigInt(statInfo[minerId][3]) + BigInt(difficulty);
             }
         });
 
@@ -71,12 +72,16 @@ export class StatNotifier {
             return Promise.resolve(false);
         }
 
+        if(!txnArray?.length){
+            return Promise.resolve(false);
+        }
+
         const statInfo = {};
         txnArray.forEach(txn => {
             if(txn.fromId !== 0) {
                 statInfo[txn.fromId] = statInfo[txn.fromId] === undefined ? [0, 0, 0] :  statInfo[txn.fromId];
                 statInfo[txn.fromId][0] = statInfo[txn.fromId][0] + 1;
-                statInfo[txn.fromId][2] = BigInt(statInfo[txn.fromId][2]) + txn.gas;
+                statInfo[txn.fromId][2] = BigInt(statInfo[txn.fromId][2]) + BigInt(txn.gas);
             }
             if(txn.toId !== 0) {
                 statInfo[txn.toId] = statInfo[txn.toId] === undefined ? [0, 0, 0] :  statInfo[txn.toId];
@@ -88,7 +93,7 @@ export class StatNotifier {
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_ADDR_TRANSACTION_Q});
     }
 
-    // scan-cfx-transfer
+    // stat-cfx-transfer
     public static async notifyStatDailyCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         if (!StatNotifier.SWITCH_STAT_DAILY_CFX_TRANSFER) {
             return Promise.resolve(false);
@@ -104,9 +109,13 @@ export class StatNotifier {
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_DAILY_CFX_TRANSFER_Q});
     }
 
-    // scan-cfx-transfer
+    // stat-cfx-transfer
     public static async notifyStatAddrCfxTransfer({epochNumber, epochTimestamp, action, cfxTransferArray}){
         if (!StatNotifier.SWITCH_STAT_ADDR_CFX_TRANSFER) {
+            return Promise.resolve(false);
+        }
+
+        if(!cfxTransferArray?.length){
             return Promise.resolve(false);
         }
 
@@ -133,6 +142,12 @@ export class StatNotifier {
         if (!StatNotifier.SWITCH_STAT_TOKEN_TRANSFER) {
             return Promise.resolve(false);
         }
+
+        const addrIdArray = Object.keys(tokenTransfer)
+        if(!addrIdArray?.length){
+            return Promise.resolve(false);
+        }
+
         const msg = {epochNumber, epochTimestamp, action, statInfo: tokenTransfer};
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_TOKEN_TRANSFER_Q});
     }
@@ -150,7 +165,7 @@ export class StatNotifier {
 
         let transferCntr = 0;
         addrIdArray.forEach(addrId => {
-            transferCntr += tokenTransfer[addrId];
+            transferCntr += tokenTransfer[addrId][0];
         });
 
         const statInfo = {0: [transferCntr]};
