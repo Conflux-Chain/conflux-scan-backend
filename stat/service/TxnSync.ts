@@ -53,7 +53,8 @@ export class TxnSync {
             })
         }
         const[{epoch:minEpoch}] = await Promise.all([
-            FullTransaction.findOne({where: {createdAt:{[Op.gte]:beginTime}}, order:[['epoch','asc']], limit: 1}),
+            FullTransaction.findOne({where: {createdAt:{[Op.gte]:beginTime}},
+                order:[['createdAt','asc']], limit: 1}),
         ])
         let aggregate = action.startsWith("txn") ? "COUNT(*)" : `sum(dripValue)`;
         let group = action.endsWith('Send') ? '`fromId`' : '`toId`'
