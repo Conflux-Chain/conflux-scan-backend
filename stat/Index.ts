@@ -5,6 +5,7 @@ import {register} from "./router/StatRouter";
 import {KV} from "./model/KV";
 import {redisWrap} from "./service/RedisWrap";
 import {Server} from 'http'
+import {proxyPath} from "./router/DevopsRouter";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -25,7 +26,7 @@ export async function init() {
             console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
         }
     });
-
+    app.use(proxyPath)
 // x-response-time
     app.use(async (ctx, next) => {
         const start = Date.now();

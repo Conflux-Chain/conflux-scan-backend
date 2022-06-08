@@ -49,7 +49,18 @@ async function checkLocal(ctx: Context, next) {
         ctx.body = {code: 401, message: `local address only. ${ip}`}
     }
 }
-
+export async function proxyPath(ctx: any, next:any) {
+    // console.log(`------ proxy path `, ctx.url)
+    if (!ctx.url.startsWith('/stat/phpmyadmin/')) {
+        return next()
+    }
+    let path = ctx.url.substring('/stat/'.length)
+    const p = proxy({
+        url:  `http://127.0.0.1:8011/${path}`, // config local nginx to do your job
+        host: `http://${ctx.hostname}`,
+    })
+    await p(ctx,next)
+}
 export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.post('/devops/rpc-proxy', async (ctx, next)=>{
         const p = proxy({
