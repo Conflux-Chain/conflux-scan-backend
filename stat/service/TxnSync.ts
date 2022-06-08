@@ -4,6 +4,8 @@ import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
 import {StatApp} from "../StatApp";
 import {FullTransaction} from "../model/FullBlock";
+import {sleep} from "./tool/ProcessTool";
+import {BlockAndMinerSync} from "./BlockAndMinerSync";
 const BigFixed = require('bigfixed');
 
 /**
@@ -113,11 +115,17 @@ export class TxnSync {
 
         async function refreshAction(action: string) {
             await that.txTopBy(24, 'h', 10, action, StatApp.networkId)
-            await new Promise(resolve => setTimeout(resolve, 5_000))
+            await sleep(1000)
             await that.txTopBy(3, 'd', 10, action, StatApp.networkId)
-            await new Promise(resolve => setTimeout(resolve, 5_000))
+            await sleep(1000)
             await that.txTopBy(7, 'd', 10, action, StatApp.networkId)
-            await new Promise(resolve => setTimeout(resolve, 5_000))
+            //
+            await sleep(1000)
+            await BlockAndMinerSync.topByType(24, 'h', 10)
+            await sleep(1000)
+            await BlockAndMinerSync.topByType(3, 'd')
+            await sleep(1000)
+            await BlockAndMinerSync.topByType(7, 'd')
         }
 
         async function refreshCache(){

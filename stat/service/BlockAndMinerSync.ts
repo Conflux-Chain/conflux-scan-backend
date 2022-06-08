@@ -47,7 +47,7 @@ export class BlockAndMinerSync {
         })
         return seconds
     }
-
+    static rankCache = new Map<string, Object>()
     static async topByType(n: number, type: string, limit: number = 10): Promise<{list:IMinerBlock[], allDifficulty:number}>{
         console.log(`top by type : ${n} ${type} limit ${limit}`)
         if (n <= 0) {
@@ -57,6 +57,11 @@ export class BlockAndMinerSync {
         if (maxBlock == null) {
             return Promise.reject(`service unavailable, table is empty.`)
         }
+        const cacheKey = `${n}${type}${limit}`
+        const cacheV = BlockAndMinerSync.rankCache.get(cacheKey);
+        if (cacheV !== undefined) {
+            return cacheV as any;
+        }
         let timeWindow:string = '1h';
         const endDt = maxBlock.endTime;
         let beginDt: Date;
@@ -65,7 +70,9 @@ export class BlockAndMinerSync {
         } catch (err) {
             return Promise.reject(`${err}`)
         }
-        return BlockAndMinerSync.topByTime(beginDt, endDt, timeWindow, limit)
+        const v = BlockAndMinerSync.topByTime(beginDt, endDt, timeWindow, limit);
+        BlockAndMinerSync.rankCache.set(cacheKey, v)
+        return v
     }
 
     static async topByTime(beginDt: Date, endDt: Date, timeWindow: string, limit: number): Promise<{list:IMinerBlock[], allDifficulty:number}> {
