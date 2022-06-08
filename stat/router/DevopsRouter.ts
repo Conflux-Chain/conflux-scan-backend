@@ -50,7 +50,7 @@ async function checkLocal(ctx: Context, next) {
     }
 }
 export async function proxyPath(ctx: any, next:any) {
-    console.log(`------ proxy path `, ctx.url)
+    // console.log(`------ proxy path `, ctx.url)
     if (!ctx.url.startsWith('/stat/phpmyadmin/')) {
         return next()
     }

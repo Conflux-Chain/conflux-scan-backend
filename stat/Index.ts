@@ -26,9 +26,7 @@ export async function init() {
             console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
         }
     });
-    app.use(async (ctx: any, next:any)=>{
-        await proxyPath(ctx,next)
-    })
+    app.use(proxyPath)
 // x-response-time
     app.use(async (ctx, next) => {
         const start = Date.now();

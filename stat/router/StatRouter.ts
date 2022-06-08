@@ -10,7 +10,7 @@ import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
-import {addDevopsRouter, proxyPath} from "./DevopsRouter";
+import {addDevopsRouter} from "./DevopsRouter";
 import {pickNumber} from "../model/Utils";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
