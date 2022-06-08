@@ -8,12 +8,14 @@ import {scheduleDailyActiveAddress} from "./model/StatAddress";
 import {DailyTxnSync, scheduleDailyTokenStat} from "./service/DailyTxnSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 import {DailyContractCreateSync} from "./service/DailyContractCreateSync";
-import {KV} from "./model/KV";
+import {ADDRESS_COUNT, CONTRACT_COUNT, KV} from "./model/KV";
 import {DailyContractStatSync} from "./service/DailyContractStatSync";
 import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {CfxHolderSync} from "./service/CfxHolderSync";
 import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {regExitHook} from "./service/tool/ProcessTool";
+import {Hex40Map} from "./model/HexMap";
+import {TraceCreateContract} from "./model/TraceCreateContract";
 
 async function main() {
     redirectLog()
@@ -49,7 +51,12 @@ async function main() {
     //
     const blockDataStatSync = new DailyBlockDataStatSync();
     await blockDataStatSync.schedule(); // daily block data stat
+    setInterval(countTable, 60_000)
     console.log(`----- Timer tasks scheduled. -----`)
+}
+async function countTable() {
+    await KV.saveNumber(ADDRESS_COUNT, await Hex40Map.count({}), null)
+    await KV.saveNumber(CONTRACT_COUNT, await TraceCreateContract.count({}), null)
 }
 main().then().catch(err=>{
     console.log(`Timer task fail:`, err)
