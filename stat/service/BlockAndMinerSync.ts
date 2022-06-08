@@ -49,7 +49,7 @@ export class BlockAndMinerSync {
     }
     static rankCache = new Map<string, Object>()
     static async topByType(n: number, type: string, limit: number = 10): Promise<{list:IMinerBlock[], allDifficulty:number}>{
-        console.log(`top by type : ${n} ${type} limit ${limit}`)
+        console.log(`miner top by type : ${n} ${type} limit ${limit}`)
         if (n <= 0) {
             return Promise.reject(`invalid span ${n}`)
         }
@@ -60,6 +60,7 @@ export class BlockAndMinerSync {
         const cacheKey = `${n}${type}${limit}`
         const cacheV = BlockAndMinerSync.rankCache.get(cacheKey);
         if (cacheV !== undefined) {
+            console.log(`hit cache `, cacheKey)
             return cacheV as any;
         }
         let timeWindow:string = '1h';
