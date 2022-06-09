@@ -29,13 +29,22 @@ export class NFTPreviewService {
 
     public async getNFTInfo ({
         contractAddress,
-        tokenId
+        tokenId,
+        withDetail = false,
     }: {
         contractAddress: string;
         tokenId: BigInt;
+        withDetail?: boolean;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
-        const nftInfo = await this.getNFTInfo0({address, tokenId});
+        const token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
+        if(!token) return {code: CONST.ERROR.FailedToQueryNFTMetadata.code, error: `${contractAddress} not detected as a token`};
+        const nftInfo = await this.getNFTInfo0({address, tokenId, type: token.type, gateway: token.ipfsGateway});
+
+        if(withDetail){
+            const detail = await this.getDetailInfo({address, hex40id: token.hex40id, tokenId, type: token.type});
+            lodash.assign(nftInfo, detail);
+        }
 
         if(!nftInfo || nftInfo.error) {
             return nftInfo;
@@ -54,12 +63,14 @@ export class NFTPreviewService {
         contractAddress: string;
         tokenId: BigInt;
     }): Promise<NFTInfoType> {
-        const address = toBase32(contractAddress) as string;
-        const nftInfo = await this.getNFTInfo0({address, tokenId});
+        return this.getNFTInfo({contractAddress, tokenId, withDetail: true});
+    }
+
+    private async getDetailInfo({address, hex40id, tokenId, type}){
+        const hex = format.hexAddress(address);
 
         const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
             id from hex40 where hex = ?));`;
-        const hex = format.hexAddress(address);
         const creator = await Hex40Map.sequelize
             .query(sql, {type: QueryTypes.SELECT, replacements: [hex.substr(2)]})
             .then(hexBeanArray => {
@@ -79,12 +90,10 @@ export class NFTPreviewService {
                 return {owner, mintTime};
             });
 
-        const token = await Token.findOne({attributes: ['hex40id','type'], where: {base32: address}});
-        const type = token.type;
         let owner;
         if(type === CONST.TRANSFER_TYPE.ERC721){
             const ownerId = await Erc721Transfer.findOne({
-                where: {contractId: token.hex40id, tokenId: `${tokenId}`},
+                where: {contractId: hex40id, tokenId: `${tokenId}`},
                 order: [['epoch', 'DESC']],
                 limit: 1,
                 raw: true
@@ -93,27 +102,21 @@ export class NFTPreviewService {
             owner = toBase32(`0x${ownerHex['hex']}`);
         }
 
-        lodash.assign(nftInfo, {creator, ... minter, type});
-        lodash.assign(nftInfo, {owner});
-        if(!nftInfo || nftInfo.error) {
-            return nftInfo;
-        }
-
-        nftInfo.imageName.zh = Desensitizer.mosaicStr(address, nftInfo.imageName.zh);
-        nftInfo.imageName.en = Desensitizer.mosaicStr(address, nftInfo.imageName.en);
-        nftInfo.imageUri = Desensitizer.mosaicUri(address, nftInfo.imageUri);
-        return nftInfo;
+        return {creator, ... minter, owner, type};
     }
 
     private async getNFTInfo0 ({
         address,
         tokenId,
+        type,
+        gateway,
     }: {
         address: string;
         tokenId: BigInt;
+        type: string;
+        gateway: string;
     }): Promise<NFTInfoType> {
-        const token = await Token.findOne({attributes: ['type', 'ipfsGateway'], where: {base32: address}});
-        const tokenBasic = { address, tokenId, gateway: token.ipfsGateway };
+        const tokenBasic = { address, tokenId, gateway };
         switch (address) {
             case NFTMap.confluxGuardian.address:
                 return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
@@ -170,10 +173,10 @@ export class NFTPreviewService {
                     uriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url }));
             default:
                 let result;
-                if(token?.type === CONST.TRANSFER_TYPE.ERC721){
+                if(type === CONST.TRANSFER_TYPE.ERC721){
                     result = await this.getNFTImage(lodash.defaults(tokenBasic, { method: 'tokenURI'}));
                 }
-                if(token?.type === CONST.TRANSFER_TYPE.ERC1155){
+                if(type === CONST.TRANSFER_TYPE.ERC1155){
                     result =  await this.getNFTImage(tokenBasic);
                 }
                 return result;
@@ -460,9 +463,9 @@ export class NFTPreviewService {
 }
 
 export type NFTInfoType = {
-    imageMinHeight: number;
-    imageUri: string;
-    imageName: any;
+    imageMinHeight?: number;
+    imageUri?: string;
+    imageName?: any;
     imageDesc?: any;
     detail?:any;
     code?: number;

@@ -111,6 +111,7 @@ module.exports = {
     AnnouncementNotExistError: { code: 40404, name: 'AnnouncementNotExistError' },
 
     BizError: { code: 50100, name: 'BizError' },
+    ContractNotDetectedAsToken: { code: 50300, name: 'Contract not detected as a token'},
     FailedToCallNFTContract: { code: 50301, name: 'Failed to call NFT contract' },
     FailedToQueryNFTMetadata: { code: 50302, name: 'Failed to query NFT metadata' },
     FailedToParseNFTMetadata: { code: 50303, name: 'Failed to parse NFT metadata' },
