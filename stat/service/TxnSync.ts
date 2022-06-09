@@ -4,6 +4,8 @@ import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
 import {StatApp} from "../StatApp";
 import {FullTransaction} from "../model/FullBlock";
+import {sleep} from "./tool/ProcessTool";
+import {BlockAndMinerSync} from "./BlockAndMinerSync";
 const BigFixed = require('bigfixed');
 
 /**
@@ -20,7 +22,7 @@ export class TxnSync {
     }
 
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
-                         networkId: number = 1029) {
+                         networkId: number = 1029, useCache=true) {
         const {
             app: { contractQuery },
         } = this;
@@ -28,7 +30,7 @@ export class TxnSync {
         limit = pickNumber(limit, 10)
         // cache
         const cacheKey = `${n}${type}${limit}${action}`
-        const cacheV = this.rankCache.get(cacheKey);
+        const cacheV = useCache ? this.rankCache.get(cacheKey) : undefined;
         if (cacheV !== undefined) {
             return Promise.resolve(cacheV);
         }
@@ -112,12 +114,20 @@ export class TxnSync {
         const that = this
 
         async function refreshAction(action: string) {
-            await that.txTopBy(24, 'h', 10, action, StatApp.networkId)
-            await new Promise(resolve => setTimeout(resolve, 5_000))
-            await that.txTopBy(3, 'd', 10, action, StatApp.networkId)
-            await new Promise(resolve => setTimeout(resolve, 5_000))
-            await that.txTopBy(7, 'd', 10, action, StatApp.networkId)
-            await new Promise(resolve => setTimeout(resolve, 5_000))
+            await that.txTopBy(24, 'h', 10, action, StatApp.networkId, false)
+            await sleep(1000)
+            await that.txTopBy(3, 'd', 10, action, StatApp.networkId, false)
+            await sleep(1000)
+            await that.txTopBy(7, 'd', 10, action, StatApp.networkId, false)
+        }
+        async function refreshMinerRank() {
+            //
+            await sleep(1000)
+            await BlockAndMinerSync.topByType(24, 'h', 10, false)
+            await sleep(1000)
+            await BlockAndMinerSync.topByType(3, 'd', 10,false)
+            await sleep(1000)
+            await BlockAndMinerSync.topByType(7, 'd', 10, false)
         }
 
         async function refreshCache(){
@@ -127,6 +137,7 @@ export class TxnSync {
             await refreshAction('cfxReceived');
             await refreshAction('txnSend');
             await refreshAction('txnReceived');
+            await refreshMinerRank()
             setTimeout(refreshCache, delay)
         }
         refreshCache().then()
