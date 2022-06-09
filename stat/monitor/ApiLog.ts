@@ -8,6 +8,7 @@ import {
     ModelStatic,
     DatabaseError
 } from "sequelize";
+import {API_LOG_RT_LIMIT, KV} from "../model/KV";
 
 export interface IApiLog {
     id?:number; path:string; query:string; rt:number; createdAt:Date;
@@ -32,6 +33,11 @@ export class ApiLog extends Model<IApiLog> implements IApiLog {
     }
 }
 let rtThreshold = 1000
+setInterval(()=>{
+        KV.getNumber(API_LOG_RT_LIMIT, 1000).then(v=>{
+            rtThreshold = v
+        }).catch()
+    }, 5000)
 export async function saveApiLog({url}, rt:number) {
     if (rt < rtThreshold) {
         return
