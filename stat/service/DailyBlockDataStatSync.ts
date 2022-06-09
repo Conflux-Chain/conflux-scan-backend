@@ -1,5 +1,5 @@
 import {calBeginEndTime, getTimeByInterval, getYesterday} from "./tool/DateTool";
-import {Sequelize, QueryTypes} from 'sequelize'
+import {Sequelize, QueryTypes, Op} from 'sequelize'
 import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {fmtDtUTC} from "../model/Utils";
@@ -53,41 +53,60 @@ export class DailyBlockDataStatSync{
             difficulty, blockTime, hashRate, tps}];
 
         // stat daily
-        const nextHour = moment(nextBeginTime).format('HH');
-        if(nextHour === '23'){
-            const {beginTime: beginTimeInDay, endTime: endTimeInDay} =  calBeginEndTime(nextBeginTime);
-            const statSql = `SELECT statTime,statType,blockCount,txCount,difficultySum FROM daily_block_data_stat 
-                    WHERE statTime >= ? and statTime < ? and statType = '1h'` ;
-            const statList = await DailyBlockDataStat.sequelize.query(statSql, {type: QueryTypes.SELECT,
-                replacements: [fmtDtUTC(beginTimeInDay), fmtDtUTC(endTimeInDay)], raw: true/*, logging: console.info*/ });
-            statList.push(statArray[0]);
-            let blockCountPerDay = BigFixed(0);
-            let txCountPerDay = BigFixed(0);
-            let difficultyPerDay = BigFixed(0);
-            lodash.forEach(statList, stat => {
-                blockCountPerDay = blockCountPerDay.add(BigFixed(stat['blockCount']));
-                txCountPerDay = txCountPerDay.add(BigFixed(stat['txCount']));
-                difficultyPerDay = difficultyPerDay.add(BigFixed(stat['difficultySum']));
-            });
+        let {beginTime: beginTimeInDay, endTime: endTimeInDay} = calBeginEndTime(nextBeginTime);
+        endTimeInDay = moment(nextBeginTime).format('HH') === '23' ? endTimeInDay : (now < endTimeInDay ? now : endTimeInDay);
+        const statInDay = await this.statDailyRealtime({beginTimeInDay, endTimeInDay, statLatestHour: statArray[0]});
+        statArray.push(statInDay);
 
-            // build daily record
-            let difficulty = BigFixed(0);
-            let hashRate = BigFixed(0);
-            const blockTime = blockCountPerDay.isZero() ? BigFixed(0) : this.intervalDayInSec.div(blockCountPerDay);
-            const tps = txCountPerDay.div(this.intervalDayInSec);
-            const statTime = beginTimeInDay;
-            lodash.forEach(statList, stat => {
-                difficulty = blockCountPerDay.isZero() ? BigFixed(0)
-                    : difficulty.add(BigFixed(stat['difficultySum']).div(blockCountPerDay));
-                hashRate = hashRate.add(BigFixed(stat['difficultySum']).div(this.intervalDayInSec));
+        // persist
+        await DailyBlockDataStat.sequelize.transaction(async (dbTx) => {
+            await DailyBlockDataStat.destroy({
+                where: {statTime: statInDay.statTime, statType: statInDay.statType}, transaction: dbTx,
+                logging: msg => console.log(`DailyBlockDataStat.destroy ${msg}`),
             });
-            const statInDay = {statTime, statType: '1d', difficultySum:  difficultyPerDay, blockCount: blockCountPerDay,
-                txCount: txCountPerDay, difficulty, hashRate, blockTime, tps};
-            statArray.push(statInDay);
-        }
-        await DailyBlockDataStat.bulkCreate(statArray);
+            await DailyBlockDataStat.bulkCreate(statArray, {
+                transaction: dbTx,
+                logging: msg => console.log(`DailyBlockDataStat.bulkCreate ${msg}`),
+            });
+        });
         console.log(`block_data_stat by hour, statTime:${nextBeginTime},statArray${JSON.stringify(statArray)}`);
         return Promise.resolve(true);
+    }
+
+    private async statDailyRealtime({beginTimeInDay, endTimeInDay, statLatestHour = undefined}){
+        // stat daily
+        const statSql = `SELECT statTime,statType,blockCount,txCount,difficultySum FROM daily_block_data_stat 
+                    WHERE statTime >= ? and statTime < ? and statType = '1h'` ;
+        const statList = await DailyBlockDataStat.sequelize.query(statSql, {type: QueryTypes.SELECT,
+            replacements: [fmtDtUTC(beginTimeInDay), fmtDtUTC(endTimeInDay)], raw: true/*, logging: console.info*/ });
+        if(statLatestHour) {
+            statList.push(statLatestHour);
+        }
+        let blockCountPerDay = BigFixed(0);
+        let txCountPerDay = BigFixed(0);
+        let difficultyPerDay = BigFixed(0);
+        lodash.forEach(statList, stat => {
+            blockCountPerDay = blockCountPerDay.add(BigFixed(stat['blockCount']));
+            txCountPerDay = txCountPerDay.add(BigFixed(stat['txCount']));
+            difficultyPerDay = difficultyPerDay.add(BigFixed(stat['difficultySum']));
+        });
+
+        // build daily record
+        const intervalInSec = BigFixed((endTimeInDay.getTime() - beginTimeInDay.getTime())/1000);
+        let difficulty = BigFixed(0);
+        let hashRate = BigFixed(0);
+        const blockTime = blockCountPerDay.isZero() ? BigFixed(0) : intervalInSec.div(blockCountPerDay);
+        const tps = txCountPerDay.div(intervalInSec);
+        const statTime = beginTimeInDay;
+        lodash.forEach(statList, stat => {
+            difficulty = blockCountPerDay.isZero() ? BigFixed(0)
+                : difficulty.add(BigFixed(stat['difficultySum']).div(blockCountPerDay));
+            hashRate = hashRate.add(BigFixed(stat['difficultySum']).div(intervalInSec));
+        });
+        const statInDay = {statTime, statType: '1d', difficultySum:  difficultyPerDay, blockCount: blockCountPerDay,
+            txCount: txCountPerDay, difficulty, hashRate, blockTime, tps};
+
+        return statInDay;
     }
 
     public async statDaily(statDay: Date): Promise<any>{
