@@ -69,6 +69,7 @@ import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} f
 import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
+import {ApiLog} from "../monitor/ApiLog";
 let conf
 export function createDB(config) {
     conf = config
@@ -136,6 +137,7 @@ export async function initPartialModel(sequelize) {
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
     ENS.register(sequelize)
+    ApiLog.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)

@@ -6,6 +6,7 @@ import {KV} from "./model/KV";
 import {redisWrap} from "./service/RedisWrap";
 import {Server} from 'http'
 import {proxyPath} from "./router/DevopsRouter";
+import {saveApiLog} from "./monitor/ApiLog";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -32,6 +33,7 @@ export async function init() {
         const start = Date.now();
         await next();
         const ms = Date.now() - start;
+        saveApiLog(ctx, ms).catch()
         ctx.set('X-Response-Time', `${ms}ms`);
     });
 

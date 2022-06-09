@@ -6,6 +6,7 @@ const { Sequelize } = require('sequelize');
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
+const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
 const { KV } = require('../stat/dist/model/KV');
 const AppBase = require('../common/AppBase');
 const JsonRPCSDK = require('../common/JsonRPCSDK');
@@ -125,6 +126,12 @@ class ApiApp extends AppBase {
       hostname: 'scan-backend-api-stat', // Prevent exposure of server ip
       basePath: '',
     })));
+    this.use(async (ctx,next)=>{
+      const start = Date.now();
+      await next();
+      const ms = Date.now() - start;
+      saveApiLog(ctx, ms).catch()
+    })
     // websocket json rpc
     this.webSocket.on('message', async (client, message) => {
       const input = JSON.parse(message);
