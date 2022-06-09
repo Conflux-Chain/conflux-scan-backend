@@ -403,8 +403,8 @@ export class ContractQuery {
         const hex40 = await Hex40Map.findOne({where: {hex: implHex40}, raw: true});
         if (!hex40) return result;
 
-        const beaconAddress = beaconHex40 ? format.address(beaconHex40, this.app?.networkId) : null;
-        const implAddress = format.address(`0x${hex40.hex}`, this.app?.networkId);
+        const beaconAddress = beaconHex40 ? format.address(beaconHex40, StatApp.networkId) : null;
+        const implAddress = format.address(`0x${hex40.hex}`, StatApp.networkId);
         return lodash.assign(result, {
             proxy: true,
             beacon: beaconAddress,
@@ -459,8 +459,8 @@ export class ContractQuery {
         }
     }
 
-    public async submitVerify({ address, name, sourcecode, compiler, optimizeRuns, license, constructorArgs }) {
-        const { cfx, cfxSDK } = this.app;
+    public async submitVerify({ address, name, sourcecode, compiler, optimizeFlag, optimizeRuns, license, constructorArgs }) {
+        const { cfx, cfxSDK, jsonRpc } = this.app;
         const sdk = cfxSDK || cfx;
 
         try{
@@ -469,8 +469,17 @@ export class ContractQuery {
             const code = await sdk.getCode(address).catch(() => {throw new Error(`invalid contract's code:${code}`)});
 
             const sourceCode = this.rmRedundantLicense(sourcecode);
-            const optimizeFlag = Number.isInteger(optimizeRuns) && optimizeRuns >= 0;
             const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+
+            // check version
+            const versionTable = await jsonRpc.listVersion();
+            const versionSet = new Set();
+            (Object.values(versionTable) as string[]).forEach(version => {
+                versionSet.add(version.substring(8, version.length - 3));
+            });
+            if(!versionSet.has(compiler)){
+                throw new Error(`compiler version ${compiler} not exits`)
+            }
 
             const record = await this.addVerify({address, sourceCode, name, compiler: 'solidity', version: compiler,
                 optimizeFlag, optimizeRuns, license, codeHash, taskStatus: CONST.TASK_STATUS.SUBMITTED});
@@ -482,7 +491,8 @@ export class ContractQuery {
         }
     }
 
-    public async doVerify({ id, address, name, sourceCode, compiler, optimizeRuns, license, constructorArgs }) {
+    public async doVerify({ id, address, name, sourceCode, compiler, optimizeFlag, optimizeRuns, license,
+        constructorArgs }) {
         const { cfx, cfxSDK, jsonRpc } = this.app;
         const sdk = cfxSDK || cfx;
 
@@ -501,6 +511,7 @@ export class ContractQuery {
                 return;
             }
 
+            optimizeRuns = (optimizeFlag && optimizeRuns > 0) ? optimizeRuns : undefined;
             const result = await jsonRpc.verifyPlus({address, sourceCode, name, compiler, optimizeRuns,
                 creationData, deployedBytecode: code});
             result.verifyResult = this.getVerifyResult(result.matchCode);
@@ -538,8 +549,9 @@ export class ContractQuery {
     public async submitVerifyProxy({ address, expectedImpl }) {
         const{ logger } = this.app;
         const base32 = toBase32(address);
+        expectedImpl = !expectedImpl ? null : toBase32(expectedImpl);
 
-        const verify = await ProxyVerify.findOne({where: {base32, expectedImpl: !expectedImpl ? null : expectedImpl}});
+        const verify = await ProxyVerify.findOne({where: {base32, expectedImpl}});
         if(verify) {
             return {address, guid: verify.guid};
         }
@@ -625,6 +637,7 @@ export class ContractQuery {
         }
 
         submitVerify.address = submitVerify.base32;
+        submitVerify.compiler = submitVerify.version;
         await this.doVerify(submitVerify);
     }
 }

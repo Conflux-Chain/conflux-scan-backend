@@ -1,27 +1,40 @@
 import * as Router from "koa-router";
+import {Op} from "sequelize";
 import {format} from "js-conflux-sdk";
 import {getApiService} from "../ApiServer";
 import {StatApp} from "../../stat/StatApp";
+import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
+import {Epoch} from "../../stat/model/Epoch";
 import {InvalidParamError} from "../../stat/router/ParamChecker";
-import {listAccountAssets} from "../service/OpenAccountService";
-import {listAccountTransaction} from "../service/OpenTxService";
-import {listNFTBalances, listNFTTokens, getNFTPreview} from "../service/OpenNFTService";
+import {setBody} from "./middleware";
+import {
+    listAccountAssets,
+} from "../service/OpenAccountService";
+import {
+    listAccountTransaction,
+} from "../service/OpenTxService";
 import {
     listAccountCfxTransfer,
     listAccountTransfer20,
     listAccountTransfer721,
-    listAccountTransfer1155
+    listAccountTransfer1155,
 } from "../service/OpenTransferService";
 import {
-    checkPresent,
-    getPaginationESpace,
-    mustBeAddressParamIfPresent,
-    mustBeEnumParamIfPresent, mustBeHex64ParamIfPresent, mustBeIntParamIfPresent,
-} from "../../stat/service/common/utils";
-import {queryTokenInfo} from "../service/OpenTokenService";
-import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
-import {Epoch} from "../../stat/model/Epoch";
-import {Op} from "sequelize";
+    getABI,
+    getSourceCode,
+    verifySourcecode,
+    checkVerifyStatus,
+    verifyProxyContract,
+    checkProxyVerification,
+} from "../service/OpenContractService";
+import {
+    queryTokenInfo
+} from "../service/OpenTokenService";
+import {
+    listNFTBalances,
+    listNFTTokens,
+    getNFTPreview,
+} from "../service/OpenNFTService";
 import {
     getSupplyStat,
     listAccountActiveStat,
@@ -42,17 +55,25 @@ import {
     listTpsStat,
     listTransactionReceiverTopStat,
     listTransactionSenderTopStat,
-    listTransactionStat
+    listTransactionStat,
 } from "../service/OpenStatService";
+import {
+    checkPresent,
+    getPaginationESpace,
+    mustBeAddressParamIfPresent,
+    mustBeEnumParamIfPresent,
+    mustBeHex64ParamIfPresent,
+    mustBeIntParamIfPresent,
+} from "../../stat/service/common/utils";
 
 const lodash = require('lodash');
-const util = require('util');
+/*const util = require('util');*/
 const CONST = require('../../stat/service/common/constant');
 
 const EPOCH_NUMBER_LABEL_ARRAY = ['latest_mined', 'latest_state', 'latest_finalized', 'latest_confirmed',
     'latest_checkpoint', 'earliest'];
-const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortunately not detected for the proxy address";
-const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";
+/*const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortunately not detected for the proxy address";
+const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";*/
 // -----------------------------------biz---------------------------------------
 async function gateway(ctx) {
     const {E_SPACE_OPENAPI: {ACCOUNT, CONTRACT, TRANSACTION, BLOCK, TOKEN, STATS}} = CONST;
@@ -376,7 +397,7 @@ async function getTokenBalanceHistory(ctx) {
     setBody(ctx, result)
 }
 
-async function getABI(ctx) {
+/*async function getABI(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
     const {address} = ctx.request.query;
     checkPresent({address}, ['address']);
@@ -419,7 +440,7 @@ async function getSourceCode(ctx) {
     });
     const result = [contractItem];
     setBody(ctx, result)
-}
+}*/
 
 async function getStatus(ctx) {
     mustBeHex64ParamIfPresent(ctx.request.query, 'txhash')
@@ -428,7 +449,7 @@ async function getStatus(ctx) {
 
     const tx = await FullTransaction.findOne({where: {hash: txhash}});
     if(!tx){
-        setBody(ctx, undefined, '0', `tx ${txhash} not found` );
+        setBody(ctx, undefined, 1, `tx ${txhash} not found` );
         return;
     }
 
@@ -449,7 +470,7 @@ async function getTxReceiptStatus(ctx) {
 
     const tx = await FullTransaction.findOne({where: {hash: txhash}});
     if(!tx){
-        setBody(ctx, undefined, '0', `tx ${txhash} not found` );
+        setBody(ctx, undefined, 1, `tx ${txhash} not found` );
         return;
     }
 
@@ -473,7 +494,7 @@ async function getBlockNoByTime(ctx) {
         order: [['epoch', 'DESC']],
     });
     if(!epoch){
-        setBody(ctx, undefined, '0', `blockno ${closest} timestamp ${timestamp} not found` );
+        setBody(ctx, undefined, 1, `blockno ${closest} timestamp ${timestamp} not found` );
         return;
     }
 
@@ -525,7 +546,7 @@ async function getTokenInfo(ctx) {
 
     const tokenInfo = await queryTokenInfo(contractaddress);
     if(!tokenInfo){
-        setBody(ctx, undefined, '0', `token ${contractaddress} not found` );
+        setBody(ctx, undefined, 1, `token ${contractaddress} not found` );
         return;
     }
 
@@ -553,7 +574,7 @@ async function getTokenSupplyHistory(ctx) {
     setBody(ctx, result)
 }
 
-async function verifySourcecode(ctx) {
+/*async function verifySourcecode(ctx) {
     const {
         contractaddress, sourceCode, codeformat, contractname, compilerversion, optimizationUsed, runs,
         constructorArguements, evmversion, licenseType
@@ -638,7 +659,7 @@ async function checkProxyVerification(ctx) {
     } catch (e){
         setBody(ctx, e.message, '0', 'NOTOK');
     }
-}
+}*/
 
 // -----------------------------------tool---------------------------------------
 function parseGatewayParam(ctx) {
@@ -668,10 +689,6 @@ async function addTokenBasicInfo(result) {
         item['tokenSymbol'] = tokenMap[item.contractAddress]?.symbol;
         item['tokenDecimal'] = `${tokenMap[item.contractAddress]?.decimals || 0}`;
     });
-}
-
-function setBody(ctx, result: any, status = "1", message = 'OK') {
-    ctx.body = {status, message, result}
 }
 
 // -----------------------------------router---------------------------------------

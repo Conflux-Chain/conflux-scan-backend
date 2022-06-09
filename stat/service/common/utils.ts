@@ -173,7 +173,7 @@ export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
 export function checkPresent(options, fieldArray){
     lodash.forEach(options, (value, key) => {
         if(lodash.includes(fieldArray, key)){
-            if(!value){
+            if(value === undefined || value === null){
                 throw new InvalidParamError(`Invalid ${key} parameter with value [${value}], ${key} is required.`);
             }
         }
