@@ -53,7 +53,7 @@ export class BlockAndMinerSync {
         if (n <= 0) {
             return Promise.reject(`invalid span ${n}`)
         }
-        const maxBlock = await MinerBlock.findMax()
+        const maxBlock = await MinerBlock.findOne({order: [['beginTime','desc']]})
         if (maxBlock == null) {
             return Promise.reject(`service unavailable, table is empty.`)
         }
