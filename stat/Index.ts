@@ -6,6 +6,7 @@ import {KV} from "./model/KV";
 import {redisWrap} from "./service/RedisWrap";
 import {Server} from 'http'
 import {proxyPath} from "./router/DevopsRouter";
+import {saveApiLog} from "./monitor/ApiLog";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -25,6 +26,7 @@ export async function init() {
         if(!ctx.url.endsWith('pos-info') && !ctx.url.endsWith('tps')){
             console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
         }
+        saveApiLog(ctx, rt).catch()
     });
     app.use(proxyPath)
 // x-response-time

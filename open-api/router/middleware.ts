@@ -8,6 +8,7 @@ const yamljs = require('yamljs');
 import {koaSwagger} from "koa2-swagger-ui";
 import {InvalidParamError} from "../../stat/service/common/utils";
 import {StatApp} from "../../stat/StatApp";
+import {saveApiLog} from "../../stat/monitor/ApiLog";
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
 
@@ -26,6 +27,7 @@ export async function executionTime(ctx, next) {
     return next().finally(()=>{
         const elapsed = Date.now() - start
         ctx.set('execution-time', elapsed)
+        saveApiLog(ctx, elapsed).catch()
         getApiService().metrics.metric({ctx, elapsed}).then().catch(e => console.log(`metrics error:`, e))
     });
 }
