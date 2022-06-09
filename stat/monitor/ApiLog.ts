@@ -32,19 +32,27 @@ export class ApiLog extends Model<IApiLog> implements IApiLog {
         })
     }
 }
+
 let rtThreshold = 1000
 setInterval(()=>{
         KV.getNumber(API_LOG_RT_LIMIT, 1000).then(v=>{
             rtThreshold = v
         }).catch()
     }, 5000)
+
+let skipUrls = new Set<string>()
+skipUrls.add('/stat/nft/checker/preview')
+
 export async function saveApiLog({url}, rt:number) {
     if (rt < rtThreshold) {
         return
     }
     let [path, query=''] = url.split('?');
+    if (skipUrls.has(path)) {
+        return
+    }
     if (query) {
-        query = decodeURIComponent(query)
+        query = decodeURIComponent(query);
     }
     ApiLog.create({
         path, query, createdAt: new Date(), rt,
