@@ -56,7 +56,7 @@ export class BlockAndMinerSync {
         const cacheKey = `${n}${type}${limit}`
         const cacheV = useCache ? BlockAndMinerSync.rankCache.get(cacheKey) : undefined;
         if (cacheV !== undefined) {
-            console.log(`hit cache `, cacheKey)
+            // console.log(`hit cache `, cacheKey)
             return cacheV as any;
         }
         const maxBlock = await MinerBlock.findOne({order: [['beginTime','desc']]})
