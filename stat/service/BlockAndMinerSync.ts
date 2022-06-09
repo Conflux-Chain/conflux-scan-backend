@@ -53,15 +53,15 @@ export class BlockAndMinerSync {
         if (n <= 0) {
             return Promise.reject(`invalid span ${n}`)
         }
-        const maxBlock = await MinerBlock.findOne({order: [['beginTime','desc']]})
-        if (maxBlock == null) {
-            return Promise.reject(`service unavailable, table is empty.`)
-        }
         const cacheKey = `${n}${type}${limit}`
         const cacheV = useCache ? BlockAndMinerSync.rankCache.get(cacheKey) : undefined;
         if (cacheV !== undefined) {
             console.log(`hit cache `, cacheKey)
             return cacheV as any;
+        }
+        const maxBlock = await MinerBlock.findOne({order: [['beginTime','desc']]})
+        if (maxBlock == null) {
+            return Promise.reject(`service unavailable, table is empty.`)
         }
         let timeWindow:string = '1h';
         const endDt = maxBlock.endTime;
