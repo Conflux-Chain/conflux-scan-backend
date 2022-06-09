@@ -26,7 +26,6 @@ export async function init() {
         if(!ctx.url.endsWith('pos-info') && !ctx.url.endsWith('tps')){
             console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
         }
-        saveApiLog(ctx, rt).catch()
     });
     app.use(proxyPath)
 // x-response-time
@@ -34,6 +33,7 @@ export async function init() {
         const start = Date.now();
         await next();
         const ms = Date.now() - start;
+        saveApiLog(ctx, ms).catch()
         ctx.set('X-Response-Time', `${ms}ms`);
     });
 

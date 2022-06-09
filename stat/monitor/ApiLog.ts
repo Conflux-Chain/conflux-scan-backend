@@ -22,7 +22,7 @@ export class ApiLog extends Model<IApiLog> implements IApiLog {
             rt: {type: DataTypes.INTEGER, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
         },{
-            sequelize: seq, tableName: 'api_log',
+            sequelize: seq, tableName: 'api_log', updatedAt: false,
             indexes: [
                 {name: 'idx_dt', fields: ['createdAt']},
                 {name: 'idx_path', fields: ['path','rt']},
