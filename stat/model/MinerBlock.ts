@@ -30,10 +30,6 @@ export class MinerBlock extends Model<IMinerBlock> implements IMinerBlock {
     totalReward: bigint;
     txFee: bigint;
 
-    static findMax() {
-        return MinerBlock.scope("maxOneById").findOne()
-    }
-
     static register(sequelize) {
         MinerBlock.init({
                 id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true, autoIncrement: true},
@@ -54,12 +50,6 @@ export class MinerBlock extends Model<IMinerBlock> implements IMinerBlock {
                     name: 'mine_dt_idx', unique: true,
                     fields: ['beginTime', 'minerId']
                 }],
-                scopes: {
-                    maxOneById: {
-                        limit: 1,
-                        order: [["endTime", "desc"]]
-                    },
-                }
             })
     }
 }
