@@ -39,7 +39,9 @@ export class NFTPreviewService {
         const address = toBase32(contractAddress) as string;
         const token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
         if(!token) return {code: CONST.ERROR.FailedToQueryNFTMetadata.code, error: `${contractAddress} not detected as a token`};
+        const start = Date.now()
         const nftInfo = await this.getNFTInfo0({address, tokenId, type: token.type, gateway: token.ipfsGateway});
+        if(nftInfo) nftInfo.externalMs = Date.now() - start
 
         if(withDetail){
             const detail = await this.getDetailInfo({address, hex40id: token.hex40id, tokenId, type: token.type});
@@ -470,4 +472,5 @@ export type NFTInfoType = {
     detail?:any;
     code?: number;
     error?: any;
+    externalMs?: number;
 } | null;
