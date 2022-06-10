@@ -35,7 +35,13 @@ export class NFTPreviewService {
         tokenId: BigInt;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
-        const nftInfo = await this.getNFTInfo0({address, tokenId});
+        const token = await Token.findOne({
+            attributes: ['hex40id','type', 'ipfsGateway'],
+            where: {base32: address}});
+
+        const start = Date.now()
+        const nftInfo = await this.getNFTInfo0({address, tokenId, token});
+        if(nftInfo) nftInfo.externalMs = Date.now() - start
 
         if(!nftInfo || nftInfo.error) {
             return nftInfo;
@@ -55,7 +61,13 @@ export class NFTPreviewService {
         tokenId: BigInt;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
-        const nftInfo = await this.getNFTInfo0({address, tokenId});
+        const token = await Token.findOne({
+            attributes: ['hex40id','type', 'ipfsGateway'],
+            where: {base32: address}}
+            );
+        const start = Date.now()
+        const nftInfo = await this.getNFTInfo0({address, tokenId, token});
+        if(nftInfo) nftInfo.externalMs = Date.now() - start
 
         const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
             id from hex40 where hex = ?));`;
@@ -79,7 +91,6 @@ export class NFTPreviewService {
                 return {owner, mintTime};
             });
 
-        const token = await Token.findOne({attributes: ['hex40id','type'], where: {base32: address}});
         const type = token.type;
         let owner;
         if(type === CONST.TRANSFER_TYPE.ERC721){
@@ -108,11 +119,13 @@ export class NFTPreviewService {
     private async getNFTInfo0 ({
         address,
         tokenId,
+        token,
     }: {
         address: string;
         tokenId: BigInt;
+        token:{type?:string, ipfsGateway?:string}
     }): Promise<NFTInfoType> {
-        const token = await Token.findOne({attributes: ['type', 'ipfsGateway'], where: {base32: address}});
+        // const token = await Token.findOne({attributes: ['type', 'ipfsGateway'], where: {base32: address}});
         const tokenBasic = { address, tokenId, gateway: token.ipfsGateway };
         switch (address) {
             case NFTMap.confluxGuardian.address:
@@ -467,4 +480,5 @@ export type NFTInfoType = {
     detail?:any;
     code?: number;
     error?: any;
+    externalMs?: number;
 } | null;

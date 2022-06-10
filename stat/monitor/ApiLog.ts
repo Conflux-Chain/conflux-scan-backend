@@ -43,7 +43,8 @@ setInterval(()=>{
 let skipUrls = new Set<string>()
 skipUrls.add('/stat/nft/checker/preview')
 
-export async function saveApiLog({url}, rt:number) {
+export async function saveApiLog(ctx:any, rt:number) {
+    const {url} = ctx;
     if (rt < rtThreshold) {
         return
     }
@@ -51,10 +52,14 @@ export async function saveApiLog({url}, rt:number) {
     if (skipUrls.has(path)) {
         return
     }
+    const externalMs = ctx.get('external-ms') || 0
+    if (externalMs > rtThreshold){
+        console.log(`external ms`, path, externalMs)
+    }
     if (query) {
         query = decodeURIComponent(query);
     }
     ApiLog.create({
-        path, query, createdAt: new Date(), rt,
+        path, query, createdAt: new Date(), rt: rt - externalMs,
     }).then()
 }
