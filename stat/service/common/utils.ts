@@ -154,7 +154,8 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
             throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
         }
         if (/contract/.test(k) && addr.type !== 'contract') {
-            throw new InvalidParamError(`Invalid contract parameter [${k}] with value [${v}], it's not a contract address.`);
+            throw new InvalidParamError(`Invalid contract parameter [${k
+            }] with value [${v}], type ${addr.type} it's not a contract address.`);
         }
     }
 }
