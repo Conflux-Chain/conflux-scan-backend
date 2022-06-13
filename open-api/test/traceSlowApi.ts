@@ -10,7 +10,7 @@ async function main() {
     const {query, rt, path, createdAt} = await ApiLog.findOne({
         where: {path: '/open/nft/tokens'}, order: [['createdAt', 'desc']]
     })
-    console.log(`path ${path} rt ${rt} ${createdAt.toISOString()}`)
+    console.log(`path ${path} rt ${rt} ${query} AT ${createdAt.toISOString()}`)
     return testNftTokens(query)
 }
 
