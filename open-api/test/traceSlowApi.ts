@@ -1,9 +1,12 @@
 import {init} from "../../stat/service/tool/FixDailyTokenStat";
 import {ApiLog} from "../../stat/monitor/ApiLog";
 import {NFTCheckerService} from "../../stat/service/nftchecker/NFTCheckerService";
+import {StatConfig} from "../../stat/config/StatConfig";
+import {Conflux} from "js-conflux-sdk";
 
+let cfg:StatConfig
 async function main() {
-    await init()
+    cfg = await init()
     const {query, rt, path, createdAt} = await ApiLog.findOne({
         where: {path: '/open/nft/tokens'}, order: [['createdAt', 'desc']]
     })
@@ -23,7 +26,8 @@ function parseQueryParam(query: string) {
 
 async function testNftTokens(query:string) {
     const param = parseQueryParam(query);
-    const svc = new NFTCheckerService({})
+    let cfx = new Conflux(cfg.conflux)
+    const svc = new NFTCheckerService({cfx})
     async function repeat() {
         const start = Date.now()
         await svc.getNFTTokens({contractAddress: param['contract'], ownerAddress: param['owner']})
