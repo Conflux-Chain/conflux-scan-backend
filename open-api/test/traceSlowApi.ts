@@ -32,7 +32,7 @@ async function testNftTokens(query:string) {
     async function repeat() {
         const start = Date.now()
         const result = await svc.getNftTokensForOpenApi(param as any)
-        console.log(`costs ${Date.now() - start} ms, total ${result.total}`)
+        console.log(`${new Date().toISOString()} costs ${Date.now() - start} ms, total ${result.total}`)
         setTimeout(repeat, 5_000)
     }
     return repeat()
