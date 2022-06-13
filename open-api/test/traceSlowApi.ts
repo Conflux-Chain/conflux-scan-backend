@@ -5,7 +5,7 @@ import {NFTCheckerService} from "../../stat/service/nftchecker/NFTCheckerService
 async function main() {
     await init()
     const {query, rt, path, createdAt} = await ApiLog.findOne({
-        where: {path: ''}, order: [['createdAt', 'desc']]
+        where: {path: '/open/nft/tokens'}, order: [['createdAt', 'desc']]
     })
     console.log(`path ${path} rt ${rt} ${createdAt.toISOString()}`)
     return testNftTokens(query)
