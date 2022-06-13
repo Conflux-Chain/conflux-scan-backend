@@ -189,7 +189,7 @@ export abstract class StatHandler {
         } while (delRows > 0);
     }
 
-    public async scheduleCache(delay = 1000 * 60 * 3) {
+    public async scheduleCache(delay = 1000 * 60 * 60) {
         const that = this
         async function repeat() {
             await that.cache().catch(err => {
