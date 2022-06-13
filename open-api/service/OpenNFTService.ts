@@ -50,7 +50,7 @@ export async function listNFTTokens(ctx) {
     if(withBrief === 'true' || withMetadata === 'true'){
         // debug && watch.start("batchGetNFTInfoList")
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
-        console.log(` --- original ext ms costs`, externalMs)
+        // debug && console.log(` --- original ext ms costs`, externalMs)
         ctx.set('external-ms', externalMs)
 /*        await Promise.all(data?.list?.map(async (item) => {
             const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
