@@ -8,6 +8,7 @@ import {
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
+import {Stopwatch} from "../../stat/service/Stopwatch";
 
 const lodash = require('lodash');
 
@@ -41,10 +42,15 @@ export async function listNFTTokens(ctx) {
     }
     const {skip, limit} = getPagination(ctx.request.query);
 
+    // let debug = true
+    // const watch = debug ? new Stopwatch() : null;
+    // debug && watch.start('getNftTokensForOpenApi')
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
 
     if(withBrief === 'true' || withMetadata === 'true'){
+        // debug && watch.start("batchGetNFTInfoList")
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
+        // debug && console.log(` --- original ext ms costs`, externalMs)
         ctx.set('external-ms', externalMs)
 /*        await Promise.all(data?.list?.map(async (item) => {
             const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
@@ -62,17 +68,17 @@ export async function listNFTTokens(ctx) {
             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
         });
     }
-
+    // debug && watch.dump('\nnft tokens')
+    // debug && console.log(`-----------------\n`)
     setBody(ctx, data)
 }
 
 async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
     let total = nftList?.length;
-    let externalMs = 0
     if (!total) {
-        return externalMs;
+        return 0;
     }
-
+    const start = Date.now()
     let curPage = 1;
     let skip = 0;
     let pageSize = 10;
@@ -82,7 +88,6 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
             await Promise.all(nftArray?.map(async (item) => {
                 const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
                     tokenId: BigInt(item.tokenId)});
-                externalMs += nftInfo?.externalMs || 0
                 const brief = withBrief === 'true' ? {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri,
                     description: nftInfo?.imageDesc} : undefined;
                 const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;
@@ -92,7 +97,7 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
         }
         skip = (++curPage - 1) * pageSize;
     } while (skip <= total);
-    return externalMs
+    return Date.now() - start
 }
 
 export async function getNFTPreview(ctx) {

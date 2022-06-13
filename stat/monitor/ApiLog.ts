@@ -52,14 +52,18 @@ export async function saveApiLog(ctx:any, rt:number) {
     if (skipUrls.has(path)) {
         return
     }
-    const externalMs = ctx.get('external-ms') || 0
+    const externalMs = ctx.response.get('external-ms') || 0
     if (externalMs > rtThreshold){
-        console.log(`external ms`, path, externalMs)
+        console.log(`external ms costs`, path, externalMs)
+    }
+    rt = rt - externalMs
+    if (rt < rtThreshold) {
+        return
     }
     if (query) {
         query = decodeURIComponent(query);
     }
     ApiLog.create({
-        path, query, createdAt: new Date(), rt: rt - externalMs,
+        path, query, createdAt: new Date(), rt,
     }).then()
 }
