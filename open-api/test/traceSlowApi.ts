@@ -18,8 +18,8 @@ function parseQueryParam(query: string) {
     const parts = query.split('&')
     const params = {}
     parts.forEach(pair => {
-        const [k, v] = pair.split('=')
-        params[k] = v
+        let [k, v] = pair.split('=')
+        params[k] = /\d+/.test(v) ? parseInt(v) : v
     })
     return params
 }
