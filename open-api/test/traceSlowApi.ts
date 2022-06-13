@@ -42,10 +42,15 @@ async function testNftTokens(query:string) {
         const {hex} = await Hex40Map.findOne({where: {id: holderIdList[i].addressId}})
         param['owner'] = format.address(`0x${hex}`, 1029)
         console.log('use owner', param['owner'])
-        const start = Date.now()
-        const result = await svc.getNftTokensForOpenApi(param as any)
-        console.log(`${new Date().toISOString()} costs ${Date.now() - start} ms, total ${result.total}`)
-        await repeat() // will hit mysql cache ?
+
+        async function query() {
+            const start = Date.now()
+            const result = await svc.getNftTokensForOpenApi(param as any)
+            console.log(`${new Date().toISOString()} costs ${Date.now() - start} ms, total ${result.total}`)
+        }
+
+        await query();
+        await query() // will hit mysql cache ?
         setTimeout(repeat, 5_000)
     }
     return repeat()
