@@ -78,7 +78,7 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
     if (!total) {
         return 0;
     }
-    const start = 0
+    const start = Date.now()
     let curPage = 1;
     let skip = 0;
     let pageSize = 10;
