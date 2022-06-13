@@ -27,6 +27,9 @@ export async function executionTime(ctx, next) {
     return next().finally(()=>{
         const elapsed = Date.now() - start
         ctx.set('execution-time', elapsed)
+        if (ctx.url === '/open/nft/tokens') {
+            console.log(` costs ${ctx.url} rt ${elapsed}`)
+        }
         saveApiLog(ctx, elapsed).catch()
         getApiService().metrics.metric({ctx, elapsed}).then().catch(e => console.log(`metrics error:`, e))
     });
