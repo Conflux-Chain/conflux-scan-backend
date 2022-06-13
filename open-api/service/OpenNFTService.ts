@@ -42,13 +42,13 @@ export async function listNFTTokens(ctx) {
     }
     const {skip, limit} = getPagination(ctx.request.query);
 
-    let debug = true
-    const watch = debug ? new Stopwatch() : null;
-    debug && watch.start('getNftTokensForOpenApi')
+    // let debug = true
+    // const watch = debug ? new Stopwatch() : null;
+    // debug && watch.start('getNftTokensForOpenApi')
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
 
     if(withBrief === 'true' || withMetadata === 'true'){
-        debug && watch.start("batchGetNFTInfoList")
+        // debug && watch.start("batchGetNFTInfoList")
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
         console.log(` --- original ext ms costs`, externalMs)
         ctx.set('external-ms', externalMs)
@@ -68,8 +68,8 @@ export async function listNFTTokens(ctx) {
             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
         });
     }
-    debug && watch.dump('\nnft tokens')
-    debug && console.log(`-----------------\n`)
+    // debug && watch.dump('\nnft tokens')
+    // debug && console.log(`-----------------\n`)
     setBody(ctx, data)
 }
 

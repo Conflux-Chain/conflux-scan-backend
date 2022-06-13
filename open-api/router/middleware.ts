@@ -27,9 +27,6 @@ export async function executionTime(ctx, next) {
     return next().finally(()=>{
         let elapsed = Date.now() - start
         ctx.set('execution-time', elapsed)
-        if (ctx.url.startsWith('/open/nft/tokens')) {
-            console.log(` costs ${ctx.url} rt ${elapsed}`)
-        }
         saveApiLog(ctx, elapsed).catch()
         const externalMs = ctx.response.get('external-ms') || 0
         elapsed -= externalMs
