@@ -30,8 +30,8 @@ async function testNftTokens(query:string) {
     const svc = new NFTCheckerService({cfx})
     async function repeat() {
         const start = Date.now()
-        await svc.getNFTTokens({contractAddress: param['contract'], ownerAddress: param['owner']})
-        console.log(`costs ${Date.now() - start} ms`)
+        const result = await svc.getNftTokensForOpenApi(param as any)
+        console.log(`costs ${Date.now() - start} ms, total ${result.total}`)
         setTimeout(repeat, 5_000)
     }
     return repeat()
@@ -40,7 +40,7 @@ if (module === require.main) {
     main().catch((err)=>{
         console.log(`error:`, err)
     }).finally(()=>{
-        process.exit(0)
-        console.log(`done`)
+        // process.exit(0)
+        // console.log(`done`)
     })
 }
