@@ -149,6 +149,7 @@ export class NFTCheckerService {
 
     public async getNftTokensForOpenApi({owner, contract, skip = 0, limit = 10}
                                   : { owner?: string, contract: string, skip: number, limit: number }) {
+        const debug = true
         const ownerAddressId = owner ? await getAddrId(owner) : owner;
         const contractAddressId = contract ? await getAddrId(contract): contract;
         if((owner && !ownerAddressId) || (contract && !contractAddressId)) {
@@ -168,6 +169,7 @@ export class NFTCheckerService {
                 const page = await Erc1155Data.findAndCountAll({
                     where, raw: true,
                     order:[['epoch','desc']], offset: skip, limit,
+                    benchmark: debug, logging: debug ? console.log : false,
                 })
                 const list = page?.rows?.map(item => ({contract: token.base32, tokenId: item.tokenId}))
                 return {total:  page?.count || 0, list: list || []};
@@ -187,6 +189,7 @@ export class NFTCheckerService {
             offset: skip,
             limit,
             raw: true,
+            benchmark: debug, logging: debug ? console.log : false,
         };
         const page = await NftMint.findAndCountAll(options);
         const count = page?.count;
