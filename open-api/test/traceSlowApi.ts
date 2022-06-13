@@ -33,8 +33,8 @@ async function testNftTokens(query:string) {
     return repeat()
 }
 if (module === require.main) {
-    main().then(()=>{
-
+    main().catch((err)=>{
+        console.log(`error:`, err)
     }).finally(()=>{
         process.exit(0)
         console.log(`done`)
