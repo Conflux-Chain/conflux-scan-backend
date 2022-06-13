@@ -75,11 +75,10 @@ export async function listNFTTokens(ctx) {
 
 async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
     let total = nftList?.length;
-    let externalMs = 0
     if (!total) {
-        return externalMs;
+        return 0;
     }
-
+    const start = 0
     let curPage = 1;
     let skip = 0;
     let pageSize = 10;
@@ -89,7 +88,6 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
             await Promise.all(nftArray?.map(async (item) => {
                 const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
                     tokenId: BigInt(item.tokenId)});
-                externalMs += nftInfo?.externalMs || 0
                 const brief = withBrief === 'true' ? {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri,
                     description: nftInfo?.imageDesc} : undefined;
                 const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;
@@ -99,7 +97,7 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
         }
         skip = (++curPage - 1) * pageSize;
     } while (skip <= total);
-    return externalMs
+    return Date.now() - start
 }
 
 export async function getNFTPreview(ctx) {
