@@ -53,8 +53,8 @@ export async function saveApiLog(ctx:any, rt:number) {
         return
     }
     const externalMs = ctx.get('external-ms') || 0
+        console.log(`external ms costs`, path, externalMs)
     if (externalMs > rtThreshold){
-        console.log(`external ms`, path, externalMs)
     }
     if (query) {
         query = decodeURIComponent(query);
