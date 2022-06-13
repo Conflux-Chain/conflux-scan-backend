@@ -51,7 +51,8 @@ async function testNftTokens(query:string) {
 
         await query();
         await query() // will hit mysql cache ?
-        setTimeout(repeat, 5_000)
+        i ++
+        i < holderIdList.length && setTimeout(repeat, 5_000)
     }
     return repeat()
 }
