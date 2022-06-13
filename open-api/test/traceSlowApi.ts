@@ -19,7 +19,7 @@ function parseQueryParam(query: string) {
     const params = {}
     parts.forEach(pair => {
         let [k, v] = pair.split('=')
-        params[k] = /\d+/.test(v) ? parseInt(v) : v
+        params[k] = /^\d+$/.test(v) ? parseInt(v) : v
     })
     console.log(`param`, params)
     return params
