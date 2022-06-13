@@ -52,9 +52,9 @@ export async function saveApiLog(ctx:any, rt:number) {
     if (skipUrls.has(path)) {
         return
     }
-    const externalMs = ctx.get('external-ms') || 0
-        console.log(`external ms costs`, path, externalMs)
+    const externalMs = ctx.response.get('external-ms') || 0
     if (externalMs > rtThreshold){
+        console.log(`external ms costs`, path, externalMs)
     }
     if (query) {
         query = decodeURIComponent(query);
