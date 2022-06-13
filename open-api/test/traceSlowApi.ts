@@ -33,7 +33,7 @@ async function testNftTokens(query:string) {
     // holders
     const cid = await getAddrId(param['contract'])
     const holderIdList = await TokenBalance.findAll({
-        where: {contractId: cid}, limit: 50,
+        where: {contractId: cid}, limit: 50, order: [['balance', 'desc']]
     })
     let cfx = new Conflux(cfg.conflux)
     const svc = new NFTCheckerService({cfx})
