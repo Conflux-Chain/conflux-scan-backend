@@ -8,6 +8,7 @@ import {
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
+import {Stopwatch} from "../../stat/service/Stopwatch";
 
 const lodash = require('lodash');
 
@@ -41,9 +42,13 @@ export async function listNFTTokens(ctx) {
     }
     const {skip, limit} = getPagination(ctx.request.query);
 
+    let debug = true
+    const watch = debug ? new Stopwatch() : null;
+    debug && watch.start('getNftTokensForOpenApi')
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
 
     if(withBrief === 'true' || withMetadata === 'true'){
+        debug && watch.start("batchGetNFTInfoList")
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
         ctx.set('external-ms', externalMs)
 /*        await Promise.all(data?.list?.map(async (item) => {
@@ -62,7 +67,8 @@ export async function listNFTTokens(ctx) {
             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
         });
     }
-
+    debug && watch.dump('\nnft tokens')
+    debug && console.log(`-----------------\n`)
     setBody(ctx, data)
 }
 
