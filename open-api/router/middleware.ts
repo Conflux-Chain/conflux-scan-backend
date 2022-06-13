@@ -25,12 +25,14 @@ function getDB() {
 export async function executionTime(ctx, next) {
     const start = Date.now()
     return next().finally(()=>{
-        const elapsed = Date.now() - start
+        let elapsed = Date.now() - start
         ctx.set('execution-time', elapsed)
         if (ctx.url.startsWith('/open/nft/tokens')) {
             console.log(` costs ${ctx.url} rt ${elapsed}`)
         }
         saveApiLog(ctx, elapsed).catch()
+        const externalMs = ctx.response.get('external-ms') || 0
+        elapsed -= externalMs
         getApiService().metrics.metric({ctx, elapsed}).then().catch(e => console.log(`metrics error:`, e))
     });
 }
