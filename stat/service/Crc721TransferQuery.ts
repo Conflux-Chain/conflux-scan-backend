@@ -37,7 +37,7 @@ export class Crc721TransferQuery extends TransferQueryBase{
                 // only query by address id
                 const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC721)
                 const rows = await AddressErc721Transfer.findAll(queryOptions);
-                return {count: cacheCount , rows};
+                return {count: Math.max(cacheCount, rows.length) , rows};
             }
             return await AddressErc721Transfer.findAndCountAll(queryOptions);
         }

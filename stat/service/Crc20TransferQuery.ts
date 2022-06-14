@@ -41,7 +41,7 @@ export class Crc20TransferQuery extends TransferQueryBase{
                 // only query by address id
                 const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC20)
                 const rows = await AddressErc20Transfer.findAll(queryOptions);
-                return {count: cacheCount , rows};
+                return {count: Math.max(cacheCount, rows.length) , rows};
             }
             const cloneQueryOptions = {...queryOptions, offset: latestRows, limit: 1};
             const one = await AddressErc20Transfer.findOne(cloneQueryOptions);
