@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk";
+import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {
     FullBlock,
@@ -15,13 +15,17 @@ import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
+
+const lodash = require('lodash');
 const CONST = require('./common/constant');
 
 export class FullBlockQuery {
     protected app;
+    protected sponsorContract;
 
     public constructor(app: any) {
         this.app = app;
+        this.sponsorContract = this.app.cfx.InternalContract('SponsorWhitelistControl');
     }
 
     public async listBlock({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined,
@@ -495,5 +499,107 @@ export class FullBlockQuery {
             const receiptArray = arr.slice(len);
             return {txArray, receiptArray};
         });
+    }
+
+    public async listPendingTx({accountAddress}){
+        const {
+            app: {cfx}
+        } = this;
+
+        // check
+        const result =  await cfx.getAccountPendingTransactions(accountAddress, undefined, 10);
+        const {firstTxStatus, pendingTransactions} = result;
+        if(!pendingTransactions?.length){
+            return result;
+        }
+
+        // future nonce
+        const {from ,to, value, nonce, gas, gasPrice, storageLimit, epochHeight} = pendingTransactions[0];
+        const pending = firstTxStatus.pending;
+        if(pending?.endsWith('Nonce')){
+            const pendingDetail = {
+                code: 11,
+                message: 'The nonce in [stateNonce, txNonce) is skipped',
+                params:{txNonce: nonce, stateNonce: await cfx.getNextNonce(from)}
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
+        // insufficient balance
+        if(pending?.endsWith('Cash')){
+            const gasFee = gas * gasPrice;
+            const colFee = storageLimit * BigInt(10**18) / BigInt(1024);
+            const {balance}  = await cfx.getAccount(from);
+            const totalCost = value + gasFee + colFee;
+            const pendingDetail = {
+                message: 'The balance is insufficient to pay value + gas * gasPrice + storageLimit * (10^18/1024)',
+                params:{balance, value, gas, gasPrice, storageLimit},
+            };
+
+            // contract create
+            const isContractCreate = to === null;
+            if(isContractCreate && balance < totalCost){
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 21})});
+                return result;
+            }
+
+            // EOA
+            const {codeHash}  = await cfx.getAccount(to);
+            const isEOA = codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470';
+            if(isEOA && balance < totalCost){
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 22})});
+                return result;
+            }
+
+            // contract
+            const sponsorInfo = await cfx.getSponsorInfo(to);
+            const isWhitelist = await this.sponsorContract.isWhitelisted(to, from);
+            const {sponsorForGas, sponsorForCollateral, sponsorGasBound, sponsorBalanceForGas,
+                sponsorBalanceForCollateral} = sponsorInfo;
+            const sponsorForGasHex = format.hexAddress(sponsorForGas);
+            const sponsorForColHex = format.hexAddress(sponsorForCollateral);
+
+            const isGasFeeSponsored = sponsorForGasHex !== CONST.ZERO_ADDRESS && isWhitelist &&
+                gasFee <= sponsorGasBound && gasFee <= sponsorBalanceForGas;
+            const isColFeeSponsored = sponsorForColHex !== CONST.ZERO_ADDRESS && isWhitelist &&
+                colFee <= sponsorBalanceForCollateral;
+
+            const partialCost = value + (isGasFeeSponsored ? BigInt(0) : gasFee) + (isColFeeSponsored ? BigInt(0) : colFee);
+            if(value < partialCost){
+                lodash.assign(pendingDetail.params, {isGasFeeSponsored,isColFeeSponsored, sponsorInfo});
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 23})});
+                return result;
+            }
+        }
+
+        // ready
+        if(firstTxStatus?.endsWith('ready')){
+            const proposedEpoch = epochHeight;
+            const confirmedEpoch = BigInt(await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
+            const epochGap = Math.abs(Number(proposedEpoch - confirmedEpoch));
+            if(epochGap > 100_000){
+                const pendingDetail = {
+                    code: 31,
+                    message: 'The epoch gap [proposedEpoch confirmedEpoch] exceeded 100,000',
+                    params:{proposedEpoch, confirmedEpoch}
+                };
+                lodash.defaults(result, {pendingDetail});
+                return result;
+            }
+
+            const recommendGasPrice = await cfx.getGasPrice();
+            if(epochGap > 5 && gasPrice < recommendGasPrice) {
+                const pendingDetail = {
+                    code: 32,
+                    message: 'The gasPrice is too low, tx execution can be speed up by using recommendGasPrice',
+                    params:{gasPrice, recommendGasPrice},
+                };
+                lodash.defaults(result, {pendingDetail});
+                return result;
+            }
+        }
+
+        return result;
     }
 }

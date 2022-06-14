@@ -34,6 +34,7 @@ import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {Desensitizer} from "./service/Desensitizer";
 import {setupEnsChecker} from "./service/ens/EnsService";
+import {FullBlockQuery} from "./service/FullBlockQuery";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -63,6 +64,7 @@ export class StatApp{
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
     public pruneHandler: PruneHandler;
     public transferTpsService: TransferTpsService;
+    public fullBlockQuery: FullBlockQuery;
     public desensitizer: Desensitizer;
     public tokenTool: TokenTool;
     public static networkId = 1029
@@ -137,6 +139,7 @@ export class StatApp{
         this.transferTpsService = new TransferTpsService(this);
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)
+        this.fullBlockQuery = new FullBlockQuery(this);
         this.txnSync.scheduleCache()
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote

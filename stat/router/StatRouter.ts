@@ -627,6 +627,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const tps = await statApp.transferTpsService.getTps();
         ctx.body = {code: 0, data: {...tps}};
     });
+    router.get('/transaction/pending', async function (ctx) {
+        const {accountAddress} = ctx.request.query
+        const result = await statApp.fullBlockQuery.listPendingTx({accountAddress});
+        ctx.body = {code: 0, data: result};
+    });
 }
 
 function addSwagger(app: Application, router: Router<any, {}>) {
