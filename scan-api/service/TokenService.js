@@ -158,12 +158,16 @@ class TokenService {
   }
 
   async _listByRegisterPlus(options) {
+    const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
+    if (!order) {
+      throw new Error(`Invalid order by. Only supports of one [transferCount, holderCount]`)
+    }
     const tokenList = await Token.findAll({
       attributes: ['base32'],
       where: {auditResult: true, portalSupport: true},
-      order: [[options.orderBy, options.reverse ? 'desc': 'asc']],
+      order: [[order, options.reverse ? 'desc': 'asc']],
       skip: options.skip, limit: options.limit,
-    })
+    });
     const addressArray = tokenList.map(t=>t.base32);
     // const response = await TokenQuery.listAddress({ auditResult: true, portalSupport: true });
     // const addressArray = response?.list;
