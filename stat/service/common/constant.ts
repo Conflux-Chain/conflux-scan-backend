@@ -116,7 +116,6 @@ module.exports = {
     FailedToQueryNFTMetadata: { code: 50302, name: 'Failed to query NFT metadata' },
     FailedToParseNFTMetadata: { code: 50303, name: 'Failed to parse NFT metadata' },
     FailedToQueryNFTLocalName: { code: 50304, name: 'Failed to query NFT local name' },
-    FailedToQueryTokenURI: { code: 50305, name: 'Failed to query token URI' },
 
     CreationDataError: { code: 50403, name: 'CreationDataError' },
     ContractNameError: { code: 50404, name: 'ContractNameError' },
