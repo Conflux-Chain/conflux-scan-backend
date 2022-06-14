@@ -2,7 +2,7 @@
 import {format} from "js-conflux-sdk";
 import {Erc1155Transfer, AddressErc1155Transfer} from "../model/Erc1155Transfer";
 import {TransferQueryBase} from "./TransferQueryBase";
-import {AddressErc20Transfer} from "../model/Erc20Transfer";
+import {getAddrTransferCount} from "../model/TransferCount";
 const CONST = require('./common/constant');
 
 export class Crc1155TransferQuery extends TransferQueryBase{
@@ -34,6 +34,12 @@ export class Crc1155TransferQuery extends TransferQueryBase{
         const{ logger } = this.app;
 
         if(options.accountAddress !== undefined){
+            if (Object.keys(queryOptions.where).length === 1) {
+                // only query by address id
+                const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, 'ERC1155')
+                const rows = await AddressErc1155Transfer.findAll(queryOptions);
+                return {count: cacheCount , rows};
+            }
             return await AddressErc1155Transfer.findAndCountAll(queryOptions);
         }
         // either contract or address should be present. otherwise, do not count the table.

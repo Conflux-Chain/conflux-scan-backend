@@ -6,6 +6,7 @@ const CONST = require('./common/constant');
 import {Token} from "../model/Token";
 import {StatApp} from "../StatApp";
 import {IndexHints} from "sequelize";
+import {getAddrTransferCount} from "../model/TransferCount";
 
 export class Crc20TransferQuery extends TransferQueryBase{
     protected app;
@@ -36,6 +37,12 @@ export class Crc20TransferQuery extends TransferQueryBase{
         const latestRows = 10000;
 
         if(options.accountAddress !== undefined){
+            if (Object.keys(queryOptions.where).length === 1) {
+                // only query by address id
+                const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, 'ERC20')
+                const rows = await AddressErc20Transfer.findAll(queryOptions);
+                return {count: cacheCount , rows};
+            }
             const cloneQueryOptions = {...queryOptions, offset: latestRows, limit: 1};
             const one = await AddressErc20Transfer.findOne(cloneQueryOptions);
             if(one !== null){

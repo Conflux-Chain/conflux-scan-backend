@@ -1,0 +1,71 @@
+import {
+    Transaction,
+    Model,
+    DataTypes,
+    Sequelize,
+    Op,
+    UniqueConstraintError,
+    ModelStatic,
+    DatabaseError
+} from "sequelize";
+import {AddressErc20Transfer} from "./Erc20Transfer";
+import {AddressErc721Transfer} from "./Erc721Transfer";
+import {AddressErc1155Transfer} from "./Erc1155Transfer";
+
+/**
+ * Transfer count cache for address.
+ */
+const cache_expire_ms = 60_000
+declare type TRANSFER_TYPE = 'ERC20' | 'ERC721' | 'ERC1155' | 'CFX'
+
+export interface ITransferCount {
+    id?:number; addressId:number; type: TRANSFER_TYPE; v:number, updatedAt:Date;
+}
+export class TransferCount extends Model<ITransferCount> implements ITransferCount {
+    id?:number; addressId:number; type: TRANSFER_TYPE; v:number; updatedAt:Date;
+    static register(seq:Sequelize) {
+        TransferCount.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}, ), autoIncrement: true, primaryKey: true},
+            addressId: {type: DataTypes.BIGINT, allowNull: false},
+            type: {type: DataTypes.STRING(16), allowNull: false},
+            v: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            updatedAt: {type: DataTypes.DATE, allowNull: false},
+        }, {
+            sequelize: seq, tableName: 'transfer_count',
+            indexes: [{
+                name: 'idx_addr_type', fields: ['addressId','type'], unique: true,
+            }]
+        })
+    }
+}
+
+export async function getAddrTransferCount(addrId: number, type:TRANSFER_TYPE) : Promise<number> {
+    const bean = await TransferCount.findOne({
+        where: {addressId: addrId, type}
+    })
+    if (bean !== null
+        // cache for 1 minute
+        && Date.now() - bean.updatedAt.getTime() < cache_expire_ms) {
+        return bean.v
+    }
+    const model = type === 'ERC20' ? AddressErc20Transfer
+        : (type === 'ERC721' ? AddressErc721Transfer :
+            type === 'ERC1155' ? AddressErc1155Transfer : null)
+    if (!model) {
+        console.log(`get transfer count with unknown type: [${type}]`)
+        return 0;
+    }
+    // @ts-ignore
+    const v = await model.count({where: {addressId: addrId}}).then(v=>v as any)
+    if (!v) {
+        return 0; // do not cache zero
+    }
+    if (bean !== null) {
+        await bean.update({v}, {where: {addressId: addrId, type}})
+    } else {
+        await TransferCount.upsert({
+            addressId: addrId, type, updatedAt: new Date(), v
+        });
+    }
+    return v;
+}

@@ -70,6 +70,7 @@ import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
 import {ApiLog} from "../monitor/ApiLog";
+import {TransferCount} from "../model/TransferCount";
 let conf
 export function createDB(config) {
     conf = config
@@ -138,6 +139,7 @@ export async function initPartialModel(sequelize) {
     Position.register(sequelize)
     ENS.register(sequelize)
     ApiLog.register(sequelize)
+    TransferCount.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)
