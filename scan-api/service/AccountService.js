@@ -27,40 +27,23 @@ class AccountService {
       transactionCount = await service.transaction.count({ accountAddress: address });
     }
 
-    let cfxTransferCount;
-    if (lodash.includes(fields, 'cfxTransferCount')) {
-      cfxTransferCount = await service.transfer.count({ accountAddress: address, transferType: CONST.TRANSFER_TYPE.CFX });
+    const countMap = {}
+    const typeMap = {
+      cfxTransferCount: CONST.TRANSFER_TYPE.CFX,
+      erc20TransferCount: CONST.TRANSFER_TYPE.ERC20,
+      erc721TransferCount: CONST.TRANSFER_TYPE.ERC721,
+      erc1155TransferCount: CONST.TRANSFER_TYPE.ERC1155,
     }
-
-    let erc20TransferCount;
-    if (lodash.includes(fields, 'erc20TransferCount')) {
-      erc20TransferCount = await service.transfer.count({ accountAddress: address, transferType: CONST.TRANSFER_TYPE.ERC20 });
-    }
-
-    let erc777TransferCount;
-    if (lodash.includes(fields, 'erc777TransferCount')) {
-      erc777TransferCount = await service.transfer.count({ accountAddress: address, transferType: CONST.TRANSFER_TYPE.ERC777 });
-    }
-
-    let erc721TransferCount;
-    if (lodash.includes(fields, 'erc721TransferCount')) {
-      erc721TransferCount = await service.transfer.count({ accountAddress: address, transferType: CONST.TRANSFER_TYPE.ERC721 });
-    }
-
-    let erc1155TransferCount;
-    if (lodash.includes(fields, 'erc1155TransferCount')) {
-      erc1155TransferCount = await service.transfer.count({ accountAddress: address, transferType: CONST.TRANSFER_TYPE.ERC1155 });
-      // logger.info({ src: 'test-erc1155count', accountAddress: address, erc1155TransferCount });
-    }
+    await Promise.all(fields.filter(k=>typeMap[k]).map((k)=>{
+      return service.transfer.count({ accountAddress: address, transferType: typeMap[k] }).then(res=>{
+        countMap[k] = res
+      });
+    }))
 
     return lodash.defaults({ address }, account, {
       blockCount,
       transactionCount,
-      cfxTransferCount,
-      erc20TransferCount,
-      erc777TransferCount,
-      erc721TransferCount,
-      erc1155TransferCount,
+      ...countMap
     });
   }
 }
