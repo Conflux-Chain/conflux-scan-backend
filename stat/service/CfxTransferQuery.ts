@@ -3,6 +3,7 @@ import {TraceCreateContract} from "../model/TraceCreateContract";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "../model/KV";
 import {Op} from "sequelize";
 import {TransferQueryBase} from "./TransferQueryBase";
+import {getAddrTransferCount} from "../model/TransferCount";
 const CONST = require('./common/constant');
 
 export class CfxTransferQuery extends TransferQueryBase{
@@ -96,6 +97,12 @@ export class CfxTransferQuery extends TransferQueryBase{
             return await TraceCreateContract.findAndCountAll(queryOptions);
         }
         if(options.accountAddress !== undefined){
+            if (Object.keys(queryOptions.where).length === 1) {
+                // only query by address id
+                const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.CFX)
+                const rows = await AddressCfxTransfer.findAll(queryOptions);
+                return {count: Math.max(cacheCount, rows.length) , rows};
+            }
             return await AddressCfxTransfer.findAndCountAll(queryOptions);
         }
 
