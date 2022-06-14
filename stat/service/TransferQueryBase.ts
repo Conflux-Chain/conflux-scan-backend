@@ -70,7 +70,7 @@ export abstract class TransferQueryBase {
             } else if (txType === CONST.TX_TYPE.OUT) {
                 conditionArray.push({fromId: accountAddressId});
             } else {
-                conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
+                // conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
         }
         if(conditionArray.length === 1){
