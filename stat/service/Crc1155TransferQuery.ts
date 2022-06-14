@@ -36,7 +36,7 @@ export class Crc1155TransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {
                 // only query by address id
-                const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, 'ERC1155')
+                const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC1155)
                 const rows = await AddressErc1155Transfer.findAll(queryOptions);
                 return {count: cacheCount , rows};
             }

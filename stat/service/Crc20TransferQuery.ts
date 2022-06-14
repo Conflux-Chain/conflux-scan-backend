@@ -39,7 +39,7 @@ export class Crc20TransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {
                 // only query by address id
-                const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, 'ERC20')
+                const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC20)
                 const rows = await AddressErc20Transfer.findAll(queryOptions);
                 return {count: cacheCount , rows};
             }
