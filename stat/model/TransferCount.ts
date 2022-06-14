@@ -61,7 +61,7 @@ export async function getAddrTransferCount(addrId: number, type:TRANSFER_TYPE) :
         return 0; // do not cache zero
     }
     if (bean !== null) {
-        await bean.update({v}, {where: {addressId: addrId, type}})
+        await bean.update({v, updatedAt: new Date()}, {where: {addressId: addrId, type}})
     } else {
         await TransferCount.upsert({
             addressId: addrId, type, updatedAt: new Date(), v
