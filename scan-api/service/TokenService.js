@@ -160,7 +160,7 @@ class TokenService {
   async _listByRegisterPlus(options) {
     const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
     if (!order) {
-      throw new Error(`Invalid order by. Only supports of one [transferCount, holderCount]`)
+      throw new Error(`Invalid order by. Only supports one of ['transferCount', 'holderCount'], got [${options.orderBy}]`)
     }
     const tokenList = await Token.findAll({
       attributes: ['base32'],
