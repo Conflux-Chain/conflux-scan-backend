@@ -58,7 +58,7 @@ export class Crc20TransferQuery extends TransferQueryBase{
         }
         // either contract or address should be present. otherwise, do not count the table.
         const list = await Erc20Transfer.findAll(queryOptions);
-        return {count: list.length, list}
+        return {count: list.length, rows:list}
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
