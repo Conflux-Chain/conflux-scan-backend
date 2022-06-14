@@ -34,7 +34,7 @@ class AccountService {
       erc721TransferCount: CONST.TRANSFER_TYPE.ERC721,
       erc1155TransferCount: CONST.TRANSFER_TYPE.ERC1155,
     }
-    await Promise.all(fields.filter(k=>typeMap[k]).map((k)=>{
+    fields && await Promise.all(fields.filter(k=>typeMap[k]).map((k)=>{
       return service.transfer.count({ accountAddress: address, transferType: typeMap[k] }).then(res=>{
         countMap[k] = res
       });
