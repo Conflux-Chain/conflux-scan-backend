@@ -1,5 +1,6 @@
 const lodash = require('lodash');
 const { TokenQuery } = require('../../stat/dist/service/TokenQuery');
+const { Token } = require('../../stat/dist/model/Token');
 const { KV, /*KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/dist/model/KV');
 
 class TokenService {
@@ -157,8 +158,20 @@ class TokenService {
   }
 
   async _listByRegisterPlus(options) {
-    const response = await TokenQuery.listAddress({ auditResult: true, portalSupport: true });
-    const addressArray = response?.list;
+    options.orderBy = options.orderBy || 'transferCount'
+    const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
+    if (!order) {
+      throw new Error(`Invalid order by. Only supports one of ['transferCount', 'holderCount'], got [${options.orderBy}]`)
+    }
+    const tokenList = await Token.findAll({
+      attributes: ['base32'],
+      where: {auditResult: true, portalSupport: true},
+      order: [[order, options.reverse ? 'desc': 'asc']],
+      skip: options.skip, limit: options.limit,
+    });
+    const addressArray = tokenList.map(t=>t.base32);
+    // const response = await TokenQuery.listAddress({ auditResult: true, portalSupport: true });
+    // const addressArray = response?.list;
     return this._listByAddressArrayPlus({ addressArray, ...options });
   }
 

@@ -53,7 +53,12 @@ export class Crc20TransferQuery extends TransferQueryBase{
                 return {count: token.transfer , rows: rows || []};
             }
         }
-        return await Erc20Transfer.findAndCountAll(queryOptions);
+        if (queryOptions.skip > 10_000) {
+            throw new Error(`parameter <skip> exceeds 10000`)
+        }
+        // either contract or address should be present. otherwise, do not count the table.
+        const list = await Erc20Transfer.findAll(queryOptions);
+        return {count: list.length, rows:list}
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);

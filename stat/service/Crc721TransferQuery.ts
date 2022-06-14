@@ -35,7 +35,9 @@ export class Crc721TransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             return await AddressErc721Transfer.findAndCountAll(queryOptions);
         }
-        return await Erc721Transfer.findAndCountAll(queryOptions);
+        // either contract or address should be present. otherwise, do not count the table.
+        const list = await Erc721Transfer.findAll(queryOptions);
+        return {count: list.length, rows:list}
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
