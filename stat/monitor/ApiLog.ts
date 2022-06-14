@@ -42,6 +42,7 @@ setInterval(()=>{
 
 let skipUrls = new Set<string>()
 skipUrls.add('/stat/nft/checker/preview')
+skipUrls.add('/open/nft/preview')
 
 export async function saveApiLog(ctx:any, rt:number) {
     const {url} = ctx;
