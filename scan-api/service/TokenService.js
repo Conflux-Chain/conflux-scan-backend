@@ -158,7 +158,7 @@ class TokenService {
   }
 
   async _listByRegisterPlus(options) {
-    options.orderBy = options || 'transferCount'
+    options.orderBy = options.orderBy || 'transferCount'
     const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
     if (!order) {
       throw new Error(`Invalid order by. Only supports one of ['transferCount', 'holderCount'], got [${options.orderBy}]`)
