@@ -81,6 +81,7 @@ export class BalanceService {
         if (table == null) {
             return {total: 0, list:[], message: 'token not found '+base32, code: 6404}
         }
+        const start = Date.now()
         const total = await table.count()
         if (total == 0) {
             return {total: 0, list:[], code: 0, table: table.getTableName()}
@@ -90,6 +91,7 @@ export class BalanceService {
             order:[[cast(col("balance"), 'Decimal(60)'),"desc"]],
             offset: skip, limit
         })
+        const elapsed = Date.now() - start;
         const hexList = await Hex40Map.findAll({where: {id: {[Op.in]:list.map(h=>h.addressId)}}})
         const map = new Map()
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
@@ -135,7 +137,7 @@ export class BalanceService {
             }
         }
 
-        return {total, list: retList, code: 0, skip, limit, table: table.getTableName()}
+        return {total, list: retList, code: 0, skip, limit, table: table.getTableName(), elapsed}
     }
 
     zeros = '00000000000000000000000'
