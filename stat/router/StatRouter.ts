@@ -43,7 +43,7 @@ import {queryEnsOfName} from "../service/ens/ENS";
 import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
 import {InvalidParamError, skipLimit} from "./ParamChecker";
 import {limitListOnBody} from "../service/pos/PosStat";
-import {CONST} from "../service/common/ConstantTS";
+import {ParameterError} from "../service/common/ConstantTS";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -680,7 +680,7 @@ export function register(app:Koa, statApp: StatApp) {
             console.log(`error occur:`, e)
             let code = 500
             if (e instanceof InvalidParamError || /[pP]arameter.*exceeds/.test(e.message)) {
-                code = CONST.ERROR.ParameterError.code
+                code = ParameterError.code
                 ctx.status = 600
             }
             ctx.body = {code, message: `Error: ${e}`}
