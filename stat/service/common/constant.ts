@@ -124,7 +124,7 @@ module.exports = {
     ContractDecompileError: { code: 50601, name: 'ContractDecompileError' },
     ExtractMetadataError: { code: 50602, name: 'ExtractMetadataError' },
 
-    UnknowError: { code: 20000, name: 'UnknowError'},
+    UnknowError: { code: 20000, name: 'UnknownError'},
     ResponseDataParsingError: { code: 20001, name: 'ResponseDataParsingError'},
     RequestTimeout: { code: 20002, name: 'RequestTimeout'},
     RequestAbort: { code: 20003, name: 'RequestAbort'},

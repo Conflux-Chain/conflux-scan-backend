@@ -41,9 +41,7 @@ import {BalanceService} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {queryEnsOfName} from "../service/ens/ENS";
 import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
-import {skipLimit} from "./ParamChecker";
-import {Stopwatch} from "../service/Stopwatch";
-import {intParam} from "../service/common/utils";
+import {InvalidParamError, skipLimit} from "./ParamChecker";
 import {limitListOnBody} from "../service/pos/PosStat";
 
 const NodeCache = require( "node-cache" );
@@ -99,9 +97,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
         const base32 = ctx.request.query.address
-        const limit = pickNumber(parseInt(ctx.request.query.limit), 10)
-        const skip = pickNumber(parseInt(ctx.request.query.skip), 0)
+        const {skip, limit} = skipLimit(ctx.request.query)
+        if (skip > 1000) {
+            throw new InvalidParamError(`Parameter <skip> exceeds 1000`)
+        }
         ctx.body = {
+            listLimit: 1000,
             ...(await statApp.balanceService.rankHolder(base32, skip, limit))
         }
     })
