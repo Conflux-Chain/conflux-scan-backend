@@ -137,7 +137,7 @@ export class BalanceService {
             }
         }
 
-        return {total, list: retList, code: 0, skip, limit, table: table.getTableName(), elapsed}
+        return {total, list: retList, code: 0, skip, limit, table: table.getTableName(), holderQuery:elapsed}
     }
 
     zeros = '00000000000000000000000'
