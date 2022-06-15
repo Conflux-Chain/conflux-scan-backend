@@ -677,7 +677,11 @@ export function register(app:Koa, statApp: StatApp) {
             await next();
         } catch (e) {
             console.log(`error occur:`, e)
-            ctx.body = {code: 500, message: `Error: ${e}`}
+            let code = 500
+            if (e instanceof InvalidParamError || /[pP]arameter.*exceeds/.test(e.message)) {
+                code = 600
+            }
+            ctx.body = {code, message: `Error: ${e}`}
         }
     })
     addRoute(router, statApp);
