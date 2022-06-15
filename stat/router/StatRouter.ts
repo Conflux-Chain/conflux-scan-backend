@@ -41,10 +41,9 @@ import {BalanceService} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {queryEnsOfName} from "../service/ens/ENS";
 import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
-import {skipLimit} from "./ParamChecker";
-import {Stopwatch} from "../service/Stopwatch";
-import {intParam} from "../service/common/utils";
+import {InvalidParamError, skipLimit} from "./ParamChecker";
 import {limitListOnBody} from "../service/pos/PosStat";
+import {ParameterError} from "../service/common/ConstantTS";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -99,9 +98,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
         const base32 = ctx.request.query.address
-        const limit = pickNumber(parseInt(ctx.request.query.limit), 10)
-        const skip = pickNumber(parseInt(ctx.request.query.skip), 0)
+        const {skip, limit} = skipLimit(ctx.request.query)
+        if (skip > 1000) {
+            throw new InvalidParamError(`Parameter <skip> exceeds 1000`)
+        }
         ctx.body = {
+            listLimit: 1000,
             ...(await statApp.balanceService.rankHolder(base32, skip, limit))
         }
     })
@@ -676,7 +678,12 @@ export function register(app:Koa, statApp: StatApp) {
             await next();
         } catch (e) {
             console.log(`error occur:`, e)
-            ctx.body = {code: 500, message: `Error: ${e}`}
+            let code = 500
+            if (e instanceof InvalidParamError || /[pP]arameter.*exceeds/.test(e.message)) {
+                code = ParameterError.code
+                ctx.status = 600
+            }
+            ctx.body = {code, message: `Error: ${e}`}
         }
     })
     addRoute(router, statApp);
