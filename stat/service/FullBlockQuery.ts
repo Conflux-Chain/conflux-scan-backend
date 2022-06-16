@@ -554,20 +554,20 @@ export class FullBlockQuery {
 
             // contract
             const sponsorInfo = await cfx.getSponsorInfo(to);
-            const isWhitelist = await this.sponsorContract.isWhitelisted(to, from);
+            const isWhitelisted = await this.sponsorContract.isWhitelisted(to, from);
             const {sponsorForGas, sponsorForCollateral, sponsorGasBound, sponsorBalanceForGas,
                 sponsorBalanceForCollateral} = sponsorInfo;
             const sponsorForGasHex = format.hexAddress(sponsorForGas);
             const sponsorForColHex = format.hexAddress(sponsorForCollateral);
 
-            const isGasFeeSponsored = sponsorForGasHex !== CONST.ZERO_ADDRESS && isWhitelist &&
+            const isGasFeeSponsored = sponsorForGasHex !== CONST.ZERO_ADDRESS && isWhitelisted &&
                 gasFee <= sponsorGasBound && gasFee <= sponsorBalanceForGas;
-            const isColFeeSponsored = sponsorForColHex !== CONST.ZERO_ADDRESS && isWhitelist &&
+            const isColFeeSponsored = sponsorForColHex !== CONST.ZERO_ADDRESS && isWhitelisted &&
                 colFee <= sponsorBalanceForCollateral;
 
             const partialCost = value + (isGasFeeSponsored ? BigInt(0) : gasFee) + (isColFeeSponsored ? BigInt(0) : colFee);
             if(value < partialCost){
-                lodash.assign(pendingDetail.params, {isGasFeeSponsored,isColFeeSponsored, sponsorInfo});
+                lodash.assign(pendingDetail.params, {isWhitelisted, isGasFeeSponsored,isColFeeSponsored, sponsorInfo});
                 lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 23})});
                 return result;
             }
