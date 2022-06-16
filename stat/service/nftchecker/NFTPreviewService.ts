@@ -363,7 +363,7 @@ export class NFTPreviewService {
             // get uri
             const contract = await this.cfx.Contract({ abi, address });
             rawUrl = await contract[method](tokenId)
-                .catch(e => {code = ERROR.FailedToQueryTokenURI.code; throw e;});
+                .catch(e => {code = ERROR.FailedToCallNFTContract.code; throw e;});
             rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
             gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
@@ -377,7 +377,12 @@ export class NFTPreviewService {
                     .catch(e => {code = ERROR.FailedToQueryNFTMetadata.code; throw e;});
                 rawMeta = resp.text;
             }
-            rawMeta = JSON.parse(rawMeta);
+            try{
+                rawMeta = JSON.parse(rawMeta);
+            }catch (e) {
+                code = ERROR.FailedToParseNFTMetadata.code;
+                throw e;
+            }
             meta = {...rawMeta};
 
             // build resp
@@ -392,12 +397,11 @@ export class NFTPreviewService {
         } catch (e) {
             code = !code ? ERROR.BizError.code : code;
             error = e?.message?.substr(0, 255);
+            if(code === ERROR.FailedToCallNFTContract.code){
+                error = `call ${method}(${tokenId}) ${error}`;
+            }
             if(code === ERROR.FailedToQueryNFTMetadata.code){
                 error = `${gatewayUrl} ${error}`;
-            }
-            if(code === ERROR.FailedToQueryTokenURI.code){
-                code = ERROR.FailedToQueryNFTMetadata.code;
-                error = `call ${method}(${tokenId}) ${error}`;
             }
         } finally {
             detail = {

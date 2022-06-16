@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk";
+import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {
     FullBlock,
@@ -15,13 +15,18 @@ import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
+
+const lodash = require('lodash');
 const CONST = require('./common/constant');
 
 export class FullBlockQuery {
     protected app;
+    protected sponsorContract;
+    protected recommendGasPrice = BigInt(0);
 
     public constructor(app: any) {
         this.app = app;
+        this.sponsorContract = this.app.cfx.InternalContract('SponsorWhitelistControl');
     }
 
     public async listBlock({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined,
@@ -495,5 +500,134 @@ export class FullBlockQuery {
             const receiptArray = arr.slice(len);
             return {txArray, receiptArray};
         });
+    }
+
+    public async listPendingTx({accountAddress}){
+        const {
+            app: {cfx}
+        } = this;
+
+        // check
+        const result =  await cfx.getAccountPendingTransactions(accountAddress, undefined, 10);
+        const {firstTxStatus, pendingTransactions} = result;
+        if(!pendingTransactions?.length){
+            return result;
+        }
+
+        // future nonce
+        const {from ,to, value, nonce, gas, gasPrice, storageLimit, epochHeight} = pendingTransactions[0];
+        const pending = firstTxStatus.pending;
+        if(pending?.endsWith('Nonce')){
+            const pendingDetail = {
+                code: 11,
+                message: 'The nonce in [stateNonce, txNonce) is skipped',
+                params:{txNonce: nonce, stateNonce: await cfx.getNextNonce(from)}
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
+        // insufficient balance
+        if(pending?.endsWith('Cash')){
+            const gasFee = gas * gasPrice;
+            const colFee = storageLimit * BigInt(10**18) / BigInt(1024);
+            const {balance}  = await cfx.getAccount(from);
+            const totalCost = value + gasFee + colFee;
+            const pendingDetail = {
+                message: 'The balance is insufficient to pay value + gas * gasPrice + storageLimit * (10^18/1024)',
+                params:{balance, value, gas, gasPrice, storageLimit},
+            };
+
+            // contract create
+            const isContractCreate = to === null;
+            if(isContractCreate && balance < totalCost){
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 21})});
+                return result;
+            }
+
+            // EOA
+            const {codeHash}  = await cfx.getAccount(to);
+            const isEOA = codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470';
+            if(isEOA && balance < totalCost){
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 22})});
+                return result;
+            }
+
+            // contract
+            const sponsorInfo = await cfx.getSponsorInfo(to);
+            const isWhitelisted = await this.sponsorContract.isWhitelisted(to, from);
+            const {sponsorForGas, sponsorForCollateral, sponsorGasBound, sponsorBalanceForGas,
+                sponsorBalanceForCollateral} = sponsorInfo;
+            const sponsorForGasHex = format.hexAddress(sponsorForGas);
+            const sponsorForColHex = format.hexAddress(sponsorForCollateral);
+
+            const isGasFeeSponsored = sponsorForGasHex !== CONST.ZERO_ADDRESS && isWhitelisted &&
+                gasFee <= sponsorGasBound && gasFee <= sponsorBalanceForGas;
+            const isColFeeSponsored = sponsorForColHex !== CONST.ZERO_ADDRESS && isWhitelisted &&
+                colFee <= sponsorBalanceForCollateral;
+
+            const partialCost = value + (isGasFeeSponsored ? BigInt(0) : gasFee) + (isColFeeSponsored ? BigInt(0) : colFee);
+            if(value < partialCost){
+                lodash.assign(pendingDetail.params, {isWhitelisted, isGasFeeSponsored,isColFeeSponsored, sponsorInfo});
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 23})});
+                return result;
+            }
+        }
+
+        // ready
+        if(firstTxStatus?.endsWith('ready')){
+            const proposedEpoch = epochHeight;
+            const confirmedEpoch = BigInt(await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
+            const epochGap = Math.abs(Number(proposedEpoch - confirmedEpoch));
+            if(epochGap > 100_000){
+                const pendingDetail = {
+                    code: 31,
+                    message: 'The epoch gap [proposedEpoch confirmedEpoch] exceeded 100,000',
+                    params:{proposedEpoch, confirmedEpoch}
+                };
+                lodash.defaults(result, {pendingDetail});
+                return result;
+            }
+
+            if(epochGap > 5 && gasPrice < this.recommendGasPrice) {
+                const pendingDetail = {
+                    code: 32,
+                    message: 'The gasPrice is too low, tx execution can be speed up by using recommendGasPrice',
+                    params:{gasPrice, recommendGasPrice: this.recommendGasPrice},
+                };
+                lodash.defaults(result, {pendingDetail});
+                return result;
+            }
+        }
+
+        return result;
+    }
+
+    public async schedule(delay: number = 1000) {
+        console.log(`schedule recommend_gas_price with delay:${delay}`)
+        const that = this
+
+        async function repeat() {
+            await that.getRecommendGasPrice().catch(err =>{
+                console.log(`schedule recommend_gas_price error:${err}`)
+            })
+            setTimeout(repeat, delay)
+        }
+
+        repeat().then()
+    }
+
+    private async getRecommendGasPrice() {
+        const txList = await FullTransaction.findAll({
+            attributes:['hash','gasPrice'],
+            where:{status: 0},
+            order: [['createdAt', 'desc']],
+            limit: 100
+        });
+        if(!txList?.length) return;
+
+        let sumGasPrice = BigInt(0);
+        txList.forEach(tx => sumGasPrice = sumGasPrice + BigInt(tx.gasPrice));
+        this.recommendGasPrice = sumGasPrice / BigInt(txList.length);
     }
 }
