@@ -144,8 +144,8 @@ export class StatApp{
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote
         }
-        if (this.config.syncHomeDashboardData) {
-            await this.homeDashboardService.schedule(this.config.syncHomeDashboardDataDelay); // home dash board
+        if (this.config.syncRecommendGasPrice) {
+            await this.fullBlockQuery.schedule();
         }
         if (this.config.syncTokenSecurityAudit) {
             await this.tokenSecurityAuditSync.schedule();

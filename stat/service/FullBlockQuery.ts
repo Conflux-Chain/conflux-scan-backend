@@ -22,6 +22,7 @@ const CONST = require('./common/constant');
 export class FullBlockQuery {
     protected app;
     protected sponsorContract;
+    protected recommendGasPrice = BigInt(0);
 
     public constructor(app: any) {
         this.app = app;
@@ -588,12 +589,11 @@ export class FullBlockQuery {
                 return result;
             }
 
-            const recommendGasPrice = await cfx.getGasPrice();
-            if(epochGap > 5 && gasPrice < recommendGasPrice) {
+            if(epochGap > 5 && gasPrice < this.recommendGasPrice) {
                 const pendingDetail = {
                     code: 32,
                     message: 'The gasPrice is too low, tx execution can be speed up by using recommendGasPrice',
-                    params:{gasPrice, recommendGasPrice},
+                    params:{gasPrice, recommendGasPrice: this.recommendGasPrice},
                 };
                 lodash.defaults(result, {pendingDetail});
                 return result;
@@ -601,5 +601,33 @@ export class FullBlockQuery {
         }
 
         return result;
+    }
+
+    public async schedule(delay: number = 1000) {
+        console.log(`schedule recommend_gas_price with delay:${delay}`)
+        const that = this
+
+        async function repeat() {
+            await that.getRecommendGasPrice().catch(err =>{
+                console.log(`schedule recommend_gas_price error:${err}`)
+            })
+            setTimeout(repeat, delay)
+        }
+
+        repeat().then()
+    }
+
+    private async getRecommendGasPrice() {
+        const txList = await FullTransaction.findAll({
+            attributes:['hash','gasPrice'],
+            where:{status: 0},
+            order: [['createdAt', 'desc']],
+            limit: 100
+        });
+        if(!txList?.length) return;
+
+        let sumGasPrice = BigInt(0);
+        txList.forEach(tx => sumGasPrice = sumGasPrice + BigInt(tx.gasPrice));
+        this.recommendGasPrice = sumGasPrice / BigInt(txList.length);
     }
 }
