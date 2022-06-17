@@ -1,21 +1,20 @@
-import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
-import {KnownError} from "../common/RestTool";
-import {getApiService} from "../ApiServer";
 import * as Koa from "koa";
-import * as Router from "koa-router";
-import * as path from "path";
-const yamljs = require('yamljs');
 import {koaSwagger} from "koa2-swagger-ui";
+import {getApiService} from "../ApiServer";
 import {InvalidParamError} from "../../stat/service/common/utils";
 import {StatApp} from "../../stat/StatApp";
 import {saveApiLog} from "../../stat/monitor/ApiLog";
+import {KnownError} from "../common/RestTool";
+import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
+
+const yamljs = require('yamljs');
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
-
 const requestIp = require('request-ip');
 const Limiter = require('ratelimiter')
-const lodash = require('lodash');
+
 let db
+
 export function setRateControlDB(db0) {
     db = db0;
 }
@@ -85,8 +84,14 @@ export async function handleException(ctx, next) {
         getApiService().logger.error(`api error ${ctx.request.url}`, err)
     })
 }
-export function setBody(ctx, data: any, code = 0, message = 'ok') {
-    ctx.body = {code, message, data}
+export function setBody(ctx, data: any, code = 0, message = 'OK') {
+    if(StatApp.isEVM){
+        const status = code === 0 ? '1' : '0';
+        ctx.body = {status, message, result: data};
+        return;
+    }
+
+    ctx.body = {code, message, data};
 }
 // https://swaggerstats.io/guide/conf.html#options
 export function addSwagger(app: Koa, prefix, swaggerYaml) {
