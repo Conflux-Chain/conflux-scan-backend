@@ -1,5 +1,7 @@
 import {QueryTypes, DataTypes, Model, Op} from "sequelize";
 import {FullTransaction} from "./FullBlock";
+import {Erc20Transfer} from "./Erc20Transfer";
+import {fmtDtUTC} from "./Utils";
 
 export interface IAddressStat {
     id?:number
@@ -57,9 +59,25 @@ export async function calcDailyActiveAddress(dt:Date) {
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
     end.setHours(23,59,59,999)
-    let count = await FullTransaction.count({  distinct: true, col: 'fromId',      where:{
+    /*let count = await FullTransaction.count({  distinct: true, col: 'fromId',      where:{
             createdAt: {[Op.between]:[dt, end]}
-        }    })
+        }    })*/
+    const sql = `SELECT COUNT(*) AS uniqueAddrCount FROM (
+        select fromId from erc20transfer_3 where createdAt >= ? and createdAt < ? union
+        select toId from erc20transfer_3 where createdAt >= ? and createdAt < ? union
+        select fromId from erc721transfer_3 where createdAt >= ? and createdAt < ? union
+        select toId from erc721transfer_3 where createdAt >= ? and createdAt < ? union
+        select fromId from erc1155transfer_3 where createdAt >= ? and createdAt < ? union
+        select toId from erc1155transfer_3 where createdAt >= ? and createdAt < ? union
+        select fromId from full_tx  where createdAt >= ? and createdAt < ? union
+        select toId from full_tx  where createdAt >= ? and createdAt < ?                                    
+    ) t`;
+    const result = await Erc20Transfer.sequelize.query(sql, {
+        type: QueryTypes.SELECT,
+        replacements: [dt, end, dt, end, dt, end, dt, end, dt, end, dt, end, dt, end, dt, end],
+        raw: true,
+    });
+    const count = result[0]['uniqueAddrCount'];
     // expect that record exists
     const [updatedRows] = await DailyActiveAddress.update({cnt: count},{
         where: {day: dt}
