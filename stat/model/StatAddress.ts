@@ -1,7 +1,9 @@
 import {QueryTypes, DataTypes, Model, Op} from "sequelize";
 import {FullTransaction} from "./FullBlock";
-import {Erc20Transfer} from "./Erc20Transfer";
+import {Erc20Transfer, T_ERC20_TRANSFER} from "./Erc20Transfer";
 import {fmtDtUTC} from "./Utils";
+import {T_ERC721_TRANSFER} from "./Erc721Transfer";
+import {T_ERC1155_TRANSFER} from "./Erc1155Transfer";
 
 export interface IAddressStat {
     id?:number
@@ -63,14 +65,14 @@ export async function calcDailyActiveAddress(dt:Date) {
             createdAt: {[Op.between]:[dt, end]}
         }    })*/
     const sql = `SELECT COUNT(*) AS uniqueAddrCount FROM (
-        select fromId from erc20transfer_3 where createdAt >= ? and createdAt < ? union
-        select toId from erc20transfer_3 where createdAt >= ? and createdAt < ? union
-        select fromId from erc721transfer_3 where createdAt >= ? and createdAt < ? union
-        select toId from erc721transfer_3 where createdAt >= ? and createdAt < ? union
-        select fromId from erc1155transfer_3 where createdAt >= ? and createdAt < ? union
-        select toId from erc1155transfer_3 where createdAt >= ? and createdAt < ? union
-        select fromId from full_tx  where createdAt >= ? and createdAt < ? union
-        select toId from full_tx  where createdAt >= ? and createdAt < ?                                    
+        select fromId from ${T_ERC20_TRANSFER} where createdAt >= ? and createdAt < ? union
+        select toId from ${T_ERC20_TRANSFER} where createdAt >= ? and createdAt < ? union
+        select fromId from ${T_ERC721_TRANSFER} where createdAt >= ? and createdAt < ? union
+        select toId from ${T_ERC721_TRANSFER} where createdAt >= ? and createdAt < ? union
+        select fromId from ${T_ERC1155_TRANSFER} where createdAt >= ? and createdAt < ? union
+        select toId from ${T_ERC1155_TRANSFER} where createdAt >= ? and createdAt < ? union
+        select fromId from ${FullTransaction.getTableName()}  where createdAt >= ? and createdAt < ? union
+        select toId from ${FullTransaction.getTableName()}  where createdAt >= ? and createdAt < ?                                    
     ) t`;
     const result = await Erc20Transfer.sequelize.query(sql, {
         type: QueryTypes.SELECT,
