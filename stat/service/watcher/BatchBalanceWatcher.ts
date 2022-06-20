@@ -406,6 +406,8 @@ async function run() {
         await fix20holder(createConflux(cfg.conflux))
         return
     }
+    redirectLog()
+    regExitHook()
     const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
     const cfx = new Conflux({url});
     patchHttpProvider(cfx, {url})
@@ -521,7 +523,5 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
 }
 
 if (require.main === module) {
-    redirectLog()
-    regExitHook()
     run().then()
 }
