@@ -4,7 +4,7 @@ import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 async function init() {
     const config = loadConfig('Prod')
-    let seq = createDB(config.database)
+    let seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
 }
