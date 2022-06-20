@@ -109,6 +109,7 @@ export class BalanceService {
                     name: addr ? ContractService.instance.getName(address) : undefined,
                 },
                 hexId: holder.addressId,
+                updatedAt: holder['updatedAt'],
                 // addr,
             };
         })
