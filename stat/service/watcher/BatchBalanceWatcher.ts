@@ -1,4 +1,5 @@
 import {redirectLog} from "../../config/LoggerConfig";
+const lodash = require('lodash');
 // @ts-ignore
 import {Conflux, Contract, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
@@ -332,15 +333,19 @@ async function repeatSync1155data(cfx:Conflux) {
         setTimeout(()=>repeatSync1155data(cfx), 5_000)
     }
 }
-async function update20holder(hex40id:number, cfx) {
+async function update20holder(hex40id:number, cfx:Conflux, name='') {
     const holderList = await TokenBalance.findAll({
         attributes: ['addressId'],
         where: {contractId: hex40id}
     })
-    const map = new Map<number, Set<number>>()
-    map.set(hex40id, new Set<number>(holderList.map(h=>h.addressId)))
-    console.log(`contract id ${hex40id}, holder count ${holderList.length}`)
-    await handleTokenTransferWithContract(map, cfx)
+    console.log(`contract id ${hex40id} name [${name}], holder count ${holderList.length}`)
+    const chunks2d: any[][] = lodash.chunk(holderList, 10);
+    for(const chunk of chunks2d) {
+        const map = new Map<number, Set<number>>()
+        map.set(hex40id, new Set<number>(chunk.map(h=>h.addressId)))
+        await handleTokenTransferWithContract(map, cfx)
+        map.clear()
+    }
 }
 async function fix20holder(cfx:Conflux) {
     const [,,_,contractId] = process.argv
@@ -351,7 +356,7 @@ async function fix20holder(cfx:Conflux) {
         const list = await Token.findAll({attributes: ['hex40id', 'symbol', 'base32'],
             where: {type: 'ERC20', auditResult: true}})
         for(const token of list) {
-            await update20holder(token.hex40id, cfx)
+            await update20holder(token.hex40id, cfx, token.symbol)
         }
     } else {
         await update20holder(parseInt(contractId), cfx)
@@ -401,6 +406,8 @@ async function run() {
         await fix20holder(createConflux(cfg.conflux))
         return
     }
+    redirectLog()
+    regExitHook()
     const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
     const cfx = new Conflux({url});
     patchHttpProvider(cfx, {url})
@@ -516,7 +523,5 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
 }
 
 if (require.main === module) {
-    redirectLog()
-    regExitHook()
     run().then()
 }
