@@ -12,7 +12,7 @@ import {TokenTool} from "../tool/TokenTool";
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTransferCount} from "../../StreamSync";
 import {ContractUser} from "../../model/Erc20Transfer";
-import {patchHttpProvider} from "../common/utils";
+import {createConflux, patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
@@ -332,6 +332,30 @@ async function repeatSync1155data(cfx:Conflux) {
         setTimeout(()=>repeatSync1155data(cfx), 5_000)
     }
 }
+async function update20holder(hex40id:number, cfx) {
+    const holderList = await TokenBalance.findAll({
+        attributes: ['addressId'],
+        where: {contractId: hex40id}
+    })
+    const map = new Map<number, Set<number>>()
+    map.set(hex40id, new Set<number>(holderList.map(h=>h.addressId)))
+    console.log(`contract id ${hex40id}, holder count ${holderList.length}`)
+    await handleTokenTransferWithContract(map, cfx)
+}
+async function fix20holder(cfx:Conflux) {
+    const [,,_,contractId] = process.argv
+    if (contractId === 'all') {
+        const list = await Token.findAll({attributes: ['hex40id', 'symbol', 'base32'],
+            where: {type: 'ERC20', auditResult: true}})
+        for(const token of list) {
+            await update20holder(token.hex40id, cfx)
+        }
+    } else {
+        await update20holder(parseInt(contractId), cfx)
+    }
+    console.log(`done`)
+    process.exit(0)
+}
 // ---
 let zeroAddrId = 0
 async function run() {
@@ -369,6 +393,9 @@ async function run() {
         const byMintTable = false//opt === 'byMintTable'
         await fixAllNftHolder(byMintTable, 'ERC1155')
         process.exit(0)
+        return
+    } else if (cfxUrl === 'fix20holder') {
+        await fix20holder(createConflux(cfg.conflux))
         return
     }
     const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl

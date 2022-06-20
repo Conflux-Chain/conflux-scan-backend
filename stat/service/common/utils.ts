@@ -2,6 +2,7 @@ import {Conflux} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/util/format');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 import {ScanHttpProvider} from "./ScanHttpProvider";
+import {ConfluxOption} from "../../config/StatConfig";
 const lodash = require('lodash');
 const addressUtil = require('js-conflux-sdk/src/util/address');
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
@@ -196,7 +197,11 @@ export function removeLongData(obj) {
         })
     }
 }
-
+export function createConflux(cfxConf:ConfluxOption) {
+    const cfx = new Conflux(cfxConf);
+    patchHttpProvider(cfx, cfxConf)
+    return cfx;
+}
 export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
     if (cfxConf?.url?.includes('ws')) {
         return;
