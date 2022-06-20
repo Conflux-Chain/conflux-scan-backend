@@ -344,6 +344,7 @@ async function update20holder(hex40id:number, cfx) {
 }
 async function fix20holder(cfx:Conflux) {
     const [,,_,contractId] = process.argv
+    new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
     if (contractId === 'all') {
         const list = await Token.findAll({attributes: ['hex40id', 'symbol', 'base32'],
             where: {type: 'ERC20', auditResult: true}})
