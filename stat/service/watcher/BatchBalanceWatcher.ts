@@ -356,7 +356,7 @@ async function fix20holder(cfx:Conflux) {
         const list = await Token.findAll({attributes: ['hex40id', 'symbol', 'base32'],
             where: {type: 'ERC20', auditResult: true}})
         for(const token of list) {
-            await update20holder(token.hex40id, cfx)
+            await update20holder(token.hex40id, cfx, token.symbol)
         }
     } else {
         await update20holder(parseInt(contractId), cfx)

@@ -167,7 +167,9 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             let i = 0
             const tasks = []
             for (const addr of existsAddrArr) {
-                console.log(` user ${addr} holds ${banList[i]} of ${contractHex40} cid ${contractId}`)
+                if (i % 100 === 0) {
+                    console.log(` user ${addr} holds ${banList[i]} of ${contractHex40} cid ${contractId}`)
+                }
                 const t = BalanceWatcher.saveModel(model, addr, banList[i], false, 0)
                 tasks.push(t)
                 i++
