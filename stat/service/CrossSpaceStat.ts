@@ -126,14 +126,16 @@ async function main() {
     const [,,cmd] = process.argv
     if (cmd === 'calcDailyCfxToEvm') {
         // node stat/dist/service/CrossSpaceStat.js calcDailyCfxToEvm
-        let dt = new Date('2022-02-21')
+        // let dt = new Date('2022-02-21')
+        let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
         while(dt.getTime() < Date.now()) {
             await calcDailyCfxToEvm(dt)
             dt.setDate(dt.getDate() + 1)
         }
     } else if (cmd === 'calcDailyCfxFromEvm') {
         // node stat/dist/service/CrossSpaceStat.js calcDailyCfxFromEvm
-        let dt = new Date('2022-02-21')
+        // let dt = new Date('2022-02-21')
+        let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
         while(dt.getTime() < Date.now()) {
             await calcDailyCfxFromEvm(dt)
             dt.setDate(dt.getDate() + 1)
