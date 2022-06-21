@@ -34,7 +34,7 @@ export class ApiLog extends Model<IApiLog> implements IApiLog {
 }
 
 let rtThreshold = 1000
-setInterval(()=>{
+KV.sequelize && setInterval(()=>{
         KV.getNumber(API_LOG_RT_LIMIT, 1000).then(v=>{
             rtThreshold = v
         }).catch()
