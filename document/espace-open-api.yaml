@@ -1807,7 +1807,7 @@ components:
           description: "0 = No Optimization, 1 = Optimization used (applicable when codeformat=solidity-single-file)"
           default: 0
         runs:
-          type: string
+          type: number
           required: true
           description: "set to 200 as default unless otherwise  (applicable when codeformat=solidity-single-file) "
           default: 200
