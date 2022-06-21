@@ -128,6 +128,7 @@ async function main() {
         // node stat/dist/service/CrossSpaceStat.js calcDailyCfxToEvm
         // let dt = new Date('2022-02-21')
         let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
+        dt = new Date(dt)
         while(dt.getTime() < Date.now()) {
             await calcDailyCfxToEvm(dt)
             dt.setDate(dt.getDate() + 1)
@@ -136,6 +137,7 @@ async function main() {
         // node stat/dist/service/CrossSpaceStat.js calcDailyCfxFromEvm
         // let dt = new Date('2022-02-21')
         let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
+        dt = new Date(dt)
         while(dt.getTime() < Date.now()) {
             await calcDailyCfxFromEvm(dt)
             dt.setDate(dt.getDate() + 1)
