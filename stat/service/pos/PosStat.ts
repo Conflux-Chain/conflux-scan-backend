@@ -1,5 +1,5 @@
 import {Conflux, Drip} from "js-conflux-sdk";
-import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosGap} from "../../model/PoS";
+import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosGap, PosReward} from "../../model/PoS";
 import {col, DataTypes, QueryTypes, fn, literal, Model, Op, Sequelize} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
@@ -297,6 +297,19 @@ async function calcDailyStaking(dt: Date) {
         })
         console.log(`${dt.toISOString()} ${type}`, 0)
     }
+}
+//======
+export async function calcDailyPosReward(dayStart:Date) : Promise<PosReward> {
+    dayStart.setHours(0,0,0,0)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setHours(23,59,59,999)
+    return PosReward.findOne({
+        attributes: [
+            [fn('sum', col('reward')), 'reward'],
+            [literal('count(distinct(accountId))'), 'accountId'],
+        ],
+        where: {createdAt: {[Op.between]:[dayStart, dayEnd]}},
+    })
 }
 //======
 async function main() {
