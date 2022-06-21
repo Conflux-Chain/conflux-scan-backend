@@ -65,7 +65,7 @@ export async function calcDailyCfxFromEvm(dt: Date) {
     })
 
     const [bean] = await CrossSpaceStat.upsert({
-        biz: "DailyCfxFromEVM", v: parseFloat(new Drip(sumV).toCFX()), day: dt,
+        biz: "DailyCfxFromEVM", v: parseFloat(new Drip(sumV||0).toCFX()), day: dt,
     })
     await CrossSpaceStat.upsert({
         biz: "DailyCfxCountFromEVM", v: cnt, day: dt,
@@ -86,7 +86,7 @@ export async function calcDailyCfxToEvm(dt: Date) {
         raw: true,
     })
     const [bean] = await CrossSpaceStat.upsert({
-        biz: "DailyCfxToEVM", v: parseFloat(new Drip(sumV).toCFX()), day: dt,
+        biz: "DailyCfxToEVM", v: parseFloat(new Drip(sumV||0).toCFX()), day: dt,
     })
     await CrossSpaceStat.upsert({
         biz: "DailyCfxCountToEVM", v: count, day: dt,
