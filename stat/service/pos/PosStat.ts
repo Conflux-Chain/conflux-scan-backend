@@ -309,6 +309,10 @@ export async function calcDailyPosReward(dayStart:Date) : Promise<PosReward> {
             [literal('count(distinct(accountId))'), 'accountId'],
         ],
         where: {createdAt: {[Op.between]:[dayStart, dayEnd]}},
+    }).then(res=>{
+        res.reward = res.reward || 0
+        res.accountId = res.accountId || 1
+        return res;
     })
 }
 //======
