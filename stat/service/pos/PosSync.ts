@@ -320,12 +320,12 @@ export class PosSync {
     }
     async updateDailyStat(epoch:number) {
         const dt = new Date();
-        const [{totalPosStakingTokens}, lockedVotes, {reward = 0, accountId:count = 1}] = await Promise.all([
+        const [{totalPosStakingTokens}, lockedVotes, {reward = 0, accountId:count}] = await Promise.all([
             this.cfx.getPoSEconomics(),
             PosAccount.sum('lockedVotes'),
             calcDailyPosReward(dt),
         ])
-        const avgReward = BigInt(reward) / BigInt(count)
+        const avgReward = BigInt(reward) / BigInt(count || 1)
         const [affected] = await PosDailyStat.update({stakingAmount: totalPosStakingTokens, lockedVotes},
             {where: {statDay: dt}})
         if (!affected) {
@@ -333,7 +333,7 @@ export class PosSync {
                 statDay: dt,
                 stakingAmount: totalPosStakingTokens, lockedVotes,
                 createdAt: dt, updatedAt: dt, epoch,
-                totalReward: BigInt(reward), avgReward
+                totalReward: BigInt(reward), avgReward, rewardAccounts: count || 0
             })
         }
         console.log(` update daily stat done.`)

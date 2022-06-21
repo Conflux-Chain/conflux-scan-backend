@@ -434,7 +434,7 @@ export interface IPosDailyStat {
     updatedAt: Date
     stakingAmount: number
     lockedVotes: number;
-    totalReward: bigint; avgReward: bigint;
+    totalReward: bigint; avgReward: bigint; rewardAccounts: number;
     statDay: Date
 }
 export class PosDailyStat extends Model<IPosDailyStat> implements IPosDailyStat{
@@ -445,6 +445,7 @@ export class PosDailyStat extends Model<IPosDailyStat> implements IPosDailyStat{
     stakingAmount: number
     lockedVotes: number
     totalReward: bigint; avgReward: bigint; // avg for each account
+    rewardAccounts: number; // count of account that gain reward
     statDay: Date
     static register(seq:Sequelize) {
         PosDailyStat.init({
@@ -456,6 +457,7 @@ export class PosDailyStat extends Model<IPosDailyStat> implements IPosDailyStat{
             lockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             totalReward: {type: DataTypes.DECIMAL(56,0), allowNull: false, defaultValue: 0},
             avgReward: {type: DataTypes.DECIMAL(56,0), allowNull: false, defaultValue: 0},
+            rewardAccounts: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             statDay: {type: DataTypes.DATEONLY, },
         },{
             sequelize: seq, tableName: 'pos_daily_stat',
