@@ -1,5 +1,5 @@
 import {Conflux, Drip} from "js-conflux-sdk";
-import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosGap, PosReward} from "../../model/PoS";
+import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosDailyStat, PosGap, PosReward} from "../../model/PoS";
 import {col, DataTypes, QueryTypes, fn, literal, Model, Op, Sequelize} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
@@ -94,6 +94,16 @@ export class PosStat {
             day: new Date(), v: secondGap2, biz: "finalize_second_gap"
         })
     }
+}
+export async function queryDailyPosRewardAvgAccount(ctx:any, dayCondition:Date = null) {
+    const where = {statDay: {[Op.gte]:dayCondition}}
+    if (dayCondition === null) {
+        delete where.statDay
+    }
+    const list = await PosDailyStat.findAll({where, order: [['statDay','asc']]})
+    ctx.body = { code: 0, total:list.length, list }
+    limitListOnBody(ctx)
+    return list;
 }
 export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = null) {
     const where = {biz, day: {[Op.gte]:dayCondition}}

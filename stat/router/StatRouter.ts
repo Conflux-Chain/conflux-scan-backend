@@ -436,7 +436,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {code: 0, data: page};
     });
     router.get('/cross-space-cfx', async (ctx)=>{
-        await queryCrossSpaceStat('DailyCfxToEVM', 'DailyCfxFromEVM', ctx)
+        await queryCrossSpaceStat('DailyCfxToEVM', 'DailyCfxFromEVM',
+            'DailyCfxCountToEVM', 'DailyCfxCountFromEVM',
+            ctx)
         limitListOnBody(ctx)
     })
     // deployed contract statistic

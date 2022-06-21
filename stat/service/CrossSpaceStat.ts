@@ -28,11 +28,16 @@ export class CrossSpaceStat extends Model<ICrossSpaceStat> implements ICrossSpac
         })
     }
 }
-export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossSpaceStat_BIZ, ctx:any) {
+export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossSpaceStat_BIZ,
+                                          biz3: CrossSpaceStat_BIZ, biz4: CrossSpaceStat_BIZ,
+                                          ctx:any) {
     const t = CrossSpaceStat.getTableName()
     const sql = `select day, v  from ${t} where biz='${biz1}'`
     const sql2 = `select day, v from ${t} where biz='${biz2}'`
-    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2} from (${sql}) t join (${sql2}) t2 using(day)`
+    const sql3 = `select day, v from ${t} where biz='${biz3}'`
+    const sql4 = `select day, v from ${t} where biz='${biz4}'`
+    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2}, t3.v as ${biz3}, t4.v as ${biz4
+    } from (${sql}) t join (${sql2}) t2 join (${sql3}) t3 join (${sql4}) t4 using(day)`
     const list = await CrossSpaceStat.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
     })
