@@ -6,8 +6,8 @@ async function fixDailyPosReward() {
     const {createdAt: firstDay} = await PosReward.findOne({order:[['id','asc']]})
     const today = new Date()
     while(firstDay <= today) {
-        const {reward, accountId:count} = await calcDailyPosReward(firstDay)
-        const avgReward = BigInt(reward) / BigInt(count || 1)
+        const {reward = 0, accountId:count = 1} = await calcDailyPosReward(firstDay)
+        const avgReward = BigInt(reward) / BigInt(count)
         await PosDailyStat.update({
             totalReward: BigInt(reward), avgReward
         }, {
