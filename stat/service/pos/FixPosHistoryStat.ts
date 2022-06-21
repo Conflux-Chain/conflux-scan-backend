@@ -29,5 +29,5 @@ async function main() {
 }
 
 if (module === require.main) {
-
+    main().then()
 }
