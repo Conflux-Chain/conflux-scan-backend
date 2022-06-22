@@ -3,6 +3,8 @@ import {format} from "js-conflux-sdk";
 import {Erc1155Transfer, AddressErc1155Transfer} from "../model/Erc1155Transfer";
 import {TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
+import {StatApp} from "../StatApp";
+import {Token} from "../model/Token";
 const CONST = require('./common/constant');
 
 export class Crc1155TransferQuery extends TransferQueryBase{
@@ -42,6 +44,17 @@ export class Crc1155TransferQuery extends TransferQueryBase{
             }
             return await AddressErc1155Transfer.findAndCountAll(queryOptions);
         }
+
+        if(options?.address){
+            if (Object.keys(queryOptions.where).length === 1) {
+                const base32 = format.address(options.address, StatApp.networkId);
+                const token = await Token.findOne({attributes: ['transfer'], where:{base32}});
+                const rows = await Erc1155Transfer.findAll(queryOptions);
+                return {count: token.transfer , rows: rows || []};
+            }
+            return Erc1155Transfer.findAndCountAll(queryOptions);
+        }
+
         // either contract or address should be present. otherwise, do not count the table.
         const list = await Erc1155Transfer.findAll(queryOptions);
         return {count: list.length, rows:list}

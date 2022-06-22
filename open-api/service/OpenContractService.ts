@@ -123,18 +123,25 @@ export async function getSourceCode(ctx) {
 }
 
 export async function verifySourcecode(ctx) {
-    const {
+    let {
         contractaddress, sourceCode, codeformat, contractname, compilerversion, optimizationUsed, runs,
         constructorArguements, evmversion, licenseType
     } = ctx.request.body;
-    checkPresent({contractaddress, sourceCode, contractname, compilerversion, optimizationUsed, runs, licenseType},
-        ['contractaddress', 'sourceCode', 'contractname', 'compilerversion', 'optimizationUsed', 'runs', 'licenseType']);
+    checkPresent({contractaddress, sourceCode, contractname, compilerversion/*, optimizationUsed, runs, licenseType*/},
+        ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
+
+    optimizationUsed = optimizationUsed === undefined ||optimizationUsed === null ? 0 : optimizationUsed;
+    runs = runs === undefined ||optimizationUsed === null ? 200 : optimizationUsed;
+    licenseType = licenseType === undefined ||optimizationUsed === null ? 1 : optimizationUsed;
 
     if(optimizationUsed !== 0 && optimizationUsed !== 1){
         throw new Error(`Invalid parameter <optimizationUsed> with value [${optimizationUsed}], expect 0 or 1`);
     }
     if(optimizationUsed === 1 && (!Number.isInteger(runs) || runs < 0)){
         throw new Error(`Invalid parameter <runs> with value [${runs}], expect runs >= 0`);
+    }
+    if(licenseType< 1 || licenseType > 14){
+        throw new Error(`Invalid parameter <licenseType> with value [${licenseType}], expect licenseType between 1 and 14`);
     }
 
     const options = {
