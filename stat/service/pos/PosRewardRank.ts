@@ -87,6 +87,7 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
         // fill account info
         rankList.forEach(row=>{
             row["accountInfo"] = map.get(row.accountId)
+            delete row.id
         })
         return {total: count, list: rankList}
     } else if ('all' === rankField) {
@@ -105,7 +106,7 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
         const resultList = accountList.map(acc=>{
             let rankBean = rankMap.get(acc.id)
             if (!rankBean) {
-                rankBean =  {accountId: acc.id, createdAt: acc.createdAt, day1: zero, day14: zero, day30: zero, day7: zero, id: 0};
+                rankBean =  {accountId: acc.id, createdAt: acc.createdAt, day1: zero, day14: zero, day30: zero, day7: zero};
             }
             rankBean['accountInfo'] = acc;
             return rankBean
