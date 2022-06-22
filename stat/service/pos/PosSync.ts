@@ -17,6 +17,7 @@ import {PosQuery} from "./PosQuery";
 import {removeLongData} from "../common/utils";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {
+    calcDailyPosReward,
     fixDailyPosAccountCount,
     PosStat, scheduleDailyParticipation,
     scheduleDailyStakingDepositWithdraw,
@@ -318,11 +319,13 @@ export class PosSync {
         return this.updateAccountVotes(accountList);
     }
     async updateDailyStat(epoch:number) {
-        const [{totalPosStakingTokens}, lockedVotes] = await Promise.all([
+        const dt = new Date();
+        const [{totalPosStakingTokens}, lockedVotes, {reward = 0, accountId:count}] = await Promise.all([
             this.cfx.getPoSEconomics(),
             PosAccount.sum('lockedVotes'),
+            calcDailyPosReward(dt),
         ])
-        const dt = new Date();
+        const avgReward = BigInt(reward) / BigInt(count || 1)
         const [affected] = await PosDailyStat.update({stakingAmount: totalPosStakingTokens, lockedVotes},
             {where: {statDay: dt}})
         if (!affected) {
@@ -330,6 +333,7 @@ export class PosSync {
                 statDay: dt,
                 stakingAmount: totalPosStakingTokens, lockedVotes,
                 createdAt: dt, updatedAt: dt, epoch,
+                totalReward: BigInt(reward), avgReward, rewardAccounts: count || 0
             })
         }
         console.log(` update daily stat done.`)

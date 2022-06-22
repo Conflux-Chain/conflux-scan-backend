@@ -1,5 +1,5 @@
 import {CfxTransfer} from "../model/CfxTransfer";
-import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes} from 'sequelize'
+import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'sequelize'
 import {Conflux, Drip} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
 import {Hex40Map, makeIdV} from "../model/HexMap";
@@ -8,6 +8,7 @@ import {IS_EVM, IS_EVM2, KV} from "../model/KV";
 import {scheduleDaily} from "./pos/PosStat";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
+    | 'DailyCfxCountToEVM' | 'DailyCfxCountFromEVM'
 export interface ICrossSpaceStat {
     id?:number; day:Date; v:number; biz: CrossSpaceStat_BIZ
 }
@@ -27,11 +28,16 @@ export class CrossSpaceStat extends Model<ICrossSpaceStat> implements ICrossSpac
         })
     }
 }
-export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossSpaceStat_BIZ, ctx:any) {
+export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossSpaceStat_BIZ,
+                                          biz3: CrossSpaceStat_BIZ, biz4: CrossSpaceStat_BIZ,
+                                          ctx:any) {
     const t = CrossSpaceStat.getTableName()
     const sql = `select day, v  from ${t} where biz='${biz1}'`
     const sql2 = `select day, v from ${t} where biz='${biz2}'`
-    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2} from (${sql}) t join (${sql2}) t2 using(day)`
+    const sql3 = `select day, v from ${t} where biz='${biz3}'`
+    const sql4 = `select day, v from ${t} where biz='${biz4}'`
+    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2}, t3.v as ${biz3}, t4.v as ${biz4
+    } from (${sql}) t join (${sql2}) t2 on t.day = t2.day join (${sql3}) t3  on t.day = t3.day join (${sql4}) t4  on t.day = t4.day `
     const list = await CrossSpaceStat.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
     })
@@ -51,18 +57,23 @@ export async function calcDailyCfxFromEvm(dt: Date) {
     const [cfx_transfer_2, full_tx] = [CfxTransfer.getTableName(), FullTransaction.getTableName()]
     // const sql = `select x.fromId, x.toId, x.value,x.type, tx.hash, tx.gasPrice
 
-    const sql = `select sum(x.value) as amt
+    const sql = `select sum(x.value) as amt, count(*) as cnt
     from ${evm}.${cfx_transfer_2} x left join ${evm}.${full_tx} tx 
     on tx.epoch=x.epoch and tx.blockPosition=x.blockIndex and tx.txPosition=x.txIndex
     where x.createdAt between ? and ? and tx.toId=${evmZeroId} and tx.gasPrice=0`
 
-    const sumV = await CfxTransfer.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true,
+    const [sumV, cnt] = await CfxTransfer.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true,
         replacements: [dayStart, dayEnd],
         // logging: console.log, benchmark: true,
-    }).then(res=>res[0]['amt'] || 0)
+    }).then(res=>{
+        return [res[0]['amt'] || 0, res[0]['cnt'] || 0]
+    })
 
     const [bean] = await CrossSpaceStat.upsert({
-        biz: "DailyCfxFromEVM", v: parseFloat(new Drip(sumV).toCFX()), day: dt,
+        biz: "DailyCfxFromEVM", v: parseFloat(new Drip(sumV||0).toCFX()), day: dt,
+    })
+    await CrossSpaceStat.upsert({
+        biz: "DailyCfxCountFromEVM", v: cnt, day: dt,
     })
     console.log(`DailyCfxFromEVM ${dt.toISOString()} ${bean?.v}`)
 }
@@ -70,12 +81,20 @@ export async function calcDailyCfxToEvm(dt: Date) {
     const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
     const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
 
-    const sumV = await CfxTransfer.sum('value', {
+    const {value:sumV, epoch: count} = await CfxTransfer.findOne({
+        attributes: [
+            [literal("sum(`value`)"), 'value'],
+            [literal(`count(*)`), 'epoch'],
+        ],
         // cfx sent from cross space contract must be sent to evm space.
-        where: {fromId: crossSpaceContractId, createdAt: {[Op.between]:[dayStart, dayEnd]}}
+        where: {fromId: crossSpaceContractId, createdAt: {[Op.between]:[dayStart, dayEnd]}},
+        raw: true,
     })
     const [bean] = await CrossSpaceStat.upsert({
-        biz: "DailyCfxToEVM", v: parseFloat(new Drip(sumV).toCFX()), day: dt,
+        biz: "DailyCfxToEVM", v: parseFloat(new Drip(sumV||0).toCFX()), day: dt,
+    })
+    await CrossSpaceStat.upsert({
+        biz: "DailyCfxCountToEVM", v: count, day: dt,
     })
     console.log(`DailyCfxToEVM ${dt.toISOString()} ${bean?.v}`)
 }
@@ -112,14 +131,18 @@ async function main() {
     const [,,cmd] = process.argv
     if (cmd === 'calcDailyCfxToEvm') {
         // node stat/dist/service/CrossSpaceStat.js calcDailyCfxToEvm
-        let dt = new Date('2022-02-21')
+        // let dt = new Date('2022-02-21')
+        let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
+        dt = new Date(dt)
         while(dt.getTime() < Date.now()) {
             await calcDailyCfxToEvm(dt)
             dt.setDate(dt.getDate() + 1)
         }
     } else if (cmd === 'calcDailyCfxFromEvm') {
         // node stat/dist/service/CrossSpaceStat.js calcDailyCfxFromEvm
-        let dt = new Date('2022-02-21')
+        // let dt = new Date('2022-02-21')
+        let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
+        dt = new Date(dt)
         while(dt.getTime() < Date.now()) {
             await calcDailyCfxFromEvm(dt)
             dt.setDate(dt.getDate() + 1)
