@@ -53,16 +53,15 @@ export class Crc20TransferQuery extends TransferQueryBase{
         }
 
         if(options?.address){
-            const base32 = format.address(options.address, StatApp.networkId);
-            const token = await Token.findOne({where:{base32}});
-            if(token?.transfer > 10000){
+            if (Object.keys(queryOptions.where).length === 1) {
+                const base32 = format.address(options.address, StatApp.networkId);
+                const token = await Token.findOne({attributes: ['transfer'], where:{base32}});
                 const rows = await Erc20Transfer.findAll(queryOptions);
                 return {count: token.transfer , rows: rows || []};
             }
+            return Erc20Transfer.findAndCountAll(queryOptions);
         }
-        if (queryOptions.skip > 10_000) {
-            throw new Error(`parameter <skip> exceeds 10000`)
-        }
+
         // either contract or address should be present. otherwise, do not count the table.
         const list = await Erc20Transfer.findAll(queryOptions);
         return {count: list.length, rows:list}
