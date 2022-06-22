@@ -96,7 +96,8 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
         })
         // query related rank info
         const rankList = await PosRewardRank.findAll({
-            where: {createdAt: max.createdAt, accountId:{[Op.in]: accountList.map(acc=>acc.id)}}
+            where: {createdAt: max.createdAt, accountId:{[Op.in]: accountList.map(acc=>acc.id)}},
+            raw: true,
         })
         const rankMap = list2map(rankList, 'accountId')
         const zero = BigInt(0)
@@ -104,7 +105,7 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
         const resultList = accountList.map(acc=>{
             let rankBean = rankMap.get(acc.id)
             if (!rankBean) {
-                rankBean =  {accountId: acc.id, createdAt: acc.createdAt, day1: zero, day14: zero, day30: zero, day7: zero};
+                rankBean =  {accountId: acc.id, createdAt: acc.createdAt, day1: zero, day14: zero, day30: zero, day7: zero, id: 0};
             }
             rankBean['accountInfo'] = acc;
             return rankBean
