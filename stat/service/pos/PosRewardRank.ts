@@ -83,7 +83,7 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
         const accountList = await PosAccount.findAll({
             where: {id: {[Op.in]: rankList.map(row=>row.accountId)}}
         })
-        const map = list2map(accountList, 'accountId')
+        const map = list2map(accountList, 'id')
         // fill account info
         rankList.forEach(row=>{
             row["accountInfo"] = map.get(row.accountId)
@@ -107,6 +107,8 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
             let rankBean = rankMap.get(acc.id)
             if (!rankBean) {
                 rankBean =  {accountId: acc.id, createdAt: acc.createdAt, day1: zero, day14: zero, day30: zero, day7: zero};
+            } else {
+                delete rankBean.id
             }
             rankBean['accountInfo'] = acc;
             return rankBean
