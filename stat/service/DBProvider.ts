@@ -71,6 +71,7 @@ import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
 import {ApiLog} from "../monitor/ApiLog";
 import {TransferCount} from "../model/TransferCount";
+import {PosRewardRank} from "./pos/PosRewardRank";
 let conf
 export function createDB(config) {
     conf = config
@@ -220,6 +221,7 @@ export async function initModel(sequelize) {
     PosRegister.register(sequelize)
     PosEpochRewardHash.register(sequelize)
     PosReward.register(sequelize)
+    PosRewardRank.register(sequelize)
     PosDailyStat.register(sequelize)
     PosDailyStatMix.register(sequelize)
     PosGap.register(sequelize)
