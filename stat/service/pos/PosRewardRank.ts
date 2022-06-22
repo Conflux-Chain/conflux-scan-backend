@@ -136,8 +136,11 @@ async function main() {
         await buildPosRewardRank()
     } else if (cmd === 'testQuery') {
         const [,,_,rankField,order] = process.argv
-        await queryPosRank(rankField as any, order as any, 0, 10)
+        await queryPosRank(rankField as any, order as any, 0, 10).then(res=>{
+            console.log(`result `, JSON.stringify(res, null, 4))
+        })
     }
+    process.exit(0)
     console.log(`done`)
 }
 if (module === require.main) {
