@@ -37,7 +37,7 @@ export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossS
     const sql3 = `select day, v from ${t} where biz='${biz3}'`
     const sql4 = `select day, v from ${t} where biz='${biz4}'`
     const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2}, t3.v as ${biz3}, t4.v as ${biz4
-    } from (${sql}) t join (${sql2}) t2 join (${sql3}) t3 join (${sql4}) t4 using(day)`
+    } from (${sql}) t join (${sql2}) t2 on t.day = t2.day join (${sql3}) t3  on t.day = t3.day join (${sql4}) t4  on t.day = t4.day `
     const list = await CrossSpaceStat.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
     })
