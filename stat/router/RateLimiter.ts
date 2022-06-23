@@ -72,14 +72,14 @@ const burstyLimiter = new BurstyRateLimiter(
         duration: 10,
     })
 );
-export async function checkAddressRate(address:string, ctx:any = {request:{}}) {
+export async function checkAddressRate(address:string, ctx:any) {
     let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
-    const {path} = ctx.request;
-    const ip = requestIp.getClientIp(ctx.request) || '-';
+    const {path} = ctx?.request;
+    const ip = requestIp.getClientIp(ctx?.request) || '-';
     try {
         await burstyLimiter.consume(address, pointsToConsume)
-        ctx.set(`pointsAddress`, pointsToConsume)
-        ctx.set(`address`, address)
+        ctx?.set(`pointsAddress`, pointsToConsume)
+        ctx?.set(`address`, address)
     } catch (e) {
         console.log(`rate limit address ${address}, ip ${ip}, points ${pointsToConsume} path ${path}`, e)
         RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
