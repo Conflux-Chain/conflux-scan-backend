@@ -72,6 +72,7 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
     if (!max) {
         return {total: 0, list: []}
     }
+    order = {asc:'asc',desc:'desc'}[order] as any || 'desc'
     if (/day(1|7|14|30)$/.test(rankField)) {
         // query from rank table
         const {count, rows:rankList} = await PosRewardRank.findAndCountAll({

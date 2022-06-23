@@ -12,8 +12,9 @@ import {
     queryDailyPosRewardAvgAccount,
     queryPosStatMix
 } from "../service/pos/PosStat";
-import {intParam, list2map} from "../service/common/utils";
+import {intParam, list2map, mustBeEnumParamIfPresent} from "../service/common/utils";
 import {Op} from "sequelize";
+import {queryPosRank} from "../service/pos/PosRewardRank";
 
 export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-pos-account-by-reward', async (ctx)=>{
@@ -124,7 +125,13 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/pos-daily-reward', async (ctx)=>{
         await queryDailyPosRewardAvgAccount(ctx, new Date('2022-02-27'))
     })
+    router.get('/pos-reward-rank', async (ctx)=>{
+        const {skip, limit} = skipLimit(ctx.request.query)
+        const {rankField, order} = ctx.request.query
+        ctx.body = await queryPosRank(rankField, order, skip, limit)
+    })
     router.get('/pos-recent-reward-rank', async (ctx)=>{
+        // deprecated
         const day = intParam(ctx.request.query, 'day', 1)
         const dt = new Date()
         dt.setDate(dt.getDate() - day)
