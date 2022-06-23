@@ -1143,6 +1143,7 @@ router.get('/transfer',
         ],
       },
       600: { code: 'integer', message: 'string' },
+      429: { code: 'integer', message: 'string' },
     },
   }),
 
