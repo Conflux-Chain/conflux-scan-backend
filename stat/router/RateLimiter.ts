@@ -75,6 +75,16 @@ const burstyLimiter = new BurstyRateLimiter(
         duration: 10,
     })
 );
+export function buildCheckAddressRateFn(addressParamName:string) {
+    return async (ctx)=>{
+        const {[addressParamName]:addr} = ctx.request;
+        console.log(`path ${ctx.path}`)
+        if (!addr) {
+            return
+        }
+        return checkAddressRate(addr, ctx);
+    }
+}
 export async function checkAddressRate(address:string, ctx:any = null) {
     let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
     const {path} = ctx?.request || {path:'-'};

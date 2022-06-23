@@ -4,7 +4,7 @@ const OpenAPI = require('koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
 const jsonrpc = require('./jsonrpc');
-
+const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -1084,6 +1084,7 @@ router.post('/token/audit',
 
 // ------------------------------- Transfer ---------------------------------
 router.get('/transfer',
+  buildCheckAddressRateFn('address'),
   OpenAPI.flow({
     tags: ['transfer'],
     input: {
