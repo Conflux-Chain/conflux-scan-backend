@@ -1,6 +1,9 @@
+import {StatApp} from "../StatApp";
+
 const requestIp = require('request-ip');
 import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'sequelize'
 import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
+import {format} from "js-conflux-sdk";
 //
 export interface IRateConfig {
     id?:number;
@@ -83,8 +86,15 @@ export async function checkAddressRate(address:string, ctx:any = null) {
     } catch (e) {
         console.log(`rate limit address ${address}, ip ${ip}, points ${pointsToConsume} path ${path}`, e)
         RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
-        const error = new Error(`Too many requests for this address [${address}]. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`);
-        error['status'] = error['code'] = 600
+        let hex = address;
+        let base32 = address;
+        try {
+            hex = format.hexAddress(address);
+            base32 = format.base32(hex, StatApp.networkId);
+        } catch (e) {
+        }
+        const error = new Error(`Too many requests for this address hex [${hex}] base32 [${base32}]. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`);
+        error['status'] = error['code'] = 429
         throw error
     }
 }

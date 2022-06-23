@@ -7,7 +7,7 @@ const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
 const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
-const { KV } = require('../stat/dist/model/KV');
+const { KV, IS_EVM2 } = require('../stat/dist/model/KV');
 const AppBase = require('../common/AppBase');
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 const countRequestByIp = require('../common/middleware/countRequestByIp');
@@ -180,6 +180,7 @@ class ApiApp extends AppBase {
     } else {
       console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
     }
+    StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     await setupEnsChecker(this.confluxSDK)
     await this.service.homeDashboard.schedule().catch(() => undefined);
     if (this.config.blacklist) {
