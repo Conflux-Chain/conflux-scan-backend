@@ -75,13 +75,13 @@ const burstyLimiter = new BurstyRateLimiter(
 export async function checkAddressRate(address:string, ctx:any = {request:{}}) {
     let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
     const {path} = ctx.request;
-    const ip = requestIp.getClientIp(ctx.request);
+    const ip = requestIp.getClientIp(ctx.request) || '-';
     try {
         await burstyLimiter.consume(address, pointsToConsume)
         ctx.set(`pointsAddress`, pointsToConsume)
         ctx.set(`address`, address)
     } catch (e) {
-        console.log(`rate limit address ${address}, ip ${ip}`)
+        console.log(`rate limit address ${address}, ip ${ip}, points ${pointsToConsume} path ${path}`, e)
         RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
         throw new Error(`Too many requests for this address. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`)
     }
@@ -97,7 +97,7 @@ export async function checkRate(ctx,next) {
         ctx?.set(`pointsIP`, pointsToConsume)
         ctx?.set(`IP`, ip)
     } catch (e) {
-        console.log(` rate limit ${ip} for ${path}, key ${key}`)
+        console.log(` rate limit ${ip} for ${path}, key ${key} points ${pointsToConsume}`, e)
         RateHit.sequelize && RateHit.create({ip, path}).catch()
         // ctx.status = 600
         ctx.body = {code: 429, message:`Too many requests. Allow ${burstyLimiter["points"] / pointsToConsume}/s`}
