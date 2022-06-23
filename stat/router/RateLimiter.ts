@@ -83,7 +83,9 @@ export async function checkAddressRate(address:string, ctx:any = null) {
     } catch (e) {
         console.log(`rate limit address ${address}, ip ${ip}, points ${pointsToConsume} path ${path}`, e)
         RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
-        throw new Error(`Too many requests for this address. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`)
+        const error = new Error(`Too many requests for this address [${address}]. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`);
+        error['code'] = 600
+        throw error
     }
 }
 export async function checkRate(ctx,next) {
