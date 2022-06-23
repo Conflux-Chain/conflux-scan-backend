@@ -42,7 +42,7 @@ const configMap = new Map<string, IRateConfig>();
 ['/open/nft/preview','/stat/nft/checker/preview'].forEach(name=>{
     configMap.set(name, {name, weight: 0.01})
 })
-
+let timer;
 export async function loadRateConfig() {
     const list = await RateConfig.findAll()
     list.forEach(c=>{
@@ -54,9 +54,9 @@ export async function loadRateConfig() {
             {name: RateConfig.addressWeightName, weight: 0.1}
         ]).then()
     }
-}
-if (RateConfig.sequelize) {
-    setInterval(loadRateConfig, 10_000)
+    if (!timer) {
+        timer = setInterval(loadRateConfig, 10_000)
+    }
 }
 // https://github.com/animir/node-rate-limiter-flexible/wiki/BurstyRateLimiter
 
