@@ -90,7 +90,7 @@ export async function checkAddressRate(address:string, ctx:any = null) {
         let base32 = address;
         try {
             hex = format.hexAddress(address);
-            base32 = format.base32(hex, StatApp.networkId);
+            base32 = format.address(hex, StatApp.networkId);
         } catch (e) {
         }
         const error = new Error(`Too many requests for this address hex [${hex}] base32 [${base32}]. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`);
