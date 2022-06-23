@@ -76,13 +76,16 @@ const burstyLimiter = new BurstyRateLimiter(
     })
 );
 export function buildCheckAddressRateFn(addressParamName:string) {
-    return async (ctx)=>{
+    return async (options, ctx)=>{
         const {[addressParamName]:addr} = ctx.request;
+        console.log(`------ options`, options)
+        console.log(`------ ctx`, ctx)
+
         console.log(`path ${ctx.path} addr ${addr}`)
         if (addr) {
             await checkAddressRate(addr, ctx);
         }
-        return ctx
+        return options
     }
 }
 export async function checkAddressRate(address:string, ctx:any = null) {
