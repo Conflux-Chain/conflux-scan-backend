@@ -97,14 +97,14 @@ export async function checkAddressRate(address:string, ctx:any = null) {
     } catch (e) {
         console.log(`rate limit address ${address}, ip ${ip}, points ${pointsToConsume} path ${path}`, e)
         RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
-        let hex = address;
-        let base32 = address;
-        try {
-            hex = format.hexAddress(address);
-            base32 = format.address(hex, StatApp.networkId);
-        } catch (e) {
-        }
-        const error = new Error(`Too many requests for this address hex [${hex}] base32 [${base32}]. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`);
+        // let hex = address;
+        // let base32 = address;
+        // try {
+        //     hex = format.hexAddress(address);
+        //     base32 = format.address(hex, StatApp.networkId);
+        // } catch (e) {
+        // } // hex [${hex}] base32 [${base32}]
+        const error = new Error(`Too many requests for this address [${address}] . Allow ${burstyLimiter["points"] / pointsToConsume}/s}`);
         error['status'] = error['code'] = 429
         throw error
     }

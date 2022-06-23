@@ -57,6 +57,7 @@ router.use(async (ctx, next) => {
     if (/[Tt]oo many requests/.test(e.message)) {
       code = 429
     }
+    ctx.status = 600;
     ctx.body = { code, message: `${e}` };
     dingTalk.sendError(e).then();
     // throw e;
