@@ -82,7 +82,7 @@ export function buildCheckAddressRateFn(addressParamName:string) {
         if (addr) {
             await checkAddressRate(addr, ctx);
         }
-        return ctx.request
+        return ctx
     }
 }
 export async function checkAddressRate(address:string, ctx:any = null) {
