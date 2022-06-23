@@ -7,7 +7,7 @@ export interface IRateConfig {
 }
 export class RateConfig extends Model<IRateConfig> implements IRateConfig{
     static defaultWeightName = 'defaultWeight'
-    static contractWeightName = 'contract'
+    static addressWeightName = 'address'
     id?:number;
     name:string; weight:number;
     static register(seq:Sequelize) {
@@ -50,7 +50,7 @@ export async function loadRateConfig() {
     if (!list.length) {
         RateConfig.bulkCreate([
             {name: RateConfig.defaultWeightName, weight: 1},
-            {name: RateConfig.contractWeightName, weight: 0.1}
+            {name: RateConfig.addressWeightName, weight: 0.1}
         ]).then()
     }
 }
@@ -71,17 +71,17 @@ const burstyLimiter = new BurstyRateLimiter(
         duration: 10,
     })
 );
-export async function checkContractRate(contract:string, ctx:any = {}) {
-    let pointsToConsume = configMap.get(RateConfig.contractWeightName)?.weight || 0.1 // 10 / 0.1 = 100
+export async function checkAddressRate(address:string, ctx:any = {}) {
+    let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
     const {ip, path} = ctx.request || {};
     try {
-        await burstyLimiter.consume(contract, pointsToConsume)
-        ctx.set(`pointsContract`, pointsToConsume)
-        ctx.set(`contract`, contract)
+        await burstyLimiter.consume(address, pointsToConsume)
+        ctx.set(`pointsAddress`, pointsToConsume)
+        ctx.set(`address`, address)
     } catch (e) {
-        console.log(`rate limit contract ${contract}, ip ${ip}`)
-        RateHit.sequelize && RateHit.create({ip, path:contract+"@"+path}).catch()
-        throw new Error(`Too many requests for this contract. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`)
+        console.log(`rate limit address ${address}, ip ${ip}`)
+        RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
+        throw new Error(`Too many requests for this address. Allow ${burstyLimiter["points"] / pointsToConsume}/s}`)
     }
 }
 export async function checkRate(ctx,next) {
