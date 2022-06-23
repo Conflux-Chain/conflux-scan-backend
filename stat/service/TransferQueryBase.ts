@@ -107,9 +107,9 @@ export abstract class TransferQueryBase {
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
-        if (address) {
-            await checkAddressRate(address)
-        }
+        // if (address) {
+            // await checkAddressRate(address)
+        // }
         // parameter
         const addressMap = {};
         await Promise.all([accountAddress, address, from, to, opponentAddress]
