@@ -1,3 +1,4 @@
+const requestIp = require('request-ip');
 import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'sequelize'
 import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
 //
@@ -73,7 +74,8 @@ const burstyLimiter = new BurstyRateLimiter(
 );
 export async function checkAddressRate(address:string, ctx:any = {}) {
     let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
-    const {ip, path} = ctx.request || {};
+    const {path} = ctx.request || {};
+    const ip = requestIp.getClientIp(ctx.request);
     try {
         await burstyLimiter.consume(address, pointsToConsume)
         ctx.set(`pointsAddress`, pointsToConsume)
@@ -85,7 +87,8 @@ export async function checkAddressRate(address:string, ctx:any = {}) {
     }
 }
 export async function checkRate(ctx,next) {
-    const {ip, path} = ctx.request;
+    const {path} = ctx.request;
+    const ip = requestIp.getClientIp(ctx.request);
     const key = ip
     // resources like nftPreview should have a small weight like 0.01.
     let pointsToConsume = configMap.get(path)?.weight || configMap.get(RateConfig.defaultWeightName)?.weight || 1

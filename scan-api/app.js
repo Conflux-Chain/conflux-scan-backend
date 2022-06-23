@@ -17,6 +17,7 @@ const router = require('./router');
 const jsonrpc = require('./router/jsonrpc');
 const { StatApp } = require('../stat/dist/StatApp');
 const {setupEnsChecker} = require("../stat/dist/service/ens/EnsService");
+const { checkRate, loadRateConfig } = require("../stat/dist/router/RateLimiter");
 const { initPartialModel } = require('../stat/dist/service/DBProvider');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
@@ -119,6 +120,8 @@ class ApiApp extends AppBase {
     // console.log(`routers :`, paths);
     apiSpec.paths = pathDef;
     this.use(countRequestByIp);
+    loadRateConfig().then()
+    this.use(checkRate)
     // metrics
     this.use(e2k(swStats.getMiddleware({
       swaggerSpec: apiSpec,
