@@ -77,9 +77,9 @@ const burstyLimiter = new BurstyRateLimiter(
 );
 export function buildCheckAddressRateFn(addressParamName:string) {
     return async (options, ctx)=>{
-        const {[addressParamName]:addr} = ctx.request;
         console.log(`------ options`, options)
         console.log(`------ ctx`, ctx)
+        const {[addressParamName]:addr} = ctx.request;
 
         console.log(`path ${ctx.path} addr ${addr}`)
         if (addr) {
