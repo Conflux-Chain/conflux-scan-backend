@@ -44,6 +44,7 @@ import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
 import {InvalidParamError, skipLimit} from "./ParamChecker";
 import {limitListOnBody} from "../service/pos/PosStat";
 import {ParameterError} from "../service/common/ConstantTS";
+import {checkRate, loadRateConfig} from "./RateLimiter";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -689,10 +690,15 @@ export function register(app:Koa, statApp: StatApp) {
             if (e instanceof InvalidParamError || /[pP]arameter.*exceeds/.test(e.message)) {
                 code = ParameterError.code
                 ctx.status = 600
+            } else if (/[Tt]oo many requests/.test(e.message)) {
+                code = 429
             }
             ctx.body = {code, message: `Error: ${e}`}
         }
     })
+    app.proxy = true
+    loadRateConfig().then()
+    router.use(checkRate)
     addRoute(router, statApp);
     registerPosRouter(router, statApp)
 

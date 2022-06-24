@@ -4,7 +4,7 @@ const OpenAPI = require('koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
 const jsonrpc = require('./jsonrpc');
-
+const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -53,7 +53,12 @@ router.use(async (ctx, next) => {
     await next();
   } catch (e) {
     console.log(` error at v1.js, [${ctx.request.url}]`, e);
-    ctx.body = { code: 500, message: `Server Error: ${e}` };
+    let code = 500
+    if (/[Tt]oo many requests/.test(e.message)) {
+      code = 429
+    }
+    ctx.status = 600;
+    ctx.body = { code, message: `${e}` };
     dingTalk.sendError(e).then();
     // throw e;
   }
@@ -1084,6 +1089,7 @@ router.post('/token/audit',
 
 // ------------------------------- Transfer ---------------------------------
 router.get('/transfer',
+  buildCheckAddressRateFn('address'),
   OpenAPI.flow({
     tags: ['transfer'],
     input: {
@@ -1143,6 +1149,7 @@ router.get('/transfer',
         ],
       },
       600: { code: 'integer', message: 'string' },
+      429: { code: 'integer', message: 'string' },
     },
   }),
 

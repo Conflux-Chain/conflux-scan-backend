@@ -7,7 +7,7 @@ const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
 const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
-const { KV } = require('../stat/dist/model/KV');
+const { KV, IS_EVM2 } = require('../stat/dist/model/KV');
 const AppBase = require('../common/AppBase');
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 const countRequestByIp = require('../common/middleware/countRequestByIp');
@@ -17,6 +17,7 @@ const router = require('./router');
 const jsonrpc = require('./router/jsonrpc');
 const { StatApp } = require('../stat/dist/StatApp');
 const {setupEnsChecker} = require("../stat/dist/service/ens/EnsService");
+const { checkRate, loadRateConfig } = require("../stat/dist/router/RateLimiter");
 const { initPartialModel } = require('../stat/dist/service/DBProvider');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
@@ -119,6 +120,8 @@ class ApiApp extends AppBase {
     // console.log(`routers :`, paths);
     apiSpec.paths = pathDef;
     this.use(countRequestByIp);
+    loadRateConfig().then()
+    this.use(checkRate)
     // metrics
     this.use(e2k(swStats.getMiddleware({
       swaggerSpec: apiSpec,
@@ -177,6 +180,7 @@ class ApiApp extends AppBase {
     } else {
       console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
     }
+    StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     await setupEnsChecker(this.confluxSDK)
     await this.service.homeDashboard.schedule().catch(() => undefined);
     if (this.config.blacklist) {

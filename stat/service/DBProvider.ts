@@ -72,6 +72,7 @@ import {ENS, SearchText} from "./ens/EnsService";
 import {ApiLog} from "../monitor/ApiLog";
 import {TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
+import {RateConfig, RateHit} from "../router/RateLimiter";
 let conf
 export function createDB(config) {
     conf = config
@@ -182,6 +183,8 @@ export async function initPartialModel(sequelize) {
     DailyTokenTransferStat.register(sequelize);
     MinerBlockStat.register(sequelize);
     Blacklist.register(sequelize);
+    RateConfig.register(sequelize);
+    RateHit.register(sequelize)
     ESpaceHex40Map.register(sequelize)
 }
 export async function initModel(sequelize) {

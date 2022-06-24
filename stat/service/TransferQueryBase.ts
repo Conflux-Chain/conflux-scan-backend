@@ -5,6 +5,7 @@ import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/H
 import {FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
+import {checkAddressRate} from "../router/RateLimiter";
 const lodash = require('lodash');
 const CONST = require('./common/constant');
 
@@ -106,7 +107,9 @@ export abstract class TransferQueryBase {
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
-
+        // if (address) {
+            // await checkAddressRate(address)
+        // }
         // parameter
         const addressMap = {};
         await Promise.all([accountAddress, address, from, to, opponentAddress]

@@ -256,5 +256,11 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         const result = await statApp.desensitizer.markBlacklist({address, remark});
         ctx.body = {code: 0, data: result};
     });
+    router.get('/devops/echo', (ctx)=>{
+        ctx.body = {
+            "headers": ctx.headers,
+            "ip": ctx.request.ip,
+        }
+    })
     console.log('devops router registered.')
 }
