@@ -1,5 +1,5 @@
-import {Block, Conflux} from "js-conflux-sdk";
-import {Transaction} from "js-conflux-sdk/types/rpc"
+import {Block, Transaction} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {Conflux} from "js-conflux-sdk"
 import {sleep} from "../service/tool/ProcessTool";
 import {patchHttpProvider} from "../service/common/utils";
 const mismatchEpochs = new Set<number>()

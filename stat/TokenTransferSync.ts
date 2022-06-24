@@ -17,7 +17,7 @@ import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
-import {TransactionReceipt} from "js-conflux-sdk/types/rpc";
+import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
 import {
     AddressErc20Transfer,
@@ -205,7 +205,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                 if (res === null && epoch === 0) {
                     res = []
                 }
-                return res;
+                return res as TransactionReceipt[][];
             }),
             cfx.getBlocksByEpochNumber(epoch),
             cfx.getBlockByEpochNumber(epoch),

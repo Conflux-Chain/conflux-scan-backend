@@ -3,20 +3,20 @@
  1 getReceiptsByEpoch, count executed tx in each block, compare with the value in full block.
  2 fix(insert) missing tx; save tracking information.
  */
-import {Transaction} from "js-conflux-sdk/types/rpc"
 import {AddressTransactionIndex, FailedTx, FullBlock, FullTransaction, IFullTransaction} from "../model/FullBlock";
-import {Conflux, TransactionReceipt, format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {Sequelize,Model,DataTypes,fn,col,Op} from "sequelize";
 import {getAddrId, makeIdV} from "../model/HexMap";
 import {FullBlockService} from "../service/FullBlockService";
 import {patchHttpProvider, removeLongData} from "../service/common/utils";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {sleep} from "../service/tool/ProcessTool";
+import {TransactionReceipt, Transaction} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 
 async function loadData(epoch: number) {
     return Promise.all([
         FullBlock.findAll({where: {epoch}, order:[['position','asc']]}),
-        cfx.getEpochReceipts(epoch),
+        cfx.getEpochReceipts(epoch).then(res=>res as TransactionReceipt[][]),
     ])
 }
 async function check(epoch:number) {
@@ -183,7 +183,7 @@ async function fixEvmPhantomTx() {
     let fixCnt = 0
     for (let i = 0; i < list.length;) {
         const tx = list[i]
-        const [receipts] = await cfx.getEpochReceipts(tx.epoch);
+        const [receipts] = await cfx.getEpochReceipts(tx.epoch) as TransactionReceipt[][];
         if (receipts.length === 0) {
             console.log(`should have receipts at epoch ${tx.epoch}`)
             process.exit(8)
