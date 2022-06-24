@@ -432,7 +432,7 @@ export interface IPosDailyStat {
     epoch:number
     createdAt: Date
     updatedAt: Date
-    stakingAmount: number
+    stakingAmount: BigInt
     lockedVotes: number;
     totalReward: bigint; avgReward: bigint; rewardAccounts: number;
     statDay: Date
@@ -442,7 +442,7 @@ export class PosDailyStat extends Model<IPosDailyStat> implements IPosDailyStat{
     epoch:number
     createdAt: Date
     updatedAt: Date
-    stakingAmount: number
+    stakingAmount: BigInt
     lockedVotes: number
     totalReward: bigint; avgReward: bigint; // avg for each account
     rewardAccounts: number; // count of account that gain reward

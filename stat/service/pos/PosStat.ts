@@ -66,7 +66,7 @@ export class PosStat {
         const posE = await this.cfx.getPoSEconomics()
         console.log(`posE`, posE)
         await PosDailyStatMix.upsert({
-            day: new Date(), v: parseFloat(new Drip(posE.totalPosStakingTokens).toCFX()), biz: 'pos_staking'
+            day: new Date(), v: parseFloat(new Drip(posE.totalPosStakingTokens.toString()).toCFX()), biz: 'pos_staking'
         })
     }
     async updateAccountCount() {

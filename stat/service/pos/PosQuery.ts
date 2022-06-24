@@ -85,7 +85,7 @@ export class PosQuery {
         if (!totalPosStakingTokens) {
             return {apy: 0, totalCirculating};
         }
-        let x = parseFloat(new Drip(totalCirculating).toCFX()) / parseFloat(new Drip(totalPosStakingTokens).toCFX());
+        let x = parseFloat(new Drip(totalCirculating.toString()).toCFX()) / parseFloat(new Drip(totalPosStakingTokens.toString()).toCFX());
         const r = baseR *  Math.sqrt(x)
         return {apy: r, totalCirculating};
     }

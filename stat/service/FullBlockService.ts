@@ -164,6 +164,7 @@ export class FullBlockService {
     }
     private async loadEpochData(minEpochNumber: number) {
         const [rewardList, hashes, latest_state, receipts] = await Promise.all([
+            // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
@@ -526,6 +527,7 @@ export class FullBlockService {
     }
     public async fillBlockReward(epoch) : Promise<{code:number, message:string}>{
         const [reward, latestConfirm, maxEpochOfBlock] = await Promise.all([
+            // @ts-ignore
             this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {

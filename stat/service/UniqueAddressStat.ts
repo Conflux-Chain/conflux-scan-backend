@@ -13,7 +13,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
 import {patchHttpProvider} from "./common/utils";
 import {PreLoader} from "./common/PreLoader";
-import {CfxLog} from "js-conflux-sdk/types/rpc";
+import {Log as CfxLog} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./tool/TokenTool";
 import {makeIdV} from "../model/HexMap";
 import {Measure} from "./common/Measure";

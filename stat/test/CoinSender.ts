@@ -49,6 +49,7 @@ async function send(i:BigInt, nonce:number) {
         // epochHeight
         // data
     };
+    // @ts-ignore
     const txHash = await cfx.sendTransaction(txParams)
     console.log(`${new Date().toISOString()} send tx hash ${txHash}`)
 }

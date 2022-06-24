@@ -138,6 +138,7 @@ export class DummyNode {
                     })
                 })
             }),
+            // @ts-ignore
             this.cfx.getBlockRewardInfo(epoch),
             // @ts-ignore
             this.cfx.getEpochReceipts(epoch),
