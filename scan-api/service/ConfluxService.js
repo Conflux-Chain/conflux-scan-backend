@@ -592,7 +592,7 @@ class ConfluxService {
           result.traceTree = tracesInTree(traceArray);
           result.addressArray = [...addressSet];
         } catch (err) {
-          return { code: 500, message: `parse traces fail:${err}` };
+          return { code: 60002, message: `parse traces fail:${err}` };
         }
         return result || {};
       },
