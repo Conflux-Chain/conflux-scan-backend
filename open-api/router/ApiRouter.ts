@@ -118,7 +118,7 @@ export async function register(app: Koa, apiServer: ApiServer) {
 }
 
 function registerRouter(router: Router) {
-    const checkAddressRateFn = buildCheckAddressRateFn('contract')
+    const checkAddressRateFn = buildCheckAddressRateFn('contract', true)
     // accounts
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)
