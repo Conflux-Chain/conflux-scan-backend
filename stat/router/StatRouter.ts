@@ -696,6 +696,7 @@ export function register(app:Koa, statApp: StatApp) {
             ctx.body = {code, message: `Error: ${e}`}
         }
     })
+    app.proxy = true
     loadRateConfig().then()
     router.use(checkRate)
     addRoute(router, statApp);

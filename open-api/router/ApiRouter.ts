@@ -61,6 +61,7 @@ import {
 import {
     mustBeAddressParamIfPresent,
 } from "../../stat/service/common/utils";
+import {buildCheckAddressRateFn, checkRate} from "../../stat/router/RateLimiter";
 
 const cors = require('@koa/cors');
 
@@ -78,6 +79,7 @@ async function getTokenInfo(ctx) {
 
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
+    app.use(checkRate)
     app.use(bodyParser())
     app.use(executionTime)
     app.use(handleException)
@@ -91,8 +93,12 @@ export async function register(app: Koa, apiServer: ApiServer) {
     let middleware = router.routes();
     app.use(middleware)
 
+    app.proxy = true
     router.get('/', async (ctx)=>{
         return root(ctx, apiServer.config.serverTag)
+    })
+    router.get('/echo', (ctx)=>{
+        ctx.body = {ip: ctx.ip, header: ctx.headers}
     })
     router.get('/favicon.ico', (ctx) => ctx.status = 204/*No Content*/);
     router.get('/version', (ctx)=>{
@@ -111,12 +117,13 @@ export async function register(app: Koa, apiServer: ApiServer) {
 }
 
 function registerRouter(router: Router) {
+    const checkAddressRateFn = buildCheckAddressRateFn('contract')
     // accounts
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)
-    router.get('/account/crc20/transfers', listAccountTransfer20)
-    router.get('/account/crc721/transfers', listAccountTransfer721)
-    router.get('/account/crc1155/transfers', listAccountTransfer1155)
+    router.get('/account/crc20/transfers', checkAddressRateFn, listAccountTransfer20)
+    router.get('/account/crc721/transfers', checkAddressRateFn, listAccountTransfer721)
+    router.get('/account/crc1155/transfers', checkAddressRateFn, listAccountTransfer1155)
     router.get('/account/tokens', listAccountAssets)
 
     // contract
@@ -132,7 +139,7 @@ function registerRouter(router: Router) {
 
     // nft assets
     router.get('/nft/balances', listNFTBalances);
-    router.get('/nft/tokens', listNFTTokens);
+    router.get('/nft/tokens', checkAddressRateFn, listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
 
     // statistics

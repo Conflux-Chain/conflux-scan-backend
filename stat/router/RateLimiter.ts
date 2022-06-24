@@ -42,7 +42,8 @@ export class RateHit extends Model<IRateHit> implements IRateHit{
 }
 //
 const configMap = new Map<string, IRateConfig>();
-['/open/nft/preview','/stat/nft/checker/preview'].forEach(name=>{
+const frequentPaths = ['/open/nft/preview','/stat/nft/checker/preview'];
+frequentPaths.forEach(name=>{
     configMap.set(name, {name, weight: 0.01})
 })
 let timer;
@@ -54,7 +55,8 @@ export async function loadRateConfig() {
     if (!list.length) {
         RateConfig.bulkCreate([
             {name: RateConfig.defaultWeightName, weight: 1},
-            {name: RateConfig.addressWeightName, weight: 0.1}
+            {name: RateConfig.addressWeightName, weight: 0.1},
+            ...frequentPaths.map(path=>{return {name: path, weight: 0.01}}),
         ]).then()
     }
     if (!timer) {

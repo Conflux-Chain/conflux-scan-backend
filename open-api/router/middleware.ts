@@ -80,6 +80,10 @@ export async function handleException(ctx, next) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, err.message)
             return
         }
+        if (/many requests/.test(err.message)){
+            setBody(ctx, undefined, CODE_RATE_LIMITED, err.toString())
+            return
+        }
         setBody(ctx, undefined, 500, err.toString())
         getApiService().logger.error(`api error ${ctx.request.url}`, err)
     })
