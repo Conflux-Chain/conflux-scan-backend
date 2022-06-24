@@ -77,15 +77,18 @@ const burstyLimiter = new BurstyRateLimiter(
         duration: 10,
     })
 );
-export function buildCheckAddressRateFn(addressParamName:string) {
-    return async (ctx)=>{
+export function buildCheckAddressRateFn(addressParamName:string, callNext = false) {
+    return async (ctx, next)=>{
         const {[addressParamName]:addr} = ctx.request.query;
 
         //console.log(`path ${ctx.path} addr ${addr}`)
         if (addr) {
             await checkAddressRate(addr, ctx);
         }
-        return ctx
+        if (callNext) {
+            return next() // for standard Koa
+        }
+        return ctx; // for the magic scan api '/v1'
     }
 }
 export async function checkAddressRate(address:string, ctx:any = null) {
