@@ -238,7 +238,7 @@ async function listTx(ctx) {
             blockHash: '',
             transactionIndex: `${item.transactionIndex}`,
             from: format.hexAddress(item.from),
-            to: format.hexAddress(item.to),
+            to: item.to ? format.hexAddress(item.to) : '',
             value: item.value,
             gas: '',
             gasPrice: item.gasPrice,
