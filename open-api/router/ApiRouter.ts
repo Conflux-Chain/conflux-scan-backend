@@ -61,7 +61,7 @@ import {
 import {
     mustBeAddressParamIfPresent,
 } from "../../stat/service/common/utils";
-import {buildCheckAddressRateFn, checkRate} from "../../stat/router/RateLimiter";
+import {buildCheckAddressRateFn, checkRate, loadRateConfig} from "../../stat/router/RateLimiter";
 
 const cors = require('@koa/cors');
 
@@ -79,6 +79,7 @@ async function getTokenInfo(ctx) {
 
 export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
+    loadRateConfig().then()
     app.use(checkRate)
     app.use(bodyParser())
     app.use(executionTime)
