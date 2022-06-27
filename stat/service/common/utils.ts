@@ -1,4 +1,4 @@
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format as sdk_format} from "js-conflux-sdk";
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 import {ScanHttpProvider} from "./ScanHttpProvider";
@@ -262,7 +262,8 @@ function formatTrace(arr: (object | Error)[]) {
         if (isError) {
             console.log('trace error:', t)
         }
-        arr[idx] = format.blockTraces(t);
+        // @ts-ignore
+        arr[idx] = sdk_format.blockTraces(t);
     })
 }
 
