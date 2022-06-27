@@ -66,7 +66,7 @@ export function patchFormat() {
             return str;
         }
     }
-    // @ts-ignore
+    // @ts-ignore  sdk_format.address
     sdk_format["address"] = safeAddress;
 }
 export function noVerboseAddr(v) {
