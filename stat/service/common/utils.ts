@@ -69,7 +69,7 @@ export function patchFormat() {
 }
 export function noVerboseAddr(v) {
     const obj = addressUtil.decodeCfxAddress(v)
-    const simple = format.address(obj.hexAddress, obj.netId)
+    const simple = sdk_format.address(obj.hexAddress, obj.netId)
     return simple;
 }
 export function skipLimit(obj) {
