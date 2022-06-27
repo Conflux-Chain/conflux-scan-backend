@@ -57,15 +57,17 @@ export function getPaginationESpace(requestObj: object, {defaultPage, maxPage, d
     return param
 }
 export function patchFormat() {
-    const fun = format.address;
-    function saveAddress(str, networkId, verbose) {
+    const fun = sdk_format.address;
+    function safeAddress(str, networkId, verbose) {
         try {
             return fun(str, networkId, verbose)
         } catch (e) {
+            console.log(`format address fail for `,str, networkId, verbose)
             return str;
         }
     }
-    format.address = saveAddress;
+    // @ts-ignore
+    sdk_format["address"] = safeAddress;
 }
 export function noVerboseAddr(v) {
     const obj = addressUtil.decodeCfxAddress(v)
