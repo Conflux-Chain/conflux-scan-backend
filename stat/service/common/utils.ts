@@ -1,5 +1,5 @@
 import {Conflux} from "js-conflux-sdk";
-const format = require('js-conflux-sdk/src/util/format');
+const format = require('js-conflux-sdk/src/rpc/types/formatter');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
