@@ -68,6 +68,7 @@ paths:
 #        - $ref: '#/components/parameters/txTypeParam'
 #        - $ref: '#/components/parameters/needAddressInfoParam'
         - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/withInputParam'
       responses:
         200:
           description: ''
@@ -1969,6 +1970,14 @@ components:
       schema:
         type: string
         default: 'DESC'
+    withInputParam:
+      description: "If return transaction's input, the value is true/false."
+      name: withInput
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
     sortByDefaultDescParam:
       description: "Sort in DESC or ASC order."
       name: sort
