@@ -112,10 +112,11 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
     console.log(` handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
     const useLegacyNftMint = await KV.getSwitch(KEY_NFT_FROM_MINT_TABLE)
     for (const contractId of mapContract2addressSet.keys()) {
+        const token = await Token.findOne({attributes: ["type", "name"], where: {hex40id: contractId}})
+        console.log(`--- process for contract ${contractId}, name [${token?.name}] ---`)
         if (!useLegacyNftMint) {
             // use erc 1155 data, only for 1155
-            const erc1155 = await Token.findOne({attributes: {exclude: ['icon']}, where: {hex40id: contractId, type: 'ERC1155'}})
-            if (erc1155) {
+            if (token?.type === 'ERC1155') {
                 console.log(`skip erc1155 ${contractId}. Sync1155data will do that.`)
                 continue
             }
@@ -133,22 +134,18 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
             continue
         }
         console.log(` find all address : ${existsAddrArr.length === addressIds.length
-        } , want ${addressIds.length} acutal ${existsAddrArr.length}`)
+        } , want ${addressIds.length} actual ${existsAddrArr.length}`)
         const addressArr = existsAddrArr.map(id=>id2hexMap.get(id)).map(h=>`0x${h}`);
         const contractHex40 = `0x${contractHex}`;
         const model = new DynamicBalanceModel(contractId)
         let banList = [];
         await fetchAll(addressArr, contractHex40, banList, cfx)
         const allIsZeroFromContract = banList.filter(Boolean).length === 0
-        if (allIsZeroFromContract) {
+        if (allIsZeroFromContract && token?.type === 'ERC721') {
             console.log(` util returns all zero, ${contractHex40}, cid ${contractId}`, banList.join(','))
             const list = await fetchNftBalanceFromDB(contractId, addressIds);
             console.log(` compute nft balance from DB, ${contractHex40} list length ${list.length}`)
-            if (list.length === 0) {
-                // should have at least one record. otherwise code below will clear associated holder.
-                console.log(`nft balance from db return 0 record. skip. ${contractHex40}`)
-                continue;
-            }
+            // When the only one user transfer out his/her last NFT, this happens. It's good case.
             const dbHits = new Set<number>();
             for (let nftMint of list) {
                 console.log(` user ${nftMint.toId} holds ${nftMint['count']} of ${contractHex40} cid ${contractId}`)
@@ -159,7 +156,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 if (dbHits.has(hexId)) {
                     continue
                 }
-                console.log(` user ${hexId} holds 0 of ${contractHex40}`)
+                console.log(` user ${hexId} holds 0 NFT of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
         } else {
