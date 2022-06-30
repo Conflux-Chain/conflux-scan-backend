@@ -20,8 +20,9 @@ export async function listAccountTransaction(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'withInput', ['false', 'true']);
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,minEpochNumber,maxEpochNumber,startBlock, endBlock, minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo} = ctx.request.query;
+    const {account: base32,minEpochNumber,maxEpochNumber,startBlock, endBlock, minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo, withInput} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
@@ -44,16 +45,18 @@ export async function listAccountTransaction(ctx) {
             tx['contractAddress'] = tx.contractCreated;
             delete tx.contractCreated;
             tx['isError'] = tx.txExecErrorMsg ? '1' : '0';
-            hashArray.push(tx.hash);
         }
+        hashArray.push(tx.hash);
     })
 
-    if (StatApp.isEVM) {
+    if (StatApp.isEVM || (!StatApp.isEVM && withInput === 'true')) {
         const resp = await getApiService().fullBlockQuery.batchGetTransactionList({hashArray});
         const {txMap} = resp;
         page?.list?.forEach(tx=>{
             tx['input'] = txMap[tx.hash]?.data;
-            tx['blockHash'] = txMap[tx.hash]?.blockHash;
+            if(StatApp.isEVM){
+                tx['blockHash'] = txMap[tx.hash]?.blockHash;
+            }
         })
     }
 

@@ -57,6 +57,7 @@ export class TokenQuery {
         // where
         const where: any = {auditResult: true};
         if (name) {
+            showDestroyed = false;
             where[Op.or] = [{name: {[Op.like]: `%${name}%`}}, {symbol: {[Op.like]: `%${name}%`}}];
         } else if (addressArray?.length) {
             addressArray = addressArray.map(item => toBase32(item));
