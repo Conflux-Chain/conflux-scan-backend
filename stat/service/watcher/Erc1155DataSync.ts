@@ -147,7 +147,10 @@ export async function fix1155data(cfx:Conflux) {
             }
             skip.add(key)
             const hex = await Hex40Map.findByPk(addrId).then(res=>`0x${res.hex}`)
-            const contractHex = await Hex40Map.findByPk(contractId).then(res=>`0x${res.hex}`)
+            if (hex === '0x0000000000000000000000000000000000000000') {
+                continue
+            }
+            const contractHex = await Hex40Map.findByPk(contractId).then(res=>`0x${res.hex}`);
             contract.address = contractHex;
             const amount = await contract.balanceOf(hex, BigInt(tokenId));
             console.log(`${hex} holds ${contractHex} ${tokenId} x ${amount}`)
