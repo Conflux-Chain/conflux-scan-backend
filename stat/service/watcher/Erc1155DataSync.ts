@@ -143,6 +143,7 @@ export async function fix1155data(cfx:Conflux) {
             if (skip.has(key)) {
                 continue
             }
+            skip.add(key)
             const hex = await Hex40Map.findByPk(addrId).then(res=>`0x${res.hex}`)
             const contractHex = await Hex40Map.findByPk(contractId).then(res=>`0x${res.hex}`)
             contract.address = contractHex;
