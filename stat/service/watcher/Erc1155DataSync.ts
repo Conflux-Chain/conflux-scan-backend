@@ -139,7 +139,7 @@ export async function fix1155data(cfx:Conflux) {
     const contract = cfx.Contract({abi: abi1155})
     const skip = new Set<string>()
     for (let transfer of list) {
-        const {contractId, fromId, toId, tokenId} = transfer;
+        const {contractId, fromId, toId, tokenId, epoch} = transfer;
         for (let addrId of [fromId, toId]) {
             const key = `${contractId}-${addrId}-${tokenId}`
             if (skip.has(key)) {
@@ -154,6 +154,10 @@ export async function fix1155data(cfx:Conflux) {
             contract.address = contractHex;
             const amount = await contract.balanceOf(hex, BigInt(tokenId));
             console.log(`${hex} holds ${contractHex} ${tokenId} x ${amount}`)
+            await Erc1155Data.upsert({
+                addressId: addrId, amount,
+                contractId, epoch: 0, latestEpoch: BigInt(epoch), tokenId: tokenId
+            })
         }
     }
     console.log(`done`)
