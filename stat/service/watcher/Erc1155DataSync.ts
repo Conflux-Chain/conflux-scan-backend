@@ -129,11 +129,13 @@ export async function rewind() {
 }
 
 export async function fix1155data(cfx:Conflux) {
+    await cfx.updateNetworkId();
     const list = await Erc1155Transfer.findAll({limit: 10_000})
     if (list.length === 10_000) {
         console.log(`too many records.`)
         process.exit(8)
     }
+    console.log(`transfer count ${list.length}`)
     const contract = cfx.Contract({abi: abi1155})
     const skip = new Set<string>()
     for (let transfer of list) {
