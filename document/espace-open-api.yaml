@@ -1425,11 +1425,11 @@ components:
     NFTBalanceList:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1463,11 +1463,11 @@ components:
     NFTTokenList:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1508,11 +1508,11 @@ components:
     NFTPreview:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             contract:
@@ -1843,11 +1843,11 @@ components:
     MarketStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             totalIssued:
@@ -1874,11 +1874,11 @@ components:
     MiningStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1902,11 +1902,11 @@ components:
     TpsStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1924,11 +1924,11 @@ components:
     ContractDeployedStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1949,11 +1949,11 @@ components:
     CfxHolderStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1971,11 +1971,11 @@ components:
     AccountGrowthStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1993,11 +1993,11 @@ components:
     AccountActiveStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2015,11 +2015,11 @@ components:
     TransactionStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2037,11 +2037,11 @@ components:
     CfxTransferStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2065,11 +2065,11 @@ components:
     TokenTransferStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2090,11 +2090,11 @@ components:
     GasUsedTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             totalGas:
@@ -2112,11 +2112,11 @@ components:
     MinerTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             minTime:
@@ -2147,11 +2147,11 @@ components:
     AddressCfxTransferTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             minTime:
@@ -2173,11 +2173,11 @@ components:
     AddressTransactionTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             minTime:
@@ -2199,11 +2199,11 @@ components:
     TokenTransferTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             list:
@@ -2219,11 +2219,11 @@ components:
     TokenSenderTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             list:
@@ -2239,11 +2239,11 @@ components:
     TokenReceiverTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             list:
@@ -2259,11 +2259,11 @@ components:
     TokenParticipantTopStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             list:
@@ -2279,11 +2279,11 @@ components:
     TokenHolderStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2301,11 +2301,11 @@ components:
     TokenTransferUniqueSenderStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2323,11 +2323,11 @@ components:
     TokenTransferUniqueReceiverStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2345,11 +2345,11 @@ components:
     TokenTransferUniqueParticipantStat:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
