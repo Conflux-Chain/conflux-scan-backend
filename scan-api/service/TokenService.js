@@ -192,7 +192,7 @@ class TokenService {
     const balanceArray = await service.conflux.getBalances(accountAddress, addressArray, utilContract);
     const balanceMap = {};
     addressArray.forEach((address, index) => {
-      const balance = balanceArray[index] || tokens[index].isNFT ? dbBalanceMap[tokens[index]?.hex40id]?.balance : 0;
+      const balance = balanceArray[index] || (tokens[index].isNFT ? dbBalanceMap[tokens[index]?.hex40id]?.balance : 0);
       if (balance) balanceMap[address] = balance;
     });
 
