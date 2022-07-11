@@ -430,12 +430,19 @@ async function run() {
         repeatSync1155data(cfx).then()
     }
     const limit = limitStr ? parseInt(limitStr) : 10_000
-    while(true) {
-        const cnt = await processContractUser(cfx, limit)
+    async function repeat() {
+        let cnt: number = 0;
+        try {
+            cnt = await processContractUser(cfx, limit);
+        } catch (e) {
+            console.log(`processContractUser error.`, e)
+        }
         if (cnt === 0) {
             await sleep(5_000);
         }
+        setTimeout(repeat, 0);
     }
+    repeat().then()
 }
 // should check rpc epoch, and only delete confirmed records.
 // in case the sync process uses a rpc with higher epoch than this program.
