@@ -26,6 +26,7 @@ import {
 } from "./PosStat";
 import {PowSidePosSync} from "./PowSidePosSync";
 import {RedisWrap} from "../RedisWrap";
+import {buildPosRewardRank} from "./PosRewardRank";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -580,6 +581,9 @@ export class PosSync {
             ])
         }).finally(()=>{
             this.dbLocked = false;
+        })
+        buildPosRewardRank().catch(err=>{
+            console.log(`buildPosRewardRank error.`, err)
         })
         return 1 // indicate increase epoch by 1
     }
