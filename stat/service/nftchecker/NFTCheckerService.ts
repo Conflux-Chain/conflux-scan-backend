@@ -155,6 +155,7 @@ export class NFTCheckerService {
         if((owner && !ownerAddressId) || (contract && !contractAddressId)) {
             return {total: 0, list: []};
         }
+        const zeroAddressId = await getAddrId(CONST.ZERO_ADDRESS);
 
         if (contractAddressId) {
             const token = await Token.findOne({
@@ -162,9 +163,10 @@ export class NFTCheckerService {
                 attributes: ['type', 'base32']
             })
             if (token) {
-                const where = {contractId: contractAddressId, addressId: ownerAddressId};
+                const where: any = {contractId: contractAddressId, addressId: ownerAddressId};
                 if (!ownerAddressId) {
                     delete where.addressId
+                    where.addressId = {[Op.ne]: zeroAddressId};
                 }
                 const page = await Erc1155Data.findAndCountAll({
                     where, raw: true,
@@ -176,12 +178,13 @@ export class NFTCheckerService {
             }
         }
 
-        const where = {};
-        if (ownerAddressId) {
-            where['toId'] = ownerAddressId
+        const where: any = {contractId: contractAddressId, toId: ownerAddressId};
+        if (!contractAddressId) {
+            delete where.contractId
         }
-        if (contractAddressId) {
-            where['contractId'] = contractAddressId
+        if (!ownerAddressId) {
+            delete where.toId
+            where.toId = {[Op.ne]: zeroAddressId};
         }
         const options: any = {
             where,

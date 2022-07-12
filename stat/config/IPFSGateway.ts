@@ -92,4 +92,5 @@ module.exports = [
     'ipfs.zod.tv',
     'gravity.jup.io',
     'fzdqwfb5ml56oadins5jpuhe6ki6bk33umri35p5kt2tue4fpws5efid.onion',
+    'cocafe.mypinata.cloud'
 ];

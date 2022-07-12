@@ -452,19 +452,26 @@ export class NFTPreviewService {
 
     private replaceGateway({gateway, rawUrl}){
         let uri = rawUrl;
-        if(uri?.startsWith('ipfs://')) {
-            uri = `https://ipfs.io/ipfs/${uri.substr(7)}`;
-        }
+
         if(uri?.startsWith('https://gateway.pinata.cloud')){
-            uri = `https://ipfs.io/ipfs/${uri.substr(34)}`;
-        }
-        if(gateway){
-            const uriSegments = gateway.split("//");
-            const gatewayExists = uriSegments?.length > 1 && this.ipfsGatewaySet.has(uriSegments[1]);
-            uri = gatewayExists ? `${gateway}${uri.substr(15)}` : uri;
+            return `https://ipfs.io/ipfs/${uri.substr(34)}`;
         }
 
-        return uri;
+        if(!uri?.startsWith('ipfs://')) {
+            return uri;
+        }
+
+        if(!gateway){
+            return `https://ipfs.io/ipfs/${uri.substr(7)}`;
+        }
+
+        const uriSegments = gateway.split("//");
+        const gatewayExists = uriSegments?.length > 1 && this.ipfsGatewaySet.has(uriSegments[1]);
+        if(!gatewayExists){
+            return `https://ipfs.io/ipfs/${uri.substr(7)}`;
+        }
+
+        return `${gateway.endsWith('/') ? gateway.substr(0, gateway.length - 1) : gateway}/ipfs/${uri.substr(7)}`;
     }
 }
 
