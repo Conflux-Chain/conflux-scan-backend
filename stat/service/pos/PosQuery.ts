@@ -11,6 +11,7 @@ import {col, fn,Op} from 'sequelize'
 import {Conflux, Drip} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
+import {Errors} from "../common/LogicError";
 const lodash = require('lodash')
 
 // noinspection CommaExpressionJS
@@ -32,7 +33,7 @@ export class PosQuery {
             if (err.message.includes('PoS chain is not enabled')) {
                 return []
             }
-            throw err;
+            throw new Errors.BizError(`posInfo error: ${err.message}`);
         })
         if (st === undefined) {
             return {

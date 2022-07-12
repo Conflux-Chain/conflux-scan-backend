@@ -1,4 +1,5 @@
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
+import {CONST} from "./common/constant"
 
 export class MarketDataQuery {
     protected app;

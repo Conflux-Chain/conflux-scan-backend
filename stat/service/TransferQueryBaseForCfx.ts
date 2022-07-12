@@ -4,7 +4,8 @@ import {Op} from "sequelize"
 import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
-const CONST = require('./common/constant');
+import {CONST} from "./common/constant"
+/*const CONST = require('./common/constant');*/
 
 export abstract class TransferQueryBaseForCfx {
     protected app;

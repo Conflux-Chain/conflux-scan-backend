@@ -1,3 +1,5 @@
+import {Errors} from "./common/LogicError";
+
 const superagent = require('superagent');
 
 export class ReportService {
@@ -28,7 +30,8 @@ export class ReportService {
         const responseText = JSON.parse(response?.text);
         if (response.status !== 200 || !responseText?.success) {
             console.error(`report fail, token:${token}, siteVerifyResponse:${response?.text}`);
-            return {code: 9999, msg: responseText['error-codes'] || 'bad-http-status'};
+            /*return {code: 9999, msg: responseText['error-codes'] || 'bad-http-status'};*/
+            throw new Errors.BizError(responseText['error-codes'] || 'bad-http-status');
         }
 
         const type = typeArray.join();
@@ -38,12 +41,13 @@ export class ReportService {
         const reportResponseText = JSON.parse(reportResponse?.text);
         if (reportResponse.status !== 200 || reportResponseText?.code !== 0) {
             console.error(`report fail, token:${token}, reportResponse:${reportResponse?.text}`);
-            return {code: 9999, msg: `${reportResponseText?.message}[${reportResponseText?.code}]` || 'bad-http-status.'};
+            /*return {code: 9999, msg: `${reportResponseText?.message}[${reportResponseText?.code}]` || 'bad-http-status.'};*/
+            throw new Errors.BizError(`${reportResponseText?.message}[${reportResponseText?.code}]` || 'bad-http-status.');
         }
 
         console.info(`report response, token:${token}, siteVerifyResponse:${response?.text}
             , reportResponse:${reportResponse?.text}`);
-        return {code: 0, msg: 'success'};
+        return {report: 'ok'};
     }
 
 }

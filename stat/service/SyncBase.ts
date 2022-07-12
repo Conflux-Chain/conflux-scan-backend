@@ -1,7 +1,8 @@
 import {sleep} from "./tool/ProcessTool";
+import {CONST} from "./common/constant"
 
 const lodash = require('lodash');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 import {Epoch} from "../model/Epoch";
 import {StatApp} from "../StatApp";
 

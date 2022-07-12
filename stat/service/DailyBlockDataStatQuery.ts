@@ -3,6 +3,7 @@ import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import { getTimeByInterval } from "./tool/DateTool";
+import {Errors} from "./common/LogicError";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -204,7 +205,7 @@ export class DailyBlockDataStatQuery {
             minTimestamp = maxTimestamp - 60 * limit;
         }
         if (maxTimestamp - minTimestamp > 3600) {
-            throw new Error(`Time scope exceeds 60 minutes under minute interval.`);
+            throw new Errors.ParameterError(`Time scope exceeds 60 minutes under minute interval.`);
         }
 
         const conditionArray = [];

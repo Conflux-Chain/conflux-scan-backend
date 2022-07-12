@@ -5,7 +5,8 @@ import {TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {StatApp} from "../StatApp";
 import {Token} from "../model/Token";
-const CONST = require('./common/constant');
+import {CONST} from "./common/constant"
+/*const CONST = require('./common/constant');*/
 
 export class Crc721TransferQuery extends TransferQueryBase{
     protected app;

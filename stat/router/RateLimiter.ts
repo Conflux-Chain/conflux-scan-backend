@@ -4,6 +4,7 @@ const requestIp = require('request-ip');
 import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'sequelize'
 import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
 import {format} from "js-conflux-sdk";
+import {Errors} from "../service/common/LogicError";
 //
 export interface IRateConfig {
     id?:number;
@@ -109,9 +110,10 @@ export async function checkAddressRate(address:string, ctx:any = null) {
         //     base32 = format.address(hex, StatApp.networkId);
         // } catch (e) {
         // } // hex [${hex}] base32 [${base32}]
-        const error = new Error(`Too many requests for this address [${address}] path ${path} . Allow ${burstyLimiter["points"] / pointsToConsume}/s`);
+        /*const error = new Error(`Too many requests for this address [${address}] path ${path} . Allow ${burstyLimiter["points"] / pointsToConsume}/s`);
         error['status'] = error['code'] = 429
-        throw error
+        throw error*/
+        throw new Errors.ApiBusyError(`Too many requests for this address [${address}] path ${path} . Allow ${burstyLimiter["points"] / pointsToConsume}/s`);
     }
 }
 export async function checkRate(ctx,next) {

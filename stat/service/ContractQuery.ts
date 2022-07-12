@@ -17,10 +17,12 @@ import {Desensitizer} from "./Desensitizer";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {EpochSync} from "./EpochSync";
 import {ProxyVerify} from "../model/ContractVerify";
+import {Errors} from "./common/LogicError";
+import {CONST} from "./common/constant"
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 const {Contract} = require("../model/Contract");
 const {ContractVerify} = require("../model/ContractVerify");
 const abi = require('./tool/abi');
@@ -438,7 +440,8 @@ export class ContractQuery {
                 optimizeFlag, optimizeRuns, license, codeHash});
 
             const creationData = await this.getCreationData({ address })
-                .catch(e => {throw new Error(`name:'CreationDataError', code:50403, error:${e}`)});
+                /*.catch(e => {throw new Error(`name:'QueryCreationDataError', code:50403, error:${e}`)});*/
+                .catch(e => {throw new Errors.QueryCreationDataError(e)});
             const result = await jsonRpc.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
                 compiler, optimizeRuns});
             result.verifyResult = this.getVerifyResult(result.matchCode);
@@ -465,8 +468,8 @@ export class ContractQuery {
 
         try{
             address = format.hexAddress(address);
-            await this.queryVerify({ address }).catch(() => {throw new Error(`the contract already verified`)});
-            const code = await sdk.getCode(address).catch(() => {throw new Error(`invalid contract's code:${code}`)});
+            await this.queryVerify({ address }).catch(() => {throw new Errors.ContractVerifyError(`the contract already verified`)});
+            const code = await sdk.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`invalid contract's code:${code}`)});
 
             const sourceCode = this.rmRedundantLicense(sourcecode);
             const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
@@ -478,7 +481,7 @@ export class ContractQuery {
                 versionSet.add(version.substring(8, version.length - 3));
             });
             if(!versionSet.has(compiler)){
-                throw new Error(`compiler version ${compiler} not exits`)
+                throw new Errors.ContractVerifyError(`compiler version ${compiler} not exits`)
             }
 
             const record = await this.addVerify({address, sourceCode, name, compiler: 'solidity', version: compiler,
@@ -498,10 +501,10 @@ export class ContractQuery {
 
         try {
             address = format.hexAddress(address);
-            await this.queryVerify({ address }).catch(() => {throw new Error(`the contract already verified`)});
-            const code = await sdk.getCode(address).catch(() => {throw new Error(`invalid contract's code:${code}`)});
+            await this.queryVerify({ address }).catch(() => {throw new Errors.ContractVerifyError(`the contract already verified`)});
+            const code = await sdk.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`invalid contract's code:${code}`)});
             const creationData = await this.getCreationData({ address })
-                .catch(e => {throw new Error(`get creation data error:${e}`)});
+                .catch(e => {throw new Errors.QueryCreationDataError(`get creation data error:${e}`)});
 
             const updateVerify = {taskStatus: CONST.TASK_STATUS.PROCESSING};
             const lockResult = await ContractVerify.update(updateVerify, {where: { id,
@@ -565,7 +568,7 @@ export class ContractQuery {
     public async checkVerifyProxy({ guid }) {
         const record = await ProxyVerify.findOne({where: {guid}, raw: true});
         if(!record) {
-            throw new Error(`guid not exist`);
+            throw new Errors.ParameterError(`guid ${guid} not exist`);
         }
 
         const implInfo =  await this.queryImplementation(record.base32);

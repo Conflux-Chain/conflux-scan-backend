@@ -43,8 +43,9 @@ import {queryEnsOfName} from "../service/ens/ENS";
 import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
 import {InvalidParamError, skipLimit} from "./ParamChecker";
 import {limitListOnBody} from "../service/pos/PosStat";
-import {ParameterError} from "../service/common/ConstantTS";
+/*import {ParameterError} from "../service/common/ConstantTS";*/
 import {checkRate, loadRateConfig} from "./RateLimiter";
+import {Errors} from "../service/common/LogicError";
 
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
@@ -56,9 +57,7 @@ export const ROUTER_PREFIX = '/stat'
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
-        ctx.body = {
-            code: 0, message: `Conflux-Stat 2021.04.08 ${statApp.config.serverTag} network id ${StatApp.networkId}`
-        }
+        ctx.body = { /*code: 0, message*/serverInfo: `Conflux-Stat 2021.04.08 ${statApp.config.serverTag} network id ${StatApp.networkId}` }
     })
     router.get('/contract/all', async (ctx)=>{
         ctx.body = {
@@ -69,7 +68,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         // not used by scan.
         const {base32} = ctx.request.query
         const list = await BalanceService.listAccountBalance(base32)
-        ctx.body = {code: 0, list}
+        ctx.body = {/*code: 0,*/list}
     })
     router.get('/tokens/nft-token-id-count', async (ctx)=>{
         // const render  = ctx.request.query.render
@@ -95,13 +94,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ).catch(err=>{
             console.log(`${ctx.request.url} fail:`, err)
         })
-        ctx.body = {code:0, list}
+        ctx.body = {/*code:0, */list}
     })
     router.get('/tokens/holder-rank', async (ctx)=>{
         const base32 = ctx.request.query.address
         const {skip, limit} = skipLimit(ctx.request.query)
         if (skip > 1000) {
-            throw new InvalidParamError(`Parameter <skip> exceeds 1000`)
+            throw new Errors.ParameterError(`Parameter <skip> exceeds 1000`)
         }
         ctx.body = {
             listLimit: 1000,
@@ -128,39 +127,39 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/tokens/list', async (ctx)=>{
-        await new Promise(async r=>{
+        /*await new Promise(async r=>{*/
             const {transferType, fields, orderBy, reverse, skip, limit} = ctx.request.query;
             const result = await statApp.tokenQuery.list({transferType, fields, orderBy, reverse, showDestroyed: false,
                 skip: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
             ctx.body = result;
-            r('ok')
+        /*    r('ok')
         }).catch(err=>{
             ctx.body = {
                 code: 500,
                 message: `${err}`
             }
-        })
+        })*/
     })
     router.get('/tokens/list/latest', async (ctx)=>{
-        await new Promise(async r=>{
+        /*await new Promise(async r=>{*/
             const {accountAddress, transferType} = ctx.request.query;
             const result = await statApp.tokenQuery.listLatest({accountAddress, transferType});
             ctx.body = result;
-            r('ok')
+         /*   r('ok')
         }).catch(err=>{
             ctx.body = {
                 code: 500,
                 message: `${err}`
             }
-        })
+        })*/
     })
     router.get('/tokens/fiat/list', async (ctx)=>{
         const fiatArray = statApp.config.quoteConvertSymbolArray;
-        ctx.body = {code:0, list: fiatArray}
+        ctx.body = {/*code:0,*/ list: fiatArray }
     })
     // token by name
     router.get('/tokens/name', async (ctx)=>{
-        await new Promise(async r=>{
+        /*await new Promise(async r=>{*/
             const {name} = ctx.request.query;
             const result = await statApp.tokenQuery.list({name});
 
@@ -170,13 +169,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             }
 
             ctx.body = result;
-            r('ok')
+        /*    r('ok')
         }).catch(err=>{
             ctx.body = {
                 code: 500,
                 message: `${err}`
             }
-        })
+        })*/
     })
     // stat over view
     router.get('/recent-overview', async (ctx)=>{
@@ -206,7 +205,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             console.log(` time cost for overview stat :, ${JSON.stringify(timeCosts)}`)
             const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer , userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
-                code: 0, stat: {
+                /*code: 0,*/ stat: {
                     cfxTxn:txCount, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
                 }, days
             }
@@ -239,9 +238,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {type, limit, lang} = ctx.request.query || {type: 'cfxSend', limit: 10, lang: 'cn'};
         const size = pickNumber(limit, 10);
         if (size > 5000) {
-            ctx.status = 600;
+/*            ctx.status = 600;
             ctx.body = {code: 600, message: 'max record exceeds 5000.'}
-            return;
+            return;*/
+            throw new Errors.ParameterError(`max record exceeds 5000.`);
         }
         const name = `${type}`
 
@@ -293,14 +293,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/get-cfx-balance-at', async ctx=>{
         const {dt, epoch, accountBase32} = ctx.request.query
         if ( (dt === undefined && epoch === undefined) || accountBase32 === undefined) {
-            ctx.body = {code: 500, message: 'miss parameter', query: ctx.request.query}
-            return
+/*            ctx.body = {code: 500, message: 'miss parameter', query: ctx.request.query}
+            return*/
+            throw new Errors.ParameterError(`miss parameter, query: ${ctx.request.query}`);
         }
         const hex = format.hexAddress(accountBase32)
         const hexBean = await Hex40Map.findOne({where:{hex: hex.substr(2)}})
         if (hexBean === null) {
-            ctx.body = {code: 501, cfx: "0", message: 'not found'}
-            return
+/*            ctx.body = {code: 501, cfx: "0", message: 'not found'}
+            return*/
+            throw new Errors.ParameterError(`${accountBase32} not found`);
         }
         let cfxByEpoch;
         if (epoch) {
@@ -325,7 +327,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 cfxByDt['epoch_dt'] = (epoch||{}).timestamp
             }
         }
-        ctx.body = {code: 0, cfxByEpoch, cfxByDt}
+        ctx.body = {/*code: 0,*/ cfxByEpoch, cfxByDt}
     })
     // miner topN
     router.get('/miner/top-by-type', async (ctx)=>{
@@ -334,7 +336,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const timeRange = BlockAndMinerSync.calculateTimeRange(list);
         const seconds = BlockAndMinerSync.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {
-            code: 0, message: 'ok',
+            /*code: 0, message: 'ok',*/
             list,
             allDifficulty,
             ...timeRange,
@@ -365,13 +367,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/daily-address-creation', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const list = await AddressStat.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
-        ctx.body = {code:0, list}
+        ctx.body = {/*code:0, */list}
     })
     // daily active address.
     router.get('/daily-active-address', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const list = await DailyActiveAddress.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
-        ctx.body = {code:0, list}
+        ctx.body = {/*code:0, */list}
     })
     // daily token stat
     router.get('/daily-token-stat', async function (ctx) {
@@ -382,39 +384,43 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             where: {base32: base32}
         });
         if (!token) {
-            ctx.body = {code: 404, message: `token not found ${base32}`}
-            return
+/*            ctx.body = {code: 404, message: `token not found ${base32}`}
+            return*/
+            throw new Errors.ParameterError(`token not found ${base32}`);
         }
         const list = await DailyToken.findAll({limit: Math.min(limit,1000), order:[['day','DESC']],
             where: {hexId: token.hex40id}})
-        ctx.body = {code:0, list, token}
+        ctx.body = {/*code:0, */list, token}
     })
     // daily cfx transfer count
     router.get('/daily-cfx-txn', async function (ctx) {
         let limit = parseInt(ctx.request.query.limit || 1000);
         const list = await DailyCfxTxn.findAll({limit: Math.min(limit,1000), order:[['day','DESC']]})
-        ctx.body = {code:0, list}
+        ctx.body = {/*code:0, */list}
     })
     // daily tx count
     router.get('/txn/daily/list', async function (ctx) {
         const {skip, limit} = ctx.request.query
         const page = await statApp.dailyTxnQuery.listTxnDaily(skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     });
     // daily cfx holder count
     router.get('/cfx_holder/daily/list', async function (ctx) {
         const {skip, limit} = ctx.request.query
         const page = await statApp.cfxHolderQuery.listCfxHolderDaily(skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     });
     // daily contract count
     router.get('/contract/daily/list', async function (ctx) {
         const {skip, limit} = ctx.request.query
         const page = await statApp.contractCreateQuery.listContractCreateDaily(skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     });
     // daily total contract count
     router.get('/contract/total/list', async function (ctx) {
@@ -434,7 +440,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             }
         }
 
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     });
     router.get('/cross-space-cfx', async (ctx)=>{
         await queryCrossSpaceStat('DailyCfxToEVM', 'DailyCfxFromEVM',
@@ -456,7 +463,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         //         (page.rows[i])['contractTotalCount'] = totalContract;
         //     }
         // }
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     });
 
     // registered contract statistic
@@ -473,21 +481,24 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 (page.rows[i])['contractTotalCount'] = totalContract;
             }
         }
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     });
 
     router.get('/contract/stat/list', async (ctx)=>{
         const {address, skip, limit} = ctx.request.query
         const page = await statApp.contractStatQuery.listStat(address, skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     })
 
     // get creat trace
     router.get('/trace/create', async function (ctx) {
         const {contract} = ctx.request.query
         const createTrace = await statApp.traceCreateQuery.query(contract);
-        ctx.body = {code: 0, data: createTrace};
+       /* ctx.body = {code: 0, data: createTrace};*/
+        ctx.body = createTrace;
     });
     // get creat trace
     router.post('/recaptcha/siteverify', async function (ctx) {
@@ -502,14 +513,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {intervalType, skip, limit} = ctx.request.query
         const page = await statApp.blockDataStatQuery.listStat(intervalType, skip? parseInt(skip): skip,
             limit ? parseInt(limit): limit);
-        ctx.body = {code: 0, data: page};
+        /*ctx.body = {code: 0, data: page};*/
+        ctx.body = page;
     })
 
     // nft preview
     router.get('/nft/checker/preview', async function (ctx) {
         const { contractAddress, tokenId} = ctx.request.query
-        const nftInfo = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: BigInt(tokenId)});
-        ctx.body = {code: 0, data: nftInfo};
+        /*const nftInfo = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: BigInt(tokenId)});
+        ctx.body = {code: 0, data: nftInfo};*/
+        ctx.body = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: BigInt(tokenId)});
     })
 
     // nft detail
@@ -517,13 +530,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const { contractAddress, tokenId} = ctx.request.query
         const nftDetail = await statApp.nftPreviewService.getNFTDetail({contractAddress, tokenId: BigInt(tokenId)});
         ctx.set('external-ms', (nftDetail?.externalMs || 0) as any)
-
-        if(nftDetail?.error){
+        ctx.body = nftDetail;
+       /* if(nftDetail?.error){
             ctx.status = 600;
             ctx.body = {code: nftDetail.code, message: nftDetail.error, data: nftDetail};
         } else{
             ctx.body = {code: 0, data: nftDetail};
-        }
+        }*/
     })
 
     // nft checker, get balances
@@ -532,13 +545,19 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         // const balanceArray = await statApp.nftCheckerService.getNFTBalances({ownerAddress});
         // const balanceArray = await getRegisterNftBalances(ownerAddress);
         const resp = await statApp.nftCheckerService.getNftBalancesForOpenApi({owner: ownerAddress, limit: 1000});
-        const balanceArray = resp.list.map(item => ({
+        /*const balanceArray = resp.list.map(item => ({
             address: item.contract,
             balance: item.balance,
             name: {zh: item.name, en: item.name},
             type: item.name,
         }));
-        ctx.body = {code: 0, data: balanceArray};
+        ctx.body = {code: 0, data: balanceArray};*/
+        ctx.body = resp.list.map(item => ({
+            address: item.contract,
+            balance: item.balance,
+            name: {zh: item.name, en: item.name},
+            type: item.name,
+        }));
     })
 
     router.get('/nft/list1155inventory', async function (ctx) {
@@ -558,8 +577,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const hex = format.hexAddress(contractAddress)
         const hexBean = await Hex40Map.findOne({where:{hex: hex.substr(2)}})
         if (hexBean === null) {
-            ctx.body = {code:0, data:{rows:[], count:0}, message: 'not found.'}
-            return
+/*            ctx.body = {code:0, data:{rows:[], count:0}, message: 'not found.'}
+            return*/
+            throw new Errors.ParameterError(`contractAddress:${contractAddress} not found.`);
         }
         const page = await NftMint.findAndCountAll({
             where: {contractId: hexBean.id},
@@ -576,7 +596,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mapProp(base32map, page.rows, 'contractId', 'contractBase32')
         mapProp(base32map, page.rows, 'toId', 'toBase32')
          */
-        ctx.body = {code: 0, data: page, hexBean, hex}
+        ctx.body = {/*code: 0, data: */page, hexBean, hex}
     })
 
     async function nftCountAndIds (ctx) {
@@ -590,7 +610,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const tokens = [];
         tokens.push(`${tokenIdArray.length}`);
         tokens.push(tokenIdArray);
-        ctx.body = {code: 0, data: tokens};
+        ctx.body = {/*code: 0, data: */total: tokens.length, list: tokens};
     }
     // nft checker, get tokens
     router.get('/nft/checker/token', nftCountAndIds )
@@ -604,10 +624,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 parseInt(skip || 0), Math.min(100, parseInt(limit || 10)))
             if (withDetail) {
                 // output updatedAt for each nft.
-                ctx.body = {code: 0, data: {total: count, list}}
+                /*ctx.body = {code: 0, data: {total: count, list}}*/
+                ctx.body = {total: count, list}
             } else {
                 // only contains token id.
-                ctx.body = {code: 0, data: [count, list.map(t => t.tokenId)]}
+                /*ctx.body = {code: 0, data: [count, list.map(t => t.tokenId)]}*/
+                ctx.body = {total: count, list: list.map(t => t.tokenId)}
             }
         } else {
             await nftCountAndIds(ctx)
@@ -630,12 +652,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/transfer/tps', async function (ctx) {
         const tps = await statApp.transferTpsService.getTps();
-        ctx.body = {code: 0, data: {...tps}};
+        /*ctx.body = {code: 0, data: {...tps}};*/
+        ctx.body = {...tps};
     });
     router.get('/transaction/pending', async function (ctx) {
         const {accountAddress} = ctx.request.query
         const result = await statApp.fullBlockQuery.listPendingTx({accountAddress});
-        ctx.body = {code: 0, data: result};
+        /*ctx.body = {code: 0, data: result};*/
+        ctx.body = result;
     });
 }
 
@@ -684,8 +708,10 @@ export function register(app:Koa, statApp: StatApp) {
     router.use(async (ctx, next)=>{
         try {
             await next();
+            ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
+                { code: 0, message: '', data: ctx.body };
         } catch (e) {
-            console.log(`error occur:`, e)
+           /* console.log(`error occur:`, e)
             let code = 500
             if (e instanceof InvalidParamError || /[pP]arameter.*exceeds/.test(e.message)) {
                 code = ParameterError.code
@@ -693,7 +719,13 @@ export function register(app:Koa, statApp: StatApp) {
             } else if (/[Tt]oo many requests/.test(e.message)) {
                 code = 429
             }
-            ctx.body = {code, message: `Error: ${e}`}
+            ctx.body = {code, message: `Error: ${e}`}*/
+            if(e.code === undefined){
+                e = new Errors.BizError(e.message);
+            }
+            ctx.status = e.status;
+            ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
+                { code: e.code, message: e.message, data: e.partialData };
         }
     })
     app.proxy = true

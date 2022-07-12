@@ -9,8 +9,9 @@ import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
 import {FullTransaction} from "../model/FullBlock";
+import {CONST} from "./common/constant"
 
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 
 export class DailyTxnSync{
 

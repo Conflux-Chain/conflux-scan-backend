@@ -10,8 +10,9 @@ import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenAutoDetect} from "../../model/TokenAutoDetect";
 import {IToken, Token} from "../../model/Token";
+import {CONST} from "../common/constant"
 const lodash = require('lodash');
-const CONST = require('../common/constant');
+/*const CONST = require('../common/constant');*/
 import {TokenQuery} from "../TokenQuery";
 import {StatApp} from "../../StatApp";
 

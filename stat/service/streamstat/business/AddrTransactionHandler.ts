@@ -5,9 +5,10 @@ import {Op, QueryTypes} from "sequelize";
 import {StatBucket} from "../StatBucket";
 import {AddrTransactionStat} from "../../../model/AddrTransactionStat";
 import {Epoch} from "../../../model/Epoch";
+import {CONST} from "../../common/constant"
 
 const lodash = require('lodash');
-const CONST = require('../../common/constant');
+/*const CONST = require('../../common/constant');*/
 
 export class AddrTransactionHandler extends StatHandler {
     protected app: any;

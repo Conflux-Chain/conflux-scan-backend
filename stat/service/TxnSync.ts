@@ -6,6 +6,7 @@ import {StatApp} from "../StatApp";
 import {FullTransaction} from "../model/FullBlock";
 import {sleep} from "./tool/ProcessTool";
 import {BlockAndMinerSync} from "./BlockAndMinerSync";
+import {Errors} from "./common/LogicError";
 const BigFixed = require('bigfixed');
 
 /**
@@ -49,10 +50,11 @@ export class TxnSync {
         try {
             beginTime = await calculateBeginTime(n, type, endTime);
         } catch (err) {
-            console.log(` error calculateBeginTime:`, err)
+/*            console.log(` error calculateBeginTime:`, err)
             return Promise.resolve({
                 code: 501, message: `${err}`
-            })
+            })*/
+            throw new Errors.ParameterError(`calculateBeginTime error: ${err.message}`);
         }
         const[{epoch:minEpoch}] = await Promise.all([
             FullTransaction.findOne({where: {createdAt:{[Op.gte]:beginTime}},
@@ -96,7 +98,7 @@ export class TxnSync {
         });
 
         let finalRet = {
-            code: 0, message: 'ok', list, sum, beginTime, endTime
+            /*code: 0, message: 'ok', */list, sum, beginTime, endTime
         };
         this.rankCache.set(cacheKey, finalRet)
         return Promise.resolve(finalRet)

@@ -15,9 +15,10 @@ import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {TokenBalance} from "../model/Balance";
 import {StatApp} from "../StatApp";
 import {Desensitizer} from "./Desensitizer";
+import {CONST} from "./common/constant"
 
 const lodash = require('lodash');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
 
 export class TokenQuery {

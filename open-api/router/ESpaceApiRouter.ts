@@ -65,10 +65,11 @@ import {
     mustBeHex64ParamIfPresent,
     mustBeIntParamIfPresent,
 } from "../../stat/service/common/utils";
+import { CONST } from '../../stat/service/common/constant';
 
 const lodash = require('lodash');
 /*const util = require('util');*/
-const CONST = require('../../stat/service/common/constant');
+/*const CONST = require('../../stat/service/common/constant');*/
 
 const EPOCH_NUMBER_LABEL_ARRAY = ['latest_mined', 'latest_state', 'latest_finalized', 'latest_confirmed',
     'latest_checkpoint', 'earliest'];

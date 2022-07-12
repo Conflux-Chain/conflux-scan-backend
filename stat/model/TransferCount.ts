@@ -17,13 +17,13 @@ import {AddressCfxTransfer} from "./CfxTransfer";
  * Transfer count cache for address.
  */
 const cache_expire_ms = 60_000
-declare type TRANSFER_TYPE = 'ERC20' | 'ERC721' | 'ERC1155' | 'CFX'
+/*declare type TRANSFER_TYPE = 'ERC20' | 'ERC721' | 'ERC1155' | 'CFX'*/
 
 export interface ITransferCount {
-    id?:number; addressId:number; type: TRANSFER_TYPE; v:number, updatedAt:Date;
+    id?:number; addressId:number; type: string; v:number, updatedAt:Date;
 }
 export class TransferCount extends Model<ITransferCount> implements ITransferCount {
-    id?:number; addressId:number; type: TRANSFER_TYPE; v:number; updatedAt:Date;
+    id?:number; addressId:number; type: string; v:number; updatedAt:Date;
     static register(seq:Sequelize) {
         TransferCount.init({
             id: {type: DataTypes.BIGINT({unsigned: true}, ), autoIncrement: true, primaryKey: true},
@@ -40,7 +40,7 @@ export class TransferCount extends Model<ITransferCount> implements ITransferCou
     }
 }
 
-export async function getAddrTransferCount(addrId: number, type:TRANSFER_TYPE) : Promise<number> {
+export async function getAddrTransferCount(addrId: number, type: string) : Promise<number> {
     const bean = await TransferCount.findOne({
         where: {addressId: addrId, type}
     })

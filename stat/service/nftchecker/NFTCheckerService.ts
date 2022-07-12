@@ -6,10 +6,11 @@ import {getNftBalances} from "../NftService";
 import {Desensitizer} from "../Desensitizer";
 import {convert2base32map, getAddrId, idHex40Map} from "../../model/HexMap";
 import {TokenBalance} from "../../model/Balance";
+import {CONST} from "../common/constant"
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
-const CONST = require('../common/constant');
+/*const CONST = require('../common/constant');*/
 
 export class NFTCheckerService {
     private scanUtilContractAddress = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh';
