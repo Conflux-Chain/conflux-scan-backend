@@ -127,7 +127,8 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/pos-reward-rank', async (ctx)=>{
         const {skip, limit} = skipLimit(ctx.request.query)
-        const {rankField, order} = ctx.request.query
+        const {orderBy: rankField, reverse} = ctx.request.query
+        const order = reverse == 'true' ? 'desc' : 'asc'
         ctx.body = await queryPosRank(rankField, order, skip, limit)
     })
     router.get('/pos-recent-reward-rank', async (ctx)=>{
