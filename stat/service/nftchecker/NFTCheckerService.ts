@@ -172,7 +172,6 @@ export class NFTCheckerService {
                     where, raw: true,
                     order:[['id','desc']], offset: skip, limit,
                     // benchmark: debug, logging: debug ? console.log : false,
-                    logging: msg => console.log(`Erc1155Data.findAndCountAll: ${msg}`),
                 })
                 const list = page?.rows?.map(item => ({contract: token.base32, tokenId: item.tokenId}))
                 return {total:  page?.count || 0, list: list || []};
