@@ -708,6 +708,7 @@ export function register(app:Koa, statApp: StatApp) {
     router.use(async (ctx, next)=>{
         try {
             await next();
+            if(ctx.type === 'text/csv') return;
             ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
                 { code: 0, message: '', data: ctx.body };
         } catch (e) {

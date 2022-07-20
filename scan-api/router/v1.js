@@ -52,6 +52,7 @@ router.use(async (ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*'); // for "swagger.io"
   try {
     await next();
+    if(ctx.type === 'application/octet-stream') return;
     ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
         { code: 0, message: '', data: ctx.body };
   } catch (e) {
