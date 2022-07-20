@@ -7,6 +7,8 @@ class ContractService { // TODO: extends AccountService
   constructor(app) {
     this.app = app;
     this.LIST_CACHE_KEY = 'ContractService.contract/list/address';
+    this.EXACT_MATCH = { matchCode: 1, matchDesc: 'Exact Match'};
+    this.SIMILAR_MATCH = { matchCode: 2, matchDesc: 'Similar Match'};
 
     const {
       app: { type },
@@ -269,7 +271,8 @@ class ContractService { // TODO: extends AccountService
     let verify = {};
     if (verified?.verifyResult) {
       verify = lodash.defaults({ exactMatch: true, optimization: verified.optimizeFlag, runs: verified.optimizeRuns },
-        lodash.pick(verified, ['name', 'compiler', 'version', 'license', 'constructorArgs']));
+        lodash.pick(verified, ['name', 'compiler', 'version', 'license', 'constructorArgs', 'matchCode', 'similarMatch']));
+      verify = lodash.assign(verify, this.convertMatchInfo(verify.matchCode));
       if (lodash.includes(fields, 'abi')) {
         announceInfo.abi = verified.abi;
       }
@@ -357,6 +360,14 @@ class ContractService { // TODO: extends AccountService
       sponsor.sponsorForGas = '';
     }
     return sponsor;
+  }
+
+  convertMatchInfo(matchStatus) {
+    const {
+      app: { CONST },
+    } = this;
+
+    return matchStatus === CONST.MATCH_STATUS.SIMILAR.matchCode ? this.SIMILAR_MATCH : this.EXACT_MATCH;
   }
 }
 
