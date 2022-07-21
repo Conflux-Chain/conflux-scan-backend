@@ -130,9 +130,10 @@ export async function verifySourcecode(ctx) {
     checkPresent({contractaddress, sourceCode, contractname, compilerversion/*, optimizationUsed, runs, licenseType*/},
         ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
 
-    optimizationUsed = optimizationUsed === undefined ||optimizationUsed === null ? 0 : optimizationUsed;
-    runs = runs === undefined ||optimizationUsed === null ? 200 : optimizationUsed;
-    licenseType = licenseType === undefined ||optimizationUsed === null ? 1 : optimizationUsed;
+    sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');
+    optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
+    runs = runs === undefined || runs === null ? 200 : Number(runs);
+    licenseType = licenseType === undefined || licenseType === null ? 1 : Number(licenseType);
 
     if(optimizationUsed !== 0 && optimizationUsed !== 1){
         throw new Error(`Invalid parameter <optimizationUsed> with value [${optimizationUsed}], expect 0 or 1`);

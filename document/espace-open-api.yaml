@@ -249,6 +249,9 @@ paths:
       requestBody:
         description: 'Verify Source Code - Source Code Submission Gist'
         content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifySourcecode'
           application/json:
             schema:
               $ref: '#/components/schemas/VerifySourcecode'
