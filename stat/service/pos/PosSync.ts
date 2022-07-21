@@ -327,7 +327,10 @@ export class PosSync {
             calcDailyPosReward(dt),
         ])
         const avgReward = BigInt(reward) / BigInt(count || 1)
-        const [affected] = await PosDailyStat.update({stakingAmount: totalPosStakingTokens, lockedVotes},
+        const [affected] = await PosDailyStat.update({
+                stakingAmount: totalPosStakingTokens, lockedVotes,
+                totalReward: BigInt(reward), avgReward, rewardAccounts: count || 0
+            },
             {where: {statDay: dt}})
         if (!affected) {
             await PosDailyStat.create({
