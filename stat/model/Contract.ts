@@ -10,6 +10,7 @@ export interface IContract{
     abi?:string
     sourceCode?:string
     icon?:number
+    destroyed?:boolean
 }
 
 export class Contract extends Model<IContract> implements IContract{
@@ -22,6 +23,7 @@ export class Contract extends Model<IContract> implements IContract{
     abi?:string
     sourceCode?:string
     icon?:number
+    destroyed?:boolean
 
     static register(seq:Sequelize) {
         Contract.init({
@@ -34,6 +36,7 @@ export class Contract extends Model<IContract> implements IContract{
             abi: {type: DataTypes.TEXT, allowNull: true, },
             sourceCode: {type: DataTypes.TEXT({length:'long'}), allowNull: true, },
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
+            destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
             tableName: 'contract',
             sequelize: seq,

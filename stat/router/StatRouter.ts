@@ -161,7 +161,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/tokens/name', async (ctx)=>{
         /*await new Promise(async r=>{*/
             const {name} = ctx.request.query;
-            const result = await statApp.tokenQuery.list({name});
+            const result = await statApp.tokenQuery.list({name, showDestroyed: false});
 
             if (StatApp.isEVM) {
                 result?.list?.forEach(item => item.address = format.hexAddress(item.address));

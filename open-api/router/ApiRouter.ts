@@ -81,7 +81,9 @@ export async function register(app: Koa, apiServer: ApiServer) {
     app.use(cors({'origin':'*'}))
     loadRateConfig().then()
     app.use(checkRate)
-    app.use(bodyParser())
+    app.use(bodyParser({
+        formLimit: '10mb',
+    }))
     app.use(executionTime)
     app.use(handleException)
 
