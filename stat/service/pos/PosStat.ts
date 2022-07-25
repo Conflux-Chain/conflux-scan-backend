@@ -101,7 +101,7 @@ export async function queryDailyPosRewardAvgAccount(ctx:any, dayCondition:Date =
         delete where.statDay
     }
     const list = await PosDailyStat.findAll({where, order: [['statDay','asc']]})
-    ctx.body = { code: 0, total:list.length, list }
+    ctx.body = { /*code: 0,*/ total:list.length, list }
     limitListOnBody(ctx)
     return list;
 }
@@ -111,7 +111,7 @@ export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = n
         delete where.day
     }
     const list = await PosDailyStatMix.findAll({where, order: [['day','asc']]})
-    ctx.body = { code: 0, total:list.length, list }
+    ctx.body = { /*code: 0,*/ total:list.length, list }
     limitListOnBody(ctx)
     return list;
 }
@@ -129,7 +129,7 @@ export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any, dayConditio
     const list = await PosDailyStatMix.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
     })
-    ctx.body = { code: 0, total:list.length, list }
+    ctx.body = { /*code: 0,*/ total:list.length, list }
     limitListOnBody(ctx)
     return list;
 }

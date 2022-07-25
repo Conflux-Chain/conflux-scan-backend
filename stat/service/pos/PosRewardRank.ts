@@ -2,6 +2,7 @@ import {col, DataTypes, QueryTypes, fn, literal, Model, Op, Sequelize} from 'seq
 import {PosAccount, PosReward} from "../../model/PoS";
 import {InvalidParamError, list2map} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
+import {Errors} from "../common/LogicError";
 
 export interface IPosRewardRank {
     id?:number; accountId:number; day1:bigint; day7: bigint; day14:bigint; day30:bigint;
@@ -116,7 +117,7 @@ export async function queryPosRank(rankField: POS_RANK_FIELD, order:'desc'|'asc'
         })
         return {total: count, list: resultList}
     }
-    throw new InvalidParamError(`invalid parameter, rank by [${rankField}]`)
+    throw new Errors.ParameterError(`invalid parameter, rank by [${rankField}]`)
 }
 export async function queryPosRewardDayN(n:number) {
     let daysAgo = new Date()

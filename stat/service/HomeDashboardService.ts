@@ -3,9 +3,10 @@ import {Hex40Map} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {ADDRESS_COUNT, CONTRACT_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {FullBlock} from "../model/FullBlock";
+import {CONST} from "./common/constant"
 
 const lodash = require('lodash');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 
 export class HomeDashboardService{
     protected app;

@@ -1,13 +1,15 @@
+import {Errors} from "../service/common/LogicError";
+
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
 	const param = {
 		skip: intParam(obj, skipKey, 0),
 		limit: intParam(obj, limitKey, defaultLimit)
 	};
 	if (param.skip > 10000) {
-		throw new Error('Parameter <skip> exceeds 10000')
+		throw new Errors.ParameterError('Parameter <skip> exceeds 10000')
 	}
 	if (param.limit > 100) {
-		throw new Error('Parameter <limit> exceeds 100')
+		throw new Errors.ParameterError('Parameter <limit> exceeds 100')
 	}
 	return param
 }
@@ -29,7 +31,7 @@ export function intParam(obj: object, key: string, defaultV: number) {
 		return defaultV
 	}
 	if (!/^[0-9]+$/.test(v)) {
-		throw new InvalidParamError(`Invalid parameter [${key}] with value[${v}]`)
+		throw new Errors.ParameterError(`Invalid parameter [${key}] with value[${v}]`)
 	}
 	let number: number;
 	try {
@@ -38,7 +40,7 @@ export function intParam(obj: object, key: string, defaultV: number) {
 		return defaultV
 	}
 	if (isNaN(number)) {
-		throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]`)
+		throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]`)
 	}
 	return number;
 }

@@ -15,9 +15,10 @@ import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
+import {CONST} from "./common/constant"
 
 const lodash = require('lodash');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 
 export class FullBlockQuery {
     protected app;

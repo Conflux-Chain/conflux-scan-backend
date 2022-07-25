@@ -3,6 +3,7 @@ import {col, fn, Op} from "sequelize";
 import {DailyCfxTxn} from "../model/CfxTransfer";
 import {DailyTokenTxn, T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
+import {Errors} from "./common/LogicError";
 
 export class DailyTxnQuery{
 
@@ -122,7 +123,7 @@ export class DailyTxnQuery{
             where: {base32: contract}
         });
         if (!token) {
-            throw new Error(`Token not found.`)
+            throw new Errors.ParameterError(`Token ${contract} not found.`)
         }
 
         const queryOptions: any = {

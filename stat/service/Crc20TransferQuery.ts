@@ -2,7 +2,8 @@
 import {format} from "js-conflux-sdk";
 import {Erc20Transfer, AddressErc20Transfer} from "../model/Erc20Transfer";
 import {TransferQueryBase} from "./TransferQueryBase";
-const CONST = require('./common/constant');
+import {CONST} from "./common/constant"
+/*const CONST = require('./common/constant');*/
 import {Token} from "../model/Token";
 import {StatApp} from "../StatApp";
 import {IndexHints} from "sequelize";

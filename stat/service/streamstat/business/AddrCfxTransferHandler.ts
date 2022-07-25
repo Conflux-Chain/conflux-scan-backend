@@ -5,9 +5,10 @@ import {BizStatInfo} from "../BizStatInfo";
 import {Epoch} from "../../../model/Epoch";
 import {AddrCfxTransferStat} from "../../../model/AddrCfxTransferStat";
 import {STREAM_STAT_ADDR_CFX_TRANSFER_Q} from "../../RedisWrap";
+import {CONST} from "../../common/constant"
 
 const lodash = require('lodash');
-const CONST = require('../../common/constant');
+/*const CONST = require('../../common/constant');*/
 
 export class AddrCfxTransferHandler extends StatHandler {
     protected app: any;

@@ -5,6 +5,7 @@ import {format} from 'js-conflux-sdk'
 import {StatApp} from "../StatApp";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {FullTransaction} from "../model/FullBlock";
+import {Errors} from "./common/LogicError";
 
 export class TxnQuery{
     static async gasUsedSum(days:number) : Promise<{txCount, gasFee}> {
@@ -24,7 +25,8 @@ export class TxnQuery{
         const def = {'24h': -1, '3d': -3, '7d': -7}
         let spanDay = def[span];
         if (spanDay === undefined) {
-            return {code: 610, message: `unknown span [${span}], support ${Object.keys(def).join(',')}`}
+            /*return {code: 610, message: `unknown span [${span}], support ${Object.keys(def).join(',')}`}*/
+            throw new Errors.ParameterError(`unknown span [${span}], support ${Object.keys(def).join(',')}`);
         }
         const list = await
             FullTransaction.findAll({
@@ -40,7 +42,7 @@ export class TxnQuery{
                 order: [[col('gas'),'desc']], limit: 10,
             });
         if (!list.length) {
-            return {code: 0, totalGas: 0, list:[]};
+            return {/*code: 0,*/ totalGas: 0, list:[]};
         }
         const sumGas = list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b);
         const hexMap = await idHex40Map(list.map(row=>row['fromId']));
@@ -48,7 +50,7 @@ export class TxnQuery{
             row['hex'] = `0x${hexMap.get(row['fromId'])}`
             row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
         })
-        return { code: 0, totalGas: sumGas, list}
+        return {/*code: 0,*/ totalGas: sumGas, list}
     }
 
     static base32(hex, networkId) {

@@ -6,8 +6,9 @@ import {FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {checkAddressRate} from "../router/RateLimiter";
+import {CONST} from "./common/constant"
 const lodash = require('lodash');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 
 export abstract class TransferQueryBase {
     protected app;

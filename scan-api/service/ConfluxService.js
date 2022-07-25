@@ -563,7 +563,7 @@ class ConfluxService {
 
   async getTransactionCFXTransferTree(transactionHash) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { confluxSDK, error, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionTraceTree(${transactionHash})`,
@@ -592,7 +592,8 @@ class ConfluxService {
           result.traceTree = tracesInTree(traceArray);
           result.addressArray = [...addressSet];
         } catch (err) {
-          return { code: 60002, message: `parse traces fail:${err}` };
+          /*return { code: 60002, message: `parse traces fail:${err}` };*/
+          throw new error.ResponseDataParsingError(`parse traces fail:${err}`);
         }
         return result || {};
       },

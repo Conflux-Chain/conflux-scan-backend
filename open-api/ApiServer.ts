@@ -30,12 +30,13 @@ import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 import {IS_EVM2, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
+import {CONST} from "../stat/service/common/constant"
 
 const Koa = require('koa');
 const app = new Koa();
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
-const CONST = require('../stat/service/common/constant');
+/*const CONST = require('../stat/service/common/constant');*/
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 
 const config = loadConfig('Prod')

@@ -3,6 +3,7 @@ const format = require('js-conflux-sdk/src/rpc/types/formatter');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
+import {Errors} from "./LogicError";
 const lodash = require('lodash');
 const addressUtil = require('js-conflux-sdk/src/util/address');
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
@@ -11,10 +12,10 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
         limit: intParam(obj, limitKey, defaultLimit)
     };
     if (param.skip > 10000) {
-        throw new Error('Parameter <skip> exceeds 10000')
+        throw new Errors.ParameterError('Parameter <skip> exceeds 10000')
     }
     if (param.limit > 100) {
-        throw new Error('Parameter <limit> exceeds 100')
+        throw new Errors.ParameterError('Parameter <limit> exceeds 100')
     }
     return param
 }
@@ -27,10 +28,10 @@ export function getPagination(requestObj: object, {defaultSkip, maxSkip, default
         limit: intParam(requestObj, 'limit', defaultLimit)
     };
     if (param.skip > maxSkip) {
-        throw new Error(`Parameter <skip> exceeds ${maxSkip}`)
+        throw new Errors.ParameterError(`Parameter <skip> exceeds ${maxSkip}`)
     }
     if (param.limit > maxLimit) {
-        throw new Error(`Parameter <limit> exceeds ${maxLimit}`)
+        throw new Errors.ParameterError(`Parameter <limit> exceeds ${maxLimit}`)
     }
     return param
 }
@@ -43,16 +44,16 @@ export function getPaginationESpace(requestObj: object, {defaultPage, maxPage, d
         offset: intParam(requestObj, 'offset', defaultOffset)
     };
     if (param.page < 1) {
-        throw new Error(`Parameter <page> starts at 1`)
+        throw new Errors.ParameterError(`Parameter <page> starts at 1`)
     }
     if (param.page > maxPage) {
-        throw new Error(`Parameter <page> exceeds ${maxPage}`)
+        throw new Errors.ParameterError(`Parameter <page> exceeds ${maxPage}`)
     }
     if (param.offset < 1) {
-        throw new Error(`Parameter <offset>'s minimum value is 1`)
+        throw new Errors.ParameterError(`Parameter <offset>'s minimum value is 1`)
     }
     if (param.offset > maxOffset) {
-        throw new Error(`Parameter <offset> exceeds ${maxOffset}`)
+        throw new Errors.ParameterError(`Parameter <offset> exceeds ${maxOffset}`)
     }
     return param
 }
@@ -84,7 +85,7 @@ export function intParam(obj: object, key: string, defaultV: number) {
         return defaultV
     }
     if (!/^[0-9]+$/.test(v)) {
-        throw new InvalidParamError(`Invalid parameter [${key}] with value[${v}]`)
+        throw new Errors.ParameterError(`Invalid parameter [${key}] with value[${v}]`)
     }
     let number: number;
     try {
@@ -93,7 +94,7 @@ export function intParam(obj: object, key: string, defaultV: number) {
         return defaultV
     }
     if (isNaN(number)) {
-        throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]`)
+        throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]`)
     }
     return number;
 }
@@ -104,14 +105,14 @@ export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
             continue
         }
         if (!/^[0-9]+$/.test(v)) {
-            throw new InvalidParamError(`Invalid parameter [${k}] with value [${v}].`)
+            throw new Errors.ParameterError(`Invalid parameter [${k}] with value [${v}].`)
         }
         obj[k] = parseInt(v);
         if (/imestamp/.test(k)) {
             let dt = new Date(v * 1000)
             const tm = dt.getTime();
             if (isNaN(tm) || dt.getFullYear() > 3000) {
-                throw new InvalidParamError(`Invalid timestamp parameter (in second format) [${k}] with value [${v}].`)
+                throw new Errors.ParameterError(`Invalid timestamp parameter (in second format) [${k}] with value [${v}].`)
             }
         }
     }
@@ -125,7 +126,7 @@ export function mustBeEnumParamIfPresent(obj, key: string, options:string[]) {
     if (has) {
         return
     }
-    throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
+    throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
 }
 export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[]) {
     for (const key of keys) {
@@ -137,7 +138,7 @@ export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[
         if (has) {
             return
         }
-        throw new InvalidParamError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
+        throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
     }
 }
 export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
@@ -150,14 +151,14 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
             continue // hex 40
         }
         if (!isValidCfxAddress(v)) {
-            throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}].`);
+            throw new Errors.ParameterError(`Invalid address parameter [${k}] with value [${v}].`);
         }
         const addr = decodeCfxAddress(v)
         if (addr.netId !== netId) {
-            throw new InvalidParamError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
+            throw new Errors.ParameterError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
         }
         if (/contract/.test(k) && addr.type !== 'contract') {
-            throw new InvalidParamError(`Invalid contract parameter [${k
+            throw new Errors.ParameterError(`Invalid contract parameter [${k
             }] with value [${v}], type [${addr.type}], it's not a contract address.`);
         }
     }
@@ -169,7 +170,7 @@ export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
             continue
         }
         if (!/0x[0-9a-fA-F]{64}/.test(v)) {
-            throw new InvalidParamError(`Invalid Hex64 parameter with value [${v}].`);
+            throw new Errors.ParameterError(`Invalid Hex64 parameter with value [${v}].`);
         }
     }
 }
@@ -177,7 +178,7 @@ export function checkPresent(options, fieldArray){
     lodash.forEach(options, (value, key) => {
         if(lodash.includes(fieldArray, key)){
             if(value === undefined || value === null){
-                throw new InvalidParamError(`Invalid ${key} parameter with value [${value}], ${key} is required.`);
+                throw new Errors.ParameterError(`Invalid ${key} parameter with value [${value}], ${key} is required.`);
             }
         }
     });

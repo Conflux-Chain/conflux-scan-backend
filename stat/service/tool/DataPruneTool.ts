@@ -13,7 +13,8 @@ import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {PruneBase} from "../prune/PruneBase";
 import {sleep} from "./ProcessTool";
-const CONST = require('../common/constant');
+import {CONST} from "../common/constant"
+/*const CONST = require('../common/constant');*/
 
 let config:StatConfig;
 let cfx:Conflux;

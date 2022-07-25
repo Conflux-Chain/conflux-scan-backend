@@ -16,6 +16,7 @@ const BigFixed = require('bigfixed');
 import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {TokenQuery} from "../TokenQuery";
+import {Errors} from "../common/LogicError";
 
 export class BalanceService {
     private app: StatApp;
@@ -79,12 +80,13 @@ export class BalanceService {
         }
         let table = BalanceWatcher.mapModel('', true, token.hex40id);
         if (table == null) {
-            return {total: 0, list:[], message: 'token not found '+base32, code: 6404}
+            /*return {total: 0, list:[], message: 'token not found '+base32, code: 6404}*/
+            throw new Errors.ParameterError(`token ${base32} not found`);
         }
         const start = Date.now()
         const total = await table.count()
         if (total == 0) {
-            return {total: 0, list:[], code: 0, table: table.getTableName()}
+            return {total: 0, list:[], /*code: 0,*/ table: table.getTableName()}
         }
         const list = await table.findAll({
             // max decimal 65 // https://dev.mysql.com/doc/refman/5.7/en/fixed-point-types.html
@@ -138,7 +140,7 @@ export class BalanceService {
             }
         }
 
-        return {total, list: retList, code: 0, skip, limit, table: table.getTableName(), holderQuery:elapsed}
+        return {total, list: retList, /*code: 0,*/ skip, limit, table: table.getTableName(), holderQuery:elapsed}
     }
 
     zeros = '00000000000000000000000'

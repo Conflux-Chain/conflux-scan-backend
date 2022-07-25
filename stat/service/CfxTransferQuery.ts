@@ -4,7 +4,9 @@ import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "../model/KV";
 import {Op} from "sequelize";
 import {TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
-const CONST = require('./common/constant');
+import {CONST} from "./common/constant"
+import {Errors} from "./common/LogicError";
+/*const CONST = require('./common/constant');*/
 
 export class CfxTransferQuery extends TransferQueryBase{
     protected app;
@@ -140,6 +142,6 @@ export class CfxTransferQuery extends TransferQueryBase{
     }
 
     public async doQueryAccountAddress(options: any, queryOptions: any): Promise<any> {
-        throw new Error(`${this.getTransferType()} no need count account address!`);
+        throw new Errors.ParameterError(`${this.getTransferType()} no need count account address!`);
     }
 }

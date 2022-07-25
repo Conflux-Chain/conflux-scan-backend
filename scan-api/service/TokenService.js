@@ -161,7 +161,7 @@ class TokenService {
     options.orderBy = options.orderBy || 'transferCount'
     const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
     if (!order) {
-      throw new Error(`Invalid order by. Only supports one of ['transferCount', 'holderCount'], got [${options.orderBy}]`)
+      throw new error.ParameterError(`Invalid order by. Only supports one of ['transferCount', 'holderCount'], got [${options.orderBy}]`)
     }
     const tokenList = await Token.findAll({
       attributes: ['base32'],

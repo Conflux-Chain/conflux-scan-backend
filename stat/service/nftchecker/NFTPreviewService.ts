@@ -6,12 +6,14 @@ import {Hex40Map} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
 import {QueryTypes} from "sequelize";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {Errors} from "../common/LogicError";
+import {CONST} from "../common/constant"
 
 const lodash = require('lodash');
 const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
 const {put,get, clear} = require('./MetaInfoCache')
-const CONST = require('../common/constant');
+/*const CONST = require('../common/constant');*/
 const IPFS_GATEWAY_ARRAY = require('../../config/IPFSGateway');
 const TIMEOUT_CONN = 30000;
 const TIMEOUT_READ = 60000;
@@ -38,18 +40,24 @@ export class NFTPreviewService {
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
         const token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
-        if(!token) return {code: CONST.ERROR.FailedToQueryNFTMetadata.code, error: `${contractAddress} not detected as a token`};
-        const start = Date.now()
-        const nftInfo = await this.getNFTInfo0({address, tokenId, type: token.type, gateway: token.ipfsGateway});
-        if(nftInfo) nftInfo.externalMs = Date.now() - start
-
-        if(withDetail){
-            const detail = await this.getDetailInfo({address, hex40id: token.hex40id, tokenId, type: token.type});
-            lodash.assign(nftInfo, detail);
+        if(!token) {
+            throw new Errors.NotTokenError('${contractAddress} not detected as a token');
         }
 
-        if(!nftInfo || nftInfo.error) {
-            return nftInfo;
+        let detail;
+        if(withDetail){
+            detail = await this.getDetailInfo({address, hex40id: token.hex40id, tokenId, type: token.type});
+        }
+
+        let nftInfo;
+        try{
+            const start = Date.now();
+            nftInfo = await this.getNFTInfo0({address, tokenId, type: token.type, gateway: token.ipfsGateway});
+            nftInfo.externalMs = Date.now() - start;
+            lodash.assign(nftInfo, detail);
+        } catch(e){
+            e.partialData = lodash.assign(e.partialData, detail);
+            throw e;
         }
 
         nftInfo.imageName.zh = Desensitizer.mosaicStr(address, nftInfo.imageName.zh);
@@ -326,7 +334,8 @@ export class NFTPreviewService {
                         let zh;
                         if (meta?.localization?.uri) { // try 1155
                             const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
-                            const response = await superagent.get(zhUri);
+                            const response = await superagent.get(zhUri).timeout({response: TIMEOUT_CONN, deadline: TIMEOUT_READ})
+                                .catch(e => {throw new Errors.QueryNFTLocalNameError(`${zhUri} ${e.message}`)});
                             const responseObj = JSON.parse(response.text);
                             zh = responseObj.name;
                         }
@@ -341,7 +350,6 @@ export class NFTPreviewService {
     private async getNFTImage({address, tokenId, gateway, method = 'uri', height = 200, uriFormatter}:
         { address: string, tokenId: BigInt, gateway?: string, method?: string, height?: number, uriFormatter?: any}
     ): Promise<NFTInfoType> {
-        const { ERROR } = CONST;
         let rawUrl;
         let gatewayUrl;
         let rawMeta;
@@ -349,9 +357,6 @@ export class NFTPreviewService {
         let imageUri;
         let imageName;
         let imageDesc;
-        let detail;
-        let error;
-        let code;
 
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
@@ -363,7 +368,7 @@ export class NFTPreviewService {
             // get uri
             const contract = await this.cfx.Contract({ abi, address });
             rawUrl = await contract[method](tokenId)
-                .catch(e => {code = ERROR.FailedToCallNFTContract.code; throw e;});
+                .catch(e => { throw new Errors.CallNFTContractError(`call ${method}(${tokenId}) ${e.message}`)});
             rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
             gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
@@ -374,14 +379,13 @@ export class NFTPreviewService {
                 rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
             } else{
                 const resp = await superagent.get(gatewayUrl).timeout({response: TIMEOUT_CONN, deadline: TIMEOUT_READ})
-                    .catch(e => {code = ERROR.FailedToQueryNFTMetadata.code; throw e;});
+                    .catch(e => {throw new Errors.QueryNFTMetadataError(`${gatewayUrl} ${e.message}`)});
                 rawMeta = resp.text;
             }
             try{
                 rawMeta = JSON.parse(rawMeta);
             }catch (e) {
-                code = ERROR.FailedToParseNFTMetadata.code;
-                throw e;
+                throw new Errors.ParseNFTMetadataError(e.message);
             }
             meta = {...rawMeta};
 
@@ -391,37 +395,34 @@ export class NFTPreviewService {
             imageUri = this.replaceGateway({gateway, rawUrl: imageUri});
             imageName = await this.getNFTName({address, meta}) || {};
             imageDesc = meta.description;
-            if(!imageUri) throw new Error('image not found');
-            if(!imageName) throw new Error('name not found');
+            if(!imageUri) throw new Errors.MetadataPropertyError('image not found');
+            if(!imageName) throw new Errors.MetadataPropertyError('name not found');
 
         } catch (e) {
-            code = !code ? ERROR.BizError.code : code;
-            error = e?.message?.substr(0, 255);
-            if(code === ERROR.FailedToCallNFTContract.code){
-                error = `call ${method}(${tokenId}) ${error}`;
+            if(e.code === undefined) {
+                e = new Errors.QueryNFTError(e?.message?.substr(0, 255));
             }
-            if(code === ERROR.FailedToQueryNFTMetadata.code){
-                error = `${gatewayUrl} ${error}`;
-            }
-        } finally {
-            detail = {
-                funcCall: `${method}(${tokenId})`,
-                tokenUri: {raw: rawUrl, gateway: gatewayUrl !== rawUrl ? gatewayUrl : ''},
-                metadata: rawMeta
-            };
-            !error && this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail});
+            e.partialData = this.buildNFTPreview({imageUri, imageName, imageDesc,
+                method, tokenId, rawUrl, gatewayUrl, rawMeta});
+            throw e;
         }
 
-        return {
-            imageMinHeight: error ? undefined : height,
-            imageUri,
-            imageName,
-            imageDesc,
-            code,
-            error,
-            detail,
-        };
+        const preview = this.buildNFTPreview({imageUri, imageName, imageDesc, imageHeight: height,
+            method, tokenId, rawUrl, gatewayUrl, rawMeta});
+        this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail: preview.detail});
+        return preview;
     };
+
+    private buildNFTPreview({imageUri, imageName, imageDesc, imageHeight = undefined,
+        method, tokenId, rawUrl, gatewayUrl, rawMeta}){
+        const  detail = {
+            funcCall: `${method}(${tokenId})`,
+            tokenUri: {raw: rawUrl, gateway: gatewayUrl !== rawUrl ? gatewayUrl : ''},
+            metadata: rawMeta
+        };
+
+        return { imageUri, imageName, imageDesc,imageMinHeight: imageHeight, detail};
+    }
 
     private getNFTCacheInfo({ address, tokenId}:
         { address: string, tokenId: BigInt }

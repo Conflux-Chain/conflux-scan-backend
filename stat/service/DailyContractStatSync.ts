@@ -9,9 +9,10 @@ import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {makeId} from "../model/HexMap";
+import {CONST} from "./common/constant"
 
 const lodash = require('lodash');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 
 export class DailyContractStatSync {
     private sequelize: Sequelize;

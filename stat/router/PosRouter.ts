@@ -20,7 +20,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-pos-account-by-reward', async (ctx)=>{
         const page = await statApp.posQuery.listPosAccount({sortBy: 'totalReward', limit: 100})
         ctx.body = {
-            code: 0, message: 'ok',
+            /*code: 0, message: 'ok',*/
             list: page.rows, total: page.count,
         }
     })
@@ -33,7 +33,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         }
         const page = await statApp.posQuery.listPosAccountWithCurrentCommittee(p)
         ctx.body = {
-            code: 0, message: 'ok',
+            /*code: 0, message: 'ok',*/
             list: page.rows,
             total: page.count,
         }
@@ -44,13 +44,13 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {count: total, rows: list} = await statApp.posQuery.listPosAccountReward({identifier, skip, limit,
             orderBy: orderBy === 'createdAt' ? 'epoch' : orderBy, order: reverse === 'true' ? 'desc' : 'asc'});
         ctx.body = {
-            code: 0, total, list, listLimit:10_000,
+            /*code: 0,*/ total, list, listLimit:10_000,
         }
     })
     router.get('/pos-account-detail', async (ctx)=>{
         const {identifier} = ctx.request.query
         ctx.body = {
-            code: 0, ...await statApp.posQuery.getAccountDetail(identifier)
+            /*code: 0,*/ ...await statApp.posQuery.getAccountDetail(identifier)
         }
     })
     router.get('/pos-info', async (ctx)=>{
@@ -61,7 +61,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {skip,limit} = skipLimitAny(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listBlock({skip, limit});
         ctx.body = {
-            code: 0, total, list
+            /*code: 0,*/ total, list
         }
     })
     router.get('/list-pos-tx', async (ctx)=>{
@@ -69,7 +69,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {skip,limit} = skipLimitAny(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listTx({skip, limit});
         ctx.body = {
-            code: 0, total, list
+            /*code: 0,*/ total, list
         }
     })
     router.get('/list-account-vote-history', async (ctx)=>{
@@ -78,21 +78,21 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         const {count: total, rows: list} = await statApp.posQuery.listAccountVoteHistory({skip, limit, identifier,
             orderBy: orderBy === 'createdAt' ? 'blockNumber' : orderBy, order: reverse === 'true' ? 'desc':'asc'});
         ctx.body = {
-            code: 0, total, list, listLimit:10_000,
+            /*code: 0,*/ total, list, listLimit:10_000,
         }
     })
     router.get('/list-pos-committee', async (ctx)=>{
         const {skip,limit} = skipLimit(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listCommittee({skip, limit});
         ctx.body = {
-            code: 0, total, list
+            /*code: 0,*/ total, list
         }
     })
     router.get('/list-tx-by-pos-height', async (ctx)=>{
         const {skip,limit} = skipLimit(ctx.request.query)
         const {height} = ctx.request.query;
         const {count: total, rows: list} = await statApp.posQuery.listTxInBlock({skip, limit, blockHeight: height});
-        ctx.body = { code: 0, total, list }
+        ctx.body = { /*code: 0,*/ total, list }
     })
     router.get('/pos-daily-staking', async (ctx)=>{
         const list = await PosDailyStat.findAll({attributes: ['stakingAmount','statDay'],
@@ -101,7 +101,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
             row['v'] = parseFloat(new Drip(row.stakingAmount.toString()).toCFX())
             delete row.stakingAmount
         })
-        ctx.body = {code: 0, list, total: list.length}
+        ctx.body = {/*code: 0,*/ list, total: list.length}
         limitListOnBody(ctx)
     })
     router.get('/pos-daily-apy', async (ctx)=>{
@@ -144,11 +144,11 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         list.forEach(row=>{
             row["accountInfo"] = map.get(row.accountId)
         })
-        ctx.body = {code: 0, list, total: list.length}
+        ctx.body = {/*code: 0,*/ list, total: list.length}
     })
     router.get('/list-pos-daily-stat', async (ctx)=>{
         const {skip,limit} = skipLimit(ctx.request.query)
         const {count: total, rows: list} = await statApp.posQuery.listPosDailyStat({skip, limit});
-        ctx.body = { code: 0, total, list }
+        ctx.body = { /*code: 0,*/ total, list }
     })
 }

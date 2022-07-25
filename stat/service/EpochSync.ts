@@ -19,10 +19,11 @@ import {TransferTpsService} from "./TransferTpsService";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
+import {CONST} from "./common/constant"
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
-const CONST = require('./common/constant');
+/*const CONST = require('./common/constant');*/
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
 const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl', 'marketCapId', 'moonDexSymbol', 'binanceSymbol'];

@@ -21,8 +21,9 @@ import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {StatApp} from "./StatApp";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
+import {CONST} from "./service/common/constant"
 
-const CONST = require('./service/common/constant');
+/*const CONST = require('./service/common/constant');*/
 
 const waitUpdateTransferTokens = {
     hex40ids: new Set<number>()

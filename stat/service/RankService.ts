@@ -21,6 +21,7 @@ import {DailyToken} from "../model/Token";
 import {PruneInfo} from "../model/PruneInfo";
 import {topUnique} from "./UniqueAddressStat";
 import {IS_EVM, KV} from "../model/KV";
+import {Errors} from "./common/LogicError";
 
 export class RankService{
     private app: StatApp;
@@ -177,7 +178,8 @@ export class RankService{
             const day = parseInt(span[0])
             return this.rankTokenUniqueAddr({day, which})
         } else {
-            return {code: 40400, message: 'no support.', type}
+            /*return {code: 40400, message: 'no support.', type}*/
+            throw new Errors.ParameterError(`type=${type} not supported`);
         }
     }
     async fillInfo(list:any[], networkId) {
@@ -199,7 +201,7 @@ export class RankService{
             item.name = item.contractInfo.name || item.tokenInfo.name;
         });
 
-        return {code: 0, total: list.length, list, msg:'v2'};
+        return {/*code: 0,*/ total: list.length, list, msg:'v2'};
     }
 }
 

@@ -96,10 +96,7 @@ class ContractService { // TODO: extends AccountService
 
   async verify({ address, ...rest }) {
     const {
-      app: {
-        error: {CreationDataError},
-        syncSDK, service, logger
-      },
+      app: { error, syncSDK, service, logger},
     } = this;
 
     let { name, sourceCode, compiler, optimizeRuns, license, constructorArgs } = rest;
@@ -122,7 +119,7 @@ class ContractService { // TODO: extends AccountService
       const record = await service.contractRdb.addVerify({ address, sourceCode, name, compiler: 'solidity',
         version: compiler, optimizeFlag, optimizeRuns, license, codeHash });
 
-      const creationData = await this.getCreationData({ address }).catch(e => {throw new CreationDataError(e)});
+      const creationData = await this.getCreationData({ address }).catch(e => {throw new error.QueryCreationDataError(e)});
       const result = await syncSDK.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
         compiler, optimizeRuns});
       result.verifyResult = this._getVerifyResult(result.matchCode);
@@ -153,10 +150,7 @@ class ContractService { // TODO: extends AccountService
 
   async listVerify({ addressArray, skip, limit, reverse }) {
     const {
-      app: {
-        CONST, error: {CreationDataError},
-        service, syncSDK, type, logger
-      },
+      app: {CONST, error, service, syncSDK, type, logger},
     } = this;
     const result = await service.contractRdb.listVerify({ addressArray, skip, limit, reverse });
 
@@ -175,7 +169,7 @@ class ContractService { // TODO: extends AccountService
           continue;
         }
 
-        const creationData = await this.getCreationData({ address }).catch(e => {throw new CreationDataError(e)});
+        const creationData = await this.getCreationData({ address }).catch(e => {throw new error.QueryCreationDataError(e)});
         const code = await service.conflux.getCode(address);
         // console.log(`[${address}][cntr=${tmpCntr}]recompile-1------creationData.len:${creationData?.length || 0}---`);
 

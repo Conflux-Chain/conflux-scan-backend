@@ -4,6 +4,7 @@ const OpenAPI = require('koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
 const jsonrpc = require('./jsonrpc');
+const {StatApp} = require("../../stat/dist/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
 const openAPI = new OpenAPI({
   info: {
@@ -51,8 +52,11 @@ router.use(async (ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*'); // for "swagger.io"
   try {
     await next();
+    /*if(ctx.type === 'application/octet-stream') return;
+    ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
+        { code: 0, message: '', data: ctx.body };*/
   } catch (e) {
-    console.log(` error at v1.js, [${ctx.request.url}]`, e);
+   /* console.log(` error at v1.js, [${ctx.request.url}]`, e);
     let code = 500
     if (/[Tt]oo many requests/.test(e.message)) {
       code = 429
@@ -60,7 +64,13 @@ router.use(async (ctx, next) => {
     ctx.status = 600;
     ctx.body = { code, message: `${e}` };
     dingTalk.sendError(e).then();
-    // throw e;
+    throw e;*/
+    if(e.code === undefined){
+      e = new error.BizError(e.message);
+    }
+    ctx.status = e.status;
+    ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
+        { code: e.code, message: e.message, data: e.partialData };
   }
 });
 router.get('/', function (ctx) {

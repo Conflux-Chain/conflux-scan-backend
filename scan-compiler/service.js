@@ -171,11 +171,7 @@ class SolCompileService {
   // --------------------------------------------------------------------------
   async verifyPlus({ address, creationData, deployedBytecode, name, ...options }) {
     const {
-      app: {
-        CONST: {MATCH_STATUS},
-        error: {CompilerError, ExtractMetadataError, ContractNameError},
-        type, logger
-      },
+      app: {CONST: {MATCH_STATUS}, error, type, logger},
     } = this;
 
     const match = {
@@ -195,9 +191,9 @@ class SolCompileService {
       return match;
     }
 
-    const metadata = await this.extractMetadata(deployedBytecode).catch(e => {throw new ExtractMetadataError(e)});
+    const metadata = await this.extractMetadata(deployedBytecode).catch(e => {throw new error.ExtractMetadataError(e)});
     options.version = type.solcVersion(metadata.solc) || options.compiler;
-    const {contracts, version, warnings, errors} = await this.compile(options).catch(e => {throw new CompilerError(e)});
+    const {contracts, version, warnings, errors} = await this.compile(options).catch(e => {throw new error.CompilerError(e)});
     lodash.assign(match, {version, warnings, errors});
     if (errors?.length) {
       lodash.assign(match, MATCH_STATUS.ERROR);
@@ -206,7 +202,7 @@ class SolCompileService {
 
     const recompiled = contracts[name];
     if (!recompiled) {
-      throw new ContractNameError(`can not found contract:${name} in ${JSON.stringify(Object.keys(contracts))}`);
+      throw new error.ContractNameError(`can not found contract:${name} in ${JSON.stringify(Object.keys(contracts))}`);
     }
     lodash.assign(match, lodash.pick(recompiled, ['abi', 'creationBytecode']));
     const encodedConstructorArgs = extractEncodedConstructorArgs(creationData, recompiled.creationBytecode);

@@ -41,7 +41,7 @@ export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossS
     const list = await CrossSpaceStat.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
     })
-    ctx.body = { code: 0, total:list.length, list }
+    ctx.body = { /*code: 0,*/ total:list.length, list }
     return list;
 }
 let evmZeroId = 0
