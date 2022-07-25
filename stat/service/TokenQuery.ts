@@ -57,7 +57,6 @@ export class TokenQuery {
         // where
         const where: any = {auditResult: true};
         if (name) {
-            showDestroyed = false;
             where[Op.or] = [{name: {[Op.like]: `%${name}%`}}, {symbol: {[Op.like]: `%${name}%`}}];
         } else if (addressArray?.length) {
             addressArray = addressArray.map(item => toBase32(item));
@@ -125,6 +124,9 @@ export class TokenQuery {
         if(name){// add contracts for unmatched token
             const where: any = {name: {[Op.like]: `%${name}%`}};
             if(registeredTokens?.length) where.base32 = {[Op.notIn]: registeredTokens};
+            if (!showDestroyed) {
+                where.destroyed = false;
+            }
             contractList = await Contract.findAll({ offset: 0, limit: 10, raw: true,
                 attributes: [['base32', 'address'], 'name', 'epoch'], where, order: [['epoch', 'ASC']]
             });

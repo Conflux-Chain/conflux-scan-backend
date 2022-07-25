@@ -1,5 +1,7 @@
 import {StatApp} from "../StatApp";
 import {TokenQuery} from "./TokenQuery";
+import {Contract} from "../model/Contract";
+import {toBase32} from "./tool/AddressTool";
 
 export class TokenSecurityAuditSync{
     private readonly app;
@@ -9,14 +11,25 @@ export class TokenSecurityAuditSync{
     }
 
     private async audit(now: Date): Promise<Boolean>{
-        // const { tokenQuery } = this.app;
+        const { cfx, tokenQuery, contractQuery } = this.app;
 
-        const response = await TokenQuery.listAddress();
-        const addressArray = response?.list;
+        let response = await TokenQuery.listAddress();
+        let addressArray = response?.list;
         for(const base32 of addressArray){
-            await this.auditToken(base32);
+            await tokenQuery.audit({address: base32});
         }
         console.log(`token_security_audit_sync audit start at:${now}, end at:${new Date()}`);
+
+        response = await contractQuery.listAddress();
+        addressArray = response?.list;
+        for(const address of addressArray){
+            const base32 = toBase32(address);
+            const runtimeCode = await cfx.getCode(base32);
+            if(!runtimeCode || runtimeCode.length <= 2) {
+                await Contract.update({destroyed: true}, {where: {base32}});
+            }
+        }
+        console.log(`token_security_audit_sync audit contract start at:${now}, end at:${new Date()}`);
 
         return Promise.resolve(true);
     }
@@ -31,8 +44,8 @@ export class TokenSecurityAuditSync{
         //
         // const hex40id = (await makeId(format.hexAddress(base32))).id;
         // await TokenSecurityAudit.upsert({ hex40id, base32, verify, zeroAdmin });
-        const { tokenQuery } = this.app;
-        await tokenQuery.audit({address: base32});
+        // const { tokenQuery } = this.app;
+        // await tokenQuery.audit({address: base32});
     }
 
     public async schedule() {
