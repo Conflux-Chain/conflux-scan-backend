@@ -531,7 +531,8 @@ export class ContractQuery {
         }
     }
 
-    public async submitVerify({ address, name, sourcecode, compiler, optimizeFlag, optimizeRuns, license, constructorArgs }) {
+    public async submitVerify({ address, name, sourcecode, compilerType, compilerVersion, optimizeFlag, optimizeRuns,
+        license, constructorArgs }) {
         const { cfx, cfxSDK, jsonRpc } = this.app;
         const sdk = cfxSDK || cfx;
 
@@ -554,12 +555,13 @@ export class ContractQuery {
             (Object.values(versionTable) as string[]).forEach(version => {
                 versionSet.add(version.substring(8, version.length - 3));
             });
-            if(!versionSet.has(compiler)){
-                throw new Errors.ContractVerifyError(`compiler version ${compiler} not exits`)
+            if(!versionSet.has(compilerVersion)){
+                throw new Errors.ContractVerifyError(`compiler version ${compilerVersion} not exits`)
             }
 
-            const record = await this.addVerify({address, sourceCode, name, compiler: 'solidity', version: compiler,
-                optimizeFlag, optimizeRuns, license, codeHash, taskStatus: CONST.TASK_STATUS.SUBMITTED});
+            const record = await this.addVerify({address, sourceCode, name, compiler: compilerType,
+                version: compilerVersion, optimizeFlag, optimizeRuns, license, codeHash,
+                taskStatus: CONST.TASK_STATUS.SUBMITTED});
             return { address, guid: record.guid };
 
         }catch (e) {
@@ -568,8 +570,8 @@ export class ContractQuery {
         }
     }
 
-    public async doVerify({ id, address, name, sourceCode, compiler, optimizeFlag, optimizeRuns, license,
-        constructorArgs }) {
+    public async doVerify({ id, address, fileName, name, sourceCode, compilerType, compilerVersion, optimizeFlag,
+        optimizeRuns, license, constructorArgs }) {
         const { cfx, cfxSDK, jsonRpc } = this.app;
         const sdk = cfxSDK || cfx;
 
@@ -589,8 +591,8 @@ export class ContractQuery {
             }
 
             optimizeRuns = (optimizeFlag && optimizeRuns > 0) ? optimizeRuns : undefined;
-            const result = await jsonRpc.verifyPlus({address, sourceCode, name, compiler, optimizeRuns,
-                creationData, deployedBytecode: code});
+            const result = await jsonRpc.verifyPlus({address, creationData, deployedBytecode: code, name,
+                fileName, sourceCode, compilerType, compilerVersion, optimizeRuns});
             result.verifyResult = this.getVerifyResult(result.matchCode);
             result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
             result.errors = result.errors.map((v) => v.formattedMessage || v.message);
@@ -601,8 +603,9 @@ export class ContractQuery {
                 constructorArgs: result.encodedConstructorArgs,
                 warnings: JSON.stringify(result.warnings),
                 errors: JSON.stringify(result.errors),
+                version: result.compilerVersion,
             };
-            lodash.assign(updateRecord, lodash.pick(result, ['version', 'verifyResult', 'matchCode', 'matchDesc' ]));
+            lodash.assign(updateRecord, lodash.pick(result, ['verifyResult', 'matchCode', 'matchDesc' ]));
             lodash.assign(updateRecord, {taskStatus: CONST.TASK_STATUS.DONE});
             await this.updateVerify(updateRecord);
 
@@ -719,7 +722,13 @@ export class ContractQuery {
         }
 
         submitVerify.address = submitVerify.base32;
-        submitVerify.compiler = submitVerify.version;
+        submitVerify.compilerType = submitVerify.compiler;
+        submitVerify.compilerVersion = submitVerify.version;
+        if(submitVerify.name.indexOf(":") > -1) {
+            const parts = submitVerify.name.split(":");
+            submitVerify.fileName = parts[0];
+            submitVerify.name = parts[1];
+        }
         await this.doVerify(submitVerify);
     }
 

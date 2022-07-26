@@ -130,8 +130,15 @@ export async function verifySourcecode(ctx) {
     checkPresent({contractaddress, sourceCode, contractname, compilerversion/*, optimizationUsed, runs, licenseType*/},
         ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
 
-    sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');
-    sourceCode = sourceCode?.replace(/\\\n/g, '\\n');
+    if(codeformat === 'solidity-standard-json-input'){
+        const sc = JSON.parse(sourceCode);
+        optimizationUsed = sc.settings.optimizer.enabled;
+        runs = sc.settings.optimizer.runs;
+    }
+    if(codeformat === 'solidity-single-file'){
+        sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');
+        sourceCode = sourceCode?.replace(/\\\n/g, '\\n');
+    }
     optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
     runs = runs === undefined || runs === null ? 200 : Number(runs);
     licenseType = licenseType === undefined || licenseType === null ? 1 : Number(licenseType);
@@ -150,7 +157,8 @@ export async function verifySourcecode(ctx) {
         address: contractaddress,
         name: contractname,
         sourcecode: sourceCode,
-        compiler: compilerversion,
+        compilerType: codeformat,
+        compilerVersion: compilerversion,
         optimizeFlag: !optimizationUsed ? false : true,
         optimizeRuns: runs,
         license: CONST.LICENSE[licenseType].code,
@@ -175,7 +183,7 @@ export async function checkVerifyStatus(ctx) {
         return;
     }
 
-    const impl = !verify.implementation ? verify.implementation :
+    /*const impl = !verify.implementation ? verify.implementation :
         (StatApp.isEVM ? format.hexAddress(verify.implementation) : verify.implementation);
     const result = [
         {
@@ -193,8 +201,8 @@ export async function checkVerifyStatus(ctx) {
             Implementation: impl,
             SwarmSource:"",
         }
-    ];
-    setBody(ctx, result)
+    ];*/
+    setBody(ctx, 'Pass - Verified');
 }
 
 export async function verifyProxyContract(ctx) {

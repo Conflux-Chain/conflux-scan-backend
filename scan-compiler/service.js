@@ -66,25 +66,28 @@ class SolCompileService {
     });
   }
 
-  async compile({ sourceCode, version, optimizeRuns, filename, libraries }) {
+  async compile({ fileName, sourceCode, compilerType, compilerVersion, optimizeRuns, libraries }) {
     const {
       app: { tool, type, fileMap, logger },
     } = this;
     const versionTable = await this.listVersion();
-    version = semver.maxSatisfying(Object.keys(versionTable), version) || undefined;
-    const solCompiler = await this.loadVersion(version);
-    const versionPartial = versionTable[version].substr(8);
+    compilerVersion = semver.maxSatisfying(Object.keys(versionTable), compilerVersion) || undefined;
+    const solCompiler = await this.loadVersion(compilerVersion);
+    const versionPartial = versionTable[compilerVersion].substr(8);
     const versionFullName = versionPartial.substr(0, versionPartial.length - 3);
 
-    const input = {
+    let input = {
       language: 'Solidity',
-      sources: { [filename]: { content: sourceCode } },
+      sources: { [fileName]: { content: sourceCode } },
       settings: {
         optimizer: { enabled: Number.isInteger(optimizeRuns), runs: optimizeRuns },
         libraries,
         outputSelection: { '*': { '*': ['*'] } },
       },
     };
+    if(compilerType === 'solidity-standard-json-input') {
+      input = JSON.parse(sourceCode);
+    }
     const options = {
       import: (path) => {
         const contents = tool.readFile(path) || tool.readCommonContract(path) || tool.readNodeModules(path);
@@ -93,13 +96,13 @@ class SolCompileService {
     };
 
     const inputJson = JSON.stringify(input);
-    const outputJson = await fileMap.cache(`compile.${version}.${type.toMD5(inputJson)}.json`,
+    const outputJson = await fileMap.cache(`compile.${compilerVersion}.${type.toMD5(inputJson)}.json`,
       () => solCompiler.compile(inputJson, options),
     );
 
     const output = JSON.parse(outputJson);
     const contracts = lodash.mapValues(
-      lodash.get(output.contracts, filename, {}),
+      lodash.get(output.contracts, fileName, {}),
       ({ abi, evm }) => {
         const creationBytecode = `0x${evm.bytecode.object}`;
         const deployedBytecode = `0x${evm.deployedBytecode.object}`;
@@ -109,7 +112,7 @@ class SolCompileService {
     const errors = lodash.filter(output.errors, (each) => each.severity === 'error');
     const warnings = lodash.filter(output.errors, (each) => each.severity !== 'error');
 
-    return { version: versionFullName, contracts, warnings, errors };
+    return { compilerVersion: versionFullName, contracts, warnings, errors };
   }
 
   async decompile({ code }) { // XXX: async for `traceLog.traceMethod`
@@ -171,14 +174,15 @@ class SolCompileService {
   }
 
   // --------------------------------------------------------------------------
-  async verifyPlus({ address, creationData, deployedBytecode, name, ...options }) {
+  async verifyPlus({ address, creationData, deployedBytecode, name, fileName, sourceCode, compilerType,
+    compilerVersion, optimizeRuns }) {
     const {
       app: {CONST: {MATCH_STATUS}, error, type, logger},
     } = this;
 
     const match = {
       address,
-      version: null,
+      compilerVersion: null,
       warnings: null,
       errors: null,
       abi: null,
@@ -194,9 +198,10 @@ class SolCompileService {
     }
 
     const metadata = await this.extractMetadata(deployedBytecode).catch(e => {throw new error.ExtractMetadataError(e)});
-    options.version = type.solcVersion(metadata.solc) || options.compiler;
-    const {contracts, version, warnings, errors} = await this.compile(options).catch(e => {throw new error.CompilerError(e)});
-    lodash.assign(match, {version, warnings, errors});
+    const req = {fileName, sourceCode, compilerType, compilerVersion: type.solcVersion(metadata.solc) || compilerVersion, optimizeRuns};
+    const resp = await this.compile(req).catch(e => {throw new error.CompilerError(e)});
+    const {contracts, warnings, errors} = resp;
+    lodash.assign(match, {compilerVersion: resp.compilerVersion, warnings, errors});
     if (errors?.length) {
       lodash.assign(match, MATCH_STATUS.ERROR);
       return match;

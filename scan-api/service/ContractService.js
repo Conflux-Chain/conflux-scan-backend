@@ -98,10 +98,10 @@ class ContractService { // TODO: extends AccountService
 
   async verify({ address, ...rest }) {
     const {
-      app: { error, syncSDK, service, logger},
+      app: { CONST, error, syncSDK, service, logger},
     } = this;
 
-    let { name, sourceCode, compiler, optimizeRuns, license, constructorArgs } = rest;
+    let { name, sourceCode, compilerType, compiler, optimizeRuns, license, constructorArgs } = rest;
     sourceCode = this._rmRedundantLicense(sourceCode);
     const response = { name, sourceCode, optimizeRuns };
 
@@ -117,20 +117,24 @@ class ContractService { // TODO: extends AccountService
     }
 
     try {
+      compilerType = compilerType === undefined || compilerType === null ? CONST.COMPILER_TYPE.SINGLE_FILE : compilerType;
+      if (!lodash.includes(Object.values(CONST.COMPILER_TYPE), compilerType)) {
+        throw new error.QueryCreationDataError(e);
+      }
       const optimizeFlag = Number.isInteger(optimizeRuns) && optimizeRuns >= 0;
-      const record = await service.contractRdb.addVerify({ address, sourceCode, name, compiler: 'solidity',
+      const record = await service.contractRdb.addVerify({ address, sourceCode, name, compiler: compilerType,
         version: compiler, optimizeFlag, optimizeRuns, license, codeHash });
 
       const creationData = await this.getCreationData({ address }).catch(e => {throw new error.QueryCreationDataError(e)});
       const result = await syncSDK.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
-        compiler, optimizeRuns});
+        compilerType, compilerVersion: compiler, optimizeRuns});
       result.verifyResult = this._getVerifyResult(result.matchCode);
       result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
       result.errors = result.errors.map((v) => v.formattedMessage || v.message);
 
       const updateRecord = {id: record.id, address, abi: JSON.stringify(result.abi),
-        constructorArgs: result.encodedConstructorArgs};
-      lodash.assign(updateRecord, lodash.pick(result, ['version', 'verifyResult', 'matchCode', 'matchDesc' ]));
+        constructorArgs: result.encodedConstructorArgs, version: result.compilerVersion};
+      lodash.assign(updateRecord, lodash.pick(result, ['verifyResult', 'matchCode', 'matchDesc' ]));
       const updateVerify = await service.contractRdb.updateVerify(updateRecord);
 
       logger.error({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` });
