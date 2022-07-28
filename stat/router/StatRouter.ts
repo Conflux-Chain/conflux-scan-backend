@@ -561,9 +561,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/nft/list1155inventory', async function (ctx) {
-        const {contractAddr, userAddr, tokenId} = ctx.request.query
-        const {skip: offset, limit} = skipLimit(ctx.request.query)
-        const result = await list1155inventory({contractAddr, userAddr, tokenId, offset, limit})
+        const {contractAddr, userAddr, tokenId, skip, limit} = ctx.request.query
+        /*const {skip: offset, limit} = skipLimit(ctx.request.query)*/
+        const result = await list1155inventory({contractAddr, userAddr, tokenId,
+            offset: skip ? parseInt(skip): skip, limit: limit ? parseInt(limit): limit})
         result["listLimit"] = 10_000
         const base32arr = patchBase32prop(result.list, 'owner', 'ownerBase32', StatApp.isEVM, StatApp.networkId)
         const contractBasic = await statApp.contractQuery.listBasic({addressArray: base32arr});
