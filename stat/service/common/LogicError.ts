@@ -7,7 +7,7 @@ class LogicError extends Error {
         this.message = msg;
     }
 
-    public static extend({ name, code, status = 600 }) {
+    public static extend({ name, code, status = 600 }): any {
         class BizError extends this {
             public partialData: any;
             constructor(msg) {

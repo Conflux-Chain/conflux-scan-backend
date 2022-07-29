@@ -11,6 +11,7 @@ import {
     listAccountAssets,
 } from "../service/OpenAccountService";
 import {
+    abiDecode, abiDecodeRaw,
     listAccountTransaction,
 } from "../service/OpenTxService";
 import {
@@ -701,6 +702,10 @@ export function registerRouter(router: Router) {
     router.get('/nft/balances', listNFTBalances);
     router.get('/nft/tokens', listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
+
+    // utils
+    router.get('/util/decode/method', abiDecode);
+    router.get('/util/decode/method/raw', abiDecodeRaw);
 
     // statistics
     router.get('/statistics/mining', listMiningStat)
