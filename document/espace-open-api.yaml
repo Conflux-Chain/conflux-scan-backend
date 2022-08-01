@@ -494,6 +494,35 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/NFTPreview"
+  /util/decode/method:
+    get:
+      tags:
+        - 'Utils'
+      description: "Decode the data of the transaction, where the `to` address of the transaction is the verified contract"
+      parameters:
+        - $ref: '#/components/parameters/hashesParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/DecodedMethod"
+  /util/decode/method/raw:
+    get:
+      tags:
+        - 'Utils'
+      description: "Decode the data of the raw transaction, where the `to` address of the transaction is the verified contract"
+      parameters:
+        - $ref: '#/components/parameters/contractsParam'
+        - $ref: '#/components/parameters/inputsParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/DecodedMethodRaw"
   /statistics/supply:
     get:
       tags:
@@ -1843,6 +1872,47 @@ components:
                               13. GNU Affero General Public License (GNU AGPLv3)
                               14. Business Source License (BSL 1.1)"
           default: 1
+    DecodedMethod:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            hash:
+              description: 'Transaction hash.'
+              type: string
+            decodedData:
+              description: "Decoded data of the transaction."
+              type: string
+            error:
+              description: "Error message when something wrong"
+              type: string
+    DecodedMethodRaw:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            contract:
+              description: 'Contract address.'
+              type: string
+            input:
+              description: 'Input data of the transaction.'
+              type: string
+            decodedData:
+              description: "Decoded data of the transaction."
+              type: string
+            error:
+              description: "Error message when something wrong"
+              type: string
     MarketStat:
       type: object
       properties:
@@ -2719,6 +2789,30 @@ components:
       schema:
         type: string
         default: '24h'
+    hashesParam:
+      description: "Hash array of transactions to decode data, separated by comma,
+          eg. 0x8378892767d0afce19b278015702531a61512e8444ee7f51c41c90e56fec462d,0xa09c63d8dc9867851b254b31a723e653c9608a94a4a61bc97bf8a5f4aeffb4f4"
+      name: hashes
+      in: query
+      required: true
+      schema:
+        type: string
+    contractsParam:
+      description: "To address array of transactions to decode data, separated by comma,
+        eg. 0xc18944582317654327f20ce92df111cae83995dd,0x30b987679c1dcf3a8c890395eadf178078a99b82"
+      name: contracts
+      in: query
+      required: true
+      schema:
+        type: string
+    inputsParam:
+      description: "To input data array of transactions to decode data, separated by comma,
+        eg. 0xaea1414f,0x6e756fb200000000000000000000000015a0a156ce9feb9f01881b3b4a9788c49e65c6fa00000000000000000000000000000000000000000000"
+      name: inputs
+      in: query
+      required: true
+      schema:
+        type: string
 externalDocs:
   description: 'Conflux JSON RPC Docs'
   url: 'https://developer.confluxnetwork.org/docs/conflux-doc/docs/json_rpc'

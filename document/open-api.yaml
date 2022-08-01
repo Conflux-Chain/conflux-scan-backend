@@ -345,6 +345,35 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/NFTPreview"
+  /util/decode/method:
+    get:
+      tags:
+        - 'Utils'
+      description: "Decode the data of the transaction, where the `to` address of the transaction is the verified contract"
+      parameters:
+        - $ref: '#/components/parameters/hashesParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/DecodedMethod"
+  /util/decode/method/raw:
+    get:
+      tags:
+        - 'Utils'
+      description: "Decode the data of the raw transaction, where the `to` address of the transaction is the verified contract"
+      parameters:
+        - $ref: '#/components/parameters/contractsParam'
+        - $ref: '#/components/parameters/inputsParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/DecodedMethodRaw"
   /statistics/supply:
     get:
       tags:
@@ -1633,6 +1662,47 @@ components:
             error:
               description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
               type: string
+    DecodedMethod:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            hash:
+              description: 'Transaction hash.'
+              type: string
+            decodedData:
+              description: "Decoded data of the transaction."
+              type: string
+            error:
+              description: "Error message when something wrong"
+              type: string
+    DecodedMethodRaw:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            contract:
+              description: 'Contract address.'
+              type: string
+            input:
+              description: 'Input data of the transaction.'
+              type: string
+            decodedData:
+              description: "Decoded data of the transaction."
+              type: string
+            error:
+              description: "Error message when something wrong"
+              type: string
     TokenHolderStat:
       type: object
       properties:
@@ -2057,6 +2127,31 @@ components:
       in: query
       description: "proxy's implementation contract address"
       required: false
+      schema:
+        type: string
+    hashesParam:
+      description: "Hash array of transactions to decode data, separated by comma,
+      eg. 0x8378892767d0afce19b278015702531a61512e8444ee7f51c41c90e56fec462d,0xa09c63d8dc9867851b254b31a723e653c9608a94a4a61bc97bf8a5f4aeffb4f4"
+      name: hashes
+      in: query
+      required: true
+      schema:
+        type: string
+    contractsParam:
+      description: "To address array of transactions to decode data, separated by comma,
+      eg. on testnet it's like cfxtest:aaka4zypus90zrt7vzgsz437r1cwkgkahe374ds80v,cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      eg. on mainnet it's like cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp,cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      name: contracts
+      in: query
+      required: true
+      schema:
+        type: string
+    inputsParam:
+      description: "To input data array of transactions to decode data, separated by comma,
+      eg. 0xaea1414f,0x6e756fb200000000000000000000000015a0a156ce9feb9f01881b3b4a9788c49e65c6fa00000000000000000000000000000000000000000000"
+      name: inputs
+      in: query
+      required: true
       schema:
         type: string
 externalDocs:
