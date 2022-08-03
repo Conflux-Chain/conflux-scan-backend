@@ -55,6 +55,8 @@ export const CONST = {
   POSITION_BEACON_SLOT: '0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50',
   ZERO_VALUE_IN_SLOT: '0x0000000000000000000000000000000000000000000000000000000000000000',
 
+  CODEHASH_NO_BYTECODE: '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470',
+
   INTERNAL_CONTRACT: [
     '0x0888000000000000000000000000000000000000', // AdminControl
     '0x0888000000000000000000000000000000000001', // SponsorWhitelistControl
@@ -210,5 +212,12 @@ export const CONST = {
         TOKEN_SUPPLY_HISTORY: 'tokensupplyhistory',
       }
     },
+  },
+
+  DEPLOY_STATUS: {
+    DEPLOYED: {status: 0, message: 'deployed'},
+    NOT_DEPLOYED: {status: 1, message: 'not deployed'},
+    ADMIN_DESTROYED: {status: 2, message: 'admin destroyed'},
+    SELF_DESTRUCTED: {status: 3, message: 'self destructed'},
   },
 };

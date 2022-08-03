@@ -9,7 +9,7 @@ import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
-import {TraceCreateContract} from "../model/TraceCreateContract";
+import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {
@@ -164,6 +164,7 @@ export async function initPartialModel(sequelize) {
     Contract.register(sequelize)
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
+    ContractDestroy.register(sequelize)
     Token.register(sequelize);
     NftMint.register(sequelize)
     TokenQuoteTrack.register(sequelize);

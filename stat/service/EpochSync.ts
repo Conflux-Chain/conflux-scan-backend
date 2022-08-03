@@ -12,7 +12,7 @@ import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool"
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
-import {TraceCreateContract} from "../model/TraceCreateContract";
+import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
 import {PruneNotifier} from "./prune/PruneNotifier";
 import {RedisWrap, STREAM_STAT_TOKEN_TRANSFER_Q, TPS_TRANSFER_Q} from "./RedisWrap";
 import {TransferTpsService} from "./TransferTpsService";
@@ -23,6 +23,7 @@ import {CONST} from "./common/constant"
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
+const abiDecoder = require('abi-decoder');
 /*const CONST = require('./common/constant');*/
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
@@ -38,6 +39,10 @@ const TOPIC0_TRANSFER_ERC1155_BATCH = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa
 const TOPIC0_ANNOUNCE = '0x14cb751d0950ff2788201931c45f715f7472443bc197311d9e3a7a0ba566b7e6';
 const TOKEN_TRANSFER_TOPICS = [[ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH, TOPIC0_ANNOUNCE ]];
 
+const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
+const SELECTOR_DESTROY = '0x00f55d9d';
+const {abi: ABI_ADMIN_CONTROL} = require("./abi/AdminControl");
+
 export class EpochSync extends SyncBase{
     protected app;
     private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
@@ -51,7 +56,8 @@ export class EpochSync extends SyncBase{
     //----------------- implementation method from SyncBase -----------------
     async getData(epochNumber): Promise<SyncData> {
         const epoch = await this.getEpoch(epochNumber);
-        const minerBlockArray = await this.getMinerBlockArray(epochNumber);
+        const {blockArray, minerBlockArray} = await this.getMinerBlockArray(epochNumber);
+        const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epoch.timestamp);
         const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp: epoch.timestamp});
         const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
@@ -69,7 +75,8 @@ export class EpochSync extends SyncBase{
         return {
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
-            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray},
+            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray,
+                adminDestroyTxArray},
         };
     }
 
@@ -91,6 +98,10 @@ export class EpochSync extends SyncBase{
             await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
             await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
+            await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
+                updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],
+                transaction: dbTx,
+            });
         });
 
         const tokenArray = modelData.tokenArray;
@@ -158,7 +169,9 @@ export class EpochSync extends SyncBase{
             const epochDel = await Epoch.destroy({where:{epoch: epochNumber}, transaction: dbTx});
             const minerBlockDel = await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
-            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}, traceCreateDel:${traceCreateDel}`);
+            const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
+            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}, 
+                traceCreateDel:${traceCreateDel},contractDestroyDel:${contractDestroyDel}`);
         });
 
         if(TransferTpsService.TPS_TRANSFER_NOTIFY) {
@@ -169,7 +182,7 @@ export class EpochSync extends SyncBase{
     }
 
     //---------------------- business method for epoch -----------------------
-    private async getEpoch(epochNumber) {
+    public async getEpoch(epochNumber) {
         const {
             app: { cfx },
         } = this;
@@ -213,7 +226,7 @@ export class EpochSync extends SyncBase{
             }
             return [];
         });
-        const blockArray = await batchFetchBlock(cfx,  blockHashArray, false)
+        const blockArray = await batchFetchBlock(cfx,  blockHashArray, true)
         let minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
             const hex40 = format.hexAddress(block.miner);
             const blockDt = new Date(block.timestamp * 1000);
@@ -222,7 +235,49 @@ export class EpochSync extends SyncBase{
         }));
         minerBlockArray = lodash.orderBy(minerBlockArray, 'position', 'desc');
 
-        return minerBlockArray;
+        return {blockArray, minerBlockArray};
+    }
+
+    //---------------- business method for admin destroy tx ------------------
+    private async getAdminDestroyTxArray(blockArray, blockTime){
+        const adminDestroyTxArray = [];
+        for(const block of blockArray){
+            const {epochNumber, transactions} = block;
+            if(!transactions?.length) {
+                continue;
+            }
+
+            for (const transaction of transactions){
+                const {hash, from, to, data, status} = transaction;
+                if(status !== 0 || to === null) {
+                    continue;
+                }
+
+                const toHex = format.hexAddress(to);
+                if(toHex === INTERNAL_ADMIN_CONTROL && data.substr(0, 10) === SELECTOR_DESTROY){
+                    const fromHex = format.hexAddress(from);
+                    const decodedData = this.decodeData(ABI_ADMIN_CONTROL, data);
+                    const contract = decodedData.params[0].value;
+                    const destroyTx = {epochNumber, blockTime, txHash: hash, admin: fromHex, contract};
+                    adminDestroyTxArray.push(destroyTx);
+                }
+            }
+        }
+
+        return adminDestroyTxArray;
+    }
+
+    public decodeData(abi, data){
+        console.log(`abi------${typeof abi}`)
+        let decodedData;
+        try{
+            abiDecoder.addABI(abi);
+            decodedData = abiDecoder.decodeMethod(data);
+        } finally {
+            abiDecoder.removeABI(abi);
+        }
+
+        return decodedData;
     }
 
     //--------------------- business method for announce ---------------------
