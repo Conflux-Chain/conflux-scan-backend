@@ -31,7 +31,7 @@ function sleep(ms) {
 
 function assert(bool, message) {
   if (!bool) {
-    throw new error.AssertError(lodash.isString(message) ? message : JSON.stringify(message));
+    throw new error.ParameterError(lodash.isString(message) ? message : JSON.stringify(message));
   }
 }
 

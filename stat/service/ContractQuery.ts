@@ -240,12 +240,18 @@ export class ContractQuery {
         const sdk = cfxSDK || cfx;
         const hex = format.hexAddress(address);
 
+        if(lodash.includes(CONST.INTERNAL_CONTRACT, hex)){
+            return CONST.DEPLOY_STATUS.DEPLOYED;
+        }
         const {codeHash} = await sdk.getAccount(hex);
         if(codeHash !== CONST.CODEHASH_NO_BYTECODE){
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
 
         const hex40Bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
+        if(hex40Bean === null){
+            return CONST.DEPLOY_STATUS.NOT_DEPLOYED;
+        }
         const trace = await TraceCreateContract.findOne({where: {to: hex40Bean.id}});
         if(trace === null){
             return CONST.DEPLOY_STATUS.NOT_DEPLOYED;

@@ -58,5 +58,5 @@ export const Errors = {
     CompilerError: LogicError.extend({ code: 50701, name: 'CompilerError' }),
     ContractDecompileError: LogicError.extend({ code: 50702, name: 'ContractDecompileError' }),
     ExtractMetadataError: LogicError.extend({ code: 50703, name: 'ExtractMetadataError' }),
-    ContractNotFoundError: LogicError.extend({ code: 50704, name: 'ContractNotFoundError' }),
+    ContractNameError: LogicError.extend({ code: 50704, name: 'ContractNameError' }),
 }

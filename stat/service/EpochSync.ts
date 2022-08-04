@@ -258,7 +258,8 @@ export class EpochSync extends SyncBase{
                     const fromHex = format.hexAddress(from);
                     const decodedData = this.decodeData(ABI_ADMIN_CONTROL, data);
                     const contract = decodedData.params[0].value;
-                    const destroyTx = {epochNumber, blockTime, txHash: hash, admin: fromHex, contract};
+                    const destroyTx = {epochNumber, blockTime, txHash: hash.substr(2), admin: fromHex.substr(2),
+                        contract: contract.substr(2)};
                     adminDestroyTxArray.push(destroyTx);
                 }
             }
