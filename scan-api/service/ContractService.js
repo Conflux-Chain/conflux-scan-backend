@@ -253,12 +253,13 @@ class ContractService { // TODO: extends AccountService
       app: { service },
     } = this;
 
-    const [account, sponsor, createInfo, announceInfo, verified] = await Promise.all([
+    const [account, sponsor, createInfo, announceInfo, verified, destroy] = await Promise.all([
       service.account.query({ address, fields }),
       service.conflux.getSponsorInfo(address),
       service.traceCreate.query(address),
       service.contractRdb.query({ address, fields }),
       service.contractRdb.queryVerify({ address }),
+      service.contractRdb.queryDestroyInfo({ address }),
     ]);
     account.sponsor = this.convertZeroAddressToNullStr(sponsor);
 
@@ -284,7 +285,8 @@ class ContractService { // TODO: extends AccountService
       implementation = { address: verified.implementation, verify: { exactMatch: verified.implementationVerified } };
     }
 
-    return lodash.defaults(account, createInfo, announceInfo, { verify }, { proxy }, {beacon}, { implementation });
+    return lodash.defaults(account, createInfo, announceInfo, { verify }, { proxy }, {beacon}, { implementation },
+        { destroy });
   }
 
   async _countAndListByAddressArrayPlus({

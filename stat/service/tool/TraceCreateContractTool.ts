@@ -4,7 +4,7 @@ import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {Hex40Map, Hex64Map} from "../../model/HexMap";
 import {ContractQuery} from "../ContractQuery";
-import {TraceCreateContract} from "../../model/TraceCreateContract";
+import {ContractDestroy, TraceCreateContract} from "../../model/TraceCreateContract";
 import {ContractVerify} from "../../model/ContractVerify";
 import {TokenTool} from "./TokenTool";
 import {Op} from "sequelize";
@@ -15,6 +15,10 @@ import {StatApp} from "../../StatApp";
 
 const lodash = require('lodash');
 const POSITION_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+
+const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
+const SELECTOR_DESTROY = '0x00f55d9d';
+const {abi: ABI_ADMIN_CONTROL} = require("../abi/AdminControl");
 
 let seq;
 let cfx;
@@ -158,6 +162,9 @@ async function run() {
     if(type === 7){
         await addTxHashForTraceCreate();
     }
+    if(type === 8){
+        await adminDestroyContract(minEpoch, maxEpoch);
+    }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
     await close();
@@ -277,6 +284,53 @@ async function addTxHashForTraceCreate(){
     }
 }
 
+async function adminDestroyContract(startEpochNumber, endEpochNumber){
+    const adminControlHexBean = await Hex40Map.findOne({where:{hex: INTERNAL_ADMIN_CONTROL.substr(2)}});
+    const addressTxArray = await AddressTransactionIndex.findAll({
+        where: {
+            addressId: adminControlHexBean.id,
+            toId: adminControlHexBean.id,
+            [Op.and]: [
+                {epoch: {[Op.gte]: startEpochNumber}},
+                {epoch: {[Op.lte]: endEpochNumber}},
+            ],
+        },
+        order:[
+            ['epoch', 'ASC'],
+        ],
+        logging: msg => console.log(`adminDestroyContract: ${msg}`),
+    });
+
+    const adminDestroyTxArray = [];
+    for (const addressTx of addressTxArray){
+        const transaction = await cfx.getTransactionByHash(addressTx.hash);
+        const {hash, from, to, data, status} = transaction;
+        if(status !== 0 || to === null) {
+            continue;
+        }
+
+        const toHex = format.hexAddress(to);
+        if(toHex === INTERNAL_ADMIN_CONTROL && data.substr(0, 10) === SELECTOR_DESTROY){
+            const {timestamp: blockTime} = await epochSync.getEpoch(addressTx.epoch);
+            const fromHex = format.hexAddress(from);
+            const decodedData = epochSync.decodeData(ABI_ADMIN_CONTROL, data);
+            const contract = decodedData.params[0].value;
+            const destroyTx = {
+                epochNumber: addressTx.epoch,
+                blockTime,
+                txHash: hash.substr(2),
+                admin: fromHex.substr(2),
+                contract: contract.substr(2),
+            };
+            adminDestroyTxArray.push(destroyTx);
+        }
+    }
+
+    await ContractDestroy.bulkCreate(adminDestroyTxArray, {updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],});
+    console.log(`adminDestroyTxArray------${JSON.stringify(adminDestroyTxArray)}`);
+    return adminDestroyTxArray;
+}
+
 
 const args = process.argv.slice(2);
 StatApp.networkId = Number(args[0]);
@@ -293,6 +347,10 @@ if(type === 3 && args[2] && args[3]){
 }
 if(type === 6 && args[2]){
     epochNumber = Number(args[2]);
+}
+if(type === 8 && args[2] && args[3]){
+    minEpoch = Number(args[2]);
+    maxEpoch = Number(args[3]);
 }
 
 console.log(`params======networkId:${StatApp.networkId}======type:${type}======minEpoch:${minEpoch}======maxEpoch:${maxEpoch}======toFindHexAddress:${toFindHexAddress}`);

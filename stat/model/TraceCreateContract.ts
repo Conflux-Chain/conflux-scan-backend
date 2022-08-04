@@ -52,3 +52,41 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
         })
     }
 }
+
+export interface IContractDestroy{
+    id?:number
+    epochNumber:number
+    blockTime:Date
+    txHash:string
+    admin:string
+    contract:string
+}
+export class ContractDestroy extends Model<IContractDestroy> implements IContractDestroy{
+    id?:number
+    epochNumber:number
+    blockTime:Date
+    txHash:string
+    admin:string
+    contract:string
+    static register(seq){
+        ContractDestroy.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
+            epochNumber: {type: DataTypes.BIGINT, allowNull: false},
+            blockTime: {type: DataTypes.DATE, allowNull: false},
+            txHash: {type: DataTypes.CHAR(64), allowNull: false},
+            admin: {type: DataTypes.CHAR(40), allowNull: false},
+            contract: {type: DataTypes.CHAR(40), allowNull: false},
+        },{
+            sequelize: seq,
+            tableName: 'contract_destroy',
+            timestamps: false,
+            indexes: [{
+                name: "admin_idx", fields: ["admin"]
+            }, {
+                name: "contract_idx", fields: ["contract"], unique: true,
+            }, {
+                name: 'blockTime_idx', fields: [{name:'blockTime', order: "DESC"}]
+            }]
+        })
+    }
+}

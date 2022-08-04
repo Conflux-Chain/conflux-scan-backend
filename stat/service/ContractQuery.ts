@@ -14,7 +14,7 @@ import {json, Op, QueryTypes} from "sequelize";
 import {StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
-import {TraceCreateContract} from "../model/TraceCreateContract";
+import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
 import {EpochSync} from "./EpochSync";
 import {ProxyVerify} from "../model/ContractVerify";
 import {Errors} from "./common/LogicError";
@@ -233,6 +233,30 @@ export class ContractQuery {
         }
 
         return verified;
+    }
+
+    public async queryDestroyInfo({address}) {
+        const {cfx, cfxSDK, logger} = this.app;
+        const sdk = cfxSDK || cfx;
+        const hex = format.hexAddress(address);
+
+        const {codeHash} = await sdk.getAccount(hex);
+        if(codeHash !== CONST.CODEHASH_NO_BYTECODE){
+            return CONST.DEPLOY_STATUS.DEPLOYED;
+        }
+
+        const hex40Bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
+        const trace = await TraceCreateContract.findOne({where: {to: hex40Bean.id}});
+        if(trace === null){
+            return CONST.DEPLOY_STATUS.NOT_DEPLOYED;
+        }
+
+        const adminDestroy = await ContractDestroy.findOne({where: {contract: hex.substr(2)}});
+        if(adminDestroy !== null){
+            return CONST.DEPLOY_STATUS.ADMIN_DESTROYED;
+        }
+
+        return CONST.DEPLOY_STATUS.SELF_DESTRUCTED;
     }
 
     public async listVerify({addressArray, skip = 0, limit = 10, reverse = true,
