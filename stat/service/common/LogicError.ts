@@ -47,9 +47,9 @@ export const Errors = {
 
     // NFT error
     QueryNFTError: LogicError.extend({ code: 50600, name: 'QueryNFTError' }),
-    CallNFTContractError: LogicError.extend({ code: 50301, name: 'CallNFTContractError' }),
-    QueryNFTMetadataError: LogicError.extend({ code: 50302, name: 'QueryNFTMetadataError' }),
-    ParseNFTMetadataError: LogicError.extend({ code: 50303, name: 'ParseNFTMetadataError' }),
+    CallNFTContractError: LogicError.extend({ code: 50601, name: 'CallNFTContractError' }),
+    QueryNFTMetadataError: LogicError.extend({ code: 50602, name: 'QueryNFTMetadataError' }),
+    ParseNFTMetadataError: LogicError.extend({ code: 50603, name: 'ParseNFTMetadataError' }),
     QueryNFTLocalNameError: LogicError.extend({ code: 50604, name: 'QueryNFTLocalNameError' }),
     MetadataPropertyError: LogicError.extend({ code: 50605, name: 'MetadataPropertyError'}),
 

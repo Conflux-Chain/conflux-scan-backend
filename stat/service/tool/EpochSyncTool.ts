@@ -7,19 +7,27 @@ import {Transaction} from "sequelize";
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {TokenTool} from "./TokenTool";
+import {CONST} from "../common/constant";
+import {StatApp} from "../../StatApp";
+import {Erc20Transfer} from "../../model/Erc20Transfer";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 const lodash = require('lodash');
 const zlib = require('zlib');
+const INTERFACE_ERC_721 = [0x80, 0xac, 0x58, 0xcd];
+const INTERFACE_ERC_1155 = [0xd9, 0xb6, 0x7a, 0x26];
 
 let cfx;
 let networkId;
 let tokenTool;
 let seq;
-let epochNumber;
+let startEpochNumber;
+let endEpochNumber;
 
 async function init() {
     const config = loadConfig('Prod')
     console.log(`config-----------${JSON.stringify(config)}`)
-    seq = createDB(config.database)
+    seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
 
@@ -31,12 +39,92 @@ async function init() {
 async function getData(epochNumber) {
     const groupedLogs = await getLogsGrouped(epochNumber);
     const announceInfo = await getAnnounceInfo(epochNumber, groupedLogs.announcementArray);
-    const modelData = { announceInfo };
+    const tokenArray = await getTokensAutoDetected(groupedLogs);
+
+    const modelData = { announceInfo, tokenArray };
     return modelData;
 }
 
 async function save(epochNumber, modelData) {
-        await saveAnnounceInfo(epochNumber, modelData.announceInfo);
+    await saveAnnounceInfo(epochNumber, modelData.announceInfo);
+
+    const tokenArray = modelData.tokenArray;
+    if(tokenArray?.length){
+        console.log(`epoch-sync.detect, token:${tokenArray.length}`)
+    }
+    for(const token of tokenArray){
+        await Token.upsert(token).catch(e => console.log(`epoch-sync.detect, token:${JSON.stringify(token)}`, e));
+    }
+}
+
+// ----------------------- business method for token ------------------------
+async function getTokensAutoDetected({ transfer20Array, transfer721Array, transfer1155Array }) {
+    let tokenArray = [];
+    try{
+        const [crc20AddressArray, crc721AddressArray, crc1155AddressArray]  = await Promise.all([
+            [... new Set(transfer20Array.map(item => item.address).filter(Boolean))],
+            [... new Set(transfer721Array.map(item => item.address).filter(Boolean))],
+            [... new Set(transfer1155Array.map(item => item.address).filter(Boolean))]
+        ]);
+        if(crc20AddressArray.length){
+            tokenArray = [...tokenArray, ...await getTokens(crc20AddressArray, CONST.TRANSFER_TYPE.ERC20)];
+        }
+        if(crc721AddressArray.length){
+            tokenArray = [...tokenArray, ...await getTokens(crc721AddressArray, CONST.TRANSFER_TYPE.ERC721)];
+        }
+        if(crc1155AddressArray.length){
+            tokenArray = [...tokenArray, ...await getTokens(crc1155AddressArray, CONST.TRANSFER_TYPE.ERC1155)];
+        }
+    }catch (e){
+        console.log(`epoch-sync.getTokensAutoDetected fail`, e);
+    }
+    return tokenArray;
+}
+
+async function getTokens(hexAddressArray, transferType){
+    const tokenArray = [];
+    for(const hex40 of hexAddressArray){
+        const token = await getToken(hex40, transferType);
+        token && tokenArray.push(token);
+    }
+    return tokenArray;
+}
+
+async function getToken(hexAddress, transferType){
+    const hex40id = (await makeId(hexAddress)).id;
+    const tokenDb = await Token.findOne({where: {hex40id}, raw: true});
+    if(tokenDb && tokenDb.type){
+        return undefined;
+    }
+
+    const base32 = format.address(hexAddress, StatApp.networkId);
+    const [ totalSupply, tokenInfo, erc721Interface, erc1155Interface ] = await Promise.all([
+        tokenTool.getTokenTotalSupply(base32),
+        tokenTool.getToken(base32),
+        tokenTool.supportsInterface(base32, INTERFACE_ERC_721),
+        tokenTool.supportsInterface(base32, INTERFACE_ERC_1155),
+    ]);
+    if((transferType === CONST.TRANSFER_TYPE.ERC721 && erc721Interface === false) ||
+        (transferType === CONST.TRANSFER_TYPE.ERC1155 && erc1155Interface === false)){
+        return undefined;
+    }
+
+    let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
+        decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
+        type: transferType});
+    const transferCount = (await countTransfer(hex40id, transferType)) || 1;
+    const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
+    token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult });
+    return token;
+}
+
+async function countTransfer(addressId, transferType) {
+    if(transferType === CONST.TRANSFER_TYPE.ERC20)
+        return Erc20Transfer.count({ where: { contractId: addressId }});
+    if(transferType === CONST.TRANSFER_TYPE.ERC721)
+        return Erc721Transfer.count({ where: { contractId: addressId }});
+    if(transferType === CONST.TRANSFER_TYPE.ERC1155)
+        return Erc1155Transfer.count({ where: { contractId: addressId }});
 }
 
 //--------------------- announce ---------------------
@@ -105,7 +193,9 @@ async function save(epochNumber, modelData) {
         contract.base32 = format.address(hex, networkId);
         contractArray.push(contract);
     }
-    console.log(`announcement------tokenArray:${JSON.stringify(tokenArray)}------contractArray:${JSON.stringify(contractArray)}`);
+    if(tokenArray?.length || contractArray?.length){
+        console.log(`announcement------tokenArray:${JSON.stringify(tokenArray)}------contractArray:${JSON.stringify(contractArray)}`);
+    }
     return {tokenArray, contractArray};
 }
 
@@ -178,17 +268,27 @@ function parseEventLog(eventLog) {
 }
 
 // -------------------------------- run -------------------------------
-async function run(epochNumber) {
+async function run(startEpochNumber, endEpochNumber) {
     await init();
-    const modelData = await getData(epochNumber);
-    await save(epochNumber, modelData);
+    while(startEpochNumber<=endEpochNumber){
+        const modelData = await getData(startEpochNumber);
+        await save(startEpochNumber, modelData);
+        if(startEpochNumber % 100 === 0){
+            console.log(`epoch:${startEpochNumber} processed`);
+        }
+        startEpochNumber = startEpochNumber + 1;
+    }
+    console.log(`done`);
 }
 
 const args = process.argv.slice(2);
 networkId = Number(args[0]);
 if(args[1]){
-    epochNumber = Number(args[1]);
+    startEpochNumber = Number(args[1]);
+}
+if(args[2]){
+    endEpochNumber = Number(args[2]);
 }
 
-run(epochNumber).then();
+run(startEpochNumber, endEpochNumber).then();
 

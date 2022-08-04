@@ -41,7 +41,7 @@ export class NFTPreviewService {
         const address = toBase32(contractAddress) as string;
         const token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
         if(!token) {
-            throw new Errors.NotTokenError('${contractAddress} not detected as a token');
+            throw new Errors.NotTokenError(`${contractAddress} not detected as a token`);
         }
 
         let detail;
