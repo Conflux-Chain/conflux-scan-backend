@@ -13,6 +13,7 @@ import {StatApp} from "./StatApp";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneHandler} from "./service/prune/PruneHandler";
 import {TransferTpsService} from "./service/TransferTpsService";
+import {ContractQuery} from "./service/ContractQuery";
 
 patchFormat();
 
@@ -22,6 +23,7 @@ export class FullEpochSync{
     public sequelize: Sequelize;
     public tokenTool: TokenTool;
     public tokenQuery: TokenQuery;
+    public contractQuery: ContractQuery;
     public epochSync: EpochSync;
     public pruneHandler: PruneHandler;
     public transferTpsService: TransferTpsService;
@@ -83,6 +85,7 @@ export class FullEpochSync{
 
         this.tokenTool = new TokenTool(this.cfx);
         this.tokenQuery = new TokenQuery(this);
+        this.contractQuery = new ContractQuery(this);
         this.epochSync = new EpochSync(this);
 
         await this.epochSync.run(this.config.syncEpochNumber);

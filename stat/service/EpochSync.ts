@@ -258,7 +258,8 @@ export class EpochSync extends SyncBase{
                     const fromHex = format.hexAddress(from);
                     const decodedData = this.decodeData(ABI_ADMIN_CONTROL, data);
                     const contract = decodedData.params[0].value;
-                    const destroyTx = {epochNumber, blockTime, txHash: hash, admin: fromHex, contract};
+                    const destroyTx = {epochNumber, blockTime, txHash: hash.substr(2), admin: fromHex.substr(2),
+                        contract: contract.substr(2)};
                     adminDestroyTxArray.push(destroyTx);
                 }
             }
@@ -845,6 +846,10 @@ export class EpochSync extends SyncBase{
 
     // ---------------------------- contract verify -----------------------------
     public async linkVerify({address, codeHash}){
+        const {
+            app: { contractQuery },
+        } = this;
+
         const matchVerify = await ContractVerify.findOne({
             where: {codeHash, verifyResult: true},
             order: [['updatedAt', 'ASC']],
@@ -857,8 +862,14 @@ export class EpochSync extends SyncBase{
         const base32 = toBase32(address);
         const similarMatch = matchVerify.base32;
         const createdAt = new Date();
+
+        const bytecode = contractQuery.exactBytecode({address: matchVerify.base32,
+            constructorArgs: matchVerify.constructorArgs});
+        const constructorArgs = contractQuery.exactConstructorArgs({address: base32, bytecode});
+
         const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
-            {id: undefined, implementation: undefined, base32, similarMatch, createdAt, updatedAt: createdAt});
+            {id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
+                updatedAt: createdAt});
         await ContractVerify.create(matchRecord).catch(() => undefined);
     }
 }

@@ -1,24 +1,23 @@
 const LogicError = require('koaflow/lib/util/LogicError').extend({ status: 600 });
 
 module.exports = {
+
   LogicError,
-  ParameterError: LogicError.extend({ name: 'ParameterError', code: 10001 }),
-  PermissionsError: LogicError.extend({ name: 'PermissionsError', code: 10403 }),
-  AssertError: LogicError.extend({ name: 'AssertError', code: 10501 }),
-  ApiBusyError: LogicError.extend({ name: 'ApiBusyError', code: 10503 }),
+  BizError: LogicError.extend({ code: 50100, name: 'BizError' }),
+  ParameterError: LogicError.extend({ code: 50101, name: 'ParameterError' }),
+  PermissionsError: LogicError.extend({ code: 50102, name: 'PermissionsError' }),
+  ApiBusyError: LogicError.extend({ code: 50103, name: 'ApiBusyError' }),
 
-  ResponseDataParsingError: LogicError.extend({ code: 20002, name: 'ResponseDataParsingError'}),
+  ResponseDataParsingError: LogicError.extend({ code: 50202, name: 'ResponseDataParsingError'}),
 
-  AnnounceTooLongError: LogicError.extend({ name: 'AnnounceTooLongError', code: 40414 }),
-  SendAnnounceError: LogicError.extend({ name: 'SendAnnounceError', code: 40400 }),
-  AnnouncementNotExistError: LogicError.extend({ name: 'AnnouncementNotExistError', code: 40404 }),
+  SendAnnounceError: LogicError.extend({ code: 50301,  name: 'SendAnnounceError' }),
+  AnnouncementNotExistError: LogicError.extend({ code: 50302, name: 'AnnouncementNotExistError' }),
+  AnnounceTooLongError: LogicError.extend({ code: 50303, name: 'AnnounceTooLongError' }),
 
-  // contract
-  QueryCreationDataError: LogicError.extend({ name: 'QueryCreationDataError', code: 50403 }),
-  ContractNameError: LogicError.extend({ name: 'ContractNameError', code: 50404 }),
-  CompilerError: LogicError.extend({ name: 'CompilerError', code: 50600 }),
-  ContractDecompileError: LogicError.extend({ name: 'ContractDecompileError', code: 50601 }),
-  ExtractMetadataError: LogicError.extend({ name: 'ExtractMetadataError', code: 50602 }),
+  QueryCreationDataError: LogicError.extend({ code: 50401, name: 'QueryCreationDataError' }),
 
-  BizError: LogicError.extend({ name: 'BizError', code: 99999 }),
+  CompilerError: LogicError.extend({ code: 50701, name: 'CompilerError' }),
+  ContractDecompileError: LogicError.extend({ code: 50702, name: 'ContractDecompileError' }),
+  ExtractMetadataError: LogicError.extend({ code: 50703, name: 'ExtractMetadataError' }),
+  ContractNameError: LogicError.extend({ code: 50704, name: 'ContractNameError' }),
 };

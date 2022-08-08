@@ -196,11 +196,27 @@ export class ContractQuery {
 
         const similarMatch = matchVerify.base32;
         const createdAt = new Date();
+        const bytecode = this.exactBytecode({address: similarMatch, constructorArgs: matchVerify.constructorArgs});
         for (const base32 of toVerifyArray) {
+            const constructorArgs = this.exactConstructorArgs({address: base32, bytecode});
             const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
-                { id: undefined, implementation: undefined, base32, similarMatch, createdAt, updatedAt: createdAt });
+                { id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
+                    updatedAt: createdAt });
             await ContractVerify.create(matchRecord).catch(() => undefined);
         }
+    }
+
+    public async exactBytecode({address, constructorArgs}) {
+        const creationData = await this.getCreationData({address});
+        const bytecode = (!constructorArgs || constructorArgs === '0x') ? creationData :
+            creationData.substr(0, creationData.length - constructorArgs.length + 2);
+        return bytecode;
+    }
+
+    public async exactConstructorArgs({address, bytecode}) {
+        const creationData = await this.getCreationData({address});
+        const constructorArgs = creationData.substr(bytecode.length);
+        return constructorArgs;
     }
 
     public async queryVerify({address}) {
@@ -240,12 +256,18 @@ export class ContractQuery {
         const sdk = cfxSDK || cfx;
         const hex = format.hexAddress(address);
 
+        if(lodash.includes(CONST.INTERNAL_CONTRACT, hex)){
+            return CONST.DEPLOY_STATUS.DEPLOYED;
+        }
         const {codeHash} = await sdk.getAccount(hex);
         if(codeHash !== CONST.CODEHASH_NO_BYTECODE){
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
 
         const hex40Bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
+        if(hex40Bean === null){
+            return CONST.DEPLOY_STATUS.NOT_DEPLOYED;
+        }
         const trace = await TraceCreateContract.findOne({where: {to: hex40Bean.id}});
         if(trace === null){
             return CONST.DEPLOY_STATUS.NOT_DEPLOYED;
