@@ -863,9 +863,9 @@ export class EpochSync extends SyncBase{
         const similarMatch = matchVerify.base32;
         const createdAt = new Date();
 
-        const bytecode = contractQuery.exactBytecode({address: matchVerify.base32,
+        const bytecode = await contractQuery.exactBytecode({address: matchVerify.base32,
             constructorArgs: matchVerify.constructorArgs});
-        const constructorArgs = contractQuery.exactConstructorArgs({address: base32, bytecode});
+        const constructorArgs = await contractQuery.exactConstructorArgs({address: base32, bytecode});
 
         const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
             {id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,

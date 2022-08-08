@@ -196,9 +196,9 @@ export class ContractQuery {
 
         const similarMatch = matchVerify.base32;
         const createdAt = new Date();
-        const bytecode = this.exactBytecode({address: similarMatch, constructorArgs: matchVerify.constructorArgs});
+        const bytecode = await this.exactBytecode({address: similarMatch, constructorArgs: matchVerify.constructorArgs});
         for (const base32 of toVerifyArray) {
-            const constructorArgs = this.exactConstructorArgs({address: base32, bytecode});
+            const constructorArgs = await this.exactConstructorArgs({address: base32, bytecode});
             const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
                 { id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
                     updatedAt: createdAt });
@@ -216,7 +216,7 @@ export class ContractQuery {
     public async exactConstructorArgs({address, bytecode}) {
         const creationData = await this.getCreationData({address});
         const constructorArgs = creationData.substr(bytecode.length);
-        return constructorArgs;
+        return `0x${constructorArgs || ''}`;
     }
 
     public async queryVerify({address}) {
