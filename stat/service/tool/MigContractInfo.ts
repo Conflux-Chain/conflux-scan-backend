@@ -7,12 +7,15 @@ import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "../common/utils";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Hex40Map} from "../../model/HexMap";
+import {Op} from "sequelize";
+import {ContractQuery} from "../ContractQuery";
 
 const lodash = require('lodash');
 const { format, sign } = require('js-conflux-sdk');
 
 let type: number;
 let cfx:Conflux;
+let contractQuery: ContractQuery;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -24,6 +27,8 @@ async function init() {
     let seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
+
+    contractQuery = new ContractQuery({cfx});
 }
 
 async function parseVerified() {
@@ -128,6 +133,29 @@ async function addMatchedVerify() {
     console.log(`addMatchedVerify------done!`);
 }
 
+async function fixConstructorArgsForSimilarVerify() {
+    const verifyArray = await ContractVerify.findAll({
+        attributes: ['id', 'base32', 'similarMatch'],
+        where: {verifyResult: true, similarMatch: {[Op.ne]: null}},
+        raw: true
+    });
+
+    for(const verify of verifyArray){
+        const similarVerify = await ContractVerify.findOne({
+            attributes: ['id', 'base32', 'constructorArgs'],
+            where: {base32: verify.similarMatch, verifyResult: true},
+            raw: true
+        });
+        const bytecode = await contractQuery.exactBytecode({address: similarVerify.base32,
+            constructorArgs: similarVerify.constructorArgs});
+        const constructorArgs = await contractQuery.exactConstructorArgs({address: verify.base32, bytecode});
+
+        await ContractVerify.update({constructorArgs}, {where: {id: verify.id}});
+        console.log(`fixConstructorArgsForSimilarVerify------base32:${verify.base32}------constructorArgs:${constructorArgs?.length}`);
+    }
+    console.log(`fixConstructorArgsForSimilarVerify------done!`);
+}
+
 
 async function run() {
     await init();
@@ -139,6 +167,9 @@ async function run() {
     }
     if(type === 3){
         await addMatchedVerify();
+    }
+    if(type === 4) {
+        await fixConstructorArgsForSimilarVerify();
     }
 }
 const args = process.argv.slice(2)
