@@ -1,7 +1,7 @@
 import {StatApp} from "../../stat/StatApp";
 import {getApiService} from "../ApiServer";
 import {setBody} from "../router/middleware";
-import {format} from "js-conflux-sdk";
+import {format, sign} from "js-conflux-sdk";
 import {
     getPagination,
     mustBeAddressParamIfPresent,
@@ -45,11 +45,19 @@ export async function listNFTTokens(ctx) {
     // let debug = true
     // const watch = debug ? new Stopwatch() : null;
     // debug && watch.start('getNftTokensForOpenApi')
+
+    const seqId = genSeqId(ctx.url);
+    const veryStart = Date.now();
+    let start = Date.now();
+    console.log(`[seqId=${seqId}][url=${ctx.url}]listNFTTokens start`);
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
+    console.log(`[[seqId=${seqId}]listNFTTokens.getNftTokensForOpenApi elapsed:${Date.now() - start}`); start = Date.now();
+
 
     if(withBrief === 'true' || withMetadata === 'true'){
         // debug && watch.start("batchGetNFTInfoList")
-        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
+        const externalMs = await batchGetNFTInfoList({seqId, nftList: data?.list, withBrief, withMetadata});
+        console.log(`[seqId=${seqId}]listNFTTokens.batchGetNFTInfoList elapsed:${Date.now() - start}`); start = Date.now();
         // debug && console.log(` --- original ext ms costs`, externalMs)
         ctx.set('external-ms', externalMs)
 /*        await Promise.all(data?.list?.map(async (item) => {
@@ -70,10 +78,17 @@ export async function listNFTTokens(ctx) {
     }
     // debug && watch.dump('\nnft tokens')
     // debug && console.log(`-----------------\n`)
+    console.log(`[seqId=${seqId}]listNFTTokens elapsed ${Date.now() - veryStart}`);
     setBody(ctx, data)
 }
 
-async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
+function genSeqId(url){
+    const plain = `${url}${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const random = sign.keccak256(Buffer.from(plain)).toString('hex');
+    return random.substr(0, 50);
+}
+
+async function batchGetNFTInfoList({seqId, nftList, withBrief, withMetadata}){
     let total = nftList?.length;
     if (!total) {
         return 0;
@@ -82,6 +97,7 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
     let curPage = 1;
     let skip = 0;
     let pageSize = 10;
+    let start0 = Date.now();
     do {
         const nftArray = nftList.slice(skip, skip + pageSize)
         if (nftArray?.length) {
@@ -96,6 +112,8 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
             }));
         }
         skip = (++curPage - 1) * pageSize;
+        const raw = lodash.map(nftArray, nft => lodash.pick(nft, ['contract', 'tokenId']));
+        console.log(`[seqId=${seqId}]listNFTTokens.getNFTInfo get:${JSON.stringify(raw)}, elapsed:${Date.now() - start0}`);start0 = Date.now();
     } while (skip <= total);
     return Date.now() - start
 }

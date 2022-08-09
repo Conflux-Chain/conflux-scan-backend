@@ -71,7 +71,7 @@ export class Metrics {
         const dbConfig = {username, password, database, hosts: [{ host, port: 8086 }]};
 
         this.reporter = new InfluxMetricReporter({
-            log: global.console,
+            log: null, //global.console,
             sender: new DefaultSender(dbConfig, 'ms'),
             reportInterval: 10000,
         });

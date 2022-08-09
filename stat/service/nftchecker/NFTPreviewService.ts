@@ -15,8 +15,8 @@ const {abi} = require('../abi/Crc1155Core');
 const {put,get, clear} = require('./MetaInfoCache')
 /*const CONST = require('../common/constant');*/
 const IPFS_GATEWAY_ARRAY = require('../../config/IPFSGateway');
-const TIMEOUT_CONN = 30000;
-const TIMEOUT_READ = 60000;
+const TIMEOUT_CONN = 1000;
+const TIMEOUT_READ = 1000;
 
 export class NFTPreviewService {
     private app;
