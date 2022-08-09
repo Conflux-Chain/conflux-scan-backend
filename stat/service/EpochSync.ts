@@ -2,7 +2,7 @@ import {Epoch} from "../model/Epoch";
 import {SyncBase, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
-import {ESpaceHex40Map, Hex40Map, makeId} from "../model/HexMap";
+import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
@@ -14,20 +14,21 @@ import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
 import {PruneNotifier} from "./prune/PruneNotifier";
-import {RedisWrap, STREAM_STAT_TOKEN_TRANSFER_Q, TPS_TRANSFER_Q} from "./RedisWrap";
+import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
 import {TransferTpsService} from "./TransferTpsService";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
+import {AddressTransfer} from "../model/AddrTransfer";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
 const abiDecoder = require('abi-decoder');
-/*const CONST = require('./common/constant');*/
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
-const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl', 'marketCapId', 'moonDexSymbol', 'binanceSymbol'];
+const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl', 'marketCapId', 'moonDexSymbol',
+    'binanceSymbol'];
 const FIELDS_TOKEN = [...['hex40id', 'base32'], ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
 
 const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
@@ -37,11 +38,15 @@ const TOPIC0_TRANSFER_ERC20 = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11
 const TOPIC0_TRANSFER_ERC1155_SINGLE = '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62';
 const TOPIC0_TRANSFER_ERC1155_BATCH = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb';
 const TOPIC0_ANNOUNCE = '0x14cb751d0950ff2788201931c45f715f7472443bc197311d9e3a7a0ba566b7e6';
-const TOKEN_TRANSFER_TOPICS = [[ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH, TOPIC0_ANNOUNCE ]];
+const TOKEN_TRANSFER_TOPICS = [[ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH,
+    TOPIC0_ANNOUNCE ]];
 
 const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
 const SELECTOR_DESTROY = '0x00f55d9d';
 const {abi: ABI_ADMIN_CONTROL} = require("./abi/AdminControl");
+
+const POCKET_ARRAY = ['gas_payment', 'storage_collateral', 'sponsor_balance_for_gas', 'sponsor_balance_for_collateral',
+    'staking_balance', 'balance'];
 
 export class EpochSync extends SyncBase{
     protected app;
@@ -56,9 +61,10 @@ export class EpochSync extends SyncBase{
     //----------------- implementation method from SyncBase -----------------
     async getData(epochNumber): Promise<SyncData> {
         const epoch = await this.getEpoch(epochNumber);
-        const {blockArray, minerBlockArray} = await this.getMinerBlockArray(epochNumber);
-        const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epoch.timestamp);
-        const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp: epoch.timestamp});
+        const epochTimestamp = epoch.timestamp;
+        const {blockHashArray, blockArray, minerBlockArray} = await this.getMinerBlockArray(epochNumber);
+        const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
+        const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
         const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
 
@@ -68,6 +74,8 @@ export class EpochSync extends SyncBase{
 
         const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
         const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
+        const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
+            eventLogInfo, traceArray);
 
         PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
@@ -76,7 +84,7 @@ export class EpochSync extends SyncBase{
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
             modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray,
-                adminDestroyTxArray},
+                adminDestroyTxArray, addrTransferArray},
         };
     }
 
@@ -98,6 +106,7 @@ export class EpochSync extends SyncBase{
             await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
             await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
+            await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx});
             await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
                 updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],
                 transaction: dbTx,
@@ -169,9 +178,10 @@ export class EpochSync extends SyncBase{
             const epochDel = await Epoch.destroy({where:{epoch: epochNumber}, transaction: dbTx});
             const minerBlockDel = await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
+            const addrTransferDel = await AddressTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
             console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}, 
-                traceCreateDel:${traceCreateDel},contractDestroyDel:${contractDestroyDel}`);
+                traceCreateDel:${traceCreateDel},addrTransferDel:${addrTransferDel},contractDestroyDel:${contractDestroyDel}`);
         });
 
         if(TransferTpsService.TPS_TRANSFER_NOTIFY) {
@@ -211,7 +221,7 @@ export class EpochSync extends SyncBase{
     }
 
     //------------------- business method for miner block --------------------
-    private async getMinerBlockArray(epochNumber) {
+    public async getMinerBlockArray(epochNumber) {
         const {
             app: { cfx },
         } = this;
@@ -235,7 +245,7 @@ export class EpochSync extends SyncBase{
         }));
         minerBlockArray = lodash.orderBy(minerBlockArray, 'position', 'desc');
 
-        return {blockArray, minerBlockArray};
+        return {blockHashArray, blockArray, minerBlockArray};
     }
 
     //---------------- business method for admin destroy tx ------------------
@@ -432,7 +442,7 @@ export class EpochSync extends SyncBase{
     }
 
     // -------------------------------- event log -------------------------------
-    private async getLogsGrouped({epochNumber, epochTimestamp}) {
+    public async getLogsGrouped({epochNumber, epochTimestamp}) {
         const {
             app: { tokenTool },
         } = this;
@@ -546,6 +556,115 @@ export class EpochSync extends SyncBase{
         }
 
         return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenTransfer};
+    }
+
+    // ---------------------------- address transfer ----------------------------
+    public async getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, eventLogInfo, traceArray){
+        const tokenTransferArray = await this.getTokenTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
+            eventLogInfo);
+        const cfxTransferArray = await this.getCFXTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
+            traceArray);
+
+        const result = [];
+        [...tokenTransferArray, ...cfxTransferArray].forEach( transfer => {
+            result.push({...transfer, addressId: transfer.fromId})
+            if (transfer.toId !== transfer.fromId) {
+                result.push({...transfer, addressId: transfer.toId})
+            }
+        });
+        return result;
+    }
+
+    private async getTokenTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
+        transfer1155Array}) {
+        const {
+            ADDRESS_TRANSFER_TYPE: {ERC20, ERC721, ERC1155}
+        } = CONST;
+
+        const blockHashMap = {};
+        lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
+
+        let result = [];
+        if(transfer20Array.length){
+            result = [...result, ...await this.buildTokenTransferArray(epochNumber, ERC20.code, transfer20Array, epochTimestamp, blockHashMap)];
+        }
+        if(transfer721Array.length){
+            result = [...result, ...await this.buildTokenTransferArray(epochNumber, ERC721.code, transfer721Array, epochTimestamp, blockHashMap)];
+        }
+        if(transfer1155Array.length){
+            result = [...result, ...await this.buildTokenTransferArray(epochNumber, ERC1155.code, transfer1155Array, epochTimestamp, blockHashMap)];
+        }
+        return result;
+    }
+
+    private async buildTokenTransferArray(epochNumber, type, transferArray, epochTimestamp, blockHashMap){
+        const addressTransferArray = [];
+        for (const item of transferArray) {
+            const transfer = {} as any;
+            transfer.epoch = item.epochNumber;
+            transfer.blockIndex = blockHashMap[item.blockHash];
+            transfer.txIndex = item.transactionIndex;
+            transfer.txLogIndex = item.transactionLogIndex;
+            transfer.batchIndex = item.batchIndex;
+
+            const [fromId, toId, contractId] = await Promise.all([
+                makeIdV(item.from, undefined, {dt:epochTimestamp}),
+                makeIdV(item.to, undefined, {dt:epochTimestamp}),
+                makeIdV(item.address, undefined, {dt:epochTimestamp}),
+            ]);
+            transfer.fromId = fromId;
+            transfer.toId = toId;
+            transfer.contractId = contractId;
+            transfer.tokenId = `${item.tokenId || 0}`;
+            transfer.value = item.value;
+
+            transfer.type = type;
+            transfer.createdAt = epochTimestamp;
+            addressTransferArray.push(lodash.defaults(transfer, {batchIndex: 0, tokenId: 0, value: 1}));
+        }
+        return addressTransferArray;
+    }
+
+    private async getCFXTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, traceArray) {
+        const {
+            ADDRESS_TRANSFER_TYPE: {CFX_IN_CALL, CFX_IN_CREATE}
+        } = CONST;
+        const blockHashMap = {};
+        lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
+
+        const result = [];
+        for (const trace of traceArray) {
+            if (trace.valid && trace.action.value &&
+                (
+                    trace.type === CONST.TRACE_TYPE.CREATE ||
+                    (trace.type === CONST.TRACE_TYPE.CALL && trace.action.callType === 'call') /*||
+                    (trace.type === CONST.TRACE_TYPE.INTERNAL_TRANSFER_ACTION && (
+                        (trace.action.fromPocket === 'balance' && lodash.includes(POCKET_ARRAY, trace.action.toPocket))||
+                        (trace.action.toPocket === 'balance' && lodash.includes(POCKET_ARRAY, trace.action.fromPocket))
+                    ))*/
+                )
+            ) {
+
+                const transfer = {} as any;
+                transfer.epoch = trace.epochNumber;
+                transfer.blockIndex = blockHashMap[trace.blockHash];
+                transfer.txIndex = trace.transactionIndex;
+                transfer.txLogIndex = trace.transactionTraceIndex;
+
+                const [fromId, toId] = await Promise.all([
+                    makeIdV(trace.action.from, undefined, {dt: epochTimestamp}),
+                    makeIdV(trace.action.to, undefined, {dt: epochTimestamp}),
+                ]);
+                transfer.fromId = fromId;
+                transfer.toId = toId;
+                transfer.value = trace.action.value;
+
+                transfer.type = trace.type === CONST.TRACE_TYPE.CREATE ? CFX_IN_CREATE.code : CFX_IN_CALL.code;
+                transfer.createdAt = epochTimestamp;
+                result.push(lodash.defaults(transfer, {batchIndex: 0, contractId: 0, tokenId: 0}));
+            }
+        }
+        return result;
     }
 
     // ------------------------------ trace create ------------------------------
@@ -713,7 +832,7 @@ export class EpochSync extends SyncBase{
         return createTraceArray;
     }
 
-    private async getTraceArray(epochNumber, detail = false) {
+    public async getTraceArray(epochNumber, detail = false) {
         let traceArray = [];
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
         blockArray.forEach((block, idx) => {

@@ -47,6 +47,26 @@ export const CONST = {
     ERC1155: 'ERC1155',
   },
 
+  ADDRESS_TRANSFER_TYPE: {
+    CFX_IN_CALL: {code: 10, name: 'CFX_IN_CALL'},
+    CFX_IN_CREATE: {code: 11, name: 'CFX_IN_CREATE'},
+    // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/gas_payment
+    CFX_IN_INTERNAL_BY_GAS_PAYMENT: {code: 31, name: 'CFX_IN_INTERNAL_BY_GAS_PAYMENT'},
+    // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/storage_collateral
+    CFX_IN_INTERNAL_BY_STORAGE_COLLATERAL: {code: 32, name: 'CFX_IN_INTERNAL_BY_STORAGE_COLLATERAL'},
+    // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/sponsor_balance_for_gas
+    CFX_IN_INTERNAL_BY_SPONSOR_GAS: {code: 33, name: 'CFX_IN_INTERNAL_BY_SPONSOR_GAS'},
+    // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/sponsor_balance_for_collateral
+    CFX_IN_INTERNAL_BY_SPONSOR_COLLATERAL: {code: 34, name: 'CFX_IN_INTERNAL_BY_SPONSOR_COLLATERAL'},
+    // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/staking_balance
+    CFX_IN_INTERNAL_BY_STAKING: {code: 35, name: 'CFX_IN_INTERNAL_BY_STAKING'},
+    // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/balance
+    CFX_IN_INTERNAL_BY_BALANCE: {code: 36, name: 'CFX_IN_INTERNAL_BY_BALANCE'},
+    ERC20: {code: 20, name: 'ERC20'},
+    ERC721: {code: 21, name: 'ERC721'},
+    ERC1155: {code: 55, name: 'ERC1155'},
+  },
+
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
   FOUR_YEAR_UNLOCK: '0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b',
   TWO_YEAR_UNLOCK: '0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a',

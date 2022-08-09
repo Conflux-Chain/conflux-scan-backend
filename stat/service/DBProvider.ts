@@ -73,6 +73,7 @@ import {ApiLog} from "../monitor/ApiLog";
 import {TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
 import {RateConfig, RateHit} from "../router/RateLimiter";
+import {createAddressTransferTable} from "../model/AddrTransfer";
 let conf
 export function createDB(config) {
     conf = config
@@ -136,6 +137,7 @@ export async function initPartialModel(sequelize) {
         createFullBlockTable(sequelize),
         createFullTransactionTable(sequelize),
         createAddressTxTable(sequelize),
+        createAddressTransferTable(sequelize),
     ])
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)

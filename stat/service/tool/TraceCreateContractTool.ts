@@ -12,6 +12,7 @@ import { AddressTransactionIndex } from "../../model/FullBlock";
 import {EpochSync} from "../EpochSync";
 import {batchBlockDetail} from "../common/utils";
 import {StatApp} from "../../StatApp";
+import {AddressTransfer} from "../../model/AddrTransfer";
 
 const lodash = require('lodash');
 const POSITION_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
@@ -45,7 +46,7 @@ async function init() {
     await cfx.updateNetworkId();
     tokenTool = new TokenTool(cfx);
 
-    const app = {cfx, networkId: StatApp.networkId};
+    const app = {cfx, networkId: StatApp.networkId, tokenTool};
     epochSync = new EpochSync(app);
     contractQuery = new ContractQuery(app);
 }
@@ -164,6 +165,9 @@ async function run() {
     }
     if(type === 8){
         await adminDestroyContract(minEpoch, maxEpoch);
+    }
+    if(type === 9){
+        await getDataByEpochNumber();
     }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
@@ -331,6 +335,26 @@ async function adminDestroyContract(startEpochNumber, endEpochNumber){
     return adminDestroyTxArray;
 }
 
+async function getDataByEpochNumber(){
+    for(let epochNumber = minEpoch; epochNumber <= maxEpoch; epochNumber++){
+        const epoch = await epochSync.getEpoch(epochNumber);
+        const epochTimestamp = epoch.timestamp;
+        const {blockHashArray} = await epochSync.getMinerBlockArray(epochNumber);
+        const eventLogInfo = await epochSync.getLogsGrouped({epochNumber, epochTimestamp});
+        const traceArray = await epochSync.getTraceArray(epochNumber);
+
+        const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
+            eventLogInfo, traceArray);
+        if(addrTransferArray?.length){
+            await AddressTransfer.bulkCreate(addrTransferArray);
+        }
+
+        if(epochNumber % 1000 === 0){
+            console.log(`add address transfer catch up at epoch:${epochNumber}`);
+        }
+    }
+}
+
 
 const args = process.argv.slice(2);
 StatApp.networkId = Number(args[0]);
@@ -349,6 +373,10 @@ if(type === 6 && args[2]){
     epochNumber = Number(args[2]);
 }
 if(type === 8 && args[2] && args[3]){
+    minEpoch = Number(args[2]);
+    maxEpoch = Number(args[3]);
+}
+if(type === 9 && args[2] && args[3]){
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
 }
