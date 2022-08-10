@@ -349,6 +349,7 @@ async function update20holder(hex40id:number, cfx:Conflux, name='') {
 }
 async function fix20holder(cfx:Conflux) {
     const [,,_,contractId] = process.argv
+    await cfx.updateNetworkId();
     const {networkId} = await cfx.getStatus()
     StatApp.networkId = networkId
     new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
