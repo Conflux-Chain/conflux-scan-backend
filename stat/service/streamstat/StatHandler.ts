@@ -215,7 +215,7 @@ export abstract class StatHandler {
         const minTime = minEpoch?.timestamp || null;
         const maxTime = maxEpoch?.timestamp || null;
         const statSpan = {minEpochNumber, maxEpochNumber, minTime, maxTime};
-        console.log(`[type=${this.bizAlias()}]getStatSpan statSpan:${JSON.stringify(statSpan)}`);
+        // console.log(`[type=${this.bizAlias()}]getStatSpan statSpan:${JSON.stringify(statSpan)}`);
         return statSpan;
     }
 

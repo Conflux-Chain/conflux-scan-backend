@@ -125,7 +125,7 @@ export class NFTCheckerService {
         const count = await TokenBalance.sequelize.query(`${sqlCountClause}${sqlFromClause}`, {
             type: QueryTypes.SELECT,
             replacements: [ownerAddressId],
-            logging: console.info,
+            // logging: console.info,
         }).then(list => {
             return Number(list[0]['cntr'])
         })
