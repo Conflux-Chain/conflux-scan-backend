@@ -52,10 +52,12 @@ export class EpochSync extends SyncBase{
     protected app;
     private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     private erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
+    private NAME_TYPE_MAP;
 
     constructor(app: StatApp | any) {
         super(app);
         this.app = app;
+        this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -626,9 +628,6 @@ export class EpochSync extends SyncBase{
     }
 
     private async getCFXTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, traceArray) {
-        const {
-            ADDRESS_TRANSFER_TYPE: {CFX_IN_CALL, CFX_IN_CREATE}
-        } = CONST;
         const blockHashMap = {};
         lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
 
@@ -637,11 +636,11 @@ export class EpochSync extends SyncBase{
             if (trace.valid && trace.action.value &&
                 (
                     trace.type === CONST.TRACE_TYPE.CREATE ||
-                    (trace.type === CONST.TRACE_TYPE.CALL && trace.action.callType === 'call') /*||
+                    (trace.type === CONST.TRACE_TYPE.CALL && trace.action.callType === 'call') ||
                     (trace.type === CONST.TRACE_TYPE.INTERNAL_TRANSFER_ACTION && (
                         (trace.action.fromPocket === 'balance' && lodash.includes(POCKET_ARRAY, trace.action.toPocket))||
                         (trace.action.toPocket === 'balance' && lodash.includes(POCKET_ARRAY, trace.action.fromPocket))
-                    ))*/
+                    ))
                 )
             ) {
 
@@ -659,12 +658,19 @@ export class EpochSync extends SyncBase{
                 transfer.toId = toId;
                 transfer.value = trace.action.value;
 
-                transfer.type = trace.type === CONST.TRACE_TYPE.CREATE ? CFX_IN_CREATE.code : CFX_IN_CALL.code;
+                transfer.type = this.getCFXTransferType(trace.type, trace.action.fromPocket, trace.action.toPocket);
                 transfer.createdAt = epochTimestamp;
                 result.push(lodash.defaults(transfer, {batchIndex: 0, contractId: 0, tokenId: 0}));
             }
         }
         return result;
+    }
+
+    private getCFXTransferType(type, fromPocket, toPocket) {
+        const typeName = (type === CONST.TRACE_TYPE.CALL || type === CONST.TRACE_TYPE.CREATE) ? type :
+            (fromPocket !== 'balance' ? fromPocket : toPocket);
+
+        return this.NAME_TYPE_MAP[typeName].code;
     }
 
     // ------------------------------ trace create ------------------------------

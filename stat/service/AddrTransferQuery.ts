@@ -3,13 +3,17 @@ import {format} from "js-conflux-sdk";
 import {TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {AddressTransfer} from "../model/AddrTransfer";
+import {CONST} from "./common/constant";
+const lodash = require('lodash');
 
 export class AddrTransferQuery extends TransferQueryBase{
     protected app;
+    protected CODE_TYPE_MAP;
 
     constructor(app: any) {
         super(app);
         this.app = app;
+        this.CODE_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'code');
     }
 
     public getTransferType(): string{
@@ -52,7 +56,7 @@ export class AddrTransferQuery extends TransferQueryBase{
 
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
-        row['transferType'] = this.getTransferType();
+        row['type'] = this.CODE_TYPE_MAP[row['type']].name;
         return row;
     }
 

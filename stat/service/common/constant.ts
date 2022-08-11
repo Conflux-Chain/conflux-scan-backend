@@ -48,23 +48,23 @@ export const CONST = {
   },
 
   ADDRESS_TRANSFER_TYPE: {
-    CFX_IN_CALL: {code: 10, name: 'CFX_IN_CALL'},
-    CFX_IN_CREATE: {code: 11, name: 'CFX_IN_CREATE'},
+    CFX_IN_CALL: {code: 10, name: 'call'},
+    CFX_IN_CREATE: {code: 11, name: 'create'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/gas_payment
-    CFX_IN_INTERNAL_BY_GAS_PAYMENT: {code: 31, name: 'CFX_IN_INTERNAL_BY_GAS_PAYMENT'},
+    CFX_IN_INTERNAL_BY_GAS_PAYMENT: {code: 31, name: 'gas_payment'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/storage_collateral
-    CFX_IN_INTERNAL_BY_STORAGE_COLLATERAL: {code: 32, name: 'CFX_IN_INTERNAL_BY_STORAGE_COLLATERAL'},
+    CFX_IN_INTERNAL_BY_STORAGE_COLLATERAL: {code: 32, name: 'storage_collateral'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/sponsor_balance_for_gas
-    CFX_IN_INTERNAL_BY_SPONSOR_GAS: {code: 33, name: 'CFX_IN_INTERNAL_BY_SPONSOR_GAS'},
+    CFX_IN_INTERNAL_BY_SPONSOR_GAS: {code: 33, name: 'sponsor_balance_for_gas'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/sponsor_balance_for_collateral
-    CFX_IN_INTERNAL_BY_SPONSOR_COLLATERAL: {code: 34, name: 'CFX_IN_INTERNAL_BY_SPONSOR_COLLATERAL'},
+    CFX_IN_INTERNAL_BY_SPONSOR_COLLATERAL: {code: 34, name: 'sponsor_balance_for_collateral'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/staking_balance
-    CFX_IN_INTERNAL_BY_STAKING: {code: 35, name: 'CFX_IN_INTERNAL_BY_STAKING'},
+    CFX_IN_INTERNAL_BY_STAKING: {code: 35, name: 'staking_balance'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/balance
-    CFX_IN_INTERNAL_BY_BALANCE: {code: 36, name: 'CFX_IN_INTERNAL_BY_BALANCE'},
-    ERC20: {code: 20, name: 'ERC20'},
-    ERC721: {code: 21, name: 'ERC721'},
-    ERC1155: {code: 55, name: 'ERC1155'},
+    CFX_IN_INTERNAL_BY_BALANCE: {code: 36, name: 'balance'},
+    ERC20: {code: 20, name: 'CRC20'},
+    ERC721: {code: 21, name: 'CRC721'},
+    ERC1155: {code: 55, name: 'CRC1155'},
   },
 
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
