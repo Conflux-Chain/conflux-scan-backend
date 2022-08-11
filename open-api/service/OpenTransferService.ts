@@ -37,6 +37,14 @@ export async function listAccountTransfer1155(ctx) {
     return listTransfer(ctx, getApiService().crc1155transferQuery)
 }
 
+/**
+ * Query all transfer of one account(address)
+ * @param ctx
+ */
+export async function listAccountTransfer(ctx) {
+    return listTransfer(ctx, getApiService().addrTransferQuery)
+}
+
 export function polishTransferList(page) {
     page?.list?.forEach(row=>{
         row.contract = row.address

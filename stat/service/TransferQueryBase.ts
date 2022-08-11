@@ -99,6 +99,29 @@ export abstract class TransferQueryBase {
     public abstract doQuery(options: any, queryOptions: any): Promise<any>;
     public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>;
 
+/*
+input: {
+vv?       transferType: { in: 'query', type: 'string', enum: Object.values(CONST.TRANSFER_TYPE) },
+vv        accountAddress: { in: 'query', type: 'string' },
+vv        address: { in: 'query', type: 'string' },
+vv        minTimestamp: { in: 'query', type: 'integer', minimum: 0 },
+vv        maxTimestamp: { in: 'query', type: 'integer', minimum: 0 },
+vv        from: { in: 'query', type: 'string', nullable: true }, // new add
+vv        to: { in: 'query', type: 'string', nullable: true }, // new add
+vv        transactionHash: { in: 'query', type: 'string', description: 'use alone', nullable: true },
+vv        tokenId: { in: 'query', type: 'string' },
+vv        txType: { in: 'query', type: 'string', enum: [...Object.values(CONST.TX_TYPE), 'create'] }, // new add
+x         status: { in: 'query', type: 'integer', enum: [CONST.TX_STATUS.FAILED] }, // new add
+x         zeroValue: { in: 'query', type: 'boolean', default: false },
+vv        tokenArray: { in: 'query', type: 'array', items: { type: 'string' } },
+
+vv        minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
+vv        maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
+vv        sort: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
+vv        skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
+vv        limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
+}
+*/
     public async listTransfer(options) {
         const{ logger } = this.app;
         const {minEpochNumber, maxEpochNumber, transactionHash,
