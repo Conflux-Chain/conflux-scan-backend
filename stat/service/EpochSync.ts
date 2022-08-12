@@ -77,7 +77,7 @@ export class EpochSync extends SyncBase{
         const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
         const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
         const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
-            eventLogInfo, traceArray);
+            blockArray, eventLogInfo, traceArray);
 
         PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
@@ -561,20 +561,54 @@ export class EpochSync extends SyncBase{
     }
 
     // ---------------------------- address transfer ----------------------------
-    public async getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, eventLogInfo, traceArray){
+    public async getAddrTransferArrayDB(epochNumber,epochTimestamp,blockHashArray,blockArray,eventLogInfo,traceArray){
         const tokenTransferArray = await this.getTokenTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
             eventLogInfo);
         const cfxTransferArray = await this.getCFXTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
             traceArray);
+        const txArray = await this.getAddrTxArray(epochNumber, blockArray, epochTimestamp);
 
         const result = [];
-        [...tokenTransferArray, ...cfxTransferArray].forEach( transfer => {
+        [...tokenTransferArray, ...cfxTransferArray, ...txArray].forEach( transfer => {
             result.push({...transfer, addressId: transfer.fromId})
-            if (transfer.toId !== transfer.fromId) {
-                result.push({...transfer, addressId: transfer.toId})
+
+            const dummyToId = transfer.toId || transfer.contractCreatedId
+            if (dummyToId && dummyToId !== transfer.fromId) {
+                result.push({...transfer, addressId: dummyToId})
             }
         });
         return result;
+    }
+
+    private async getAddrTxArray(epochNumber, blockArray, epochTimestamp){
+        const addrTxArray = [];
+        for(const [blockIndex, block] of blockArray.entries()){
+            if(!block.transactions?.length) {
+                continue;
+            }
+
+            for (const [txIndex, item] of block.transactions.entries()){
+                const tx = {} as any;
+                tx.epoch = block.epochNumber;
+                tx.blockIndex = blockIndex;
+                tx.txIndex = txIndex;
+
+                const [fromId, toId, contractCreatedId] = await Promise.all([
+                    makeIdV(item.from, undefined, {dt: epochTimestamp}),
+                    makeIdV(item.to, undefined, {dt: epochTimestamp}),
+                    makeIdV(item.contractCreated, undefined, {dt: epochTimestamp}),
+                ]);
+                tx.fromId = fromId;
+                tx.toId = toId;
+                tx.value = item.value;
+                tx.contractCreatedId = contractCreatedId;
+
+                tx.type = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
+                tx.createdAt = epochTimestamp;
+                addrTxArray.push(lodash.defaults(tx, {txLogIndex: 0, batchIndex: 0, contractId: 0, tokenId: 0}));
+            }
+        }
+        return addrTxArray;
     }
 
     private async getTokenTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
