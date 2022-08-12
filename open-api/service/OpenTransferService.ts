@@ -9,6 +9,8 @@ import {
 import {polishContract} from "./OpenContractService";
 import {StatApp} from "../../stat/StatApp";
 import {getApiService} from "../ApiServer";
+import {CONST} from "../../stat/service/common/constant";
+const lodash = require('lodash');
 
 export async function listAccountCfxTransfer(ctx) {
     return listTransfer(ctx, getApiService().cfxTransferQuery)
@@ -68,9 +70,11 @@ export async function listTransfer(ctx, service) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account', 'contract')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'transferType', lodash.map(Object.values(CONST.ADDRESS_TRANSFER_TYPE), item => item.name))
     const {skip, limit} = skipLimit(ctx.request.query)
     // token id is not used in crc20transfer.
-    const {account: base32,minEpochNumber, maxEpochNumber, startBlock, endBlock, minTimestamp, maxTimestamp, from, to,sort,contract,tokenId, needAddressInfo} = ctx.request.query;
+    const {account: base32, minEpochNumber, maxEpochNumber, startBlock, endBlock, minTimestamp, maxTimestamp, from, to,
+        sort, contract, tokenId, transferType, needAddressInfo} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
@@ -78,7 +82,7 @@ export async function listTransfer(ctx, service) {
     const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
     const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
     const page = await service.listTransfer(
-        {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, tokenId,
+        {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, tokenId, transferType,
             minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort}
     );
     polishTransferList(page)

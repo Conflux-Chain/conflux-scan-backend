@@ -12,15 +12,17 @@ const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
     protected app;
+    protected NAME_TYPE_MAP;
 
     protected constructor(app: any) {
         this.app = app;
+        this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
     }
 
     public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                   minTimestamp, maxTimestamp,
                                   accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-                                  tokenId, txType, skip, limit, sort='DESC'}){
+                                  tokenId, transferType = undefined, txType, skip, limit, sort='DESC'}){
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // page
@@ -67,6 +69,10 @@ export abstract class TransferQueryBase {
             conditionArray.push({tokenId: tokenId.toString()});
         }
         if(accountAddressId) {
+            const transferCode = this.NAME_TYPE_MAP[transferType]?.code;
+            if(transferCode){
+                conditionArray.push({type: transferCode});
+            }
             if (txType === CONST.TX_TYPE.IN) {
                 conditionArray.push({toId: accountAddressId});
             } else if (txType === CONST.TX_TYPE.OUT) {
@@ -127,7 +133,7 @@ vv        limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, defau
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
-            tokenId, txType , status, skip = 0, limit = 10, sort} = options;
+            tokenId, transferType, txType , status, skip = 0, limit = 10, sort} = options;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
@@ -180,7 +186,7 @@ vv        limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, defau
             minEpochNumber, maxEpochNumber, txParas,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-            tokenId, txType, skip, limit, sort
+            tokenId, transferType, txType, skip, limit, sort
         });
         queryOptions.attributes = this.buildQueryFields({txType});
         if(options.txType === CONST.TX_TYPE.CREATE){

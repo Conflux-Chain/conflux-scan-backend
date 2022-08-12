@@ -195,6 +195,7 @@ paths:
         - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/tokenIdParam'
         - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/transferTypeParam'
       responses:
         200:
           description: ''
@@ -2097,6 +2098,28 @@ components:
       schema:
         type: string
         default: 'DESC'
+    transferTypeParam:
+      description: "Query the transfer record of the address based on the specified tranferType which includes
+      Transaction:
+        'transaction',
+      CFX Transfer:
+        'call',
+        'create',
+        'gas_payment',
+        'storage_collateral',
+        'sponsor_balance_for_gas',
+        'sponsor_balance_for_collateral',
+        'staking_balance',
+        'balance',
+      Token Transfer:
+        'transfer_20',
+        'transfer_721',
+        'transfer_1155'"
+      name: transferType
+      in: query
+      required: false
+      schema:
+        type: string
     withInputParam:
       description: "If return transaction's input, the value is true/false."
       name: withInput

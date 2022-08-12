@@ -48,7 +48,7 @@ export const CONST = {
   },
 
   ADDRESS_TRANSFER_TYPE: {
-    TX: {code: 10, name: 'tx' },
+    TX: {code: 10, name: 'transaction' },
     CFX_IN_CALL: {code: 101, name: 'call'},
     CFX_IN_CREATE: {code: 102, name: 'create'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/gas_payment
@@ -63,9 +63,9 @@ export const CONST = {
     CFX_IN_INTERNAL_BY_STAKING: {code: 107, name: 'staking_balance'},
     // Positive when address is toPocket, otherwise is negative. Only process the case in which the fromPocket/toPocket is balance/balance
     CFX_IN_INTERNAL_BY_BALANCE: {code: 108, name: 'balance'},
-    ERC20: {code: 20, name: 'CRC20'},
-    ERC721: {code: 21, name: 'CRC721'},
-    ERC1155: {code: 55, name: 'CRC1155'},
+    ERC20: {code: 20, name: 'transfer_20'},
+    ERC721: {code: 21, name: 'transfer_721'},
+    ERC1155: {code: 55, name: 'transfer_1155'},
   },
 
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
