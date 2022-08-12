@@ -4,6 +4,8 @@ import {TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {AddressTransfer} from "../model/AddrTransfer";
 import {CONST} from "./common/constant";
+import {FullTransaction} from "../model/FullBlock";
+import {StatApp} from "../StatApp";
 const lodash = require('lodash');
 
 export class AddrTransferQuery extends TransferQueryBase{
@@ -17,7 +19,7 @@ export class AddrTransferQuery extends TransferQueryBase{
     }
 
     public getTransferType(): string{
-        return 'ALL';
+        return CONST.TRANSFER_TYPE.ALL;
     }
 
     public buildQueryFields({txType}): any{
@@ -54,9 +56,26 @@ export class AddrTransferQuery extends TransferQueryBase{
         return await AddressTransfer.findAndCountAll(queryOptions);
     }
 
-    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
-        row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
+        txMap: Map<string, FullTransaction>): Promise<any>{
+        const {ADDRESS_TRANSFER_TYPE: {TX, ERC20, ERC721, ERC1155}} = CONST;
+        const isTx = row['type'] === TX.code;
+        const isToken = row['type'] === ERC20.code || row['type'] === ERC721.code || row['type'] === ERC1155.code;
+        row['address'] = !isToken ? undefined : format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        row['tokenId'] = !isToken ? undefined : row['tokenId'];
         row['type'] = this.CODE_TYPE_MAP[row['type']].name;
+
+        if(isTx){
+            const tx = txMap.get(`${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`);
+            row['chainId'] = StatApp.networkId;
+            row['nonce'] = tx?.nonce;
+            row['method'] = tx?.method;
+            row['status'] = tx?.status;
+            row['gasFee'] = tx?.gas;
+            /* set in TransferQueryBase
+            row['storageFee'] = tx['storageFee'];
+            row['input'] = tx['input'];*/
+        }
         return row;
     }
 

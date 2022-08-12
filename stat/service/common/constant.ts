@@ -45,6 +45,7 @@ export const CONST = {
     ERC721: 'ERC721',
     ERC777: 'ERC777',
     ERC1155: 'ERC1155',
+    ALL: 'ALL'
   },
 
   ADDRESS_TRANSFER_TYPE: {

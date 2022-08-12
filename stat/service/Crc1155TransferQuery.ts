@@ -6,6 +6,7 @@ import {getAddrTransferCount} from "../model/TransferCount";
 import {StatApp} from "../StatApp";
 import {Token} from "../model/Token";
 import {CONST} from "./common/constant"
+import {FullTransaction} from "../model/FullBlock";
 /*const CONST = require('./common/constant');*/
 
 export class Crc1155TransferQuery extends TransferQueryBase{
@@ -60,7 +61,8 @@ export class Crc1155TransferQuery extends TransferQueryBase{
         const list = await Erc1155Transfer.findAll(queryOptions);
         return {count: list.length, rows:list}
     }
-    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
+    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
+        txMap: Map<string, FullTransaction>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC1155;
         return row;

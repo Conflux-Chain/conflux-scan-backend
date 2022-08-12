@@ -1,14 +1,15 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
-import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
-import {FullTransaction} from "../model/FullBlock";
+import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
+import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {checkAddressRate} from "../router/RateLimiter";
 import {CONST} from "./common/constant"
+import {fillMethodInfo} from "../model/ContractInfo";
+import {Errors} from "./common/LogicError";
 const lodash = require('lodash');
-/*const CONST = require('./common/constant');*/
 
 export abstract class TransferQueryBase {
     protected app;
@@ -103,33 +104,11 @@ export abstract class TransferQueryBase {
     public abstract getTransferType(): string;
     public abstract buildQueryFields({txType}): any;
     public abstract doQuery(options: any, queryOptions: any): Promise<any>;
-    public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>;
+    public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
+        txMap: Map<string, FullTransaction>): Promise<any>;
 
-/*
-input: {
-vv?       transferType: { in: 'query', type: 'string', enum: Object.values(CONST.TRANSFER_TYPE) },
-vv        accountAddress: { in: 'query', type: 'string' },
-vv        address: { in: 'query', type: 'string' },
-vv        minTimestamp: { in: 'query', type: 'integer', minimum: 0 },
-vv        maxTimestamp: { in: 'query', type: 'integer', minimum: 0 },
-vv        from: { in: 'query', type: 'string', nullable: true }, // new add
-vv        to: { in: 'query', type: 'string', nullable: true }, // new add
-vv        transactionHash: { in: 'query', type: 'string', description: 'use alone', nullable: true },
-vv        tokenId: { in: 'query', type: 'string' },
-vv        txType: { in: 'query', type: 'string', enum: [...Object.values(CONST.TX_TYPE), 'create'] }, // new add
-x         status: { in: 'query', type: 'integer', enum: [CONST.TX_STATUS.FAILED] }, // new add
-x         zeroValue: { in: 'query', type: 'boolean', default: false },
-vv        tokenArray: { in: 'query', type: 'array', items: { type: 'string' } },
-
-vv        minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
-vv        maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
-vv        sort: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
-vv        skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
-vv        limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
-}
-*/
     public async listTransfer(options) {
-        const{ logger } = this.app;
+        const{ logger, service: {fullBlockQuery} } = this.app;
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
@@ -140,6 +119,7 @@ vv        limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, defau
         // if (address) {
             // await checkAddressRate(address)
         // }
+
         // parameter
         const addressMap = {};
         await Promise.all([accountAddress, address, from, to, opponentAddress]
@@ -214,7 +194,7 @@ vv        limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, defau
             });
             const [hex40Map, txMap] = await Promise.all([
                 idHex40Map(Array.from(hex40IdSet)),
-                FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash'],
+                FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash', 'nonce', 'method', 'status', 'gas'],
                     where: {[Op.or]: txHashQueryCondition}}).then(list=>{
                     const map = new Map<string, FullTransaction>()
                     list.forEach(tx=>map.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx))
@@ -233,8 +213,34 @@ vv        limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, defau
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
                     : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];
-                this.processQueryResult(row, hex40Map, undefined);
+                this.processQueryResult(row, hex40Map, undefined, txMap);
             })
+        }
+
+        // add tx info
+        if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
+            await fillMethodInfo(list).catch(error=>{ throw new Errors.BizError(`fill method info error, ${error}`);})
+            const hashArray = [...new Set(lodash.map(list, item => item['transactionHash']))];
+            const {txMap, receiptMap} = await fullBlockQuery.batchGetTransactionList({hashArray});
+            const failedQuery:Promise<FailedTx>[] = []
+            list.forEach(row=>{
+                if(row['type'] !== CONST.ADDRESS_TRANSFER_TYPE.TX.name) return;
+                row['storageFee'] = BigInt(receiptMap[row['transactionHash']]?.storageCollateralized || 0) * BigInt(10**18) / BigInt(1024);
+                row['input'] = txMap[row['transactionHash']]?.data;
+                if (row['status']) {
+                    failedQuery.push(FailedTx.findOne({where:{
+                            epoch: row['epochNumber'], blockPosition: row['blockPosition'], txPosition:row['transactionIndex']
+                        }}).then(ft=>{
+                        if (ft) {
+                            row['txExecErrorMsg'] = ft.txExecErrorMsg;
+                        } else {
+                            row['txExecErrorMsg'] = 'txExecErrorMsgNotFound'
+                        }
+                        return ft
+                    }))
+                }
+            });
+            await Promise.all(failedQuery);
         }
 
         // add pruned total
