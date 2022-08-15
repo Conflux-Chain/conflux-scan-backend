@@ -9,6 +9,7 @@ import {
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
 import {Stopwatch} from "../../stat/service/Stopwatch";
+import {fmtDtUTC} from "../../stat/model/Utils";
 
 const lodash = require('lodash');
 
@@ -42,42 +43,23 @@ export async function listNFTTokens(ctx) {
     }
     const {skip, limit} = getPagination(ctx.request.query);
 
-    // let debug = true
-    // const watch = debug ? new Stopwatch() : null;
-    // debug && watch.start('getNftTokensForOpenApi')
-
     const seqId = genSeqId(ctx.url);
-    const veryStart = Date.now();
-    let start = Date.now();
-    console.log(`[seqId=${seqId}][url=${ctx.url}]listNFTTokens start`);
+    const date = new Date();
+    const veryStart = date.getTime();
+    let start = date.getTime();
+    console.log(`[seqId=${seqId}][time=${date.toLocaleString()}][url=${ctx.url}]listNFTTokens start`);
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
     console.log(`[[seqId=${seqId}]listNFTTokens.getNftTokensForOpenApi elapsed:${Date.now() - start}`); start = Date.now();
 
-
     if(withBrief === 'true' || withMetadata === 'true'){
-        // debug && watch.start("batchGetNFTInfoList")
         const externalMs = await batchGetNFTInfoList({seqId, nftList: data?.list, withBrief, withMetadata});
         console.log(`[seqId=${seqId}]listNFTTokens.batchGetNFTInfoList elapsed:${Date.now() - start}`); start = Date.now();
-        // debug && console.log(` --- original ext ms costs`, externalMs)
         ctx.set('external-ms', externalMs)
-/*        await Promise.all(data?.list?.map(async (item) => {
-            const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
-                tokenId: BigInt(item.tokenId)});
-            const brief = withBrief === 'true' ? {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri,
-                description: nftInfo?.imageDesc} : undefined;
-            const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;
-            const data = {...brief, ...metadata, error: nftInfo?.error};
-            lodash.defaults(item, data);
-        }));*/
     }
 
     if (StatApp.isEVM) {
-        data?.list?.forEach(row => {
-            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
-        });
+        data?.list?.forEach(row => { row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});
     }
-    // debug && watch.dump('\nnft tokens')
-    // debug && console.log(`-----------------\n`)
     console.log(`[seqId=${seqId}]listNFTTokens elapsed ${Date.now() - veryStart}`);
     setBody(ctx, data)
 }
@@ -85,7 +67,7 @@ export async function listNFTTokens(ctx) {
 function genSeqId(url){
     const plain = `${url}${Date.now()}${Math.floor(Math.random() * 1000)}`;
     const random = sign.keccak256(Buffer.from(plain)).toString('hex');
-    return random.substr(0, 50);
+    return random.substr(0, 16);
 }
 
 async function batchGetNFTInfoList({seqId, nftList, withBrief, withMetadata}){
