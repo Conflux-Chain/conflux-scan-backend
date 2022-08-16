@@ -7,6 +7,8 @@ import {Epoch} from "../model/Epoch";
 import {StatApp} from "../StatApp";
 
 export abstract class SyncBase{
+    public static SYNC_BACKWARD = false;
+
     protected app: StatApp;
     private forwardQueue: PreloadMap;
     private backwardQueue: PreloadMap;
@@ -57,11 +59,12 @@ export abstract class SyncBase{
 
     private async saveBackward(epochNumber, { pivotHash, modelData }): Promise<SyncCode> {
         const nextEpochNumber = epochNumber + 1;
-        const nextEpoch = await this.getEpochByEpochNumber(nextEpochNumber);
-        // useful only when sync backward
-        // if (nextEpoch && pivotHash !== nextEpoch.parentHash) {
-        //     return SyncCode.PIVOT_SWITCH;
-        // }
+        /*const nextEpoch = await this.getEpochByEpochNumber(nextEpochNumber);*/
+        const nextEpoch = await this.getEpoch(nextEpochNumber);
+        const validate = await this.validate(epochNumber, modelData);
+        if (nextEpoch && pivotHash !== nextEpoch.parentHash || !validate) {
+            return SyncCode.PIVOT_SWITCH;
+        }
         await this.save(epochNumber, modelData);
         return SyncCode.SUCCESS;
     }
@@ -121,18 +124,31 @@ export abstract class SyncBase{
             console.log(` SyncBase uses default preload value: 16.`)
             config.preload = 16
         }
-        const next = await this.getNextEpochNumber();
 
+        const that = this
+        if (SyncBase.SYNC_BACKWARD) {
+            let traceEpochNumber = Number.isInteger(config.preload) ? config.syncEpochNumberBackward
+                : (await that.getEpochNumberBackward());
+            async function repeat() {
+                if (traceEpochNumber >= 0) {
+                    traceEpochNumber = await that.syncBackward(traceEpochNumber);
+                    setTimeout(repeat, 0)
+                }
+            }
+            return repeat()
+        }
+
+        const next = await this.getNextEpochNumber();
         let traceEpochNumber = epochNumber;
         if(traceEpochNumber === undefined || traceEpochNumber <= next){
             traceEpochNumber = next;
         }
 
-        const that = this
         let stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e => {
             console.log(` SyncBase getEpochNumber error:${e}`);
             return 0;
         });
+
         async function repeat() {
             if (traceEpochNumber <= stateEpochNumber - (config.preload)) {
                 traceEpochNumber = await that.syncForward(traceEpochNumber);
@@ -165,6 +181,11 @@ export abstract class SyncBase{
     public abstract save(epochNumber, modelData);
 
     public abstract delete(epochNumber, modelData);
+
+    //---------------------- methods for sync backward  -----------------------
+    public abstract getEpochNumberBackward(): Promise<number>;
+
+    public abstract getEpoch(epochNumber): Promise<any>;
 }
 
 export class SyncData {

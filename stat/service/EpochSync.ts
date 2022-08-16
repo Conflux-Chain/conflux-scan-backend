@@ -22,6 +22,7 @@ import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
 import {AddressTransfer} from "../model/AddrTransfer";
 import {PruneType} from "../model/PruneInfo";
+import {Errors} from "./common/LogicError";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -50,6 +51,18 @@ const POCKET_ARRAY = ['gas_payment', 'storage_collateral', 'sponsor_balance_for_
     'staking_balance', 'balance'];
 
 export class EpochSync extends SyncBase{
+    public static SYNC_EPOCH = true;
+    public static SYNC_BLOCK = true;
+    public static SYNC_ANNOUNCE = true;
+    public static SYNC_TRACE = true;
+    public static SYNC_TRANSFER = true;
+    public static SYNC_DESTROY = true;
+    public static SYNC_TOKEN_DETECT = true;
+    public static SYNC_TOKEN_AUDIT = true;
+    public static SYNC_TOKEN_ICON = true;
+    public static SYNC_VERIFY_LINK = true;
+    public static SYNC_EVM_ADDR = true;
+
     protected app;
     private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     private erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
@@ -108,12 +121,12 @@ export class EpochSync extends SyncBase{
     async save(epochNumber, modelData) {
         const { tokenQuery } = this.app;
         await Epoch.sequelize.transaction(async (dbTx) => {
-            await Epoch.add(modelData.epoch, dbTx);
-            await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
-            await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
-            await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
-            await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx});
-            await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
+            EpochSync.SYNC_EPOCH && await Epoch.add(modelData.epoch, dbTx);
+            EpochSync.SYNC_BLOCK && await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
+            EpochSync.SYNC_ANNOUNCE && await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
+            EpochSync.SYNC_TRACE && await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
+            EpochSync.SYNC_TRANSFER && await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx});
+            EpochSync.SYNC_DESTROY && await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
                 updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],
                 transaction: dbTx,
             });
@@ -121,6 +134,7 @@ export class EpochSync extends SyncBase{
 
         const tokenArray = modelData.tokenArray;
         for(const token of tokenArray){
+            if(!EpochSync.SYNC_TOKEN_DETECT) break;
             await Token.upsert(token).catch(e => console.log(`epoch-sync.detect, token:${JSON.stringify(token)}`, e));
         }
 
@@ -129,6 +143,7 @@ export class EpochSync extends SyncBase{
             ...modelData.tokenArray.map(item => item.base32)
         ];
         for(const address of addressArray){
+            if(!EpochSync.SYNC_TOKEN_AUDIT) break;
             await tokenQuery.audit({address}).catch(e => console.log(`epoch-sync.audit, address:${address}`, e));
         }
 
@@ -136,6 +151,7 @@ export class EpochSync extends SyncBase{
             const {tokenArray} = modelData.announceInfo;
             const {dir} = getImageDir();
             for (const token of tokenArray) {
+                if(!EpochSync.SYNC_TOKEN_ICON) break;
                 if (token.icon) {
                     const dbIcon = await Token.findOne({where: {base32: token.base32}});
                     setTimeout(()=>{
@@ -155,6 +171,7 @@ export class EpochSync extends SyncBase{
 
         const traceCreateArray = modelData.traceCreateArray;
         for(const traceCreate of traceCreateArray){
+            if(!EpochSync.SYNC_VERIFY_LINK) break;
             const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
             const address = `0x${hex40.hex}`;
             const codeHash = traceCreate.codeHash;
@@ -163,6 +180,7 @@ export class EpochSync extends SyncBase{
 
         const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
         for(const traceCrossSpace of traceCrossSpaceArray){
+            if(!EpochSync.SYNC_EVM_ADDR) break;
             if(traceCrossSpace.fromSpace === 'evm'){
                 await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
                     .catch(() => undefined);
@@ -1034,5 +1052,14 @@ export class EpochSync extends SyncBase{
             {id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
                 updatedAt: createdAt});
         await ContractVerify.create(matchRecord).catch(() => undefined);
+    }
+
+    // ----------------------------- sync backward ------------------------------
+    public async getEpochNumberBackward(): Promise<number> {
+        if (EpochSync.SYNC_TRANSFER) {
+            const minEpoch: number = await AddressTransfer.min('epoch');
+            return (minEpoch || 0) - 1;
+        }
+        throw new Errors.BizError(`not implemented`);
     }
 }

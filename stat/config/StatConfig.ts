@@ -88,6 +88,7 @@ export interface StatConfig{
     syncTraceCreateContract: boolean,
     syncEpoch: boolean,
     syncEpochNumber: number,
+    syncEpochNumberBackward: number,
     serverTag: string,
     erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,

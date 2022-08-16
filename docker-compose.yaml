@@ -135,3 +135,13 @@ services:
       PORT: 8087
     restart: always
     command: node /stat-root/stat/dist/FullEpochSync.js
+  epoch_backward:
+    image: node:14.7.0
+    volumes:
+      - ./:/stat-root
+      - ./log/:/log
+    network_mode: host
+    environment:
+      PORT: 8087
+    restart: always
+    command: node /stat-root/stat/dist/FullEpochSync.js backward syncTransfer
