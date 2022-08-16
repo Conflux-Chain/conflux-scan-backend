@@ -5,6 +5,7 @@ import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {AddressErc20Transfer, Erc20Transfer} from "../../model/Erc20Transfer";
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {AddressTransfer} from "../../model/AddrTransfer";
 
 export class PruneTransfer extends PruneBase {
     protected app: StatApp;
@@ -41,6 +42,9 @@ export class PruneTransfer extends PruneBase {
             case PruneType.ADDR_ERC1155_TRANSFER:
                 model = AddressErc1155Transfer;
                 break;
+            case PruneType.ADDR_TRANSFER:
+                model = AddressTransfer;
+                break;
             default:
                 throw new Error(`unknown prune type:${type}`);
         }
@@ -52,7 +56,8 @@ export class PruneTransfer extends PruneBase {
         if (this.TYPE_TOKEN_TRANSFER.has(type)) {
             return {where: {contractId}, key: {id: contractId, type}};
         }
-        if (this.TYPE_ADDR_TOKEN_TRANSFER.has(type) || PruneType.ADDR_CFX_TRANSFER === type) {
+        if (this.TYPE_ADDR_TOKEN_TRANSFER.has(type) || PruneType.ADDR_CFX_TRANSFER === type
+            || PruneType.ADDR_TRANSFER === type) {
             return {where: {addressId}, key: {id: addressId, type}};
         }
         throw new Error(`should be [address_]token_transfer.`);

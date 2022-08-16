@@ -21,6 +21,7 @@ import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
 import {AddressTransfer} from "../model/AddrTransfer";
+import {PruneType} from "../model/PruneInfo";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -81,6 +82,9 @@ export class EpochSync extends SyncBase{
 
         PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
+        const addrIds = [...new Set(lodash.map(addrTransferArray, item => item.addressId))];
+        PruneNotifier.notifyPrune({[PruneType.ADDR_TRANSFER]: addrIds})
+            .catch(e => console.log(`epoch-sync.noticePruneAddrTransfer, epoch:${epochNumber}`, e));
 
         return {
             parentHash: epoch.parentHash,
