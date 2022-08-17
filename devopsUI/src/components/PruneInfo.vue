@@ -38,7 +38,7 @@ export default {
     },
     async fetList(orderBy = 'pruned') {
       this.loading = true;
-      const list = await rpc(`/stat/devops/prune-info?orderBy=${orderBy}&limit=50`)
+      const list = await rpc(`/stat/devops/prune-info?orderBy=${orderBy}&limit=50`).then(res=>res.data)
       this.list = list.list
       this.loading = false;
     }
