@@ -338,15 +338,21 @@ async function adminDestroyContract(startEpochNumber, endEpochNumber){
 async function getDataByEpochNumber(){
     for(let epochNumber = minEpoch; epochNumber <= maxEpoch; epochNumber++){
         const epoch = await epochSync.getEpoch(epochNumber);
+        console.log(`epoch------${epoch}`)
         const epochTimestamp = epoch.timestamp;
-        const {blockHashArray} = await epochSync.getMinerBlockArray(epochNumber);
+        const {blockHashArray, blockArray} = await epochSync.getMinerBlockArray(epochNumber);
+        console.log(`blockHashArray------${JSON.stringify(blockHashArray)}`)
+        console.log(`blockArray------${JSON.stringify(blockArray)}`)
         const eventLogInfo = await epochSync.getLogsGrouped({epochNumber, epochTimestamp});
+        console.log(`eventLogInfo------${JSON.stringify(eventLogInfo)}`)
         const traceArray = await epochSync.getTraceArray(epochNumber);
+        console.log(`traceArray------${JSON.stringify(traceArray)}`)
 
         const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
-            eventLogInfo, traceArray);
+            blockArray, eventLogInfo, traceArray);
+        console.log(`addrTransferArray------${JSON.stringify(addrTransferArray)}`)
         if(addrTransferArray?.length){
-            await AddressTransfer.bulkCreate(addrTransferArray);
+            // await AddressTransfer.bulkCreate(addrTransferArray);
         }
 
         if(epochNumber % 1000 === 0){
