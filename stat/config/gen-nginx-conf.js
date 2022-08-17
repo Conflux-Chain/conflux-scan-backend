@@ -1,9 +1,9 @@
 const entries = [
-    {        name: 'stat_core',     app_port: 8087, nginx_port: 28087,  path:'/stat'  },
+    {        name: 'stat_core',     app_port: 8087, nginx_port: 28087,  path:'/stat/server-info'  },
     {        name: 'scan_api_core', app_port: 8895, nginx_port: 28895, path:'/v1' },
     {        name: 'open_api_core', app_port: 9527, nginx_port: 29527,  path: '/open'    },
 
-    {        name: 'stat_evm',      app_port: 7087, nginx_port: 37087, path:'/stat'    },
+    {        name: 'stat_evm',      app_port: 7087, nginx_port: 37087, path:'/stat/server-info'    },
     {        name: 'scan_api_evm',  app_port: 7895, nginx_port: 37895,  path:'/v1'  },
     {        name: 'open_api_evm',  app_port: 19527, nginx_port: 39527, path:'/open'   },
 ]
