@@ -5,6 +5,7 @@
 APP='scan_api_core'
 BACKUP_NODE='172.31.124.19'
 LOCAL='127.0.0.1'
+# override APP by the 2nd parameter
 if [ "$2" != "" ]
 then
   APP=$2
