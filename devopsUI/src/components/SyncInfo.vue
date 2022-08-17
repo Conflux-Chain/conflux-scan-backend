@@ -36,7 +36,7 @@ export default {
     },
     async fetList() {
       this.loading = true;
-      const result = await rpc(`/stat/devops/sync-max-epoch`)
+      const result = await rpc(`/stat/devops/sync-max-epoch`).then(res=>res.data)
       this.list = result.list
       this.loading = false;
     }

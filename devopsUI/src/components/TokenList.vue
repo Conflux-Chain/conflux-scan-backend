@@ -30,7 +30,7 @@ export default {
   }
   ,methods: {
     async fetList() {
-      const list = await rpc(`/stat/tokens/list?orderBy=transferCount&reverse=true&transferType=${this.type}&limit=100`)
+      const list = await rpc(`/stat/tokens/list?orderBy=transferCount&reverse=true&transferType=${this.type}&limit=100`).then(res=>res.data)
       this.list = list.list
     }
   }

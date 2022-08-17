@@ -29,7 +29,7 @@ export default {
   },
   methods:{
     async fetchHexInfo() {
-      const info = await rpc(`/stat/devops/stream-queue-report`)
+      const info = await rpc(`/stat/devops/stream-queue-report`).then(res=>res.data)
       this.info = info;
       this.list = info.xLen
     }

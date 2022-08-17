@@ -32,7 +32,7 @@ export default {
   },
   methods: {
     async fetchList() {
-      const res = await rpc('/stat/devops/db-partition')
+      const res = await rpc('/stat/devops/db-partition').then(res=>res.data)
       // console.log(`res is:`, res)
       const listAll = res.list.filter(t=>t.PARTITION_METHOD !== 'HASH')
       this.rangeParts = listAll;
