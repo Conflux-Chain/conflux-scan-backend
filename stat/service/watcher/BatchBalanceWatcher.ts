@@ -18,7 +18,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenBalance} from "../../model/Balance";
-import {CONFIRM_GAP, destroyedContracts, fetch1155balance, rewind} from "./Erc1155DataSync";
+import {abi1155, CONFIRM_GAP, destroyedContracts, fetch1155balance, fix1155data, rewind} from "./Erc1155DataSync";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -257,55 +257,8 @@ async function setupSync1155data(cfx:Conflux) {
         await rewind()
     }
     //
-    const abi = [{
-        "inputs": [
-            {
-                "internalType": "address[]",
-                "name": "accounts",
-                "type": "address[]"
-            },
-            {
-                "internalType": "uint256[]",
-                "name": "ids",
-                "type": "uint256[]"
-            }
-        ],
-        "name": "balanceOfBatch",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-        {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "account",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "id",
-                "type": "uint256"
-            }
-        ],
-        "name": "balanceOf",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },]
-    const contract = cfx.Contract({abi})
+
+    const contract = cfx.Contract({abi: abi1155})
     return contract
 }
 let contract1155: Contract = null;
@@ -395,6 +348,7 @@ async function run() {
         process.exit(0)
         return
     } else if (cfxUrl === 'fixAll721holder') {
+        // check721OwnerInDb in TokenTool.ts
         await fixAllNftHolder(true, 'ERC721')
         process.exit(0)
         return
@@ -403,6 +357,9 @@ async function run() {
         await fixAllNftHolder(byMintTable, 'ERC1155')
         process.exit(0)
         return
+    } else if (cfxUrl === 'fix1155data') {
+        await fix1155data(createConflux(cfg.conflux));
+        return;
     } else if (cfxUrl === 'fix20holder') {
         await fix20holder(createConflux(cfg.conflux))
         return

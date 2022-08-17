@@ -2,9 +2,60 @@ import {Erc1155Data} from "../../model/Token";
 import {Sequelize} from "sequelize";
 import {KEY_1155data_EPOCH, KV} from "../../model/KV";
 import {Conflux, Contract} from "js-conflux-sdk";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {Hex40Map} from "../../model/HexMap";
 
 export const destroyedContracts = new Set<string>()
 export const CONFIRM_GAP = 100
+
+export const abi1155 = [{
+    "inputs": [
+        {
+            "internalType": "address[]",
+            "name": "accounts",
+            "type": "address[]"
+        },
+        {
+            "internalType": "uint256[]",
+            "name": "ids",
+            "type": "uint256[]"
+        }
+    ],
+    "name": "balanceOfBatch",
+    "outputs": [
+        {
+            "internalType": "uint256[]",
+            "name": "",
+            "type": "uint256[]"
+        }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+},
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },]
 
 export async function fetch1155balance(rpc: Contract, cfx:Conflux, params: any) {
     let balanceArr = [];
@@ -75,4 +126,39 @@ export async function rewind() {
             break;
         }
     } while (true)
+}
+
+export async function fix1155data(cfx:Conflux) {
+    await cfx.updateNetworkId();
+    const list = await Erc1155Transfer.findAll({limit: 10_000})
+    if (list.length === 10_000) {
+        console.log(`too many records.`)
+        process.exit(8)
+    }
+    console.log(`transfer count ${list.length}`)
+    const contract = cfx.Contract({abi: abi1155})
+    const skip = new Set<string>()
+    for (let transfer of list) {
+        const {contractId, fromId, toId, tokenId, epoch} = transfer;
+        for (let addrId of [fromId, toId]) {
+            const key = `${contractId}-${addrId}-${tokenId}`
+            if (skip.has(key)) {
+                continue
+            }
+            skip.add(key)
+            const hex = await Hex40Map.findByPk(addrId).then(res=>`0x${res.hex}`)
+            if (hex === '0x0000000000000000000000000000000000000000') {
+                continue
+            }
+            const contractHex = await Hex40Map.findByPk(contractId).then(res=>`0x${res.hex}`);
+            contract.address = contractHex;
+            const amount = await contract.balanceOf(hex, BigInt(tokenId));
+            console.log(`${hex} holds ${contractHex} ${tokenId} x ${amount}`)
+            await Erc1155Data.upsert({
+                addressId: addrId, amount,
+                contractId, epoch: 0, latestEpoch: BigInt(epoch), tokenId: tokenId
+            })
+        }
+    }
+    console.log(`done`)
 }
