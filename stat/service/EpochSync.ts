@@ -82,7 +82,7 @@ export class EpochSync extends SyncBase{
             epochData = await this.getEpochData(epochNumber);
         }catch(error) {
             return {syncCode: SyncCode.RETRY, message: `${error}`};
-        };
+        }
         const {epoch, blockHashArray, blockArray} = epochData;
         const epochTimestamp = epoch.timestamp;
 
@@ -236,7 +236,7 @@ export class EpochSync extends SyncBase{
             cfx.getBlocksByEpochNumber(epochNumber)
                 .catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];}),
             cfx.getEpochReceipts(epochNumber)
-                .then(res=>{ if (epochNumber === 0) return [];})
+                .then(res=>{ if (epochNumber === 0) res = []; return res;})
                 .catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];}),
         ]);
 
@@ -649,11 +649,9 @@ export class EpochSync extends SyncBase{
 
     // ---------------------------- address transfer ----------------------------
     public async getAddrTransferArrayDB(epochNumber,epochTimestamp,blockHashArray,blockArray,eventLogInfo,traceArray){
-        const tokenTransferArray = await this.getTokenTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
-            eventLogInfo);
-        const cfxTransferArray = await this.getCFXTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
-            traceArray);
-        const txArray = await this.getAddrTxArray(epochNumber, blockArray, epochTimestamp);
+        const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
+        const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
+        const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
 
         const result = [];
         [...tokenTransferArray, ...cfxTransferArray, ...txArray].forEach( transfer => {
@@ -667,7 +665,7 @@ export class EpochSync extends SyncBase{
         return result;
     }
 
-    private async getAddrTxArray(epochNumber, blockArray, epochTimestamp){
+    private static async getAddrTxArray(blockArray, epochTimestamp){
         const addrTxArray = [];
         for(const [blockIndex, block] of blockArray.entries()){
             if(!block.transactions?.length) {
@@ -675,6 +673,11 @@ export class EpochSync extends SyncBase{
             }
 
             for (const [txIndex, item] of block.transactions.entries()){
+                const receiptStatus = item.receipt.outcomeStatus;
+                if (receiptStatus != 0 && receiptStatus != 1 && block.epochNumber !== 0) {
+                    continue;
+                }
+
                 const tx = {} as any;
                 tx.epoch = block.epochNumber;
                 tx.blockIndex = blockIndex;
@@ -698,7 +701,7 @@ export class EpochSync extends SyncBase{
         return addrTxArray;
     }
 
-    private async getTokenTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
+    private async getTokenTransferArrayDB(epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
         transfer1155Array}) {
         const {
             ADDRESS_TRANSFER_TYPE: {ERC20, ERC721, ERC1155}
@@ -709,18 +712,18 @@ export class EpochSync extends SyncBase{
 
         let result = [];
         if(transfer20Array.length){
-            result = [...result, ...await this.buildTokenTransferArray(epochNumber, ERC20.code, transfer20Array, epochTimestamp, blockHashMap)];
+            result = [...result, ...await EpochSync.buildTokenTransferArray(ERC20.code, transfer20Array, epochTimestamp, blockHashMap)];
         }
         if(transfer721Array.length){
-            result = [...result, ...await this.buildTokenTransferArray(epochNumber, ERC721.code, transfer721Array, epochTimestamp, blockHashMap)];
+            result = [...result, ...await EpochSync.buildTokenTransferArray(ERC721.code, transfer721Array, epochTimestamp, blockHashMap)];
         }
         if(transfer1155Array.length){
-            result = [...result, ...await this.buildTokenTransferArray(epochNumber, ERC1155.code, transfer1155Array, epochTimestamp, blockHashMap)];
+            result = [...result, ...await EpochSync.buildTokenTransferArray(ERC1155.code, transfer1155Array, epochTimestamp, blockHashMap)];
         }
         return result;
     }
 
-    private async buildTokenTransferArray(epochNumber, type, transferArray, epochTimestamp, blockHashMap){
+    private static async buildTokenTransferArray(type, transferArray, epochTimestamp, blockHashMap){
         const addressTransferArray = [];
         for (const item of transferArray) {
             const transfer = {} as any;
@@ -748,7 +751,7 @@ export class EpochSync extends SyncBase{
         return addressTransferArray;
     }
 
-    private async getCFXTransferArrayDB(epochNumber, epochTimestamp, blockHashArray, traceArray) {
+    private async getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray) {
         const blockHashMap = {};
         lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
 
