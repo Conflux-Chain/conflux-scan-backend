@@ -1,5 +1,5 @@
 import {Epoch} from "../model/Epoch";
-import {SyncBase, SyncData} from "./SyncBase";
+import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
 import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
@@ -23,6 +23,7 @@ import {CONST} from "./common/constant"
 import {AddressTransfer} from "../model/AddrTransfer";
 import {PruneType} from "../model/PruneInfo";
 import {Errors} from "./common/LogicError";
+import {sleep} from "./tool/ProcessTool";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -76,10 +77,18 @@ export class EpochSync extends SyncBase{
 
     //----------------- implementation method from SyncBase -----------------
     async getData(epochNumber): Promise<SyncData> {
-        const epoch = await this.getEpoch(epochNumber);
+        let epochData;
+        try{
+            epochData = await this.getEpochData(epochNumber);
+        }catch(error) {
+            return {syncCode: SyncCode.RETRY, message: `${error}`};
+        };
+        const {epoch, blockHashArray, blockArray} = epochData;
         const epochTimestamp = epoch.timestamp;
-        const {blockHashArray, blockArray, minerBlockArray} = await this.getMinerBlockArray(epochNumber);
+
+        const minerBlockArray = await this.getMinerBlockArray(blockArray);
         const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
+
         const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
         const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
         const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
@@ -87,9 +96,9 @@ export class EpochSync extends SyncBase{
         const traceArray = await this.getTraceArray(epochNumber);
         const createArray = await this.getTraceCreateArrayPlus(traceArray);
         const traceCreateArray = await this.getTraceCreateArrayDBPlus(createArray);
-
         const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
         const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
+
         const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
             blockArray, eventLogInfo, traceArray);
 
@@ -100,6 +109,7 @@ export class EpochSync extends SyncBase{
             .catch(e => console.log(`epoch-sync.noticePruneAddrTransfer, epoch:${epochNumber}`, e));
 
         return {
+            syncCode: SyncCode.SUCCESS,
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
             modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray,
@@ -204,7 +214,7 @@ export class EpochSync extends SyncBase{
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
             const addrTransferDel = await AddressTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
-            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel}, 
+            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel},
                 traceCreateDel:${traceCreateDel},addrTransferDel:${addrTransferDel},contractDestroyDel:${contractDestroyDel}`);
         });
 
@@ -216,6 +226,59 @@ export class EpochSync extends SyncBase{
     }
 
     //---------------------- business method for epoch -----------------------
+    public async getEpochData(epochNumber) {
+        const {
+            app: { cfx },
+        } = this;
+
+        const [latestState, blockHashArray, receipts] = await Promise.all([
+            cfx.getEpochNumber('latest_state'),
+            cfx.getBlocksByEpochNumber(epochNumber)
+                .catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];}),
+            cfx.getEpochReceipts(epochNumber)
+                .then(res=>{ if (epochNumber === 0) return [];})
+                .catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];}),
+        ]);
+
+        if (latestState < epochNumber) {
+            await sleep(1_000);
+            throw new Error(`[epoch=${epochNumber}]not ready, latestState=${latestState}`);
+        }
+        if (blockHashArray.length === 0) {
+            throw new Error(`[epoch=${epochNumber}]no block`);
+        }
+        const blockArray = await batchFetchBlock(cfx,  blockHashArray);
+        if (blockArray.length !== receipts.length && epochNumber !== 0) {
+            throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
+        }
+
+        for (const [blockIndex, block] of blockArray.entries()) {
+            if (block.transactions.length !== receipts[blockIndex].length) {
+                throw new Error(`[epoch=${epochNumber}]mismatch between transactions and receipts`);
+            }
+            for (const [txIndex, tx] of block.transactions.entries()) {
+                tx.receipt = receipts[blockIndex][txIndex];
+                const receiptStatus = tx.receipt?.outcomeStatus;
+                if((receiptStatus === 0 || receiptStatus === 1) &&
+                    (tx.receipt.blockHash !== tx.blockHash || tx.receipt.transactionHash !== tx.hash)){
+                    throw new Error(`[epoch=${epochNumber}]mismatch between
+                    transaction:${JSON.stringify(lodash.pick(tx.receipt, ['blockHash', 'transactionHash']))} and
+                    receipt:${JSON.stringify(lodash.pick(tx, ['blockHash', 'hash']))}`);
+                }
+            }
+        }
+
+        const pivotBlock = blockArray[blockArray.length -1];
+        const epoch = {
+            epoch: epochNumber,
+            pivotHash: pivotBlock.hash.substr(2),
+            parentHash: pivotBlock.parentHash.substr(2),
+            timestamp: new Date(pivotBlock.timestamp * 1000),
+        };
+
+        return {epoch, latestState, blockHashArray, blockArray, receipts};
+    }
+
     public async getEpoch(epochNumber) {
         const {
             app: { cfx },
@@ -245,8 +308,8 @@ export class EpochSync extends SyncBase{
     }
 
     //------------------- business method for miner block --------------------
-    public async getMinerBlockArray(epochNumber) {
-        const {
+    public async getMinerBlockArray(blockArray) {
+        /*const {
             app: { cfx },
         } = this;
 
@@ -260,16 +323,18 @@ export class EpochSync extends SyncBase{
             }
             return [];
         });
-        const blockArray = await batchFetchBlock(cfx,  blockHashArray, true)
+        const blockArray = await batchFetchBlock(cfx,  blockHashArray, true)*/
+
         let minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
             const hex40 = format.hexAddress(block.miner);
             const blockDt = new Date(block.timestamp * 1000);
             const hex40Id = (await makeId(hex40, undefined, {dt: blockDt})).id;
             return {minerId: hex40Id, epoch: block.epochNumber, position, createdAt: blockDt};
         }));
-        minerBlockArray = lodash.orderBy(minerBlockArray, 'position', 'desc');
+        return lodash.orderBy(minerBlockArray, 'position', 'desc');
 
-        return {blockHashArray, blockArray, minerBlockArray};
+        /*minerBlockArray = lodash.orderBy(minerBlockArray, 'position', 'desc');
+        return minerBlockArray;*/
     }
 
     //---------------- business method for admin destroy tx ------------------

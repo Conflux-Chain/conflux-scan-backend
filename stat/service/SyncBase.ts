@@ -46,7 +46,7 @@ export abstract class SyncBase{
         return this.backwardQueue.pop(epochNumber);
     }
 
-    private async saveForward(epochNumber, { parentHash, modelData }): Promise<SyncCode> {
+    private async saveForward(epochNumber, { parentHash, modelData }: SyncData): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
         const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
         const validate = await this.validate(epochNumber, modelData);
@@ -57,7 +57,7 @@ export abstract class SyncBase{
         return SyncCode.SUCCESS;
     }
 
-    private async saveBackward(epochNumber, { pivotHash, modelData }): Promise<SyncCode> {
+    private async saveBackward(epochNumber, { pivotHash, modelData }: SyncData): Promise<SyncCode> {
         const nextEpochNumber = epochNumber + 1;
         /*const nextEpoch = await this.getEpochByEpochNumber(nextEpochNumber);*/
         const nextEpoch = await this.getEpoch(nextEpochNumber);
@@ -74,8 +74,13 @@ export abstract class SyncBase{
         let data: SyncData;
         try {
             data = await this.getDataForwardWithPreload(epochNumber);
+            if(data.syncCode === SyncCode.RETRY) {
+                console.log(`sync_base fetch data at ${epochNumber} retry:${data.message}`);
+                await sleep(10_000);
+                return epochNumber;
+            }
         } catch (e) {
-            console.log(`sync_base fetch data at ${epochNumber} fail:`, e)
+            console.log(`sync_base fetch data at ${epochNumber} fail:`, e);
             await sleep(10_000);
             return epochNumber;
         }
@@ -189,9 +194,11 @@ export abstract class SyncBase{
 }
 
 export class SyncData {
-    parentHash: string;
-    pivotHash: string;
-    modelData: any;
+    syncCode: SyncCode;
+    message?: string;
+    parentHash?: string;
+    pivotHash?: string;
+    modelData?: any;
 }
 
 export class PreloadMap extends Map {
@@ -220,8 +227,9 @@ export class PreloadMap extends Map {
     }
 }
 
-enum SyncCode {
+export enum SyncCode {
     SUCCESS,
     FAILURE,
     PIVOT_SWITCH,
+    RETRY
 }
