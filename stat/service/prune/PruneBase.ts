@@ -189,6 +189,7 @@ export abstract class PruneBase {
             case PruneType.ADDR_ERC20_TRANSFER:
             case PruneType.ADDR_ERC721_TRANSFER:
             case PruneType.ADDR_ERC1155_TRANSFER:
+            case PruneType.ADDR_TRANSFER:
                 keepRows = PruneBase.KEEP_ROWS;
                 break;
             default:
