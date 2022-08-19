@@ -134,7 +134,7 @@ services:
     environment:
       PORT: 8087
     restart: always
-    command: node /stat-root/stat/dist/FullEpochSync.js
+    command: node /stat-root/stat/dist/FullEpochSync.js prune
   epoch_backward:
     image: node:14.7.0
     volumes:
@@ -144,4 +144,4 @@ services:
     environment:
       PORT: 8087
     restart: always
-    command: node /stat-root/stat/dist/FullEpochSync.js backward syncTransfer
+    command: node /stat-root/stat/dist/FullEpochSync.js backward syncTransfer prune

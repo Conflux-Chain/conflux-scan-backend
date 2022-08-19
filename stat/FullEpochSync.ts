@@ -69,7 +69,6 @@ export class FullEpochSync{
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
         TransferTpsService.TPS_TRANSFER_NOTIFY = await KV.getSwitch(KEY_TPS_TRANSFER_NOTIFY);
 
-        PruneNotifier.SWITCH_SYNC_PRUNE = this.config.syncPrune; // prune block
         StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
         StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
         StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
@@ -133,6 +132,9 @@ if (module === require.main) {
         EpochSync.SYNC_TOKEN_ICON = process.argv.includes('syncTokenIcon');
         EpochSync.SYNC_VERIFY_LINK = process.argv.includes('syncVerifyLink');
         EpochSync.SYNC_EVM_ADDR = process.argv.includes('syncEvmAddr');
+    }
+    if (process.argv.includes('prune')) {
+        PruneNotifier.SWITCH_SYNC_PRUNE = true;
     }
     start().then();
 }
