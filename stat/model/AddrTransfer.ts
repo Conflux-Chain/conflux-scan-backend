@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS ${T_ADDRESS_TRANSFER}
   \`toId\` bigint(20) NOT NULL,
   \`contractId\` bigint(20) NULL,
   \`tokenId\` varchar(78) NULL,
-  \`value\` decimal(65,0) NOT NULL,
+  \`value\` varchar(78) NOT NULL,
   \`type\` smallint(6) NOT NULL,
   \`createdAt\` datetime NOT NULL,
   PRIMARY KEY  (addressId DESC,epoch DESC,blockIndex DESC, txIndex DESC, txLogIndex DESC, batchIndex DESC, type DESC),
@@ -87,7 +87,7 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
             toId: {type: DataTypes.BIGINT, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             tokenId: {type: DataTypes.STRING(78), allowNull: true},
-            value: {type: DataTypes.DECIMAL(65), allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: false},
 
             type: {type: DataTypes.SMALLINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},

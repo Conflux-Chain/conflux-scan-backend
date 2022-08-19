@@ -690,7 +690,7 @@ export class EpochSync extends SyncBase{
                 ]);
                 tx.fromId = fromId;
                 tx.toId = toId;
-                tx.value = item.value;
+                tx.value = item.value.toString();
                 tx.contractCreatedId = contractCreatedId;
 
                 tx.type = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
@@ -742,7 +742,7 @@ export class EpochSync extends SyncBase{
             transfer.toId = toId;
             transfer.contractId = contractId;
             transfer.tokenId = `${item.tokenId || 0}`;
-            transfer.value = item.value;
+            transfer.value = item.value?.toString();
 
             transfer.type = type;
             transfer.createdAt = epochTimestamp;
@@ -780,7 +780,7 @@ export class EpochSync extends SyncBase{
                 ]);
                 transfer.fromId = fromId;
                 transfer.toId = toId;
-                transfer.value = trace.action.value;
+                transfer.value = trace.action.value.toString();
 
                 transfer.type = this.getCFXTransferType(trace.type, trace.action.fromPocket, trace.action.toPocket);
                 transfer.createdAt = epochTimestamp;
