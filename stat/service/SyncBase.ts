@@ -7,6 +7,8 @@ import {Epoch} from "../model/Epoch";
 import {StatApp} from "../StatApp";
 
 export abstract class SyncBase{
+    public static SYNC_BACKWARD = false;
+
     protected app: StatApp;
     private forwardQueue: PreloadMap;
     private backwardQueue: PreloadMap;
@@ -44,7 +46,7 @@ export abstract class SyncBase{
         return this.backwardQueue.pop(epochNumber);
     }
 
-    private async saveForward(epochNumber, { parentHash, modelData }): Promise<SyncCode> {
+    private async saveForward(epochNumber, { parentHash, modelData }: SyncData): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
         const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
         const validate = await this.validate(epochNumber, modelData);
@@ -55,13 +57,14 @@ export abstract class SyncBase{
         return SyncCode.SUCCESS;
     }
 
-    private async saveBackward(epochNumber, { pivotHash, modelData }): Promise<SyncCode> {
+    private async saveBackward(epochNumber, { pivotHash, modelData }: SyncData): Promise<SyncCode> {
         const nextEpochNumber = epochNumber + 1;
-        const nextEpoch = await this.getEpochByEpochNumber(nextEpochNumber);
-        // useful only when sync backward
-        // if (nextEpoch && pivotHash !== nextEpoch.parentHash) {
-        //     return SyncCode.PIVOT_SWITCH;
-        // }
+        /*const nextEpoch = await this.getEpochByEpochNumber(nextEpochNumber);*/
+        const nextEpoch = await this.getEpoch(nextEpochNumber);
+        const validate = await this.validate(epochNumber, modelData);
+        if (nextEpoch && pivotHash !== nextEpoch.parentHash || !validate) {
+            return SyncCode.PIVOT_SWITCH;
+        }
         await this.save(epochNumber, modelData);
         return SyncCode.SUCCESS;
     }
@@ -71,15 +74,20 @@ export abstract class SyncBase{
         let data: SyncData;
         try {
             data = await this.getDataForwardWithPreload(epochNumber);
+            if(data.syncCode === SyncCode.RETRY) {
+                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry:${data.message}`);
+                await sleep(10_000);
+                return epochNumber;
+            }
         } catch (e) {
-            console.log(`sync_base fetch data at ${epochNumber} fail:`, e)
+            console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
             await sleep(10_000);
             return epochNumber;
         }
         try {
             syncCode = await this.saveForward(epochNumber, data);
-        } catch (error) {
-            console.error(`sync_base sync forward error, epoch:${epochNumber}`, error);
+        } catch (e) {
+            console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
             await sleep(10_000);
             return epochNumber;
         }
@@ -90,9 +98,9 @@ export abstract class SyncBase{
         if(syncCode === SyncCode.PIVOT_SWITCH){
             await this.forwardQueue.clear();
             epochNumber -= 1;
-            await this.delete(epochNumber, data.modelData).catch((error) => {
-                console.error(`sync_base del end error, epoch:${epochNumber}`, error);
-                throw error;
+            await this.delete(epochNumber, data.modelData).catch((e) => {
+                console.log(`[epoch=${epochNumber}]sync_forward del,error`, e);
+                throw e;
             });
         }
         return epochNumber;
@@ -100,11 +108,26 @@ export abstract class SyncBase{
 
     private async syncBackward(epochNumber) {
         let syncCode;
+        let data: SyncData;
         try {
-            const data: SyncData = await this.getDataBackwardWithPreload(epochNumber);
+            data = await this.getDataBackwardWithPreload(epochNumber);
+            if(data.syncCode === SyncCode.RETRY) {
+                console.log(`[epoch=${epochNumber}]sync_backward fetch,retry:${data.message}`);
+                await sleep(10_000);
+                return epochNumber;
+            }
+        } catch (e) {
+            console.log(`[epoch=${epochNumber}]sync_backward fetch,error:`, e);
+            await sleep(10_000);
+            return epochNumber;
+        }
+
+        try {
             syncCode = await this.saveBackward(epochNumber, data);
-        } catch (error) {
-            console.error(`sync_base sync backward error, epoch:${epochNumber}`, error);
+        } catch (e) {
+            console.error(`[epoch=${epochNumber}]sync_backward sync,error:`, e);
+            await sleep(10_000);
+            return epochNumber;
         }
 
         if(syncCode === SyncCode.SUCCESS){
@@ -121,18 +144,31 @@ export abstract class SyncBase{
             console.log(` SyncBase uses default preload value: 16.`)
             config.preload = 16
         }
-        const next = await this.getNextEpochNumber();
 
+        const that = this
+        if (SyncBase.SYNC_BACKWARD) {
+            let traceEpochNumber = Number.isInteger(config.syncEpochNumberBackward) ? config.syncEpochNumberBackward
+                : (await that.getEpochNumberBackward());
+            async function repeat() {
+                if (traceEpochNumber >= 0) {
+                    traceEpochNumber = await that.syncBackward(traceEpochNumber);
+                    setTimeout(repeat, 0)
+                }
+            }
+            return repeat()
+        }
+
+        const next = await this.getNextEpochNumber();
         let traceEpochNumber = epochNumber;
         if(traceEpochNumber === undefined || traceEpochNumber <= next){
             traceEpochNumber = next;
         }
 
-        const that = this
         let stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e => {
             console.log(` SyncBase getEpochNumber error:${e}`);
             return 0;
         });
+
         async function repeat() {
             if (traceEpochNumber <= stateEpochNumber - (config.preload)) {
                 traceEpochNumber = await that.syncForward(traceEpochNumber);
@@ -165,12 +201,19 @@ export abstract class SyncBase{
     public abstract save(epochNumber, modelData);
 
     public abstract delete(epochNumber, modelData);
+
+    //---------------------- methods for sync backward  -----------------------
+    public abstract getEpochNumberBackward(): Promise<number>;
+
+    public abstract getEpoch(epochNumber): Promise<any>;
 }
 
 export class SyncData {
-    parentHash: string;
-    pivotHash: string;
-    modelData: any;
+    syncCode: SyncCode;
+    message?: string;
+    parentHash?: string;
+    pivotHash?: string;
+    modelData?: any;
 }
 
 export class PreloadMap extends Map {
@@ -199,8 +242,9 @@ export class PreloadMap extends Map {
     }
 }
 
-enum SyncCode {
+export enum SyncCode {
     SUCCESS,
     FAILURE,
     PIVOT_SWITCH,
+    RETRY
 }

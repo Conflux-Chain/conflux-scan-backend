@@ -1,0 +1,85 @@
+// @ts-ignore
+import {format} from "js-conflux-sdk";
+import {TransferQueryBase} from "./TransferQueryBase";
+import {getAddrTransferCount} from "../model/TransferCount";
+import {AddressTransfer} from "../model/AddrTransfer";
+import {CONST} from "./common/constant";
+import {FullTransaction} from "../model/FullBlock";
+import {StatApp} from "../StatApp";
+const lodash = require('lodash');
+
+export class AddrTransferQuery extends TransferQueryBase{
+    protected app;
+    protected CODE_TYPE_MAP;
+
+    constructor(app: any) {
+        super(app);
+        this.app = app;
+        this.CODE_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'code');
+    }
+
+    public getTransferType(): string{
+        return CONST.TRANSFER_TYPE.ALL;
+    }
+
+    public buildQueryFields({txType}): any{
+        return [
+            ['epoch', 'epochNumber'],
+            'blockIndex',
+            'txIndex',
+            'txLogIndex',
+
+            ['fromId', 'from'],
+            ['toId', 'to'],
+            ['contractId', 'address'],
+            'tokenId',
+            'value',
+
+            'type',
+            ['createdAt', 'timestamp'],
+        ];
+    }
+
+    public async doQuery(options: any, queryOptions: any): Promise<any>{
+        const{ logger } = this.app;
+
+        if(options.accountAddress === undefined){
+            return {count: 0, rows: []};
+        }
+
+        if (Object.keys(queryOptions.where).length === 1) {
+            const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, this.getTransferType());
+            const rows = await AddressTransfer.findAll(queryOptions);
+            return {count: Math.max(cacheCount, rows.length) , rows};
+        }
+
+        return await AddressTransfer.findAndCountAll(queryOptions);
+    }
+
+    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
+        txMap: Map<string, FullTransaction>): Promise<any>{
+        const {ADDRESS_TRANSFER_TYPE: {TX, ERC20, ERC721, ERC1155}} = CONST;
+        const isTx = row['type'] === TX.code;
+        const isToken = row['type'] === ERC20.code || row['type'] === ERC721.code || row['type'] === ERC1155.code;
+        row['address'] = !isToken ? undefined : format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        row['tokenId'] = !isToken ? undefined : row['tokenId'];
+        row['type'] = this.CODE_TYPE_MAP[row['type']].name;
+
+        if(isTx){
+            const tx = txMap.get(`${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`);
+            row['chainId'] = StatApp.networkId;
+            row['nonce'] = tx?.nonce;
+            row['method'] = tx?.method;
+            row['status'] = tx?.status;
+            row['gasFee'] = tx?.gas;
+            /* set in TransferQueryBase
+            row['storageFee'] = tx['storageFee'];
+            row['input'] = tx['input'];*/
+        }
+        return row;
+    }
+
+    public async doQueryAccountAddress(options: any, queryOptions: any): Promise<any> {
+        throw new Error('not implemented');
+    }
+}

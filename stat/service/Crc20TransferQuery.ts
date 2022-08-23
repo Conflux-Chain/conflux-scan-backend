@@ -8,6 +8,7 @@ import {Token} from "../model/Token";
 import {StatApp} from "../StatApp";
 import {IndexHints} from "sequelize";
 import {getAddrTransferCount} from "../model/TransferCount";
+import {FullTransaction} from "../model/FullBlock";
 
 export class Crc20TransferQuery extends TransferQueryBase{
     protected app;
@@ -67,7 +68,8 @@ export class Crc20TransferQuery extends TransferQueryBase{
         const list = await Erc20Transfer.findAll(queryOptions);
         return {count: list.length, rows:list}
     }
-    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
+    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
+        txMap: Map<string, FullTransaction>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC20;
         return row;

@@ -31,6 +31,7 @@ import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 import {IS_EVM2, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
+import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -52,6 +53,7 @@ export class ApiService {
     cfxTransferQuery: CfxTransferQuery
     crc721transferQuery: Crc721TransferQuery
     crc1155transferQuery: Crc1155TransferQuery
+    addrTransferQuery: AddrTransferQuery
     dailyBlockDataStatQuery: DailyBlockDataStatQuery
     rankService: RankService;
     tokenTool: TokenTool;
@@ -152,6 +154,7 @@ export class ApiServer {
         apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
+        apiService.addrTransferQuery = new AddrTransferQuery(apiApp)
         apiService.dailyBlockDataStatQuery = new DailyBlockDataStatQuery(apiApp)
         apiService.rankService = new RankService(apiApp)
         apiService.marketDataQuery = new MarketDataQuery(apiApp);

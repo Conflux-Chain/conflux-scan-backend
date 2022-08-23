@@ -12,6 +12,7 @@ import {AddressErc20Transfer} from "./Erc20Transfer";
 import {AddressErc721Transfer} from "./Erc721Transfer";
 import {AddressErc1155Transfer} from "./Erc1155Transfer";
 import {AddressCfxTransfer} from "./CfxTransfer";
+import {AddressTransfer} from "./AddrTransfer";
 
 /**
  * Transfer count cache for address.
@@ -50,7 +51,7 @@ export async function getAddrTransferCount(addrId: number, type: string) : Promi
         return bean.v
     }
     const map = {'ERC20' : AddressErc20Transfer, 'ERC721' : AddressErc721Transfer
-        , 'ERC1155' : AddressErc1155Transfer, 'CFX': AddressCfxTransfer}
+        , 'ERC1155' : AddressErc1155Transfer, 'CFX': AddressCfxTransfer, 'ALL': AddressTransfer}
     const model = map[type]
     if (!model) {
         console.log(`get transfer count with unknown type: [${type}]`)

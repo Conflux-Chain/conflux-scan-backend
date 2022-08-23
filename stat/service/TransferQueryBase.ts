@@ -1,26 +1,29 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
-import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
-import {FullTransaction} from "../model/FullBlock";
+import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
+import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {checkAddressRate} from "../router/RateLimiter";
 import {CONST} from "./common/constant"
+import {fillMethodInfo} from "../model/ContractInfo";
+import {Errors} from "./common/LogicError";
 const lodash = require('lodash');
-/*const CONST = require('./common/constant');*/
 
 export abstract class TransferQueryBase {
     protected app;
+    protected NAME_TYPE_MAP;
 
     protected constructor(app: any) {
         this.app = app;
+        this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
     }
 
     public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                   minTimestamp, maxTimestamp,
                                   accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-                                  tokenId, txType, skip, limit, sort='DESC'}){
+                                  tokenId, transferType = undefined, txType, skip, limit, sort='DESC'}){
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // page
@@ -67,6 +70,10 @@ export abstract class TransferQueryBase {
             conditionArray.push({tokenId: tokenId.toString()});
         }
         if(accountAddressId) {
+            const transferCode = this.NAME_TYPE_MAP[transferType]?.code;
+            if(transferCode){
+                conditionArray.push({type: transferCode});
+            }
             if (txType === CONST.TX_TYPE.IN) {
                 conditionArray.push({toId: accountAddressId});
             } else if (txType === CONST.TX_TYPE.OUT) {
@@ -97,20 +104,22 @@ export abstract class TransferQueryBase {
     public abstract getTransferType(): string;
     public abstract buildQueryFields({txType}): any;
     public abstract doQuery(options: any, queryOptions: any): Promise<any>;
-    public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>;
+    public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
+        txMap: Map<string, FullTransaction>): Promise<any>;
 
     public async listTransfer(options) {
-        const{ logger } = this.app;
+        const{ logger, service: {fullBlockQuery} } = this.app;
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
-            tokenId, txType , status, skip = 0, limit = 10, sort} = options;
+            tokenId, transferType, txType , status, skip = 0, limit = 10, sort} = options;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
         // if (address) {
             // await checkAddressRate(address)
         // }
+
         // parameter
         const addressMap = {};
         await Promise.all([accountAddress, address, from, to, opponentAddress]
@@ -157,7 +166,7 @@ export abstract class TransferQueryBase {
             minEpochNumber, maxEpochNumber, txParas,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-            tokenId, txType, skip, limit, sort
+            tokenId, transferType, txType, skip, limit, sort
         });
         queryOptions.attributes = this.buildQueryFields({txType});
         if(options.txType === CONST.TX_TYPE.CREATE){
@@ -185,7 +194,7 @@ export abstract class TransferQueryBase {
             });
             const [hex40Map, txMap] = await Promise.all([
                 idHex40Map(Array.from(hex40IdSet)),
-                FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash'],
+                FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash', 'nonce', 'method', 'status', 'gas'],
                     where: {[Op.or]: txHashQueryCondition}}).then(list=>{
                     const map = new Map<string, FullTransaction>()
                     list.forEach(tx=>map.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx))
@@ -204,8 +213,34 @@ export abstract class TransferQueryBase {
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
                     : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];
-                this.processQueryResult(row, hex40Map, undefined);
+                this.processQueryResult(row, hex40Map, undefined, txMap);
             })
+        }
+
+        // add tx info
+        if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
+            await fillMethodInfo(list).catch(error=>{ throw new Errors.BizError(`fill method info error, ${error}`);})
+            const hashArray = [...new Set(lodash.map(list, item => item['transactionHash']))];
+            const {txMap, receiptMap} = await fullBlockQuery.batchGetTransactionList({hashArray});
+            const failedQuery:Promise<FailedTx>[] = []
+            list.forEach(row=>{
+                if(row['type'] !== CONST.ADDRESS_TRANSFER_TYPE.TX.name) return;
+                row['storageFee'] = BigInt(receiptMap[row['transactionHash']]?.storageCollateralized || 0) * BigInt(10**18) / BigInt(1024);
+                row['input'] = txMap[row['transactionHash']]?.data;
+                if (row['status']) {
+                    failedQuery.push(FailedTx.findOne({where:{
+                            epoch: row['epochNumber'], blockPosition: row['blockPosition'], txPosition:row['transactionIndex']
+                        }}).then(ft=>{
+                        if (ft) {
+                            row['txExecErrorMsg'] = ft.txExecErrorMsg;
+                        } else {
+                            row['txExecErrorMsg'] = 'txExecErrorMsgNotFound'
+                        }
+                        return ft
+                    }))
+                }
+            });
+            await Promise.all(failedQuery);
         }
 
         // add pruned total

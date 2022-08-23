@@ -6,6 +6,7 @@ import {TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {CONST} from "./common/constant"
 import {Errors} from "./common/LogicError";
+import {FullTransaction} from "../model/FullBlock";
 /*const CONST = require('./common/constant');*/
 
 export class CfxTransferQuery extends TransferQueryBase{
@@ -118,7 +119,8 @@ export class CfxTransferQuery extends TransferQueryBase{
         return {count: count || 0, rows: rows || []};
     }
 
-    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>): Promise<any>{
+    public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
+        txMap: Map<string, FullTransaction>): Promise<any>{
         row['transferType'] = CONST.TRANSFER_TYPE.CFX;
         return row;
     }

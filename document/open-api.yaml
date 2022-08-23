@@ -177,6 +177,32 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer1155List"
+  '/account/transfers':
+    description: 'Get all transfer records (includes: cfx transfer, crc20/crc721/crc1155 transfer) of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/transferTypeParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TransferList"
   '/account/tokens':
     get:
       description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
@@ -1018,6 +1044,38 @@ components:
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
     Transfer1155List:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  epochNumber:
+                    type: integer
+                  transactionHash:
+                    type: string
+                  "from":
+                    type: string
+                  "to":
+                    type: string
+                  "amount":
+                    type: string
+                  "tokenId":
+                    type: string
+                  timestamp:
+                    type: integer
+            addressInfo:
+              $ref: '#/components/schemas/AddressInfo'
+    TransferList:
       type: object
       properties:
         code:
@@ -2040,6 +2098,28 @@ components:
       schema:
         type: string
         default: 'DESC'
+    transferTypeParam:
+      description: "Query the transfer record of the address based on the specified tranferType which includes
+                              1. Transaction
+                                \n\t1.1 'transaction'
+                              2. CFX Transfer
+                                \n\t2.1 'call'
+                                \n\t2.2 'create'
+                                \n\t2.3 'gas_payment'
+                                \n\t2.4 'storage_collateral'
+                                \n\t2.5 'sponsor_balance_for_gas'
+                                \n\t2.6 'sponsor_balance_for_collateral'
+                                \n\t2.7 'staking_balance'
+                                \n\t2.8 'balance'
+                              3. Token Transfer
+                                \n\t3.1 'transfer_20'
+                                \n\t3.2 'transfer_721'
+                                \n\t3.3 'transfer_1155'"
+      name: transferType
+      in: query
+      required: false
+      schema:
+        type: string
     withInputParam:
       description: "If return transaction's input, the value is true/false."
       name: withInput

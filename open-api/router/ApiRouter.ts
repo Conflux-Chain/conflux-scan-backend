@@ -16,7 +16,8 @@ import {
     listAccountCfxTransfer,
     listAccountTransfer20,
     listAccountTransfer721,
-    listAccountTransfer1155
+    listAccountTransfer1155,
+    listAccountTransfer
 } from "../service/OpenTransferService";
 import {
     checkProxyVerification,
@@ -128,6 +129,7 @@ function registerRouter(router: Router) {
     router.get('/account/crc20/transfers', checkAddressRateFn, listAccountTransfer20)
     router.get('/account/crc721/transfers', checkAddressRateFn, listAccountTransfer721)
     router.get('/account/crc1155/transfers', checkAddressRateFn, listAccountTransfer1155)
+    router.get('/account/transfers', checkAddressRateFn, listAccountTransfer)
     router.get('/account/tokens', listAccountAssets)
 
     // contract
