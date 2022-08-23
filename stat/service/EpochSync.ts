@@ -342,6 +342,11 @@ export class EpochSync extends SyncBase{
             console.log(`announce---epoch:${epochNumber}---${params}`);
         } else{
             const [ , hex, field] = params;
+            if (!/0x[0-9a-fA-F]{40}/.test(hex)) {
+                console.log(`announce---epoch:${epochNumber}---${params}`);
+                return map;
+            }
+
             const isBlob = (field === 'abi' || field === 'sourceCode' || field === 'icon');
             const item = map[hex] || {};
             item[field] = isBlob ? Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString()
