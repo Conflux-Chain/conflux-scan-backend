@@ -202,6 +202,13 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
                     where: {contractId, addressId, tokenId}, logging: isNewLatestEpoch ? console.log : false
                 })
                 if (!affected) {
+                    // check existence
+                    const some = await Erc1155Data.findOne({where: {contractId, addressId, tokenId}})
+                    if (some) {
+                        console.log(`exists contract ${contractId} addressId ${addressId} tokenId ${tokenId}`)
+                        continue
+                    }
+                    //
                     await Erc1155Data.create({
                         contractId, addressId, tokenId, amount: b, epoch: Number(mark), latestEpoch
                     }, {logging: isNewLatestEpoch ? console.log : false})
