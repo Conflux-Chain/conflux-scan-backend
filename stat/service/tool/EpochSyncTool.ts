@@ -38,7 +38,7 @@ async function init() {
 //----------------- get and save -----------------
 async function getData(epochNumber) {
     const groupedLogs = await getLogsGrouped(epochNumber);
-    const announceInfo = await getAnnounceInfo(epochNumber, groupedLogs.announcementArray);
+    const announceInfo = undefined;//await getAnnounceInfo(epochNumber, groupedLogs.announcementArray);
     const tokenArray = await getTokensAutoDetected(groupedLogs);
 
     const modelData = { announceInfo, tokenArray };
@@ -85,6 +85,7 @@ async function getTokens(hexAddressArray, transferType){
     const tokenArray = [];
     for(const hex40 of hexAddressArray){
         const token = await getToken(hex40, transferType);
+        console.log(`[hex40=${hex40}]getToken------${JSON.stringify(token)}`)
         token && tokenArray.push(token);
     }
     return tokenArray;
@@ -98,22 +99,31 @@ async function getToken(hexAddress, transferType){
     }
 
     const base32 = format.address(hexAddress, StatApp.networkId);
+    console.log(`[hexAddress=${hexAddress}]address------${JSON.stringify(base32)}`)
     const [ totalSupply, tokenInfo, erc721Interface, erc1155Interface ] = await Promise.all([
         tokenTool.getTokenTotalSupply(base32),
         tokenTool.getToken(base32),
         tokenTool.supportsInterface(base32, INTERFACE_ERC_721),
         tokenTool.supportsInterface(base32, INTERFACE_ERC_1155),
     ]);
+    console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]totalSupply------${JSON.stringify(totalSupply)}`)
+    console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]tokenInfo------${JSON.stringify(tokenInfo)}`)
+    console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]erc721Interface------${JSON.stringify(erc721Interface)}`)
+    console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]erc1155Interface------${JSON.stringify(erc1155Interface)}`)
     if((transferType === CONST.TRANSFER_TYPE.ERC721 && erc721Interface === false) ||
         (transferType === CONST.TRANSFER_TYPE.ERC1155 && erc1155Interface === false)){
+        console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]------undefined`)
         return undefined;
     }
 
     let token = lodash.defaults({}, { hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
         decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
         type: transferType});
+    console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]token------${JSON.stringify(token)}`)
     const transferCount = (await countTransfer(hex40id, transferType)) || 1;
+    console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]transferCount------${JSON.stringify(transferCount)}`)
     const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
+    console.log(`[hexAddress=${hexAddress}][transferType=${transferType}]auditResult------${JSON.stringify(auditResult)}`)
     token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult });
     return token;
 }
@@ -243,6 +253,7 @@ function parseAnnounce(epochNumber, params, announce, map){
         if(transfer1155) {groupedLogs.transfer1155Array.push(transfer1155);}
         if(announcement) {groupedLogs.announcementArray.push(announcement);}
     }
+    console.log(`[epochNumber=${epochNumber}]groupedLogs------${JSON.stringify(groupedLogs)}`)
     return groupedLogs;
 }
 
@@ -257,6 +268,7 @@ function parseAnnounce(epochNumber, params, announce, map){
         }
         return [];
     });
+    console.log(`[epochNumber=${epochNumber}]eventLogArray------${JSON.stringify(eventLogArray)}`)
     return eventLogArray.map((v) => parseEventLog(v));
 }
 
@@ -272,10 +284,13 @@ async function run(startEpochNumber, endEpochNumber) {
     await init();
     while(startEpochNumber<=endEpochNumber){
         const modelData = await getData(startEpochNumber);
+        console.log(`modelData------${JSON.stringify(modelData)}`)
+        /*
         await save(startEpochNumber, modelData);
         if(startEpochNumber % 100 === 0){
             console.log(`epoch:${startEpochNumber} processed`);
         }
+        */
         startEpochNumber = startEpochNumber + 1;
     }
     console.log(`done`);
