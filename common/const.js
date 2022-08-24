@@ -70,7 +70,7 @@ module.exports = {
     KEY_TRANSFER_QUERY_RDB_SWITCH,
   },
 
-  OPEN_SOURCE_LICENSE: {
+/*  OPEN_SOURCE_LICENSE: {
     None: 'No License',
     Unlicense: 'The Unlicense',
     MIT: 'MIT License',
@@ -84,7 +84,7 @@ module.exports = {
     OSL_3_0: 'Open Software License 3.0',
     Apache_2_0: 'Apache 2.0',
     GNU_AGPLv3: 'GNU Affero General Public License',
-  },
+  },*/
 
   MATCH_STATUS: {
     INTERNAL_CONTRACT: {matchCode: 200, matchDesc: 'internal-contract'},

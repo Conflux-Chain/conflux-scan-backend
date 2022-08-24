@@ -36,7 +36,7 @@ class SolCompileService {
       );
 
       const { releases, latestRelease } = JSON.parse(buffer);
-      return { latest: releases[latestRelease], ...releases };
+      return { /*latest: releases[latestRelease],*/ ...releases };
     });
   }
 

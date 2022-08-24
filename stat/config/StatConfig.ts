@@ -132,6 +132,8 @@ export interface StatConfig{
     asyncVerifySourcecode: boolean,
     asyncVerifySourcecodeDelay: number,
     metricsEnv: string,
+
+    syncAcrossRegionHost: string,
 }
 
 export interface Erc20WatchList{

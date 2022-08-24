@@ -23,6 +23,7 @@ export interface IContractVerify{
     similarMatch?:string
     guid?:string
     taskStatus?: number // 20(submitted), 21(processing), 22(done)
+    notifyStatus?: number // 20(need_notify), 21(not_need_notify), 22(notified)
     warnings?:string
     errors?:string
 }
@@ -50,6 +51,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     similarMatch?: string
     guid?: string
     taskStatus?: number
+    notifyStatus?: number
     warnings?: string
     errors?: string
 
@@ -79,6 +81,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             similarMatch: {type: DataTypes.CHAR(64), allowNull: true},
             guid: {type: DataTypes.CHAR(50), allowNull: true},
             taskStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 21},
+            notifyStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 21},
             warnings: {type: DataTypes.TEXT, allowNull: true,},
             errors: {type: DataTypes.TEXT, allowNull: true,},
         }, {
