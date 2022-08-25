@@ -20,7 +20,7 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
     return param
 }
 export function getPagination(requestObj: object, {defaultSkip, maxSkip, defaultLimit, maxLimit}:
-    {defaultSkip: number, maxSkip: number, defaultLimit: number, maxLimit: number}
+    {defaultSkip?: number, maxSkip?: number, defaultLimit?: number, maxLimit?: number}
     = {defaultSkip: 0, maxSkip: 10000, defaultLimit: 10, maxLimit: 10000}
 ) {
     const param = {
@@ -74,6 +74,14 @@ export function noVerboseAddr(v) {
     const obj = addressUtil.decodeCfxAddress(v)
     const simple = sdk_format.address(obj.hexAddress, obj.netId)
     return simple;
+}
+// skip exceeds 10_000;
+export function skipLimitAny(obj) {
+    return {
+        skip: intParam(obj, 'skip', 0),
+        limit: intParam(obj, 'limit', 10)
+    };
+
 }
 export function skipLimit(obj) {
     return pageParam(obj, 'skip', 'limit', 10)

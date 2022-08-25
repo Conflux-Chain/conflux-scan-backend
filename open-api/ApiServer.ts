@@ -37,7 +37,6 @@ const Koa = require('koa');
 const app = new Koa();
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
-/*const CONST = require('../stat/service/common/constant');*/
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 
 const config = loadConfig('Prod')

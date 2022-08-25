@@ -1,18 +1,16 @@
 import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {pickNumber} from "../model/Utils";
-import {skipLimit, skipLimitAny} from "./ParamChecker";
+import {skipLimit, skipLimitAny} from "../service/common/utils";
 import {PosAccount, PosDailyStat, recentPosRewardRank} from "../model/PoS";
 import {Drip} from "js-conflux-sdk";
 import {
-    BIZ,
     fetchDailyStatMix,
     limitListOnBody,
-    PosDailyStatMix,
     queryDailyPosRewardAvgAccount,
     queryPosStatMix
 } from "../service/pos/PosStat";
-import {intParam, list2map, mustBeEnumParamIfPresent} from "../service/common/utils";
+import {intParam, list2map} from "../service/common/utils";
 import {Op} from "sequelize";
 import {queryPosRank} from "../service/pos/PosRewardRank";
 

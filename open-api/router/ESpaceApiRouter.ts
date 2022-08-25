@@ -5,7 +5,6 @@ import {getApiService} from "../ApiServer";
 import {StatApp} from "../../stat/StatApp";
 import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
 import {Epoch} from "../../stat/model/Epoch";
-import {InvalidParamError} from "../../stat/router/ParamChecker";
 import {setBody} from "./middleware";
 import {
     listAccountAssets,
@@ -69,13 +68,9 @@ import {
 import { CONST } from '../../stat/service/common/constant';
 
 const lodash = require('lodash');
-/*const util = require('util');*/
-/*const CONST = require('../../stat/service/common/constant');*/
 
 const EPOCH_NUMBER_LABEL_ARRAY = ['latest_mined', 'latest_state', 'latest_finalized', 'latest_confirmed',
     'latest_checkpoint', 'earliest'];
-/*const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortunately not detected for the proxy address";
-const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";*/
 // -----------------------------------biz---------------------------------------
 async function gateway(ctx) {
     const {E_SPACE_OPENAPI: {ACCOUNT, CONTRACT, TRANSACTION, BLOCK, TOKEN, STATS}} = CONST;
@@ -210,7 +205,7 @@ async function listBalance(ctx) {
     const addressArray = address?.split(',') || [];
     addressArray.forEach(item => {
         if (!/0x[0-9a-fA-F]{40}/.test(item)) {
-            throw new InvalidParamError(`Invalid address parameter [${item}] with value [${item}].`);
+            throw new Error(`Invalid address parameter [${item}] with value [${item}].`);
         }
     });
 
@@ -271,7 +266,7 @@ async function listTx(ctx) {
 async function listTransferCfx(ctx) {
     const {txhash, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
     if(!(txhash !== undefined ||  address !== undefined || (startblock !== undefined && endblock !== undefined))){
-        throw new InvalidParamError(`The txhash or address and/or block range parameters are required.`);
+        throw new Error(`The txhash or address and/or block range parameters are required.`);
     }
 
     let options;
@@ -306,7 +301,7 @@ async function listTransferCfx(ctx) {
 async function listTransfer20(ctx) {
     const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
     if(contractaddress === undefined && address === undefined){
-        throw new InvalidParamError(`The contractaddress and/or address parameters are required.`);
+        throw new Error(`The contractaddress and/or address parameters are required.`);
     }
 
     const skip = (page - 1) * offset;
@@ -329,7 +324,7 @@ async function listTransfer20(ctx) {
 async function listTransfer721(ctx) {
     const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
     if(contractaddress === undefined && address === undefined){
-        throw new InvalidParamError(`The contractaddress and/or address parameters are required.`);
+        throw new Error(`The contractaddress and/or address parameters are required.`);
     }
 
     const skip = (page - 1) * offset;
@@ -398,51 +393,6 @@ async function getTokenBalanceHistory(ctx) {
     result = result === undefined ? '0' : result;
     setBody(ctx, result)
 }
-
-/*async function getABI(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
-    const {address} = ctx.request.query;
-    checkPresent({address}, ['address']);
-
-    const contract = await getApiService().contractQuery.queryVerify({address})
-    if(!contract){
-        setBody(ctx, undefined, '0', `contract ${address} not verified` );
-        return;
-    }
-
-    const result = contract.abi;
-    setBody(ctx, result)
-}
-
-async function getSourceCode(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
-    const {address} = ctx.request.query;
-    checkPresent({address}, ['address']);
-
-    const contract = await getApiService().contractQuery.queryVerify({address})
-    if(!contract){
-        setBody(ctx, undefined, '0', `contract ${address} not verified` );
-        return;
-    }
-
-    const contractItem = lodash.defaults({}, {
-        SourceCode: contract.sourceCode,
-        ABI: contract.abi,
-        ContractName: contract.name,
-        CompilerVersion: contract.version,
-        OptimizationUsed: contract.optimizeFlag ? '1' : '0',
-        Runs: contract.optimizeRuns,
-        ConstructorArguments: contract.constructorArgs,
-        EVMVersion: "Default",
-        Library: "",
-        LicenseType: contract.license,
-        Proxy: contract.proxy ? '1' : '0',
-        Implementation: contract.implementation,
-        SwarmSource: "",
-    });
-    const result = [contractItem];
-    setBody(ctx, result)
-}*/
 
 async function getStatus(ctx) {
     mustBeHex64ParamIfPresent(ctx.request.query, 'txhash')
@@ -514,10 +464,10 @@ async function getLogs(ctx) {
 
     // check block range param
     if(fromBlock === undefined || (!/^[0-9]+$/.test(fromBlock) && fromBlock !== 'latest')) {
-        throw new InvalidParamError(`Invalid fromBlock parameter with value [${fromBlock}].`);
+        throw new Error(`Invalid fromBlock parameter with value [${fromBlock}].`);
     }
     if(toBlock === undefined || (!/^[0-9]+$/.test(toBlock) && toBlock !== 'latest')) {
-        throw new InvalidParamError(`Invalid toBlock parameter with value [${toBlock}].`);
+        throw new Error(`Invalid toBlock parameter with value [${toBlock}].`);
     }
     fromBlock = fromBlock === 'latest' ? fromBlock : parseInt(fromBlock);
     toBlock = toBlock === 'latest' ? toBlock : parseInt(toBlock);
@@ -525,7 +475,7 @@ async function getLogs(ctx) {
     // check address param and topic param
     if(address === undefined && topic0 === undefined && topic1 === undefined && topic2 === undefined
         && topic3 === undefined){
-        throw new InvalidParamError(`An address and/or topic(X) parameters are required.`);
+        throw new Error(`An address and/or topic(X) parameters are required.`);
     }
 
     const topics = [null, null, null, null];
@@ -575,93 +525,6 @@ async function getTokenSupplyHistory(ctx) {
     result = result === undefined ? '0' : result;
     setBody(ctx, result)
 }
-
-/*async function verifySourcecode(ctx) {
-    const {
-        contractaddress, sourceCode, codeformat, contractname, compilerversion, optimizationUsed, runs,
-        constructorArguements, evmversion, licenseType
-    } = ctx.request.body;
-    checkPresent({contractaddress, sourceCode, contractname, compilerversion, optimizationUsed, runs, licenseType},
-        ['contractaddress', 'sourceCode', 'contractname', 'compilerversion', 'optimizationUsed', 'runs', 'licenseType']);
-
-    const options = {
-        address: contractaddress,
-        name: contractname,
-        sourcecode: sourceCode,
-        compiler: compilerversion,
-        optimizeRuns: runs,
-        license: CONST.LICENSE[licenseType].code,
-        constructorArgs: constructorArguements
-    };
-    const submitResp = await getApiService().contractQuery.submitVerify(options);
-
-    setBody(ctx, submitResp.guid, submitResp.error ? "0" : '1', submitResp.error);
-}
-
-async function checkVerifyStatus(ctx) {
-    const {guid} = ctx.request.query;
-    checkPresent({guid}, ['guid']);
-
-    const verify = await getApiService().contractQuery.checkVerify({guid});
-    if(!verify){
-        setBody(ctx, undefined, '0', `verify with GUID ${guid} not found` );
-        return;
-    }
-
-    const result = [
-        {
-            SourceCode: verify.sourceCode,
-            ABI: verify.abi,
-            ContractName: verify.name,
-            CompilerVersion: verify.version,
-            OptimizationUsed: verify.optimizeFlag,
-            Runs: verify.optimizeRuns,
-            ConstructorArguments: verify.constructorArgs === '0x' ? '' : verify.constructorArgs,
-            EVMVersion: "Default",
-            Library: "",
-            LicenseType: lodash.findKey(CONST.LICENSE, (v) => v.code === verify.license),
-            Proxy: verify.proxy,
-            Implementation: verify.implementation,
-            SwarmSource:"",
-        }
-    ];
-    setBody(ctx, result)
-}
-
-async function verifyProxyContract(ctx) {
-    const {address, expectedimplementation} = ctx.request.query;
-    checkPresent({address}, ['address']);
-
-    const options = {address, expectedImpl: expectedimplementation};
-    const submitResp = await getApiService().contractQuery.submitVerifyProxy(options);
-
-    const result = submitResp.guid
-    setBody(ctx, result);
-}
-
-async function checkProxyVerification(ctx) {
-    const {guid} = ctx.request.query;
-    checkPresent({guid}, ['guid']);
-
-    try{
-        const verify = await getApiService().contractQuery.checkVerifyProxy({guid});
-        if(!verify){
-            setBody(ctx, undefined, '0', `verify with GUID ${guid} not found` );
-            return;
-        }
-        if(!verify.proxy || (verify.expectedImpl && verify.implementation !== verify.expectedImpl)){
-            setBody(ctx, MSG_IMPL_NO_MATCH, '0', 'NOTOK');
-            return;
-        }
-
-        const proxy = format.hexAddress(verify.base32);
-        const impl = format.hexAddress(verify.implementation);
-        const result = util.format(MSG_IMPL_MATCH, proxy, impl);
-        setBody(ctx, result);
-    } catch (e){
-        setBody(ctx, e.message, '0', 'NOTOK');
-    }
-}*/
 
 // -----------------------------------tool---------------------------------------
 function parseGatewayParam(ctx) {

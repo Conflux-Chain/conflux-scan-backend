@@ -8,7 +8,6 @@ import {CONST} from "../../stat/service/common/constant"
 
 const lodash = require('lodash');
 const util = require('util');
-/*const CONST = require('../../stat/service/common/constant');*/
 
 const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortunately not detected for the proxy address";
 const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";

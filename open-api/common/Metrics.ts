@@ -3,7 +3,6 @@ import {DefaultSender, InfluxMetricReporter} from "inspector-influx";
 import {StatApp} from "../../stat/StatApp";
 import {CONST} from "../../stat/service/common/constant"
 
-/*const CONST = require('../../stat/service/common/constant');*/
 const { cfxUrls, ethUrls } = require('./ApiUrl');
 
 export class Metrics {
