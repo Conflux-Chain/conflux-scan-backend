@@ -17,13 +17,48 @@ export class DailyBlockDataStatSync{
         this.sequelize = DailyBlockDataStat.sequelize;
     }
 
+    public async statByMinute(): Promise<any>{
+        // get time span
+        const maxStat = await DailyBlockDataStat.findOne({where:{statType: '1m'}, order:[['statTime','desc']]});
+        let maxStatTime = maxStat?.statTime;
+        if(maxStatTime === undefined){
+            maxStatTime = new Date('2020-10-28 16:00:00');
+            await this.initFirstStat(maxStatTime, '1m');
+        }
+        const nextBeginTime = getTimeByInterval(maxStatTime, 1);
+        const nextEndTime = getTimeByInterval(maxStatTime, 2);
+        const nextSafeTime = getTimeByInterval(maxStatTime, 2 + 3);
+        const now = new Date();
+        if( nextSafeTime > now ){
+            return Promise.resolve(false);
+        }
+
+        // stat hourly
+        const statLatestMinute = await this.statByInterval(nextBeginTime, nextEndTime);
+
+        // persist
+        const statArray = [statLatestMinute];
+        await DailyBlockDataStat.sequelize.transaction(async (dbTx) => {
+            await DailyBlockDataStat.destroy({
+                where: {statTime: statLatestMinute.statTime, statType: statLatestMinute.statType}, transaction: dbTx,
+                // logging: msg => console.log(`DailyBlockDataStat.destroy ${msg}`),
+            });
+            await DailyBlockDataStat.bulkCreate(statArray, {
+                transaction: dbTx,
+                // logging: msg => console.log(`DailyBlockDataStat.bulkCreate ${msg}`),
+            });
+        });
+        console.log(`block_data_stat by minute, statTime:${nextBeginTime},statArray${JSON.stringify(statArray)}`);
+        return Promise.resolve(true);
+    }
+
     public async statByHour(): Promise<any>{
         // get time span
         const maxStat = await DailyBlockDataStat.findOne({where:{statType:'1h'}, order:[['statTime','desc']]});
         let maxStatTime = maxStat?.statTime;
         if(maxStatTime === undefined){
-            maxStatTime = new Date(' 2020-10-28 16:00:00');
-            await this.initFirstStat(maxStatTime);
+            maxStatTime = new Date('2020-10-28 16:00:00');
+            await this.initFirstStat(maxStatTime, '1h');
         }
         const nextBeginTime = getTimeByInterval(maxStatTime, 60);
         const nextEndTime = getTimeByInterval(maxStatTime, 60 * 2);
@@ -34,34 +69,18 @@ export class DailyBlockDataStatSync{
         }
 
         // stat hourly
-        const blockSql = `SELECT SUM(difficulty) AS difficultySum, COUNT(*) AS blockCount FROM full_block 
-                WHERE createdAt >= ? and createdAt < ?`;
-        const blockStat = await FullBlock.sequelize.query(blockSql, {type: QueryTypes.SELECT,
-            replacements: [fmtDtUTC(nextBeginTime), fmtDtUTC(nextEndTime)], raw: true/*, logging: console.info*/ });
-        const txSql = `SELECT COUNT(*) AS txCount FROM full_tx WHERE createdAt >= ? and createdAt < ?`;
-        const txStat = await FullTransaction.sequelize.query(txSql, {type: QueryTypes.SELECT,
-            replacements: [fmtDtUTC(nextBeginTime), fmtDtUTC(nextEndTime)], raw: true/*, logging: console.info*/ });
-        const statTime = nextBeginTime;
-        const difficultySum = BigFixed(blockStat[0]['difficultySum'] || 0);
-        const blockCount = BigFixed(blockStat[0]['blockCount']);
-        const txCount = BigFixed(txStat[0]['txCount']);
-        const difficulty = blockCount.isZero() ? BigFixed(0) : difficultySum.div(blockCount);
-        const blockTime = blockCount.isZero() ? BigFixed(0) : this.intervalHourInSec.div(blockCount);
-        const hashRate = difficultySum.div(this.intervalHourInSec);
-        const tps = txCount.div(this.intervalHourInSec);
-        const statArray = [{statTime, statType: '1h', difficultySum, blockCount, txCount,
-            difficulty, blockTime, hashRate, tps}];
+        const statLatestHour = await this.statByInterval(nextBeginTime, nextEndTime);
 
         // stat daily
         let {beginTime: beginTimeInDay, endTime: endTimeInDay} = calBeginEndTime(nextBeginTime);
         endTimeInDay = moment(nextBeginTime).format('HH') === '23' ? endTimeInDay : (now < endTimeInDay ? now : endTimeInDay);
-        const statInDay = await this.statDailyRealtime({beginTimeInDay, endTimeInDay, statLatestHour: statArray[0]});
-        statArray.push(statInDay);
+        const statLatestDay = await this.statByDayRealtime({beginTimeInDay, endTimeInDay, statLatestHour});
 
         // persist
+        const statArray = [statLatestHour, statLatestDay];
         await DailyBlockDataStat.sequelize.transaction(async (dbTx) => {
             await DailyBlockDataStat.destroy({
-                where: {statTime: statInDay.statTime, statType: statInDay.statType}, transaction: dbTx,
+                where: {statTime: statLatestDay.statTime, statType: statLatestDay.statType}, transaction: dbTx,
                 logging: msg => console.log(`DailyBlockDataStat.destroy ${msg}`),
             });
             await DailyBlockDataStat.bulkCreate(statArray, {
@@ -73,7 +92,39 @@ export class DailyBlockDataStatSync{
         return Promise.resolve(true);
     }
 
-    private async statDailyRealtime({beginTimeInDay, endTimeInDay, statLatestHour = undefined}){
+    private async statByInterval(beginTime: Date, endTime: Date) {
+        const statType = this.getIntervalType(beginTime, endTime);
+        const blockSql = `SELECT SUM(difficulty) AS difficultySum, COUNT(*) AS blockCount FROM full_block 
+                WHERE createdAt >= ? and createdAt < ?`;
+        const blockStat = await FullBlock.sequelize.query(blockSql, {
+            type: QueryTypes.SELECT,
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)], raw: true/*, logging: console.info*/
+        });
+
+        const txSql = `SELECT COUNT(*) AS txCount FROM full_tx WHERE createdAt >= ? and createdAt < ?`;
+        const txStat = await FullTransaction.sequelize.query(txSql, {
+            type: QueryTypes.SELECT,
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)], raw: true/*, logging: console.info*/
+        });
+
+        const statTime = beginTime;
+        const difficultySum = BigFixed(blockStat[0]['difficultySum'] || 0);
+        const blockCount = BigFixed(blockStat[0]['blockCount']);
+        const txCount = BigFixed(txStat[0]['txCount']);
+
+        const difficulty = blockCount.isZero() ? BigFixed(0) : difficultySum.div(blockCount);
+        const blockTime = blockCount.isZero() ? BigFixed(0) : this.intervalHourInSec.div(blockCount);
+        const hashRate = difficultySum.div(this.intervalHourInSec);
+        const tps = txCount.div(this.intervalHourInSec);
+
+        return {
+            statTime, statType,
+            difficultySum, blockCount, txCount,
+            difficulty, blockTime, hashRate, tps
+        };
+    }
+
+    private async statByDayRealtime({beginTimeInDay, endTimeInDay, statLatestHour = undefined}){
         // stat daily
         const statSql = `SELECT statTime,statType,blockCount,txCount,difficultySum FROM daily_block_data_stat 
                     WHERE statTime >= ? and statTime < ? and statType = '1h'` ;
@@ -201,6 +252,7 @@ export class DailyBlockDataStatSync{
     public async schedule() {
         const that = this;
         async function repeat() {
+            await that.statByMinute().catch(err => {console.log(` block_data_stat by minute fail: `, err);});
             await that.statByHour().catch(err => {console.log(` block_data_stat by hour fail: `, err);});
             setTimeout(repeat, 1000 * 10);
         }
@@ -239,10 +291,10 @@ export class DailyBlockDataStatSync{
         return totalStatArray;
     }
 
-    private async initFirstStat(firstStatTime){
+    private async initFirstStat(firstStatTime, statType){
         const firstStat = lodash.defaults({},
             {statTime: firstStatTime,
-            statType: '1h',
+            statType,
             blockCount: 0,
             txCount: 0,
             difficultySum:  0,
@@ -251,5 +303,21 @@ export class DailyBlockDataStatSync{
             difficulty: 0,
             tps: 0});
         await DailyBlockDataStat.add(firstStat);
+    }
+
+    private getIntervalType(beginTime, endTime){
+        let type;
+        const intervalByMinutes = (endTime.getTime() - beginTime.getTime())/ (1000 * 60);
+        switch (intervalByMinutes){
+            case 1:
+                type = '1m'; break;
+            case 60:
+                type = '1h'; break;
+            case 1440:
+                type = '1d'; break;
+            default:
+                throw new Error(`interval not supported, ${beginTime.toLocaleString()}-${endTime.toLocaleString()}`);
+        }
+        return type;
     }
 }

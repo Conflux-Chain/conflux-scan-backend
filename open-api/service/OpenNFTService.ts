@@ -8,8 +8,6 @@ import {
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
-import {Stopwatch} from "../../stat/service/Stopwatch";
-import {fmtDtUTC} from "../../stat/model/Utils";
 
 const lodash = require('lodash');
 

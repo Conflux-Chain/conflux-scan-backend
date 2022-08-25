@@ -9,8 +9,6 @@ import {setBody} from "../router/middleware";
 import {getApiService} from "../ApiServer";
 import {CONST} from "../../stat/service/common/constant"
 
-/*const CONST = require('../../stat/service/common/constant');*/
-
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
 

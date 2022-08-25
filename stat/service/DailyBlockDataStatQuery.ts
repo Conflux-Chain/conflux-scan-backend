@@ -90,7 +90,10 @@ export class DailyBlockDataStatQuery {
 
     async listMiningStat({intervalType = 'hour', skip = 0, limit = 10, sort='asc', minTimestamp = undefined
                              , maxTimestamp = undefined}) {
-        if(intervalType === this.INTERVAL_TYPE.hour || intervalType === this.INTERVAL_TYPE.day) {
+        if (intervalType === this.INTERVAL_TYPE.hour
+            || intervalType === this.INTERVAL_TYPE.day
+            || intervalType === this.INTERVAL_TYPE.min
+        ) {
             const attributeArray = ['statTime','blockTime',['hashrate','hashRate'], 'difficulty'];
             const page = await this.listStatByAttributeArray(attributeArray, intervalType, minTimestamp, maxTimestamp,
                 sort, skip, limit);
