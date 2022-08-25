@@ -15,6 +15,7 @@ import {StatApp} from "../../StatApp";
 import {AddressTransfer} from "../../model/AddrTransfer";
 
 const lodash = require('lodash');
+const superagent = require('superagent');
 const POSITION_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
 
 const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
@@ -168,6 +169,27 @@ async function run() {
     }
     if(type === 9){
         await getDataByEpochNumber();
+    }
+    if(type === 10) {
+        const url = 'http://172.17.127.163:9527/open/account/crc721/transfers?account=cfx:aapwjebcay7d6jv02whjrrvkm9egmw5fye09cea6zz&from=cfx:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0sfbnjm2&skip=1000&limit=100&sort=DESC&withInput=false';
+        const total = 100;
+        let counter = total;
+        let success = 0;
+        let failure = 0;
+
+        const start = Date.now();
+        do{
+            const response = await superagent.get(url)
+                .timeout({response: 3 * 1000, deadline: 3 * 1000})
+                .catch(() => undefined);
+
+            counter = counter - 1;
+            console.log(`counter------${counter}`);
+        } while (counter > 0)
+        const elapsed = Date.now() - start;
+
+        console.log(`url------${url}`);
+        console.log(`counter:${total}------QPS:${total/elapsed}`);
     }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);

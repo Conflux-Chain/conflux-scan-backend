@@ -8,25 +8,25 @@ import {QueryTypes} from "sequelize";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Errors} from "../common/LogicError";
 import {CONST} from "../common/constant"
+import {IPFSGatewayArray} from "../../config/IPFSGateway";
+import {IPFSGatewaySync} from "../IPFSGatewaySync";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
 const {put,get, clear} = require('./MetaInfoCache')
-/*const CONST = require('../common/constant');*/
-const IPFS_GATEWAY_ARRAY = require('../../config/IPFSGateway');
-const TIMEOUT_CONN = 3000;
-const TIMEOUT_READ = 3000;
 
 export class NFTPreviewService {
     private app;
     private cfx;
     private ipfsGatewaySet;
+    private TIMEOUT_CONN = 3000;
+    private TIMEOUT_READ = 3000;
 
     constructor(app: any) {
         this.app = app;
         this.cfx = app.cfx;
-        this.ipfsGatewaySet = new Set(IPFS_GATEWAY_ARRAY);
+        this.ipfsGatewaySet = new Set(IPFSGatewayArray);
     }
 
     public async getNFTInfo ({
@@ -334,7 +334,8 @@ export class NFTPreviewService {
                         let zh;
                         if (meta?.localization?.uri) { // try 1155
                             const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
-                            const response = await superagent.get(zhUri).timeout({response: TIMEOUT_CONN, deadline: TIMEOUT_READ})
+                            const response = await superagent.get(zhUri)
+                                .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
                                 .catch(e => {throw new Errors.QueryNFTLocalNameError(`${zhUri} ${e.message}`)});
                             const responseObj = JSON.parse(response.text);
                             zh = responseObj.name;
@@ -378,7 +379,8 @@ export class NFTPreviewService {
             } else if((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')){
                 rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
             } else{
-                const resp = await superagent.get(gatewayUrl).timeout({response: TIMEOUT_CONN, deadline: TIMEOUT_READ})
+                const resp = await superagent.get(gatewayUrl)
+                    .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
                     .catch(e => {throw new Errors.QueryNFTMetadataError(`${gatewayUrl} ${e.message}`)});
                 rawMeta = resp.text;
             }
@@ -446,20 +448,37 @@ export class NFTPreviewService {
         if (imageUri) {
             put(address, tokenId,
                 JSON.stringify({
-                    address, tokenId, imageUri, imageName, imageDesc, detail, timeout: +new Date() + 1000 * 60 * 60
+                    address, tokenId, imageUri, imageName, imageDesc, detail, timeout: +new Date() + 1000 * 60 * 3
                 }));
         }
     };
 
     private replaceGateway({gateway, rawUrl}){
+        const {
+            app: { config },
+        } = this;
+
         let uri = rawUrl;
-
-        if(uri?.startsWith('https://gateway.pinata.cloud')){
-            return `https://ipfs.io/ipfs/${uri.substr(34)}`;
-        }
-
         if(!uri?.startsWith('ipfs://')) {
             return uri;
+        }
+
+        let url;
+        const urlRaw = this.replaceGateway0({gateway, rawUrl});
+        const usableGateway = IPFSGatewaySync.getGateway();
+        if (config.syncIPFSGateway && usableGateway) {
+            const index0 = urlRaw.indexOf('//') + 2;
+            const index1 = urlRaw.indexOf('/ipfs/');
+            url = `${urlRaw.substr(0, index0)}${usableGateway}${urlRaw.substr(index1, urlRaw.length)}`
+        }
+
+        return url;
+    }
+
+    private replaceGateway0({gateway, rawUrl}){
+        let uri = rawUrl;
+        if(uri?.startsWith('https://gateway.pinata.cloud')){
+            return `https://ipfs.io/ipfs/${uri.substr(34)}`;
         }
 
         if(!gateway){

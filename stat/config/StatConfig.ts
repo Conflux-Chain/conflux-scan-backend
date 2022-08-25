@@ -101,6 +101,8 @@ export interface StatConfig{
 
     syncQuote: boolean,
     syncQuoteDelay: number,
+    syncIPFSGateway: boolean,
+    syncIPFSGatewayDelay: number,
     quoteConvertSymbolArray: Array<string>,
     marketCapToken: string,
     binanceToken: string,

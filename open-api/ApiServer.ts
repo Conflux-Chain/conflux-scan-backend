@@ -33,8 +33,10 @@ import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
 import {billing, initWeb3payClient} from "web3pay-sdk-js/lib/rpc";
+import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 
 const Koa = require('koa');
+const lodash = require('lodash');
 const app = new Koa();
 const DailyRotateFile = require('winston-daily-rotate-file');
 const winston = require('winston');
@@ -68,6 +70,7 @@ export class ApiService {
     minerBlockHandler : MinerBlockHandler;
     addrCfxTransferHandler : AddrCfxTransferHandler;
     tokenTransferHandler : TokenTransferHandler;
+    ipfsGatewaySync: IPFSGatewaySync;
     cfx: Conflux;
     eth;
     jsonRpc;
@@ -148,7 +151,7 @@ export class ApiServer {
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
 
         apiService = new ApiService()
-        const apiApp = {networkId:cfxStatus.networkId, cfx: this.cfx, service: apiService};
+        const apiApp = {networkId:cfxStatus.networkId, cfx: this.cfx, service: apiService, config: this.config};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)
         apiService.crc20transferQuery = new Crc20TransferQuery(apiApp)
         apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
@@ -173,6 +176,7 @@ export class ApiServer {
         apiService.jsonRpc = new JsonRPCSDK(config.jsonRpc);
         apiService.contractQuery = new ContractQuery({cfx: this.cfx, jsonRpc: apiService.jsonRpc,
             tokenQuery: apiService.tokenQuery})
+        apiService.ipfsGatewaySync = new IPFSGatewaySync(apiApp);
         apiService.cfx = this.cfx;
         apiService.eth = this.eth;
         apiService.logger = logger
@@ -186,6 +190,7 @@ export class ApiServer {
         await apiService.minerBlockHandler.scheduleCache();
         await apiService.addrCfxTransferHandler.scheduleCache();
         await apiService.tokenTransferHandler.scheduleCache();
+        await apiService.ipfsGatewaySync.schedule();
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
     }
 
