@@ -69,6 +69,8 @@ export interface StatConfig{
     syncTraceCreateContractDelay: number;
     port: number;
     apiPort: number;
+    billingUrl: string;
+    billingKey: string;
     conflux: ConfluxOption; // chain rpc node
     ether: EtherOption;
     cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
