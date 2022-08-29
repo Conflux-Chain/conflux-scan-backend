@@ -64,9 +64,10 @@ export class EpochSync extends SyncBase{
     public static SYNC_VERIFY_LINK = true;
     public static SYNC_EVM_ADDR = true;
 
+    public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
+    public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
+
     protected app;
-    private erc721Interface = [0x80, 0xac, 0x58, 0xcd];
-    private erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
     private NAME_TYPE_MAP;
 
     constructor(app: StatApp | any) {
@@ -509,8 +510,8 @@ export class EpochSync extends SyncBase{
         const [ totalSupply, tokenInfo, erc721Interface, erc1155Interface ] = await Promise.all([
             tokenTool.getTokenTotalSupply(base32),
             tokenTool.getToken(base32),
-            tokenTool.supportsInterface(base32, this.erc721Interface),
-            tokenTool.supportsInterface(base32, this.erc1155Interface),
+            tokenTool.supportsInterface(base32, EpochSync.erc721Interface),
+            tokenTool.supportsInterface(base32, EpochSync.erc1155Interface),
         ]);
         if((transferType === CONST.TRANSFER_TYPE.ERC721 && erc721Interface === false) ||
             (transferType === CONST.TRANSFER_TYPE.ERC1155 && erc1155Interface === false)){
