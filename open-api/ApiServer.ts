@@ -230,8 +230,9 @@ export function initApiServer() {
     apiServer.init().then(()=>{
         return register(app, apiServer)
     }).then(()=>{
+        return initBilling(apiServer.config)
+    }).then(()=>{
         const port = apiServer.config.apiPort || 9527;
-        initBilling(apiServer.config).then();
         app.listen(port)
         console.log(`api server listen at ${port}`)
     })

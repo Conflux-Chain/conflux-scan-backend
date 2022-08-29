@@ -6,6 +6,7 @@ import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
 import {format} from "js-conflux-sdk";
 import {Errors} from "../service/common/LogicError";
 import {billing} from "web3pay-sdk-js"
+import {getWeb3pay} from "web3pay-sdk-js/lib/rpc";
 //
 export interface IRateConfig {
     id?:number;
@@ -94,7 +95,10 @@ export function buildCheckAddressRateFn(addressParamName:string, callNext = fals
     }
 }
 export async function checkApiKey(path: string, key:string, dryRun = false) {
-    console.log(`check api key ${path} , ${key}`)
+    if (!getWeb3pay().client) {
+        return {ok:false, result:{}} // not configured
+    }
+    // console.log(`check api key ${path} , ${key}`)
     if (!key) {
         return {ok:false, result:{}};
     }
