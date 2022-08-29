@@ -62,6 +62,7 @@
     "superagent-proxy": "2.1.0",
     "swagger-stats": "~0.99.2",
     "web3": "^1.6.1",
+    "web3pay-sdk-js": "0.0.7",
     "winston": "3.3.3",
     "winston-daily-rotate-file": "4.5.5",
     "yamljs": "0.3.0"

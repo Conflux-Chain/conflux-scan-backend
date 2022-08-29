@@ -32,6 +32,7 @@ import {IS_EVM2, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
+import {billing, initWeb3payClient} from "web3pay-sdk-js/lib/rpc";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -202,11 +203,34 @@ export class ApiServer {
         await apiService.metrics.init();
     }
 }
-
+async function initBilling(config: StatConfig) {
+    const url = config.billingUrl;
+    const key = config.billingKey;
+    if (!url || !key) {
+        console.log(`billing url or key not set [${url}] [${key}]`)
+        return
+    }
+    const keyJsonStr = Buffer.from(key, 'base64').toString()
+    console.log(`key json str`, keyJsonStr)
+    initWeb3payClient(url, key, 1_000)
+    console.log(`using billing ${url}, now test...`)
+    try {
+        const result = await billing('/', true, key)
+        if (result.code == 0) {
+            console.log(`test billing ok`, result)
+        } else {
+            console.log(`test billing , result :`, result)
+        }
+    } catch (e) {
+        console.log(`test billing fail:`, e)
+    }
+}
 export function initApiServer() {
     const apiServer = new ApiServer();
     apiServer.init().then(()=>{
         return register(app, apiServer)
+    }).then(()=>{
+        return initBilling(apiServer.config)
     }).then(()=>{
         const port = apiServer.config.apiPort || 9527;
         app.listen(port)

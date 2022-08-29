@@ -5,6 +5,8 @@ import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'seq
 import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
 import {format} from "js-conflux-sdk";
 import {Errors} from "../service/common/LogicError";
+import {billing} from "web3pay-sdk-js"
+import {getWeb3pay} from "web3pay-sdk-js/lib/rpc";
 //
 export interface IRateConfig {
     id?:number;
@@ -92,14 +94,39 @@ export function buildCheckAddressRateFn(addressParamName:string, callNext = fals
         return ctx; // for the magic scan api '/v1'
     }
 }
+export async function checkApiKey(path: string, key:string, dryRun = false) {
+    if (!getWeb3pay().client) {
+        return {ok:false, result:{}} // not configured
+    }
+    // console.log(`check api key ${path} , ${key}`)
+    if (!key) {
+        return {ok:false, result:{}};
+    }
+    try {
+        const result = await billing(path, dryRun, key)
+        if (result.code == 0) {
+            return {ok:true, result};
+        }
+        console.log(`billing fail, path ${path} , key ${key}. result:`, result)
+        return {ok:false, result}
+    } catch (e) {
+        console.log(`check api key fail:`, e)
+        return {ok:false, result:{error: e}};
+    }
+}
 export async function checkAddressRate(address:string, ctx:any = null) {
     let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
     const {path} = ctx?.request || {path:'-'};
+    const {ok:paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
+    if (paid) {
+        pointsToConsume /= 10;
+    }
     const ip = requestIp.getClientIp(ctx?.request || {}) || '-';
     try {
         await burstyLimiter.consume(address, pointsToConsume)
         ctx?.set(`pointsAddress`, pointsToConsume)
         ctx?.set(`address`, address)
+        ctx?.set('paid', paid)
     } catch (e) {
         console.log(`rate limit address ${address}, ip ${ip}, points ${pointsToConsume} path ${path}`, e)
         RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
@@ -122,10 +149,15 @@ export async function checkRate(ctx,next) {
     const key = ip
     // resources like nftPreview should have a small weight like 0.01.
     let pointsToConsume = configMap.get(path)?.weight || configMap.get(RateConfig.defaultWeightName)?.weight || 1
+    const {ok:paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
+    if (paid) {
+        pointsToConsume /= 10;
+    }
     try {
         await burstyLimiter.consume(key, pointsToConsume)
         ctx?.set(`pointsIP`, pointsToConsume)
         ctx?.set(`IP`, ip)
+        ctx?.set('paid', paid)
     } catch (e) {
         console.log(` rate limit ${ip} for ${path}, key ${key} points ${pointsToConsume}`, e)
         RateHit.sequelize && RateHit.create({ip, path}).catch()

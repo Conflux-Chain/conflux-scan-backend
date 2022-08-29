@@ -46,7 +46,7 @@ export const ROUTER_PREFIX = '/stat'
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
-        ctx.body = { serverInfo: `Conflux-Stat 2021.04.08 ${statApp.config.serverTag} network id ${StatApp.networkId}` }
+        ctx.body = { serverInfo: `${statApp.config.serverTag} network id ${StatApp.networkId}` }
     })
     router.get('/contract/all', async (ctx)=>{
         ctx.body = {
