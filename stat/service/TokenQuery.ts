@@ -16,6 +16,7 @@ import {TokenBalance} from "../model/Balance";
 import {StatApp} from "../StatApp";
 import {Desensitizer} from "./Desensitizer";
 import {CONST} from "./common/constant"
+import {EpochSync} from "./EpochSync";
 
 const lodash = require('lodash');
 /*const CONST = require('./common/constant');*/
@@ -382,5 +383,44 @@ export class TokenQuery {
         credits = credits + (dexCreditArray.filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0);
         credits = credits + (trackCreditArray.filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0);
         return Promise.resolve(credits);
+    }
+
+    public async detectToken(base32){
+        const {
+            app: {tokenTool, confluxSDK},
+        } = this;
+
+        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
+        const addressId = hex40?.id;
+
+        const toolkit = tokenTool || confluxSDK;
+        let [tokenInfo, interface721, interface1155, transfer20, transfer721, transfer1155] = await Promise.all([
+            toolkit.getToken(base32),
+            toolkit.supportsInterface(base32, EpochSync.erc721Interface),
+            toolkit.supportsInterface(base32, EpochSync.erc1155Interface),
+            Erc20Transfer.findOne({ where: { contractId: addressId }}),
+            Erc721Transfer.findOne({ where: { contractId: addressId }}),
+            Erc1155Transfer.findOne({ where: { contractId: addressId }}),
+        ]);
+
+        let type;
+        if(transfer20)  type = CONST.TRANSFER_TYPE.ERC20;
+        if(transfer721)  type = CONST.TRANSFER_TYPE.ERC721;
+        if(transfer1155)  type = CONST.TRANSFER_TYPE.ERC1155;
+
+        const result = {base32, hex: hex40?.hex, type};
+        if(!tokenInfo?.name){
+            return lodash.defaults(result, {reason: 'token name not exist'});
+        }
+        if(!tokenInfo?.symbol){
+            return lodash.defaults(result, {reason: 'token symbol not exist'});
+        }
+        if(!transfer20 && !transfer721 && !transfer1155){
+            return lodash.defaults(result, {reason: 'token transfer not exist'});
+        }
+        if(!interface721 && !interface1155){
+            return lodash.defaults(result, {reason: 'not support ERC165'});
+        }
+        return result;
     }
 }
