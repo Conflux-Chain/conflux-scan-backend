@@ -18,6 +18,7 @@ import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 import {ReportService} from "./service/ReportService";
 import {RedisWrap} from "./service/RedisWrap";
 import {QuoteSync} from "./service/QuoteSync";
+import {IPFSGatewaySync} from "./service/IPFSGatewaySync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
 import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
@@ -54,6 +55,7 @@ export class StatApp{
     public contractCreateQuery: DailyContractCreateQuery;
     public siteVerify: ReportService;
     public quoteSync: QuoteSync;
+    public ipfsGatewaySync: IPFSGatewaySync;
     public homeDashboardService: HomeDashboardService;
     public contractQuery: ContractQuery;
     public contractStatQuery: DailyContractStatQuery;
@@ -127,6 +129,7 @@ export class StatApp{
         this.contractCreateQuery = new DailyContractCreateQuery();
         this.siteVerify = new ReportService(this);
         this.quoteSync = new QuoteSync(this);
+        this.ipfsGatewaySync = new IPFSGatewaySync(this);
         this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
         this.contractStatQuery = new DailyContractStatQuery();
@@ -143,6 +146,9 @@ export class StatApp{
         this.txnSync.scheduleCache()
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote
+        }
+        if (this.config.syncIPFSGateway) {
+            await this.ipfsGatewaySync.schedule(this.config.syncIPFSGatewayDelay);
         }
         if (this.config.syncRecommendGasPrice) {
             await this.fullBlockQuery.schedule();

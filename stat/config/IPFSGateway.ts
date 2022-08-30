@@ -1,4 +1,4 @@
-module.exports = [
+export const IPFSGatewayArray = [
     'ipfs.io',
     'gateway.ipfs.io',
     'dweb.link',
