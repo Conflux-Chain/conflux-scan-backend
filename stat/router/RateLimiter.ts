@@ -76,8 +76,8 @@ const burstyLimiter = new BurstyRateLimiter(
     }),
     new RateLimiterMemory({
         keyPrefix: 'burst',
-        points: 50,
-        duration: 10,
+        points: 300,
+        duration: 60,
     })
 );
 export function buildCheckAddressRateFn(addressParamName:string, callNext = false) {

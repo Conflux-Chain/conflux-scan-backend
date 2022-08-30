@@ -35,10 +35,12 @@ export class NFTPreviewService {
         contractAddress,
         tokenId,
         withDetail = false,
+        forceFlush = false,
     }: {
         contractAddress: string;
         tokenId: BigInt;
         withDetail?: boolean;
+        forceFlush?: boolean;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
         let token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
@@ -54,7 +56,7 @@ export class NFTPreviewService {
         let nftInfo;
         try{
             const start = Date.now();
-            nftInfo = await this.getNFTInfo0({address, tokenId, type: token.type, gateway: token.ipfsGateway});
+            nftInfo = await this.getNFTInfo0({address, tokenId, type: token.type, gateway: token.ipfsGateway, forceFlush});
             nftInfo.externalMs = Date.now() - start;
             lodash.assign(nftInfo, detail);
         } catch(e){
@@ -70,12 +72,14 @@ export class NFTPreviewService {
 
     public async getNFTDetail ({
          contractAddress,
-         tokenId
+         tokenId,
+         forceFlush = false,
     }: {
         contractAddress: string;
         tokenId: BigInt;
+        forceFlush?: boolean;
     }): Promise<NFTInfoType> {
-        return this.getNFTInfo({contractAddress, tokenId, withDetail: true});
+        return this.getNFTInfo({contractAddress, tokenId, withDetail: true, forceFlush});
     }
 
     private async getDetailInfo({address, hex40id, tokenId, type}){
@@ -122,13 +126,15 @@ export class NFTPreviewService {
         tokenId,
         type,
         gateway,
+        forceFlush = false,
     }: {
         address: string;
         tokenId: BigInt;
         type: string;
         gateway: string;
+        forceFlush?: boolean;
     }): Promise<NFTInfoType> {
-        const tokenBasic = { address, tokenId, gateway };
+        const tokenBasic = { address, tokenId, gateway, forceFlush };
         switch (address) {
             case NFTMap.confluxGuardian.address:
                 return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
@@ -350,9 +356,23 @@ export class NFTPreviewService {
         return nftName;
     };
 
-    private async getNFTImage({address, tokenId, gateway, method = 'uri', height = 200, uriFormatter}:
-        { address: string, tokenId: BigInt, gateway?: string, method?: string, height?: number, uriFormatter?: any}
-    ): Promise<NFTInfoType> {
+    private async getNFTImage({
+        address,
+        tokenId,
+        gateway,
+        method = 'uri',
+        height = 200,
+        uriFormatter,
+        forceFlush = false
+    }: {
+        address: string,
+        tokenId: BigInt,
+        gateway?: string,
+        method?: string,
+        height?: number,
+        uriFormatter?: any,
+        forceFlush?: boolean
+    }): Promise<NFTInfoType> {
         let rawUrl;
         let gatewayUrl;
         let rawMeta;
@@ -363,7 +383,7 @@ export class NFTPreviewService {
 
         try {
             const nftObj = this.getNFTCacheInfo({ address, tokenId });
-            if (nftObj) {
+            if (!forceFlush && nftObj) {
                 const cacheInfo = {imageMinHeight: height};
                 return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));
             }
