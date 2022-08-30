@@ -10,6 +10,8 @@ import {Errors} from "../common/LogicError";
 import {CONST} from "../common/constant"
 import {IPFSGatewayArray} from "../../config/IPFSGateway";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
+import {Erc20Transfer} from "../../model/Erc20Transfer";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -39,9 +41,9 @@ export class NFTPreviewService {
         withDetail?: boolean;
     }): Promise<NFTInfoType> {
         const address = toBase32(contractAddress) as string;
-        const token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
+        let token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
         if(!token) {
-            throw new Errors.NotTokenError(`${contractAddress} not detected as a token`);
+            token = await this.detectTokenType(address) as Token;
         }
 
         let detail;
@@ -492,6 +494,23 @@ export class NFTPreviewService {
         }
 
         return `${gateway.endsWith('/') ? gateway.substr(0, gateway.length - 1) : gateway}/ipfs/${uri.substr(7)}`;
+    }
+
+    private async detectTokenType(base32){
+        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
+        const hex40id = hex40?.id;
+
+        let [transfer20, transfer721, transfer1155] = await Promise.all([
+            Erc20Transfer.findOne({ where: { contractId: hex40id }}),
+            Erc721Transfer.findOne({ where: { contractId: hex40id }}),
+            Erc1155Transfer.findOne({ where: { contractId: hex40id }}),
+        ]);
+
+        let type;
+        if(transfer20)  type = CONST.TRANSFER_TYPE.ERC20;
+        if(transfer721)  type = CONST.TRANSFER_TYPE.ERC721;
+        if(transfer1155)  type = CONST.TRANSFER_TYPE.ERC1155;
+        return {hex40id, type};
     }
 }
 

@@ -99,6 +99,17 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/tokens/by-address', async (ctx)=>{
         const {address} = ctx.request.query;
         const result = await statApp.tokenQuery.query({address});
+        if(!result?.isRegistered){
+            const token = await statApp.tokenQuery.detectToken(address);
+            if(token?.reason){
+                throw new Errors.NotTokenError(`${StatApp.isEVM? token.hex : token.base32} not detected as a token, ${token.reason}`);
+            }
+        }
+        ctx.body = result || {};
+    })
+    router.get('/tokens/detect', async (ctx)=>{
+        const {address} = ctx.request.query;
+        const result = await statApp.tokenQuery.detectToken(address);
         ctx.body = result || {};
     })
 
