@@ -471,7 +471,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // nft detail
     router.get('/nft/checker/detail', async function (ctx) {
         const { contractAddress, tokenId} = ctx.request.query
-        const nftDetail = await statApp.nftPreviewService.getNFTDetail({contractAddress, tokenId: BigInt(tokenId)});
+        const nftDetail = await statApp.nftPreviewService.getNFTDetail({contractAddress, tokenId: BigInt(tokenId), forceFlush: true});
         ctx.set('external-ms', (nftDetail?.externalMs || 0) as any)
         ctx.body = nftDetail;
     })
