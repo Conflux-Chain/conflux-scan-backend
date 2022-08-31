@@ -1,7 +1,16 @@
 import {loadConfig} from "../../stat/config/StatConfig";
 import {billing, initWeb3payClient} from "web3pay-sdk-js/lib/rpc";
+import {buildApiKey} from "web3pay-sdk-js";
 
 async function main() {
+    //
+    const [,,cmd,input,pk] = process.argv
+    if (cmd === 'buildApiKey') {
+        const key = await buildApiKey(input, pk)
+        console.log(key)
+        return
+    }
+    //
     const config = loadConfig("Prod")
     const {billingUrl, billingKey} = config
     console.log(`billing url ${billingUrl}`)
