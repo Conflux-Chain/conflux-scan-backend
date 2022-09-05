@@ -16,6 +16,7 @@ import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {Hex40Map} from "./model/HexMap";
 import {TraceCreateContract} from "./model/TraceCreateContract";
+import {Reporter} from "./service/syncalert/Reporter";
 
 async function main() {
     redirectLog()
@@ -51,6 +52,10 @@ async function main() {
     //
     const blockDataStatSync = new DailyBlockDataStatSync();
     await blockDataStatSync.schedule(); // daily block data stat
+    //
+    const reporter = new Reporter({config: cfg, cfx});
+    await reporter.start(); // scan sync alert
+    //
     setInterval(countTable, 60_000)
     console.log(`----- Timer tasks scheduled. -----`)
 }
