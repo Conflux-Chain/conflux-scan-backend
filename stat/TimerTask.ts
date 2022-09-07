@@ -8,7 +8,7 @@ import {scheduleDailyActiveAddress} from "./model/StatAddress";
 import {DailyTxnSync, scheduleDailyTokenStat} from "./service/DailyTxnSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 import {DailyContractCreateSync} from "./service/DailyContractCreateSync";
-import {ADDRESS_COUNT, CONTRACT_COUNT, KV} from "./model/KV";
+import {ADDRESS_COUNT, CONTRACT_COUNT, IS_EVM2, KV} from "./model/KV";
 import {DailyContractStatSync} from "./service/DailyContractStatSync";
 import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
 import {CfxHolderSync} from "./service/CfxHolderSync";
@@ -28,6 +28,7 @@ async function main() {
     await cfx.updateNetworkId();
     const cfxStatus:any = await cfx.getStatus()
     StatApp.networkId = cfxStatus.networkId
+    StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()

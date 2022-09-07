@@ -190,7 +190,7 @@ export class ApiServer {
         await apiService.minerBlockHandler.scheduleCache();
         await apiService.addrCfxTransferHandler.scheduleCache();
         await apiService.tokenTransferHandler.scheduleCache();
-        await apiService.ipfsGatewaySync.schedule();
+        config.syncIPFSGateway && (await apiService.ipfsGatewaySync.schedule());
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
     }
 

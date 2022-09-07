@@ -35,7 +35,7 @@ export const IPFSGatewayArray = [
     'aragon.ventures',
     'ipfs-cdn.aragon.ventures',
     'permaweb.io',
-    'ipfs.best-practice.se',
+    /*'ipfs.best-practice.se',*/
     'storjipfs-gateway.com',
     'ipfs.runfission.com',
     'ipfs.trusti.id',
