@@ -33,11 +33,13 @@ import {getPagination, skipLimit} from "../service/common/utils";
 import {limitListOnBody} from "../service/pos/PosStat";
 import {checkRate, loadRateConfig} from "./RateLimiter";
 import {Errors} from "../service/common/LogicError";
+import {RateLimiterMemory} from "rate-limiter-flexible";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
+const requestIp = require('request-ip');
 
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 10 // 10 minutes
@@ -477,8 +479,19 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     // nft refresh
+    const refreshRateLimiter = new RateLimiterMemory({ points: 1, duration: 600 });
     router.get('/nft/checker/refresh', async function (ctx) {
         const { contractAddress, tokenId} = ctx.request.query
+
+        const consumerKey = `${requestIp.getClientIp(ctx.request)}-${contractAddress}-${tokenId}`
+        try {
+            await refreshRateLimiter.consume(consumerKey, 1);
+        } catch (e) {
+            console.log(`refresh nft hit rate limit, key:${consumerKey}`, e);
+            ctx.body = {code: 429, message:`Too many requests, refresh nft key:${consumerKey}.`};
+            return;
+        }
+
         const nftDetail = await statApp.nftPreviewService.getNFTDetail({contractAddress, tokenId: BigInt(tokenId), forceFlush: true});
         ctx.set('external-ms', (nftDetail?.externalMs || 0) as any)
         ctx.body = nftDetail;

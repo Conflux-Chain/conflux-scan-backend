@@ -22,7 +22,7 @@ import {CONST} from "./common/constant"
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
-/*const CONST = require('./common/constant');*/
+const superagent = require('superagent');
 const {Contract} = require("../model/Contract");
 const {ContractVerify} = require("../model/ContractVerify");
 const abi = require('./tool/abi');
@@ -149,7 +149,7 @@ export class ContractQuery {
         if(verifyResult){
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => logger?.error({ src: `[${address}]updateVerify`, queryImplError: e.toString() }));
-            lodash.assign(updateVerify, {abi}, proxyInfo);
+            lodash.assign(updateVerify, {abi}, proxyInfo, {notifyStatus: CONST.NOTIFY_STATUS.NEED_NOTIFY});
         } else{
             lodash.assign(updateVerify, {sourceCode: null});
         }
@@ -514,9 +514,14 @@ export class ContractQuery {
 
         try{
             address = format.hexAddress(address);
-            await this.queryVerify({ address }).catch(() => {throw new Errors.ContractVerifyError(`the contract already verified`)});
-            const code = await sdk.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`invalid contract's code:${code}`)});
-
+            const verify = await this.queryVerify({ address });
+            if (verify !== null) {
+                throw new Errors.ContractVerifyError(`the contract already verified`);
+            }
+            const code = await sdk.getCode(address);
+            if (code === undefined || code === '0x') {
+                throw new Errors.ContractVerifyError(`invalid contract's code:${code}`);
+            }
             const sourceCode = this.rmRedundantLicense(sourcecode);
             const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
 
@@ -666,16 +671,21 @@ export class ContractQuery {
     }
 
     public async schedule(delay: number = 3000) {
-        console.log(`schedule doVerify with delay: ${delay}`);
+        console.log(`schedule async_verify with delay: ${delay}`);
         const that = this;
         async function repeat() {
-            await that.run().catch(e => console.log(`schedule doVerify error: ${e.message}`));
+            await that.run();
             setTimeout(repeat, delay)
         }
         repeat().then();
     }
 
     private async run() {
+        await this.processVerify().catch(e => console.log(`schedule doVerify error: ${e.message}`));
+        await this.processSyncAcrossRegion().catch(e => console.log(`schedule notifyVerify error: ${e.message}`));
+    }
+
+    private async processVerify() {
         let submitVerify = await ContractVerify.findOne({
             where: {taskStatus: CONST.TASK_STATUS.SUBMITTED},
             order: [['createdAt', 'ASC']],
@@ -688,5 +698,46 @@ export class ContractQuery {
         submitVerify.address = submitVerify.base32;
         submitVerify.compiler = submitVerify.version;
         await this.doVerify(submitVerify);
+    }
+
+    private async processSyncAcrossRegion(){
+        const { config } = this.app;
+
+        let verify = await ContractVerify.findOne({
+            where: {
+                verifyResult: true,
+                notifyStatus: CONST.NOTIFY_STATUS.NEED_NOTIFY
+            },
+            order: [['createdAt', 'ASC']],
+            raw: true
+        });
+        if(!verify) {
+            return;
+        }
+
+        const verifyRequest = {
+            contractaddress: verify.base32,
+            sourceCode: verify.sourceCode,
+            contractname: verify.name,
+            compilerversion: verify.version,
+            optimizationUsed: verify.optimizeFlag,
+            runs: verify.optimizeRuns,
+            licenseType: lodash.findKey(CONST.LICENSE, (v) => v.code === verify.license),
+        };
+        const verifyUrl = `${config.syncAcrossRegionHost}/contract/verifysourcecode`;
+        let response;
+        try{
+            response = await superagent.post(verifyUrl)
+                .set('Content-Type', 'application/json')
+                .send(verifyRequest)
+                .timeout(60 * 1000);
+            console.log(`[${verify.base32}]sync verify submit:${JSON.stringify(response.text)}`);
+        } catch (error){
+            console.log(`[${verify.base32}]sync verify error:`, error)
+        }
+
+        if(response?.status === 200){
+            await ContractVerify.update({notifyStatus: CONST.NOTIFY_STATUS.NOTIFIED}, {where: {id: verify.id}});
+        }
     }
 }

@@ -131,6 +131,7 @@ export async function verifySourcecode(ctx) {
         ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
 
     sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');
+    sourceCode = sourceCode?.replace(/\\\n/g, '\\n');
     optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
     runs = runs === undefined || runs === null ? 200 : Number(runs);
     licenseType = licenseType === undefined || licenseType === null ? 1 : Number(licenseType);

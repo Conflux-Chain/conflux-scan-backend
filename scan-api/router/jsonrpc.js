@@ -13,6 +13,7 @@ const arrayToCSVFlow = require('../../common/middleware/arrayToCSVFlow');
 const concurrenceControl = require('../../common/middleware/concurrenceControl');
 const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
+const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
 
 const jsonrpc = new JsonRPCFlow();
 
@@ -451,7 +452,9 @@ jsonrpc.method('listLicense',
   cacheFlow(60 * 1000),
   concurrenceControl(10),
   async () => {
-    return CONST.OPEN_SOURCE_LICENSE;
+      const licenseArray =  {};
+      Object.values(CONST_TS.LICENSE).forEach(value => licenseArray[value.code] = value.desc);
+      return licenseArray;
   },
 );
 

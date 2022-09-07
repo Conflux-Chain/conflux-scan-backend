@@ -112,6 +112,12 @@ export const CONST = {
     DONE: 22,
   },
 
+  NOTIFY_STATUS: {
+    NEED_NOTIFY: 20,
+    NOT_NEED_NOTIFY: 21,
+    NOTIFIED: 22,
+  },
+
   MATCH_STATUS: {
     INTERNAL_CONTRACT: {matchCode: 200, matchDesc: 'internal-contract'},
     DEPLOYED_FULL: {matchCode: 201, matchDesc: 'deployed-full'},

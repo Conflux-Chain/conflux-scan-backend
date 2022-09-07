@@ -485,16 +485,15 @@ export class NFTPreviewService {
             return uri;
         }
 
-        let url;
-        const urlRaw = this.replaceGateway0({gateway, rawUrl});
+        let urlRaw = this.replaceGateway0({gateway, rawUrl});
         const usableGateway = IPFSGatewaySync.getGateway();
         if (config.syncIPFSGateway && usableGateway) {
             const index0 = urlRaw.indexOf('//') + 2;
             const index1 = urlRaw.indexOf('/ipfs/');
-            url = `${urlRaw.substr(0, index0)}${usableGateway}${urlRaw.substr(index1, urlRaw.length)}`
+            urlRaw = `${urlRaw.substr(0, index0)}${usableGateway}${urlRaw.substr(index1, urlRaw.length)}`
         }
 
-        return url;
+        return urlRaw;
     }
 
     private replaceGateway0({gateway, rawUrl}){

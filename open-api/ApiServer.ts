@@ -174,7 +174,7 @@ export class ApiServer {
         apiService.tokenTool = tokenTool
         apiService.tokenQuery = new TokenQuery({tokenTool})
         apiService.jsonRpc = new JsonRPCSDK(config.jsonRpc);
-        apiService.contractQuery = new ContractQuery({cfx: this.cfx, jsonRpc: apiService.jsonRpc,
+        apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config, jsonRpc: apiService.jsonRpc,
             tokenQuery: apiService.tokenQuery})
         apiService.ipfsGatewaySync = new IPFSGatewaySync(apiApp);
         apiService.cfx = this.cfx;
