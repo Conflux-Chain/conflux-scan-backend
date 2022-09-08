@@ -118,6 +118,7 @@ async function proc1155or721(model: any, position_key: string, is1155) {
     const list = await model.findAll({where: {id: {[Op.gte]: nextId}}, order: [['id', 'asc']],
         limit: rateInfo.limit});
     if (!list.length) {
+        console.log(`not task for ${position_key}, cursor ${nextId}`)
         return Code.no_task;
     }
     let start = Date.now();
