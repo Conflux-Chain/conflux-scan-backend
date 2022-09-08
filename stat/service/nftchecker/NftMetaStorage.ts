@@ -118,7 +118,7 @@ async function proc1155or721(model: any, position_key: string, is1155) {
     const list = await model.findAll({where: {id: {[Op.gte]: nextId}}, order: [['id', 'asc']],
         limit: rateInfo.limit});
     if (!list.length) {
-        console.log(`not task for ${position_key}, cursor ${nextId}`)
+        console.log(`no task for ${position_key}, cursor ${nextId}`)
         return Code.no_task;
     }
     let start = Date.now();
@@ -130,7 +130,7 @@ async function proc1155or721(model: any, position_key: string, is1155) {
             rateInfo.limit += 1;
             console.log(`increase batch size to ${rateInfo.limit}, current rate ${curRate}, elapse ${elapse}`)
         }
-    } else if (rateInfo.limit > 0){
+    } else if (rateInfo.limit > 1){
         rateInfo.limit -= 1;
     }
     const {id:lastBeanId} = list[list.length-1]
