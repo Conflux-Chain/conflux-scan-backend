@@ -177,7 +177,7 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
             NftMeta.update({content, error, status: error ? 'error' : 'ok'}, {where: {id: meta.id}, transaction: dbTx}),
             NftUriOnChain.upsert({id: meta.id, uri, uriType: ""}, {transaction: dbTx}),
             NftContract.increment({"errorTimes": eCnt, "okTimes": okCnt},
-                {where: {cid: nftContract.cid}, transaction: dbTx}),
+                {where: {cid: contractId}, transaction: dbTx}),
         ])
     })
 }
@@ -191,7 +191,7 @@ async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
         // const errorStr = `${e}`
         if (e.code === 'ECONNRESET' || e.code === 'ENOTFOUND' || e.code === 'ECONNABORTED') { //
             console.log(`getMetaByURI known error ${e.code}, ${contract} ${tokenId} type ${is1155 ? '1155':'721'}`)
-            return {uri: tokenURI1, content: '', error: e.code}
+            return {uri: tokenURI1, content: '', error: `${e.code} ${e.message || ''}`}
         }
         console.log(`getMetaByURI fail, ${contract} ${tokenId} type ${is1155 ? '1155':'721'}:`, e)
         return {uri: tokenURI1, content: '', error: `${e}`}
