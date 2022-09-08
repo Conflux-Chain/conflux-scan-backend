@@ -7,6 +7,7 @@ import {
     Sampler,
     TokenTransferSampler
 } from "./Sampler";
+import {StatApp} from "../../StatApp";
 
 const lodash = require('lodash');
 
@@ -54,8 +55,11 @@ export class Reporter{
             new CfxTransferSampler(this.app),
             new TokenTransferSampler(this.app),
             new EpochMiscSampler(this.app),
-            new PosBlockSampler(this.app),
         ];
+
+        if(!StatApp.isEVM){
+            this.samplerArray.push(new PosBlockSampler(this.app));
+        }
     }
 
     private async report(pointArray: any[]) {
