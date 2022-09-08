@@ -18,6 +18,7 @@
     "@conflux-lib/cbor": "1.0.4",
     "@conflux-lib/kvstore": "3.6.2",
     "@conflux-lib/logger": "1.1.0",
+    "@confluxfans/nft-utils": "^1.0.2",
     "@koa/cors": "~3.1.0",
     "@types/koa-bodyparser": "~4.3.0",
     "abi-decoder": "^2.4.0",
