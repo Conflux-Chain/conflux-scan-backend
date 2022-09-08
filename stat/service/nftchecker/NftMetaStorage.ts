@@ -99,23 +99,41 @@ async function loopTable(model: any, position_key: string, is1155) {
         while (Code.next === await proc1155or721(model, position_key, is1155)) {
             cnt ++
             if (cnt % 10 === 0) {
-                console.log(`process ${position_key}, count ${cnt}`);
+                console.log(`process ${position_key}, count ${cnt}, batchSize ${rateInfo.limit}`);
             }
         }
     } catch (e) {
         console.log(`process ${position_key} meta fail:`, e)
     }
 }
+// automatically adjust request rate
+const rateInfo = {
+    targetQps: 10,
+    limit: 4,
+    maxLimit: 10,
+}
 async function proc1155or721(model: any, position_key: string, is1155) {
     let preId = await KV.getNumber(position_key, 0,)
     let nextId = preId + 1;
-    const d1155 = await model.findOne({where: {id: {[Op.gte]: nextId}}, order: [['id', 'asc']]});
-    if (!d1155) {
+    const list = await model.findAll({where: {id: {[Op.gte]: nextId}}, order: [['id', 'asc']],
+        limit: rateInfo.limit});
+    if (!list.length) {
         return Code.no_task;
     }
-    const {contractId, tokenId} = d1155;
-    await fetchMeta(contractId, tokenId, is1155);
-    await KV.saveNumber(position_key, nextId, null);
+    let start = Date.now();
+    await Promise.all(list.map(({contractId, tokenId})=>fetchMeta(contractId, tokenId, is1155)));
+    let elapse = Date.now() - start;
+    let curRate = Math.round(1000 / (elapse / rateInfo.limit))
+    if (curRate <= rateInfo.targetQps) {
+        if (rateInfo.limit < rateInfo.maxLimit) {
+            rateInfo.limit += 1;
+            console.log(`increase batch size to ${rateInfo.limit}, current rate ${curRate}, elapse ${elapse}`)
+        }
+    } else if (rateInfo.limit > 0){
+        rateInfo.limit -= 1;
+    }
+    const {id:lastBeanId} = list[list.length-1]
+    await KV.saveNumber(position_key, lastBeanId, null);
     return Code.next;
 }
 const context:any = {
@@ -151,7 +169,11 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
             }),
         NftContract.findByPk(contractId).then(res => {
             if (!res) {
-                return NftContract.create({cid: BigInt(contractId), status: "ok", errorTimes: BigInt(0), okTimes: BigInt(0)})
+                try {
+                    return NftContract.create({cid: BigInt(contractId), status: "ok", errorTimes: BigInt(0), okTimes: BigInt(0)})
+                } catch (e) {
+                    return NftContract.findByPk(contractId)
+                }
             }
             return res;
         })
