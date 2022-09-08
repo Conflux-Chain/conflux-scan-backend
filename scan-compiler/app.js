@@ -43,6 +43,8 @@ class App extends AppBase {
       await client.send(JSON.stringify(output));
     });
 
+    process.on('warning', e => console.warn(e.stack));
+
     return super.listen(port);
   }
 

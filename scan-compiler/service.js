@@ -1,3 +1,4 @@
+const path = require('path');
 const lodash = require('lodash');
 const semver = require('semver');
 const solc = require('solc');
@@ -60,7 +61,8 @@ class SolCompileService {
         throw new error.ParameterError(`download "${filename}" failed`);
       }
 
-      return solc.setupMethods(tool.requireJs(buffer.toString()));
+      const solJsonPath = path.resolve(fileMap.location, filename);
+      return solc.setupMethods(require(solJsonPath));
     });
   }
 

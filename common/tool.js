@@ -24,6 +24,15 @@ function isRunning() {
   return running;
 }
 
+function memInfo(){
+  const format = function(bytes) {
+    return `${(bytes/1024/1024).toFixed(2)}MB`;
+  };
+  const mem = process.memoryUsage();
+  return `Process: heapTotal ${format(mem.heapTotal)}, heapUsed ${format(mem.heapUsed)}, rss ${format(mem.rss)}`
+}
+
+
 // ----------------------------------------------------------------------------
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms)); // sleep
@@ -210,6 +219,7 @@ function extractEncodedConstructorArgs(creationData, compiledCreationBytecode) {
 
 module.exports = {
   isRunning,
+  memInfo,
 
   sleep,
   assert,
