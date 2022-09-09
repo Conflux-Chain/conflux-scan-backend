@@ -287,9 +287,11 @@ async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
     } catch (e) {
         // const errorStr = `${e}`
         if (e.code == -32015) e.code = "Transaction reverted"
+        if (e.response?.status) e.code = 404
         if (e.code === 'ECONNRESET' || e.code === 'ENOTFOUND'
             || e.code === 'ECONNABORTED'
             || e.code ==  "Transaction reverted"
+            || e.code == 404
         ) { //
             console.log(`known error ${e.code} ${e.message || ''}, ${contract} ${tokenId} type ${is1155 ? '1155':'721'} ${tokenURI}`)
             return {uri: tokenURI, content: '', error: `${e.code} ${e.message || ''}`}
@@ -314,7 +316,8 @@ async function test1() {
     const cfx = createConflux({url: 'http://main.confluxrpc.com', networkId: 1029})
     initNftMetaWorkerContext(cfx);
     // await test("0x83c125c309a0a05bf36ef3bf886de0fa802ca2ad", "16", true)
-    await test("0x89c9ec494607ae96ae2a36c8c3d0220bc3a51819", "270", true)
+    // await test("0x89c9ec494607ae96ae2a36c8c3d0220bc3a51819", "270", true)
+    await test("0x839c09d87380a421669c6e5b26c45828e65d246c", "1", true)
     // await test("cfx:acdwku5ecb2813z3tz55f1h2rc6vp9fmyp023m7rat", "18", true)
     // let c = "cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj"; // 721, tokenURI
     //
