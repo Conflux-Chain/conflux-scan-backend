@@ -12,6 +12,7 @@ import {createConflux, patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {Hex40Map} from "../../model/HexMap";
 import {sleep} from "../tool/ProcessTool";
+import {IPFSGatewaySync} from "../IPFSGatewaySync";
 
 export interface INftMeta {
     id?: bigint,
@@ -171,7 +172,7 @@ async function proc1155or721(model: any, position_key: string) {
         return Code.no_task;
     }
     let start = Date.now();
-    await Promise.all(list.map(async ({contractId, tokenId, type = ''})=>{
+    await Promise.all(list.map(async ({contractId, tokenId})=>{
         const token = await Token.findOne({attributes: ['type'],where: {hex40id: contractId}})
         if (!token || !token.type) {
             return
@@ -195,22 +196,25 @@ async function proc1155or721(model: any, position_key: string) {
 }
 const context:any = {
     cfx: null, metaParser: null,
+    gateway: "",
 }
-async function run(cmd) {
-    await setup()
+async function run(cmd, gateway: string) {
+    await setup(gateway)
     await startWorker(cmd);
 }
-async function setup() {
+async function setup(gateway: string) {
     const config = await init();
     const cfx = createConflux(config.conflux)
     await cfx.updateNetworkId();
     console.log(`net work ${cfx.networkId}`)
-    initNftMetaWorkerContext(cfx)
+    initNftMetaWorkerContext(cfx, gateway)
 }
-export function initNftMetaWorkerContext(cfx:Conflux, ) {
+export function initNftMetaWorkerContext(cfx:Conflux, gateway = 'https://ipfs.io') {
     context.cfx = cfx;
+    context.gateway = gateway;
+    console.log(`use ipfs gateway ${gateway}`)
 
-    const ipfsGateway = 'https://ipfs.io';
+    const ipfsGateway = context.gateway;
     const metaParser = new NFTMetaParser(cfx, ipfsGateway);
     context.metaParser = metaParser;
 }
@@ -317,17 +321,24 @@ async function test1() {
     initNftMetaWorkerContext(cfx);
     // await test("0x83c125c309a0a05bf36ef3bf886de0fa802ca2ad", "16", true)
     // await test("0x89c9ec494607ae96ae2a36c8c3d0220bc3a51819", "270", true)
-    await test("0x839c09d87380a421669c6e5b26c45828e65d246c", "1", true)
+    // await test("0x839c09d87380a421669c6e5b26c45828e65d246c", "1", true)
+    await test("0x8b56cc44907b2f261171682fff03fbbd61355938", "7", false)
     // await test("cfx:acdwku5ecb2813z3tz55f1h2rc6vp9fmyp023m7rat", "18", true)
     // let c = "cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj"; // 721, tokenURI
     //
     // await test("cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj", "1", false)// base64
 }
+async function getGateway() {
+    await new IPFSGatewaySync({})['detectGateway']()
+    console.log(`best gateway [${IPFSGatewaySync.getGateway()}]`)
+}
 if (module === require.main) {
-    const [,,cmd] = process.argv
+    const [,,cmd, gateway] = process.argv
     if (cmd === 'test') {
         test1().then();
+    } else if (cmd === "gateway"){
+        getGateway().then()
     } else {
-        run(cmd).then()
+        run(cmd, gateway).then()
     }
 }
