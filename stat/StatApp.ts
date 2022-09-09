@@ -29,7 +29,7 @@ import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {PruneHandler} from "./service/prune/PruneHandler";
 import {patchFormat, patchHttpProvider} from "./service/common/utils";
-import {IS_EVM2, KV} from "./model/KV";
+import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
@@ -148,6 +148,7 @@ export class StatApp{
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote
         }
         if (this.config.syncIPFSGateway) {
+            IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
             await this.ipfsGatewaySync.schedule(this.config.syncIPFSGatewayDelay);
         }
         if (this.config.syncRecommendGasPrice) {

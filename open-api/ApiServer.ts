@@ -28,7 +28,7 @@ import {TokenTransferHandler} from "../stat/service/streamstat/business/TokenTra
 import {RankService} from "../stat/service/RankService";
 import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
-import {IS_EVM2, KV} from "../stat/model/KV";
+import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
@@ -190,8 +190,11 @@ export class ApiServer {
         await apiService.minerBlockHandler.scheduleCache();
         await apiService.addrCfxTransferHandler.scheduleCache();
         await apiService.tokenTransferHandler.scheduleCache();
-        config.syncIPFSGateway && (await apiService.ipfsGatewaySync.schedule());
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
+        if(config.syncIPFSGateway) {
+            IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
+            await apiService.ipfsGatewaySync.schedule(config.syncIPFSGatewayDelay);
+        }
     }
 
     private initModule(){

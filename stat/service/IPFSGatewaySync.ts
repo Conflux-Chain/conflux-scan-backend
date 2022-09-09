@@ -1,4 +1,5 @@
 import {IPFSGatewayArray} from "../config/IPFSGateway";
+import {KEY_FASTEST_IPFS_GATEWAY, KV} from "../model/KV";
 
 const superagent = require('superagent');
 const lodash = require('lodash');
@@ -13,18 +14,12 @@ export class IPFSGatewaySync {
   private CODE_NOTOK = 'NOTOK';
   private static GATEWAY_MAP = {};
 
+  public static fastest;
+
   constructor(app: any) {
     this.app = app;
     this.total = IPFSGatewayArray.length;
     lodash.forEach(IPFSGatewayArray, url => IPFSGatewaySync.GATEWAY_MAP[url] = {});
-  }
-
-  public static getGateway() {
-    let responseArray = Object.values(IPFSGatewaySync.GATEWAY_MAP).map((detectInfo:any) => detectInfo.response);
-    responseArray = lodash.orderBy(responseArray, 'time', 'asc');
-    const fastest = responseArray.shift();
-
-    return fastest?.host;
   }
 
   public async schedule(delay: number = 1000 * 60) {
@@ -63,6 +58,8 @@ export class IPFSGatewaySync {
 
       skip = (++curPage - 1) * pageSize;
     } while (skip <= this.total);
+
+    await this.setFastest();
   }
 
   private async detect(host){
@@ -112,4 +109,13 @@ export class IPFSGatewaySync {
     return {result: this.CODE_NOTOK};
   }
 
+  private async setFastest() {
+    let responseArray = Object.values(IPFSGatewaySync.GATEWAY_MAP).map((detectInfo:any) => detectInfo.response);
+    responseArray = lodash.orderBy(responseArray, 'time', 'asc');
+    const gateway = responseArray.shift();
+    const fastest = gateway?.host;
+
+    await KV.upsert({key: KEY_FASTEST_IPFS_GATEWAY, value: fastest});
+    IPFSGatewaySync.fastest = fastest;
+  }
 }
