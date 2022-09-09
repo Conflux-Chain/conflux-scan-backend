@@ -11,6 +11,7 @@ import {
 import {createConflux, patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {Hex40Map} from "../../model/HexMap";
+import {sleep} from "../tool/ProcessTool";
 
 export interface INftMeta {
     id?: bigint,
@@ -213,6 +214,33 @@ export function initNftMetaWorkerContext(cfx:Conflux, ) {
     const metaParser = new NFTMetaParser(cfx, ipfsGateway);
     context.metaParser = metaParser;
 }
+let createContractLock = false;
+async function checkNftContract(contractId: number) : Promise<NftContract>{
+    let res = await NftContract.findByPk(contractId);
+    if (res) {
+        return res;
+    }
+    // wait lock
+    while (createContractLock) {
+        await sleep(1);
+    }
+    // lock
+    createContractLock = true;
+    // check again
+    res = await NftContract.findByPk(contractId);
+    if (!res) {
+        // create
+        res = await NftContract.create({
+            cid: BigInt(contractId),
+            status: "ok",
+            errorTimes: BigInt(0),
+            okTimes: BigInt(0)
+        })
+    }
+    // unlock
+    createContractLock = false;
+    return res;
+}
 async function fetchMeta(contractId: number, tokenId: string, is1155) {
     let [hex, meta, nftContract] = await Promise.all([
         Hex40Map.findByPk(contractId),
@@ -223,16 +251,7 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
                 }
                 return res;
             }),
-        NftContract.findByPk(contractId).then(res => {
-            if (!res) {
-                try {
-                    return NftContract.create({cid: BigInt(contractId), status: "ok", errorTimes: BigInt(0), okTimes: BigInt(0)})
-                } catch (e) {
-                    return NftContract.findByPk(contractId)
-                }
-            }
-            return res;
-        })
+        checkNftContract(contractId),
     ])
     const {errorTimes, okTimes} = nftContract
     if (nftContract.status !== 'ok' ||
