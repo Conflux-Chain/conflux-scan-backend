@@ -486,7 +486,7 @@ export class NFTPreviewService {
         }
 
         let urlRaw = this.replaceGateway0({gateway, rawUrl});
-        const usableGateway = IPFSGatewaySync.getGateway();
+        const usableGateway = IPFSGatewaySync.fastest;
         if (config.syncIPFSGateway && usableGateway) {
             const index0 = urlRaw.indexOf('//') + 2;
             const index1 = urlRaw.indexOf('/ipfs/');
