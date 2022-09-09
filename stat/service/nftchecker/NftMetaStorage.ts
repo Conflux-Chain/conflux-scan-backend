@@ -1,14 +1,17 @@
-import {Erc1155Data, NftMint} from "../../model/Token";
+import {Erc1155Data, NftMint, Token} from "../../model/Token";
 
 import {Conflux} from "js-conflux-sdk";
 const { NFTMetaParser } = require('@confluxfans/nft-utils');
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
-import {KV, NFT_META_POS_1155, NFT_META_POS_721} from "../../model/KV";
+import {
+    KV,
+    NFT_META_POS_MINT,
+    NFT_META_POS_REQUEST,
+} from "../../model/KV";
 import {createConflux, patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {Hex40Map} from "../../model/HexMap";
 
-const {abi} = require('../abi/Crc1155Core');
 export interface INftMeta {
     id?: bigint,
     cid: bigint,
@@ -28,7 +31,45 @@ export interface INftContract {
     errorTimes: bigint;
     okTimes: bigint;
 }
-
+export interface INftMetaRequest {
+    id?: number;
+    contractId: number;
+    tokenId: string;
+}
+export class NftMetaRequest extends Model<INftMetaRequest> implements INftMetaRequest {
+    id?: number;
+    contractId: number;
+    tokenId: string;
+    type: string; // 1155 or 721
+    static register(seq:Sequelize) {
+        NftMetaRequest.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true}, // ref to nft meta's id
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            tokenId: {type: DataTypes.STRING(78), allowNull: false},
+        }, {
+            sequelize: seq, tableName: "nft_meta_request",
+            indexes: [
+                {name: 'uk_cid_token', fields:['cid', 'tokenId']}
+            ]
+        })
+    }
+}
+export async function requestUpdateNftMeta(contractId: number, tokenId:string) {
+    let minted: boolean
+    minted = !!(await NftMint.findOne({where:{
+            contractId, tokenId
+        }}))
+    if (!minted) {
+        console.log(`token not found in db, skip ${contractId} ${tokenId}`)
+        return;
+    }
+    const bean = await NftMetaRequest.findOne({where: {contractId: contractId, tokenId}})
+    if (bean) {
+        console.log(`requestUpdateNftMeta exists`)
+        return;
+    }
+    await NftMetaRequest.upsert({contractId: contractId, tokenId})
+}
 export class NftContract extends Model<INftContract> implements INftContract {
     cid: bigint;
     status: string; // destroyed, unreachable, malformed uri,
@@ -87,16 +128,23 @@ enum Code {
     no_task, next,
 }
 
-async function iter1155and721() {
-    await loopTable(Erc1155Data, NFT_META_POS_1155, true);
-    await loopTable(NftMint, NFT_META_POS_721, false);
-
-    setTimeout(()=>iter1155and721(), 5_000);
+async function startWorker(cmd: string) {
+    if (cmd === 'mint') {
+        repeat(NftMint, NFT_META_POS_MINT).then();
+    } else if (cmd === 'request') {
+        repeat(NftMetaRequest, NFT_META_POS_REQUEST).then();
+    } else {
+        console.log(`unknown command [${cmd}], supports [mint,request]`)
+    }
 }
-async function loopTable(model: any, position_key: string, is1155) {
+async function repeat(model, posKey: string) {
+    await loopTable(model, posKey);
+    setTimeout(()=>repeat(model, posKey), 5_000);
+}
+async function loopTable(model: any, position_key: string) {
     try {
         let cnt = 0
-        while (Code.next === await proc1155or721(model, position_key, is1155)) {
+        while (Code.next === await proc1155or721(model, position_key)) {
             cnt ++
             if (cnt % 10 === 0) {
                 console.log(`process ${position_key}, count ${cnt}, batchSize ${rateInfo.limit}`);
@@ -112,7 +160,7 @@ const rateInfo = {
     limit: 4,
     maxLimit: 10,
 }
-async function proc1155or721(model: any, position_key: string, is1155) {
+async function proc1155or721(model: any, position_key: string) {
     let preId = await KV.getNumber(position_key, 0,)
     let nextId = preId + 1;
     const list = await model.findAll({where: {id: {[Op.gte]: nextId}}, order: [['id', 'asc']],
@@ -122,7 +170,14 @@ async function proc1155or721(model: any, position_key: string, is1155) {
         return Code.no_task;
     }
     let start = Date.now();
-    await Promise.all(list.map(({contractId, tokenId})=>fetchMeta(contractId, tokenId, is1155)));
+    await Promise.all(list.map(async ({contractId, tokenId, type = ''})=>{
+        const token = await Token.findOne({attributes: ['type'],where: {hex40id: contractId}})
+        if (!token || !token.type) {
+            return
+        }
+        const is1155 = token.type?.endsWith("1155");
+        return fetchMeta(contractId, tokenId, is1155)
+    }));
     let elapse = Date.now() - start;
     let curRate = Math.round(1000 / (elapse / rateInfo.limit))
     if (curRate <= rateInfo.targetQps) {
@@ -140,18 +195,18 @@ async function proc1155or721(model: any, position_key: string, is1155) {
 const context:any = {
     cfx: null, metaParser: null,
 }
-async function run() {
+async function run(cmd) {
     await setup()
-    await iter1155and721();
+    await startWorker(cmd);
 }
 async function setup() {
     const config = await init();
     const cfx = createConflux(config.conflux)
     await cfx.updateNetworkId();
     console.log(`net work ${cfx.networkId}`)
-    initContext(cfx)
+    initNftMetaWorkerContext(cfx)
 }
-function initContext(cfx:Conflux, ) {
+export function initNftMetaWorkerContext(cfx:Conflux, ) {
     context.cfx = cfx;
 
     const ipfsGateway = 'https://ipfs.io';
@@ -205,42 +260,52 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
     })
 }
 async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
-    const tokenURI1 = await context.metaParser.getTokenURI(contract, tokenId, is1155);
-    console.log('tokenURI is ', tokenURI1)
+    let tokenURI = '';
     let json: any;
     try {
-        json = await context.metaParser.getMetaByURI(tokenURI1, {timeout: 10_000});
+        tokenURI = await context.metaParser.getTokenURI(contract, tokenId, is1155);
+        json = await context.metaParser.getMetaByURI(tokenURI, {timeout: 10_000});
     } catch (e) {
         // const errorStr = `${e}`
-        if (e.code === 'ECONNRESET' || e.code === 'ENOTFOUND' || e.code === 'ECONNABORTED') { //
-            console.log(`getMetaByURI known error ${e.code}, ${contract} ${tokenId} type ${is1155 ? '1155':'721'}`)
-            return {uri: tokenURI1, content: '', error: `${e.code} ${e.message || ''}`}
+        if (e.code == -32015) e.code = "Transaction reverted"
+        if (e.code === 'ECONNRESET' || e.code === 'ENOTFOUND'
+            || e.code === 'ECONNABORTED'
+            || e.code ==  "Transaction reverted"
+        ) { //
+            console.log(`known error ${e.code} ${e.message || ''}, ${contract} ${tokenId} type ${is1155 ? '1155':'721'} ${tokenURI}`)
+            return {uri: tokenURI, content: '', error: `${e.code} ${e.message || ''}`}
         }
-        console.log(`getMetaByURI fail, ${contract} ${tokenId} type ${is1155 ? '1155':'721'}:`, e)
-        return {uri: tokenURI1, content: '', error: `${e}`}
+        console.log(`getMeta fail, ${contract} ${tokenId} type ${is1155 ? '1155':'721'} uri [${tokenURI}]:`, e)
+        return {uri: tokenURI, content: '', error: `${e}`}
     }
+    console.log(`ok , ${contract} ${is1155 ? '1155' : '721'} token ${tokenId} tokenURI is `, tokenURI)
     // console.log('json is ', json)
     const jsonStr = JSON.stringify(json) || '';
-    return {uri: tokenURI1, content: jsonStr, error: jsonStr.length <= 2 && tokenURI1.length > 2 ? 'not a json' : ''}
+    return {uri: tokenURI, content: jsonStr, error: jsonStr.length <= 2 && tokenURI.length > 2 ? 'not a json' : ''}
     // const tokenURI = await context.metaParser.getTokenURI('', 18, true);
     // console.log('tokenURI is ', tokenURI)
 }
 async function test(c:string, tokenId, is1155){
-    await fetchJson(c, tokenId, is1155)
+    return fetchJson(c, tokenId, is1155).then(res=>{
+        console.log(`result:`,res)
+        return res;
+    })
 }
 async function test1() {
     const cfx = createConflux({url: 'http://main.confluxrpc.com', networkId: 1029})
-    initContext(cfx);
-    await test("cfx:acdwku5ecb2813z3tz55f1h2rc6vp9fmyp023m7rat", "18", true)
-    let c = "cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj"; // 721, tokenURI
-
-    await test(c, "1", false)
+    initNftMetaWorkerContext(cfx);
+    // await test("0x83c125c309a0a05bf36ef3bf886de0fa802ca2ad", "16", true)
+    await test("0x89c9ec494607ae96ae2a36c8c3d0220bc3a51819", "270", true)
+    // await test("cfx:acdwku5ecb2813z3tz55f1h2rc6vp9fmyp023m7rat", "18", true)
+    // let c = "cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj"; // 721, tokenURI
+    //
+    // await test("cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj", "1", false)// base64
 }
 if (module === require.main) {
     const [,,cmd] = process.argv
     if (cmd === 'test') {
         test1().then();
     } else {
-        run().then()
+        run(cmd).then()
     }
 }
