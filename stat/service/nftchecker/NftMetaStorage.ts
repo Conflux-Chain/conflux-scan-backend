@@ -10,7 +10,7 @@ import {
 } from "../../model/KV";
 import {createConflux, patchHttpProvider} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
-import {Hex40Map} from "../../model/HexMap";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 import {sleep} from "../tool/ProcessTool";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
 
@@ -55,6 +55,27 @@ export class NftMetaRequest extends Model<INftMetaRequest> implements INftMetaRe
             ]
         })
     }
+}
+/** return nft meta in db, record status must be 'ok'. */
+export async function getMetaFromDB(contract: string, tokenId:string) {
+    const addrId = await getAddrId(contract)
+    if (!addrId) {
+        return {};
+    }
+    // status, content, uri
+    const sql = `select m.status as status, m.content as content, uri.uri as uri from ${NftMeta.getTableName()
+    } m join ${NftUriOnChain.getTableName()} uri on m.id=uri.id where m.cid=? and m.tokenId=? limit 1`
+    const meta = await NftMeta.sequelize.query(sql, {type: QueryTypes.SELECT,
+        replacements: [addrId, tokenId], raw: true,
+        logging: console.log,
+    })
+    if (!meta || meta["status"] !== 'ok') {
+        requestUpdateNftMeta(addrId, tokenId).catch(e=>{
+            console.log(`auto requestUpdateNftMeta fail,`, e)
+        })
+        return {}
+    }
+    return meta || {};
 }
 export async function requestUpdateNftMeta(contractId: number, tokenId:string) {
     let minted: boolean
@@ -140,21 +161,20 @@ async function startWorker(cmd: string) {
     }
 }
 async function repeat(model, posKey: string) {
-    await loopTable(model, posKey);
-    setTimeout(()=>repeat(model, posKey), 5_000);
-}
-async function loopTable(model: any, position_key: string) {
+    let delay = 5_000
     try {
-        let cnt = 0
-        while (Code.next === await proc1155or721(model, position_key)) {
-            cnt ++
-            if (cnt % 10 === 0) {
-                console.log(`process ${position_key}, count ${cnt}, batchSize ${rateInfo.limit}`);
+        let code = await proc1155or721(model, posKey);
+        if (Code.next === code) {
+            delay = 0;
+            context.count += 1;
+            if (context % 10 === 0) {
+                console.log(`process ${posKey}, count ${context.count}, batchSize ${rateInfo.limit}`);
             }
         }
     } catch (e) {
-        console.log(`process ${position_key} meta fail:`, e)
+        console.log(`process ${posKey} meta fail:`, e)
     }
+    setTimeout(()=>repeat(model, posKey), delay);
 }
 // automatically adjust request rate
 const rateInfo = {
@@ -197,6 +217,7 @@ async function proc1155or721(model: any, position_key: string) {
 const context:any = {
     cfx: null, metaParser: null,
     gateway: "",
+    count: 0,
 }
 async function run(cmd, gateway: string) {
     await setup(gateway)
