@@ -167,7 +167,7 @@ async function repeat(model, posKey: string) {
         if (Code.next === code) {
             delay = 0;
             context.count += 1;
-            if (context % 10 === 0) {
+            if (context.count % 10 === 0) {
                 console.log(`process ${posKey}, count ${context.count}, batchSize ${rateInfo.limit}`);
             }
         }
