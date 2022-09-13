@@ -52,7 +52,7 @@ export class NftMetaRequest extends Model<INftMetaRequest> implements INftMetaRe
         }, {
             sequelize: seq, tableName: "nft_meta_request",
             indexes: [
-                {name: 'uk_cid_token', fields:['cid', 'tokenId']}
+                {name: 'uk_cid_token', fields:['contractId', 'tokenId']}
             ]
         })
     }
