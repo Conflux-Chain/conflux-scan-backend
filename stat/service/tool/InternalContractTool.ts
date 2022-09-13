@@ -11,6 +11,7 @@ const ConfluxContext = require("../abi/ConfluxContext");
 const PoSRegister = require("../abi/PoSRegister");
 const CrossSpaceCall = require("../abi/CrossSpaceCall");
 const ParamsControl = require("../abi/ParamsControl");
+const Create2Factory = require("../abi/Create2Factory");
 const fs = require('fs');
 
 let networkId;
@@ -68,6 +69,12 @@ const internalContractArray = [
         website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
         abi: JSON.stringify(ParamsControl.abi),
     },
+    {
+        address: '0x8A3A92281Df6497105513B18543fd3B60c778E40',
+        name: 'Create2Factory',
+        website: 'https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-31.md',
+        abi: JSON.stringify(Create2Factory.abi),
+    },
 ];
 
 async function registerContract(contract) {
@@ -107,7 +114,9 @@ async function run() {
     await init();
     // do business
     for (const contract of internalContractArray) {
-        await registerContract(contract);
+        if(contract.name === 'Create2Factory'){
+            await registerContract(contract);
+        }
     }
     // release
     await close();
