@@ -4,7 +4,7 @@ import {Conflux} from "js-conflux-sdk";
 const { NFTMetaParser } = require('@confluxfans/nft-utils');
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {
-    KV,
+    KV, NFT_META_POS_LATEST_MINT,
     NFT_META_POS_MINT,
     NFT_META_POS_REQUEST,
 } from "../../model/KV";
@@ -161,6 +161,8 @@ enum Code {
 async function startWorker(cmd: string) {
     if (cmd === 'mint') {
         repeat(NftMint, NFT_META_POS_MINT).then();
+    } else if (cmd === 'latest_mint') {
+        repeat(NftMint, NFT_META_POS_LATEST_MINT).then();
     } else if (cmd === 'request') {
         repeat(NftMetaRequest, NFT_META_POS_REQUEST).then();
     } else {
@@ -235,6 +237,9 @@ async function setup(gateway: string) {
     const cfx = createConflux(config.conflux)
     await cfx.updateNetworkId();
     console.log(`net work ${cfx.networkId}`)
+    if (gateway == 'useDbGateway') {
+        // gateway = await KV.getString(KV.ipf)
+    }
     initNftMetaWorkerContext(cfx, gateway)
 }
 export function initNftMetaWorkerContext(cfx:Conflux, gateway = 'https://ipfs.io') {
