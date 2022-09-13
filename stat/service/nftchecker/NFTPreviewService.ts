@@ -12,6 +12,7 @@ import {IPFSGatewayArray} from "../../config/IPFSGateway";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {getMetaFromDB, requestUpdateNftMetaSafe} from "./NftMetaStorage";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -46,6 +47,9 @@ export class NFTPreviewService {
         let token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
         if(!token) {
             token = await this.detectTokenType(address) as Token;
+        }
+        if (forceFlush && token.hex40id) {
+            requestUpdateNftMetaSafe(token.hex40id, tokenId.toString()).then();
         }
 
         let detail;
@@ -387,24 +391,33 @@ export class NFTPreviewService {
                 const cacheInfo = {imageMinHeight: height};
                 return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));
             }
-
-            // get uri
-            const contract = await this.cfx.Contract({ abi, address });
-            rawUrl = await contract[method](tokenId)
+            if (!forceFlush) {
+                const {uri: dbUri, content, status: dbStatus} = await getMetaFromDB(address, tokenId.toString());
+                if (dbStatus === 'ok') {
+                    rawUrl = dbUri;
+                    rawMeta = content;
+                    gatewayUrl = this.replaceGateway({gateway, rawUrl});
+                }
+            }
+            if (!rawUrl){ // rawUrl is set when hit meta in db
+                // get uri
+                const contract = await this.cfx.Contract({abi, address});
+                rawUrl = await contract[method](tokenId)
                 .catch(e => { throw new Errors.CallNFTContractError(`call ${method}(${tokenId}) ${e.message}`)});
-            rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
-            gatewayUrl = this.replaceGateway({gateway, rawUrl});
+                rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
+                gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
-            // get metadata
-            if(uriFormatter){
-                rawMeta = gatewayUrl;
-            } else if((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')){
-                rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
-            } else{
-                const resp = await superagent.get(gatewayUrl)
-                    .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
+                // get metadata
+                if (uriFormatter) {
+                    rawMeta = gatewayUrl;
+                } else if ((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')) {
+                    rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
+                } else {
+                    const resp = await superagent.get(gatewayUrl)
+                        .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
                     .catch(e => {throw new Errors.QueryNFTMetadataError(`${gatewayUrl} ${e.message}`)});
-                rawMeta = resp.text;
+                    rawMeta = resp.text;
+                }
             }
             try{
                 rawMeta = JSON.parse(rawMeta);

@@ -60,7 +60,7 @@ export class NftMetaRequest extends Model<INftMetaRequest> implements INftMetaRe
 export async function getMetaFromDB(contract: string, tokenId:string) {
     const addrId = await getAddrId(contract)
     if (!addrId) {
-        return {};
+        return {content: "", status:"bad request", uri:"",};
     }
     // status, content, uri
     const sql = `select m.status as status, m.content as content, uri.uri as uri from ${NftMeta.getTableName()
@@ -68,14 +68,21 @@ export async function getMetaFromDB(contract: string, tokenId:string) {
     const meta = await NftMeta.sequelize.query(sql, {type: QueryTypes.SELECT,
         replacements: [addrId, tokenId], raw: true,
         logging: console.log,
-    })
+    }).then(([one])=>one as any)
     if (!meta || meta["status"] !== 'ok') {
-        requestUpdateNftMeta(addrId, tokenId).catch(e=>{
-            console.log(`auto requestUpdateNftMeta fail,`, e)
-        })
-        return {}
+        requestUpdateNftMetaSafe(addrId, tokenId).then()
     }
-    return meta || {};
+    return meta ||
+        {content: "", status:"not found", uri:"",};
+}
+export async function requestUpdateNftMetaSafe(contractId: number, tokenId:string) {
+    try {
+        requestUpdateNftMeta(contractId, tokenId).catch(e=>{
+            console.log(`requestUpdateNftMeta fail in promise catch ${contractId} , ${tokenId}`, e);
+        })
+    } catch (e) {
+        console.log(`requestUpdateNftMeta fail in wrapping catch ${contractId} , ${tokenId}`, e);
+    }
 }
 export async function requestUpdateNftMeta(contractId: number, tokenId:string) {
     let minted: boolean
