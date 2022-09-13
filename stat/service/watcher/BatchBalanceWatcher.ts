@@ -395,7 +395,7 @@ async function run() {
     if (!useLegacyNftMint) {
         repeatSync1155data(cfx).then()
     }
-    initNftMetaWorkerContext(cfx, "useDbGateway");
+    await initNftMetaWorkerContext(cfx, "useDbGateway");
     startMetaWorker("latest_mint").then();
     const limit = limitStr ? parseInt(limitStr) : 10_000
     async function repeat() {

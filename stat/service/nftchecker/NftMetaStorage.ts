@@ -238,6 +238,9 @@ async function setup(gateway: string) {
     const cfx = createConflux(config.conflux)
     await cfx.updateNetworkId();
     console.log(`net work ${cfx.networkId}`)
+    await initNftMetaWorkerContext(cfx, gateway)
+}
+export async function initNftMetaWorkerContext(cfx:Conflux, gateway = 'https://ipfs.io') {
     if (gateway == 'useDbGateway') {
         gateway = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, "")
         if (!gateway) {
@@ -245,9 +248,6 @@ async function setup(gateway: string) {
             process.exit(404)
         }
     }
-    initNftMetaWorkerContext(cfx, gateway)
-}
-export function initNftMetaWorkerContext(cfx:Conflux, gateway = 'https://ipfs.io') {
     context.cfx = cfx;
     context.gateway = gateway;
     console.log(`use ipfs gateway ${gateway}`)
