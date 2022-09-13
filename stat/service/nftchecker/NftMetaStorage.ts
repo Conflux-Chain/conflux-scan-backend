@@ -91,13 +91,18 @@ export async function requestUpdateNftMeta(contractId: number, tokenId:string) {
             contractId, tokenId
         }}))
     if (!minted) {
-        console.log(`token not found in db, skip ${contractId} ${tokenId}`)
+        console.log(`requestUpdateNftMeta token not found in db, skip ${contractId} ${tokenId}`)
         return;
     }
     const bean = await NftMetaRequest.findOne({where: {contractId: contractId, tokenId}})
-    if (bean) {
+    const suppressMs = 10_000; //reference refreshRateLimiter in StatRouter for '/nft/checker/refresh'
+    if (bean && Date.now() - bean['updatedAt'].getTime() < suppressMs) {
         console.log(`requestUpdateNftMeta exists`)
         return;
+    }
+    if (bean) {
+        // updating worker tracks it by db id, so delete it first.
+        await NftMetaRequest.destroy({where:{id: bean.id}})
     }
     await NftMetaRequest.upsert({contractId: contractId, tokenId})
 }
