@@ -19,6 +19,7 @@ import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenBalance} from "../../model/Balance";
 import {abi1155, CONFIRM_GAP, destroyedContracts, fetch1155balance, fix1155data, rewind} from "./Erc1155DataSync";
+import {initNftMetaWorkerContext, startMetaWorker} from "../nftchecker/NftMetaStorage";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -394,6 +395,8 @@ async function run() {
     if (!useLegacyNftMint) {
         repeatSync1155data(cfx).then()
     }
+    initNftMetaWorkerContext(cfx, "useDbGateway");
+    startMetaWorker("latest_mint").then();
     const limit = limitStr ? parseInt(limitStr) : 10_000
     async function repeat() {
         let cnt: number = 0;

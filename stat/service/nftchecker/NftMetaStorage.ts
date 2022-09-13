@@ -4,6 +4,7 @@ import {Conflux} from "js-conflux-sdk";
 const { NFTMetaParser } = require('@confluxfans/nft-utils');
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {
+    KEY_FASTEST_IPFS_GATEWAY,
     KV, NFT_META_POS_LATEST_MINT,
     NFT_META_POS_MINT,
     NFT_META_POS_REQUEST,
@@ -158,7 +159,7 @@ enum Code {
     no_task, next,
 }
 
-async function startWorker(cmd: string) {
+export async function startMetaWorker(cmd: string) {
     if (cmd === 'mint') {
         repeat(NftMint, NFT_META_POS_MINT).then();
     } else if (cmd === 'latest_mint') {
@@ -230,7 +231,7 @@ const context:any = {
 }
 async function run(cmd, gateway: string) {
     await setup(gateway)
-    await startWorker(cmd);
+    await startMetaWorker(cmd);
 }
 async function setup(gateway: string) {
     const config = await init();
@@ -238,7 +239,11 @@ async function setup(gateway: string) {
     await cfx.updateNetworkId();
     console.log(`net work ${cfx.networkId}`)
     if (gateway == 'useDbGateway') {
-        // gateway = await KV.getString(KV.ipf)
+        gateway = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, "")
+        if (!gateway) {
+            console.log(`gateway not configured in db`)
+            process.exit(404)
+        }
     }
     initNftMetaWorkerContext(cfx, gateway)
 }
@@ -363,7 +368,7 @@ async function test1() {
 }
 async function getGateway() {
     await new IPFSGatewaySync({})['detectGateway']()
-    console.log(`best gateway [${IPFSGatewaySync.getGateway()}]`)
+    console.log(`best gateway [${IPFSGatewaySync.fastest}]`)
 }
 if (module === require.main) {
     const [,,cmd, gateway] = process.argv
