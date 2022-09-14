@@ -1,6 +1,7 @@
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
 
 import {Conflux} from "js-conflux-sdk";
+import { AbortController } from "node-abort-controller";
 const { NFTMetaParser } = require('@confluxfans/nft-utils');
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {

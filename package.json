@@ -47,6 +47,7 @@
     "lru-cache": "^7.13.1",
     "moment": "^2.29.1",
     "mysql2": "^2.2.5",
+    "node-abort-controller": "^3.0.1",
     "node-cache": "5.1.2",
     "p-limit": "2.3.0",
     "ping": "^0.4.2",
