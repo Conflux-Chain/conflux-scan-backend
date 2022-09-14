@@ -356,8 +356,13 @@ async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
     let tokenURI = '';
     let json: any;
     try {
+        const controller = new AbortController();
         tokenURI = await context.metaParser.getTokenURI(contract, tokenId, is1155);
-        json = await context.metaParser.getMetaByURI(tokenURI, {timeout: 10_000});
+        const timer = setTimeout(()=>{
+            console.log(`cancel request ${contract} ${tokenId} ${is1155 ? '1155':'721'} [${tokenURI}]`)
+        }, 11_000)
+        json = await context.metaParser.getMetaByURI(tokenURI, {timeout: 10_000, signal: controller.signal});
+        clearTimeout(timer);
     } catch (e) {
         // const errorStr = `${e}`
         if (e.code == -32015) e.code = "Transaction reverted"
@@ -387,14 +392,14 @@ async function test(c:string, tokenId, is1155){
     })
 }
 async function test1() {
-    // const rpc = 'http://main.confluxrpc.com';
-    const rpc = 'http://47.242.14.46:12537'; //net 1
-    const cfx = createConflux({url: rpc, networkId: 1})
+    const rpc = 'http://main.confluxrpc.com';
+    // const rpc = 'http://47.242.14.46:12537'; //net 1
+    const cfx = createConflux({url: rpc, networkId: 1029})
     initNftMetaWorkerContext(cfx);
     // await test("0x83c125c309a0a05bf36ef3bf886de0fa802ca2ad", "16", true)
     // await test("0x89c9ec494607ae96ae2a36c8c3d0220bc3a51819", "270", true)
     // await test("0x839c09d87380a421669c6e5b26c45828e65d246c", "1", true)
-    await test("0x8210d79ee8fd41ddb6b7ee8e12128b3743b95130", "630", false)
+    await test("0x8419ea962dbd0fa9f0dd87bf84302f6e51b7a9c0", "8", true)
     // await test("cfx:acdwku5ecb2813z3tz55f1h2rc6vp9fmyp023m7rat", "18", true)
     // let c = "cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj"; // 721, tokenURI
     //
