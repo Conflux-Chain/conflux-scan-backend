@@ -288,6 +288,7 @@ async function checkNftContract(contractId: number) : Promise<NftContract>{
     }
     // wait lock
     while (createContractLock) {
+        console.log(`----- wait lock for ${contractId}`)
         await sleep(1);
     }
     // lock
@@ -308,6 +309,7 @@ async function checkNftContract(contractId: number) : Promise<NftContract>{
     return res;
 }
 async function fetchMeta(contractId: number, tokenId: string, is1155) {
+    context.debugStuck2 = "fetchMeta prepare db"
     let [hex, meta, nftContract] = await Promise.all([
         Hex40Map.findByPk(contractId),
         NftMeta.findOne({where: {cid: contractId, tokenId}})
@@ -319,6 +321,7 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
             }),
         checkNftContract(contractId),
     ])
+    context.debugStuck2 = "fetchMeta prepare db ends"
     const {errorTimes, okTimes} = nftContract
     if (nftContract.status !== 'ok' ||
         (okTimes < 1 && errorTimes > 10) // all N errors
