@@ -163,8 +163,13 @@ export class NftMeta extends Model<INftMeta> implements INftMeta {
 enum Code {
     no_task, next,
 }
-
+async function reportStuck() {
+    setInterval(()=> {
+        console.log(`------ reportStuck ${context.debugStuck} , ${context.debugStuck2}`)
+    }, 10_000);
+}
 export async function startMetaWorker(cmd: string) {
+    reportStuck().then();
     if (cmd === 'mint') {
         repeat(NftMint, NFT_META_POS_MINT).then();
     } else if (cmd === 'latest_mint') {
@@ -176,9 +181,11 @@ export async function startMetaWorker(cmd: string) {
     }
 }
 async function repeat(model, posKey: string) {
+    context.debugStuck = "enter repeat";
     let delay = 5_000
     try {
         let code = await proc1155or721(model, posKey);
+        context.debugStuck = "proc1155or721 once over";
         if (Code.next === code) {
             delay = 0;
             context.count += 1;
@@ -189,6 +196,7 @@ async function repeat(model, posKey: string) {
     } catch (e) {
         console.log(`process ${posKey} meta fail:`, e)
     }
+    context.debugStuck = "before set timeout for repeat";
     setTimeout(()=>repeat(model, posKey), delay);
 }
 // automatically adjust request rate
@@ -198,8 +206,10 @@ const rateInfo = {
     maxLimit: 10,
 }
 async function proc1155or721(model: any, position_key: string) {
+    context.debugStuck = "enter proc";
     let preId = await KV.getNumber(position_key, 0,)
     let nextId = preId + 1;
+    context.debugStuck = "before querying track table";
     const list = await model.findAll({where: {id: {[Op.gte]: nextId}}, order: [['id', 'asc']],
         limit: rateInfo.limit});
     if (!list.length) {
@@ -207,14 +217,19 @@ async function proc1155or721(model: any, position_key: string) {
         return Code.no_task;
     }
     let start = Date.now();
+    context.debugStuck = "before promise all task";
     await Promise.all(list.map(async ({contractId, tokenId})=>{
+        context.debugStuck2 = "find token"
         const token = await Token.findOne({attributes: ['type'],where: {hex40id: contractId}})
         if (!token || !token.type) {
-            return
+            context.debugStuck2 = "find token, return malformed"
+            return Promise.resolve()
         }
+        context.debugStuck2 = "before fetch meta"
         const is1155 = token.type?.endsWith("1155");
         return fetchMeta(contractId, tokenId, is1155)
     }));
+    context.debugStuck = "ends promise all task";
     let elapse = Date.now() - start;
     let curRate = Math.round(1000 / (elapse / rateInfo.limit))
     if (curRate <= rateInfo.targetQps) {
@@ -226,13 +241,17 @@ async function proc1155or721(model: any, position_key: string) {
         rateInfo.limit -= 1;
     }
     const {id:lastBeanId} = list[list.length-1]
+    context.debugStuck = "before updating cursor";
     await KV.saveNumber(position_key, lastBeanId, null);
+    context.debugStuck = "ends updating cursor";
     return Code.next;
 }
 const context:any = {
     cfx: null, metaParser: null,
     gateway: "",
     count: 0,
+    debugStuck: "",
+    debugStuck2: "",
 }
 async function run(cmd, gateway: string) {
     await setup(gateway)
@@ -365,7 +384,7 @@ async function test1() {
     // await test("0x83c125c309a0a05bf36ef3bf886de0fa802ca2ad", "16", true)
     // await test("0x89c9ec494607ae96ae2a36c8c3d0220bc3a51819", "270", true)
     // await test("0x839c09d87380a421669c6e5b26c45828e65d246c", "1", true)
-    await test("0x8b56cc44907b2f261171682fff03fbbd61355938", "7", false)
+    await test("0x8390ac80a4e2334e43f7797d0fc6b2767b4008f5", "10010", false)
     // await test("cfx:acdwku5ecb2813z3tz55f1h2rc6vp9fmyp023m7rat", "18", true)
     // let c = "cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj"; // 721, tokenURI
     //
