@@ -333,18 +333,23 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
         await NftContract.update({status: 'not found'}, {where: {cid: BigInt(contractId)}})
         return;
     }
+    console.log(`fetch json 0x${hex.hex} ${tokenId}`)
     const {uri, content, error} = await fetchJson('0x'+hex.hex, tokenId, is1155);
+    console.log(`end -- fetch json 0x${hex.hex} ${tokenId}`)
     let eCnt = 0, okCnt = 1;
     if (error) {
         eCnt = 1; okCnt = 0;
     }
-    await NftMeta.sequelize.transaction(async dbTx=>{
+    console.log(`db tx begin 0x${hex.hex} ${tokenId}`)
+    return NftMeta.sequelize.transaction(async dbTx=>{
         await Promise.all([
             NftMeta.update({content, error, status: error ? 'error' : 'ok'}, {where: {id: meta.id}, transaction: dbTx}),
             NftUriOnChain.upsert({id: meta.id, uri, uriType: ""}, {transaction: dbTx}),
             NftContract.increment({"errorTimes": eCnt, "okTimes": okCnt},
                 {where: {cid: contractId}, transaction: dbTx}),
         ])
+    }).then(res=>{
+        console.log(`db tx end 0x${hex.hex} ${tokenId}`)
     })
 }
 async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
