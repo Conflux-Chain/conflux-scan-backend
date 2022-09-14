@@ -362,6 +362,7 @@ async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
         tokenURI = await context.metaParser.getTokenURI(contract, tokenId, is1155);
         timer = setTimeout(() => {
             console.log(`cancel request ${contract} ${tokenId} ${is1155 ? '1155' : '721'} [${tokenURI}]`)
+            controller.abort()
         }, 11_000);
         json = await context.metaParser.getMetaByURI(tokenURI, {timeout: 10_000, signal: controller.signal});
     } catch (e) {
