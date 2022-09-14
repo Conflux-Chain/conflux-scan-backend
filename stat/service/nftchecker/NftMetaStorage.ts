@@ -356,14 +356,14 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
 async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
     let tokenURI = '';
     let json: any;
+    let timer: any;
     try {
         const controller = new AbortController();
         tokenURI = await context.metaParser.getTokenURI(contract, tokenId, is1155);
-        const timer = setTimeout(()=>{
-            console.log(`cancel request ${contract} ${tokenId} ${is1155 ? '1155':'721'} [${tokenURI}]`)
-        }, 11_000)
+        timer = setTimeout(() => {
+            console.log(`cancel request ${contract} ${tokenId} ${is1155 ? '1155' : '721'} [${tokenURI}]`)
+        }, 11_000);
         json = await context.metaParser.getMetaByURI(tokenURI, {timeout: 10_000, signal: controller.signal});
-        clearTimeout(timer);
     } catch (e) {
         // const errorStr = `${e}`
         if (e.code == -32015) e.code = "Transaction reverted"
@@ -378,6 +378,8 @@ async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
         }
         console.log(`getMeta fail, ${contract} ${tokenId} type ${is1155 ? '1155':'721'} uri [${tokenURI}]:`, e)
         return {uri: tokenURI, content: '', error: `${e}`}
+    } finally {
+        timer && clearTimeout(timer);
     }
     console.log(`ok , ${contract} ${is1155 ? '1155' : '721'} token ${tokenId} tokenURI is `, tokenURI)
     // console.log('json is ', json)
