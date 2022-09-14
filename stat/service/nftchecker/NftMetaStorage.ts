@@ -333,14 +333,14 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
         await NftContract.update({status: 'not found'}, {where: {cid: BigInt(contractId)}})
         return;
     }
-    console.log(`fetch json 0x${hex.hex} ${tokenId}`)
+    // console.log(`fetch json 0x${hex.hex} ${tokenId}`)
     const {uri, content, error} = await fetchJson('0x'+hex.hex, tokenId, is1155);
-    console.log(`end -- fetch json 0x${hex.hex} ${tokenId}`)
+    // console.log(`end -- fetch json 0x${hex.hex} ${tokenId}`)
     let eCnt = 0, okCnt = 1;
     if (error) {
         eCnt = 1; okCnt = 0;
     }
-    console.log(`db tx begin 0x${hex.hex} ${tokenId}`)
+    // console.log(`db tx begin 0x${hex.hex} ${tokenId}`)
     return NftMeta.sequelize.transaction(async dbTx=>{
         await Promise.all([
             NftMeta.update({content, error, status: error ? 'error' : 'ok'}, {where: {id: meta.id}, transaction: dbTx}),
@@ -349,7 +349,7 @@ async function fetchMeta(contractId: number, tokenId: string, is1155) {
                 {where: {cid: contractId}, transaction: dbTx}),
         ])
     }).then(res=>{
-        console.log(`db tx end 0x${hex.hex} ${tokenId}`)
+        // console.log(`db tx end 0x${hex.hex} ${tokenId}`)
     })
 }
 async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
@@ -387,12 +387,14 @@ async function test(c:string, tokenId, is1155){
     })
 }
 async function test1() {
-    const cfx = createConflux({url: 'http://main.confluxrpc.com', networkId: 1029})
+    // const rpc = 'http://main.confluxrpc.com';
+    const rpc = 'http://47.242.14.46:12537'; //net 1
+    const cfx = createConflux({url: rpc, networkId: 1})
     initNftMetaWorkerContext(cfx);
     // await test("0x83c125c309a0a05bf36ef3bf886de0fa802ca2ad", "16", true)
     // await test("0x89c9ec494607ae96ae2a36c8c3d0220bc3a51819", "270", true)
     // await test("0x839c09d87380a421669c6e5b26c45828e65d246c", "1", true)
-    await test("0x8390ac80a4e2334e43f7797d0fc6b2767b4008f5", "10010", false)
+    await test("0x8210d79ee8fd41ddb6b7ee8e12128b3743b95130", "630", false)
     // await test("cfx:acdwku5ecb2813z3tz55f1h2rc6vp9fmyp023m7rat", "18", true)
     // let c = "cfx:accag8sewn7kc36mv27t8zf9yg5fyuzvc6jfmyfjrj"; // 721, tokenURI
     //
