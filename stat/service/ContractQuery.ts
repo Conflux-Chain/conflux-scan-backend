@@ -724,7 +724,12 @@ export class ContractQuery {
             runs: verify.optimizeRuns,
             licenseType: lodash.findKey(CONST.LICENSE, (v) => v.code === verify.license),
         };
-        const verifyUrl = `${config.syncAcrossRegionHost}/contract/verifysourcecode`;
+        let verifyUrl = `${config.syncAcrossRegionHost}/contract/verifysourcecode`;
+        if (StatApp.isEVM) {
+            lodash.assign(verifyRequest, {module: 'contract', action: 'verifysourcecode'});
+            verifyUrl = `${config.syncAcrossRegionHost}/api`;
+        }
+
         let response;
         try{
             response = await superagent.post(verifyUrl)
