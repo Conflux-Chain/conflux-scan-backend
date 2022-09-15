@@ -312,13 +312,9 @@ async function fetchMeta(contractId: number, tokenId: string, is1155, nftContrac
         Hex40Map.findByPk(contractId),
         NftMeta.findOne({where: {cid: contractId, tokenId}})
             .then(res => {
-                if (!res) {
-                    return NftMeta.bulkCreate([{content: "", error: "", status: "init", cid: BigInt(contractId), tokenId}],
-                        {ignoreDuplicates: true}).then(()=>{
-                        return NftMeta.findOne({where: {cid: contractId, tokenId}})
-                    })
-                }
-                return res;
+                return res || NftMeta.upsert({content: "", error: "", status: "init", cid: BigInt(contractId), tokenId}).then(([res])=>{
+                    return res
+                });
             }),
     ])
     context.debugStuck2 = "fetchMeta prepare db ends"
