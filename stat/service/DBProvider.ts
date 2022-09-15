@@ -74,7 +74,7 @@ import {TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
 import {RateConfig, RateHit} from "../router/RateLimiter";
 import {createAddressTransferTable} from "../model/AddrTransfer";
-import {NftContract, NftMeta, NftMetaRequest, NftUriOnChain} from "./nftchecker/NftMetaStorage";
+import {createNftMetaPartition, NftContract, NftMetaRequest} from "./nftchecker/NftMetaStorage";
 let conf
 export function createDB(config) {
     conf = config
@@ -129,6 +129,7 @@ export async function initPartialModel(sequelize) {
     await Promise.all([
         createAddressErc20TransferTable(sequelize),
         create721partition(sequelize),
+        createNftMetaPartition(sequelize),
         // createAddressErc777TransferTable(sequelize),
         createAddressErc1155TransferTable(sequelize),
         createAddressCfxTransferTable(sequelize),
@@ -170,8 +171,6 @@ export async function initPartialModel(sequelize) {
     ContractDestroy.register(sequelize)
     Token.register(sequelize);
     NftMint.register(sequelize)
-    NftMeta.register(sequelize)
-    NftUriOnChain.register(sequelize)
     NftContract.register(sequelize)
     NftMetaRequest.register(sequelize);
     TokenQuoteTrack.register(sequelize);

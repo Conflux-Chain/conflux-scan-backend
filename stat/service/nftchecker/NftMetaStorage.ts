@@ -13,22 +13,18 @@ import {
 import {createConflux, list2map} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {getAddrId, Hex40Map} from "../../model/HexMap";
-import {sleep} from "../tool/ProcessTool";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
+import {createTable} from "../DBProvider";
 
 export interface INftMeta {
-    id?: bigint,
     cid: bigint,
     tokenId: string, // max length 78
+    uri: string;    //  url/ipfs         base64          json
     content: string, // content          decoded         ''
     status: string, // ok, error
     error: string,
 }
-export interface INftUriOnChain {
-    id?: bigint;
-    uri: string;    //  url/ipfs         base64          json
-    uriType: string; //
-}
+
 export interface INftContract {
     cid: bigint,
     status: string, // destroyed, unreachable, malformed uri,
@@ -65,12 +61,9 @@ export async function getMetaFromDB(contract: string, tokenId:string) {
         return {content: "", status:"bad request", uri:"",};
     }
     // status, content, uri
-    const sql = `select m.status as status, m.content as content, uri.uri as uri from ${NftMeta.getTableName()
-    } m join ${NftUriOnChain.getTableName()} uri on m.id=uri.id where m.cid=? and m.tokenId=? limit 1`
-    const meta = await NftMeta.sequelize.query(sql, {type: QueryTypes.SELECT,
-        replacements: [addrId, tokenId], raw: true,
-        logging: console.log,
-    }).then(([one])=>one as any)
+    const meta = await NftMeta.findOne({where:{
+        cid: addrId, tokenId
+        }})
     if (!meta || meta["status"] !== 'ok') {
         requestUpdateNftMetaSafe(addrId, tokenId).then()
     }
@@ -123,32 +116,50 @@ export class NftContract extends Model<INftContract> implements INftContract {
         })
     }
 }
-export class NftUriOnChain extends Model<INftUriOnChain> implements INftUriOnChain {
-    id?: bigint;
-    uri: string;    //  url/ipfs         base64          json
-    uriType: string; //
-    static register(seq:Sequelize) {
-        NftUriOnChain.init({
-            id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true}, // ref to nft meta's id
-            uri: {type: DataTypes.TEXT({length: "medium"}), allowNull: false},
-            uriType: {type: DataTypes.STRING(16), allowNull: false},
-        }, {
-            sequelize: seq, tableName: "nft_uri",
+
+// alter table nft_meta add column uri mediumtext not null after tokenId;
+// update nft_meta m set m.uri=ifnull( (select u.uri from nft_uri u where u.id=m.id), '');
+// alter table nft_meta drop column id;
+// alter table nft_meta PARTITION BY HASH(cid) PARTITIONS 101;
+// drop table nft_uri;
+// select * from nft_meta m left join nft_uri u on m.id=u.id where u.id is null limit 5;
+export const T_NFT_META = "nft_meta";
+export async function createNftMetaPartition(seq: Sequelize) {
+    const sql = `CREATE TABLE ${T_NFT_META} if not exists (
+  cid bigint(20) NOT NULL,
+  tokenId varchar(78) NOT NULL,
+  uri mediumtext NOT NULL,
+  content mediumtext NOT NULL,
+  status varchar(32) NOT NULL,
+  error varchar(1024) NOT NULL,
+  createdAt datetime NOT NULL,
+  updatedAt datetime NOT NULL,
+  UNIQUE KEY idx_cid_tid (cid,tokenId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+/*!50100 PARTITION BY HASH (cid)
+PARTITIONS 101 */`
+    return createTable(seq, sql)
+        .then(()=>{
+            return NftMeta.register(seq)
+        }).then(()=>{
+            NftMeta.removeAttribute("id")
+        }).catch(err=>{
+            console.log(`create NftMeta fail, sql ${sql}:`, err)
+            process.exit(9)
         })
-    }
 }
 export class NftMeta extends Model<INftMeta> implements INftMeta {
-    id?: bigint;
     cid: bigint;
     tokenId: string;
+    uri: string;    //  url/ipfs         base64          json
     content: string; // content          decoded         ''
     status: string; // ok, error
     error: string;
     static register(seq:Sequelize) {
         NftMeta.init({
-            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             cid: {type: DataTypes.BIGINT, allowNull: false},
             tokenId: {type: DataTypes.STRING(78), allowNull: false},
+            uri: {type: DataTypes.TEXT({length: "medium"}), allowNull: false},
             // MediumText： 最大长度 16,777,215
             content: {type: DataTypes.TEXT({length: "medium"}), allowNull: false},
             status: {type: DataTypes.STRING(32), allowNull: false},
@@ -308,14 +319,8 @@ export async function initNftMetaWorkerContext(cfx:Conflux, gateway = 'https://i
 
 async function fetchMeta(contractId: number, tokenId: string, is1155, nftContract) {
     context.debugStuck2 = "fetchMeta prepare db"
-    let [hex, meta] = await Promise.all([
+    let [hex] = await Promise.all([
         Hex40Map.findByPk(contractId),
-        NftMeta.findOne({where: {cid: contractId, tokenId}})
-            .then(res => {
-                return res || NftMeta.upsert({content: "", error: "", status: "init", cid: BigInt(contractId), tokenId}).then(([res])=>{
-                    return res
-                });
-            }),
     ])
     context.debugStuck2 = "fetchMeta prepare db ends"
     const {errorTimes, okTimes} = nftContract
@@ -339,8 +344,10 @@ async function fetchMeta(contractId: number, tokenId: string, is1155, nftContrac
     // console.log(`db tx begin 0x${hex.hex} ${tokenId}`)
     return NftMeta.sequelize.transaction(async dbTx=>{
         await Promise.all([
-            NftMeta.update({content, error, status: error ? 'error' : 'ok'}, {where: {id: meta.id}, transaction: dbTx}),
-            NftUriOnChain.upsert({id: meta.id, uri, uriType: ""}, {transaction: dbTx}),
+            NftMeta.upsert(
+                {cid: BigInt(contractId), tokenId, uri, content, error, status: error ? 'error' : 'ok'},
+                {transaction: dbTx}
+                ),
             NftContract.increment({"errorTimes": eCnt, "okTimes": okCnt},
                 {where: {cid: contractId}, transaction: dbTx}),
         ])
@@ -364,7 +371,7 @@ async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
         // const errorStr = `${e}`
         if (e.code == -32015) e.code = "Transaction reverted"
         if (e.response?.status && e.response?.status != 200) e.code = e.response?.status
-        if (e.code === 'ECONNRESET' || e.code === 'ENOTFOUND'
+        if (e.code === 'ECONNRESET' || e.code === 'ENOTFOUND' || e.code === 'ECONNREFUSED'
             || e.code === 'ECONNABORTED'
             || e.code ==  "Transaction reverted"
             || e.code == 404 || e.code == 429
