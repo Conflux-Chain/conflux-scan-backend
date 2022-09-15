@@ -290,7 +290,7 @@ async function checkNftContract(contractId: number) : Promise<NftContract>{
     // wait lock
     while (createContractLock) {
         console.log(`----- wait lock for ${contractId}`)
-        await sleep(1);
+        await sleep(10);
     }
     // lock
     createContractLock = true;
@@ -298,12 +298,13 @@ async function checkNftContract(contractId: number) : Promise<NftContract>{
     res = await NftContract.findByPk(contractId);
     if (!res) {
         // create
-        res = await NftContract.create({
+        let [bean, created] = await NftContract.upsert({
             cid: BigInt(contractId),
             status: "ok",
             errorTimes: BigInt(0),
             okTimes: BigInt(0)
         })
+        res = bean
     }
     // unlock
     createContractLock = false;
