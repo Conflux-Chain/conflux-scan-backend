@@ -5,7 +5,7 @@ import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 export class CfxHolderQuery{
 
     async listCfxHolderDaily(skip: number = 0, limit: number = 1000) {
-        const query: any = {}
+        const query: any = {statType: '1d'}
         const page = await DailyCfxHolder.findAndCountAll({
             attributes: ['statDay', 'holderCount'],
             where: query, offset: skip, limit, order:[["statDay", "DESC"]]
@@ -24,7 +24,7 @@ export class CfxHolderQuery{
             logging: msg => console.log(`listCfxHolderStat: ${msg}`),
         };
 
-        const conditionArray = [];
+        const conditionArray: any[] = [{statType: '1d'}];
         if (minTimestamp !== undefined) {
             conditionArray.push({statDay: {[Op.gte]: new Date(minTimestamp*1000)}});
         }

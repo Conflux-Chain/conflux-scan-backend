@@ -1,11 +1,10 @@
 import {DailyContractCreate} from "../model/DailyContractCreate";
 import {Op} from "sequelize";
-import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 
 export class DailyContractCreateQuery{
 
     async listContractCreateDaily(skip: number = 0, limit: number = 1000) {
-        const query: any = {}
+        const query: any = {statType: '1d'}
         const page = await DailyContractCreate.findAndCountAll({
             attributes: ['statDay', 'contractCount', ['contractTotal', 'contractTotalCount']],
             where: query, offset: skip, limit, order:[["statDay", "DESC"]], raw: true
@@ -24,7 +23,7 @@ export class DailyContractCreateQuery{
             logging: msg => console.log(`listDeployedContractStat: ${msg}`),
         };
 
-        const conditionArray = [];
+        const conditionArray: any[] = [{statType: '1d'}];
         if (minTimestamp !== undefined) {
             conditionArray.push({statDay: {[Op.gte]: new Date(minTimestamp*1000)}});
         }

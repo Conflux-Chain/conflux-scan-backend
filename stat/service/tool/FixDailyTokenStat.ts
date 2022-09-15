@@ -9,8 +9,7 @@ import {
     calcAllRegisteredTokenDailyStat,
     calcDailyToken,
     calcDailyTokenAmount,
-    DailyTxnSync
-} from "../DailyTxnSync";
+} from "../DailyTokenSync";
 import {Op, Sequelize, Options} from "sequelize"
 import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
@@ -101,11 +100,6 @@ async function checkAllTokenHolderTop() {
     }
 
 }
-
-async function syncDailyTxCntr(dt){
-    const statDay = getYesterday(dt);
-    return new DailyTxnSync().countDaily(statDay);
-}
 async function dailyTokenTxn() {
     const [,,cmd,dt] = process.argv;
     await calcDailyTokenOnChain(new Date(dt)).then(()=>{
@@ -130,8 +124,6 @@ async function main() {
             return dailyTokenTxn()
         } else if (cmd === 'test') {
             return testRank()
-        } else if (cmd === 'dailyTx') {
-            return syncDailyTxCntr(arg1);
         } else if (cmd === 'amount-dt-hex') {
             const[,,cmd,dt,hex] = process.argv
             return calcDailyTokenAmount(new Date(dt), Number(hex))

@@ -1,78 +1,12 @@
-import {DailyTransaction, IDailyTransaction} from "../model/DailyTransaction";
-import {calBeginEndTime, getNextDelay, getYesterday} from "./tool/DateTool";
-import {fn, Op, Sequelize, Model, col} from 'sequelize'
+import { col, fn, Op} from 'sequelize'
 import {DailyTokenTxn, Erc20Transfer, T_ERC20_TRANSFER} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
-// import {Erc777Transfer, T_ERC777_TRANSFER} from "../model/Erc777Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
-import {FullTransaction} from "../model/FullBlock";
 import {CONST} from "./common/constant"
 
-/*const CONST = require('./common/constant');*/
-
-export class DailyTxnSync{
-
-    constructor() {
-    }
-
-    public async countDaily(day: Date){
-        const {beginTime, endTime} = calBeginEndTime(day);
-
-        const stat:any = await FullTransaction.findOne({
-            attributes:[
-                [fn('sum',col('gas')), 'gasFee'],
-                [fn('count',col('*')), 'txCount'],
-            ],
-            where: {
-                [Op.and]:[
-                    {createdAt: {
-                        [Op.gte]:beginTime
-                    }},
-                    {createdAt: {
-                        [Op.lt]:endTime
-                    }},
-                    {status: 0}
-                ]
-            },
-            // logging: console.log,
-            raw: true
-        });
-        const {txCount, gasFee} = stat;
-        const dailyTransaction = new DailyTransaction();
-        dailyTransaction.statDay = endTime;
-        dailyTransaction.txCount = txCount;
-        dailyTransaction.gasFee = gasFee || 0;
-        const newRecord = await DailyTransaction.add(dailyTransaction);
-        console.log('count daily_tx record:' + JSON.stringify(newRecord));
-    }
-
-    public async countHistory(startDay?: Date, endDay?: Date){
-        const start = startDay || new Date('2020/10/29');
-        const end = endDay || getYesterday(new Date());
-        do{
-            await this.countDaily(start);
-            start.setDate(start.getDate() + 1)
-        } while(start.getTime() <= end.getTime());
-    }
-
-    // 16:10:00 UTC
-    public async schedule() {
-        const that = this;
-        async function repeat() {
-            const now = new Date();
-            await that.countDaily(getYesterday(now)).catch(err=>{
-                console.log(`count daily_tx fail: `, err);
-            });
-            const delay = 3600_000 ;
-            console.log(`schedule daily_tx service in delay 1 hour.`);
-            setTimeout(repeat, delay);
-        }
-        repeat().then();
-    }
-}
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
     showDebugLog = false
