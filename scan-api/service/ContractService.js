@@ -1,7 +1,7 @@
 const lodash = require('lodash');
 // const { KV, KEY_ANNOUNCE_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 const { ContractVerify } = require('../../stat/dist/model/ContractVerify');
-const { sign } = require('js-conflux-sdk');
+const { format, sign } = require('js-conflux-sdk');
 
 class ContractService { // TODO: extends AccountService
   constructor(app) {
@@ -206,6 +206,12 @@ class ContractService { // TODO: extends AccountService
     const {
       app: { confluxSDK, CONST, service, type },
     } = this;
+
+    const hash = lodash.findKey(CONST.GENESIS_TX_TO_CONTRACT, (v) => format.hexAddress(v) === address);
+    if(hash){
+      const transaction = await confluxSDK.getTransactionByHash(hash);
+      return transaction.data;
+    }
 
     const trace = await service.traceCreate.query(address);
     const transaction = await confluxSDK.getTransactionByHash(trace.transactionHash);

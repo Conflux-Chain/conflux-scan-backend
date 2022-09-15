@@ -39,7 +39,10 @@ export async function listNFTTokens(ctx) {
     if (contract === undefined) {
         throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
     }
-    const {skip, limit} = getPagination(ctx.request.query);
+
+    const maxSkip = !owner ? 10_000 : Number.MAX_VALUE;
+    const {skip, limit} = getPagination(ctx.request.query, {maxSkip, maxLimit: 100});
+    // const {skip, limit} = getPagination(ctx.request.query);
 
     const seqId = genSeqId(ctx.url);
     const date = new Date();
