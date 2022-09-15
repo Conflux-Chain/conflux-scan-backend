@@ -307,6 +307,9 @@ export async function initNftMetaWorkerContext(cfx:Conflux, gateway = 'https://i
             console.log(`gateway not configured in db`)
             process.exit(404)
         }
+        if (!gateway.startsWith("http")) {
+            gateway = `https://${gateway}`
+        }
     }
     context.cfx = cfx;
     context.gateway = gateway;
