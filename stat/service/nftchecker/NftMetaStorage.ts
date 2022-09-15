@@ -242,6 +242,12 @@ async function prepareNftContract(cids:number[]) {
 async function proc1155or721(model: any, position_key: string) {
     context.debugStuck = "enter proc";
     let preId = await KV.getNumber(position_key, 0,)
+    if (preId == 0 && position_key === NFT_META_POS_LATEST_MINT) {
+        const maxMint = await NftMint.findOne({order: [['id', 'desc']], offset: 1000})
+        if (maxMint) {
+            preId = maxMint.id
+        }
+    }
     let nextId = preId + 1;
     context.debugStuck = "before querying track table";
     const list = await model.findAll({where: {id: {[Op.gte]: nextId}}, order: [['id', 'asc']],
