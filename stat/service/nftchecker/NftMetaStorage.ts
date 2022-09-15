@@ -125,7 +125,7 @@ export class NftContract extends Model<INftContract> implements INftContract {
 // select * from nft_meta m left join nft_uri u on m.id=u.id where u.id is null limit 5;
 export const T_NFT_META = "nft_meta";
 export async function createNftMetaPartition(seq: Sequelize) {
-    const sql = `CREATE TABLE ${T_NFT_META} if not exists (
+    const sql = `CREATE TABLE if not exists ${T_NFT_META} (
   cid bigint(20) NOT NULL,
   tokenId varchar(78) NOT NULL,
   uri mediumtext NOT NULL,
