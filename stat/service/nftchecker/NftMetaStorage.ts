@@ -10,7 +10,7 @@ import {
     NFT_META_POS_MINT,
     NFT_META_POS_REQUEST,
 } from "../../model/KV";
-import {createConflux, patchHttpProvider} from "../common/utils";
+import {createConflux, list2map} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {getAddrId, Hex40Map} from "../../model/HexMap";
 import {sleep} from "../tool/ProcessTool";
@@ -206,6 +206,28 @@ const rateInfo = {
     limit: 4,
     maxLimit: 10,
 }
+async function prepareNftContract(cids:number[]) {
+    cids = [...new Set(cids)];
+    const beans = await NftContract.findAll({
+        where: {cid: {[Op.in]: cids}}
+    })
+    const map = list2map(beans, 'cid');
+    const missingArr = cids.filter(cid=>!map.has(cid)).map(cid=>{
+        return {
+            cid: BigInt(cid),
+                status: "ok",
+            errorTimes: BigInt(0),
+            okTimes: BigInt(0)
+        }
+    });
+    if (missingArr.length) {
+        const beans = await NftContract.bulkCreate(missingArr, {ignoreDuplicates: true})
+        beans.forEach(b=>{
+            map.set(b.cid, b)
+        })
+    }
+    return map
+}
 async function proc1155or721(model: any, position_key: string) {
     context.debugStuck = "enter proc";
     let preId = await KV.getNumber(position_key, 0,)
@@ -217,6 +239,8 @@ async function proc1155or721(model: any, position_key: string) {
         console.log(`no task for ${position_key}, cursor ${nextId}`)
         return Code.no_task;
     }
+    const cids = list.map(bean=>bean.contractId);
+    const nftContractMap = await prepareNftContract(cids);
     let start = Date.now();
     context.debugStuck = "before promise all task";
     await Promise.all(list.map(async ({contractId, tokenId})=>{
@@ -228,7 +252,7 @@ async function proc1155or721(model: any, position_key: string) {
         }
         context.debugStuck2 = "before fetch meta"
         const is1155 = token.type?.endsWith("1155");
-        return fetchMeta(contractId, tokenId, is1155)
+        return fetchMeta(contractId, tokenId, is1155, nftContractMap.get(contractId))
     }));
     context.debugStuck = "ends promise all task";
     let elapse = Date.now() - start;
@@ -281,47 +305,21 @@ export async function initNftMetaWorkerContext(cfx:Conflux, gateway = 'https://i
     const metaParser = new NFTMetaParser(cfx, ipfsGateway);
     context.metaParser = metaParser;
 }
-let createContractLock = false;
-async function checkNftContract(contractId: number) : Promise<NftContract>{
-    let res = await NftContract.findByPk(contractId);
-    if (res) {
-        return res;
-    }
-    // wait lock
-    while (createContractLock) {
-        console.log(`----- wait lock for ${contractId}`)
-        await sleep(10);
-    }
-    // lock
-    createContractLock = true;
-    // check again
-    res = await NftContract.findByPk(contractId);
-    if (!res) {
-        // create
-        let [bean, created] = await NftContract.upsert({
-            cid: BigInt(contractId),
-            status: "ok",
-            errorTimes: BigInt(0),
-            okTimes: BigInt(0)
-        })
-        res = bean
-    }
-    // unlock
-    createContractLock = false;
-    return res;
-}
-async function fetchMeta(contractId: number, tokenId: string, is1155) {
+
+async function fetchMeta(contractId: number, tokenId: string, is1155, nftContract) {
     context.debugStuck2 = "fetchMeta prepare db"
-    let [hex, meta, nftContract] = await Promise.all([
+    let [hex, meta] = await Promise.all([
         Hex40Map.findByPk(contractId),
         NftMeta.findOne({where: {cid: contractId, tokenId}})
             .then(res => {
                 if (!res) {
-                    return NftMeta.create({content: "", error: "", status: "init", cid: BigInt(contractId), tokenId})
+                    return NftMeta.bulkCreate([{content: "", error: "", status: "init", cid: BigInt(contractId), tokenId}],
+                        {ignoreDuplicates: true}).then(()=>{
+                        return NftMeta.findOne({where: {cid: contractId, tokenId}})
+                    })
                 }
                 return res;
             }),
-        checkNftContract(contractId),
     ])
     context.debugStuck2 = "fetchMeta prepare db ends"
     const {errorTimes, okTimes} = nftContract
