@@ -6,7 +6,7 @@ version: "3"
 
 services:
   api:
-    image: node:14.7.0
+    image: node:14.17.5
     volumes:
       - ./:/scan
       - ./log/api:/log
@@ -16,7 +16,7 @@ services:
     command: node /scan/scan-api
 
   compiler:
-    image: node:14.7.0
+    image: node:14.17.5
     volumes:
       - ./:/scan
       - ./log/compiler:/log
@@ -25,7 +25,7 @@ services:
     restart: always
     command: node /scan/scan-compiler
   stat:
-    image: node:14.7.0
+    image: node:14.17.5
     volumes:
       - ./:/stat-root
       - ./log/:/log
@@ -35,98 +35,98 @@ services:
     restart: always
     command: node /stat-root/stat/dist/Index.js
   block:
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/FullBlockSync.js
   stream: # not used
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/StreamSync.js
   token_transfer_alone: # token transfer sync
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000 # prune
   token_transfer: # token transfer sync
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000 prune
   token_misc: # token misc: holder, total supply
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/watcher/BatchBalanceWatcher.js useConfigRpc 500
   uniqueAddressStat: # UniqueAddressStat
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/UniqueAddressStat.js useConfigRpc -1 3000
   cfx_transfer_alone: # cfx transfer sync
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000 # prune streamStat
   cfx_transfer: # cfx transfer sync
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000 prune streamStat
   cfxCounterHolderMarker:
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/CfxTransferSync.js cfxCounterHolderMarker
   pos:
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/pos/PosSync.js
   timer_task:
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/TimerTask.js
   bill:
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/watcher/DummyNode.js 1
   pos-not-ready:
-    image: node:14.7.0
+    image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/pos/PosSync.js http://192.168.8.165:12537 345000
   epoch:
-    image: node:14.7.0
+    image: node:14.17.5
     volumes:
       - ./:/stat-root
       - ./log/:/log
@@ -136,7 +136,7 @@ services:
     restart: always
     command: node /stat-root/stat/dist/FullEpochSync.js prune
   epoch_backward:
-    image: node:14.7.0
+    image: node:14.17.5
     volumes:
       - ./:/stat-root
       - ./log/:/log
