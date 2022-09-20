@@ -249,11 +249,14 @@ export class EpochSync extends SyncBase{
             throw new Error(`[epoch=${epochNumber}]no block`);
         }
         const blockArray = await batchFetchBlock(cfx,  blockHashArray);
-        if (blockArray.length !== receipts.length && epochNumber !== 0) {
+        if (epochNumber !== 0 && blockArray.length !== receipts.length && epochNumber !== 0) {
             throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
         }
 
         for (const [blockIndex, block] of blockArray.entries()) {
+            if (epochNumber === 0) {
+                break;
+            }
             if (block.transactions.length !== receipts[blockIndex].length) {
                 throw new Error(`[epoch=${epochNumber}]mismatch between transactions and receipts`);
             }
@@ -679,7 +682,7 @@ export class EpochSync extends SyncBase{
             }
 
             for (const [txIndex, item] of block.transactions.entries()){
-                const receiptStatus = item.receipt.outcomeStatus;
+                const receiptStatus = item.receipt?.outcomeStatus;
                 if (receiptStatus != 0 && receiptStatus != 1 && block.epochNumber !== 0) {
                     continue;
                 }
