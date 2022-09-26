@@ -17,7 +17,7 @@ import {DailyCfxTxn, sumRecentCfxAmount} from "../model/CfxTransfer";
 import Application = require("koa");
 import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
-import {countRecentTokenTransfer} from "../service/DailyTxnSync";
+import {countRecentTokenTransfer} from "../service/DailyTokenSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 import {Hex40Map, mapExtInfo, patchBase32prop} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";

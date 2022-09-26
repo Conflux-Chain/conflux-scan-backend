@@ -1,0 +1,136 @@
+import {Op, QueryTypes} from 'sequelize'
+import {FullBlock, FullTransaction} from "../../model/FullBlock";
+import {DailyBlockDataStat} from "../../model/DailyBlockDataStat";
+import {fmtDtUTC} from "../../model/Utils";
+import {IntervalType, TimerStat} from "./TimerStat";
+
+const BigFixed = require('bigfixed');
+const lodash = require('lodash');
+
+export class StatDailyBlockData extends TimerStat{
+
+    constructor(app: any) {
+        super(app);
+        this.baseInterval = IntervalType.MIN;
+    }
+
+    public bizAlias(): string {
+        return `${DailyBlockDataStat.getTableName()}`;
+    }
+
+    public async nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date}> {
+        const lastStat = await DailyBlockDataStat.findOne({
+            where: {statType: this.baseInterval},
+            order:[["statTime","desc"]],
+            limit: 1
+        });
+        return this.getStatRangeMin(lastStat, 1);
+    }
+
+    public async firstEpochAfterRangeEnd(rangeEnd): Promise<number> {
+        return FullTransaction.findOne({
+            attributes:['epoch'],
+            where: {createdAt: {[Op.gte]: rangeEnd}},
+            order:[['createdAt', 'asc']],
+            limit: 1
+        }).then(item => item?.epoch);
+    }
+
+    public async stat(rangeBegin: Date, rangeEnd: Date){
+        const mStat = await this.statRaw(rangeBegin, rangeEnd);
+        const hStat = await this.statAnalysis(rangeEnd, IntervalType.MIN, IntervalType.HOUR, mStat);
+        const dStat = await this.statAnalysis(rangeEnd, IntervalType.MIN, IntervalType.DAY, mStat);
+        this.debug && console.log(`debug-5,mStat:${JSON.stringify(mStat)},hStat:${JSON.stringify(hStat)},dStat:${JSON.stringify(dStat)}`);
+
+        const statArray = [mStat, hStat, dStat];
+        await DailyBlockDataStat.sequelize.transaction(async (dbTx) => {
+            await DailyBlockDataStat.destroy({
+                where: {statTime: hStat.statTime, statType: hStat.statType}, transaction: dbTx,
+                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
+            });
+            await DailyBlockDataStat.destroy({
+                where: {statTime: dStat.statTime, statType: dStat.statType}, transaction: dbTx,
+                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
+            });
+            await DailyBlockDataStat.bulkCreate(statArray, {
+                transaction: dbTx,
+                /*logging: msg => console.log(`[${this.bizAlias()}]bulkCreate ${msg}`),*/
+            });
+        });
+        console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray)}`);
+    }
+
+    // ------------------------------- biz -----------------------------------
+    private async statRaw(beginTime: Date, endTime: Date): Promise<DailyBlockDataStat> {
+        const { intervalType, intervalSec } = this.supportInterval(beginTime, endTime, this.baseInterval);
+
+        const blockSql = `SELECT SUM(difficulty) AS difficultySum, COUNT(*) AS blockCount FROM full_block 
+                WHERE createdAt >= ? and createdAt < ?`;
+        const blockStat = await FullBlock.sequelize.query(blockSql, { type: QueryTypes.SELECT, raw: true,
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
+            /*logging: msg => console.log(`[${this.bizAlias()}]full block query ${msg}`)*/
+        });
+        const txSql = `SELECT COUNT(*) AS txCount FROM full_tx WHERE createdAt >= ? and createdAt < ?`;
+        const txStat = await FullTransaction.sequelize.query(txSql, { type: QueryTypes.SELECT, raw: true,
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
+            /*logging: msg => console.log(`[${this.bizAlias()}]full tx query ${msg}`)*/
+        });
+
+        const statTime = beginTime;
+        const blockCount = BigFixed(blockStat[0]['blockCount']);
+        const txCount = BigFixed(txStat[0]['txCount']);
+        const difficultySum = BigFixed(blockStat[0]['difficultySum'] || 0);
+
+        const blockTime = blockCount.isZero() ? BigFixed(0) : BigFixed(intervalSec).div(blockCount);
+        const hashRate = difficultySum.div(BigFixed(intervalSec));
+        const difficulty = blockCount.isZero() ? BigFixed(0) : difficultySum.div(blockCount);
+        const tps = txCount.div(BigFixed(intervalSec));
+
+        return {
+            statTime, statType: intervalType,
+            difficultySum, blockCount, txCount,
+            blockTime, hashRate, difficulty, tps
+        } as DailyBlockDataStat;
+    }
+
+    private async statAnalysis(endTime: Date, srcStatType: IntervalType, destStatType: IntervalType,
+                                latestStat = undefined): Promise<DailyBlockDataStat> {
+        const beginTime = this.getRangeBegin(endTime, destStatType);
+        const intervalSec = BigFixed((endTime.getTime() - beginTime.getTime())/1000);
+
+        const statSql = `SELECT statTime,statType,blockCount,txCount,difficultySum FROM daily_block_data_stat 
+                    WHERE statTime >= ? and statTime < ? and statType = '${srcStatType}'` ;
+        const statList = await DailyBlockDataStat.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,
+            replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
+            /*logging: msg => console.log(`[${this.bizAlias()}]stat list query ${msg}`)*/
+        });
+        if(latestStat) {
+            statList.push(latestStat);
+        }
+
+        const statTime = beginTime;
+        let blockCount = BigFixed(0);
+        let txCount = BigFixed(0);
+        let difficultySum = BigFixed(0);
+        lodash.forEach(statList, stat => {
+            blockCount = blockCount.add(BigFixed(stat['blockCount']));
+            txCount = txCount.add(BigFixed(stat['txCount']));
+            difficultySum = difficultySum.add(BigFixed(stat['difficultySum']));
+        });
+
+        const blockTime = blockCount.isZero() ? BigFixed(0) : intervalSec.div(blockCount);
+        let difficulty = BigFixed(0);
+        let hashRate = BigFixed(0);
+        lodash.forEach(statList, stat => {
+            difficulty = blockCount.isZero() ? BigFixed(0)
+                : difficulty.add(BigFixed(stat['difficultySum']).div(blockCount));
+            hashRate = hashRate.add(BigFixed(stat['difficultySum']).div(intervalSec));
+        });
+        const tps = txCount.div(intervalSec);
+
+        return {statTime, statType: destStatType,
+            difficultySum, blockCount, txCount,
+            blockTime, hashRate, difficulty, tps
+        } as DailyBlockDataStat;
+    }
+}

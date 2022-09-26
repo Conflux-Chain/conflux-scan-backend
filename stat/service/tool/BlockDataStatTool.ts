@@ -1,6 +1,4 @@
-import {loadConfig, StatConfig} from "../../config/StatConfig";
-import {createDB, initModel} from "../DBProvider";
-import {DailyBlockDataStatSync} from "../DailyBlockDataStatSync";
+import {StatConfig} from "../../config/StatConfig";
 import {init} from "./FixDailyTokenStat";
 import {BlockAndMinerSync} from "../BlockAndMinerSync";
 import {MinerBlock} from "../../model/MinerBlock";
@@ -9,17 +7,6 @@ import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "../common/utils";
 import {FullBlockService} from "../FullBlockService";
 import {FullBlock} from "../../model/FullBlock";
-
-let blockDataStatTool;
-
-async function sync(startDay, endDay) {
-    await blockDataStatTool.statHistory(startDay, endDay);
-}
-
-async function syncByHour() {
-    await blockDataStatTool.statByHour();
-}
-
 async function run(startDay, endDay) {
     const config = await init();
     if (args.includes('miner')) {
@@ -34,9 +21,6 @@ async function run(startDay, endDay) {
         await fixBlockTxFee(config)
         return
     }
-    blockDataStatTool = new DailyBlockDataStatSync();
-    await sync(startDay, endDay);
-    // await syncByHour();
 }
 async function fixRecentMinerStat() {
     let now = new Date();
@@ -54,7 +38,6 @@ async function fixBlockTxFee(config: StatConfig) {
     let epoch = await FullBlock.max('epoch') as any
     const stop = new Date('2021-11-29').getTime()
     do {
-
         await svc.fillBlockReward(epoch)
         const ep = await Epoch.findByPk(epoch)
         if (ep === null || ep.timestamp.getTime() < stop) {

@@ -5,18 +5,19 @@ import {patchHttpProvider} from "./service/common/utils";
 import {StatApp} from "./StatApp";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {scheduleDailyActiveAddress} from "./model/StatAddress";
-import {DailyTxnSync, scheduleDailyTokenStat} from "./service/DailyTxnSync";
+import {scheduleDailyTokenStat} from "./service/DailyTokenSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
-import {DailyContractCreateSync} from "./service/DailyContractCreateSync";
 import {ADDRESS_COUNT, CONTRACT_COUNT, IS_EVM2, KV} from "./model/KV";
-import {DailyContractStatSync} from "./service/DailyContractStatSync";
-import {DailyContractRegisterSync} from "./service/DailyContractRegisterSync";
-import {CfxHolderSync} from "./service/CfxHolderSync";
-import {DailyBlockDataStatSync} from "./service/DailyBlockDataStatSync";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {Hex40Map} from "./model/HexMap";
 import {TraceCreateContract} from "./model/TraceCreateContract";
 import {Reporter} from "./service/syncalert/Reporter";
+import {StatDailyBlockData} from "./service/timerstat/StatDailyBlockData";
+import {StatDailyContractAnalysis} from "./service/timerstat/StatDailyContractAnalysis";
+import {StatDailyContractCreation} from "./service/timerstat/StatDailyContractCreation";
+import {StatDailyContractRegister} from "./service/timerstat/StatDailyContractRegister";
+import {StatDailyTxn} from "./service/timerstat/StatDailyTxn";
+import {StatTotalCfxHolder} from "./service/timerstat/StatTotalCfxHolder";
 
 async function main() {
     redirectLog()
@@ -33,29 +34,30 @@ async function main() {
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
     //
-    const dailyTxnSync = new DailyTxnSync();
-    await dailyTxnSync.schedule(); // dailyTxn
     await scheduleDailyActiveAddress()
         .then(()=>{scheduleDailyTokenStat()})
     await calcDailyUniqueAddrSchedule().then()
     //
-    const contractCreateSync = new DailyContractCreateSync(KV.sequelize)
-    await contractCreateSync.schedule(); // dailyContractCreate
-    //
-    const contractStatSync = new DailyContractStatSync(KV.sequelize);
-    await contractStatSync.schedule();
-    //
-    const contractRegisterSync = new DailyContractRegisterSync(KV.sequelize);
-    await contractRegisterSync.schedule(); // dailyContractRegister
-    //
-    const cfxHolderSync = new CfxHolderSync(KV.sequelize);
-    await cfxHolderSync.schedule(); // dailyCfxHolder
-    //
-    const blockDataStatSync = new DailyBlockDataStatSync();
-    await blockDataStatSync.schedule(); // daily block data stat
-    //
     const reporter = new Reporter({config: cfg, cfx});
-    await reporter.start(); // scan sync alert
+    await reporter.start();
+    //
+    const statDailyBlockData = new StatDailyBlockData({cfx});
+    await statDailyBlockData.schedule(1000 * 6);
+    //
+    const statDailyContractAnalysis = new StatDailyContractAnalysis({cfx});
+    await statDailyContractAnalysis.schedule();
+    //
+    const statDailyContractCreation = new StatDailyContractCreation({cfx})
+    await statDailyContractCreation.schedule(1000 * 6);
+    //
+    const statDailyContractRegister = new StatDailyContractRegister({cfx});
+    await statDailyContractRegister.schedule(1000 * 6);
+    //
+    const statDailyTxn = new StatDailyTxn({cfx});
+    await statDailyTxn.schedule(1000 * 6);
+    //
+    const statTotalCfxHolder = new StatTotalCfxHolder({cfx});
+    await statTotalCfxHolder.schedule(1000 * 6);
     //
     setInterval(countTable, 60_000)
     console.log(`----- Timer tasks scheduled. -----`)
