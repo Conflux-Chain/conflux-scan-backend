@@ -13,6 +13,7 @@ import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {getMetaFromDB, requestUpdateNftMetaSafe} from "./NftMetaStorage";
+import {StatApp} from "../../StatApp";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -377,6 +378,7 @@ export class NFTPreviewService {
         uriFormatter?: any,
         forceFlush?: boolean
     }): Promise<NFTInfoType> {
+        const err = {contract: StatApp.isEVM ? format.hexAddress(address) : address, tokenId};
         let rawUrl;
         let gatewayUrl;
         let rawMeta;
@@ -403,7 +405,9 @@ export class NFTPreviewService {
                 // get uri
                 const contract = await this.cfx.Contract({abi, address});
                 rawUrl = await contract[method](tokenId)
-                .catch(e => { throw new Errors.CallNFTContractError(`call ${method}(${tokenId}) ${e.message}`)});
+                .catch(e => { throw new Errors.CallNFTContractError(
+                    JSON.stringify(lodash.assign(err, { message: `call contract method ${method}(${tokenId}) occurs ${e.message}`}))
+                )});
                 rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
                 gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
@@ -414,15 +418,19 @@ export class NFTPreviewService {
                     rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
                 } else {
                     const resp = await superagent.get(gatewayUrl)
-                        .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
-                    .catch(e => {throw new Errors.QueryNFTMetadataError(`${gatewayUrl} ${e.message}`)});
+                    .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
+                    .catch(e => {throw new Errors.QueryNFTMetadataError(
+                        JSON.stringify(lodash.assign(err, {message: `request third-party tokenURI ${gatewayUrl} occurs ${e.message}, try again later`}))
+                    )});
                     rawMeta = resp.text;
                 }
             }
             try{
                 rawMeta = JSON.parse(rawMeta);
             }catch (e) {
-                throw new Errors.ParseNFTMetadataError(e.message);
+                throw new Errors.ParseNFTMetadataError(
+                    JSON.stringify(lodash.assign(err, {message: `parse metadata of NFT occurs ${e.message}`}))
+                );
             }
             meta = {...rawMeta};
 
@@ -432,8 +440,12 @@ export class NFTPreviewService {
             imageUri = this.replaceGateway({gateway, rawUrl: imageUri});
             imageName = await this.getNFTName({address, meta}) || {};
             imageDesc = meta.description;
-            if(!imageUri) throw new Errors.MetadataPropertyError('image not found');
-            if(!imageName) throw new Errors.MetadataPropertyError('name not found');
+            if(!imageUri) throw new Errors.MetadataPropertyError(
+                JSON.stringify(lodash.assign(err, {message: `no image field in metadata of NFT,  meta is ${meta}`}))
+            );
+            if(!imageName) throw new Errors.MetadataPropertyError(
+                JSON.stringify(lodash.assign(err, {message: `no name field in metadata of NFT,  meta is ${meta}`}))
+            );
 
         } catch (e) {
             if(e.code === undefined) {
@@ -490,42 +502,31 @@ export class NFTPreviewService {
 
     private replaceGateway({gateway, rawUrl}){
         const {
-            app: { config },
+            app: {config},
         } = this;
 
-        let uri = rawUrl;
-        if(!uri?.startsWith('ipfs://')) {
-            return uri;
+        if (!rawUrl?.startsWith('ipfs://')) {
+            return rawUrl;
         }
 
-        let urlRaw = this.replaceGateway0({gateway, rawUrl});
-        const usableGateway = IPFSGatewaySync.fastest;
-        if (config.syncIPFSGateway && usableGateway) {
-            const index0 = urlRaw.indexOf('//') + 2;
-            const index1 = urlRaw.indexOf('/ipfs/');
-            urlRaw = `${urlRaw.substr(0, index0)}${usableGateway}${urlRaw.substr(index1, urlRaw.length)}`
+        let uri = `https://ipfs.io/ipfs/${rawUrl.substr(7)}`;
+
+        if (gateway) {
+            const uriSegments = gateway.split("//");
+            const usable = uriSegments?.length > 1 && this.ipfsGatewaySet.has(uriSegments[1]);
+            if (usable) {
+                uri = `${gateway.endsWith('/') ? gateway.substr(0, gateway.length - 1) : gateway}/ipfs/${rawUrl.substr(7)}`;
+            }
         }
 
-        return urlRaw;
-    }
-
-    private replaceGateway0({gateway, rawUrl}){
-        let uri = rawUrl;
-        if(uri?.startsWith('https://gateway.pinata.cloud')){
-            return `https://ipfs.io/ipfs/${uri.substr(34)}`;
+        const detectGateway = IPFSGatewaySync.fastest;
+        if (config.syncIPFSGateway && detectGateway) {
+            const index0 = uri.indexOf('//') + 2;
+            const index1 = uri.indexOf('/ipfs/');
+            uri = `${uri.substr(0, index0)}${detectGateway}${uri.substr(index1, uri.length)}`
         }
 
-        if(!gateway){
-            return `https://ipfs.io/ipfs/${uri.substr(7)}`;
-        }
-
-        const uriSegments = gateway.split("//");
-        const gatewayExists = uriSegments?.length > 1 && this.ipfsGatewaySet.has(uriSegments[1]);
-        if(!gatewayExists){
-            return `https://ipfs.io/ipfs/${uri.substr(7)}`;
-        }
-
-        return `${gateway.endsWith('/') ? gateway.substr(0, gateway.length - 1) : gateway}/ipfs/${uri.substr(7)}`;
+        return uri;
     }
 
     private async detectTokenType(base32){
