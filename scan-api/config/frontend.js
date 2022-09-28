@@ -61,7 +61,7 @@ module.exports = {
       key: 'governance',
       address: {
         1029: 'cfx:achvp1x7t17uf2wdad3pdvd0ujz4vfndv2k5x6cpyn', // 0x8f3f525d17159351e4b34fe766ef139470da0b02
-        1: 'cfxtest:achvp1x7t17uf2wdad3pdvd0ujz4vfndv2duapegub', // 0x8f3f525d17159351e4b34fe766ef139470da0b02
+        1: 'cfxtest:accm1wxg86xz0wzpjkf4wby40skrcj1psy1j0su169', // 0x8f3f525d17159351e4b34fe766ef139470da0b02
         8888: 'net8888:achx8yw7c6m3gyte0rh8s31tcsmhb0unajzt74tk4s', // 0x8f3f525d17159351e4b34fe766ef139470da0b02
       },
     },

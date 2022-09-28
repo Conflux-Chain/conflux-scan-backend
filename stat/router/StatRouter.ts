@@ -104,7 +104,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if(!result?.isRegistered){
             const token = await statApp.tokenQuery.detectToken(address);
             if(token?.reason){
-                throw new Errors.NotTokenError(`${StatApp.isEVM? token.hex : token.base32} not detected as a token, ${token.reason}`);
+                throw new Errors.NotTokenError(
+                    JSON.stringify({
+                        contract: StatApp.isEVM? token.hex : token.base32,
+                        message: `contract not detected as a token, ${token.reason}`,
+                    })
+                );
             }
         }
         ctx.body = result || {};
