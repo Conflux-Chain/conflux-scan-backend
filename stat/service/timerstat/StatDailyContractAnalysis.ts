@@ -7,9 +7,12 @@ import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
-import {makeId} from "../../model/HexMap";
+import {Hex40Map, makeId} from "../../model/HexMap";
 import {CONST} from "../common/constant"
 import {IntervalType, TimerStat} from "./TimerStat";
+import {TokenQuery} from "../TokenQuery";
+import {format} from "js-conflux-sdk";
+import {StatApp} from "../../StatApp";
 
 export class StatDailyContractAnalysis extends TimerStat{
 
@@ -93,28 +96,25 @@ export class StatDailyContractAnalysis extends TimerStat{
             tokenType: tokenTransfer.type, tokenTransfer: tokenTransfer.count};
     }
 
-    private async getTokenTransferStat(contractId, rangeBegin, rangeEnd) {
-        const [erc20Record, erc721Record, erc1155Record] = await Promise.all([
-            Erc20Transfer.findOne({ where: { contractId }}),
-            Erc721Transfer.findOne({ where: { contractId}}),
-            Erc1155Transfer.findOne({ where: { contractId }}),
-        ]);
+    private async getTokenTransferStat(addressId, rangeBegin, rangeEnd) {
+        const typeInfo = await TokenQuery.detectTokenType({hex40id: addressId});
+        const type = typeInfo?.type;
 
-        let type;
         let model;
-        if(erc20Record) {
-            type = CONST.TRANSFER_TYPE.ERC20;
+        if(type === CONST.TRANSFER_TYPE.ERC20) {
             model = Erc20Transfer;
-        } else if(erc721Record) {
-            type = CONST.TRANSFER_TYPE.ERC721;
+        } else if(type === CONST.TRANSFER_TYPE.ERC721) {
             model = Erc721Transfer;
-        } else if(erc1155Record) {
-            type = CONST.TRANSFER_TYPE.ERC1155;
+        } else if(type === CONST.TRANSFER_TYPE.ERC1155) {
             model = Erc1155Transfer;
         }
 
         const count = await model?.count({
-            where: {[Op.and]:[{ contractId }, {createdAt: {[Op.gte]:rangeBegin}}, {createdAt: {[Op.lt]:rangeEnd}}]}});
+            where: {
+                [Op.and]: [{contractId: typeInfo?.hex40id},
+                    {createdAt: {[Op.gte]: rangeBegin}}, {createdAt: {[Op.lt]: rangeEnd}}]
+            }
+        });
         return {type, count};
     }
 

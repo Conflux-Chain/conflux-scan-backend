@@ -7,6 +7,8 @@ import {Desensitizer} from "../Desensitizer";
 import {convert2base32map, getAddrId, idHex40Map} from "../../model/HexMap";
 import {TokenBalance} from "../../model/Balance";
 import {CONST} from "../common/constant"
+import {NftMeta, NftMetaFts} from "./NftMetaStorage";
+import {format} from "js-conflux-sdk";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -25,22 +27,6 @@ export class NFTCheckerService {
     }
 
     public async getNFTBalances ({ownerAddress}) {
-        const nftBalances = await this.getNFTBalances0({ownerAddress});
-        nftBalances?.forEach(nftBalance => {
-            nftBalance.type = Desensitizer.mosaicStr(nftBalance.address, nftBalance.type);
-            nftBalance.name.zh = Desensitizer.mosaicStr(nftBalance.address, nftBalance.name.zh);
-            nftBalance.name.en = Desensitizer.mosaicStr(nftBalance.address, nftBalance.name.en);
-        });
-        return nftBalances;
-    }
-
-    private async getNFTBalances0({ownerAddress}) {
-        // const options = {
-        //     attributes: ['base32', 'name'],
-        //     where: { type: {[Op.in]: [CONST.TRANSFER_TYPE.ERC721, CONST.TRANSFER_TYPE.ERC1155]}, auditResult: true},
-        //     raw: true,
-        // };
-        // const tokenArray = await Token.findAll(options);
         const sql = `select base32, name from token where type in('ERC721', 'ERC1155') 
                                  and (auditResult = 1 or base32 in(select address from blacklist))`;
         const tokenArray: Token[] = await Token.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true});
@@ -55,8 +41,7 @@ export class NFTCheckerService {
             };
         });
         const NFTMapDb = lodash.keyBy(NFTArray, 'address');
-        // will change NFTMapPlus
-        lodash.defaults(NFTMapPlus, NFTMapDb);
+        lodash.defaults(NFTMapPlus, NFTMapDb);// will change NFTMapPlus
 
         const contractAddresses = Object.keys(NFTMapPlus);
         const balances = await this._getNFTBalances({ownerAddress, contractAddresses});
@@ -68,6 +53,12 @@ export class NFTCheckerService {
                 balance: balances[index],
             }))
             .filter(n => n.balance > 0);
+
+        nftBalances?.forEach(nftBalance => {
+            nftBalance.type = Desensitizer.mosaicStr(nftBalance.address, nftBalance.type);
+            nftBalance.name.zh = Desensitizer.mosaicStr(nftBalance.address, nftBalance.name.zh);
+            nftBalance.name.en = Desensitizer.mosaicStr(nftBalance.address, nftBalance.name.en);
+        });
         return nftBalances;
     }
 
@@ -212,5 +203,52 @@ export class NFTCheckerService {
         }
 
         return {total: count ? count : 0, list};
+    }
+
+    public async getNftTokensByFtsForOpenApi({nftName}: {nftName: string}) {
+        const RESULT_LIMIT_BY_FTS = 10;
+        if(!nftName) {
+            return {total: 0, list: []};
+        }
+
+        const sql = `select contractId, tokenId from nft_metadata_fts where match(name) against('${nftName}') limit 500;`;
+        let nftFtsList = await NftMetaFts.sequelize.query(sql, {
+            type: QueryTypes.SELECT,
+            raw: true,
+            // logging: sql => console.log(`NftMeta group sql ${sql}`)
+        }) as any[];
+        if(!nftFtsList?.length) {
+            return {total: 0, list: []};
+        }
+
+        const contractIdSet = new Set<number>();
+        const tokenIdSet = new Set<string>();
+        nftFtsList.forEach(nftFts => {
+            contractIdSet.add(nftFts.contractId);
+            tokenIdSet.add(nftFts.tokenId);
+        });
+        const page = await NftMetaFts.findAndCountAll({
+            attributes: ['contractId', 'tokenId', 'name'],
+            where: {
+                contractId: {[Op.in]: [...contractIdSet]},
+                tokenId: {[Op.in]: [...tokenIdSet]},
+                name: {[Op.like]: `%${nftName}%`}
+            },
+            limit: RESULT_LIMIT_BY_FTS,
+            raw: true,
+        });
+        const total = Math.min(page?.count || 0, RESULT_LIMIT_BY_FTS);
+        const list = (page?.rows || []) as any[];
+
+        if(list?.length){
+            const hex40IdSet = new Set<number>();
+            list.forEach(row => hex40IdSet.add(Number(row.contractId)));
+            const hex40Map = await idHex40Map([...hex40IdSet]);
+            list.forEach(row=>{
+                row.contract = format.address(`0x${hex40Map.get(Number(row.contractId))}`, this.app?.networkId);
+                delete row.contractId;
+            })
+        }
+        return {total, list};
     }
 }

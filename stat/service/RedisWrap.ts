@@ -191,6 +191,12 @@ export class RedisWrap{
             return redisWrap.client.sendCommand('xdel', [msg.stream, msg.messageId])
         }))
     }
+    static async set(key: string, value: string, mode: string, duration: number) {
+        return redisWrap.setAsync(key, value, mode, duration)
+    }
+    static async get(key: string) {
+        return redisWrap.getAsync(key)
+    }
     static async testListenStream() {
         RedisWrap.listenStreamMessage('testListenQ', (res)=>{
             console.log(`listen stream message got `, res)

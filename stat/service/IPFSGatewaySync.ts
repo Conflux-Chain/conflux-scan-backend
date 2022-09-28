@@ -47,7 +47,7 @@ export class IPFSGatewaySync {
 
       for(const response of responseArray) {
         if(!response) continue;
-        console.log(`detect_ipfs_gateway------${JSON.stringify(response)}`);
+        // console.log(`detect_ipfs_gateway------${JSON.stringify(response)}`);
         const {pong: {host, alive, time}} = response;
         if(alive && time <= 1000) {
           IPFSGatewaySync.GATEWAY_MAP[host] = response;

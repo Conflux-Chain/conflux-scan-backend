@@ -32,6 +32,7 @@ import {
 import {
     listNFTBalances,
     listNFTTokens,
+    listNFTTokensByFts,
     getNFTPreview,
 } from "../service/OpenNFTService";
 import {
@@ -154,6 +155,7 @@ function registerRouter(router: Router) {
     router.get('/nft/balances', listNFTBalances);
     router.get('/nft/tokens', checkAddressRateFn, listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
+    router.get('/nft/fts', listNFTTokensByFts);
 
     // utils
     router.get('/util/decode/method', abiDecode);
