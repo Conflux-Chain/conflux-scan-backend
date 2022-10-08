@@ -441,10 +441,10 @@ export class NFTPreviewService {
             imageName = await this.getNFTName({address, meta}) || {};
             imageDesc = meta.description;
             if(!imageUri) throw new Errors.MetadataPropertyError(
-                JSON.stringify(lodash.assign(err, {message: `no image field in metadata of NFT,  meta is ${meta}`}))
+                JSON.stringify(lodash.assign(err, {message: `no image field in metadata of NFT,  meta is ${JSON.stringify(meta)}`}))
             );
             if(!imageName) throw new Errors.MetadataPropertyError(
-                JSON.stringify(lodash.assign(err, {message: `no name field in metadata of NFT,  meta is ${meta}`}))
+                JSON.stringify(lodash.assign(err, {message: `no name field in metadata of NFT,  meta is ${JSON.stringify(meta)}`}))
             );
 
         } catch (e) {

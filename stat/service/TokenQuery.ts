@@ -409,17 +409,23 @@ export class TokenQuery {
         if(transfer1155)  type = CONST.TRANSFER_TYPE.ERC1155;
 
         const result = {base32, hex: hex40?.hex, type};
+        const tokenCondition = `
+        Prerequisites for a token: 
+        1. The contract has name and symbol;
+        2. At least one token transfer record; 
+        3. The ERC721 or ERC1155 token need comply with the ERC165 standard;
+        `;
         if(!tokenInfo?.name){
-            return lodash.defaults(result, {reason: 'token name not exist'});
+            return lodash.defaults(result, {reason: `token name not exist. ${tokenCondition}`});
         }
         if(!tokenInfo?.symbol){
-            return lodash.defaults(result, {reason: 'token symbol not exist'});
+            return lodash.defaults(result, {reason: `token symbol not exist. ${tokenCondition}`});
         }
         if(!transfer20 && !transfer721 && !transfer1155){
-            return lodash.defaults(result, {reason: 'token transfer not exist'});
+            return lodash.defaults(result, {reason: `token transfer record not exist. ${tokenCondition}`});
         }
         if(!interface721 && !interface1155){
-            return lodash.defaults(result, {reason: 'not support ERC165'});
+            return lodash.defaults(result, {reason: `not support ERC165. ${tokenCondition}`});
         }
         return result;
     }
