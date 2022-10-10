@@ -210,6 +210,8 @@ class SolCompileService {
     const encodedConstructorArgs = extractEncodedConstructorArgs(creationData, recompiled.creationBytecode);
     lodash.assign(match, {encodedConstructorArgs});
 
+    const { replaced } = this._addLibraryAddresses(recompiled.deployedBytecode, deployedBytecode);
+    recompiled.deployedBytecode = replaced;
     if (deployedBytecode === recompiled.deployedBytecode) {
       lodash.assign(match, MATCH_STATUS.DEPLOYED_FULL);
       return match;
@@ -301,6 +303,28 @@ class SolCompileService {
     const verifyResult = { version, warnings, errors, exactMatch, similarity, abi, bytecode };
     logger.info({ src: `[${address}]verify`, contractName: `${name}`, verifyResult: `${JSON.stringify(verifyResult)}` });
     return verifyResult;
+  }
+
+  _addLibraryAddresses(template, real){
+    const PLACEHOLDER_START = "__$";
+    const PLACEHOLDER_LENGTH = 40;
+
+    const libraryMap = {};
+
+    let index = template.indexOf(PLACEHOLDER_START);
+    for (; index !== -1; index = template.indexOf(PLACEHOLDER_START)) {
+      const placeholder = template.slice(index, index + PLACEHOLDER_LENGTH);
+      const address = real.slice(index, index + PLACEHOLDER_LENGTH);
+      libraryMap[placeholder] = address;
+      const regexCompatiblePlaceholder = placeholder.replace("__$", "__\\$").replace("$__", "\\$__");
+      const regex = RegExp(regexCompatiblePlaceholder, "g");
+      template = template.replace(regex, address);
+    }
+
+    return {
+      replaced: template,
+      libraryMap
+    };
   }
 }
 
