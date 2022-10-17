@@ -5,8 +5,8 @@ import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'seq
 import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
 import {format} from "js-conflux-sdk";
 import {Errors} from "../service/common/LogicError";
-import {billing} from "web3pay-sdk-js"
-import {getWeb3pay} from "web3pay-sdk-js/lib/rpc";
+import {billing, decodeApiKey} from "web3pay-sdk-js"
+import {getVipInfo, getWeb3pay} from "web3pay-sdk-js/lib/rpc";
 //
 export interface IRateConfig {
     id?:number;
@@ -94,6 +94,7 @@ export function buildCheckAddressRateFn(addressParamName:string, callNext = fals
         return ctx; // for the magic scan api '/v1'
     }
 }
+// See RateLimiter.checkRete()
 export async function checkApiKey(path: string, key:string, dryRun = false) {
     if (!getWeb3pay().client) {
         return {ok:false, result:{}} // not configured
@@ -103,12 +104,15 @@ export async function checkApiKey(path: string, key:string, dryRun = false) {
         return {ok:false, result:{}};
     }
     try {
-        const result = await billing(path, dryRun, key)
-        if (result.code == 0) {
-            return {ok:true, result};
+        // const result = await billing(path, dryRun, key)
+        const account = decodeApiKey(getWeb3pay().appContract.address, key, true);
+        const vipInfo = await getVipInfo(account);
+        const expireSecond = vipInfo.expireAt.toNumber();
+        if (expireSecond * 1000 < Date.now() && expireSecond > 0) {
+            return {ok:true, vipInfo};
         }
-        console.log(`billing fail, path ${path} , key ${key}. result:`, result)
-        return {ok:false, result}
+        // console.log(`billing fail, path ${path} , key ${key}. result:`, result)
+        return {ok:false, result: vipInfo}
     } catch (e) {
         console.log(`check api key fail:`, e)
         return {ok:false, result:{error: e}};

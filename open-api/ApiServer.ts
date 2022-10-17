@@ -32,7 +32,7 @@ import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
-import {billing, initWeb3payClient} from "web3pay-sdk-js/lib/rpc";
+import {billing, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
 import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 
 const Koa = require('koa');
@@ -214,6 +214,7 @@ export class ApiServer {
 async function initBilling(config: StatConfig) {
     const url = config.billingUrl;
     const key = config.billingKey;
+    const billingApp = config.billingApp;
     if (!url || !key) {
         console.log(`billing url or key not set [${url}] [${key}]`)
         return
@@ -221,6 +222,7 @@ async function initBilling(config: StatConfig) {
     const keyJsonStr = Buffer.from(key, 'base64').toString()
     console.log(`key json str`, keyJsonStr)
     initWeb3payClient(url, key, 1_000)
+    await initWeb3payVipClient(config.conflux.url, billingApp,);
     console.log(`using billing ${url}, now test...`)
     try {
         const result = await billing('/', true, key)

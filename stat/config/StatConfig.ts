@@ -71,6 +71,7 @@ export interface StatConfig{
     apiPort: number;
     billingUrl: string;
     billingKey: string;
+    billingApp: string;
     conflux: ConfluxOption; // chain rpc node
     ether: EtherOption;
     cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
