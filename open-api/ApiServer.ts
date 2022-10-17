@@ -222,7 +222,7 @@ async function initBilling(config: StatConfig) {
     const keyJsonStr = Buffer.from(key, 'base64').toString()
     console.log(`key json str`, keyJsonStr)
     initWeb3payClient(url, key, 1_000)
-    await initWeb3payVipClient(config.conflux.url, billingApp,);
+    await initWeb3payVipClient(config.ether.url, billingApp,);
     console.log(`using billing ${url}, now test...`)
     try {
         // const result = await billing('/', true, key)
