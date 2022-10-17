@@ -383,7 +383,7 @@ async function fetchJson(contract: string, tokenId: string, is1155: boolean) {
         if (e.code === 'ECONNRESET' || e.code === 'ENOTFOUND' || e.code === 'ECONNREFUSED'
             || e.code === 'ECONNABORTED'
             || e.code ==  "Transaction reverted"
-            || e.code == 404 || e.code == 429
+            || e.code == 404 || e.code == 429 || e.code == 503
         ) { //
             console.log(`known error ${e.code} ${e.message || ''}, ${contract} ${tokenId} type ${is1155 ? '1155':'721'} ${tokenURI}`)
             return {uri: tokenURI, content: '', error: `${e.code} ${e.message || ''}`}
