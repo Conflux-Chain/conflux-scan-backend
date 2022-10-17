@@ -32,7 +32,7 @@ import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
-import {billing, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
+import {billing, getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
 import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 
 const Koa = require('koa');
@@ -225,14 +225,16 @@ async function initBilling(config: StatConfig) {
     await initWeb3payVipClient(config.conflux.url, billingApp,);
     console.log(`using billing ${url}, now test...`)
     try {
-        const result = await billing('/', true, key)
-        if (result.code == 0) {
-            console.log(`test billing ok`, result)
-        } else {
-            console.log(`test billing , result :`, result)
-        }
+        // const result = await billing('/', true, key)
+        // if (result.code == 0) {
+        //     console.log(`test billing ok`, result)
+        // } else {
+        //     console.log(`test billing , result :`, result)
+        // }
+        const result = await getVipInfo(billingApp)
+        console.log(`get vip info test:`, result);
     } catch (e) {
-        console.log(`test billing fail:`, e)
+        console.log(`test web3pay fail:`, e)
     }
 }
 export function initApiServer() {
