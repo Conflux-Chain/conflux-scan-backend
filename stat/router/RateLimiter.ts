@@ -107,7 +107,7 @@ export async function checkApiKey(path: string, key:string, dryRun = false) {
         // const result = await billing(path, dryRun, key)
         const account = decodeApiKey(getWeb3pay().appContract.address, key, true);
         const vipInfo = await getVipInfo(account);
-        const expireSecond = vipInfo.expireAt.toNumber();
+        const expireSecond = vipInfo.expireAt;
         if (expireSecond * 1000 < Date.now() && expireSecond > 0) {
             return {ok:true, vipInfo};
         }
