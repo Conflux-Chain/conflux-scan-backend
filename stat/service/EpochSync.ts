@@ -47,6 +47,7 @@ const TOKEN_TRANSFER_TOPICS = [[ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_
 const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
 const SELECTOR_DESTROY = '0x00f55d9d';
 const {abi: ABI_ADMIN_CONTROL} = require("./abi/AdminControl");
+const REGEX_CODE_EIP1167 = new RegExp(/^0x363d3d373d3d3d363d73[0-9a-f]{40}5af43d82803e903d91602b57fd5bf3$/);
 
 const POCKET_ARRAY = ['gas_payment', 'storage_collateral', 'sponsor_balance_for_gas', 'sponsor_balance_for_collateral',
     'staking_balance', 'balance'];
@@ -186,6 +187,11 @@ export class EpochSync extends SyncBase{
             const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
             const address = `0x${hex40.hex}`;
             const codeHash = traceCreate.codeHash;
+            const isEIP1167 = await this.verifyMinimalProxy({address}).catch(e => {
+                console.log(`[${address}]epoch-sync.minimalVerify`, e);
+                return false;
+            });
+            if(isEIP1167) continue;
             await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
         }
 
@@ -1129,6 +1135,38 @@ export class EpochSync extends SyncBase{
             {id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
                 updatedAt: createdAt});
         await ContractVerify.create(matchRecord).catch(() => undefined);
+    }
+
+    public async verifyMinimalProxy({address}): Promise<boolean> {
+        const {
+            app: { cfx },
+        } = this;
+
+        let isEIP1167 = false;
+        const code = await cfx.getCode(address);
+        if(!REGEX_CODE_EIP1167.test(code)) {
+            return isEIP1167;
+        }
+
+        isEIP1167 = true;
+        const implementation = toBase32(`0x${code.substr(22, 40)}`);
+        const implVerify = await ContractVerify.findOne({where: {base32: implementation, verifyResult: true},
+            order: [['updatedAt', 'ASC']], raw: true});
+        const now = new Date();
+        const base32 = toBase32(address);
+        const proxyPattern = 'Minimal Proxy Contract';
+        const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
+        const verify = {base32, proxy: true, implementation, proxyPattern, codeHash, createdAt: now, updatedAt: now};
+
+        let proxyVerify;
+        if(!implVerify) {
+            proxyVerify = lodash.assign(verify, {name: '__MinimalProxy__'});
+        } else{
+            proxyVerify = lodash.assign(implVerify, verify, {id: undefined, similarMatch: undefined, guid: undefined});
+        }
+        await ContractVerify.create(proxyVerify).catch(() => undefined);
+
+        return isEIP1167;
     }
 
     // ----------------------------- sync backward ------------------------------

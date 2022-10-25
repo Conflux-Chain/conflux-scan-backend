@@ -159,6 +159,8 @@ export class ContractQuery {
             saveAbiInfo(abi).catch(e => console.log(`[${address}]updateVerify.saveAbiInfo`, e));
             await this.linkVerify({address, codeHash: dbVerify.codeHash})
                 .catch(e => console.log(`[${address}]updateVerify.linkVerify`, e));
+            await this.verifyMinimalProxy({address, implVerifyId: dbVerify.id})
+                .catch(e => console.log(`[${address}]updateVerify.minimalVerify`, e));
         }
         logger?.info({ src: `[${address}]updateVerify`, updateResult: `${JSON.stringify(result)}` });
 
@@ -204,6 +206,25 @@ export class ContractQuery {
                     updatedAt: createdAt });
             await ContractVerify.create(matchRecord).catch(() => undefined);
         }
+    }
+
+    private async verifyMinimalProxy({address, implVerifyId}) {
+        const base32 = toBase32(address);
+        const dbVerify = await ContractVerify.findOne({
+            where: {implementation: base32, verifyResult: false, proxyPattern: 'Minimal Proxy Contract'},
+            order: [['updatedAt', 'ASC']],
+            raw: true
+        });
+        if(!dbVerify){
+            return;
+        }
+
+        const implVerify = await ContractVerify.findOne({where: {id: implVerifyId}, raw: true});
+        const proxyVerify = lodash.pick(dbVerify, ['base32',
+            'proxy', 'implementation', 'proxyPattern', 'codeHash', 'similarMatch', 'guid',
+            'taskStatus', 'notifyStatus', 'createdAt']);
+        const verify = lodash.assign(implVerify, proxyVerify, {updatedAt: new Date()});
+        await ContractVerify.update(verify, {where: {id: dbVerify.id}}).catch(() => undefined);
     }
 
     public async exactBytecode({address, constructorArgs}) {
