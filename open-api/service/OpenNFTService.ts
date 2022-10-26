@@ -65,6 +65,20 @@ export async function listNFTTokens(ctx) {
     setBody(ctx, data)
 }
 
+export async function listNFTTokensByFts(ctx) {
+    const {nftName} = ctx.request.query;
+    if (nftName === undefined) {
+        throw new Error(`Invalid parameter <nftName> with value [${nftName}], nftName is required.`)
+    }
+
+    const data = await getApiService().nftCheckerService.getNftTokensByFtsForOpenApi({nftName});
+    delete data.total;
+    if (StatApp.isEVM) {
+        data?.list?.forEach(row => {row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});
+    }
+    setBody(ctx, data)
+}
+
 function genSeqId(url){
     const plain = `${url}${Date.now()}${Math.floor(Math.random() * 1000)}`;
     const random = sign.keccak256(Buffer.from(plain)).toString('hex');

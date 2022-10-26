@@ -10,6 +10,7 @@ import {AddrCfxTransferHandler} from "../streamstat/business/AddrCfxTransferHand
 import {DailyCfxTransferHandler} from "../streamstat/business/DailyCfxTransferHandler";
 import {DailyTokenTransferHandler} from "../streamstat/business/DailyTokenTransferHandler";
 import {MinerBlockHandler} from "../streamstat/business/MinerBlockHandler";
+import {sleep} from "./ProcessTool";
 
 let config:StatConfig;
 let cfx:Conflux;
@@ -54,6 +55,17 @@ async function run() {
             config.statDailyCfxTransfer && (await dailyCfxTransferHandler.schedule());
             config.statDailyTokenTransfer && (await dailyTokenTransferHandler.schedule());
         }
+    }
+    if(type === 2){
+        const testKey = 'testKey';
+        let r = await RedisWrap.set(testKey, '888', 'EX', 1);
+        console.log(`r------${JSON.stringify(r)}`);
+        const v1 = await RedisWrap.get(testKey);
+        console.log(`v1------${JSON.stringify(v1)}`);
+
+        await sleep(2000);
+        const v2 = await RedisWrap.get(testKey)
+        console.log(`redis test after 2 seconds: ${testKey} = [${v2}]`)
     }
 }
 

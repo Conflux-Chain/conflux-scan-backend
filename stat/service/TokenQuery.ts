@@ -3,13 +3,12 @@ import {format} from 'js-conflux-sdk';
 import {Op, QueryTypes, Sequelize} from 'sequelize';
 import {DailyToken, Token} from "../model/Token";
 import {decodeUtf8} from "./tool/StringTool";
-import {Hex40Map, makeId} from "../model/HexMap";
+import {Hex40Map} from "../model/HexMap";
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {ContractVerify} from "../model/ContractVerify";
 import {Erc20Transfer, T_ADDRESS_ERC20TRANSFER} from "../model/Erc20Transfer";
 import {Erc721Transfer, T_ADDRESS_ERC721_TRANSFER} from "../model/Erc721Transfer";
-// import {Erc777Transfer} from "../model/Erc777Transfer";
 import {Erc1155Transfer, T_ADDRESS_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {TokenBalance} from "../model/Balance";
@@ -17,9 +16,9 @@ import {StatApp} from "../StatApp";
 import {Desensitizer} from "./Desensitizer";
 import {CONST} from "./common/constant"
 import {EpochSync} from "./EpochSync";
+import {Errors} from "./common/LogicError";
 
 const lodash = require('lodash');
-/*const CONST = require('./common/constant');*/
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
 
 export class TokenQuery {
@@ -390,23 +389,16 @@ export class TokenQuery {
             app: {tokenTool, confluxSDK},
         } = this;
 
-        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
-        const addressId = hex40?.id;
-
         const toolkit = tokenTool || confluxSDK;
-        let [tokenInfo, interface721, interface1155, transfer20, transfer721, transfer1155] = await Promise.all([
+        let [tokenInfo, interface721, interface1155, typeInfo] = await Promise.all([
             toolkit.getToken(base32),
             toolkit.supportsInterface(base32, EpochSync.erc721Interface),
             toolkit.supportsInterface(base32, EpochSync.erc1155Interface),
-            Erc20Transfer.findOne({ where: { contractId: addressId }}),
-            Erc721Transfer.findOne({ where: { contractId: addressId }}),
-            Erc1155Transfer.findOne({ where: { contractId: addressId }}),
+            TokenQuery.detectTokenType({base32}),
         ]);
 
-        let type;
-        if(transfer20)  type = CONST.TRANSFER_TYPE.ERC20;
-        if(transfer721)  type = CONST.TRANSFER_TYPE.ERC721;
-        if(transfer1155)  type = CONST.TRANSFER_TYPE.ERC1155;
+        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
+        let type = typeInfo?.type;
 
         const result = {base32, hex: hex40?.hex, type};
         const tokenCondition = `
@@ -421,12 +413,36 @@ export class TokenQuery {
         if(!tokenInfo?.symbol){
             return lodash.defaults(result, {reason: `token symbol not exist. ${tokenCondition}`});
         }
-        if(!transfer20 && !transfer721 && !transfer1155){
+        if(!type){
             return lodash.defaults(result, {reason: `token transfer record not exist. ${tokenCondition}`});
         }
         if(!interface721 && !interface1155){
             return lodash.defaults(result, {reason: `not support ERC165. ${tokenCondition}`});
         }
         return result;
+    }
+
+    public static async detectTokenType({base32 = undefined, hex40id = undefined}){
+        if(!base32 && !hex40id) {
+            throw new Errors.ParameterError(`detect token type error`);
+        }
+
+        if(!hex40id){
+            const hexBean = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
+            hex40id = hexBean?.id;
+        }
+
+        let [transfer20, transfer721, transfer1155] = await Promise.all([
+            Erc20Transfer.findOne({ where: { contractId: hex40id }}),
+            Erc721Transfer.findOne({ where: { contractId: hex40id }}),
+            Erc1155Transfer.findOne({ where: { contractId: hex40id }}),
+        ]);
+
+        let type;
+        if(transfer20)  type = CONST.TRANSFER_TYPE.ERC20;
+        if(transfer721)  type = CONST.TRANSFER_TYPE.ERC721;
+        if(transfer1155)  type = CONST.TRANSFER_TYPE.ERC1155;
+
+        return {hex40id, type};
     }
 }

@@ -24,6 +24,7 @@ import {AddressTransfer} from "../model/AddrTransfer";
 import {PruneType} from "../model/PruneInfo";
 import {Errors} from "./common/LogicError";
 import {sleep} from "./tool/ProcessTool";
+import {NftMeta} from "./nftchecker/NftMetaStorage";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -64,6 +65,7 @@ export class EpochSync extends SyncBase{
     public static SYNC_TOKEN_ICON = true;
     public static SYNC_VERIFY_LINK = true;
     public static SYNC_EVM_ADDR = true;
+    public static SYNC_TRANSFERRED_NFT = true;
 
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
@@ -103,6 +105,7 @@ export class EpochSync extends SyncBase{
 
         const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
             blockArray, eventLogInfo, traceArray);
+        const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
 
         PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
@@ -115,7 +118,7 @@ export class EpochSync extends SyncBase{
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
             modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray,
-                adminDestroyTxArray, addrTransferArray},
+                adminDestroyTxArray, addrTransferArray, transferredNftArray},
         };
     }
 
@@ -140,6 +143,10 @@ export class EpochSync extends SyncBase{
             EpochSync.SYNC_TRANSFER && await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx});
             EpochSync.SYNC_DESTROY && await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
                 updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],
+                transaction: dbTx,
+            });
+            EpochSync.SYNC_TRANSFERRED_NFT && await NftMeta.bulkCreate(modelData.transferredNftArray, {
+                updateOnDuplicate:["epochNumber"],
                 transaction: dbTx,
             });
         });
@@ -810,6 +817,31 @@ export class EpochSync extends SyncBase{
             (fromPocket !== 'balance' ? fromPocket : toPocket);
 
         return this.NAME_TYPE_MAP[typeName].code;
+    }
+
+    // ---------------------------- transferred nft -----------------------------
+    public getTransferredNftArray(epochNumber, addrTransferArray){
+        const {
+            ADDRESS_TRANSFER_TYPE: {ERC721, ERC1155}
+        } = CONST;
+
+        const nftInfo = {};
+        addrTransferArray.filter(t => t.type === ERC721.code|| t.type === ERC1155.code).forEach(t => {
+            let set = nftInfo[t['contractId']];
+            if(!set) {
+                set = new Set();
+                nftInfo[t['contractId']] = set;
+            }
+            set.add(t['tokenId']);
+        });
+
+        const nftArray = [];
+        Object.keys(nftInfo).forEach(contractId => {
+            const tokenIdSet = nftInfo[contractId];
+            tokenIdSet.forEach(tokenId => nftArray.push({epochNumber, contractId: Number(contractId), tokenId}));
+        });
+
+        return nftArray;
     }
 
     // ------------------------------ trace create ------------------------------

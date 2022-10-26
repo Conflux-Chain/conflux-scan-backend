@@ -10,15 +10,13 @@ import {Errors} from "../common/LogicError";
 import {CONST} from "../common/constant"
 import {IPFSGatewayArray} from "../../config/IPFSGateway";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
-import {Erc20Transfer} from "../../model/Erc20Transfer";
-import {Erc1155Transfer} from "../../model/Erc1155Transfer";
-import {getMetaFromDB, requestUpdateNftMetaSafe} from "./NftMetaStorage";
 import {StatApp} from "../../StatApp";
+import {TokenQuery} from "../TokenQuery";
+import {MetaStatus, NftMeta} from "./NftMetaStorage";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
-const {put,get, clear} = require('./MetaInfoCache')
 
 export class NFTPreviewService {
     private app;
@@ -47,21 +45,19 @@ export class NFTPreviewService {
         const address = toBase32(contractAddress) as string;
         let token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
         if(!token) {
-            token = await this.detectTokenType(address) as Token;
-        }
-        if (forceFlush && token.hex40id) {
-            requestUpdateNftMetaSafe(token.hex40id, tokenId.toString()).then();
+            token = await TokenQuery.detectTokenType({base32: address}) as Token;
         }
 
         let detail;
         if(withDetail){
-            detail = await this.getDetailInfo({address, hex40id: token.hex40id, tokenId, type: token.type});
+            detail = await this.getNFTDetail0({address, hex40id: token.hex40id, tokenId, type: token.type});
         }
 
         let nftInfo;
         try{
             const start = Date.now();
-            nftInfo = await this.getNFTInfo0({address, tokenId, type: token.type, gateway: token.ipfsGateway, forceFlush});
+            nftInfo = await this.getNFTInfo0({address, hex40id: token.hex40id, tokenId, type: token.type,
+                gateway: token.ipfsGateway, forceFlush});
             nftInfo.externalMs = Date.now() - start;
             lodash.assign(nftInfo, detail);
         } catch(e){
@@ -87,59 +83,22 @@ export class NFTPreviewService {
         return this.getNFTInfo({contractAddress, tokenId, withDetail: true, forceFlush});
     }
 
-    private async getDetailInfo({address, hex40id, tokenId, type}){
-        const hex = format.hexAddress(address);
-
-        const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
-            id from hex40 where hex = ?));`;
-        const creator = await Hex40Map.sequelize
-            .query(sql, {type: QueryTypes.SELECT, replacements: [hex.substr(2)]})
-            .then(hexBeanArray => {
-                return hexBeanArray?.length ? toBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
-            });
-
-        const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) 
-            and tokenId = ?;`;
-        const minter = await NftMint.sequelize
-            .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`]})
-            .then(async nftMinterArray => {
-                if(!nftMinterArray?.length) return undefined;
-                const nftMinter = nftMinterArray[0];
-                const ownerHex = await Hex40Map.findOne({where: {id: nftMinter['toId']}});
-                const owner = toBase32(`0x${ownerHex['hex']}`);
-                const mintTime = nftMinter['createdAt'];
-                return {owner, mintTime};
-            });
-
-        let owner;
-        if(type === CONST.TRANSFER_TYPE.ERC721){
-            const ownerId = await Erc721Transfer.findOne({
-                where: {contractId: hex40id, tokenId: `${tokenId}`},
-                order: [['epoch', 'DESC']],
-                limit: 1,
-                raw: true
-            }).then(item => item.toId);
-            const ownerHex = await Hex40Map.findOne({where: {id: ownerId}});
-            owner = toBase32(`0x${ownerHex['hex']}`);
-        }
-
-        return {creator, ... minter, owner, type};
-    }
-
     private async getNFTInfo0 ({
         address,
+        hex40id,
         tokenId,
         type,
         gateway,
         forceFlush = false,
     }: {
-        address: string;
-        tokenId: BigInt;
-        type: string;
-        gateway: string;
-        forceFlush?: boolean;
+        address: string,
+        hex40id: number,
+        tokenId: BigInt,
+        type: string,
+        gateway: string,
+        forceFlush?: boolean,
     }): Promise<NFTInfoType> {
-        const tokenBasic = { address, tokenId, gateway, forceFlush };
+        const tokenBasic = { address, hex40id, tokenId, gateway, forceFlush };
         switch (address) {
             case NFTMap.confluxGuardian.address:
                 return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
@@ -206,7 +165,45 @@ export class NFTPreviewService {
         }
     };
 
-    // get NFT name
+    private async getNFTDetail0({address, hex40id, tokenId, type}){
+        const hex = format.hexAddress(address);
+
+        const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
+            id from hex40 where hex = ?));`;
+        const creator = await Hex40Map.sequelize
+            .query(sql, {type: QueryTypes.SELECT, replacements: [hex.substr(2)]})
+            .then(hexBeanArray => {
+                return hexBeanArray?.length ? toBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
+            });
+
+        const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) 
+            and tokenId = ?;`;
+        const minter = await NftMint.sequelize
+            .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`]})
+            .then(async nftMinterArray => {
+                if(!nftMinterArray?.length) return undefined;
+                const nftMinter = nftMinterArray[0];
+                const ownerHex = await Hex40Map.findOne({where: {id: nftMinter['toId']}});
+                const owner = toBase32(`0x${ownerHex['hex']}`);
+                const mintTime = nftMinter['createdAt'];
+                return {owner, mintTime};
+            });
+
+        let owner;
+        if(type === CONST.TRANSFER_TYPE.ERC721){
+            const ownerId = await Erc721Transfer.findOne({
+                where: {contractId: hex40id, tokenId: `${tokenId}`},
+                order: [['epoch', 'DESC']],
+                limit: 1,
+                raw: true
+            }).then(item => item.toId);
+            const ownerHex = await Hex40Map.findOne({where: {id: ownerId}});
+            owner = toBase32(`0x${ownerHex['hex']}`);
+        }
+
+        return {creator, ... minter, owner, type};
+    }
+
     private async getNFTName ({
          address,
          meta,
@@ -363,6 +360,7 @@ export class NFTPreviewService {
 
     private async getNFTImage({
         address,
+        hex40id,
         tokenId,
         gateway,
         method = 'uri',
@@ -371,6 +369,7 @@ export class NFTPreviewService {
         forceFlush = false
     }: {
         address: string,
+        hex40id: number,
         tokenId: BigInt,
         gateway?: string,
         method?: string,
@@ -388,42 +387,35 @@ export class NFTPreviewService {
         let imageDesc;
 
         try {
-            const nftObj = this.getNFTCacheInfo({ address, tokenId });
+            /*const nftObj = this.getNFTCacheInfo({ address, tokenId });*/
+            const nftObj = await this.getCache(address, hex40id, String(tokenId), {method, gateway});
             if (!forceFlush && nftObj) {
+                console.log(`hit cache contractId ${hex40id} tokenId ${tokenId}`);
                 const cacheInfo = {imageMinHeight: height};
                 return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));
             }
-            if (!forceFlush) {
-                const {uri: dbUri, content, status: dbStatus} = await getMetaFromDB(address, tokenId.toString());
-                if (dbStatus === 'ok') {
-                    rawUrl = dbUri;
-                    rawMeta = content;
-                    gatewayUrl = this.replaceGateway({gateway, rawUrl});
-                }
-            }
-            if (!rawUrl){ // rawUrl is set when hit meta in db
-                // get uri
-                const contract = await this.cfx.Contract({abi, address});
-                rawUrl = await contract[method](tokenId)
-                .catch(e => { throw new Errors.CallNFTContractError(
-                    JSON.stringify(lodash.assign(err, { message: `call contract method ${method}(${tokenId}) occurs ${e.message}`}))
-                )});
-                rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
-                gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
-                // get metadata
-                if (uriFormatter) {
-                    rawMeta = gatewayUrl;
-                } else if ((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')) {
-                    rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
-                } else {
-                    const resp = await superagent.get(gatewayUrl)
-                    .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
-                    .catch(e => {throw new Errors.QueryNFTMetadataError(
-                        JSON.stringify(lodash.assign(err, {message: `request third-party tokenURI ${gatewayUrl} occurs ${e.message}, try again later`}))
-                    )});
-                    rawMeta = resp.text;
-                }
+            // get uri
+            const contract = await this.cfx.Contract({abi, address});
+            rawUrl = await contract[method](tokenId)
+            .catch(e => { throw new Errors.CallNFTContractError(
+                JSON.stringify(lodash.assign(err, { message: `call contract method ${method}(${tokenId}) occurs ${e.message}`}))
+            )});
+            rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
+            gatewayUrl = this.replaceGateway({gateway, rawUrl});
+
+            // get metadata
+            if (uriFormatter) {
+                rawMeta = gatewayUrl;
+            } else if ((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')) {
+                rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
+            } else {
+                const resp = await superagent.get(gatewayUrl)
+                .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
+                .catch(e => {throw new Errors.QueryNFTMetadataError(
+                    JSON.stringify(lodash.assign(err, {message: `request third-party tokenURI ${gatewayUrl} occurs ${e.message}, try again later`}))
+                )});
+                rawMeta = resp.text;
             }
             try{
                 rawMeta = JSON.parse(rawMeta);
@@ -456,48 +448,13 @@ export class NFTPreviewService {
             throw e;
         }
 
-        const preview = this.buildNFTPreview({imageUri, imageName, imageDesc, imageHeight: height,
+        await this.setCache(hex40id, String(tokenId), rawUrl, rawMeta);
+        return this.buildNFTPreview({imageUri, imageName, imageDesc, imageHeight: height,
+            method, tokenId, rawUrl, gatewayUrl, rawMeta});
+        /*const preview = this.buildNFTPreview({imageUri, imageName, imageDesc, imageHeight: height,
             method, tokenId, rawUrl, gatewayUrl, rawMeta});
         this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail: preview.detail});
-        return preview;
-    };
-
-    private buildNFTPreview({imageUri, imageName, imageDesc, imageHeight = undefined,
-        method, tokenId, rawUrl, gatewayUrl, rawMeta}){
-        const  detail = {
-            funcCall: `${method}(${tokenId})`,
-            tokenUri: {raw: rawUrl, gateway: gatewayUrl !== rawUrl ? gatewayUrl : ''},
-            metadata: rawMeta
-        };
-
-        return { imageUri, imageName, imageDesc,imageMinHeight: imageHeight, detail};
-    }
-
-    private getNFTCacheInfo({ address, tokenId}:
-        { address: string, tokenId: BigInt }
-    ) {
-        const nftJson = get(address, tokenId)
-        if (nftJson) {
-            const nftObj = JSON.parse(nftJson);
-            if (nftObj.timeout > +new Date()) {
-                return nftObj;
-            } else {
-                clear(address, tokenId)
-                return null;
-            }
-        }
-        return null;
-    };
-
-    private setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail}:
-        { address: string, tokenId: BigInt, imageUri?: string, imageName?: any, imageDesc?: any, detail?: any }
-    ) {
-        if (imageUri) {
-            put(address, tokenId,
-                JSON.stringify({
-                    address, tokenId, imageUri, imageName, imageDesc, detail, timeout: +new Date() + 1000 * 60 * 3
-                }));
-        }
+        return preview;*/
     };
 
     private replaceGateway({gateway, rawUrl}){
@@ -529,22 +486,80 @@ export class NFTPreviewService {
         return uri;
     }
 
-    private async detectTokenType(base32){
-        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
-        const hex40id = hex40?.id;
+    private buildNFTPreview({imageUri, imageName, imageDesc, imageHeight = undefined,
+        method, tokenId, rawUrl, gatewayUrl, rawMeta}){
+        const  detail = {
+            funcCall: `${method}(${tokenId})`,
+            tokenUri: {raw: rawUrl, gateway: gatewayUrl !== rawUrl ? gatewayUrl : ''},
+            metadata: rawMeta
+        };
 
-        let [transfer20, transfer721, transfer1155] = await Promise.all([
-            Erc20Transfer.findOne({ where: { contractId: hex40id }}),
-            Erc721Transfer.findOne({ where: { contractId: hex40id }}),
-            Erc1155Transfer.findOne({ where: { contractId: hex40id }}),
-        ]);
-
-        let type;
-        if(transfer20)  type = CONST.TRANSFER_TYPE.ERC20;
-        if(transfer721)  type = CONST.TRANSFER_TYPE.ERC721;
-        if(transfer1155)  type = CONST.TRANSFER_TYPE.ERC1155;
-        return {hex40id, type};
+        return { imageUri, imageName, imageDesc,imageMinHeight: imageHeight, detail};
     }
+
+    private async getCache(address: string, contractId: number, tokenId: string,
+        options: {method: string, gateway: string}) {
+        const nftMeta = await NftMeta.findOne({where: {contractId, tokenId}, raw: true});
+        if(!nftMeta || nftMeta.status !== MetaStatus.SUCCESS){
+            return null;
+        }
+
+        const {uri: tokenUri, content: metadataJson} = nftMeta;
+        const metadata = JSON.parse(metadataJson);
+        const gatewayTokenUri = this.replaceGateway({gateway: options.gateway, rawUrl: tokenUri});
+        const gatewayImageUri = this.replaceGateway({gateway: options.gateway, rawUrl: metadata['image']});
+
+        return {
+            imageUri: gatewayImageUri,
+            imageName: await this.getNFTName({address, meta: metadata}) || {},
+            imageDesc: metadata['description'],
+            detail: {
+                funcCall: `${options.method}(${tokenId})`,
+                tokenUri: {raw: tokenUri, gateway: gatewayTokenUri !== tokenUri ? gatewayTokenUri : ''},
+                metadata
+            }
+        }
+    }
+
+    private async setCache(contractId: number, tokenId: string, uri: string, metadata: string) {
+        console.log(`add cache contractId ${contractId} tokenId ${tokenId} start`);
+        NftMeta.update({
+            status: MetaStatus.SUCCESS,
+            retry: 0,
+            errorType: 0,
+            error: '',
+            uri,
+            content: JSON.stringify(metadata)
+        }, {where: {contractId, tokenId}}).then();
+        console.log(`add cache contractId ${contractId} tokenId ${tokenId} end nftObj ${JSON.stringify(metadata)}`);
+    }
+
+    /*private getNFTCacheInfo({ address, tokenId}:
+        { address: string, tokenId: BigInt }
+    ) {
+        const nftJson = get(address, tokenId)
+        if (nftJson) {
+            const nftObj = JSON.parse(nftJson);
+            if (nftObj.timeout > +new Date()) {
+                return nftObj;
+            } else {
+                clear(address, tokenId)
+                return null;
+            }
+        }
+        return null;
+    };*/
+
+    /*private setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail}:
+        { address: string, tokenId: BigInt, imageUri?: string, imageName?: any, imageDesc?: any, detail?: any }
+    ) {
+        if (imageUri) {
+            put(address, tokenId,
+                JSON.stringify({
+                    address, tokenId, imageUri, imageName, imageDesc, detail, timeout: +new Date() + 1000 * 60 * 3
+                }));
+        }
+    };*/
 }
 
 export type NFTInfoType = {
