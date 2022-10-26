@@ -208,23 +208,25 @@ export class ContractQuery {
         }
     }
 
-    private async verifyMinimalProxy({address, implVerifyId}) {
+    public async verifyMinimalProxy({address, implVerifyId}) {
         const base32 = toBase32(address);
-        const dbVerify = await ContractVerify.findOne({
+        const proxyVerifyArray = await ContractVerify.findAll({
             where: {implementation: base32, verifyResult: false, proxyPattern: 'Minimal Proxy Contract'},
             order: [['updatedAt', 'ASC']],
             raw: true
         });
-        if(!dbVerify){
+        if(!proxyVerifyArray?.length){
             return;
         }
 
         const implVerify = await ContractVerify.findOne({where: {id: implVerifyId}, raw: true});
-        const proxyVerify = lodash.pick(dbVerify, ['base32',
-            'proxy', 'implementation', 'proxyPattern', 'codeHash', 'similarMatch', 'guid',
-            'taskStatus', 'notifyStatus', 'createdAt']);
-        const verify = lodash.assign(implVerify, proxyVerify, {updatedAt: new Date()});
-        await ContractVerify.update(verify, {where: {id: dbVerify.id}}).catch(() => undefined);
+        for(const dbVerify of proxyVerifyArray) {
+            const proxyVerify = lodash.pick(dbVerify, ['id', 'base32',
+                'proxy', 'implementation', 'proxyPattern', 'codeHash', 'similarMatch', 'guid',
+                'taskStatus', 'notifyStatus', 'createdAt']);
+            const verify = lodash.assign(implVerify, proxyVerify, {updatedAt: new Date()});
+            await ContractVerify.update(verify, {where: {id: dbVerify.id}}).catch((error) => console.log(error));
+        }
     }
 
     public async exactBytecode({address, constructorArgs}) {

@@ -156,6 +156,19 @@ async function fixConstructorArgsForSimilarVerify() {
     console.log(`fixConstructorArgsForSimilarVerify------done!`);
 }
 
+async function fixMinimalProxyContract() {
+    const addressArray = [
+        'net71:aacw3z94b49etazfs9suyyjtrk388s7d868nars6sm',
+    ];
+    for(const address of addressArray) {
+        const implVerify = await ContractVerify.findOne({
+            where: {base32: address, verifyResult: true},
+            order: [['updatedAt', 'ASC']],
+            raw: true
+        });
+        await contractQuery.verifyMinimalProxy({address, implVerifyId: implVerify.id});
+    }
+}
 
 async function run() {
     await init();
@@ -170,6 +183,9 @@ async function run() {
     }
     if(type === 4) {
         await fixConstructorArgsForSimilarVerify();
+    }
+    if(type === 5) {
+        await fixMinimalProxyContract();
     }
 }
 const args = process.argv.slice(2)
