@@ -109,7 +109,7 @@ export async function checkApiKey(path: string, key:string, dryRun = false) {
         const account = decodeApiKey(app, key, true);
         const vipInfo = await getVipInfo(account);
         const expireSecond = vipInfo.expireAt;
-        if (expireSecond * 1000 < Date.now() && expireSecond > 0) {
+        if (expireSecond * 1000 > Date.now()) {
             return {ok:true, result: {...vipInfo, account, app, now: Math.floor(Date.now()/1000)}};
         }
         // console.log(`billing fail, path ${path} , key ${key}. result:`, result)
