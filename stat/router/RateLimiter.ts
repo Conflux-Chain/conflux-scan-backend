@@ -105,14 +105,16 @@ export async function checkApiKey(path: string, key:string, dryRun = false) {
     }
     try {
         // const result = await billing(path, dryRun, key)
-        const account = decodeApiKey(getWeb3pay().appContract.address, key, true);
+        const app = getWeb3pay().appContract.address;
+        const account = decodeApiKey(app, key, true);
         const vipInfo = await getVipInfo(account);
         const expireSecond = vipInfo.expireAt;
-        if (expireSecond * 1000 < Date.now() && expireSecond > 0) {
-            return {ok:true, vipInfo};
+        const ret = {ok:false, result: {...vipInfo, account, app, now: Math.floor(Date.now()/1000)}}
+        if (expireSecond * 1000 > Date.now()) {
+            ret.ok = true;
         }
         // console.log(`billing fail, path ${path} , key ${key}. result:`, result)
-        return {ok:false, result: vipInfo}
+        return ret;
     } catch (e) {
         console.log(`check api key fail:`, e)
         return {ok:false, result:{error: e}};
