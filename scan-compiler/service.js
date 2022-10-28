@@ -66,7 +66,7 @@ class SolCompileService {
     });
   }
 
-  async compile({ fileName, sourceCode, compilerType, compilerVersion, optimizeRuns, libraries }) {
+  async compile({ fileName, sourceCode, compilerType, compilerVersion, optimizeRuns, libraries, evmVersion }) {
     const {
       app: { tool, type, fileMap, logger },
     } = this;
@@ -81,8 +81,9 @@ class SolCompileService {
       sources: { [fileName]: { content: sourceCode } },
       settings: {
         optimizer: { enabled: Number.isInteger(optimizeRuns), runs: optimizeRuns },
-        libraries,
         outputSelection: { '*': { '*': ['*'] } },
+        libraries: Object.keys(libraries).length ? { [fileName]: libraries } : undefined,
+        evmVersion: evmVersion ? evmVersion : undefined,
       },
     };
     if(compilerType === 'solidity-standard-json-input') {
@@ -175,7 +176,7 @@ class SolCompileService {
 
   // --------------------------------------------------------------------------
   async verifyPlus({ address, creationData, deployedBytecode, name, fileName, sourceCode, compilerType,
-    compilerVersion, optimizeRuns }) {
+    compilerVersion, optimizeRuns, libraries, evmVersion }) {
     const {
       app: {CONST: {MATCH_STATUS}, error, type, logger},
     } = this;
@@ -198,7 +199,8 @@ class SolCompileService {
     }
 
     const metadata = await this.extractMetadata(deployedBytecode).catch(e => {throw new error.ExtractMetadataError(e)});
-    const req = {fileName, sourceCode, compilerType, compilerVersion: type.solcVersion(metadata.solc) || compilerVersion, optimizeRuns};
+    const req = {fileName, sourceCode, compilerType, compilerVersion: type.solcVersion(metadata.solc) || compilerVersion,
+      optimizeRuns, libraries, evmVersion};
     const resp = await this.compile(req).catch(e => {throw new error.CompilerError(e)});
     const {contracts, warnings, errors} = resp;
     lodash.assign(match, {compilerVersion: resp.compilerVersion, warnings, errors});

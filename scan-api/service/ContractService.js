@@ -1,7 +1,7 @@
 const lodash = require('lodash');
-// const { KV, KEY_ANNOUNCE_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 const { ContractVerify } = require('../../stat/dist/model/ContractVerify');
 const { format, sign } = require('js-conflux-sdk');
+const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
 
 class ContractService { // TODO: extends AccountService
   constructor(app) {
@@ -101,9 +101,16 @@ class ContractService { // TODO: extends AccountService
       app: { CONST, error, syncSDK, service, logger},
     } = this;
 
-    let { name, sourceCode, compilerType, compiler, optimizeRuns, license, constructorArgs } = rest;
+    let { name, sourceCode, compilerType, compiler, optimizeRuns, license, evmVersion, constructorArgs } = rest;
     sourceCode = this._rmRedundantLicense(sourceCode);
     const response = { name, sourceCode, optimizeRuns };
+    let libraries;
+    try{
+      libraries = this._checkLibrary(rest);
+      evmVersion = this._checkEVMVersion(evmVersion);
+    } catch (e){
+      return lodash.assign(response, { errors: [`${e.message}`] });
+    }
 
     const code = await service.conflux.getCode(address);
     if (code === undefined || code === '0x') {
@@ -119,15 +126,15 @@ class ContractService { // TODO: extends AccountService
     try {
       compilerType = compilerType === undefined || compilerType === null ? CONST.COMPILER_TYPE.SINGLE_FILE : compilerType;
       if (!lodash.includes(Object.values(CONST.COMPILER_TYPE), compilerType)) {
-        throw new error.QueryCreationDataError(e);
+        throw new error.ParameterError(`Compiler type ${compilerType} not supported`);
       }
       const optimizeFlag = Number.isInteger(optimizeRuns) && optimizeRuns >= 0;
       const record = await service.contractRdb.addVerify({ address, sourceCode, name, compiler: compilerType,
-        version: compiler, optimizeFlag, optimizeRuns, license, codeHash });
+        version: compiler, optimizeFlag, optimizeRuns, license, libraries, evmVersion, codeHash });
 
       const creationData = await this.getCreationData({ address }).catch(e => {throw new error.QueryCreationDataError(e)});
       const result = await syncSDK.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
-        compilerType, compilerVersion: compiler, optimizeRuns});
+        compilerType, compilerVersion: compiler, optimizeRuns, libraries, evmVersion});
       result.verifyResult = this._getVerifyResult(result.matchCode);
       result.warnings = result.warnings.map((v) => v.formattedMessage || v.message);
       result.errors = result.errors.map((v) => v.formattedMessage || v.message);
@@ -242,6 +249,49 @@ class ContractService { // TODO: extends AccountService
         matchCode === MATCH_STATUS.CREATION_FULL.matchCode ||
         matchCode === MATCH_STATUS.CREATION_PARTIAL.matchCode ||
         matchCode === MATCH_STATUS.SIMILAR.matchCode;
+  }
+
+  _checkLibrary(options) {
+    const {
+      libraryName1, libraryAddress1, libraryName2, libraryAddress2,
+      libraryName3, libraryAddress3, libraryName4, libraryAddress4,
+      libraryName5, libraryAddress5, libraryName6, libraryAddress6,
+      libraryName7, libraryAddress7, libraryName8, libraryAddress8,
+      libraryName9, libraryAddress9, libraryName10, libraryAddress10
+    } = options;
+
+    const libMap = {
+      library1: {name: libraryName1, address: libraryAddress1},
+      library2: {name: libraryName2, address: libraryAddress2},
+      library3: {name: libraryName3, address: libraryAddress3},
+      library4: {name: libraryName4, address: libraryAddress4},
+      library5: {name: libraryName5, address: libraryAddress5},
+      library6: {name: libraryName6, address: libraryAddress6},
+      library7: {name: libraryName7, address: libraryAddress7},
+      library8: {name: libraryName8, address: libraryAddress8},
+      library9: {name: libraryName9, address: libraryAddress9},
+      library10: {name: libraryName10, address: libraryAddress10},
+    };
+
+    const libraries = {};
+    Object.keys(libMap).forEach(library => {
+      const {name, address} = libMap[library];
+      if ((name && !address) || (!name && address)) {
+        throw new Error(`a matching pair required, libraryName ${name} libraryAddress ${address}`);
+      }
+      if (name && address) {
+        libraries[name] = address;
+      }
+    });
+    return libraries;
+  }
+
+  _checkEVMVersion(evmVersion) {
+    evmVersion = !evmVersion ? '' : evmVersion;
+    if(evmVersion !== '' && !lodash.includes(CONST_TS.EVM_VERSION, evmVersion)) {
+      throw new Error(`EVM version ${evmVersion} not supported`);
+    }
+    return evmVersion;
   }
 
   // --------------------------------------------------------------------------

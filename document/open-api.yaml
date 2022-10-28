@@ -252,9 +252,12 @@ paths:
       requestBody:
         description: 'Verify Source Code - Source Code Submission Gist'
         content:
-          application/json:
+          application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/VerifySourcecode'
+#          application/json:
+#            schema:
+#              $ref: '#/components/schemas/VerifySourcecode'
       responses:
         200:
           description: ''
@@ -1892,7 +1895,7 @@ components:
           type: string
           required: false
           description: "leave blank for compiler default, homestead, tangerineWhistle, spuriousDragon, byzantium, constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file)"
-          default: 'istanbul'
+          default: ''
         licenseType:
           type: string
           required: true
@@ -1912,6 +1915,86 @@ components:
                                   13. GNU Affero General Public License (GNU AGPLv3)
                                   14. Business Source License (BSL 1.1)"
           default: 1
+        libraryname1:
+          type: string
+          required: false
+          description: "if applicable, a matching pair with libraryaddress1 required"
+        libraryaddress1:
+          type: string
+          required: false
+          description: "if applicable, a matching pair with libraryname1 required"
+        libraryname2:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress2:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname3:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress3:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname4:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress4:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname5:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress5:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname6:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress6:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname7:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress7:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname8:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress8:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname9:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress9:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryname10:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
+        libraryaddress10:
+          type: string
+          required: false
+          description: "if applicable, matching pair required"
     CommonResponse:
       type: object
       properties:

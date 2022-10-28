@@ -85,8 +85,8 @@ jsonrpc.method('verifyPlus',
         compilerVersion: { path: '0', type: type.str, default: 'latest' },
         optimizeRuns: { path: '0', type: type.uint },
         license: { path: '0', type: type.string },
-
         libraries: { path: '0', type: type.object },
+        evmVersion: { path: '0', type: type.string },
     }),
 
     function (options) {

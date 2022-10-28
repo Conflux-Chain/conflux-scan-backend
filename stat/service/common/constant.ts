@@ -106,6 +106,18 @@ export const CONST = {
     '14': {code: 'BSL_1_1', desc: 'Business Source License'},
   },
 
+  EVM_VERSION: [
+    'homestead',
+    'tangerineWhistle',
+    'spuriousDragon',
+    'byzantium',
+    'constantinople',
+    'petersburg',
+    'istanbul',
+    'berlin',
+    'london'
+  ],
+
   TASK_STATUS: {
     SUBMITTED: 20,
     PROCESSING: 21,
@@ -129,63 +141,6 @@ export const CONST = {
     CODE_NOT_FOUND: {matchCode: 401, matchDesc: 'code-not-found'},
     ERROR: {matchCode: 501, matchDesc: 'error'},
   },
-
-  /*ERROR: {
-    // common error
-    ParameterError:{ code: 10001, name: 'ParameterError' },
-    PermissionsError: { code: 10403, name: 'PermissionsError' },
-    AssertError: { code: 10501, name: 'AssertError' },
-    ApiBusyError: { code: 10503, name: 'ApiBusyError' },
-
-    // network error
-    UnknowError: { code: 20000, name: 'UnknownError'},
-    ResponseDataParsingError: { code: 20001, name: 'ResponseDataParsingError'},
-    RequestTimeout: { code: 20002, name: 'RequestTimeout'},
-    RequestAbort: { code: 20003, name: 'RequestAbort'},
-    NetworkError: { code: 20004, name: 'NetworkError'},
-
-    // RPC error
-    RPCCallError: { code: 30001, name: 'RPCCallError'},
-
-    // announce error
-    AnnounceTooLongError: { code: 40414, name: 'AnnounceTooLongError' },
-    SendAnnounceError: { code: 40400, name: 'SendAnnounceError' },
-    AnnouncementNotExistError: { code: 40404, name: 'AnnouncementNotExistError' },
-
-    // NFT error
-    QueryNFTError: { code: 50300, name: 'Failed to query NFT' },
-    CallNFTContractError: { code: 50301, name: 'Failed to call NFT contract' },
-    QueryNFTMetadataError: { code: 50302, name: 'Failed to query NFT metadata' },
-    ParseNFTMetadataError: { code: 50303, name: 'Failed to parse NFT metadata' },
-    QueryNFTLocalNameError: { code: 50304, name: 'Failed to query NFT local name' },
-
-    // contract error
-    QueryCreationDataError: { code: 50403, name: 'QueryCreationDataError' },
-    ContractNameError: { code: 50404, name: 'ContractNameError' },
-
-    // token error
-    QueryTokenError: { code: 50500, name: 'QueryTokenError' },
-    DetectedAsTokenError: { code: 50501, name: 'Contract not detected as a token'},
-
-    // verify error
-    CompilerError: { code: 50600, name: 'CompilerError' },
-    ContractDecompileError: { code: 50601, name: 'ContractDecompileError' },
-    ExtractMetadataError: { code: 50602, name: 'ExtractMetadataError' },
-
-    // trace error
-    TraceParsingError: { code: 60002, name: 'TraceParsingError'},
-
-    BadRequest: { code: 400, name: 'BadRequest'},
-    Unauthorized: { code: 401, name: 'Unauthorized'},
-    Forbidden: { code: 403, name: 'Forbidden'},
-    NotFound: { code: 404, name: 'NotFound'},
-    MethodNotAllowed: { code: 405, name: 'MethodNotAllowed'},
-    InternalServerError: { code: 500, name: 'InternalServerError'},
-    NotImplemented: { code: 501, name: 'NotImplemented'},
-    BadGateway: { code: 502, name: 'BadGateway'},
-    ServiceUnavailable: { code: 503, name: 'ServiceUnavailable'},
-    GatewayTimeout: { code: 504, name: 'GatewayTimeout'},
-  },*/
 
   E_SPACE_OPENAPI: {
     ACCOUNT: {

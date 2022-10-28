@@ -13,6 +13,8 @@ export interface IContractVerify{
     optimizeFlag?:boolean
     optimizeRuns?: number
     license?:string
+    libraries?: string
+    evmVersion?: string
     verifyResult?:boolean
     matchCode?:number
     matchDesc?:string
@@ -28,6 +30,8 @@ export interface IContractVerify{
     errors?:string
 }
 
+// alter table contract_verify add column libraries varchar(1024) default null after license;
+// alter table contract_verify add column evmVersion varchar(20) DEFAULT NULL after libraries;
 export class ContractVerify extends Model<IContractVerify> implements IContractVerify {
     id?: number
     base32: string
@@ -41,6 +45,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
     optimizeFlag?: boolean
     optimizeRuns?: number
     license?: string
+    libraries?: string
+    evmVersion?: string
     verifyResult?: boolean
     matchCode?: number
     matchDesc?: string
@@ -70,6 +76,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             optimizeFlag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             optimizeRuns: {type: DataTypes.INTEGER, allowNull: true,},
             license: {type: DataTypes.CHAR(255), allowNull: true},
+            libraries: {type: DataTypes.STRING(1024), allowNull: true},
+            evmVersion: {type: DataTypes.CHAR(20), allowNull: true},
             verifyResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             matchCode: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             matchDesc: {type: DataTypes.CHAR(20), allowNull: true},
@@ -105,6 +113,8 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             optimizeFlag: contract.optimizeFlag,
             optimizeRuns: contract.optimizeRuns,
             license: contract.license,
+            libraries: contract.libraries,
+            evmVersion: contract.evmVersion,
             verifyResult: contract.verifyResult,
             matchCode: contract.matchCode,
             matchDesc: contract.matchDesc,

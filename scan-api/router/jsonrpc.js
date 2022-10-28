@@ -458,6 +458,15 @@ jsonrpc.method('listLicense',
   },
 );
 
+jsonrpc.method('listEVMVersion',
+    serializeByIP(),
+    cacheFlow(60 * 1000),
+    concurrenceControl(10),
+    async () => {
+        return CONST_TS.EVM_VERSION;
+    },
+);
+
 jsonrpc.method('verifyContract',
   serializeByIP(),
   buildFlow((app) => parameter({
@@ -468,6 +477,27 @@ jsonrpc.method('verifyContract',
     optimizeRuns: { path: '0', type: type.unsigned },
     license: { path: '0', type: type.string },
     constructorArgs: { path: '0', type: type.string },
+    libraryName1: { path: '0', type: type.string },
+    libraryAddress1: { path: '0', type: app.type.address },
+    libraryName2: { path: '0', type: type.string },
+    libraryAddress2: { path: '0', type: app.type.address },
+    libraryName3: { path: '0', type: type.string },
+    libraryAddress3: { path: '0', type: app.type.address },
+    libraryName4: { path: '0', type: type.string },
+    libraryAddress4: { path: '0', type: app.type.address },
+    libraryName5: { path: '0', type: type.string },
+    libraryAddress5: { path: '0', type: app.type.address },
+    libraryName6: { path: '0', type: type.string },
+    libraryAddress6: { path: '0', type: app.type.address },
+    libraryName7: { path: '0', type: type.string },
+    libraryAddress7: { path: '0', type: app.type.address },
+    libraryName8: { path: '0', type: type.string },
+    libraryAddress8: { path: '0', type: app.type.address },
+    libraryName9: { path: '0', type: type.string },
+    libraryAddress9: { path: '0', type: app.type.address },
+    libraryName10: { path: '0', type: type.string },
+    libraryAddress10: { path: '0', type: app.type.address },
+    evmVersion: { path: '0', type: app.type.string },
   })),
 
   cacheFlow(5 * 1000),
