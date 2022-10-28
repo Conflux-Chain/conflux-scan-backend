@@ -16,6 +16,7 @@ const { format, sign } = require('js-conflux-sdk');
 let type: number;
 let cfx:Conflux;
 let contractQuery: ContractQuery;
+let base32;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -31,14 +32,11 @@ async function init() {
     contractQuery = new ContractQuery({cfx});
 }
 
-async function parseVerified() {
-    const list = await ContractVerify.findAll({where: {verifyResult: true}})
-    for (let i = 0; i < list.length; i++){
-        let v = list[i];
-        const abi = JSON.parse(v.abi)
-        await saveAbiInfo(abi)
-        console.log(`generate abi info for ${v.base32}`)
-    }
+async function parseVerified(base32) {
+    const v = await ContractVerify.findOne({attributes: ['abi'], where: {base32, verifyResult: true}});
+    const abi = JSON.parse(v.abi);
+    await saveAbiInfo(abi);
+    console.log(`generate abi info for ${base32}`);
 }
 
 async function addCodeHashForVerify() {
@@ -187,8 +185,14 @@ async function run() {
     if(type === 5) {
         await fixMinimalProxyContract();
     }
+    if(type === 6) {
+        await parseVerified(base32);
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
 type = Number(args[1]);
+if(type === 6) {
+ base32 = args[2];
+}
 run().then();
