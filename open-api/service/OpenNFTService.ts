@@ -66,12 +66,14 @@ export async function listNFTTokens(ctx) {
 }
 
 export async function listNFTTokensByFts(ctx) {
-    const {nftName} = ctx.request.query;
-    if (nftName === undefined) {
-        throw new Error(`Invalid parameter <nftName> with value [${nftName}], nftName is required.`)
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+
+    const {contract, name} = ctx.request.query;
+    if (name === undefined) {
+        throw new Error(`Invalid parameter <nftName> with value [${name}], nftName is required.`)
     }
 
-    const data = await getApiService().nftCheckerService.getNftTokensByFtsForOpenApi({nftName});
+    const data = await getApiService().nftCheckerService.getNftTokensByFtsForOpenApi({contract, name});
     delete data.total;
     if (StatApp.isEVM) {
         data?.list?.forEach(row => {row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});

@@ -205,17 +205,23 @@ export class NFTCheckerService {
         return {total: count ? count : 0, list};
     }
 
-    public async getNftTokensByFtsForOpenApi({nftName}: {nftName: string}) {
+    public async getNftTokensByFtsForOpenApi({contract, name}: {contract?: string, name: string}) {
         const RESULT_LIMIT_BY_FTS = 10;
-        if(!nftName) {
+        if(!name) {
             return {total: 0, list: []};
         }
 
-        const sql = `select contractId, tokenId from nft_metadata_fts where match(name) against('${nftName}') limit 500;`;
+        const cid = contract ? await getAddrId(contract): contract;
+        let sql;
+        if(cid) {
+            sql = `select contractId, tokenId from nft_metadata_fts where contractId = ${cid} and match(name) against('${name}') limit 500;`;
+        } else{
+            sql = `select contractId, tokenId from nft_metadata_fts where match(name) against('${name}') limit 500;`;
+        }
         let nftFtsList = await NftMetaFts.sequelize.query(sql, {
             type: QueryTypes.SELECT,
             raw: true,
-            // logging: sql => console.log(`NftMeta group sql ${sql}`)
+            logging: sql => console.log(`NftMeta group sql ${sql}`)
         }) as any[];
         if(!nftFtsList?.length) {
             return {total: 0, list: []};
@@ -232,7 +238,7 @@ export class NFTCheckerService {
             where: {
                 contractId: {[Op.in]: [...contractIdSet]},
                 tokenId: {[Op.in]: [...tokenIdSet]},
-                name: {[Op.like]: `%${nftName}%`}
+                name: {[Op.like]: `%${name}%`}
             },
             limit: RESULT_LIMIT_BY_FTS,
             raw: true,
