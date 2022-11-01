@@ -374,6 +374,21 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/NFTPreview"
+  /nft/fts:
+    get:
+      tags:
+        - 'NFT Assets'
+      description: "Search the NFT by NFT name and/or contract address."
+      parameters:
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/nameParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTTokenFtsList"
   /util/decode/method:
     get:
       tags:
@@ -1723,6 +1738,31 @@ components:
             error:
               description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
               type: string
+    NFTTokenFtsList:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  contract:
+                    description: 'Contract address of the token.'
+                    type: string
+                  tokenId:
+                    description: "The token id."
+                    type: string
+                  name:
+                    description: 'The name of NFT'
+                    type: string
     DecodedMethod:
       type: object
       properties:
@@ -2313,6 +2353,13 @@ components:
       description: "To input data array of transactions to decode data, separated by comma,
       eg. 0xaea1414f,0x6e756fb200000000000000000000000015a0a156ce9feb9f01881b3b4a9788c49e65c6fa00000000000000000000000000000000000000000000"
       name: inputs
+      in: query
+      required: true
+      schema:
+        type: string
+    nameParam:
+      description: "The name attribute contained in nft metadata"
+      name: name
       in: query
       required: true
       schema:
