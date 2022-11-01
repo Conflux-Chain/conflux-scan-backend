@@ -2,7 +2,12 @@ import {getApiService} from "../ApiServer";
 import {fixIconUrl} from "./OpenAccountService";
 import {StatApp} from "../../stat/StatApp";
 import {format} from "js-conflux-sdk";
-import {checkPresent, mustBeAddressParamIfPresent} from "../../stat/service/common/utils";
+import {
+    checkEVMVersion,
+    checkLibrary,
+    checkPresent,
+    mustBeAddressParamIfPresent
+} from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {CONST} from "../../stat/service/common/constant"
 
@@ -13,9 +18,6 @@ const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortuna
 const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";
 
 export async function polishContract(page, needAddressInfo) {
-    if ('true' !== needAddressInfo) {
-        // return // always true.
-    }
     const contract = new Set<string>();
     function add(row, key) {
         const address = row[key];
@@ -54,11 +56,6 @@ export async function polishContract(page, needAddressInfo) {
         fixIconUrl(token, 'address')
         map[k] = token
         delete token.address
-        // delete map[k].contract
-        // delete map[k].token
-        // removeEmptyKey(map[k], 'contract')
-        // removeEmptyKey(map[k], 'token')
-        // removeEmptyKey(map, k)  // keep address, help debugging.
     })
     page.addressInfo = basicInfo.map
     if (StatApp.isEVM) {
@@ -125,13 +122,38 @@ export async function getSourceCode(ctx) {
 export async function verifySourcecode(ctx) {
     let {
         contractaddress, sourceCode, codeformat, contractname, compilerversion, optimizationUsed, runs,
-        constructorArguements, evmversion, licenseType
+        constructorArguements, evmversion, licenseType,
+        libraryname1, libraryaddress1, libraryname2, libraryaddress2, libraryname3, libraryaddress3,
+        libraryname4, libraryaddress4, libraryname5, libraryaddress5, libraryname6, libraryaddress6,
+        libraryname7, libraryaddress7, libraryname8, libraryaddress8, libraryname9, libraryaddress9,
+        libraryname10, libraryaddress10
     } = ctx.request.body;
+    const libMap = {
+        library1: {name: libraryname1, address: libraryaddress1},
+        library2: {name: libraryname2, address: libraryaddress2},
+        library3: {name: libraryname3, address: libraryaddress3},
+        library4: {name: libraryname4, address: libraryaddress4},
+        library5: {name: libraryname5, address: libraryaddress5},
+        library6: {name: libraryname6, address: libraryaddress6},
+        library7: {name: libraryname7, address: libraryaddress7},
+        library8: {name: libraryname8, address: libraryaddress8},
+        library9: {name: libraryname9, address: libraryaddress9},
+        library10: {name: libraryname10, address: libraryaddress10},
+    };
     checkPresent({contractaddress, sourceCode, contractname, compilerversion/*, optimizationUsed, runs, licenseType*/},
         ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
+    const libraries = checkLibrary(libMap);
+    const evmVersion = checkEVMVersion(evmversion);
 
-    sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');
-    sourceCode = sourceCode?.replace(/\\\n/g, '\\n');
+    if(codeformat === 'solidity-standard-json-input'){
+        const sc = JSON.parse(sourceCode);
+        optimizationUsed = sc.settings.optimizer.enabled;
+        runs = sc.settings.optimizer.runs;
+    }
+    if(codeformat === 'solidity-single-file'){
+        sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');
+        sourceCode = sourceCode?.replace(/\\\n/g, '\\n');
+    }
     optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
     runs = runs === undefined || runs === null ? 200 : Number(runs);
     licenseType = licenseType === undefined || licenseType === null ? 1 : Number(licenseType);
@@ -150,11 +172,14 @@ export async function verifySourcecode(ctx) {
         address: contractaddress,
         name: contractname,
         sourcecode: sourceCode,
-        compiler: compilerversion,
+        compilerType: codeformat,
+        compilerVersion: compilerversion,
         optimizeFlag: !optimizationUsed ? false : true,
         optimizeRuns: runs,
         license: CONST.LICENSE[licenseType].code,
-        constructorArgs: constructorArguements
+        constructorArgs: constructorArguements,
+        libraries,
+        evmVersion,
     };
     const submitResp = await getApiService().contractQuery.submitVerify(options);
 
@@ -175,26 +200,7 @@ export async function checkVerifyStatus(ctx) {
         return;
     }
 
-    const impl = !verify.implementation ? verify.implementation :
-        (StatApp.isEVM ? format.hexAddress(verify.implementation) : verify.implementation);
-    const result = [
-        {
-            SourceCode: verify.sourceCode,
-            ABI: verify.abi,
-            ContractName: verify.name,
-            CompilerVersion: verify.version,
-            OptimizationUsed: verify.optimizeFlag,
-            Runs: verify.optimizeRuns,
-            ConstructorArguments: verify.constructorArgs === '0x' ? '' : verify.constructorArgs,
-            EVMVersion: "Default",
-            Library: "",
-            LicenseType: lodash.findKey(CONST.LICENSE, (v) => v.code === verify.license),
-            Proxy: verify.proxy,
-            Implementation: impl,
-            SwarmSource:"",
-        }
-    ];
-    setBody(ctx, result)
+    setBody(ctx, 'Pass - Verified');
 }
 
 export async function verifyProxyContract(ctx) {

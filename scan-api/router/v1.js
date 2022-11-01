@@ -667,6 +667,18 @@ router.get('/contract/license',
   jsonrpc.methodFlow('listLicense'),
 );
 
+router.get('/contract/evm-version',
+    OpenAPI.flow({
+      tags: ['contract'],
+      output: {
+        200: 'object',
+        600: { code: 'integer', message: 'string' },
+      },
+    }),
+
+    jsonrpc.methodFlow('listEVMVersion'),
+);
+
 router.post('/contract/verify',
   OpenAPI.flow({
     tags: ['contract'],
@@ -678,6 +690,31 @@ router.post('/contract/verify',
       optimizeRuns: { type: 'integer', nullable: true },
       license: { type: 'string', description: 'open source license' },
       constructorArgs: { type: 'string', description: 'constructor arguments' },
+      libraryName1: { type: 'string', description: 'if applicable, a matching pair with libraryaddress1 required' },
+      libraryAddress1: { type: 'string', description: 'if applicable, a matching pair with libraryname1 required' },
+      libraryName2: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress2: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName3: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress3: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName4: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress4: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName5: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress5: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName6: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress6: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName7: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress7: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName8: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress8: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName9: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress9: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryName10: { type: 'string', description: 'if applicable, matching pair required' },
+      libraryAddress10: { type: 'string', description: 'if applicable, matching pair required' },
+      evmVersion: {
+        type: 'string',
+        description: `leave blank for compiler default, homestead, tangerineWhistle, spuriousDragon, byzantium, 
+        constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file)`
+      },
     },
     output: {
       200: {

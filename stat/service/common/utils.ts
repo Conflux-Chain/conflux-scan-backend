@@ -1,11 +1,14 @@
 import {Conflux, format as sdk_format} from "js-conflux-sdk";
-const format = require('js-conflux-sdk/src/rpc/types/formatter');
-const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
+import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
-import {Errors} from "./LogicError";
+import {CONST} from "./constant"
+
 const lodash = require('lodash');
+const format = require('js-conflux-sdk/src/rpc/types/formatter');
 const addressUtil = require('js-conflux-sdk/src/util/address');
+const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
+
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
     const param = {
         skip: intParam(obj, skipKey, 0),
@@ -19,6 +22,7 @@ export function pageParam(obj: object, skipKey: string, limitKey: string, defaul
     }
     return param
 }
+
 export function getPagination(requestObj: object, {defaultSkip, maxSkip, defaultLimit, maxLimit}:
     {defaultSkip?: number, maxSkip?: number, defaultLimit?: number, maxLimit?: number}
     = {defaultSkip: 0, maxSkip: 10000, defaultLimit: 10, maxLimit: 10000}
@@ -35,6 +39,7 @@ export function getPagination(requestObj: object, {defaultSkip, maxSkip, default
     }
     return param
 }
+
 export function getPaginationESpace(requestObj: object, {defaultPage, maxPage, defaultOffset, maxOffset}:
     {defaultPage: number, maxPage: number, defaultOffset: number, maxOffset: number}
     = {defaultPage: 1, maxPage: 10000, defaultOffset: 100, maxOffset: 100}
@@ -57,6 +62,7 @@ export function getPaginationESpace(requestObj: object, {defaultPage, maxPage, d
     }
     return param
 }
+
 export function patchFormat() {
     const fun = sdk_format.address;
     function safeAddress(str, networkId, verbose) {
@@ -70,11 +76,13 @@ export function patchFormat() {
     // @ts-ignore  sdk_format.address
     sdk_format["address"] = safeAddress;
 }
+
 export function noVerboseAddr(v) {
     const obj = addressUtil.decodeCfxAddress(v)
     const simple = sdk_format.address(obj.hexAddress, obj.netId)
     return simple;
 }
+
 // skip exceeds 10_000;
 export function skipLimitAny(obj) {
     return {
@@ -83,10 +91,13 @@ export function skipLimitAny(obj) {
     };
 
 }
+
 export function skipLimit(obj) {
     return pageParam(obj, 'skip', 'limit', 10)
 }
+
 export class InvalidParamError extends Error{}
+
 export function intParam(obj: object, key: string, defaultV: number) {
     const v = obj[key]
     if (v === undefined || v === null) {
@@ -106,6 +117,7 @@ export function intParam(obj: object, key: string, defaultV: number) {
     }
     return number;
 }
+
 export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
     for (const k of keys) {
         const v = obj[k];
@@ -125,6 +137,7 @@ export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
         }
     }
 }
+
 export function mustBeEnumParamIfPresent(obj, key: string, options:string[]) {
     const v = obj[key]
     if (v === undefined || v === null) {
@@ -136,6 +149,7 @@ export function mustBeEnumParamIfPresent(obj, key: string, options:string[]) {
     }
     throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
 }
+
 export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[]) {
     for (const key of keys) {
         const v = obj[key]
@@ -149,6 +163,7 @@ export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[
         throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
     }
 }
+
 export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
     for(const k of keys) {
         const v = obj[k];
@@ -171,6 +186,7 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
         }
     }
 }
+
 export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
     for (const k of keys) {
         const v = obj[k];
@@ -182,6 +198,7 @@ export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
         }
     }
 }
+
 export function checkPresent(options, fieldArray){
     lodash.forEach(options, (value, key) => {
         if(lodash.includes(fieldArray, key)){
@@ -191,6 +208,7 @@ export function checkPresent(options, fieldArray){
         }
     });
 }
+
 export function removeLongData(obj) {
     if (Array.isArray(obj)) {
         obj.forEach(i=>removeLongData(i))
@@ -208,11 +226,13 @@ export function removeLongData(obj) {
         })
     }
 }
+
 export function createConflux(cfxConf:ConfluxOption) {
     const cfx = new Conflux(cfxConf);
     patchHttpProvider(cfx, cfxConf)
     return cfx;
 }
+
 export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
     if (cfxConf?.url?.includes('ws')) {
         return;
@@ -220,6 +240,7 @@ export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
     // @ts-ignore
     cfx.provider = new ScanHttpProvider(cfxConf, tag);
 }
+
 // batch fetch block detail, with transaction and trace.
 export function batchBlockDetail(cfx: Conflux, hashes: string[]) : Promise<[any[],any[]]> {
     const rpcBlocks = hashes.map(hash=>{return {"method": "cfx_getBlockByHash","params": [hash, true]}});
@@ -234,11 +255,13 @@ export function batchBlockDetail(cfx: Conflux, hashes: string[]) : Promise<[any[
         return [blocks, traces]
     })
 }
+
 function formatBlock(arr) {
     arr.forEach((blk, idx)=>{
         arr[idx] = format.block.$or(null)(blk);
     })
 }
+
 export function batchFetchBlock(cfx:Conflux, hashes:string[],
                                 detail = true, doFormat = true) : Promise<any[]> {
     return cfx.provider.batch(
@@ -253,6 +276,7 @@ export function batchFetchBlock(cfx:Conflux, hashes:string[],
         return arr
     })
 }
+
 export function isNewFormatTrace(traceArray2d:any[] = []) {
     // the 1st trace is always gas payment (for now in evm hard-fork)
     for (let blk of traceArray2d) {
@@ -267,6 +291,7 @@ export function isNewFormatTrace(traceArray2d:any[] = []) {
     }
     return false;
 }
+
 function formatTrace(arr: (object | Error)[]) {
     arr.forEach((t, idx) => {
         const isError = t instanceof Error;
@@ -289,6 +314,7 @@ export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
         return arr
     })
 }
+
 export function markCallResult(traces:any[]) {
     const stack = []
     for(let tr of traces) {
@@ -309,11 +335,13 @@ export function markCallResult(traces:any[]) {
         throw new Error(`check trace stack still has element: ${stack.length}. traces:\n ${JSON.stringify(traces)}`);
     }
 }
+
 export function list2map(arr:any[], key:string) {
     const ret = new Map<any,any>()
     arr.forEach(t=>ret.set(t[key], t))
     return ret;
 }
+
 // reverse to v,k
 export function reverseMap(map:Map<any, any>) {
     const ret = new Map<any, any>()
@@ -322,6 +350,7 @@ export function reverseMap(map:Map<any, any>) {
     }
     return ret;
 }
+
 export function checkExist(options, fieldArray){
     let prunedFlag = true;
     lodash.forEach(options, (value, key) => {
@@ -333,3 +362,26 @@ export function checkExist(options, fieldArray){
     });
     return prunedFlag;
 }
+
+export function checkLibrary(libMap) {
+    const libraries = {};
+    Object.keys(libMap).forEach(library => {
+        const {name, address} = libMap[library];
+        if ((name && !address) || (!name && address)) {
+            throw new Error(`a matching pair required, libraryname ${name} libraryaddress ${address}`);
+        }
+        if (name && address) {
+            libraries[name] = address;
+        }
+    });
+    return libraries;
+}
+
+export function checkEVMVersion(evmVersion) {
+    evmVersion = !evmVersion ? '' : evmVersion;
+    if(evmVersion !== '' && !lodash.includes(CONST.EVM_VERSION, evmVersion)) {
+        throw new Error(`EVM version ${evmVersion} not supported`);
+    }
+    return evmVersion;
+}
+
