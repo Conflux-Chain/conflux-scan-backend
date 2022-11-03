@@ -183,7 +183,12 @@ export async function verifySourcecode(ctx) {
     };
     const submitResp = await getApiService().contractQuery.submitVerify(options);
 
-    setBody(ctx, submitResp.guid, submitResp.error ? 1 : 0, submitResp.error);
+    setBody(
+        ctx,
+        submitResp.error ? submitResp.error : submitResp.guid,
+        submitResp.error ? 1 : 0,
+        submitResp.error ? 'NOTOK' : 'OK'
+    );
 }
 
 export async function checkVerifyStatus(ctx) {
