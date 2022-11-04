@@ -427,7 +427,7 @@ export class NFTPreviewService {
             meta = {...rawMeta};
 
             // build resp
-            lodash.defaults(meta, {image: meta.Image, name: meta.Name, description: meta.Description});
+            // lodash.defaults(meta, {image: meta.Image, name: meta.Name, description: meta.Description});
             imageUri = uriFormatter ? uriFormatter(meta) : meta.image;
             imageUri = this.replaceGateway({gateway, rawUrl: imageUri});
             imageName = await this.getNFTName({address, meta}) || {};
