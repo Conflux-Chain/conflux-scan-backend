@@ -9,6 +9,7 @@ import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Hex40Map} from "../../model/HexMap";
 import {Op} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
+import {EpochSync} from "../EpochSync";
 
 const lodash = require('lodash');
 const { format, sign } = require('js-conflux-sdk');
@@ -17,6 +18,7 @@ let type: number;
 let cfx:Conflux;
 let contractQuery: ContractQuery;
 let base32;
+let epochSync;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -30,6 +32,7 @@ async function init() {
     await initModel(seq)
 
     contractQuery = new ContractQuery({cfx});
+    epochSync = new EpochSync({cfx});
 }
 
 async function parseVerified(base32) {
@@ -154,7 +157,7 @@ async function fixConstructorArgsForSimilarVerify() {
     console.log(`fixConstructorArgsForSimilarVerify------done!`);
 }
 
-async function fixMinimalProxyContract() {
+/*async function fixMinimalProxyContract() {
     const addressArray = [
         'net71:aacw3z94b49etazfs9suyyjtrk388s7d868nars6sm',
     ];
@@ -166,6 +169,23 @@ async function fixMinimalProxyContract() {
         });
         await contractQuery.verifyMinimalProxy({address, implVerifyId: implVerify.id});
     }
+}*/
+
+async function fixMinimalProxyContract() {
+    const traceArray = await TraceCreateContract.findAll({
+        attributes: ['id', 'to', 'codeHash'],
+        raw: true
+    });
+
+    for(const trace of traceArray){
+        const hex40 = await Hex40Map.findOne({where: {id: trace.to}});
+        const address = `0x${hex40.hex}`;
+        const isEIP1167 = await epochSync.verifyMinimalProxy({address});
+        if(isEIP1167){
+            console.log(`addCodeHashForTrace------address:${address}`);
+        }
+    }
+    console.log(`addCodeHashForTrace------done!`);
 }
 
 async function run() {
