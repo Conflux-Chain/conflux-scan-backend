@@ -19,7 +19,7 @@ import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer} from "../service/DailyTokenSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
-import {Hex40Map, mapExtInfo, patchBase32prop} from "../model/HexMap";
+import {Hex40Map} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {registerPosRouter} from "./PosRouter";
@@ -516,7 +516,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }));
     })
 
-    async function list1155assets(ctx) {
+    /*async function list1155assets(ctx) {
         const {contractAddr, userAddr, tokenId} = ctx.request.query;
         const maxSkip = !contractAddr && !userAddr ? 10_000 : Number.MAX_VALUE;
         const {skip: offset, limit} = getPagination(ctx.request.query, {maxSkip, maxLimit: 100});
@@ -529,6 +529,33 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mapExtInfo(result.list, contractBasic.map, 'ownerBase32', 'ownerTokenInfo', 'ownerContractInfo');
         result.list.forEach(row=>delete row["ownerBase32"]);
 
+        ctx.body = result;
+    }*/
+
+    async function list1155assets(ctx) {
+        const {contractAddr, userAddr, tokenId} = ctx.request.query;
+        const {skip, limit} = getPagination(ctx.request.query, {maxSkip: Number.MAX_VALUE, maxLimit: 100});
+
+        const result = await statApp.nftCheckerService.getNftTokensForOpenApi({
+            owner: userAddr,
+            contract: contractAddr,
+            tokenId,
+            withUnique: true,
+            skip, limit
+        });
+
+        const addressArray = result.list.map(item => item.owner);
+        const {map} = await statApp.contractQuery.listBasic({addressArray});
+        result?.list?.forEach(row => {
+            row.ownerTokenInfo = map[row.owner]?.token || {};
+            row.ownerContractInfo = map[row.owner]?.contract || {};
+            if(StatApp.isEVM) {
+                row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+                row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
+            }
+        });
+
+        result["listLimit"] = 10_000;
         ctx.body = result;
     }
 

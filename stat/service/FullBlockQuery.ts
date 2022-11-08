@@ -575,7 +575,7 @@ export class FullBlockQuery {
                 return result;
             }
 
-            if(epochGap > 5 && gasPrice < this.recommendGasPrice) {
+            if(/*epochGap > 5 &&*/ gasPrice < this.recommendGasPrice) {
                 const pendingDetail = {
                     code: 32,
                     message: 'The gasPrice is too low, tx execution can be speed up by using recommendGasPrice',

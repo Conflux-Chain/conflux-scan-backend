@@ -26,9 +26,6 @@ export class QuoteSync {
     private usdtAddress = "0xfe97e85d13abd9c1c33384e796f10b73905637ce";
     private TOKEN_PPI = {address: "0x22f41abf77905f50df398f21213290597e7414dd", name: 'Swappi Token', symbol: 'PPI'};
 
-
-
-
     constructor(app: any) {
         this.app = app;
         this.cfx = app.cfx;

@@ -31,25 +31,24 @@ export async function listNFTBalances(ctx) {
 
 export async function listNFTTokens(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner', 'contract');
-    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
+    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit', 'tokenId');
     mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
 
-    const {owner, contract, withBrief, withMetadata} = ctx.request.query;
+    const {owner, contract, tokenId, withBrief, withMetadata} = ctx.request.query;
     if (contract === undefined) {
         throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
     }
 
     const maxSkip = !owner ? 10_000 : Number.MAX_VALUE;
     const {skip, limit} = getPagination(ctx.request.query, {maxSkip, maxLimit: 100});
-    // const {skip, limit} = getPagination(ctx.request.query);
 
     const seqId = genSeqId(ctx.url);
     const date = new Date();
     const veryStart = date.getTime();
     let start = date.getTime();
     console.log(`[seqId=${seqId}][time=${date.toLocaleString()}][url=${ctx.url}]listNFTTokens start`);
-    const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, skip, limit});
+    const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, tokenId, skip, limit});
     console.log(`[[seqId=${seqId}]listNFTTokens.getNftTokensForOpenApi elapsed:${Date.now() - start}`); start = Date.now();
 
     if(withBrief === 'true' || withMetadata === 'true'){
@@ -58,9 +57,11 @@ export async function listNFTTokens(ctx) {
         ctx.set('external-ms', externalMs)
     }
 
-    if (StatApp.isEVM) {
-        data?.list?.forEach(row => { row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});
-    }
+    data?.list?.forEach(row => {
+        delete row['owner'];
+        delete row['amount'];
+        StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
+    });
     console.log(`[seqId=${seqId}]listNFTTokens elapsed ${Date.now() - veryStart}`);
     setBody(ctx, data)
 }

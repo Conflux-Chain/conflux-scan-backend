@@ -385,3 +385,8 @@ export function checkEVMVersion(evmVersion) {
     return evmVersion;
 }
 
+export function emptyField(data) {
+    Object.keys(data).forEach(key => (data[key] === null || data[key] === undefined) && (delete data[key]));
+    return data;
+}
+
