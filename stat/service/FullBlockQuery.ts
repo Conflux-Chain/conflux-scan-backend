@@ -575,15 +575,13 @@ export class FullBlockQuery {
                 return result;
             }
 
-            if(/*epochGap > 5 &&*/ gasPrice < this.recommendGasPrice) {
-                const pendingDetail = {
-                    code: 32,
-                    message: 'The gasPrice is too low, tx execution can be speed up by using recommendGasPrice',
-                    params:{gasPrice, recommendGasPrice: this.recommendGasPrice},
-                };
-                lodash.defaults(result, {pendingDetail});
-                return result;
-            }
+            const pendingDetail = {
+                code: 32,
+                message: 'The transaction execution can be speed up by increasing the gasPrice appropriately',
+                params:{gasPrice},
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
         }
 
         return result;
