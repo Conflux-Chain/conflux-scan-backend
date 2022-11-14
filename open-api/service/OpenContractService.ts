@@ -39,25 +39,23 @@ export async function polishContract(page, needAddressInfo) {
     if (!contract.size) {
         return
     }
-    const basicInfo = await getApiService().contractQuery.listBasic({addressArray:[...contract]})
-    const map = basicInfo.map
-    Object.keys(map).forEach(k=>{
-        const contract = map[k].contract
-        const token = map[k].token || {}
-        if (contract?.verify?.result) {
+    const accountBasic = await getApiService().accountQuery.listPatchInfo([...contract])
+    page.addressInfo = accountBasic.map
+    Object.keys(page.addressInfo).forEach(k=>{
+        const contract = page.addressInfo[k]?.contract || {}
+        const token = page.addressInfo[k]?.token || {}
+        if (contract.verify?.result) {
             token.verifed = true
         }
-        if (!token.name && contract?.name) {
+        if (!token.name && contract.name) {
             token.name = contract.name
         }
         if (token.tokenType) {
             token.tokenType = token.tokenType.replace('ERC', 'CRC')
         }
         fixIconUrl(token, 'address')
-        map[k] = token
         delete token.address
     })
-    page.addressInfo = basicInfo.map
     if (StatApp.isEVM) {
         Object.keys(page.addressInfo).forEach(k => {
             page.addressInfo[format.hexAddress(k)] = page.addressInfo[k];

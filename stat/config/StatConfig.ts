@@ -135,6 +135,12 @@ export interface StatConfig{
     metricsEnv: string,
 
     syncAcrossRegionHost: string,
+
+    ensEnable: boolean,
+    ens: string,
+    reverseRegistrar: string,
+    baseRegistrar: string,
+    ensChecker: string,
 }
 
 export interface Erc20WatchList{

@@ -334,6 +334,24 @@ jsonrpc.method('queryAccount',
   })),
 );
 
+jsonrpc.method('queryAccountBasic',
+    serializeByIP(),
+    buildFlow((app) => parameter({
+        addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
+    })),
+
+    cacheFlow(5 * 1000),
+    concurrenceControl(5),
+    durationAlarmFlow(5 * 1000, { method: 'queryAccountBasic' }),
+    async function ({ addressArray }) {
+        const {
+            app: { service },
+        } = this;
+
+        return service.accountQuery.listPatchInfo(addressArray);
+    },
+);
+
 // -------------------------------- Contract --------------------------------
 jsonrpc.method('registerContract',
   serializeByIP(),
@@ -578,7 +596,7 @@ jsonrpc.method('listContractVerified',
   })),
 );
 
-jsonrpc.method('queryContractBasic',
+/*jsonrpc.method('queryContractBasic',
   serializeByIP(),
   buildFlow((app) => parameter({
     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
@@ -591,23 +609,9 @@ jsonrpc.method('queryContractBasic',
     const {
       app: { service },
     } = this;
-
-    return service.contractRdb.listBasic({ addressArray });
-    // const response = await service.contractRdb.listBasic({ addressArray });
-    // const map = {};
-    // Object.keys(response.map).forEach((address) => {
-    //   const checksumAddress = this.app.type.checksumAddress(address);
-    //   const contractBasic = response.map[address];
-    //   if (contractBasic) {
-    //     contractBasic.contract.address = checksumAddress;
-    //     contractBasic.token.address = checksumAddress;
-    //     map[checksumAddress] = contractBasic;
-    //   }
-    // });
-    //
-    // return { total: response?.total || 0, map };
+    return await service.contractRdb.listBasic({ addressArray });
   },
-);
+);*/
 
 // ---------------------------------- Token ---------------------------------
 jsonrpc.method('registerToken',
@@ -893,6 +897,24 @@ jsonrpc.method('transferTreeByTransactionHash',
     return service.transfer.transferTreeByTransactionHash(options);
   },
 );
+
+// --------------------------------- ENS -----------------------------------
+/*jsonrpc.method('queryENSBasic',
+    serializeByIP(),
+    buildFlow((app) => parameter({
+        addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
+    })),
+
+    cacheFlow(5 * 1000),
+    concurrenceControl(5),
+    durationAlarmFlow(5 * 1000, { method: 'queryENSBasic' }),
+    async function ({ addressArray }) {
+        const {
+            app: { service },
+        } = this;
+        return service.ensCheckerQuery.nameBatch(addressArray);
+    },
+);*/
 
 // --------------------------------- Export -----------------------------------
 jsonrpc.method('exportTransaction',

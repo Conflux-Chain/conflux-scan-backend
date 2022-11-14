@@ -116,31 +116,15 @@ export class BalanceService {
             };
         })
 
-        // add token info if contract name no exists
-        const addressSet = new Set<string>();
-        retList.forEach(item => {
-            if(!item.account.name &&  format.hexAddress(item.account.address).startsWith('0x8')){
-                addressSet.add(item.account.address);
-            }
+        // add token info
+        const addressArray = retList.map(item => item.account.address);
+        const accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
+        retList.forEach((item) => {
+            item['tokenInfo'] = accountBasic.map[item.account.address]?.token;
+            item['ensInfo'] = accountBasic[item.account.address]?.ens;
         });
-        const tokenInfoMap = new Map();
-        if(addressSet.size > 0){
-            const page = await this.app.tokenQuery.list({addressArray: [...addressSet]});
-            page?.list?.forEach(token => {
-                tokenInfoMap.set(token.address, {name: token.name, symbol: token.symbol, icon: token.icon});
-            });
-        }
-        for(const item of retList){
-            if(!item.account.name){
-                item['tokenInfo'] = tokenInfoMap.get(item.account.address) || {};
-            }
-            if(!item.account.name && !item['tokenInfo']['name']){
-                const tokenInfo = await tokenTool.getToken(item.account.address);
-                item['tokenInfo'] = {name: tokenInfo.name, symbol: tokenInfo.symbol} || {};
-            }
-        }
 
-        return {total, list: retList, /*code: 0,*/ skip, limit, table: table.getTableName(), holderQuery:elapsed}
+        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed}
     }
 
     zeros = '00000000000000000000000'

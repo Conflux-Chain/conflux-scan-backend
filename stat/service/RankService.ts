@@ -194,11 +194,12 @@ export class RankService{
         })
 
         const addressArray = list.map(item => item.base32address);
-        const contractBasic = await contractQuery?.listBasic({addressArray});
-        contractBasic && list.forEach(item => {
-            item.tokenInfo = contractBasic.map[item.base32address]?.token || {};
-            item.contractInfo = contractBasic.map[item.base32address]?.contract || {};
-            item.name = item.contractInfo.name || item.tokenInfo.name;
+        const accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
+        list.forEach(item => {
+            item.tokenInfo = accountBasic.map[item.base32address]?.token;
+            item.contractInfo = accountBasic.map[item.base32address]?.contract;
+            item.ensInfo = accountBasic[item.base32address]?.ens;
+            item.name = item.contractInfo?.name || item.tokenInfo?.name;
         });
 
         return {/*code: 0,*/ total: list.length, list, msg:'v2'};

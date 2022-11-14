@@ -35,6 +35,8 @@ import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
 import {billing, getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
 import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
+import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
+import {AccountQuery} from "../stat/service/AccountQuery";
 
 const Koa = require('koa');
 const lodash = require('lodash');
@@ -68,6 +70,8 @@ export class ApiService {
     dailyTxnQuery: DailyTxnQuery;
     nftCheckerService: NFTCheckerService;
     nftPreviewService: NFTPreviewService;
+    ensCheckerQuery: ENSCheckerQuery;
+    accountQuery: AccountQuery;
     addrTransactionHandler : AddrTransactionHandler;
     minerBlockHandler : MinerBlockHandler;
     addrCfxTransferHandler : AddrCfxTransferHandler;
@@ -169,6 +173,8 @@ export class ApiServer {
         apiService.dailyTxnQuery = new DailyTxnQuery();
         apiService.nftCheckerService = new NFTCheckerService(apiApp);
         apiService.nftPreviewService = new NFTPreviewService(apiApp);
+        apiService.ensCheckerQuery = new ENSCheckerQuery(apiApp);
+        apiService.accountQuery = new AccountQuery(apiApp);
         apiService.addrTransactionHandler = new AddrTransactionHandler(apiApp);
         apiService.minerBlockHandler = new MinerBlockHandler(apiApp);
         apiService.addrCfxTransferHandler = new AddrCfxTransferHandler(apiApp);
