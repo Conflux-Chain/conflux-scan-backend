@@ -62,6 +62,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000 prune
+  token_approval: # token approval sync
+    image: node:14.17.5
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/ApprovalSync.js useConfigRpc -1 10000
   token_misc: # token misc: holder, total supply
     image: node:14.17.5
     network_mode: host

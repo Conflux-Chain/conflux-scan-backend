@@ -520,7 +520,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     console.log(` ${process.argv[1]} \n ------- network ${st.networkId} --------`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
-async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {
+export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {
     let stateEpoch: number;
     do {
         stateEpoch = await cfx.getEpochNumber('latest_state').catch(()=>{

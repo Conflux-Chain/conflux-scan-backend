@@ -40,6 +40,7 @@ import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
 //
 export interface ITokenApproval extends IErc20Transfer {
+    type: string // Approval or ApprovalForAll
 }
 // main table
 export class TokenApproval extends Model<ITokenApproval> implements ITokenApproval {
@@ -53,6 +54,7 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
     fromId: number
     toId: number
     value: string
+    type: string // Approval or ApprovalForAll
     static register(seq: Sequelize) {
         TokenApproval.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -65,6 +67,7 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.STRING(78), allowNull: false},
+            type: {type: DataTypes.STRING('ApprovalForAll'.length), allowNull: false},
         }, {
             sequelize: seq,
             updatedAt: false,
@@ -88,6 +91,7 @@ export interface IApprovalRelation {
     fromId: number
     toId: number
     value:string
+    type: string // Approval or ApprovalForAll
     updatedAt:Date
 }
 export class ApprovalRelation extends Model<IApprovalRelation> implements ApprovalRelation {
@@ -101,6 +105,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.STRING(78), allowNull: false},
+            type: {type: DataTypes.STRING('ApprovalForAll'.length), allowNull: false},
             updatedAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             sequelize: seq,
@@ -113,6 +118,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
                         {name: 'fromId',}, // query by owner
                         {name: 'toId',},
                         {name: 'contractId',},
+                        {name: 'type',},
                         ], unique: true,
                 },
             ],
@@ -185,7 +191,7 @@ function decodeApprovalFromReceipts(receipts2d:TransactionReceipt[][],tokenTool:
                     continue
                 }
                 let transfer;
-                if ((transfer = tokenTool.decodeERC1155ApprovalForAll(log, false))) {
+                if ((transfer = tokenTool.decode721_1155_ApprovalForAll(log, false))) {
                     push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos)
                 } else if ((transfer = tokenTool.decodeERC721_ERC20Approval(log, false))) {
                     push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos);
@@ -250,9 +256,7 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
         }
         // simulatePivotSwitch(epoch, 3)
         const dt = new Date(block.timestamp * 1000);
-        console.log(`epoch ${epoch} receipts`, receipts.length)
         let {approvals} = decodeApprovalFromReceipts(receipts, tokenTool, dt, blockHashes);
-        console.log(`approvals `, approvals.length)
         approvals = aggregateTransfer(approvals, true)
         // after all id is cached, it's almost cpu computation.
         const ids20 = await buildApproval(approvals, buildErc20Transfer, dt);
@@ -498,3 +502,5 @@ if (module === require.main) {
         process.exit(1)
     });
 }
+// 721 1030 0xf31216bd4c532effff0a8c397d21c4f931e6c3b23620328693dd91f10d500245 epoch 5371609
+// 20  1030 0x00a5164cc7b88758ad8d087387cc4015b07d073c4ff2b9abcafb934fca66ce53 epoch 62237

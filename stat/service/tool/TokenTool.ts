@@ -143,6 +143,42 @@ export class TokenTool {
         return undefined;
     }
 
+    decode721_1155_ApprovalForAll(eventLog = {}, copy = true) {
+        return this.decodeApproval(eventLog, this.contract.ApprovalForAll, 'ApprovalForAll', copy)
+    }
+
+    decodeERC721_ERC20Approval(eventLog = {}, copy = true) {
+        return this.decodeApproval(eventLog, this.contract.Approval, 'Approval', copy)
+    }
+    decodeApproval(eventLog = {}, event, type, copy = true) {
+        // @ts-ignore
+        const { topics = [], data = '0x' } = eventLog;
+        // event Approval(address indexed owner, address indexed spender, uint value); 20
+        // event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId); 721
+        // event ApprovalForAll(address indexed owner, address indexed operator, bool approved); // 1155, 721
+        if (topics[0] === event.signature &&
+            ( (topics.length === 3 && data.length === 66)
+            || (topics.length === 4 && data.length === 2) )
+        ) {
+            const owner = `0x${topics[1].slice(-40)}`;
+            const spender = `0x${topics[2].slice(-40)}`;
+            const value = BigInt(topics.length === 3 ? data : topics[3]);
+            if (copy) {
+                return {
+                    ...eventLog,
+                    from: owner, to: spender, value, type
+                };
+            } else {
+                eventLog['from']  = owner;
+                eventLog["to"] = spender;
+                eventLog["value"] = value;
+                eventLog["type"] = type;
+                return eventLog;
+            }
+        }
+
+        return undefined;
+    }
     decodeERC721Transfer(eventLog = {}, copy = true) {
         // @ts-ignore
         const { topics = [], data = '0x' } = eventLog;
@@ -359,8 +395,27 @@ async function initTool() {
     const tool = new TokenTool(cfx)
     return tool;
 }
-async function checkTokenFetchBalance() {
-    const tool = await initTool()
+async function testParseApproval(rpcUrl) {
+    const cfx = new Conflux({url: rpcUrl})
+    const tool = new TokenTool(cfx);
+    const txs = [
+        // on net 1
+        '0x4dadacf057cf66e1e2528b1377f19ec3ce0ddce2053bc6b400195a4677f130ad',//20
+        '0x93c100e4b29e9bc93b2017b557fa5e678b721d28436c790f32b577d429dd4854',// 721
+        '0xafcc64ee0d1bc8ef2983331373a0472f06e7616841bcaec594f22768b1379452', // 721 all
+        '0xd1590405de1807f489b63c275bdbaada3e996da1f15279eb1def6d7e173f5cca', // 1155 all
+    ]
+    for (let tx of txs) {
+        const {logs} = await cfx.getTransactionReceipt(tx)
+        const approval =
+            tool.decodeERC721_ERC20Approval(logs[0], false)
+            || tool.decode721_1155_ApprovalForAll(logs[0], false)
+        if (approval) {
+            console.log(`check ok, it's ${approval["type"]} ${approval['value']}`)
+        } else {
+            console.log(`check fail, tx `, tx)
+        }
+    }
 }
 async function updateTotalSupply() {
     const tool = await initTool();
@@ -525,14 +580,15 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
 // node stat/dist/service/tool/TokenTool.js check721OwnerInDb 1
 if (module === require.main) {
     const args = process.argv.slice(2)
+    const [,,cmd, arg1, arg2] = process.argv;
     if (args[0] === 'custodian_token') {
         updateCustodianTokenFlag().then()
     } else if (args[0] === 'check721OwnerInDb') {
         check721OwnerInDb().then()
     } else if (args[0] === 'updateTotalSupply') {
         updateTotalSupply().then()
-    } else if (args[0] === 'checkTokenFetchBalance') {
-        checkTokenFetchBalance().then()
+    } else if (args[0] === 'testParseApproval') {
+        testParseApproval(arg1).then()
     } else if (args[0] === 'build_images') {
         buildImages().then(()=>{
             Token.sequelize.close().then()
