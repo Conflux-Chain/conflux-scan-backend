@@ -75,6 +75,7 @@ import {PosRewardRank} from "./pos/PosRewardRank";
 import {RateConfig, RateHit} from "../router/RateLimiter";
 import {createAddressTransferTable} from "../model/AddrTransfer";
 import {createNftMetaPartition, NftMetaFts, NftMetaOld} from "./nftchecker/NftMetaStorage";
+import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSync";
 let conf
 export function createDB(config) {
     conf = config
@@ -151,6 +152,9 @@ export async function initPartialModel(sequelize) {
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)
     AbiInfo.register(sequelize)
+    TokenApproval.register(sequelize)
+    TaskEpochApproval.register(sequelize)
+    ApprovalRelation.register(sequelize)
     Erc20Transfer.register(sequelize)
     Erc721Transfer.register(sequelize)
     // Erc777Transfer.register(sequelize)

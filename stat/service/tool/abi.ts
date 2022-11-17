@@ -80,6 +80,16 @@ module.exports = [
     ],
   }, // Announcement
   {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address",   "name": "owner", "type": "address"  },
+      {"indexed": true,"internalType": "address", "name": "spender", "type": "address" },
+      {"indexed": false,"internalType": "uint256", "name": "value","type": "uint256" } // token id for 721 or amount for 20
+    ],
+    "name": "Approval", // 20 and 721
+    "type": "event"
+  },
+  {
     type: 'event',
     name: 'Transfer',
     anonymous: false,
@@ -172,6 +182,31 @@ module.exports = [
       { type: 'uint256[]', name: 'valueArray' },
     ],
   }, // 1155
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "ApprovalForAll",
+    "type": "event"
+  },
   {
     type: 'event',
     name: 'InterfaceImplementerSet',

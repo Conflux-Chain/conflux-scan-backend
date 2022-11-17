@@ -23,7 +23,7 @@ import {
     AddressErc20Transfer,
     aggregateTransfer,
     buildErc20Transfer, buildTransferList2address, ContractUser,
-    Erc20Transfer,
+    Erc20Transfer, IErc20Transfer, T_ERC20_TRANSFER,
 } from "./model/Erc20Transfer";
 import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
@@ -37,31 +37,99 @@ import {RedisWrap} from "./service/RedisWrap";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
-
-export interface IEpochHashTokenTransfer {
-    epoch:number
-    hash:string
+import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
+//
+export interface ITokenApproval extends IErc20Transfer {
+    type: string // Approval or ApprovalForAll
 }
-// used to find parent hash when popping
-export class EpochHashTokenTransfer extends Model<IEpochHashTokenTransfer>
-implements IEpochHashTokenTransfer{
-    epoch:number
-    hash:string
+// main table
+export class TokenApproval extends Model<ITokenApproval> implements ITokenApproval {
+    id?: number
+    epoch: number
+    createdAt: Date
+    contractId: number
+    blockIndex: number
+    txIndex: number
+    txLogIndex: number
+    fromId: number
+    toId: number
+    value: string
+    type: string // Approval or ApprovalForAll
     static register(seq: Sequelize) {
-        EpochHashTokenTransfer.init({
-            epoch : {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
-            hash: {type: DataTypes.CHAR(66), allowNull: false},
-        },{
-            sequelize: seq, tableName: 'epoch_hash_token_transfer_3',
+        TokenApproval.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: false},
+            type: {type: DataTypes.STRING('ApprovalForAll'.length), allowNull: false},
+        }, {
+            sequelize: seq,
             updatedAt: false,
+            tableName: 'token_approval',
+            indexes: [
+               {
+                    name: 'idx_epoch',
+                    fields: [{name: 'epoch', order: "DESC"}]
+                },
+            ],
         })
     }
 }
-export interface IEpochTokenTransfer extends IEpochTask {
+// unique relation between owner and spender on contract
+export interface IApprovalRelation {
+    id?:number
+    epoch: number
+    contractId: number
+    blockIndex: number
+    txIndex: number
+    fromId: number
+    toId: number
+    value:string
+    type: string // Approval or ApprovalForAll
+    updatedAt:Date
+}
+export class ApprovalRelation extends Model<IApprovalRelation> implements ApprovalRelation {
+    static register(seq: Sequelize) {
+        ApprovalRelation.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: false},
+            type: {type: DataTypes.STRING('ApprovalForAll'.length), allowNull: false},
+            updatedAt: {type: DataTypes.DATE, allowNull: false},
+        }, {
+            sequelize: seq,
+            updatedAt: false,
+            tableName: 'approval_relation',
+            indexes: [
+                {
+                    name: 'idx_',
+                    fields: [
+                        {name: 'fromId',}, // query by owner
+                        {name: 'toId',},
+                        {name: 'contractId',},
+                        {name: 'type',},
+                        ], unique: true,
+                },
+            ],
+        })
+    }
+}
+export interface IEpochApproval extends IEpochTask {
     cursor:number
     checkPivot?: boolean
 }
-export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implements IEpochTokenTransfer{
+export class TaskEpochApproval extends Model<IEpochApproval> implements IEpochApproval{
     epoch: number
     range: number
     createdAt: Date
@@ -70,7 +138,7 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
 
     cursor: number;
     static register(seq: Sequelize) {
-        EpochTaskTokenTransfer.init({
+        TaskEpochApproval.init({
             epoch: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
             cursor: {type: DataTypes.BIGINT, allowNull: false},
             range: {type: DataTypes.BIGINT, allowNull: false},
@@ -78,14 +146,14 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
             updatedAt: {type: DataTypes.DATE, allowNull: false},
             finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
-            sequelize: seq, tableName: 'task_token_transfer_3',
+            sequelize: seq, tableName: 'task_approval',
         })
     }
 }
 
-function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
+function decodeApprovalFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[]) {
-    const result = {t20:[],t721:[],t1155:[]}
+    const result = {approvals:[]}
     function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex, txPos) {
         transfer['epoch'] = tx.epochNumber;
         transfer['transactionIndex'] = txPos;//tx.index;
@@ -123,66 +191,37 @@ function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool:
                     continue
                 }
                 let transfer;
-                if ((transfer = tokenTool.decodeERC20TransferPlus(log, false))) {
-                    push(result.t20, transfer, blockIdx, txReceipt, txLogIndex, txPos)
-                } else if ((transfer = tokenTool.decodeERC721Transfer(log, false))) {
-                    push(result.t721, transfer, blockIdx, txReceipt, txLogIndex, txPos);
-                } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log))) {
-                    transfer.forEach(e=>{
-                        push(result.t1155, e, blockIdx, txReceipt, txLogIndex, txPos);
-                    })
+                if ((transfer = tokenTool.decode721_1155_ApprovalForAll(log, false))) {
+                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos)
+                } else if ((transfer = tokenTool.decodeERC721_ERC20Approval(log, false))) {
+                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos);
                 }
             }
         }
     }
     return result;
 }
-async function batchSaveTransfer(mainModel, addrModel, arr, dataForAddr, dbTx) {
+async function batchSaveApproval(mainModel,
+                                 // addrModel,
+                                 arr,
+                                 // dataForAddr,
+                                 dbTx) {
     return Promise.all([
         mainModel.bulkCreate(arr, {transaction: dbTx}),
-        addrModel.bulkCreate(dataForAddr, {transaction: dbTx}),
-        ContractUser.bulkCreate(arr, {transaction: dbTx}),
+        // addrModel.bulkCreate(dataForAddr, {transaction: dbTx}),
     ])
 }
-export async function waitParentHashDB(task: IEpochTokenTransfer, parentEpoch:number, model) : Promise<string> {
-    if (!task.checkPivot) {
-        return ''
-    }
-    if (parentEpoch === -1) {
-        return '-'
-    }
-    do {
-        const formerOne = await model.findByPk(parentEpoch);
-        if (formerOne === null) {
-            console.log(` current task with epoch ${task.epoch
-            } says: former task not finished yet, want epoch ${parentEpoch} be finished.`)
-            await sleep(5_000)
-            continue
-        }
-        return formerOne.hash;
-    } while (true)
-}
-const simulateSwitchEpochs = new Set<number>();
-function simulatePivotSwitch(epoch:number, mod) {
-    if (epoch % mod !== 0) {
-        return
-    }
-    if (simulateSwitchEpochs.has(epoch)) {
-        return
-    }
-    simulateSwitchEpochs.add(epoch);
-    throw new CheckPivotHashError(`simulate pivot switch ${epoch}.`)
-}
+
 const measure = new Measure()
 const dumpPerRound = parseInt(process.env.ROUND || '1000')
-async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
+async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
     const fromEpoch = task.cursor+1;
     const stopBeforeEpoch = task.epoch + task.range
     const taskBegin = task.epoch;
     const {tokenTool} = getTokenTool(cfx)
     // parentHash, also indicates whether checking parent hash.
-    let parentHash = await waitParentHashDB(task, task.cursor, EpochHashTokenTransfer)
-    async function buildTransfer(arr:any[], fn, dt) {
+    let parentHash = await waitParentHashDB(task, task.cursor, EpochHashTokenTransfer) // reuse token transfer's epoch hash
+    async function buildApproval(arr:any[], fn, dt) {
         const contractIds = new Set<number>()
         const addrIds = new Set<number>()
         for (let e of arr) {
@@ -193,7 +232,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         }
         return {contractIds: [...contractIds], addrIds: [...addrIds]}
     }
-    function buildNfts(list, arr) {
+    function buildRelation(list, arr) {
         list.forEach(t=>{
             t.updatedAt = t.createdAt
             arr.push(t)
@@ -217,18 +256,15 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         }
         // simulatePivotSwitch(epoch, 3)
         const dt = new Date(block.timestamp * 1000);
-        const {t20:t20raw, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, dt, blockHashes);
-        const t20 = aggregateTransfer(t20raw)
+        let {approvals} = decodeApprovalFromReceipts(receipts, tokenTool, dt, blockHashes);
+        approvals = aggregateTransfer(approvals, true)
         // after all id is cached, it's almost cpu computation.
-        const ids20 = await buildTransfer(t20, buildErc20Transfer, dt);
-        const ids721 = await buildTransfer(t721, buildErc721Transfer, dt);
-        const ids1155 = await buildTransfer(t1155, buildErc721Transfer, dt);
-        const nfts = []
-        buildNfts(t721, nfts)
-        buildNfts(t1155, nfts)
+        const ids20 = await buildApproval(approvals, buildErc20Transfer, dt);
+        const relations = []
+        buildRelation(approvals, relations)
         // build data out of transaction, reduce tx time.
-        const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
-        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, ids20, ids721, ids1155, dt, pivotHash, parentHash: block.parentHash}
+        // const [a20addr] = [approvals].map(buildTransferList2address)
+        return {approvals, relations, ids20, dt, pivotHash, parentHash: block.parentHash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
@@ -240,22 +276,6 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         }
         if (parentHash) { // checking mode.
             parentHash = finalData['pivotHash'];
-        }
-        async function notifyPrune(type, {contractIds, addrIds}, addrType) {
-            if (contractIds.length === 0) {
-                return;
-            }
-            return Promise.all([
-                PruneNotifier.notifyPrune({[type]:contractIds}),
-                PruneNotifier.notifyPrune({[addrType]:addrIds}),
-            ]);
-        }
-        try {
-            notifyPrune(PruneType.ERC20_TRANSFER, finalData.ids20, PruneType.ADDR_ERC20_TRANSFER).then()
-            notifyPrune(PruneType.ERC721_TRANSFER, finalData.ids721, PruneType.ADDR_ERC721_TRANSFER).then()
-            notifyPrune(PruneType.ERC1155_TRANSFER, finalData.ids1155, PruneType.ADDR_ERC1155_TRANSFER).then()
-        } catch (e) {
-            console.log(`notify prune fail:`, e)
         }
         return finalData;
     }
@@ -358,27 +378,21 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         if (epoch < stopBeforeEpoch) {
             setTimeout(repeat, delay)
         } else {
-            await finishTask(taskBegin, EpochTaskTokenTransfer);
+            await finishTask(taskBegin, TaskEpochApproval);
             endFn()
         }
     }
     repeat().then()
 }
-export async function finishTask(epoch, model) {
-    await model.update({finished: true}, {where: {epoch}})
-    console.log(` ---- finish task ${epoch} ---- `)
-}
-async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155addr, pivotHash, nfts}, taskBegin:number) {
+
+async function save(epoch:number, {pivotHash, approvals, relations}, taskBegin:number) {
     return KV.sequelize.transaction(dbTx=>{
         return Promise.all([
-            batchSaveTransfer(Erc20Transfer, AddressErc20Transfer, t20, t20addr, dbTx),
-            batchSaveTransfer(Erc721Transfer, AddressErc721Transfer, t721, t721addr, dbTx),
-            batchSaveTransfer(Erc1155Transfer, AddressErc1155Transfer, t1155, t1155addr, dbTx),
-            NftMint.bulkCreate(nfts, {transaction: dbTx,
-                updateOnDuplicate:["updatedAt","toId","epoch","blockIndex","txIndex"],
+            batchSaveApproval(TokenApproval, approvals, dbTx),
+            ApprovalRelation.bulkCreate(relations, {transaction: dbTx,
+                updateOnDuplicate:["updatedAt","epoch","blockIndex","txIndex", "value"],
             }),
-            EpochHashTokenTransfer.create({epoch, hash: pivotHash},{transaction: dbTx}),
-            EpochTaskTokenTransfer.update(
+            TaskEpochApproval.update(
                 {cursor: epoch, },
                 {where:{epoch:taskBegin}, transaction:dbTx})
                 // .then(res=>{
@@ -387,7 +401,7 @@ async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155add
         ])
     })
 }
-const MAIN_TRANSFER_MODELS = [Erc20Transfer, Erc721Transfer, Erc1155Transfer]
+const MAIN_MODELS = [TokenApproval]
 async function pop(epoch:number, taskBegin: number) {
     async function prepare(model:any) {
         const mainList = await model.findAll({where: {epoch}})
@@ -402,32 +416,26 @@ async function pop(epoch:number, taskBegin: number) {
         return [...addrIds]
     }
     const popRef = await Promise.all(
-        MAIN_TRANSFER_MODELS.map(prepare)
+        MAIN_MODELS.map(prepare)
     )
-    async function popAction(mainModel , partitionModel, addrIdArr, dbTx) {
-        // mainModel = Erc20Transfer;
-        // partitionModel = AddressErc20Transfer;
+    async function popAction(mainModel, addrIdArr, dbTx) {
         if (addrIdArr.length === 0) {
             return 'empty';
         }
         return Promise.all([
             mainModel.destroy({where: {epoch}, transaction:dbTx}).then((cnt)=>`M:${cnt}`),
-            partitionModel.destroy({where: {addressId:{[Op.in]:addrIdArr}}, transaction:dbTx}).then((cnt)=>`P:${cnt}/${addrIdArr.length}`)
         ]);
     }
     async function popTaskCursor(dbTx: Transaction) {
         // cursor could less than the start epoch of this task. doesn't matter.
         // there should be only one task under execution.
-        return EpochTaskTokenTransfer.update({cursor: epoch - 1},
+        return TaskEpochApproval.update({cursor: epoch - 1},
             {where: {epoch: taskBegin}, limit: 1, transaction:dbTx}
             )
     }
-    return EpochTaskTokenTransfer.sequelize.transaction(dbTx=>{
+    return TaskEpochApproval.sequelize.transaction(dbTx=>{
         return Promise.all([
-            popAction(Erc20Transfer, AddressErc20Transfer, popRef[0], dbTx).then(res=>`t20 ${res}`),
-            popAction(Erc721Transfer, AddressErc721Transfer, popRef[1], dbTx).then(res=>`t721 ${res}`),
-            popAction(Erc1155Transfer, AddressErc1155Transfer, popRef[2], dbTx).then(res=>`t1155 ${res}`),
-            EpochHashTokenTransfer.destroy({where: {epoch}, limit: 1, transaction: dbTx}).then((cnt)=>`PH ${cnt}`),
+            popAction(TokenApproval, popRef[0], dbTx).then(res=>`approvals ${res}`),
             popTaskCursor(dbTx).then((cnt)=>`CURSOR ${cnt}`),
         ])
     }).then(res=>{
@@ -435,126 +443,32 @@ async function pop(epoch:number, taskBegin: number) {
         return res;
     })
 }
-async function setCheckPivot(task:IEpochTokenTransfer, cfx:Conflux, len:number) {
+async function setCheckPivot(task:IEpochApproval, cfx:Conflux, len:number) {
     const stateEpoch = await cfx.getEpochNumber('latest_state')
     const checkPivot = stateEpoch - task.epoch < len * 2 || FORCE_CHECK_PIVOT
     task.checkPivot = checkPivot;
 }
-export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, model) : Promise<IEpochTokenTransfer> {
-    do {
-        const [maxOne, exactOne] = await Promise.all([
-            model.findOne({order:[['epoch','desc']]}),
-            model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
-        ])
-        if (exactOne) {
-            await setCheckPivot(exactOne, cfx, len)
-            console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}, checkPivot ${exactOne.checkPivot}`)
-            return exactOne;
-        }
-        if (fromEpoch === -1) {
-            if (maxOne?.finished === false) {
-                await setCheckPivot(maxOne, cfx, len)
-                console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}, checkPivot ${maxOne.checkPivot}`)
-                return maxOne; // continue unfinished task.
-            } else {
-                fromEpoch = 0;
-            }
-        }
-        let preEnd = fromEpoch;
-        if (maxOne !== null) {
-            preEnd = maxOne.epoch + maxOne.range
-        }
-        // check whether need new task.
-        const stateEpoch = await joinTask(preEnd, cfx, len * 2, model)
-        const checkPivot = stateEpoch - preEnd < len * 2 || FORCE_CHECK_PIVOT
-        console.log(`checkPivot : ${stateEpoch - preEnd < len * 2} || ${FORCE_CHECK_PIVOT}`)
-        const now = new Date();
-        const newOne:IEpochTokenTransfer = {epoch: preEnd, range: len,
-            cursor: preEnd - 1, checkPivot,
-            finished: false, createdAt: now, updatedAt: now}
-        let ok = false
-        await model.create(newOne).then(()=>{
-            console.log(`create task, epoch ${preEnd}, checkPivot ${checkPivot}`)
-            ok = true
-        }).catch(err=>{
-            console.log(`create task fail, ${err}, try again`)
-            return sleep(1000)
-        })
-        if (ok) {
-            return newOne;
-        }
-    } while (true)
-}
-async function updateAllTokenTransferCount(lt = 100_000) {
-    const list = await Token.findAll({
-        where: {auditResult: true, transfer: {[Op.lt]: lt}},
-        attributes: {exclude: ['icon']},
-    })
-    for (let i = 0; i < list.length; i++) {
-        const token = list[i]
-        process.stdout.write(`begin update ${token.name} :`)
-        await updateTransferCountReal(token)
-    }
-    await Token.sequelize.close();
-    process.exit(0)
-}
+
 let notifyError:Function
 // noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     const config = await init();
-    if (process.argv.includes('updateAllTokenTransferCount')) {
-        await updateAllTokenTransferCount()
-        await Erc20Transfer.sequelize.close()
-        return;
-    }
     notifyError = async (msg, err)=>{
-        return dingMsg(`[${config.serverTag}] TOKEN-X-SYNC ${msg}: ${err}`, config.dingTalkToken)
+        return dingMsg(`[${config.serverTag}] Approval-SYNC ${msg}: ${err}`, config.dingTalkToken)
     }
-    await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
     const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
     let cfx = new Conflux(cfxOp)
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} --------`)
+    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} ${cfxOp.url} --------`)
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
-}
-export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {
-    let stateEpoch: number;
-    do {
-        stateEpoch = await cfx.getEpochNumber('latest_state').catch(()=>{
-            return 0
-        });
-    } while (stateEpoch === 0)
-    if (stateEpoch - targetEpoch >  dist) {
-        return stateEpoch;
-    }
-    const formerOne = await model.findOne({
-        where: {
-            finished: false,
-            // do not search all record in the table, limit its range.
-            epoch:{[Op.between]:[targetEpoch - dist,targetEpoch]}
-            },
-        order: [['epoch', 'desc']]
-    })
-    if (formerOne === null) {
-        return stateEpoch;
-    }
-    if (formerOne.cursor - formerOne.epoch > formerOne.range / 2) {
-        // half progress, will finish soon.
-        return stateEpoch;
-    }
-    // there is a task that near the latest_state epoch, and its progress is less than half,
-    // so, abort new task, and quit.
-    console.log(` quit this worker. former task from epoch ${formerOne.epoch} with cursor ${
-        formerOne.cursor}, latest_state epoch ${stateEpoch}`)
-    process.exit(0)
 }
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
-    const task = await fetchTask(len, fromEpoch, cfx, EpochTaskTokenTransfer)
-    console.log(` start token transfer task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
+    const task = await fetchTask(len, fromEpoch, cfx, TaskEpochApproval)
+    console.log(` start approval task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
     if (fromEpoch === -1) {
         // -1 means 'continue unfinished task',
@@ -577,16 +491,16 @@ const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 if (module === require.main) {
     redirectLog()
     regExitHook()
+    // cfxUrl: useConfigRpc
     // fromEpoch:
     // -1 : use former unfinished task; exclude mode.
     // N  : use task N if it's not finished, fallback to *.
     // *  : auto create based on max task.
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
-    if (process.argv.includes('prune')) {
-        PruneNotifier.SWITCH_SYNC_PRUNE = true;
-    }
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)
         process.exit(1)
     });
 }
+// 721 1030 0xf31216bd4c532effff0a8c397d21c4f931e6c3b23620328693dd91f10d500245 epoch 5371609
+// 20  1030 0x00a5164cc7b88758ad8d087387cc4015b07d073c4ff2b9abcafb934fca66ce53 epoch 62237

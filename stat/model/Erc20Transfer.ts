@@ -199,7 +199,7 @@ export async function buildErc20Transfer(obj, date) {
     // };
     // return erc20Transfer
 }
-export function aggregateTransfer(array: any[]) {
+export function aggregateTransfer(array: any[], overwrite = false) {
     if (!array.length) {
         return []
     }
@@ -218,7 +218,11 @@ export function aggregateTransfer(array: any[]) {
             keyArr.push(key)
             continue
         }
-        pre.value += obj.value;
+        if (overwrite) {
+            pre.value = obj.value;
+        } else {
+            pre.value += obj.value;
+        }
     }
     const result = []
     keyArr.forEach(k=>{
