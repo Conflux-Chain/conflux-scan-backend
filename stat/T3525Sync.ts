@@ -3,7 +3,7 @@ import {redirectLog} from "./config/LoggerConfig";
 import {
     Transaction,
     Model,
-    DataTypes,
+    DataTypes, QueryTypes,
     Sequelize,
     Op,
 } from "sequelize";
@@ -19,6 +19,52 @@ import {ITaskCursor, startSyncEvent, SyncHandler, TaskTemplate} from "./EventSyn
 export interface ISlotChange {
     // event SlotChanged(uint256 indexed _tokenId, uint256 indexed _oldSlot, uint256 indexed _newSlot);
     tokenId: string; oldSlot: string; newSlot:string;
+}
+export interface ISlot3525 {
+    id?:number; contractId: number; slot: string;
+}
+export interface ITokenSlot3525 {
+    id?:number; contractId: number; tokenId:string; slot: string;  ownerId: number;
+    createdAt: Date; updatedAt: Date;
+}
+export class Slot3525 extends Model<ISlot3525> implements ISlot3525 {
+    id?:number; contractId: number; slot: string;
+    static register(seq: Sequelize) {
+        Slot3525.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            slot: {type: DataTypes.STRING(78), allowNull: false},
+        }, {
+            sequelize: seq, tableName: 'slot_3525',
+            timestamps: false,
+            indexes: [
+                {name: "idx_c_slot", fields: ["contractId", "slot", ], unique: true},
+                {name: "idx_c_t", fields: ["contractId", {name:"id", order: "DESC"}]},
+            ]
+        })
+    }
+}
+export class TokenSlot3525 extends Model<ITokenSlot3525> implements ITokenSlot3525 {
+    id?:number; contractId: number; tokenId:string; slot: string; ownerId: number;
+    createdAt: Date; updatedAt: Date;
+    static register(seq: Sequelize) {
+        TokenSlot3525.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            ownerId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+            tokenId: {type: DataTypes.STRING(78), allowNull: false},
+            slot: {type: DataTypes.STRING(78), allowNull: false, defaultValue: ''},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            updatedAt: {type: DataTypes.DATE, allowNull: false},
+        }, {
+            sequelize: seq, tableName: 'token_slot_3525',
+            timestamps: false,
+            indexes: [
+                {name: "idx_c_token", fields: ["contractId", "tokenId",], unique: true},
+                {name: "idx_c_slot", fields: ["contractId", "slot"]}, // query token under slot
+            ]
+        })
+    }
 }
 export interface IEvent3525 extends IErc1155Transfer {
     // event TransferValue(uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _value);
@@ -56,6 +102,7 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
             sequelize: seq, tableName: 'event_3525',
             indexes: [
                 {name: 'idx_contract', fields:[{name: 'contractId'}, {name: "id", order: 'DESC'}]}, // query by contract, order by id desc
+                {name: 'uk', fields: ["epoch",'blockIndex','txIndex','txLogIndex']},
             ]
         })
     }
@@ -64,21 +111,24 @@ export interface IAddrEvent3525 {
     id?: number;
     addrId: number;
     refId: number;
+    epoch: number;
 }
 export class AddrEvent3525 extends Model<IAddrEvent3525> implements IAddrEvent3525 {
     id?: number;
     addrId: number;
-    refId: number;
+    refId: number; epoch: number;
     static register(seq: Sequelize) {
         AddrEvent3525.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
             addrId: {type: DataTypes.BIGINT, allowNull: false},
             refId: {type: DataTypes.BIGINT, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
         }, {
             sequelize: seq, tableName: 'addr_event_3525',
             timestamps: false,
             indexes: [
-                {name: "idx_addr_id", fields: ["addrId"]},
+                {name: "idx_addr_id", fields: ["addrId", {name:"id", order: "DESC"}]},
+                {name: "idx_epoch", fields: ["epoch"]},
             ]
         })
     }
@@ -147,36 +197,101 @@ async function testParseLog(rpc) {
     console.log(`events`, events)
 }
 class Event3525handler implements SyncHandler {
-    prepareData(): any {
-        return {events:[]}
-    }
     parser: any;
     constructor() {
         this.parser = build3525interface();
     }
+
+    popAction(epoch, dbTx): Promise<any> {
+        return Promise.all([
+            Event3525.destroy({where: {epoch}, transaction: dbTx}),
+            AddrEvent3525.destroy({where: {epoch}, transaction: dbTx}),
+        ])
+    }
+
     logParser(log): { key; parsed } {
         return {key: 'events', parsed: decodeOneLog(this.parser, log)};
     }
 
-    popAction(dbTx): Promise<void> {
-        return Promise.resolve(undefined);
+    prepareData(): any {
+        return {events:[], slots: {}, tokens: {}}
     }
-
     postProcess(data, dt:Date, epoch): Promise<any> {
-        const {events, } = data;
+        const {events, slots, tokens} = data;
         return new Promise<any>(async r=>{
             for(let e of events) {
                 await buildErc20Transfer(e, dt)
+            }
+            // collect slot change
+            for(let e of events) {
+                const {event, slot, contractId, tokenId, toId} = e;
+                if (event === 'SlotChanged') {
+                    slots[`${contractId}_${slot}`] = {contractId, slot};
+
+                    const former = tokens[`${contractId}_${tokenId}`] || {contractId, tokenId, ownerId: 0, createdAt: dt, updatedAt: dt}
+                    tokens[`${contractId}_${tokenId}`] = {...former, slot}
+                } else if (e.event === 'Transfer') {
+                    const former = tokens[`${contractId}_${tokenId}`] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
+                    tokens[`${contractId}_${tokenId}`] = {...former, ownerId: toId}
+                }
             }
             r(data);
         })
     }
 
-    save(epoch: number, {pivotHash, events}, taskBegin: number): Promise<void> {
+    buildForAddr(arr:Event3525[]) : IAddrEvent3525[] {
+        const result:IAddrEvent3525[] = []
+        for(let e of arr) {
+            if (e.fromId > 0) {
+                result.push({id: 0, addrId: e.fromId, refId: e.id, epoch: e.epoch})
+            }
+            if (e.toId > 0 && e.toId !== e.fromId) {
+                result.push({id: 0, addrId: e.toId, refId: e.id, epoch: e.epoch})
+            }
+        }
+        return result;
+    }
+
+    save(epoch: number, {pivotHash, events, slots, tokens}, taskBegin: number): Promise<void> {
+        const slotArr = Object.keys(slots).map(k=>slots[k]);
+        // build token id beans
+        const fields = ['contractId','tokenId', 'slot', 'ownerId','createdAt', 'updatedAt'];
+        const placeHolderStr = `(${fields.map(()=>'?').join(',')})`
+        const tokenArr = Object.keys(tokens).map(k=>tokens[k]);
+        const arrPlaceHolder = tokenArr.map(()=>placeHolderStr).join(',')
+        const values = []
+        tokenArr.forEach(t=>{
+            fields.forEach(k=>{
+                values.push(t[k])
+            })
+        })
+
+        const fullSql = `insert into ${TokenSlot3525.getTableName()} (${fields.join(',')}) values ${arrPlaceHolder
+        } ON DUPLICATE KEY UPDATE ownerId=if(values(ownerId) = 0, ownerId, values(ownerId)) , ${''
+        } slot=if(values(slot)='', slot, values(slot)), updatedAt=values(updatedAt);`
+
         return Event3525.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
-                Event3525.bulkCreate(events, {transaction: dbTx}), // will auto id be filled ?
-                // AddrEvent3525.bulkCreate(addrEvents)
+                Event3525.bulkCreate(events, {
+                    transaction: dbTx,
+                    updateOnDuplicate:["event","contractId","fromId","toId","slot","tokenId","fromTokenId", "toTokenId", "value"]}
+                    )
+                    .then((arr)=>{
+                        return AddrEvent3525.bulkCreate(this.buildForAddr(arr),
+                            {transaction: dbTx})
+                    }), // will auto id be filled ?
+                Slot3525.bulkCreate(slotArr, {
+                    ignoreDuplicates: true, transaction: dbTx,
+                }),
+                new Promise(async r=>{
+                    if (values.length) {
+                        TokenSlot3525.sequelize.query({query: fullSql, values},
+                            {transaction: dbTx, type: QueryTypes.UPSERT, logging: console.log})
+                            .then(r)
+                    } else {
+                        r(0)
+                    }
+                }),
                 TaskEvent3525.update(
                     {cursor: epoch, },
                     {where:{epoch:taskBegin}, transaction:dbTx})

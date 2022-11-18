@@ -271,7 +271,7 @@ export interface SyncHandler {
     logParser:(log, dt:Date)=>{key, parsed},
     postProcess:(parsedResult, dt:Date, epoch)=>Promise<any>,
     save:(epoch:number, {pivotHash}, taskBegin:number)=>Promise<void>,
-    popAction: (dbTx) => Promise<void>
+    popAction: (epoch, dbTx) => Promise<void>
     needCheckMaxEpoch:()=>boolean
 }
 async function pop(epoch:number, taskBegin: number, taskClz, handler:SyncHandler) {
@@ -284,7 +284,7 @@ async function pop(epoch:number, taskBegin: number, taskClz, handler:SyncHandler
     }
     return taskClz.sequelize.transaction(dbTx=>{
         return Promise.all([
-            handler.popAction(dbTx).then(res=>`approvals ${res}`),
+            handler.popAction(epoch, dbTx).then(res=>`approvals ${res}`),
             popTaskCursor(dbTx).then((cnt)=>`CURSOR ${cnt}`),
         ])
     }).then(res=>{

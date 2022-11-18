@@ -76,7 +76,7 @@ import {RateConfig, RateHit} from "../router/RateLimiter";
 import {createAddressTransferTable} from "../model/AddrTransfer";
 import {createNftMetaPartition, NftMetaFts, NftMetaOld} from "./nftchecker/NftMetaStorage";
 import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSync";
-import {AddrEvent3525, Event3525, TaskEvent3525} from "../T3525Sync";
+import {AddrEvent3525, Event3525, Slot3525, TaskEvent3525, TokenSlot3525} from "../T3525Sync";
 let conf
 export function createDB(config) {
     conf = config
@@ -158,6 +158,8 @@ export async function initPartialModel(sequelize) {
     ApprovalRelation.register(sequelize)
     Event3525.register(sequelize)
     AddrEvent3525.register(sequelize)
+    Slot3525.register(sequelize)
+    TokenSlot3525.register(sequelize)
     TaskEvent3525.register((sequelize))
     Erc20Transfer.register(sequelize)
     Erc721Transfer.register(sequelize)
