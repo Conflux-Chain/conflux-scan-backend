@@ -112,7 +112,7 @@ export class TaskTemplate extends Model<ITaskCursor> implements ITaskCursor {
 }
 const measure = new Measure()
 const dumpPerRound = parseInt(process.env.ROUND || '1000')
-async function run(cfx:Conflux, task:ITaskCursor, endFn:()=>void,
+async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
                    handler:SyncHandler
 ) {
     const fromEpoch = task.cursor+1;
@@ -260,7 +260,7 @@ async function run(cfx:Conflux, task:ITaskCursor, endFn:()=>void,
         if (epoch < stopBeforeEpoch) {
             setTimeout(repeat, delay)
         } else {
-            await finishTask(taskBegin, task);
+            await finishTask(taskBegin, taskClz);
             endFn()
         }
     }
@@ -326,7 +326,7 @@ async function runTask(cfx:Conflux, taskClz,
         fromEpoch = 1
     }
     await new Promise(r=>{
-        run(cfx, task, ()=>{
+        run(cfx, task, taskClz,()=>{
             r(0)
         }, handler)
     })

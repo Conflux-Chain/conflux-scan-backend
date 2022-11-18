@@ -90,10 +90,18 @@ export function build3525interface() {
     const {abi} = require('../../common/contracts/build/contracts/IERC3525.json')
     return new ethers.utils.Interface(abi);
 }
-const bigNumberProps = ["tokenId", "_oldSlot", "_newSlot", "_fromTokenId", "_toTokenId", "value"];
+const bigNumberProps = ["tokenId", "slot", "_oldSlot", "_newSlot", "fromTokenId", "toTokenId", "value"];
 
 function decodeOneLog(parser, log) {
-    let event = parser.parseLog(log)
+    let event: any;
+    try {
+        event = parser.parseLog(log);
+    } catch (e) {
+        if (e.message.includes("no matching event")) {
+        } else {
+            throw e;
+        }
+    }
     if (event) {
         const {
             name, args: {
@@ -103,15 +111,17 @@ function decodeOneLog(parser, log) {
             }
         } = event;
         const parsed = {
+            address: log.address,
             event: name,
             from: _from,
             to: _to,
             tokenId: _tokenId,
-            _oldSlot,
+            slot: _newSlot,
             _newSlot,
-            _fromTokenId,
-            _toTokenId,
-            value: _value
+            _oldSlot, // not saved in db
+            fromTokenId: _fromTokenId,
+            toTokenId: _toTokenId,
+            value: _value || _oldSlot || ""
         }
         bigNumberProps.filter(k => parsed[k]).forEach(k => parsed[k] = parsed[k].toString())
         return parsed
@@ -167,6 +177,9 @@ class Event3525handler implements SyncHandler {
             return Promise.all([
                 Event3525.bulkCreate(events, {transaction: dbTx}), // will auto id be filled ?
                 // AddrEvent3525.bulkCreate(addrEvents)
+                TaskEvent3525.update(
+                    {cursor: epoch, },
+                    {where:{epoch:taskBegin}, transaction:dbTx})
             ])
         }).then()
     }
@@ -212,3 +225,4 @@ if (module === require.main) {
 
 // node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync http://net8889eth.confluxrpc.com/cfxbridge -1 1000
 // node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync https://evmtestnet.confluxscan.net/rpcv2 99952425 1000
+// node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync https://evmtestnet.confluxscan.net/rpcv2 99952425 2
