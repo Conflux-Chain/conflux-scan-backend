@@ -1,20 +1,12 @@
 import {ethers} from "ethers";
 import {redirectLog} from "./config/LoggerConfig";
-import {
-    Transaction,
-    Model,
-    DataTypes, QueryTypes,
-    Sequelize,
-    Op,
-} from "sequelize";
+import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
-import {
-    aggregateTransfer,
-    buildErc20Transfer, buildTransferList2address, ContractUser,
-} from "./model/Erc20Transfer";
-import {AddressErc1155Transfer, Erc1155Transfer, IErc1155Transfer} from "./model/Erc1155Transfer";
-import {regExitHook, sleep} from "./service/tool/ProcessTool";
-import {ITaskCursor, startSyncEvent, SyncHandler, TaskTemplate} from "./EventSync";
+import {buildErc20Transfer,} from "./model/Erc20Transfer";
+import {IErc1155Transfer} from "./model/Erc1155Transfer";
+import {regExitHook} from "./service/tool/ProcessTool";
+import {startSyncEvent, SyncHandler, TaskTemplate} from "./EventSync";
+import {init} from "./service/tool/FixDailyTokenStat";
 
 export interface ISlotChange {
     // event SlotChanged(uint256 indexed _tokenId, uint256 indexed _oldSlot, uint256 indexed _newSlot);
@@ -75,12 +67,14 @@ export interface IEvent3525 extends IErc1155Transfer {
     /*toId:     number; */toTokenId:   string;
     slot:     string;
     // value:    string; // or old slot for SlotChanged
+    fromTokenBalance: string; toTokenBalance: string;
 }
 export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
     id?: number;
     epoch: number; createdAt: Date; contractId: number; blockIndex: number; txIndex: number;
     txLogIndex: number; fromId: number; toId: number; value: string;
     tokenId:string; event: string; slot:     string; fromTokenId: string; toTokenId:   string;
+    fromTokenBalance: string; toTokenBalance: string;
     static register(seq:Sequelize) {
         Event3525.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -98,13 +92,33 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
             fromTokenId: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
             toTokenId: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
             slot: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
+            fromTokenBalance: {type: DataTypes.STRING(79), allowNull: true, defaultValue: "0"},
+            toTokenBalance: {type: DataTypes.STRING(79), allowNull: true, defaultValue: "0"},
         }, {
             sequelize: seq, tableName: 'event_3525',
             indexes: [
                 {name: 'idx_contract', fields:[{name: 'contractId'}, {name: "id", order: 'DESC'}]}, // query by contract, order by id desc
+                // query history by fromTokenId
+                {name: 'idx_c_fromTid', fields:[{name: 'contractId'},{name: 'fromTokenId'}, {name: "id", order: 'DESC'}]},
+                // query history by toTokenId
+                {name: 'idx_c_toTid', fields:[{name: 'contractId'},{name: 'toTokenId'}, {name: "id", order: 'DESC'}]},
                 {name: 'uk', fields: ["epoch",'blockIndex','txIndex','txLogIndex']},
             ]
         })
+    }
+    static async queryPreviousBalance(contractId, tokenId) {
+        const tableName = Event3525.getTableName();
+        const sql = `select * from ( (select id, fromTokenBalance as balance from ${tableName} where contractId=${
+            '?'} and fromTokenId=? and event='TransferValue' order by id desc limit 1) union ${''
+        } (select id, toTokenBalance as balance from ${tableName} where contractId=${
+            '?'} and toTokenId=? and event='TransferValue' order by id desc limit 1) ) ut order by id desc limit 1`
+        const [bean] = await Event3525.sequelize.query(sql, {
+            replacements: [contractId, tokenId, contractId, tokenId], raw: true, type: QueryTypes.SELECT,
+            logging: (sql)=>{
+                console.log(`queryPreviousBalance:`, sql)
+            }
+        })
+        return bean ? BigInt(bean["balance"]) : BigInt(0);
     }
 }
 export interface IAddrEvent3525 {
@@ -219,20 +233,48 @@ class Event3525handler implements SyncHandler {
     postProcess(data, dt:Date, epoch): Promise<any> {
         const {events, slots, tokens} = data;
         return new Promise<any>(async r=>{
+            const valueMap:any = {}
             for(let e of events) {
                 await buildErc20Transfer(e, dt)
+                const {event, slot, contractId, tokenId,fromTokenId, toTokenId, toId} = e;
+                if (event === 'SlotChanged' || event === 'Transfer') {
+                    valueMap[`${contractId}_${tokenId}`] = {contractId, tokenId}
+                } else if (event === 'TransferValue') {
+                    valueMap[`${contractId}_${fromTokenId}`] = {contractId, tokenId:fromTokenId}
+                    valueMap[`${contractId}_${toTokenId}`] = {contractId, tokenId:toTokenId}
+                }
             }
-            // collect slot change
+            // fetch former balance from db
+            await Promise.all(Object.keys(valueMap).map(async (k)=>{
+                const {contractId, tokenId} = valueMap[k];
+                return Event3525.queryPreviousBalance(contractId, tokenId)
+                    .then(v=>valueMap[k] = v);
+            }))
+            // collect slot change, calculate value
             for(let e of events) {
-                const {event, slot, contractId, tokenId, toId} = e;
+                const {event, slot, contractId, tokenId, toId, fromTokenId, toTokenId, value} = e;
+                const tokenIdKey = `${contractId}_${tokenId}`;
                 if (event === 'SlotChanged') {
                     slots[`${contractId}_${slot}`] = {contractId, slot};
-
-                    const former = tokens[`${contractId}_${tokenId}`] || {contractId, tokenId, ownerId: 0, createdAt: dt, updatedAt: dt}
-                    tokens[`${contractId}_${tokenId}`] = {...former, slot}
+                    const former = tokens[tokenIdKey] || {contractId, tokenId, ownerId: 0, createdAt: dt, updatedAt: dt}
+                    tokens[tokenIdKey] = {...former, slot}
+                    // fill calculated value
+                    e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
+                } else if (e.event === 'TransferValue') {
+                    let fromTKey = `${contractId}_${fromTokenId}`
+                    let toTKey = `${contractId}_${toTokenId}`
+                    let fromB = valueMap[fromTKey] || BigInt(0)
+                    let toB = valueMap[toTKey] || BigInt(0)
+                    fromB -= BigInt(value);
+                    toB += BigInt(value);
+                    e.fromTokenBalance = fromB.toString();
+                    e.toTokenBalance = toB.toString();
+                    valueMap[fromTKey] = fromB;
+                    valueMap[toTKey] = toB;
                 } else if (e.event === 'Transfer') {
-                    const former = tokens[`${contractId}_${tokenId}`] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
-                    tokens[`${contractId}_${tokenId}`] = {...former, ownerId: toId}
+                    const former = tokens[tokenIdKey] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
+                    tokens[tokenIdKey] = {...former, ownerId: toId}
+                    e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
                 }
             }
             r(data);
@@ -328,6 +370,9 @@ async function main() {
     const [,,cmd, arg1] = process.argv
     if (cmd === 'testParseLog') {
         await testParseLog(arg1)
+    } else if (cmd === 'testQuery') {
+        const config = await init();
+        await Event3525.queryPreviousBalance(0,'tid')
     } else if (cmd === 'sync') {
         await sync();
     }
