@@ -102,6 +102,7 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
                 {name: 'idx_c_fromTid', fields:[{name: 'contractId'},{name: 'fromTokenId'}, {name: "id", order: 'DESC'}]},
                 // query history by toTokenId
                 {name: 'idx_c_toTid', fields:[{name: 'contractId'},{name: 'toTokenId'}, {name: "id", order: 'DESC'}]},
+                {name: 'idx_c_tid', fields:[{name: 'contractId'},{name: 'tokenId'}, {name: "id", order: 'DESC'}]},
                 {name: 'uk', fields: ["epoch",'blockIndex','txIndex','txLogIndex']},
             ]
         })
@@ -114,11 +115,25 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
             '?'} and toTokenId=? and event='TransferValue' order by id desc limit 1) ) ut order by id desc limit 1`
         const [bean] = await Event3525.sequelize.query(sql, {
             replacements: [contractId, tokenId, contractId, tokenId], raw: true, type: QueryTypes.SELECT,
-            logging: (sql)=>{
-                console.log(`queryPreviousBalance:`, sql)
-            }
+            logging: console.log,
         })
         return bean ? BigInt(bean["balance"]) : BigInt(0);
+    }
+    static async queryPreviousOwner(contractId, tokenId) {
+        /*
+        select toId from event_3525 where id=
+            (select max(id) as id from event_3525
+              where contractId=21394052 and tokenId='13' and event='Transfer')
+         */
+        const tableName = Event3525.getTableName();
+        const sql = `select toId from ${tableName} where id=${''
+        } (select max(id) as id from ${tableName
+        }   where contractId=? and tokenId=? and event='Transfer')`
+        const [bean] = await Event3525.sequelize.query(sql, {
+            replacements: [contractId, tokenId], raw:true, type: QueryTypes.SELECT,
+            logging: console.log,
+        })
+        return bean ? BigInt(bean["toId"]) : BigInt(0);
     }
 }
 export interface IAddrEvent3525 {
@@ -163,10 +178,10 @@ function decodeOneLog(parser, log) {
     } catch (e) {
         if (e.message.includes("no matching event")) {
         } else {
-            throw e;
+            // throw e;
         }
     }
-    if (event) {
+    if (event && event.name !== 'Approval') {
         const {
             name, args: {
                 _from, _to, _tokenId,  // transfer
@@ -244,11 +259,14 @@ class Event3525handler implements SyncHandler {
                     valueMap[`${contractId}_${toTokenId}`] = {contractId, tokenId:toTokenId}
                 }
             }
-            // fetch former balance from db
+            const ownerMap:any = {}
+            // fetch former balance and owner from db
             await Promise.all(Object.keys(valueMap).map(async (k)=>{
                 const {contractId, tokenId} = valueMap[k];
                 return Event3525.queryPreviousBalance(contractId, tokenId)
-                    .then(v=>valueMap[k] = v);
+                    .then(v=>valueMap[k] = v)
+                    .then(()=>Event3525.queryPreviousOwner(contractId, tokenId))
+                    .then(owner=>ownerMap[k] = owner);
             }))
             // collect slot change, calculate value
             for(let e of events) {
@@ -260,6 +278,7 @@ class Event3525handler implements SyncHandler {
                     tokens[tokenIdKey] = {...former, slot}
                     // fill calculated value
                     e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
+                    e.fromId = (ownerMap[tokenId] || BigInt(0)).toString();
                 } else if (e.event === 'TransferValue') {
                     let fromTKey = `${contractId}_${fromTokenId}`
                     let toTKey = `${contractId}_${toTokenId}`
@@ -267,14 +286,20 @@ class Event3525handler implements SyncHandler {
                     let toB = valueMap[toTKey] || BigInt(0)
                     fromB -= BigInt(value);
                     toB += BigInt(value);
+                    // fill balance after transferring value
                     e.fromTokenBalance = fromB.toString();
                     e.toTokenBalance = toB.toString();
                     valueMap[fromTKey] = fromB;
                     valueMap[toTKey] = toB;
+                    // fill owner
+                    e.fromId = (ownerMap[fromTKey] || BigInt(0)).toString();
+                    e.toId = (ownerMap[toTKey] || BigInt(0)).toString();
                 } else if (e.event === 'Transfer') {
                     const former = tokens[tokenIdKey] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
                     tokens[tokenIdKey] = {...former, ownerId: toId}
+                    // fill value when transferring owner
                     e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
+                    ownerMap[tokenIdKey] = BigInt(toId);
                 }
             }
             r(data);
@@ -372,7 +397,11 @@ async function main() {
         await testParseLog(arg1)
     } else if (cmd === 'testQuery') {
         const config = await init();
-        await Event3525.queryPreviousBalance(0,'tid')
+        await Event3525.queryPreviousBalance(21394052,'13')
+        await Event3525.queryPreviousOwner(21394052,'13')
+            .then(res=>{
+                console.log(`owner is `, res)
+            })
     } else if (cmd === 'sync') {
         await sync();
     }
