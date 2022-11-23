@@ -8,10 +8,6 @@ import {regExitHook} from "./service/tool/ProcessTool";
 import {startSyncEvent, SyncHandler, TaskTemplate} from "./EventSync";
 import {init} from "./service/tool/FixDailyTokenStat";
 
-export interface ISlotChange {
-    // event SlotChanged(uint256 indexed _tokenId, uint256 indexed _oldSlot, uint256 indexed _newSlot);
-    tokenId: string; oldSlot: string; newSlot:string;
-}
 export interface ISlot3525 {
     id?:number; contractId: number; slot: string;
 }
@@ -57,6 +53,48 @@ export class TokenSlot3525 extends Model<ITokenSlot3525> implements ITokenSlot35
             ]
         })
     }
+}
+export interface ISlotChanged {
+    // event SlotChanged(uint256 indexed _tokenId, uint256 indexed _oldSlot, uint256 indexed _newSlot);
+    id?:number;
+    createdAt: Date
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
+    epoch: number
+    contractId: number
+    tokenId:   string;
+    slot:     string;
+}
+export class SlotChanged extends Model<ISlotChanged> implements ISlotChanged {
+    id:number;
+    createdAt: Date
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number
+    epoch: number
+    contractId: number
+    tokenId:   string;
+    slot:     string;
+    static register(seq:Sequelize) {
+        SlotChanged.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            slot: {type: DataTypes.STRING(78), allowNull: false},
+            tokenId: {type: DataTypes.STRING(78), allowNull: false},
+        },{
+            sequelize: seq, tableName: 'slot_changed_3525',
+            indexes: [
+                {name: 'idx_c_tid', fields: ['contractId','tokenId']},
+                {name: 'idx_epoch', fields: ['epoch']},
+            ]
+        })
+    };
 }
 export interface IEvent3525 extends IErc1155Transfer {
     // event TransferValue(uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _value);
@@ -261,6 +299,7 @@ class Event3525handler implements SyncHandler {
         return Promise.all([
             Event3525.destroy({where: {epoch}, transaction: dbTx}),
             AddrEvent3525.destroy({where: {epoch}, transaction: dbTx}),
+            SlotChanged.destroy({where: {epoch}, transaction: dbTx}),
         ])
     }
 
@@ -269,20 +308,23 @@ class Event3525handler implements SyncHandler {
     }
 
     prepareData(): any {
-        return {events:[], slots: {}, tokens: {}}
+        return {events:[], slotChanged:[], slots: {}, tokens: {}}
     }
     postProcess(data, dt:Date, epoch): Promise<any> {
-        const {events, slots, tokens} = data;
+        const {events, slots, tokens, slotChanged} = data;
         return new Promise<any>(async r=>{
             const valueMap:any = {}
             for(let e of events) {
                 await buildErc20Transfer(e, dt)
                 const {event, slot, contractId, tokenId,fromTokenId, toTokenId, toId} = e;
+                if (event === 'SlotChanged') {
+                    slotChanged.push(e);
+                }
                 if (event === 'SlotChanged' || event === 'Transfer') {
-                    valueMap[`${contractId}_${tokenId}`] = {contractId, tokenId}
+                    valueMap[`${contractId}_${tokenId}`] = {contractId, tokenId};
                 } else if (event === 'TransferValue') {
-                    valueMap[`${contractId}_${fromTokenId}`] = {contractId, tokenId:fromTokenId}
-                    valueMap[`${contractId}_${toTokenId}`] = {contractId, tokenId:toTokenId}
+                    valueMap[`${contractId}_${fromTokenId}`] = {contractId, tokenId:fromTokenId};
+                    valueMap[`${contractId}_${toTokenId}`] = {contractId, tokenId:toTokenId};
                 }
             }
             const ownerMap:any = {}
@@ -345,7 +387,7 @@ class Event3525handler implements SyncHandler {
         return result;
     }
 
-    save(epoch: number, {pivotHash, events, slots, tokens}, taskBegin: number): Promise<void> {
+    save(epoch: number, {pivotHash, events, slotChanged, slots, tokens}, taskBegin: number): Promise<void> {
         const slotArr = Object.keys(slots).map(k=>slots[k]);
         // build token id beans
         const fields = ['contractId','tokenId', 'slot', 'ownerId','createdAt', 'updatedAt'];
@@ -363,16 +405,17 @@ class Event3525handler implements SyncHandler {
         } ON DUPLICATE KEY UPDATE ownerId=if(values(ownerId) = 0, ownerId, values(ownerId)) , ${''
         } slot=if(values(slot)='', slot, values(slot)), updatedAt=values(updatedAt);`
 
+        const eventsAboutValue = events.filter(e=>e.event !=='SlotChanged');
+        const addrEvents = this.buildForAddr(eventsAboutValue);
+
         return Event3525.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
-                Event3525.bulkCreate(events, {
+                Event3525.bulkCreate(eventsAboutValue, {
                     transaction: dbTx,
                     updateOnDuplicate:["event","contractId","fromId","toId","slot","tokenId","fromTokenId", "toTokenId", "value"]}
-                    )
-                    .then((arr)=>{
-                        return AddrEvent3525.bulkCreate(this.buildForAddr(events),
-                            {transaction: dbTx})
-                    }), // will auto id be filled ?
+                    ),
+                AddrEvent3525.bulkCreate(addrEvents, {transaction: dbTx}),
+                SlotChanged.bulkCreate(slotChanged, {transaction: dbTx}),
                 Slot3525.bulkCreate(slotArr, {
                     ignoreDuplicates: true, transaction: dbTx,
                 }),
