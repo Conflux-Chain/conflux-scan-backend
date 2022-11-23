@@ -267,6 +267,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
     repeat().then()
 }
 export interface SyncHandler {
+    init:(any)=>Promise<any>;
     prepareData:()=>any;
     logParser:(log, dt:Date)=>{key, parsed},
     postProcess:(parsedResult, dt:Date, epoch)=>Promise<any>,
@@ -310,6 +311,7 @@ export async function startSyncEvent(cfxUrl:string,
     let cfx = new Conflux(cfxOp)
     patchHttpProvider(cfx, cfxOp)
     const st = await cfx.getStatus()
+    await handler.init({cfx})
     console.log(` ${process.argv[1]} \n ------- network ${st.networkId} ${cfxOp.url} --------`)
     return runTask(cfx, taskClz, handler, parseInt(fromEpoch), parseInt(taskLen))
 }

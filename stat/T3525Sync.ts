@@ -295,8 +295,13 @@ async function testParseLog(rpc) {
 }
 class Event3525handler implements SyncHandler {
     parser: any;
+    private tokenTypeCache: TokenTypeCache;
     constructor() {
         this.parser = build3525interface();
+    }
+    init({cfx}) : Promise<any>{
+        this.tokenTypeCache = new TokenTypeCache(new TokenTool(cfx));
+        return Promise.resolve();
     }
 
     popAction(epoch, dbTx): Promise<any> {
@@ -319,8 +324,15 @@ class Event3525handler implements SyncHandler {
         return new Promise<any>(async r=>{
             const valueMap:any = {}
             for(let e of events) {
+                if (e.event === 'Transfer') {
+                    const is3525 = await this.tokenTypeCache.check3525(e.address)
+                    if (!is3525) {
+                        continue;
+                    }
+                }
+                e.is3525 = true;
                 await buildErc20Transfer(e, dt)
-                const {event, slot, contractId, tokenId,fromTokenId, toTokenId, toId} = e;
+                const {event, slot, contractId, tokenId,fromTokenId, toTokenId, toId, address} = e;
                 if (event === 'SlotChanged') {
                     slotChanged.push(e);
                 }
@@ -409,7 +421,7 @@ class Event3525handler implements SyncHandler {
         } ON DUPLICATE KEY UPDATE ownerId=if(values(ownerId) = 0, ownerId, values(ownerId)) , ${''
         } slot=if(values(slot)='', slot, values(slot)), updatedAt=values(updatedAt);`
 
-        const eventsAboutValue = events.filter(e=>e.event !=='SlotChanged');
+        const eventsAboutValue = events.filter(e=>e.event !=='SlotChanged' && e.is3525);
         const addrEvents = this.buildForAddr(eventsAboutValue);
 
         return Event3525.sequelize.transaction(async (dbTx)=>{
@@ -447,6 +459,27 @@ class Event3525handler implements SyncHandler {
 export class TaskEvent3525 extends TaskTemplate {
     static register(seq: Sequelize) {
         TaskTemplate.registerTemplate(TaskEvent3525, seq, 'task_event_3525')
+    }
+}
+const T_3525 = 'ERC3525'
+interface TokenType {
+    token: string; type:string;
+}
+export class TokenTypeCache {
+    map:Map<string, TokenType>;
+    private tokenTool: TokenTool;
+    constructor(tokenTool: TokenTool) {
+        this.tokenTool = tokenTool;
+    }
+    async check3525(token:string) : Promise<boolean> {
+        let cache = this.map.get(token);
+        if (!cache) {
+            let supports3525 = await this.tokenTool.supportsInterface(token, '0xd5358140')
+            cache = {token, type: supports3525 ? T_3525 : 'other'};
+            this.map.set(token, cache)
+        }
+        return cache.type === T_3525;
+
     }
 }
 async function sync() {
