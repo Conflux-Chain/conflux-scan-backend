@@ -354,6 +354,9 @@ class Event3525handler implements SyncHandler {
             }))
             // collect slot change, calculate value
             for(let e of events) {
+                if (!e.is3525) {
+                    continue;
+                }
                 const {event, slot, contractId, tokenId, toId, fromTokenId, toTokenId, value} = e;
                 const tokenIdKey = `${contractId}_${tokenId}`;
                 if (event === 'SlotChanged') {
