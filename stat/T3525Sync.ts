@@ -157,7 +157,7 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
             '?'} and toTokenId=? and event='TransferValue' order by id desc limit 1) ) ut order by id desc limit 1`
         const [bean] = await Event3525.sequelize.query(sql, {
             replacements: [contractId, tokenId, contractId, tokenId], raw: true, type: QueryTypes.SELECT,
-            logging: console.log,
+            // logging: console.log,
         })
         return bean ? BigInt(bean["balance"]) : BigInt(0);
     }
@@ -173,7 +173,7 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
         }   where contractId=? and tokenId=? and event='Transfer')`
         const [bean] = await Event3525.sequelize.query(sql, {
             replacements: [contractId, tokenId], raw:true, type: QueryTypes.SELECT,
-            logging: console.log,
+            // logging: console.log,
         })
         return bean ? BigInt(bean["toId"]) : BigInt(0);
     }
@@ -441,7 +441,9 @@ class Event3525handler implements SyncHandler {
                 new Promise(async r=>{
                     if (values.length) {
                         TokenSlot3525.sequelize.query({query: fullSql, values},
-                            {transaction: dbTx, type: QueryTypes.UPSERT, logging: console.log})
+                            {transaction: dbTx, type: QueryTypes.UPSERT,
+                                // logging: console.log
+                            })
                             .then(r)
                     } else {
                         r(0)
