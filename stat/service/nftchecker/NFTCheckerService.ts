@@ -1,18 +1,20 @@
-import {NFTMap, NFTMapPlus} from "./NFTInfo";
+import {NFTMapPlus} from "./NFTInfo";
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {Op, QueryTypes} from "sequelize";
-import {KEY_NFT_FROM_DB, KEY_NFT_FROM_MINT_TABLE, KV} from "../../model/KV";
+import {KEY_NFT_FROM_DB, KV} from "../../model/KV";
 import {getNftBalances} from "../NftService";
 import {Desensitizer} from "../Desensitizer";
 import {convert2base32map, getAddrId, idHex40Map} from "../../model/HexMap";
 import {TokenBalance} from "../../model/Balance";
 import {CONST} from "../common/constant"
-import {NftMeta, NftMetaFts} from "./NftMetaStorage";
+import {NftMetaFts} from "./NftMetaStorage";
 import {format} from "js-conflux-sdk";
+import {TokenQuery} from "../TokenQuery";
+import {toBase32} from "../tool/AddressTool";
+import {emptyField} from "../common/utils";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
-/*const CONST = require('../common/constant');*/
 
 export class NFTCheckerService {
     private scanUtilContractAddress = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh';
@@ -139,70 +141,57 @@ export class NFTCheckerService {
         return {total: count ? count : 0, list};
     }
 
-    public async getNftTokensForOpenApi({owner, contract, skip = 0, limit = 10}
-                                  : { owner?: string, contract: string, skip: number, limit: number }) {
-        // const debug = true
-        const ownerAddressId = owner ? await getAddrId(owner) : owner;
-        const contractAddressId = contract ? await getAddrId(contract): contract;
-        if((owner && !ownerAddressId) || (contract && !contractAddressId)) {
+    public async getNftTokensForOpenApi({owner, contract, tokenId, withUnique = false, skip = 0, limit = 10}
+        : { owner?: string, contract: string, tokenId: string, withUnique?: boolean, skip: number, limit: number}) {
+        const ownerId = owner ? await getAddrId(owner) : owner;
+        const contractId = contract ? await getAddrId(contract) : contract;
+        if ((owner && !ownerId) || (contract && !contractId)) {
             return {total: 0, list: []};
         }
-        const zeroAddressId = await getAddrId(CONST.ZERO_ADDRESS);
 
-        if (contractAddressId) {
-            const token = await Token.findOne({
-                where: {hex40id: contractAddressId, type: 'ERC1155'},
-                attributes: ['type', 'base32']
-            })
-            if (token) {
-                const where: any = {contractId: contractAddressId, addressId: ownerAddressId};
-                if (!ownerAddressId) {
-                    delete where.addressId
-                    where.addressId = {[Op.ne]: zeroAddressId};
-                }
-                const page = await Erc1155Data.findAndCountAll({
-                    where, raw: true,
-                    order:[['id','desc']], offset: skip, limit,
-                    // benchmark: debug, logging: debug ? console.log : false,
-                })
-                const list = page?.rows?.map(item => ({contract: token.base32, tokenId: item.tokenId}))
-                return {total:  page?.count || 0, list: list || []};
+        const {type} = await TokenQuery.detectTokenType({hex40id: contractId});
+        if (type !== CONST.TRANSFER_TYPE.ERC1155 && type !== CONST.TRANSFER_TYPE.ERC721) {
+            return {total: 0, list: []};
+        }
+
+        let page;
+        const options: any = { offset: skip, limit, raw: true };
+        const byUnique = (type === CONST.TRANSFER_TYPE.ERC1155) && (ownerId || withUnique);
+        if (byUnique) {
+            options.where = emptyField({contractId, addressId: ownerId, tokenId});
+            options.order = [['id', 'desc']];
+            options.logging = (sql) => console.log(`sql1 ${sql}`);
+            page = await Erc1155Data.findAndCountAll(options);
+        } else {
+            options.where = emptyField({contractId, toId: ownerId, tokenId});
+            options.order = [['updatedAt', 'desc']];
+            options.logging = (sql) => console.log(`sql2 ${sql}`);
+            if (!ownerId) options.where.toId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
+            page = await NftMint.findAndCountAll(options);
+        }
+
+        const base32 = toBase32(contract);
+        const total = page?.count;
+        const list = page?.rows?.map(item => {
+            const result = {contract: base32, tokenId: item.tokenId}
+            if(byUnique) {
+                result['ownerId'] = item.addressId;
+                result['amount'] = item.amount;
             }
-        }
+            return result;
+        });
 
-        const where: any = {contractId: contractAddressId, toId: ownerAddressId};
-        if (!contractAddressId) {
-            delete where.contractId
-        }
-        if (!ownerAddressId) {
-            delete where.toId
-            where.toId = {[Op.ne]: zeroAddressId};
-        }
-        const options: any = {
-            where,
-            order: [['updatedAt', 'DESC']],
-            offset: skip,
-            limit,
-            raw: true,
-            // benchmark: debug, logging: debug ? console.log : false,
-        };
-        const page = await NftMint.findAndCountAll(options);
-        const count = page?.count;
-        const nftMintArray = page?.rows;
-
-        let list = [];
-        if(nftMintArray){
-            list = nftMintArray.map(item => ({contractId: item.contractId, tokenId: item.tokenId}))
-            const hexIdSet = new Set(list.map(item => item.contractId));
-            const hexIdHexMap = await idHex40Map([...hexIdSet])
-            const hexIdBase32Map = convert2base32map(hexIdHexMap)
+        if (list?.length) {
+            const ownerIdSet = new Set(list.map(item => item.ownerId));
+            const hexIdHexMap = await idHex40Map([...ownerIdSet] as number[]);
+            const hexIdBase32Map = convert2base32map(hexIdHexMap);
             list.forEach(item => {
-                item['contract'] = hexIdBase32Map.get(item.contractId);
-                delete item.contractId;
+                item['owner'] = hexIdBase32Map.get(item.ownerId);
+                delete item.ownerId;
             });
         }
 
-        return {total: count ? count : 0, list};
+        return {total, list: list || []};
     }
 
     public async getNftTokensByFtsForOpenApi({contract, name}: {contract?: string, name: string}) {
