@@ -69,6 +69,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/ApprovalSync.js useConfigRpc -1 10000
+  token_3525: # token 3525 sync
+    image: node:14.17.5
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/T3525Sync.js sync useConfigRpc 55980000 10000
   token_misc: # token misc: holder, total supply
     image: node:14.17.5
     network_mode: host
