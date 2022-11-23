@@ -473,6 +473,7 @@ export class TokenTypeCache {
     private tokenTool: TokenTool;
     constructor(tokenTool: TokenTool) {
         this.tokenTool = tokenTool;
+        this.map = new Map<string, TokenType>();
     }
     async check3525(token:string) : Promise<boolean> {
         let cache = this.map.get(token);
