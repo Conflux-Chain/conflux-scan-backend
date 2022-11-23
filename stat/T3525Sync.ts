@@ -136,27 +136,53 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
         return bean ? BigInt(bean["toId"]) : BigInt(0);
     }
 }
-export interface IAddrEvent3525 {
+export interface IAddrEvent3525 extends IEvent3525{
     id?: number;
-    addrId: number;
-    refId: number;
-    epoch: number;
+    addressId: number;
 }
 export class AddrEvent3525 extends Model<IAddrEvent3525> implements IAddrEvent3525 {
+    fromTokenId: string;
+    toTokenId: string;
+    fromTokenBalance: string;
+    toTokenBalance: string;
+    value: string;
+    tokenId: string;
+    createdAt: Date;
+    blockIndex: number;
+    txIndex: number;
+    txLogIndex: number;
+    epoch: number;
+    contractId: number;
+    fromId: number;
+    toId: number;
     id?: number;
-    addrId: number;
-    refId: number; epoch: number;
+    addressId: number;
+    event: string; slot:     string;
     static register(seq: Sequelize) {
         AddrEvent3525.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
-            addrId: {type: DataTypes.BIGINT, allowNull: false},
-            refId: {type: DataTypes.BIGINT, allowNull: false},
+            addressId: {type: DataTypes.BIGINT, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
+            event: {type: DataTypes.STRING("TransferValue".length), allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            contractId: {type: DataTypes.BIGINT, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+            value: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
+            tokenId: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
+            fromTokenId: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
+            toTokenId: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
+            slot: {type: DataTypes.STRING(78), allowNull: true, defaultValue: ""},
+            fromTokenBalance: {type: DataTypes.STRING(79), allowNull: true, defaultValue: "0"},
+            toTokenBalance: {type: DataTypes.STRING(79), allowNull: true, defaultValue: "0"},
         }, {
             sequelize: seq, tableName: 'addr_event_3525',
             timestamps: false,
             indexes: [
-                {name: "idx_addr_id", fields: ["addrId", {name:"id", order: "DESC"}]},
+                {name: "idx_addr_id", fields: ["addressId", {name:"id", order: "DESC"}]},
                 {name: "idx_epoch", fields: ["epoch"]},
             ]
         })
@@ -310,10 +336,10 @@ class Event3525handler implements SyncHandler {
         const result:IAddrEvent3525[] = []
         for(let e of arr) {
             if (e.fromId > 0) {
-                result.push({id: 0, addrId: e.fromId, refId: e.id, epoch: e.epoch})
+                result.push({...e, id: 0, addressId: e.fromId})
             }
             if (e.toId > 0 && e.toId !== e.fromId) {
-                result.push({id: 0, addrId: e.toId, refId: e.id, epoch: e.epoch})
+                result.push({...e, id: 0, addressId: e.toId})
             }
         }
         return result;
@@ -344,7 +370,7 @@ class Event3525handler implements SyncHandler {
                     updateOnDuplicate:["event","contractId","fromId","toId","slot","tokenId","fromTokenId", "toTokenId", "value"]}
                     )
                     .then((arr)=>{
-                        return AddrEvent3525.bulkCreate(this.buildForAddr(arr),
+                        return AddrEvent3525.bulkCreate(this.buildForAddr(events),
                             {transaction: dbTx})
                     }), // will auto id be filled ?
                 Slot3525.bulkCreate(slotArr, {
