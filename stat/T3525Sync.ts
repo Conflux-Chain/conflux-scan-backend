@@ -7,6 +7,10 @@ import {IErc1155Transfer} from "./model/Erc1155Transfer";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {startSyncEvent, SyncHandler, TaskTemplate} from "./EventSync";
 import {init} from "./service/tool/FixDailyTokenStat";
+import {Token} from "./model/Token";
+import {TraceCreateContract} from "./model/TraceCreateContract";
+import {StatConfig} from "./config/StatConfig";
+import {TokenTool} from "./service/tool/TokenTool";
 
 export interface ISlot3525 {
     id?:number; contractId: number; slot: string;
@@ -460,10 +464,37 @@ async function sync() {
         process.exit(1)
     });
 }
+async function findEarliest3525contract(config: StatConfig) {
+    const cfx = new Conflux(config.conflux);
+    const tokenTool = new TokenTool(cfx);
+    const list721 = await Token.findAll({where: {type: 'ERC721'},
+        attributes:['name', 'base32','hex40id'],
+        // limit: 10
+    })
+    let minEpoch = await cfx.getEpochNumber().then(BigInt);
+    for (let t of list721) {
+        const [creation, support3525] = await Promise.all([
+            TraceCreateContract.findOne({where: {to: t.hex40id},
+                attributes: ['epochNumber'], raw: true}),
+            tokenTool.supportsInterface(t.base32, '0xd5358140'),
+        ])
+        console.log(`${t.name} ${t.base32} supports 3525 ${support3525
+        }, epoch ${creation?.epochNumber}`)
+        if (support3525) {
+            minEpoch = BigInt(creation?.epochNumber) < BigInt(minEpoch) ?
+                BigInt(creation?.epochNumber) : minEpoch;
+        }
+    }
+    console.log(`min epoch is `, minEpoch);
+    process.exit(0)
+}
 async function main() {
     const [,,cmd, arg1] = process.argv
     if (cmd === 'testParseLog') {
         await testParseLog(arg1)
+    } else if (cmd === 'findEarliest3525contract') {
+        const config = await init();
+        await findEarliest3525contract(config);
     } else if (cmd === 'testQuery') {
         const config = await init();
         await Event3525.queryPreviousBalance(21394052,'13')
