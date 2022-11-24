@@ -249,7 +249,7 @@ function decodeOneLog(parser, log) {
             // throw e;
         }
     }
-    if (event && event.name !== 'Approval') {
+    if (event && event.name !== 'Approval' && event.name !== 'ApprovalForAll') {
         const {
             name, args: {
                 _from, _to, _tokenId,  // transfer
