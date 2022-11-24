@@ -457,7 +457,7 @@ class Event3525handler implements SyncHandler {
     }
 
     needCheckMaxEpoch(): boolean {
-        return false;
+        return true;
     }
 
 }
@@ -525,7 +525,9 @@ async function findEarliest3525contract(config: StatConfig) {
                 BigInt(creation?.epochNumber) : minEpoch;
         }
     }
-    console.log(`min epoch is `, minEpoch, `\ncurrent epoch is`, currentEpoch);
+    console.log(`minimum epoch is`, minEpoch);
+    console.log(`current epoch is`, currentEpoch);
+    console.log(`find earliest`, minEpoch < currentEpoch)
     process.exit(0)
 }
 async function main() {

@@ -117,4 +117,5 @@ node common/contract/deploy.js pk url
 announcement : net8888:aca514ancmbdu9u349u4m7d0u4jjdv83pyk5mtkf5u  0x81bbe80b1282387e19d7e1a57476869081c7d965
 update `config` set `value`='NET8888:TYPE.CONTRACT:ACDFK9ABU298FRXZS7DEM3JG9FED6DFXPP8PA92A9S' where `key`='SCAN_UTIL_CONTRACT';
 update `config` set `value`='0x' where `key`='SCAN_UTIL_CONTRACT';
+insert into config values('SCAN_UTIL_CONTRACT','cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh');
  */

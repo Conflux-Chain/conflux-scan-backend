@@ -135,7 +135,7 @@ export class ApiServer {
     }
 
     public async init() {
-        logger.info(`-------- start api server --------`)
+        logger.info(`-------- start api server, port ${config.apiPort}--------`)
         patchHttpProvider(this.cfx, config.conflux)
         // @ts-ignore
         await this.cfx.updateNetworkId();

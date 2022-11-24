@@ -28,10 +28,10 @@ export class Crc3525TransferQuery extends TransferQueryBase{
             'blockIndex',
             'txIndex',
             'txLogIndex',
-            ['fromId', 'from'],
+            ['fromId', 'from'], 'fromId',
             ['toId', 'to'],
             'tokenId',
-            'value', 'fromTokenId', 'toTokenId', 'event', 'slot',
+            'value', 'fromTokenId', 'toTokenId', 'event',// 'slot',
             ['contractId', 'address'],
             ['createdAt', 'timestamp'],
         ];
@@ -69,6 +69,10 @@ export class Crc3525TransferQuery extends TransferQueryBase{
         txMap: Map<string, FullTransaction>): Promise<any>{
         row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC3525;
+        if (row['from'] === '' && row['fromId'] == 0) {
+            row['from'] = format.address('0x0000000000000000000000000000000000000000', this.app?.networkId)
+        }
+        delete row['fromId'];
         return row;
     }
 
