@@ -20,6 +20,10 @@ export abstract class TransferQueryBase {
         this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
     }
 
+    public buildTokenIdOption(conditionArray: any[], tokenId: any) {
+        conditionArray.push({tokenId: tokenId.toString()});
+    }
+
     public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                   minTimestamp, maxTimestamp,
                                   accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
@@ -67,7 +71,8 @@ export abstract class TransferQueryBase {
             conditionArray.push({epoch: txParas.epoch, blockIndex: txParas.blockIndex, txIndex: txParas.txIndex});
         }
         if(tokenId !== undefined) {
-            conditionArray.push({tokenId: tokenId.toString()});
+            // conditionArray.push({tokenId: tokenId.toString()});
+            this.buildTokenIdOption(conditionArray, tokenId);
         }
         if(accountAddressId) {
             const transferCode = this.NAME_TYPE_MAP[transferType]?.code;

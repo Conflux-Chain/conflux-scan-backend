@@ -9,6 +9,7 @@ import {FullTransaction} from "../model/FullBlock";
 import {AddrEvent3525, Event3525} from "../T3525Sync";
 import {init} from "./tool/FixDailyTokenStat";
 import {FullBlockQuery} from "./FullBlockQuery";
+import {Op} from "sequelize"
 /*const CONST = require('./common/constant');*/
 
 export class Crc3525TransferQuery extends TransferQueryBase{
@@ -36,6 +37,16 @@ export class Crc3525TransferQuery extends TransferQueryBase{
             ['createdAt', 'timestamp'],
         ];
     }
+    buildTokenIdOption(conditionArray: any[], tokenId: any) {
+        // conditionArray.push({tokenId: tokenId.toString()});
+        const tokenIdStr = tokenId.toString();
+        conditionArray.push({[Op.or]: [
+                {tokenId: tokenIdStr},
+                {fromTokenId: tokenId},
+                {toTokenId: tokenId},
+            ]});
+    }
+
     public async doQuery(options: any, queryOptions: any): Promise<any>{
         const{ logger } = this.app;
 
