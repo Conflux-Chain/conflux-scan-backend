@@ -17,6 +17,7 @@ import {
     listAccountTransfer20,
     listAccountTransfer721,
     listAccountTransfer1155,
+    listAccountTransfer3525,
     listAccountTransfer
 } from "../service/OpenTransferService";
 import {
@@ -137,6 +138,7 @@ function registerRouter(router: Router) {
     router.get('/account/crc20/transfers', checkAddressRateFn, listAccountTransfer20)
     router.get('/account/crc721/transfers', checkAddressRateFn, listAccountTransfer721)
     router.get('/account/crc1155/transfers', checkAddressRateFn, listAccountTransfer1155)
+    router.get('/account/crc3525/transfers', checkAddressRateFn, listAccountTransfer3525)
     router.get('/account/transfers', checkAddressRateFn, listAccountTransfer)
     router.get('/account/tokens', listAccountAssets)
 

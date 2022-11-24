@@ -511,6 +511,7 @@ async function findEarliest3525contract(config: StatConfig) {
         // limit: 10
     })
     let minEpoch = await cfx.getEpochNumber().then(BigInt);
+    let currentEpoch = minEpoch;
     for (let t of list721) {
         const [creation, support3525] = await Promise.all([
             TraceCreateContract.findOne({where: {to: t.hex40id},
@@ -524,7 +525,7 @@ async function findEarliest3525contract(config: StatConfig) {
                 BigInt(creation?.epochNumber) : minEpoch;
         }
     }
-    console.log(`min epoch is `, minEpoch);
+    console.log(`min epoch is `, minEpoch, `\ncurrent epoch is`, currentEpoch);
     process.exit(0)
 }
 async function main() {
