@@ -45,6 +45,7 @@ export const CONST = {
     ERC721: 'ERC721',
     ERC777: 'ERC777',
     ERC1155: 'ERC1155',
+    ERC3525: 'ERC3525',
     ALL: 'ALL'
   },
 

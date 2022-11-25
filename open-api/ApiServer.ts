@@ -10,6 +10,7 @@ import {FullBlockQuery} from "../stat/service/FullBlockQuery";
 import {Crc20TransferQuery} from "../stat/service/Crc20TransferQuery";
 import {Crc721TransferQuery} from "../stat/service/Crc721TransferQuery";
 import {Crc1155TransferQuery} from "../stat/service/Crc1155TransferQuery";
+import {Crc3525TransferQuery} from "../stat/service/Crc3525TransferQuery";
 import {BatchBalanceWatcher} from "../stat/service/watcher/BatchBalanceWatcher";
 import {setRateControlDB} from "./router/middleware";
 import {ContractQuery} from "../stat/service/ContractQuery";
@@ -55,6 +56,7 @@ export class ApiService {
     cfxTransferQuery: CfxTransferQuery
     crc721transferQuery: Crc721TransferQuery
     crc1155transferQuery: Crc1155TransferQuery
+    crc3525transferQuery: Crc3525TransferQuery
     addrTransferQuery: AddrTransferQuery
     dailyBlockDataStatQuery: DailyBlockDataStatQuery
     rankService: RankService;
@@ -133,7 +135,7 @@ export class ApiServer {
     }
 
     public async init() {
-        logger.info(`-------- start api server --------`)
+        logger.info(`-------- start api server, port ${config.apiPort}--------`)
         patchHttpProvider(this.cfx, config.conflux)
         // @ts-ignore
         await this.cfx.updateNetworkId();
@@ -157,6 +159,7 @@ export class ApiServer {
         apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
+        apiService.crc3525transferQuery = new Crc3525TransferQuery(apiApp)
         apiService.addrTransferQuery = new AddrTransferQuery(apiApp)
         apiService.dailyBlockDataStatQuery = new DailyBlockDataStatQuery(apiApp)
         apiService.rankService = new RankService(apiApp)

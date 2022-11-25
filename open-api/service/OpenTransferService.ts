@@ -39,6 +39,10 @@ export async function listAccountTransfer1155(ctx) {
     return listTransfer(ctx, getApiService().crc1155transferQuery)
 }
 
+export async function listAccountTransfer3525(ctx) {
+    return listTransfer(ctx, getApiService().crc3525transferQuery)
+}
+
 /**
  * Query all transfer of one account(address)
  * @param ctx
