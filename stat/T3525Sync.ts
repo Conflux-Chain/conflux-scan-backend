@@ -354,7 +354,7 @@ class Event3525handler implements SyncHandler {
                     Event3525.queryPreviousOwner(contractId, tokenId)
                         .then(owner=>ownerMap[k] = owner),
                     TokenSlot3525.findOne({where: {contractId, tokenId}})
-                        .then(res=>slotMap[k] = res?.slot || "")
+                        .then(res=>slotMap[k] = res?.slot || "0")
                 ])
             }))
             // collect slot change, calculate value
@@ -387,14 +387,14 @@ class Event3525handler implements SyncHandler {
                     // fill owner
                     e.fromId = (ownerMap[fromTKey] || BigInt(0)).toString();
                     e.toId = (ownerMap[toTKey] || BigInt(0)).toString();
-                    e.slot = slotMap[fromTKey] || '';
+                    e.slot = slotMap[fromTKey] || '0';
                 } else if (e.event === 'Transfer') {
                     const former = tokens[tokenIdKey] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
                     tokens[tokenIdKey] = {...former, ownerId: toId}
                     // fill value when transferring owner
                     e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
                     ownerMap[tokenIdKey] = BigInt(toId);
-                    e.slot = slotMap[tokenIdKey] || '';
+                    e.slot = slotMap[tokenIdKey] || '0';
                 }
             }
             r(data);
