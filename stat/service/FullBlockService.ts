@@ -330,6 +330,9 @@ export class FullBlockService {
             popTx.forEach(tx=>{
                 addresses.add(tx.fromId)
                 addresses.add(tx.toId)
+                if (tx.contractCreatedId) {
+                    addresses.add(tx.contractCreatedId)
+                }
             })
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
