@@ -32,7 +32,7 @@ export class Crc3525TransferQuery extends TransferQueryBase{
             ['fromId', 'from'], 'fromId',
             ['toId', 'to'],
             'tokenId',
-            'value', 'fromTokenId', 'toTokenId', 'event',// 'slot',
+            'value', 'fromTokenId', 'toTokenId', 'event', 'slot',
             ['contractId', 'address'],
             ['createdAt', 'timestamp'],
         ];
