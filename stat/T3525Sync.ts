@@ -561,6 +561,23 @@ if (module === require.main) {
     main().then()
 }
 
+/*
+    select * from event_3525 where event='TransferValue' and (slot='' or slot='0');
+ update event_3525 t set slot =
+ ( select slot from slot_changed_3525 ts where ts.contractId=t.contractId
+    and ts.tokenId = t.toTokenId
+    and ( (ts.epoch<t.epoch)
+        or (ts.epoch=t.epoch and ts.blockIndex<t.blockIndex)
+        or (ts.epoch=t.epoch and ts.blockIndex=t.blockIndex and ts.txIndex<t.txIndex)
+        or (ts.epoch=t.epoch and ts.blockIndex=t.blockIndex and
+            ts.txIndex=t.txIndex and ts.txLogIndex<t.txLogIndex)
+    )
+    order by ts.epoch desc, ts.blockIndex desc, ts.txIndex desc, ts.txLogIndex desc
+    limit 1
+ )
+ where t.event = 'TransferValue'
+    or (t.event='Transfer' and t.fromId != (select id from hex40 where hex='0000000000000000000000000000000000000000'))
+ */
 
 // node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync http://net8889eth.confluxrpc.com/cfxbridge -1 1000
 // node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync https://evmtestnet.confluxscan.net/rpcv2 99952425 1000
