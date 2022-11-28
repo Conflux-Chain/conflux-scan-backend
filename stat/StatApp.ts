@@ -34,8 +34,9 @@ import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {Desensitizer} from "./service/Desensitizer";
-import {setupEnsChecker} from "./service/ens/EnsService";
 import {FullBlockQuery} from "./service/FullBlockQuery";
+import {ENSCheckerQuery} from "./service/ens/ENSCheckerQuery";
+import {AccountQuery} from "./service/AccountQuery";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -67,6 +68,8 @@ export class StatApp{
     public pruneHandler: PruneHandler;
     public transferTpsService: TransferTpsService;
     public fullBlockQuery: FullBlockQuery;
+    public ensCheckerQuery: ENSCheckerQuery;
+    public accountQuery: AccountQuery;
     public desensitizer: Desensitizer;
     public tokenTool: TokenTool;
     public static networkId = 1029
@@ -104,7 +107,6 @@ export class StatApp{
         }
         KV.setupSwitch().then()
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-        await setupEnsChecker(this.cfx)
         this.txnSync = new TxnSync(this);
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
@@ -143,6 +145,8 @@ export class StatApp{
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)
         this.fullBlockQuery = new FullBlockQuery(this);
+        this.ensCheckerQuery = new ENSCheckerQuery(this);
+        this.accountQuery = new AccountQuery(this);
         this.txnSync.scheduleCache()
         if (this.config.syncQuote) {
             await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote

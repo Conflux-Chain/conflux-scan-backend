@@ -17,6 +17,7 @@ import {MetaStatus, NftMeta} from "./NftMetaStorage";
 const lodash = require('lodash');
 const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
+const legacyNFTs = new Set(Object.values(NFTMap).map(item => item.address));
 
 export class NFTPreviewService {
     private app;
@@ -389,7 +390,7 @@ export class NFTPreviewService {
         try {
             /*const nftObj = this.getNFTCacheInfo({ address, tokenId });*/
             const nftObj = await this.getCache(address, hex40id, String(tokenId), {method, gateway});
-            if (!forceFlush && nftObj) {
+            if (!forceFlush && nftObj && !legacyNFTs.has(address)) {
                 console.log(`hit cache contractId ${hex40id} tokenId ${tokenId}`);
                 const cacheInfo = {imageMinHeight: height};
                 return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));

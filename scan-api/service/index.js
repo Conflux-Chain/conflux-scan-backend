@@ -24,6 +24,8 @@ const { Crc1155TransferQuery } = require('../../stat/dist/service/Crc1155Transfe
 const { BlockTraceCreateQuery } = require('../../stat/dist/service/BlockTraceCreateQuery');
 const { ContractQuery } = require('../../stat/dist/service/ContractQuery');
 const { TokenQuery } = require('../../stat/dist/service/TokenQuery');
+const {ENSCheckerQuery} = require("../../stat/dist/service/ens/ENSCheckerQuery");
+const {AccountQuery} = require("../../stat/dist/service/AccountQuery");
 
 function serviceLoader(app) {
   return {
@@ -53,6 +55,8 @@ function serviceLoader(app) {
     traceCreate: new BlockTraceCreateQuery(app),
     contractRdb: new ContractQuery(app),
     tokenRdb: new TokenQuery(app),
+    ensCheckerQuery: new ENSCheckerQuery(app),
+    accountQuery: new AccountQuery(app),
   };
 }
 

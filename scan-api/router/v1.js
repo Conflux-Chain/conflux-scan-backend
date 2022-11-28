@@ -59,15 +59,6 @@ router.use(async (ctx, next) => {
     ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
         { code: 0, message: '', data: ctx.body };
   } catch (e) {
-   /* console.log(` error at v1.js, [${ctx.request.url}]`, e);
-    let code = 500
-    if (/[Tt]oo many requests/.test(e.message)) {
-      code = 429
-    }
-    ctx.status = 600;
-    ctx.body = { code, message: `${e}` };
-    dingTalk.sendError(e).then();
-    throw e;*/
     if(e.code === undefined){
       e = new error.BizError(e.message);
     }
@@ -211,6 +202,15 @@ router.get('/frontend',
   }),
 
   jsonrpc.methodFlow('frontend'),
+
+  async function (result) {
+    const addressArray = result.contracts.filter(item => item.address).map(item => item.address);
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    result.contracts.forEach((item) => {
+      item.ensInfo = accountBasic[item.address]?.ens;
+    });
+    return result;
+  },
 );
 
 // --------------------------------- Block ----------------------------------
@@ -303,6 +303,7 @@ router.get('/block',
             syncTimestamp: 'integer',
             gasUsed: 'string',
             totalReward: 'string',
+            minerENSInfo: 'object',
           },
         ],
       },
@@ -311,6 +312,20 @@ router.get('/block',
   }),
 
   jsonrpc.methodFlow('countAndListBlock'),
+
+  async function (result) {
+    let addressArray = [];
+    result.list.forEach((block) => {
+      addressArray.push(block.miner.toString());
+    });
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    result.list.forEach((block) => {
+      block.minerContractInfo = accountBasic.map[block.miner]?.contract;
+      block.minerTokenInfo = accountBasic.map[block.miner]?.token;
+      block.minerENSInfo = accountBasic[block.miner]?.ens;
+    });
+    return result;
+  },
 );
 
 // ------------------------------- Transaction ------------------------------
@@ -366,6 +381,7 @@ router.get('/transaction/:hash',
         tokenTransfer: 'object',
         tokenTransferContractInfo: 'object',
         tokenTransferTokenInfo: 'object',
+        tokenTransferENSInfo: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -405,13 +421,14 @@ router.get('/transaction/:hash',
             addressArray.push(transfer.to.toString());
             if (transfer.address !== undefined) addressArray.push(transfer.address.toString());
           });
-          const contractBasic = await jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray });
-          const contractAddressArray = Object.keys(contractBasic.map);
+          const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+          const contractAddressArray = Object.keys(accountBasic.map);
           transaction.tokenTransferContractInfo = {};
           transaction.tokenTransferTokenInfo = {};
           contractAddressArray.forEach((address) => {
-            transaction.tokenTransferContractInfo[address] = contractBasic.map[address]?.contract;
-            transaction.tokenTransferTokenInfo[address] = contractBasic.map[address]?.token;
+            transaction.tokenTransferContractInfo[address] = accountBasic.map[address]?.contract;
+            transaction.tokenTransferTokenInfo[address] = accountBasic.map[address]?.token;
+            transaction.tokenTransferENSInfo[address] = accountBasic.map[address]?.ens;
           });
         } catch (e) {
           logger.error({ src: 'aggregate contract and token for transaction', msg: e.toString() });
@@ -475,8 +492,10 @@ router.get('/transaction',
           risk: 'number',
           gasFee: 'string',
           gasUsed: 'string',
+          fromENSInfo: 'object',
           toContractInfo: 'object',
           toTokenInfo: 'object',
+          toENSInfo: 'object',
           txExecErrorMsg: OpenAPI.schema({ type: 'string', nullable: true }),
         }],
       },
@@ -487,11 +506,17 @@ router.get('/transaction',
   jsonrpc.methodFlow('countAndListTransaction'),
 
   async function (result) {
-    const addressArray = [...new Set((result.list || []).map((tx) => tx.to).filter(Boolean))];
-    const contractBasic = await jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray });
-    result.list.filter((tx) => Boolean(contractBasic.map[tx.to])).forEach((transaction) => {
-      transaction.toContractInfo = contractBasic.map[transaction.to].contract;
-      transaction.toTokenInfo = contractBasic.map[transaction.to].token;
+    let addressArray = [];
+    result.list.forEach((tx) => {
+      addressArray.push(tx.from.toString());
+      tx.to && (addressArray.push(tx.to.toString()));
+    });
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    result.list.forEach((tx) => {
+      tx.fromENSInfo = accountBasic.map[tx.from]?.ens;
+      tx.to && (tx.toContractInfo = accountBasic.map[tx.to]?.contract);
+      tx.to && (tx.toTokenInfo = accountBasic.map[tx.to]?.token);
+      tx.to && (tx.toENSInfo = accountBasic.map[tx.to]?.ens);
     });
     return result;
   },
@@ -816,6 +841,8 @@ router.get('/contract/:address',
           sponsorForCollateral: 'string',
           sponsorForGasContractInfo: 'object',
           sponsorForCollateralContractInfo: 'object',
+          sponsorForGasENSInfo: 'object',
+          sponsorForCollateralENSInfo: 'object',
         },
         token: {
           name: 'string',
@@ -853,9 +880,11 @@ router.get('/contract/:address',
     addressArray.push(sponsorForGas);
     addressArray.push(sponsorForCollateral);
     addressArray = addressArray.filter((item) => item !== '');
-    const contractBasic = await jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray });
-    result.sponsor.sponsorForGasContractInfo = contractBasic.map[sponsorForGas]?.contract;
-    result.sponsor.sponsorForCollateralContractInfo = contractBasic.map[sponsorForCollateral]?.contract;
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    result.sponsor.sponsorForGasContractInfo = accountBasic.map[sponsorForGas]?.contract;
+    result.sponsor.sponsorForCollateralContractInfo = accountBasic.map[sponsorForCollateral]?.contract;
+    result.sponsor.sponsorForGasENSInfo = accountBasic.map[sponsorForGas]?.ens;
+    result.sponsor.sponsorForCollateralENSInfo = accountBasic.map[sponsorForCollateral]?.ens;
 
     return result;
   },
@@ -904,7 +933,7 @@ router.get('/contract',
 );
 
 // ------------------------- Contract and Token -----------------------------
-router.get('/contract-and-token',
+/*router.get('/contract-and-token',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -940,7 +969,7 @@ router.get('/contractBasic',
   }),
 
   jsonrpc.methodFlow('queryContractBasic'),
-);
+);*/
 
 // ---------------------------------- Token ---------------------------------
 router.post('/token',
@@ -1091,6 +1120,7 @@ router.get('/token',
             price: OpenAPI.schema({ type: 'number', nullable: true }),
             totalPrice: 'number',
             contractName: 'string',
+            ensInfo: 'object',
           },
         ],
       },
@@ -1101,13 +1131,11 @@ router.get('/token',
   jsonrpc.methodFlow('countAndListToken'),
 
   async function (result) {
-    const addressArray = [];
+    const addressArray = result.list.map(token => token.address);
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.list.forEach((token) => {
-      if (token.name === undefined) addressArray.push(token.address);
-    });
-    const contractBasic = await jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray });
-    result.list.forEach((token) => {
-      token.contractName = contractBasic.map[token.address]?.contract?.name;
+      token.contractName = accountBasic.map[token.address]?.contract?.name;
+      token.ensInfo = accountBasic.map[token.address]?.ens;
     });
     return result;
   },
@@ -1190,12 +1218,15 @@ router.get('/transfer',
             type: 'string', // for transferType is 'CFX'
             fromContractInfo: 'object',
             fromTokenInfo: 'object',
+            fromENSInfo: 'object',
             fromESpaceInfo: 'object',
             toContractInfo: 'object',
             toTokenInfo: 'object',
+            toENSInfo: 'object',
             toESpaceInfo: 'object',
             transferContractInfo: 'object',
             transferTokenInfo: 'object',
+            transferENSInfo: 'object',
           },
         ],
       },
@@ -1218,16 +1249,19 @@ router.get('/transfer',
       if (transfer.address !== undefined) addressArray.push(transfer.address.toString());
     });
     addressArray = addressArray.filter((e) => e?.length > 40); // filter 0xundefined.
-    const contractBasic = await jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray });
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.list.forEach((transfer) => {
-      transfer.fromContractInfo = contractBasic.map[transfer.from]?.contract;
-      transfer.fromTokenInfo = contractBasic.map[transfer.from]?.token;
-      transfer.fromESpaceInfo = contractBasic.map[type.address(transfer.from)]?.eSpace;
-      transfer.toContractInfo = contractBasic.map[transfer.to]?.contract;
-      transfer.toTokenInfo = contractBasic.map[transfer.to]?.token;
-      transfer.toESpaceInfo = contractBasic.map[type.address(transfer.to)]?.eSpace;
-      transfer.transferTokenInfo = contractBasic.map[transfer.address]?.token;
-      transfer.transferContractInfo = contractBasic.map[transfer.address]?.contract;
+      transfer.fromContractInfo = accountBasic.map[transfer.from]?.contract;
+      transfer.fromTokenInfo = accountBasic.map[transfer.from]?.token;
+      transfer.fromENSInfo = accountBasic.map[transfer.from]?.ens;
+      transfer.fromESpaceInfo = accountBasic.map[transfer.from]?.eSpace;
+      transfer.toContractInfo = accountBasic.map[transfer.to]?.contract;
+      transfer.toTokenInfo = accountBasic.map[transfer.to]?.token;
+      transfer.toENSInfo = accountBasic.map[transfer.to]?.ens;
+      transfer.toESpaceInfo = accountBasic.map[transfer.to]?.eSpace;
+      transfer.transferTokenInfo = accountBasic.map[transfer.address]?.token;
+      transfer.transferContractInfo = accountBasic.map[transfer.address]?.contract;
+      transfer.transferENSInfo = accountBasic.map[transfer.address]?.ens;
     });
     return result;
   },
@@ -1256,13 +1290,15 @@ router.get('/transferTree/:transactionHash',
     result.addressArray.forEach((address) => {
       addressArray.push(address.toString());
     });
-    const contractBasic = await jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray });
-    const contractAddressArray = Object.keys(contractBasic.map);
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const contractAddressArray = Object.keys(accountBasic.map);
     result.tokenMap = {};
     result.contractMap = {};
+    result.ensMap = {};
     contractAddressArray.forEach((address) => {
-      result.contractMap[address] = contractBasic.map[address]?.contract;
-      result.tokenMap[address] = contractBasic.map[address]?.token;
+      result.contractMap[address] = accountBasic.map[address]?.contract;
+      result.tokenMap[address] = accountBasic.map[address]?.token;
+      result.ensMap[address] = accountBasic.map[address]?.ens;
     });
     return result;
   },
@@ -1287,6 +1323,7 @@ router.get('/eventLog',
             address: 'string',
             data: 'string',
             topics: ['string'],
+            ensInfo: 'object',
           },
         ],
         logContractInfo: 'object',
@@ -1296,6 +1333,48 @@ router.get('/eventLog',
   }),
 
   jsonrpc.methodFlow('listEventLogByTransactionHash'),
+
+  async function (result) {
+    const {
+      app: { type },
+    } = this;
+    result.list.forEach(item => item.address = type.simpleAddress(item.address));
+
+    const addressArray = result.list.map(item => item.address);
+    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    result.list.forEach(item => {
+      item.ensInfo = accountBasic.map[item.address]?.ens;
+    });
+
+    return result;
+  },
+);
+
+// ---------------------------------- ENS -------------------------------------
+router.get('/ens/reverse/match',
+    OpenAPI.flow({
+      tags: ['contract'],
+      input: {
+        address: { in: 'query', type: 'array', items: { type: 'string' } },
+      },
+      output: {
+        200: {
+          total: 'integer',
+          map: 'object',
+        },
+        600: { code: 'integer', message: 'string' },
+      },
+    }),
+
+    async function (options) {
+      const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
+      const map = {};
+      Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.ens));
+      return {
+        total: Object.keys(map).length,
+        map,
+      };
+    },
 );
 
 // ----------------------------------- Report ---------------------------------

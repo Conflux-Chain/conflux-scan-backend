@@ -137,6 +137,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {transferType, fields, orderBy, reverse, skip, limit} = ctx.request.query;
         const result = await statApp.tokenQuery.list({transferType, fields, orderBy, reverse, showDestroyed: false,
             skip: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
+
+        const addressArray = result.list.map(item => item.address);
+        const ensBasic = await statApp.ensCheckerQuery.nameBatch(addressArray );
+        result.list.forEach(item => {
+            item.ensInfo = ensBasic[item.address];
+        });
+
         ctx.body = result;
     })
     router.get('/tokens/list/latest', async (ctx)=>{
@@ -525,8 +532,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         result["listLimit"] = 10_000;
 
         const base32arr = patchBase32prop(result.list, 'owner', 'ownerBase32', StatApp.isEVM, StatApp.networkId);
-        const contractBasic = await statApp.contractQuery.listBasic({addressArray: base32arr});
-        mapExtInfo(result.list, contractBasic.map, 'ownerBase32', 'ownerTokenInfo', 'ownerContractInfo');
+        const accountBasic = await statApp.accountQuery.listPatchInfo(base32arr);
+        mapExtInfo(result.list, accountBasic.map, 'ownerBase32', 'ownerTokenInfo', 'ownerContractInfo');
         result.list.forEach(row=>delete row["ownerBase32"]);
 
         ctx.body = result;
@@ -614,7 +621,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             await nftCountAndIds(ctx)
         }
     });
-    router.get('/ens-query-by-name', async (ctx)=>{
+    /*router.get('/ens-query-by-name', async (ctx)=>{
         const {name} = ctx.query
         const info = await queryEnsOfName(name)
         ctx.body = info
@@ -628,6 +635,37 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {addr} = ctx.query
         const map = await matchNamesOnChain(addr.split(','))
         ctx.body = map;
+    })*/
+    router.get('/ens/nameRegistrations', async (ctx)=>{
+        const {skip, limit} = ctx.query
+        const data = await statApp.ensCheckerQuery.getNameRegistrations(
+            skip ? parseInt(skip) : undefined,
+            limit ? parseInt(limit) : undefined,
+        );
+        ctx.body = data
+    })
+    router.get('/ens/resolveName', async (ctx)=>{
+        const {name} = ctx.query
+        const data = await statApp.ensCheckerQuery.resolveName(name);
+        ctx.body = data
+    })
+    router.get('/ens/lookupAddress', async (ctx)=>{
+        const {address} = ctx.query
+        const data = await statApp.ensCheckerQuery.lookupAddress(address);
+        ctx.body = data
+    })
+    router.get('/ens/ownedNames', async (ctx)=>{
+        const {address} = ctx.query
+        console.log(`ownedNames address ${address}`)
+        const resp = await statApp.ensCheckerQuery.getOwnedNames(address);
+        const data = resp?.account?.registrations?.map(item => ({name: `${item.labelName}`, expiryDate: item.expiryDate}));
+        ctx.body = data || []
+    })
+    router.get('/ens/resolvedNames', async (ctx)=>{
+        const {address} = ctx.query
+        const resp = await statApp.ensCheckerQuery.getResolvedNames(address);
+        const data = resp?.account?.domains?.map(item => item.name);
+        ctx.body = data || []
     })
     router.get('/transfer/tps', async function (ctx) {
         const tps = await statApp.transferTpsService.getTps();

@@ -52,8 +52,8 @@ let isEvm = false
 let ens = '0xC7b7224F76dD98bE23b717668d55cB40E9B3DF7f' // net71
 let reverse = '0x03eD9a24B0c38D1903E34d7787B1EB69B4F8ccfA' //net71
 let chainId;
-export async function setupEnsChecker(cfx:Conflux) {
-    isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
+export async function setupEnsChecker(cfx:Conflux, forceEvm = false) {
+    isEvm = forceEvm || await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
     chainId = await cfx.getStatus()
     if (!isEvm || chainId != 71) {
         return
@@ -64,12 +64,12 @@ export async function setupEnsChecker(cfx:Conflux) {
         contract = cfx.Contract({abi, address})
     }
 }
-export async function matchNamesOnChain(addrArr: string[]) {
+export async function matchNamesOnChain(addrArr: string[], domain: string = ".cfx") {
     if (!isEvm) {
         return {isEvm}
     }
     const ret = {ens, reverse};
-    const nameArr = await contract.matchNames(ens, reverse, addrArr).catch(err=>{
+    const nameArr = await contract.matchNames(ens, reverse, addrArr, domain).catch(err=>{
         console.log(`ens matchNames fail`, err)
         ret["error"] = err;
     })
@@ -77,6 +77,13 @@ export async function matchNamesOnChain(addrArr: string[]) {
         ret[addrArr[i]] = nameArr[i] || ''
     }
     return ret;
+}
+export async function getAddrOfName(name: string) {
+    return contract.getAddrOfName(ens, reverse, name);
+}
+
+export async function getReverseNameByAddress(addr: string) {
+    return contract.getReverseNameByAddress(ens, reverse, addr);
 }
 export async function fetchEnsMap(list:any[], ...keys:string[]) {
     if (!isEvm || chainId != 71) {

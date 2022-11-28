@@ -25,7 +25,7 @@ export class TxnSync {
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
                          networkId: number = 1029, useCache=true) {
         const {
-            app: { contractQuery },
+            app: { accountQuery, contractQuery },
         } = this;
 
         limit = pickNumber(limit, 10)
@@ -91,10 +91,10 @@ export class TxnSync {
         })
 
         // add contract info and token info
-        const contractBasic = await contractQuery.listBasic({addressArray});
+        const accountBasic = await accountQuery.listPatchInfo(addressArray);
         list.filter(item => item.hex.startsWith('0x8')).forEach(item => {
-            item.tokenInfo = contractBasic.map[item.base32]?.token || {};
-            item.contractInfo = contractBasic.map[item.base32]?.contract || {};
+            item.tokenInfo = accountBasic.map[item.base32]?.token || {};
+            item.contractInfo = accountBasic.map[item.base32]?.contract || {};
         });
 
         let finalRet = {
