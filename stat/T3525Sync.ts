@@ -344,13 +344,18 @@ class Event3525handler implements SyncHandler {
                 }
             }
             const ownerMap:any = {}
+            const slotMap:any = {}
             // fetch former balance and owner from db
             await Promise.all(Object.keys(valueMap).map(async (k)=>{
                 const {contractId, tokenId} = valueMap[k];
-                return Event3525.queryPreviousBalance(contractId, tokenId)
-                    .then(v=>valueMap[k] = v)
-                    .then(()=>Event3525.queryPreviousOwner(contractId, tokenId))
-                    .then(owner=>ownerMap[k] = owner);
+                await Promise.all([
+                    Event3525.queryPreviousBalance(contractId, tokenId)
+                        .then(v=>valueMap[k] = v),
+                    Event3525.queryPreviousOwner(contractId, tokenId)
+                        .then(owner=>ownerMap[k] = owner),
+                    TokenSlot3525.findOne({where: {contractId, tokenId}})
+                        .then(res=>slotMap[k] = res?.slot || "")
+                ])
             }))
             // collect slot change, calculate value
             for(let e of events) {
@@ -363,6 +368,7 @@ class Event3525handler implements SyncHandler {
                     slots[`${contractId}_${slot}`] = {contractId, slot};
                     const former = tokens[tokenIdKey] || {contractId, tokenId, ownerId: 0, createdAt: dt, updatedAt: dt}
                     tokens[tokenIdKey] = {...former, slot}
+                    slotMap[tokenIdKey] = slot;
                     // fill calculated value
                     e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
                     e.fromId = (ownerMap[tokenId] || BigInt(0)).toString();
@@ -381,12 +387,14 @@ class Event3525handler implements SyncHandler {
                     // fill owner
                     e.fromId = (ownerMap[fromTKey] || BigInt(0)).toString();
                     e.toId = (ownerMap[toTKey] || BigInt(0)).toString();
+                    e.slot = slotMap[tokenIdKey] || '';
                 } else if (e.event === 'Transfer') {
                     const former = tokens[tokenIdKey] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
                     tokens[tokenIdKey] = {...former, ownerId: toId}
                     // fill value when transferring owner
                     e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
                     ownerMap[tokenIdKey] = BigInt(toId);
+                    e.slot = slotMap[tokenIdKey] || '';
                 }
             }
             r(data);
