@@ -387,7 +387,7 @@ class Event3525handler implements SyncHandler {
                     // fill owner
                     e.fromId = (ownerMap[fromTKey] || BigInt(0)).toString();
                     e.toId = (ownerMap[toTKey] || BigInt(0)).toString();
-                    e.slot = slotMap[tokenIdKey] || '';
+                    e.slot = slotMap[fromTKey] || '';
                 } else if (e.event === 'Transfer') {
                     const former = tokens[tokenIdKey] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
                     tokens[tokenIdKey] = {...former, ownerId: toId}
