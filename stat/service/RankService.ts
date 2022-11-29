@@ -24,7 +24,7 @@ import {IS_EVM, KV} from "../model/KV";
 import {Errors} from "./common/LogicError";
 
 export class RankService{
-    private app: StatApp;
+    private app: any;
     txnMap = new Map<number, any>()
     constructor(app) {
         this.app = app;
@@ -184,7 +184,7 @@ export class RankService{
     }
     async fillInfo(list:any[], networkId) {
         const {
-            app: { contractQuery},
+            app: { accountQuery, service },
         } = this;
 
         list.forEach(r=>{
@@ -194,7 +194,8 @@ export class RankService{
         })
 
         const addressArray = list.map(item => item.base32address);
-        const accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
+        const accountService = accountQuery || service.accountQuery;
+        const accountBasic = await accountService.listPatchInfo(addressArray);
         list.forEach(item => {
             item.tokenInfo = accountBasic.map[item.base32address]?.token;
             item.contractInfo = accountBasic.map[item.base32address]?.contract;
