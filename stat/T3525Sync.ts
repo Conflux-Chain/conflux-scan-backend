@@ -277,6 +277,7 @@ function decodeOneLog(parser, log) {
         } = event;
         if (name === 'TransferValue' && _fromTokenId === '0') {
             _from = _from || CONST.ZERO_ADDRESS;
+            console.log(`fix from to ${_from}`)
         }
         const parsed = {
             address: log.address,
@@ -364,6 +365,7 @@ class Event3525handler implements SyncHandler {
                 if (event === 'SlotChanged' || event === 'Transfer') {
                     valueMap[`${contractId}_${tokenId}`] = {contractId, tokenId};
                 } else if (event === 'TransferValue') {
+                    console.log(`post proc: from id is ${e.fromId}, from ${e.from}`)
                     valueMap[`${contractId}_${fromTokenId}`] = {contractId, tokenId:fromTokenId};
                     valueMap[`${contractId}_${toTokenId}`] = {contractId, tokenId:toTokenId};
                 }
@@ -459,6 +461,11 @@ class Event3525handler implements SyncHandler {
 
         const eventsAboutValue = events.filter(e=>e.event !=='SlotChanged' && e.is3525);
         const addrEvents = this.buildForAddr(eventsAboutValue);
+        eventsAboutValue.forEach(e=>{
+            if (e.event === 'TransferValue') {
+                console.log(`save , from id ${e.fromId}, from ${e.from}`)
+            }
+        })
 
         return Event3525.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
