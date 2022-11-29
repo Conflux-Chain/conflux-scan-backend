@@ -11,6 +11,8 @@ import {Token} from "./model/Token";
 import {TraceCreateContract} from "./model/TraceCreateContract";
 import {StatConfig} from "./config/StatConfig";
 import {TokenTool} from "./service/tool/TokenTool";
+import {makeIdV} from "./model/HexMap";
+import {CONST} from "./service/common/constant";
 
 export interface ISlot3525 {
     id?:number; contractId: number; slot: string;
@@ -94,11 +96,27 @@ export class SlotChanged extends Model<ISlotChanged> implements ISlotChanged {
         },{
             sequelize: seq, tableName: 'slot_changed_3525',
             indexes: [
-                {name: 'idx_c_tid', fields: ['contractId','tokenId']},
+                {name: 'idx_c_tid', fields: ['contractId','tokenId', 'epoch']},
                 {name: 'idx_epoch', fields: ['epoch']},
             ]
         })
     };
+    static getLastSlot(contractId, tokenId) {
+        const t = SlotChanged.getTableName();
+        const sql = `select * from ${t} where id=(
+            select id from ${t} 
+            where contractId = ? and tokenId = ? 
+            order by epoch desc, blockIndex desc, txIndex desc, txLogIndex desc
+            limit 1
+        )`;
+        return SlotChanged.sequelize.query(sql, {
+            replacements: [contractId, tokenId], raw: true, type:QueryTypes.SELECT,
+            logging: console.log,
+        }).then(([res])=>{
+            // @ts-ignore
+            return res?.slot || '0';
+        })
+    }
 }
 export interface IEvent3525 extends IErc1155Transfer {
     // event TransferValue(uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _value);
@@ -296,12 +314,16 @@ async function testParseLog(rpc) {
 class Event3525handler implements SyncHandler {
     parser: any;
     private tokenTypeCache: TokenTypeCache;
+    private zeroAddrId: number;
     constructor() {
         this.parser = build3525interface();
     }
     init({cfx}) : Promise<any>{
         this.tokenTypeCache = new TokenTypeCache(new TokenTool(cfx));
-        return Promise.resolve();
+        return new Promise<any>(async r=>{
+            this.zeroAddrId = await makeIdV(CONST.ZERO_ADDRESS);
+            r(0);
+        });
     }
 
     popAction(epoch, dbTx): Promise<any> {
@@ -332,7 +354,10 @@ class Event3525handler implements SyncHandler {
                 }
                 e.is3525 = true;
                 await buildErc20Transfer(e, dt)
-                const {event, slot, contractId, tokenId,fromTokenId, toTokenId, toId, address} = e;
+                const {event, slot, contractId, tokenId, fromTokenId, toTokenId, toId, address} = e;
+                if (event ==='TransferValue' && e.fromId === 0 && fromTokenId === '0') {
+                    e.fromId = this.zeroAddrId;
+                }
                 if (event === 'SlotChanged') {
                     slotChanged.push(e);
                 }
@@ -353,8 +378,8 @@ class Event3525handler implements SyncHandler {
                         .then(v=>valueMap[k] = v),
                     Event3525.queryPreviousOwner(contractId, tokenId)
                         .then(owner=>ownerMap[k] = owner),
-                    TokenSlot3525.findOne({where: {contractId, tokenId}})
-                        .then(res=>slotMap[k] = res?.slot || "0")
+                    SlotChanged.getLastSlot(contractId, tokenId)
+                        .then(res=>slotMap[k] = res)
                 ])
             }))
             // collect slot change, calculate value
@@ -561,24 +586,3 @@ if (module === require.main) {
     main().then()
 }
 
-/*
-    select * from event_3525 where event='TransferValue' and (slot='' or slot='0');
- update event_3525 t set slot =
- ( select slot from slot_changed_3525 ts where ts.contractId=t.contractId
-    and ts.tokenId = t.toTokenId
-    and ( (ts.epoch<t.epoch)
-        or (ts.epoch=t.epoch and ts.blockIndex<t.blockIndex)
-        or (ts.epoch=t.epoch and ts.blockIndex=t.blockIndex and ts.txIndex<t.txIndex)
-        or (ts.epoch=t.epoch and ts.blockIndex=t.blockIndex and
-            ts.txIndex=t.txIndex and ts.txLogIndex<t.txLogIndex)
-    )
-    order by ts.epoch desc, ts.blockIndex desc, ts.txIndex desc, ts.txLogIndex desc
-    limit 1
- )
- where t.event = 'TransferValue'
-    or (t.event='Transfer' and t.fromId != (select id from hex40 where hex='0000000000000000000000000000000000000000'))
- */
-
-// node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync http://net8889eth.confluxrpc.com/cfxbridge -1 1000
-// node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync https://evmtestnet.confluxscan.net/rpcv2 99952425 1000
-// node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync https://evmtestnet.confluxscan.net/rpcv2 99952425 2
