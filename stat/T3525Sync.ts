@@ -355,11 +355,6 @@ class Event3525handler implements SyncHandler {
                 e.is3525 = true;
                 await buildErc20Transfer(e, dt)
                 const {event, slot, contractId, tokenId, fromTokenId, toTokenId, toId, address} = e;
-                console.log(`post proc: ${event} from id ${e.fromId}, from [${e.from}]`)
-                if (event ==='TransferValue' && e.fromId === 0 && fromTokenId === '0') {
-                    e.fromId = this.zeroAddrId;
-                    console.log(`fixed to ${e.fromId}`)
-                }
                 if (event === 'SlotChanged') {
                     slotChanged.push(e);
                 }
@@ -414,6 +409,9 @@ class Event3525handler implements SyncHandler {
                     valueMap[toTKey] = toB;
                     // fill owner
                     e.fromId = (ownerMap[fromTKey] || BigInt(0)).toString();
+                    if (fromTokenId === '0' && e.fromId === '0') {
+                        e.fromId = this.zeroAddrId;
+                    }
                     e.toId = (ownerMap[toTKey] || BigInt(0)).toString();
                     e.slot = slotMap[toTKey] || '0';
                 } else if (e.event === 'Transfer') {
@@ -462,11 +460,6 @@ class Event3525handler implements SyncHandler {
 
         const eventsAboutValue = events.filter(e=>e.event !=='SlotChanged' && e.is3525);
         const addrEvents = this.buildForAddr(eventsAboutValue);
-        eventsAboutValue.forEach(e=>{
-            if (e.event === 'TransferValue') {
-                console.log(`save , from id ${e.fromId}, from ${e.from}`)
-            }
-        })
 
         return Event3525.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
