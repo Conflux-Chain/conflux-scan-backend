@@ -268,13 +268,16 @@ function decodeOneLog(parser, log) {
         }
     }
     if (event && event.name !== 'Approval' && event.name !== 'ApprovalForAll') {
-        const {
+        let {
             name, args: {
                 _from, _to, _tokenId,  // transfer
                 _oldSlot, _newSlot, // _tokenId, slot changed
                 _fromTokenId, _toTokenId, _value, // transfer value
             }
         } = event;
+        if (name === 'TransferValue' && _fromTokenId === '0') {
+            _from = _from || CONST.ZERO_ADDRESS;
+        }
         const parsed = {
             address: log.address,
             event: name,
@@ -355,9 +358,6 @@ class Event3525handler implements SyncHandler {
                 e.is3525 = true;
                 await buildErc20Transfer(e, dt)
                 const {event, slot, contractId, tokenId, fromTokenId, toTokenId, toId, address} = e;
-                if (event ==='TransferValue' && e.fromId === 0 && fromTokenId === '0') {
-                    e.fromId = this.zeroAddrId;
-                }
                 if (event === 'SlotChanged') {
                     slotChanged.push(e);
                 }
