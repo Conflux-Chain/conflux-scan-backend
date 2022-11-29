@@ -275,10 +275,6 @@ function decodeOneLog(parser, log) {
                 _fromTokenId, _toTokenId, _value, // transfer value
             }
         } = event;
-        if (name === 'TransferValue' && _fromTokenId === '0') {
-            _from = _from || CONST.ZERO_ADDRESS;
-            console.log(`fix from to ${_from}`)
-        }
         const parsed = {
             address: log.address,
             event: name,
@@ -359,6 +355,11 @@ class Event3525handler implements SyncHandler {
                 e.is3525 = true;
                 await buildErc20Transfer(e, dt)
                 const {event, slot, contractId, tokenId, fromTokenId, toTokenId, toId, address} = e;
+                console.log(`post proc: ${event} from id ${e.fromId}, from [${e.from}]`)
+                if (event ==='TransferValue' && e.fromId === 0 && fromTokenId === '0') {
+                    e.fromId = this.zeroAddrId;
+                    console.log(`fixed to ${e.fromId}`)
+                }
                 if (event === 'SlotChanged') {
                     slotChanged.push(e);
                 }
