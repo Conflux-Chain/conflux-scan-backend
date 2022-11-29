@@ -361,7 +361,6 @@ class Event3525handler implements SyncHandler {
                 if (event === 'SlotChanged' || event === 'Transfer') {
                     valueMap[`${contractId}_${tokenId}`] = {contractId, tokenId};
                 } else if (event === 'TransferValue') {
-                    console.log(`post proc: from id is ${e.fromId}, from ${e.from}`)
                     valueMap[`${contractId}_${fromTokenId}`] = {contractId, tokenId:fromTokenId};
                     valueMap[`${contractId}_${toTokenId}`] = {contractId, tokenId:toTokenId};
                 }
@@ -460,6 +459,9 @@ class Event3525handler implements SyncHandler {
 
         const eventsAboutValue = events.filter(e=>e.event !=='SlotChanged' && e.is3525);
         const addrEvents = this.buildForAddr(eventsAboutValue);
+        if (eventsAboutValue.length) {
+            console.log(`3525 event count ${eventsAboutValue.length}`)
+        }
 
         return Event3525.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
@@ -487,7 +489,7 @@ class Event3525handler implements SyncHandler {
                     {cursor: epoch, },
                     {where:{epoch:taskBegin}, transaction:dbTx})
             ])
-        }).then()
+        }).then();
     }
 
     needCheckMaxEpoch(): boolean {
