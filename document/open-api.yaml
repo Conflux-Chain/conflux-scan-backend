@@ -1175,6 +1175,8 @@ components:
                   "tokenId":
                     type: string
                     description: "field for Transfer event"
+                  "slot":
+                    type: string
                   timestamp:
                     type: integer
             addressInfo:

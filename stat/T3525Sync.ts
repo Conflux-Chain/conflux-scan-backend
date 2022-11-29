@@ -11,6 +11,8 @@ import {Token} from "./model/Token";
 import {TraceCreateContract} from "./model/TraceCreateContract";
 import {StatConfig} from "./config/StatConfig";
 import {TokenTool} from "./service/tool/TokenTool";
+import {makeIdV} from "./model/HexMap";
+import {CONST} from "./service/common/constant";
 
 export interface ISlot3525 {
     id?:number; contractId: number; slot: string;
@@ -94,11 +96,27 @@ export class SlotChanged extends Model<ISlotChanged> implements ISlotChanged {
         },{
             sequelize: seq, tableName: 'slot_changed_3525',
             indexes: [
-                {name: 'idx_c_tid', fields: ['contractId','tokenId']},
+                {name: 'idx_c_tid', fields: ['contractId','tokenId', 'epoch']},
                 {name: 'idx_epoch', fields: ['epoch']},
             ]
         })
     };
+    static getLastSlot(contractId, tokenId) {
+        const t = SlotChanged.getTableName();
+        const sql = `select * from ${t} where id=(
+            select id from ${t} 
+            where contractId = ? and tokenId = ? 
+            order by epoch desc, blockIndex desc, txIndex desc, txLogIndex desc
+            limit 1
+        )`;
+        return SlotChanged.sequelize.query(sql, {
+            replacements: [contractId, tokenId], raw: true, type:QueryTypes.SELECT,
+            logging: console.log,
+        }).then(([res])=>{
+            // @ts-ignore
+            return res?.slot || '0';
+        })
+    }
 }
 export interface IEvent3525 extends IErc1155Transfer {
     // event TransferValue(uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _value);
@@ -250,7 +268,7 @@ function decodeOneLog(parser, log) {
         }
     }
     if (event && event.name !== 'Approval' && event.name !== 'ApprovalForAll') {
-        const {
+        let {
             name, args: {
                 _from, _to, _tokenId,  // transfer
                 _oldSlot, _newSlot, // _tokenId, slot changed
@@ -296,12 +314,16 @@ async function testParseLog(rpc) {
 class Event3525handler implements SyncHandler {
     parser: any;
     private tokenTypeCache: TokenTypeCache;
+    private zeroAddrId: number;
     constructor() {
         this.parser = build3525interface();
     }
     init({cfx}) : Promise<any>{
         this.tokenTypeCache = new TokenTypeCache(new TokenTool(cfx));
-        return Promise.resolve();
+        return new Promise<any>(async r=>{
+            this.zeroAddrId = await makeIdV(CONST.ZERO_ADDRESS);
+            r(0);
+        });
     }
 
     popAction(epoch, dbTx): Promise<any> {
@@ -332,7 +354,7 @@ class Event3525handler implements SyncHandler {
                 }
                 e.is3525 = true;
                 await buildErc20Transfer(e, dt)
-                const {event, slot, contractId, tokenId,fromTokenId, toTokenId, toId, address} = e;
+                const {event, slot, contractId, tokenId, fromTokenId, toTokenId, toId, address} = e;
                 if (event === 'SlotChanged') {
                     slotChanged.push(e);
                 }
@@ -344,13 +366,18 @@ class Event3525handler implements SyncHandler {
                 }
             }
             const ownerMap:any = {}
+            const slotMap:any = {}
             // fetch former balance and owner from db
             await Promise.all(Object.keys(valueMap).map(async (k)=>{
                 const {contractId, tokenId} = valueMap[k];
-                return Event3525.queryPreviousBalance(contractId, tokenId)
-                    .then(v=>valueMap[k] = v)
-                    .then(()=>Event3525.queryPreviousOwner(contractId, tokenId))
-                    .then(owner=>ownerMap[k] = owner);
+                await Promise.all([
+                    Event3525.queryPreviousBalance(contractId, tokenId)
+                        .then(v=>valueMap[k] = v),
+                    Event3525.queryPreviousOwner(contractId, tokenId)
+                        .then(owner=>ownerMap[k] = owner),
+                    SlotChanged.getLastSlot(contractId, tokenId)
+                        .then(res=>slotMap[k] = res)
+                ])
             }))
             // collect slot change, calculate value
             for(let e of events) {
@@ -363,6 +390,7 @@ class Event3525handler implements SyncHandler {
                     slots[`${contractId}_${slot}`] = {contractId, slot};
                     const former = tokens[tokenIdKey] || {contractId, tokenId, ownerId: 0, createdAt: dt, updatedAt: dt}
                     tokens[tokenIdKey] = {...former, slot}
+                    slotMap[tokenIdKey] = slot;
                     // fill calculated value
                     e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
                     e.fromId = (ownerMap[tokenId] || BigInt(0)).toString();
@@ -380,13 +408,18 @@ class Event3525handler implements SyncHandler {
                     valueMap[toTKey] = toB;
                     // fill owner
                     e.fromId = (ownerMap[fromTKey] || BigInt(0)).toString();
+                    if (fromTokenId === '0' && e.fromId === '0') {
+                        e.fromId = this.zeroAddrId;
+                    }
                     e.toId = (ownerMap[toTKey] || BigInt(0)).toString();
+                    e.slot = slotMap[toTKey] || '0';
                 } else if (e.event === 'Transfer') {
                     const former = tokens[tokenIdKey] || {contractId, tokenId, slot: '', createdAt: dt, updatedAt: dt}
                     tokens[tokenIdKey] = {...former, ownerId: toId}
                     // fill value when transferring owner
                     e.value = (valueMap[tokenIdKey] || BigInt(0)).toString();
                     ownerMap[tokenIdKey] = BigInt(toId);
+                    e.slot = slotMap[tokenIdKey] || '0';
                 }
             }
             r(data);
@@ -426,6 +459,9 @@ class Event3525handler implements SyncHandler {
 
         const eventsAboutValue = events.filter(e=>e.event !=='SlotChanged' && e.is3525);
         const addrEvents = this.buildForAddr(eventsAboutValue);
+        if (eventsAboutValue.length) {
+            console.log(`3525 event count ${eventsAboutValue.length}`)
+        }
 
         return Event3525.sequelize.transaction(async (dbTx)=>{
             return Promise.all([
@@ -453,7 +489,7 @@ class Event3525handler implements SyncHandler {
                     {cursor: epoch, },
                     {where:{epoch:taskBegin}, transaction:dbTx})
             ])
-        }).then()
+        }).then();
     }
 
     needCheckMaxEpoch(): boolean {
@@ -553,7 +589,3 @@ if (module === require.main) {
     main().then()
 }
 
-
-// node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync http://net8889eth.confluxrpc.com/cfxbridge -1 1000
-// node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync https://evmtestnet.confluxscan.net/rpcv2 99952425 1000
-// node /Users/kang/work/conflux-scan-statistics/stat/dist/T3525Sync.js sync https://evmtestnet.confluxscan.net/rpcv2 99952425 2
