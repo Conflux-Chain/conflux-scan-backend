@@ -207,7 +207,7 @@ router.get('/frontend',
     const addressArray = result.contracts.filter(item => item.address).map(item => item.address);
     const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.contracts.forEach((item) => {
-      item.ensInfo = accountBasic[item.address]?.ens;
+      item.ensInfo = accountBasic.map[item.address]?.ens;
     });
     return result;
   },
@@ -322,7 +322,7 @@ router.get('/block',
     result.list.forEach((block) => {
       block.minerContractInfo = accountBasic.map[block.miner]?.contract;
       block.minerTokenInfo = accountBasic.map[block.miner]?.token;
-      block.minerENSInfo = accountBasic[block.miner]?.ens;
+      block.minerENSInfo = accountBasic.map[block.miner]?.ens;
     });
     return result;
   },
