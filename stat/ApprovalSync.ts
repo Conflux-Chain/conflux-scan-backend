@@ -40,6 +40,7 @@ import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
 import {buildHexSet, buildIdMap, getAddrId, idHex40Map, mapProp} from "./model/HexMap";
 import {StatApp} from "./StatApp";
+import {ContractInfo} from "./model/ContractInfo";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -150,29 +151,41 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         const hexMap = await idHex40Map([...ids], true)
         mapProp(hexMap, list, 'toId', 'to')
         mapProp(hexMap, list, 'contractId', 'contract')
+        const contractNameMap = await ContractInfo.findAll({
+            attributes:['hexId','name'],
+            where: {hexId:{[Op.in]:list.map(row=>row.toId)}}
+        }).then(infos=>{
+            const map = {}
+            infos.forEach(i=>map[`${i.hexId}`] = i)
+            return map;
+        })
         // query tokens
         const tokenIds = [...new Set(list.map(p=>p.contractId))];
         const tokens = await Token.findAll({
             attributes:['hex40id','name','symbol','base32','iconUrl','type','decimals'],
             where: {hex40id: {[Op.in]: tokenIds}}, raw:true})
-        const tokenMap = new Map();
+        const tokenMap = {};
         tokens.forEach(t=>{
-            tokenMap.set([`${t.hex40id}`] ,  t);
+            tokenMap[`${t.hex40id}`] =  t;
         })
-        mapProp(tokenMap, list, 'contractId', 'tokenInfo')
         list.forEach(row=>{
+            row['tokenInfo'] = tokenMap[`${row.contractId}`] || {};
+            row['spenderName'] = contractNameMap[`${row.toId}`] || '';
             ['id','epoch','contractId','blockIndex','txIndex','fromId', 'toId']
                 .forEach(k=>delete row[k])
         });
         if(StatApp.isEVM) {
             list.forEach(row=>{
+                row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
+                delete row['to'];
                 if (row['tokenInfo']) {
                     row['tokenInfo']["base32"] = format.address(row['tokenInfo']["base32"], StatApp.networkId || 1029)
                 }
             })
         } else{
             list.forEach(row=>{
-                row["to"] = format.address(row["to"], StatApp.networkId || 1029)
+                row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
+                delete row['to'];
                 row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
             })
         }
@@ -546,7 +559,9 @@ async function test() {
     if (cmd === 'testQuery') {
         await init();
         await ApprovalRelation.queryApprovalOfAccount(arg1)
-            .then(console.log)
+            .then(({total, list})=>{
+                console.log(`total ${total}`, list)
+            })
     }
     process.exit();
 }
