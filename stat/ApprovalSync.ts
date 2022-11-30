@@ -152,7 +152,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         mapProp(hexMap, list, 'toId', 'to')
         mapProp(hexMap, list, 'contractId', 'contract')
         const contractNameMap = await ContractInfo.findAll({
-            attributes:['hexId','name'],
+            attributes:['hexId','name'], raw: true,
             where: {hexId:{[Op.in]:list.map(row=>row.toId)}}
         }).then(infos=>{
             const map = {}
@@ -170,7 +170,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         })
         list.forEach(row=>{
             row['tokenInfo'] = tokenMap[`${row.contractId}`] || {};
-            row['spenderName'] = contractNameMap[`${row.toId}`] || '';
+            row['spenderName'] = (contractNameMap[`${row.toId}`])?.name || '';
             ['id','epoch','contractId','blockIndex','txIndex','fromId', 'toId']
                 .forEach(k=>delete row[k])
         });
