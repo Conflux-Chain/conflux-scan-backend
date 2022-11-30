@@ -14,7 +14,7 @@ import {
     DatabaseError
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {patchHttpProvider} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
@@ -38,6 +38,8 @@ import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
+import {buildHexSet, buildIdMap, getAddrId, idHex40Map, mapProp} from "./model/HexMap";
+import {StatApp} from "./StatApp";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -95,6 +97,16 @@ export interface IApprovalRelation {
     updatedAt:Date
 }
 export class ApprovalRelation extends Model<IApprovalRelation> implements ApprovalRelation {
+    id?:number
+    epoch: number
+    contractId: number
+    blockIndex: number
+    txIndex: number
+    fromId: number
+    toId: number
+    value:string
+    type: string // Approval or ApprovalForAll
+    updatedAt:Date
     static register(seq: Sequelize) {
         ApprovalRelation.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -123,6 +135,48 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
                 },
             ],
         })
+    }
+    static async queryApprovalOfAccount(account) {
+        const id = await getAddrId(account);
+        if (!id) {
+            return {total: 0, list:[], message: 'account not found'};
+        }
+        return this.queryApprovalOfAccountId(id);
+    }
+    static async queryApprovalOfAccountId(fromId) {
+        const {rows:list, count:total} = await ApprovalRelation.findAndCountAll({
+            raw:true, where: {fromId}})
+        const ids = buildHexSet(null, list, 'toId', 'contractId')
+        const hexMap = await idHex40Map([...ids], true)
+        mapProp(hexMap, list, 'toId', 'to')
+        mapProp(hexMap, list, 'contractId', 'contract')
+        // query tokens
+        const tokenIds = [...new Set(list.map(p=>p.contractId))];
+        const tokens = await Token.findAll({
+            attributes:['hex40id','name','symbol','base32','iconUrl','type','decimals'],
+            where: {hex40id: {[Op.in]: tokenIds}}, raw:true})
+        const tokenMap = new Map();
+        tokens.forEach(t=>{
+            tokenMap.set([`${t.hex40id}`] ,  t);
+        })
+        mapProp(tokenMap, list, 'contractId', 'tokenInfo')
+        list.forEach(row=>{
+            ['id','epoch','contractId','blockIndex','txIndex','fromId', 'toId']
+                .forEach(k=>delete row[k])
+        });
+        if(StatApp.isEVM) {
+            list.forEach(row=>{
+                if (row['tokenInfo']) {
+                    row['tokenInfo']["base32"] = format.address(row['tokenInfo']["base32"], StatApp.networkId || 1029)
+                }
+            })
+        } else{
+            list.forEach(row=>{
+                row["to"] = format.address(row["to"], StatApp.networkId || 1029)
+                row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
+            })
+        }
+        return {total, list};
     }
 }
 export interface IEpochApproval extends IEpochTask {
@@ -487,8 +541,21 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
         setTimeout(() => runTask(cfx, fromEpoch, len), 0)
     }
 }
+async function test() {
+    const [,,cmd,arg1] = process.argv;
+    if (cmd === 'testQuery') {
+        await init();
+        await ApprovalRelation.queryApprovalOfAccount(arg1)
+            .then(console.log)
+    }
+    process.exit();
+}
 const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 if (module === require.main) {
+    main().then()
+}
+async function main() {
+    await test()
     redirectLog()
     regExitHook()
     // cfxUrl: useConfigRpc
