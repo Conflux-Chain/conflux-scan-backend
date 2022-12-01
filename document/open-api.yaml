@@ -247,6 +247,20 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TransferList"
+  '/account/approvals':
+    description: 'Get all transfer records (includes: cfx transfer, crc20/crc721/crc1155 transfer) of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/account'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Approvals"
   '/account/tokens':
     get:
       description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
@@ -1181,6 +1195,47 @@ components:
                     type: integer
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
+    Approvals:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  value:
+                    type: string
+                  type:
+                    type: string
+                  contract:
+                    type: string
+                  spenderName:
+                    type: string
+                  spender:
+                    type: string
+                  tokenInfo:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      symbol:
+                        type: string
+                      base32:
+                        type: string
+                      iconUrl:
+                        type: string
+                      type:
+                        type: string
+                      decimals:
+                        type: integer
     TransferList:
       type: object
       properties:
