@@ -155,6 +155,10 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
             where r.fromId = ? order by r.epoch desc limit 10000
         `;
+        const total = await ApprovalRelation.sequelize.query(
+            `select count(*) as count from ${sql.split('from ')[1]}`,
+            {replacements: [tokenType, fromId], raw: true, type: QueryTypes.SELECT,}
+        ).then(([row])=>row["count"])
         const list:any[] = await ApprovalRelation.sequelize.query(
             sql, {replacements: [tokenType, fromId], raw: true, type: QueryTypes.SELECT,
                 logging: console.log,
@@ -197,7 +201,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
                 row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
             })
         }
-        return {list};
+        return {total, list};
     }
 }
 export interface IEpochApproval extends IEpochTask {
