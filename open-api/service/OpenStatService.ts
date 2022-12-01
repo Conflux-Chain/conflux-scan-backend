@@ -8,6 +8,7 @@ import {
 import {setBody} from "../router/middleware";
 import {getApiService} from "../ApiServer";
 import {CONST} from "../../stat/service/common/constant"
+import {ApprovalRelation} from "../../stat/ApprovalSync";
 
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -45,6 +46,13 @@ export async function listContractStat(ctx) {
     const page = await getApiService().contractCreateQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
+}
+
+export async function listApproval(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account');
+    const {account} = ctx.request.query;
+    const data = await ApprovalRelation.queryApprovalOfAccount(account)
+    setBody(ctx, data);
 }
 
 export async function listCfxHolderStat(ctx) {
