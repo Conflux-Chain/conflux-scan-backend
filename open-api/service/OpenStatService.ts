@@ -1,5 +1,6 @@
 import {StatApp} from "../../stat/StatApp";
 import {
+    checkPresent,
     getPagination,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
@@ -50,8 +51,11 @@ export async function listContractStat(ctx) {
 
 export async function listApproval(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account');
-    const {account} = ctx.request.query;
-    const data = await ApprovalRelation.queryApprovalOfAccount(account)
+    mustBeEnumParamIfPresent(ctx.request.query, 'tokenType',
+        ['ERC20','ERC721','ERC1155']);
+    const {account, tokenType} = ctx.request.query;
+    checkPresent({account, tokenType}, ['account', 'tokenType']);
+    const data = await ApprovalRelation.queryApprovalOfAccount({account, tokenType})
     setBody(ctx, data);
 }
 

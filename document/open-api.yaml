@@ -254,6 +254,16 @@ paths:
         - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
+        - name: tokenType
+          in: query
+          required: true
+          schema:
+            type: string
+            default: ERC20
+            enum:
+              - ERC20
+              - ERC721
+              - ERC1155
       responses:
         200:
           description: ''

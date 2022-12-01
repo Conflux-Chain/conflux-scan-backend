@@ -11,7 +11,7 @@ import {
     Op,
     UniqueConstraintError,
     ModelStatic,
-    DatabaseError
+    DatabaseError, QueryTypes,
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux, format} from "js-conflux-sdk";
@@ -137,16 +137,31 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             ],
         })
     }
-    static async queryApprovalOfAccount(account) {
+    static async queryApprovalOfAccount({account, tokenType}) {
         const id = await getAddrId(account);
         if (!id) {
             return {total: 0, list:[], message: 'account not found'};
         }
-        return this.queryApprovalOfAccountId(id);
+        return this.queryApprovalOfAccountId({fromId: id, tokenType});
     }
-    static async queryApprovalOfAccountId(fromId) {
-        const {rows:list, count:total} = await ApprovalRelation.findAndCountAll({
-            raw:true, where: {fromId}})
+    static async queryApprovalOfAccountId({fromId, tokenType}) {
+        const relation = ApprovalRelation.getTableName();
+        const token = Token.getTableName();
+        const tx = FullTransaction.getTableName();
+        const sql = `select tx.hash, r.updatedAt, r.contractId, r.toId,
+            t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
+            from ${relation} r 
+            join ${token} t on r.contractId=t.hex40id and t.type=?
+            left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
+            where r.fromId = ? order by r.epoch desc limit 10000
+        `;
+        const list:any[] = await ApprovalRelation.sequelize.query(
+            sql, {replacements: [tokenType, fromId], raw: true, type: QueryTypes.SELECT,
+                logging: console.log,
+            }
+        )
+        // const {rows:list, count:total} = await ApprovalRelation.findAndCountAll({
+        //     raw:true, where: {fromId}})
         const ids = buildHexSet(null, list, 'toId', 'contractId')
         const hexMap = await idHex40Map([...ids], true)
         mapProp(hexMap, list, 'toId', 'to')
@@ -159,17 +174,10 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             infos.forEach(i=>map[`${i.hexId}`] = i)
             return map;
         })
-        // query tokens
-        const tokenIds = [...new Set(list.map(p=>p.contractId))];
-        const tokens = await Token.findAll({
-            attributes:['hex40id','name','symbol','base32','iconUrl','type','decimals'],
-            where: {hex40id: {[Op.in]: tokenIds}}, raw:true})
-        const tokenMap = {};
-        tokens.forEach(t=>{
-            tokenMap[`${t.hex40id}`] =  t;
-        })
         list.forEach(row=>{
-            row['tokenInfo'] = tokenMap[`${row.contractId}`] || {};
+            const {name, symbol, type, base32, decimals, iconUrl} = row;
+            ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
+            row['tokenInfo'] = {name, symbol, type, base32, decimals, iconUrl};
             row['spenderName'] = (contractNameMap[`${row.toId}`])?.name || '';
             ['id','epoch','contractId','blockIndex','txIndex','fromId', 'toId']
                 .forEach(k=>delete row[k])
@@ -189,7 +197,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
                 row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
             })
         }
-        return {total, list};
+        return {list};
     }
 }
 export interface IEpochApproval extends IEpochTask {
@@ -558,9 +566,9 @@ async function test() {
     const [,,cmd,arg1] = process.argv;
     if (cmd === 'testQuery') {
         await init();
-        await ApprovalRelation.queryApprovalOfAccount(arg1)
-            .then(({total, list})=>{
-                console.log(`total ${total}`, list)
+        await ApprovalRelation.queryApprovalOfAccount({account: arg1, tokenType:'ERC20'})
+            .then(({list})=>{
+                console.log(`total ${0}`, list)
             })
     }
     process.exit();
