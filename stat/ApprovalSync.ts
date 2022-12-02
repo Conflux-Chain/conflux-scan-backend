@@ -80,6 +80,10 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]
                 },
+                // query by from, with type , contract, value,
+                // that is , approval issues from, contract, token id
+                {name: 'idx_from', fields: ['fromId','type',
+                        'contractId','value','epoch','id']}
             ],
         })
     }
@@ -137,30 +141,49 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             ],
         })
     }
-    static async queryApprovalOfAccount({account, tokenType}) {
+    static async queryApprovalOfAccount({account, tokenType, byTokenId}) {
         const id = await getAddrId(account);
         if (!id) {
             return {total: 0, list:[], message: 'account not found'};
         }
-        return this.queryApprovalOfAccountId({fromId: id, tokenType});
+        return this.queryApprovalOfAccountId({fromId: id, tokenType, byTokenId});
     }
-    static async queryApprovalOfAccountId({fromId, tokenType}) {
-        const relation = ApprovalRelation.getTableName();
+    static async queryApprovalOfAccountId({fromId, tokenType, byTokenId}) {
+        let relation = ApprovalRelation.getTableName();
         const token = Token.getTableName();
         const tx = FullTransaction.getTableName();
-        const sql = `select tx.hash, r.updatedAt, r.contractId, r.toId,
+        const replacements = []
+        if (byTokenId && tokenType !== 'ERC20') {
+            const approvalT = TokenApproval.getTableName();
+            const value = '`value`';
+            relation = ` (
+              select dt.*, dt.createdAt as updatedAt from ${approvalT} dt join (  
+                select max(id) as id, contractId, ${value}  from ${approvalT} ap
+                where ap.fromId=? and ap.type='Approval'
+                group by contractId, ${value}
+              ) maxId on maxId.id = dt.id
+            ) 
+            `
+            replacements.push(fromId);
+        }
+        const sql = `
+            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type,
             t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
             from ${relation} r 
             join ${token} t on r.contractId=t.hex40id and t.type=?
             left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
             where r.fromId = ? order by r.epoch desc limit 10000
         `;
+        replacements.push(tokenType, fromId);
+        let countSql = `select count(*) as count ${sql.substr(sql.indexOf('from '))}`;
+        console.log(`count sql is `, countSql)
         const total = await ApprovalRelation.sequelize.query(
-            `select count(*) as count from ${sql.split('from ')[1]}`,
-            {replacements: [tokenType, fromId], raw: true, type: QueryTypes.SELECT,}
+            countSql,
+            {replacements, raw: true, type: QueryTypes.SELECT,}
         ).then(([row])=>row["count"])
+        console.log(` sql is `, sql)
         const list:any[] = await ApprovalRelation.sequelize.query(
-            sql, {replacements: [tokenType, fromId], raw: true, type: QueryTypes.SELECT,
+            sql, {replacements, raw: true, type: QueryTypes.SELECT,
                 logging: console.log,
             }
         )
@@ -570,7 +593,8 @@ async function test() {
     const [,,cmd,arg1] = process.argv;
     if (cmd === 'testQuery') {
         await init();
-        await ApprovalRelation.queryApprovalOfAccount({account: arg1, tokenType:'ERC20'})
+        await ApprovalRelation.queryApprovalOfAccount({
+            account: arg1, tokenType:'ERC20', byTokenId: false})
             .then(({list})=>{
                 console.log(`total ${0}`, list)
             })

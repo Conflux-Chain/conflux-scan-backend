@@ -264,6 +264,15 @@ paths:
               - ERC20
               - ERC721
               - ERC1155
+        - name: byTokenId
+          in: query
+          required: false
+          schema:
+            type: string
+            default: false
+            enum:
+              - true
+              - false
       responses:
         200:
           description: ''

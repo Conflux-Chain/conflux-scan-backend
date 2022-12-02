@@ -53,9 +53,12 @@ export async function listApproval(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account');
     mustBeEnumParamIfPresent(ctx.request.query, 'tokenType',
         ['ERC20','ERC721','ERC1155']);
-    const {account, tokenType} = ctx.request.query;
+    mustBeEnumParamIfPresent(ctx.request.query, 'byTokenId',
+        ['false','true']);
+    const {account, tokenType, byTokenId} = ctx.request.query;
     checkPresent({account, tokenType}, ['account', 'tokenType']);
-    const data = await ApprovalRelation.queryApprovalOfAccount({account, tokenType})
+    const data = await ApprovalRelation.queryApprovalOfAccount({account, tokenType,
+        byTokenId: byTokenId === 'true'})
     setBody(ctx, data);
 }
 
