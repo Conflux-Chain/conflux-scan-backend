@@ -38,9 +38,10 @@ import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
-import {buildHexSet, buildIdMap, getAddrId, idHex40Map, mapProp} from "./model/HexMap";
+import {buildHexSet, buildIdMap, getAddrId, idHex40Map, makeIdV, mapProp} from "./model/HexMap";
 import {StatApp} from "./StatApp";
 import {ContractInfo} from "./model/ContractInfo";
+import {CONST} from "./service/common/constant";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -141,7 +142,15 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             ],
         })
     }
+    static context = {
+        zeroAddrId: 0, initialized: false,
+    }
     static async queryApprovalOfAccount({account, tokenType, byTokenId}) {
+        if (!ApprovalRelation.context.initialized) {
+            ApprovalRelation.context.zeroAddrId =
+                await makeIdV(CONST.ZERO_ADDRESS)
+            ApprovalRelation.context.initialized = true;
+        }
         const id = await getAddrId(account);
         if (!id) {
             return {total: 0, list:[], message: 'account not found'};
@@ -166,13 +175,14 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             `
             replacements.push(fromId);
         }
+        const zeroId = ApprovalRelation.context.zeroAddrId;
         const sql = `
             select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type,
             t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
             from ${relation} r 
             join ${token} t on r.contractId=t.hex40id and t.type=?
             left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
-            where r.fromId = ? order by r.epoch desc limit 10000
+            where r.fromId = ? and r.toId <> ${zeroId} order by r.epoch desc limit 10000
         `;
         replacements.push(tokenType, fromId);
         let countSql = `select count(*) as count ${sql.substr(sql.indexOf('from '))}`;
