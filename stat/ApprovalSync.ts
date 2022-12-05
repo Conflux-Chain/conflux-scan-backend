@@ -608,8 +608,8 @@ async function test() {
             .then(({list})=>{
                 console.log(`total ${0}`, list)
             })
+        process.exit();
     }
-    process.exit();
 }
 const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 if (module === require.main) {
