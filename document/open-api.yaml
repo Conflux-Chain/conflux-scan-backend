@@ -266,6 +266,7 @@ paths:
               - ERC1155
         - name: byTokenId
           in: query
+          description: Whether query for each NFT token id, only take effects for ERC721 and ERC1155.
           required: false
           schema:
             type: string
