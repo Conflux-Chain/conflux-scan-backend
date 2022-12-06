@@ -441,11 +441,12 @@ async function getBlockNoByTime(ctx) {
     closest = closest === undefined ? 'before' : closest;
 
     const comparator = closest === 'before' ? Op.lte : Op.gte;
+    const order = closest === 'before' ? 'DESC' : 'ASC';
     const datetime =  new Date(timestamp * 1000);
     console.log(`timestamp:${timestamp},UTC:${datetime.toUTCString()},TimezoneOffset:${datetime.getTimezoneOffset()}`);
     const epoch = await Epoch.findOne({
         where: {timestamp: {[comparator]: datetime}},
-        order: [['epoch', 'DESC']],
+        order: [['timestamp', order]],
     });
     if(!epoch){
         setBody(ctx, undefined, 1, `blockno ${closest} timestamp ${timestamp} not found` );
