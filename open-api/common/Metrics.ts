@@ -66,7 +66,11 @@ export class Metrics {
     }
 
     private async initReport(){
-        const {host, database, username, password} = this.config.influxDB
+        if (!this.config.influxDB) {
+            console.log(`InfluxDB is not configured, metrics won't work.`)
+            return;
+        }
+        const {host, database, username, password} = this.config.influxDB;
         const dbConfig = {username, password, database, hosts: [{ host, port: 8086 }]};
 
         this.reporter = new InfluxMetricReporter({
@@ -81,6 +85,9 @@ export class Metrics {
     }
 
     private initTimer({prefix = undefined, url = undefined, module = undefined, action = undefined, tags = undefined}) {
+        if (!this.registry) {
+            return;
+        }
         const name = this.getMeasurement({prefix, url, module, action});
 
         const timer = this.registry.newTimer(name);

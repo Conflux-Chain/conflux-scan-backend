@@ -37,6 +37,7 @@ import {billing, getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3
 import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
+import {redirectLog} from "../stat/config/LoggerConfig";
 
 const Koa = require('koa');
 const lodash = require('lodash');
@@ -247,6 +248,9 @@ async function initBilling(config: StatConfig) {
     }
 }
 export function initApiServer() {
+    if (__filename.startsWith('/scan/')) {
+        redirectLog({mainPath:'OpenApi'})
+    }
     const apiServer = new ApiServer();
     apiServer.init().then(()=>{
         return register(app, apiServer)
