@@ -85,6 +85,9 @@ export class Metrics {
     }
 
     private initTimer({prefix = undefined, url = undefined, module = undefined, action = undefined, tags = undefined}) {
+        if (!this.registry) {
+            return;
+        }
         const name = this.getMeasurement({prefix, url, module, action});
 
         const timer = this.registry.newTimer(name);
