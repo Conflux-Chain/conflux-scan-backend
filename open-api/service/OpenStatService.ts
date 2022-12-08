@@ -1,5 +1,6 @@
 import {StatApp} from "../../stat/StatApp";
 import {
+    checkPresent,
     getPagination,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
@@ -8,6 +9,7 @@ import {
 import {setBody} from "../router/middleware";
 import {getApiService} from "../ApiServer";
 import {CONST} from "../../stat/service/common/constant"
+import {ApprovalRelation} from "../../stat/ApprovalSync";
 
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -45,6 +47,19 @@ export async function listContractStat(ctx) {
     const page = await getApiService().contractCreateQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
         sort:(sort || 'DESC').toLowerCase(), skip, limit});
     setBody(ctx, page)
+}
+
+export async function listApproval(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account');
+    mustBeEnumParamIfPresent(ctx.request.query, 'tokenType',
+        ['ERC20','ERC721','ERC1155']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'byTokenId',
+        ['false','true']);
+    const {account, tokenType, byTokenId} = ctx.request.query;
+    checkPresent({account, tokenType}, ['account', 'tokenType']);
+    const data = await ApprovalRelation.queryApprovalOfAccount({account, tokenType,
+        byTokenId: byTokenId === 'true'})
+    setBody(ctx, data);
 }
 
 export async function listCfxHolderStat(ctx) {

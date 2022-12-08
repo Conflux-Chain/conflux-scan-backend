@@ -60,7 +60,7 @@ import {
     listTokenHolderStat,
     listTokenUniqueSenderStat,
     listTokenUniqueReceiverStat,
-    listTokenUniqueParticipantStat,
+    listTokenUniqueParticipantStat, listApproval,
 } from "../service/OpenStatService";
 import {
     mustBeAddressParamIfPresent,
@@ -140,6 +140,7 @@ function registerRouter(router: Router) {
     router.get('/account/crc1155/transfers', checkAddressRateFn, listAccountTransfer1155)
     router.get('/account/crc3525/transfers', checkAddressRateFn, listAccountTransfer3525)
     router.get('/account/transfers', checkAddressRateFn, listAccountTransfer)
+    router.get('/account/approvals', checkAddressRateFn, listApproval)
     router.get('/account/tokens', listAccountAssets)
 
     // contract

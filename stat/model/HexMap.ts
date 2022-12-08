@@ -227,7 +227,7 @@ export async function getAddrId(addr:string) {
     })
 }
 export function buildHexSet(hexSet:Set<string>, arr:any[], ...hexKey:string[]) : Set<string> {
-    if (hexSet === undefined) {
+    if (!hexSet) {
         hexSet = new Set<string>()
     }
     arr.forEach(bean=>{

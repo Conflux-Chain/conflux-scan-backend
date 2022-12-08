@@ -290,6 +290,9 @@ class TransferService {
       case CONST.TRANSFER_TYPE.ERC1155:
         iterator = service.crc1155Transfer;
         break;
+      case CONST.TRANSFER_TYPE.ERC3525:
+        iterator = service.crc3525Transfer;
+        break;
       default:
         throw new error.ParameterError(`unexpected transferType="${transferType}"`);
     }

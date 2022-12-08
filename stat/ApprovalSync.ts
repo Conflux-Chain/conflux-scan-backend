@@ -11,10 +11,10 @@ import {
     Op,
     UniqueConstraintError,
     ModelStatic,
-    DatabaseError
+    DatabaseError, QueryTypes,
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {patchHttpProvider} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
@@ -38,6 +38,10 @@ import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
+import {buildHexSet, buildIdMap, getAddrId, idHex40Map, makeIdV, mapProp} from "./model/HexMap";
+import {StatApp} from "./StatApp";
+import {ContractInfo} from "./model/ContractInfo";
+import {CONST} from "./service/common/constant";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -77,6 +81,10 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
                     name: 'idx_epoch',
                     fields: [{name: 'epoch', order: "DESC"}]
                 },
+                // query by from, with type , contract, value,
+                // that is , approval issues from, contract, token id
+                {name: 'idx_from', fields: ['fromId','type',
+                        'contractId','value','epoch','id']}
             ],
         })
     }
@@ -95,6 +103,16 @@ export interface IApprovalRelation {
     updatedAt:Date
 }
 export class ApprovalRelation extends Model<IApprovalRelation> implements ApprovalRelation {
+    id?:number
+    epoch: number
+    contractId: number
+    blockIndex: number
+    txIndex: number
+    fromId: number
+    toId: number
+    value:string
+    type: string // Approval or ApprovalForAll
+    updatedAt:Date
     static register(seq: Sequelize) {
         ApprovalRelation.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -123,6 +141,100 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
                 },
             ],
         })
+    }
+    static context = {
+        zeroAddrId: 0, initialized: false,
+    }
+    static async queryApprovalOfAccount({account, tokenType, byTokenId}) {
+        if (!ApprovalRelation.context.initialized) {
+            ApprovalRelation.context.zeroAddrId =
+                await makeIdV(CONST.ZERO_ADDRESS)
+            ApprovalRelation.context.initialized = true;
+        }
+        const id = await getAddrId(account);
+        if (!id) {
+            return {total: 0, list:[], message: 'account not found'};
+        }
+        return this.queryApprovalOfAccountId({fromId: id, tokenType, byTokenId});
+    }
+    static async queryApprovalOfAccountId({fromId, tokenType, byTokenId}) {
+        let relation = ApprovalRelation.getTableName();
+        const token = Token.getTableName();
+        const tx = FullTransaction.getTableName();
+        const replacements = []
+        if (byTokenId && tokenType !== 'ERC20') {
+            const approvalT = TokenApproval.getTableName();
+            const value = '`value`';
+            relation = ` (
+              select dt.*, dt.createdAt as updatedAt from ${approvalT} dt join (  
+                select max(id) as id, contractId, ${value}  from ${approvalT} ap
+                where ap.fromId=? and ap.type='Approval'
+                group by contractId, ${value}
+              ) maxId on maxId.id = dt.id
+            ) 
+            `
+            replacements.push(fromId);
+        }
+        const zeroId = ApprovalRelation.context.zeroAddrId;
+        const sql = `
+            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type,
+            t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
+            from ${relation} r 
+            join ${token} t on r.contractId=t.hex40id and t.type=?
+            left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
+            where r.fromId = ? and r.toId <> ${zeroId} order by r.epoch desc limit 10000
+        `;
+        replacements.push(tokenType, fromId);
+        let countSql = `select count(*) as count ${sql.substr(sql.indexOf('from '))}`;
+        console.log(`count sql is `, countSql)
+        const total = await ApprovalRelation.sequelize.query(
+            countSql,
+            {replacements, raw: true, type: QueryTypes.SELECT,}
+        ).then(([row])=>row["count"])
+        console.log(` sql is `, sql)
+        const list:any[] = await ApprovalRelation.sequelize.query(
+            sql, {replacements, raw: true, type: QueryTypes.SELECT,
+                logging: console.log,
+            }
+        )
+        // const {rows:list, count:total} = await ApprovalRelation.findAndCountAll({
+        //     raw:true, where: {fromId}})
+        const ids = buildHexSet(null, list, 'toId', 'contractId')
+        const hexMap = await idHex40Map([...ids], true)
+        mapProp(hexMap, list, 'toId', 'to')
+        mapProp(hexMap, list, 'contractId', 'contract')
+        const contractNameMap = await ContractInfo.findAll({
+            attributes:['hexId','name'], raw: true,
+            where: {hexId:{[Op.in]:list.map(row=>row.toId)}}
+        }).then(infos=>{
+            const map = {}
+            infos.forEach(i=>map[`${i.hexId}`] = i)
+            return map;
+        })
+        list.forEach(row=>{
+            const {name, symbol, type, base32, decimals, iconUrl} = row;
+            ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
+            row['tokenInfo'] = {name, symbol, type, base32, decimals, iconUrl};
+            row['spenderName'] = (contractNameMap[`${row.toId}`])?.name || '';
+            ['id','epoch','contractId','blockIndex','txIndex','fromId', 'toId']
+                .forEach(k=>delete row[k])
+        });
+        if(StatApp.isEVM) {
+            list.forEach(row=>{
+                row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
+                delete row['to'];
+                if (row['tokenInfo']) {
+                    row['tokenInfo']["base32"] = format.address(row['tokenInfo']["base32"], StatApp.networkId || 1029)
+                }
+            })
+        } else{
+            list.forEach(row=>{
+                row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
+                delete row['to'];
+                row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
+            })
+        }
+        return {total, list};
     }
 }
 export interface IEpochApproval extends IEpochTask {
@@ -487,8 +599,24 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
         setTimeout(() => runTask(cfx, fromEpoch, len), 0)
     }
 }
+async function test() {
+    const [,,cmd,arg1] = process.argv;
+    if (cmd === 'testQuery') {
+        await init();
+        await ApprovalRelation.queryApprovalOfAccount({
+            account: arg1, tokenType:'ERC20', byTokenId: false})
+            .then(({list})=>{
+                console.log(`total ${0}`, list)
+            })
+        process.exit();
+    }
+}
 const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 if (module === require.main) {
+    main().then()
+}
+async function main() {
+    await test()
     redirectLog()
     regExitHook()
     // cfxUrl: useConfigRpc
