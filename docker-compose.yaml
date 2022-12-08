@@ -18,11 +18,10 @@ services:
     image: node:14.17.5
     volumes:
       - ./:/scan
-      - ./log/api:/log
-      - ./data/api:/data
+    working_dir: /scan
     network_mode: host
     restart: always
-    command: node /scan/open-api/ApiServer.js
+    command: node ./open-api/ApiServer.js
 
 
   compiler:
