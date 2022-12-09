@@ -38,6 +38,7 @@ import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
 import {redirectLog} from "../stat/config/LoggerConfig";
+import {regExitHook} from "../stat/service/tool/ProcessTool";
 
 const Koa = require('koa');
 const lodash = require('lodash');
@@ -248,16 +249,17 @@ async function initBilling(config: StatConfig) {
     }
 }
 export function initApiServer() {
+    regExitHook();
     if (__filename.startsWith('/scan/')) {
         redirectLog({mainPath:'OpenApi'})
     }
     const apiServer = new ApiServer();
+    const port = process.env.API_PORT || apiServer.config.apiPort || 9527;
     apiServer.init().then(()=>{
         return register(app, apiServer)
     }).then(()=>{
         return initBilling(apiServer.config)
     }).then(()=>{
-        const port = apiServer.config.apiPort || 9527;
         app.listen(port)
         console.log(`api server listen at ${port}`)
     })
