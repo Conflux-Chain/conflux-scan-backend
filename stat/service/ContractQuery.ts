@@ -738,7 +738,9 @@ export class ContractQuery {
 
     private async processSyncAcrossRegion(){
         const { config } = this.app;
-
+        if (!config.syncAcrossRegionHost) {
+            return;
+        }
         let verify = await ContractVerify.findOne({
             where: {
                 verifyResult: true,
