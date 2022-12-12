@@ -256,7 +256,7 @@ export function initApiServer() {
     const apiServer = new ApiServer();
     const port = process.env.API_PORT || apiServer.config.apiPort || 9527;
     apiServer.init().then(()=>{
-        return register(app, apiServer)
+        return register(app, apiServer, port)
     }).then(()=>{
         return initBilling(apiServer.config)
     }).then(()=>{
