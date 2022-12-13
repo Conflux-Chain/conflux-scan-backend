@@ -72,6 +72,7 @@
     "web3pay-sdk-js": "0.0.11",
     "winston": "3.3.3",
     "winston-daily-rotate-file": "4.5.5",
+    "xlsx": "^0.18.5",
     "yamljs": "0.3.0"
   },
   "devDependencies": {

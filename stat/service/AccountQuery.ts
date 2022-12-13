@@ -19,7 +19,7 @@ export class AccountQuery {
     }
 
     public async listPatchInfo(addrArray) {
-        const hexArray = [...new Set(addrArray.filter(Boolean).map(item => format.hexAddress(item)))];
+        const hexArray = [...new Set(addrArray?.filter(Boolean).map(item => format.hexAddress(item)))];
         if (hexArray.length === 0) {
             return { total: 0, map: {} };
         }

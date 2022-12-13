@@ -273,6 +273,18 @@ export class ContractQuery {
                     verifyResult: true}, raw: true});
             verified.implementationVerified = verifiedInfo != null ? true : false;
         }
+        if(verified?.libraries && verified?.libraries?.length > 2){
+            const json = JSON.parse(verified.libraries);
+            const libs = Object.keys(json).map(name => ({name, address: format.address(json[name], StatApp.networkId)}));
+            const verifyMap = {};
+            const verifyArray = await ContractVerify.findAll({ attributes: ['base32'],
+                where: {base32: {[Op.in]: libs.map(item => item.address)}, verifyResult: true}, raw: true});
+            verifyArray?.forEach(item => verifyMap[item.base32] = true);
+            libs.forEach(item => ( item['exactMatch'] = verifyMap[item.address] ? true : false));
+            verified.libraries = libs;
+        } else{
+            verified.libraries = {};
+        }
 
         return verified;
     }

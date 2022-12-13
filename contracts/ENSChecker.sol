@@ -54,7 +54,7 @@ contract ENSChecker {
         return (resolvedAddr, node);
     }
 
-    function getEnsNameMatch(address ens,address reverse, address who, string memory domain)
+    function getEnsNameMatch(address ens,address reverse, address who)
     public
     view
     returns (string memory)
@@ -62,9 +62,6 @@ contract ENSChecker {
         string memory name = getReverseNameByAddress(ens, reverse, who);
         if(bytes(name).length == 0) {
             return '';
-        }
-        if(bytes(domain).length > 0) {
-            name = string(abi.encodePacked(name, domain));
         }
         bytes32 node;
         address resolvedAddr;
@@ -75,7 +72,7 @@ contract ENSChecker {
         return '';
     }
 
-    function getEnsNameMatch(address ens,address reverse, address who, uint256 coinType, string memory domain)
+    function getEnsNameMatch(address ens,address reverse, address who, uint256 coinType)
     public
     view
     returns (string memory)
@@ -83,9 +80,6 @@ contract ENSChecker {
         string memory name = getReverseNameByAddress(ens, reverse, who);
         if(bytes(name).length == 0) {
             return '';
-        }
-        if(bytes(domain).length > 0) {
-            name = string(abi.encodePacked(name, domain));
         }
         bytes32 node;
         address resolvedAddr;
@@ -96,26 +90,26 @@ contract ENSChecker {
         return '';
     }
 
-    function matchNames(address ens, address reverse, address[] memory addrArr, string memory domain)
+    function matchNames(address ens, address reverse, address[] memory addrArr)
     public
     view
     returns (string[] memory)
     {
         string[] memory ret = new string[](addrArr.length);
         for(uint256 i=0; i<addrArr.length; i++) {
-            ret[i] = getEnsNameMatch(ens, reverse, addrArr[i], domain);
+            ret[i] = getEnsNameMatch(ens, reverse, addrArr[i]);
         }
         return ret;
     }
 
-    function matchNames(address ens, address reverse, address[] memory addrArr, uint256 coinType, string memory domain)
+    function matchNames(address ens, address reverse, address[] memory addrArr, uint256 coinType)
     public
     view
     returns (string[] memory)
     {
         string[] memory ret = new string[](addrArr.length);
         for(uint256 i=0; i<addrArr.length; i++) {
-            ret[i] = getEnsNameMatch(ens, reverse, addrArr[i], coinType, domain);
+            ret[i] = getEnsNameMatch(ens, reverse, addrArr[i], coinType);
         }
         return ret;
     }

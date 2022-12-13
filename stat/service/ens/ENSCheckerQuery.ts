@@ -58,7 +58,8 @@ export class ENSCheckerQuery {
         }
 
         const base32Array = [...new Set(addressArray.filter(Boolean).map(a => format.address(a, StatApp.networkId)))];
-        const nameArray = await this.ensChecker.matchNames(this.ensAddr, this.reverseRegistrarAddr, base32Array, CFX_COIN_TYPE, '.web3')
+        /*const nameArray = await this.ensChecker.matchNames(this.ensAddr, this.reverseRegistrarAddr, base32Array, CFX_COIN_TYPE, '.web3')*/
+        const nameArray = await this.ensChecker.matchNames(this.ensAddr, this.reverseRegistrarAddr, base32Array, CFX_COIN_TYPE)
             .catch(e => {
                 console.log(`nameBatch ens ${this.ensAddr} reverse ${this.reverseRegistrar} error`, e);
                 return result;

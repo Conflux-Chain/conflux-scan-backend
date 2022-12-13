@@ -93,11 +93,6 @@ export const abi = [
                 "internalType": "uint256",
                 "name": "coinType",
                 "type": "uint256"
-            },
-            {
-                "internalType": "string",
-                "name": "domain",
-                "type": "string"
             }
         ],
         "name": "getEnsNameMatch",
@@ -127,11 +122,6 @@ export const abi = [
                 "internalType": "address",
                 "name": "who",
                 "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "domain",
-                "type": "string"
             }
         ],
         "name": "getEnsNameMatch",
@@ -192,9 +182,9 @@ export const abi = [
                 "type": "address[]"
             },
             {
-                "internalType": "string",
-                "name": "domain",
-                "type": "string"
+                "internalType": "uint256",
+                "name": "coinType",
+                "type": "uint256"
             }
         ],
         "name": "matchNames",
@@ -224,16 +214,6 @@ export const abi = [
                 "internalType": "address[]",
                 "name": "addrArr",
                 "type": "address[]"
-            },
-            {
-                "internalType": "uint256",
-                "name": "coinType",
-                "type": "uint256"
-            },
-            {
-                "internalType": "string",
-                "name": "domain",
-                "type": "string"
             }
         ],
         "name": "matchNames",
