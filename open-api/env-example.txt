@@ -1,5 +1,6 @@
 # env for open api docker, copy it and modify,
 # core space and evm space should use different ports.
+# bash: docker-compose --env-file
 OPEN_API_PORT_1=9001
 OPEN_API_PORT_2=9002
 OPEN_API_PORT_3=9003

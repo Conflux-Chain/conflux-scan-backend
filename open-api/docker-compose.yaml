@@ -4,7 +4,7 @@ services:
   open_api_1:
     image: node:14.17.5
     volumes:
-      - ./:/scan
+      - ../:/scan
     working_dir: /scan
     network_mode: host
     restart: always
@@ -14,7 +14,7 @@ services:
   open_api_2:
     image: node:14.17.5
     volumes:
-      - ./:/scan
+      - ../:/scan
     working_dir: /scan
     network_mode: host
     restart: always
@@ -24,7 +24,7 @@ services:
   open_api_3:
     image: node:14.17.5
     volumes:
-      - ./:/scan
+      - ../:/scan
     working_dir: /scan
     network_mode: host
     restart: always
