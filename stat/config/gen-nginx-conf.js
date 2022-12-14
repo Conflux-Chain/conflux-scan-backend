@@ -21,9 +21,9 @@ async function main()
     const dockerContainers = await listContainers();
     const conf = targetApps.map(e=>{
         const containers = filterDockerPorts(dockerContainers, e.jsName, e.envName)
-            .filter(e=>e.Name.includes(e.space));
+            .filter(c=>c.Name.includes(e.space));
         let upstreams = containers.map(e=>{
-            return `\t\t server 127.0.0.1:${parseInt(e.ports[0])}; # ${e.Name}`
+            return `\tserver 127.0.0.1:${parseInt(e.ports[0])}; # ${e.Name}`
         }).join('\n')
         let proxy_pass = `http://${ip}:${e.app_port}`
         if (ip === '127.0.0.1') {
