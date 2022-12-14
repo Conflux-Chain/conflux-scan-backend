@@ -9,6 +9,7 @@ import {abi as abiENS} from "../abi/ENS";
 import {abi as abiReverseRegistrar} from "../abi/ReverseRegistrar";
 import {abi as abiBaseRegistrar} from "../abi/BaseRegistrar";
 import {abi as abiResolver} from "../abi/Resolver";
+import {abi as abiReverseRecords} from "../abi/ReverseRecords";
 const lodash = require('lodash');
 const CFX_COIN_TYPE = 503;
 
@@ -19,12 +20,14 @@ export class ENSCheckerQuery {
     protected ensAddr;
     protected reverseRegistrarAddr;
     protected baseRegistrarAddr;
+    protected reverseRecordsAddr;
     protected ensSubGraphUrl;
 
     protected ensChecker;
     protected ens;
     protected reverseRegistrar;
     protected baseRegistrar;
+    protected reverseRecords;
     protected graphql;
 
     public constructor(app) {
@@ -34,12 +37,14 @@ export class ENSCheckerQuery {
         this.ensAddr = app.config.ens;
         this.reverseRegistrarAddr = app.config.reverseRegistrar;
         this.baseRegistrarAddr = app.config.baseRegistrar;
+        this.reverseRecordsAddr = app.config.reverseRecords;
         this.ensSubGraphUrl = app.config.ensSubGraphUrl;
 
         this.ensChecker = this.cfx.Contract({abi: abiENSChecker, address: this.ensCheckerAddr});
         this.ens = this.cfx.Contract({abi: abiENS, address: this.ensAddr});
         this.reverseRegistrar = this.cfx.Contract({abi: abiReverseRegistrar, address: this.reverseRegistrarAddr});
         this.baseRegistrar = this.cfx.Contract({abi: abiBaseRegistrar, address: this.baseRegistrarAddr});
+        this.reverseRecords = this.cfx.Contract({abi: abiReverseRecords, address: this.reverseRecordsAddr});
         this.graphql = new GraphQLClient(this.ensSubGraphUrl);
     }
 
@@ -58,8 +63,8 @@ export class ENSCheckerQuery {
         }
 
         const base32Array = [...new Set(addressArray.filter(Boolean).map(a => format.address(a, StatApp.networkId)))];
-        /*const nameArray = await this.ensChecker.matchNames(this.ensAddr, this.reverseRegistrarAddr, base32Array, CFX_COIN_TYPE, '.web3')*/
-        const nameArray = await this.ensChecker.matchNames(this.ensAddr, this.reverseRegistrarAddr, base32Array, CFX_COIN_TYPE)
+        /*const nameArray = await this.ensChecker.matchNames(this.ensAddr, this.reverseRegistrarAddr, base32Array)*/
+        const nameArray = await this.reverseRecords.getNames(base32Array)
             .catch(e => {
                 console.log(`nameBatch ens ${this.ensAddr} reverse ${this.reverseRegistrar} error`, e);
                 return result;

@@ -283,7 +283,7 @@ export class ContractQuery {
             libs.forEach(item => ( item['exactMatch'] = verifyMap[item.address] ? true : false));
             verified.libraries = libs;
         } else{
-            verified.libraries = {};
+            verified && (verified.libraries = {});
         }
 
         return verified;
