@@ -7,7 +7,13 @@ import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {scheduleDailyActiveAddress} from "./model/StatAddress";
 import {scheduleDailyTokenStat} from "./service/DailyTokenSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
-import {ADDRESS_COUNT, CONTRACT_COUNT, IS_EVM2, KV} from "./model/KV";
+import {
+    ADDRESS_COUNT_ALL,
+    ADDRESS_COUNT_ID,
+    CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
+    IS_EVM2,
+    KV
+} from "./model/KV";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {Hex40Map} from "./model/HexMap";
 import {TraceCreateContract} from "./model/TraceCreateContract";
@@ -18,6 +24,7 @@ import {StatDailyContractCreation} from "./service/timerstat/StatDailyContractCr
 import {StatDailyContractRegister} from "./service/timerstat/StatDailyContractRegister";
 import {StatDailyTxn} from "./service/timerstat/StatDailyTxn";
 import {StatTotalCfxHolder} from "./service/timerstat/StatTotalCfxHolder";
+import {Op} from "sequelize";
 
 async function main() {
     redirectLog()
@@ -63,9 +70,33 @@ async function main() {
     console.log(`----- Timer tasks scheduled. -----`)
 }
 async function countTable() {
-    await KV.saveNumber(ADDRESS_COUNT, await Hex40Map.count({}), null)
-    await KV.saveNumber(CONTRACT_COUNT, await TraceCreateContract.count({}), null)
+    await countTableDelta(Hex40Map, ADDRESS_COUNT_ALL, ADDRESS_COUNT_ID);
+    await countTableDelta(TraceCreateContract, CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID);
 }
+
+async function countTableDelta(model, keyCountAll, keyCountId) {
+    const [count, lastId, latestBean] = await Promise.all([
+        KV.getNumber(keyCountAll, 0),
+        KV.getNumber(keyCountId, 0),
+        model.findOne({attributes: ['id'], order: [['id', 'desc']]}),
+    ]);
+
+    const latestId = latestBean?.id || 0;
+    const delta = await model.count({
+        where: {
+            [Op.and]: [
+                {id: {[Op.gt]: lastId}},
+                {id: {[Op.lte]: latestId}}
+            ]
+        },
+    });
+
+    await KV.sequelize.transaction(async (dbTx) => {
+        await KV.upsert({key: keyCountAll, value: `${count + delta}`}, {transaction: dbTx});
+        await KV.upsert({key: keyCountId, value: `${latestId}`}, {transaction: dbTx});
+    });
+}
+
 main().then().catch(err=>{
     console.log(`Timer task fail:`, err)
 })

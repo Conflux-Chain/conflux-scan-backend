@@ -1,12 +1,10 @@
 // @ts-ignore
 import {Hex40Map} from "../model/HexMap";
-import {TraceCreateContract} from "../model/TraceCreateContract";
-import {ADDRESS_COUNT, CONTRACT_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
+import {ADDRESS_COUNT_ALL, CONTRACT_COUNT_ALL, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {FullBlock} from "../model/FullBlock";
 import {CONST} from "./common/constant"
 
 const lodash = require('lodash');
-/*const CONST = require('./common/constant');*/
 
 export class HomeDashboardService{
     protected app;
@@ -43,9 +41,9 @@ export class HomeDashboardService{
             app: {confluxSDK},
         } = this;
 
-        const addressCount = await KV.getNumber(ADDRESS_COUNT, 0)
+        const addressCount = await KV.getNumber(ADDRESS_COUNT_ALL, 0)
         const transactionCount = await KV.getNumber(KEY_FULL_TX_COUNT, 0);
-        const contractCount = await KV.getNumber(CONTRACT_COUNT, 0)
+        const contractCount = await KV.getNumber(CONTRACT_COUNT_ALL, 0)
         const maxBlock = await FullBlock.findOne({order: [['epoch', 'desc']]});
         const {blockNumber} = await confluxSDK.getStatus().catch(() => undefined);
 
