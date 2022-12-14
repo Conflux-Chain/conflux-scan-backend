@@ -7,7 +7,7 @@ const entries = [
     {        name: 'scan_api_evm',  app_port: 7895, nginx_port: 37895,  path:'/v1'  },
     {        name: 'open_api_evm',  app_port: 19527, nginx_port: 39527, path:'/open'   },
 ]
-//
+// node stat/config/gen-nginx-conf.js 127.0.0.1 stat_core '' ''
 async function main()
 {
     const [,,ip='',app='', write, reload] = process.argv
@@ -18,7 +18,19 @@ async function main()
         console.log(`Usage: node ${__filename} <0.0.0.0> [${entries.map(a=>a.name).join(' | ')}] [writeFlag] [reloadFlag]`)
         process.exit(9)
     }
-    const conf = targetApps.map(e=>`
+    const dockerContainers = await filterDockerPorts();
+    let upstreams = dockerContainers.map(e=>{
+        return `\t\t server 127.0.0.1:${parseInt(e.ports[0])}; # ${e.Name}`
+    }).join('\n')
+    const conf = targetApps.map(e=>{
+        let proxy_pass = `http://${ip}:${e.app_port}`
+        if (ip === '127.0.0.1') {
+            proxy_pass = `http://${e.name}` //use upstream
+        }
+        return `
+    upstream ${e.name} {
+${upstreams}        
+    }
     # ${e.name}
     server { 
             listen ${e.nginx_port};
@@ -26,11 +38,11 @@ async function main()
             access_log /var/log/nginx/access_${e.name}.log;
             error_log /var/log/nginx/error_${e.name}.log;
             location / {
-                    proxy_pass http://${ip}:${e.app_port};
+                    proxy_pass ${proxy_pass};
                     proxy_set_header Connection ""; # clear client side keepalive option.
            }
     }
-    `).join('\n');
+    `}).join('\n');
     console.log(conf)
 
     if (write) {
@@ -46,6 +58,7 @@ async function main()
     }
 }
 const util = require('util');
+const {filterDockerPorts} = require("../../tools/docker");
 const exec = util.promisify(require('child_process').exec);
 async function bash(cmd) {
     console.log(`now execute: ${cmd}`)

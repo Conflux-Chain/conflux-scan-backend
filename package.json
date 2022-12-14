@@ -53,6 +53,7 @@
     "mysql2": "^2.2.5",
     "node-abort-controller": "^3.0.1",
     "node-cache": "5.1.2",
+    "node-docker-api": "^1.1.22",
     "p-limit": "2.3.0",
     "ping": "^0.4.2",
     "pino": "^6.10.0",
