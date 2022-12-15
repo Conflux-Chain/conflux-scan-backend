@@ -309,12 +309,12 @@ export class QuoteSync {
     private async upsertQuote(quoteArray) {
         quoteArray.map(async quote => {
             const {address, convertSymbol, price} = quote;
-            const dbQuote: TokenQuoteTrack = await TokenQuoteTrack.findOne({where: {address, convertSymbol}});
+            /*const dbQuote: TokenQuoteTrack = await TokenQuoteTrack.findOne({where: {address, convertSymbol}});
             if (dbQuote) {
                 await dbQuote.update(lodash.assign(quote, {updatedAt: Date.now()}), {where: {id: dbQuote.id}});
             } else {
                 await TokenQuoteTrack.add(quote);
-            }
+            }*/
 
             const dbToken: Token = await Token.findOne({where: {base32: address}});
             if (dbToken) {

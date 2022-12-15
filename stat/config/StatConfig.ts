@@ -141,6 +141,7 @@ export interface StatConfig{
     reverseRegistrar: string,
     baseRegistrar: string,
     ensChecker: string,
+    reverseRecords: string,
 }
 
 export interface Erc20WatchList{

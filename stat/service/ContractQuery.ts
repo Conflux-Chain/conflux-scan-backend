@@ -250,7 +250,7 @@ export class ContractQuery {
         const base32 = toBase32(address);
 
         // own verified info
-        let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true});
+        let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, useMaster: true, raw: true});
 
         // real-time impl info
         if(verified !== null){
@@ -283,7 +283,7 @@ export class ContractQuery {
             libs.forEach(item => ( item['exactMatch'] = verifyMap[item.address] ? true : false));
             verified.libraries = libs;
         } else{
-            verified.libraries = {};
+            verified && (verified.libraries = {});
         }
 
         return verified;
@@ -646,7 +646,7 @@ export class ContractQuery {
         const base32 = toBase32(address);
         expectedImpl = !expectedImpl ? null : toBase32(expectedImpl);
 
-        const verify = await ProxyVerify.findOne({where: {base32, expectedImpl}});
+        const verify = await ProxyVerify.findOne({where: {base32, expectedImpl}, useMaster: true});
         if(verify) {
             return {address, guid: verify.guid};
         }

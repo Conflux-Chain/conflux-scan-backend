@@ -73,12 +73,13 @@ export class DailyBlockDataStatQuery {
             queryOptions.where = {[Op.and]: conditionArray};
         }
 
-        const page = await DailyBlockDataStat.findAndCountAll(queryOptions);
-        page.rows.forEach(row => {
+        const count = this.calCount(minTimestamp, maxTimestamp, intervalType);
+        const rows = await DailyBlockDataStat.findAll(queryOptions);
+        rows.forEach(row => {
             // @ts-ignore
             row['statTime'] = row['statTime'].toISOString().replace('T', ' ').substr(0, 19);
         });
-        return page;
+        return {count, rows};
     }
 
     // scan-api
@@ -144,5 +145,28 @@ export class DailyBlockDataStatQuery {
             partialMap[(row['statTime'])] = row['txCount']
         });
         return partialMap;
+    }
+
+    private calCount(minTimestamp, maxTimestamp, intervalType) {
+        const start = minTimestamp !== undefined ? minTimestamp : (new Date('2020-10-28 16:00:00')).getTime();
+        const end = maxTimestamp !== undefined ? maxTimestamp : Date.now();
+        const elapsed = end - start;
+
+        let count;
+        switch (intervalType) {
+            case this.INTERVAL_TYPE.day:
+                count = elapsed / (1000 * 60 * 60 * 24);
+                break;
+            case this.INTERVAL_TYPE.hour:
+                count = elapsed / (1000 * 60 * 60);
+                break;
+            case this.INTERVAL_TYPE.min:
+                count = elapsed / (1000 * 60);
+                break;
+            default:
+                throw new Error(`intervalType:${intervalType} not supported`);
+        }
+
+        return Math.ceil(count);
     }
 }
