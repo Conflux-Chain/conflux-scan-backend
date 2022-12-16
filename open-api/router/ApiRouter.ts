@@ -69,8 +69,8 @@ import {buildCheckAddressRateFn, checkApiKey, checkRate, loadRateConfig} from ".
 
 const cors = require('@koa/cors');
 
-async function root(ctx, tag) {
-    ctx.body = {code: 0, message: `Conflux Scan Open Api 0.1 ${tag}`}
+async function root(ctx, tag, port: string | number) {
+    ctx.body = {code: 0, app:'Conflux Scan Open Api', message: `${tag} ${port}`}
 }
 
 async function getTokenInfo(ctx) {
@@ -81,7 +81,7 @@ async function getTokenInfo(ctx) {
     setBody(ctx, result)
 }
 
-export async function register(app: Koa, apiServer: ApiServer) {
+export async function register(app: Koa, apiServer: ApiServer, port:string|number) {
     app.use(cors({'origin':'*'}))
     loadRateConfig().then()
     app.use(checkRate)
@@ -102,7 +102,7 @@ export async function register(app: Koa, apiServer: ApiServer) {
 
     app.proxy = true
     router.get('/', async (ctx)=>{
-        return root(ctx, apiServer.config.serverTag)
+        return root(ctx, apiServer.config.serverTag, port)
     })
     router.get('/echo', (ctx)=>{
         ctx.body = {ip: ctx.ip, header: ctx.headers}
