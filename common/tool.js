@@ -4,6 +4,7 @@ const lodash = require('lodash');
 const fastDiff = require('fast-diff');
 const readline = require('readline');
 const error = require('./error');
+const {PerformanceObserver, performance} = require("perf_hooks");
 // ----------------------------------------------------------------------------
 let running = true;
 
@@ -215,12 +216,31 @@ function extractEncodedConstructorArgs(creationData, compiledCreationBytecode) {
   return "0x" + creationData.slice(compiledCreationBytecode.length);
 }
 
+function enablePerformance(types = ['measure', "function"]) {
+  const { PerformanceObserver, performance } = require('perf_hooks');
+  const obs = new PerformanceObserver((items) => {
+    console.log(`items`, items.getEntries().map(e=>{
+      return ` ${e.duration.toString().padStart(15, ' ')} ${e.name} ${e.entryType} `
+    }).join('\n'))
+    // apparently you should clean up...
+    // performance.clearMarks();
+    // performance.clearMeasures(); // Not a function in Node.js 12
+  });
+  obs.observe({ entryTypes: types });
+}
+function performance_mark(pre, cur) {
+  performance.mark(cur);
+  if (pre) {
+    performance.measure(`${pre} to ${cur}`)
+  }
+  return cur;
+}
 // ----------------------------------------------------------------------------
 
 module.exports = {
   isRunning,
   memInfo,
-
+  enablePerformance, performance_mark,
   sleep,
   assert,
   isExist,

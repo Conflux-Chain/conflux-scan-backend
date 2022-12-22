@@ -1,6 +1,7 @@
 // @ts-ignore
 import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op} from "sequelize"
+const { PerformanceObserver, performance } = require('perf_hooks');
 import {
     FullBlock,
     FullTransaction,
@@ -185,6 +186,9 @@ export class FullBlockQuery {
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
                                      verboseAddress = false, sort = 'DESC'
     }) {
+        const performance_mark = require('../../common/tool.js')
+        let perf_m = ''
+        perf_m = performance_mark(perf_m, `list-tx-begin`)
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // parse para
@@ -197,6 +201,7 @@ export class FullBlockQuery {
                 }
             })
         );
+        perf_m = performance_mark(perf_m, `list-tx-acc-to-id`)
         let accountAddressId = addressMap[accountAddress];
         let fromAddressId = addressMap[from];
         let toAddressId = addressMap[to];
@@ -287,7 +292,8 @@ export class FullBlockQuery {
             } else{
                 conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
-        } else{
+        }
+        else{
             const {pagedCondition, txPage: tp0} = await this.buildPagedTxOptions(skip);
             txPage = tp0
             if(pagedCondition.where){
@@ -303,11 +309,13 @@ export class FullBlockQuery {
         }
         // order
         options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
+        performance.mark(`list-tx-build-options`)
         // query
         let rawList;
         let count;
         if(accountAddressId){
             const page = await AddressTransactionIndex.findAndCountAll(options);
+            perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
             rawList = page?.rows;
             count = page?.count;
         } else if(blockHash){
@@ -346,7 +354,7 @@ export class FullBlockQuery {
                     }))
                 }
             });
-
+            perf_m = performance_mark(perf_m, `list-tx-gather-props`)
             // prepare hex map and fill exec-error-msg
             const [hex40Array,failedArr] = await Promise.all([
                 Hex40Map.findAll({
@@ -356,7 +364,7 @@ export class FullBlockQuery {
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
-
+            perf_m = performance_mark(perf_m, `list-tx-query-set-hex40`)
             // prepare method map
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
@@ -365,7 +373,7 @@ export class FullBlockQuery {
                     attributes:['hash','method']})
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
-
+            perf_m = performance_mark(perf_m, `list-tx-hash-and-method`)
             // fields mapping
             list.forEach(row=>{
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
@@ -385,11 +393,12 @@ export class FullBlockQuery {
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
-
+            perf_m = performance_mark(perf_m, `list-tx-translate-fields`)
             // method field mapping
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
             })
+            perf_m = performance_mark(perf_m, `list-tx-fillMethodInfo`)
         }
 
         // add pruned total
@@ -400,7 +409,8 @@ export class FullBlockQuery {
             const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}});
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
-
+        perf_m = performance_mark(perf_m, `list-tx-prune-info`)
+        performance.clearMarks()
         return {total: (count ? count : 0) + prunedCntr, list, extraInfo};
     }
 
