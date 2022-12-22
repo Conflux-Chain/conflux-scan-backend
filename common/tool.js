@@ -231,7 +231,7 @@ function enablePerformance(types = ['measure', "function"]) {
 function performance_mark(pre, cur) {
   performance.mark(cur);
   if (pre) {
-    performance.measure(`${pre} to ${cur}`, pre, cur)
+    performance.measure(`${cur}`, pre, cur)
   }
   return cur;
 }

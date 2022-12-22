@@ -404,9 +404,7 @@ export class FullBlockQuery {
 
         // add pruned total
         let prunedCntr = 0;
-        const optionObj = {minEpochNumber, maxEpochNumber, blockHash, transactionHash, nonce, minTimestamp,
-            maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
-        if(checkExist(optionObj, ['accountAddress'])){
+        if(accountAddressId){
             const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}});
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
