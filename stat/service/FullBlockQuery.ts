@@ -407,11 +407,15 @@ export class FullBlockQuery {
         const optionObj = {minEpochNumber, maxEpochNumber, blockHash, transactionHash, nonce, minTimestamp,
             maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
         if(checkExist(optionObj, ['accountAddress'])){
+            let start = Date.now();
+            let [hrt] = process.hrtime()
             perf_m = performance_mark(perf_m, `list-tx-checkExist`)
             const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
-                logging: true, benchmark: true,
+                logging: console.log, benchmark: true,
             });
             perf_m = performance_mark(perf_m, `list-tx-PruneInfo.findOne`)
+            console.log(`self calculate ms cost`, Date.now() - start)
+            console.log(`self calculate ms cost hrt`, process.hrtime()[0] - hrt)
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
         perf_m = performance_mark(perf_m, `list-tx-prune-info`)
