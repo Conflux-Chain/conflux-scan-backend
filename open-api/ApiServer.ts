@@ -262,11 +262,21 @@ export function initApiServer() {
     }).then(()=>{
         return initBilling(apiServer.config)
     }).then(()=>{
+        return checkTest();
+    }).then(()=>{
         app.listen(port)
         console.log(`api server listen at ${port}`)
     })
 }
-
+async function checkTest() {
+    const[,,cmd, arg1] =  process.argv
+    if (cmd === 'test-list-tx') {
+        await getApiService().fullBlockQuery.listTransaction({
+            accountAddress: arg1
+        });
+        process.exit(0)
+    }
+}
 if (module === require.main) {
     initApiServer()
 }
