@@ -17,6 +17,7 @@ import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
+const { performance_mark } = require('../../common/tool.js')
 
 const lodash = require('lodash');
 /*const CONST = require('./common/constant');*/
@@ -186,7 +187,6 @@ export class FullBlockQuery {
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
                                      verboseAddress = false, sort = 'DESC'
     }) {
-        const performance_mark = require('../../common/tool.js')
         let perf_m = ''
         perf_m = performance_mark(perf_m, `list-tx-begin`)
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
