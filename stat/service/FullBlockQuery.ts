@@ -188,7 +188,8 @@ export class FullBlockQuery {
                                      verboseAddress = false, sort = 'DESC'
     }) {
         let perf_m = ''
-        perf_m = performance_mark(perf_m, `list-tx-begin`)
+        let beginMark = `list-tx-begin`;
+        perf_m = performance_mark(perf_m, beginMark)
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // parse para
@@ -410,6 +411,7 @@ export class FullBlockQuery {
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
         perf_m = performance_mark(perf_m, `list-tx-prune-info`)
+        performance.measure(`total`, beginMark, perf_m)
         performance.clearMarks()
         return {total: (count ? count : 0) + prunedCntr, list, extraInfo};
     }

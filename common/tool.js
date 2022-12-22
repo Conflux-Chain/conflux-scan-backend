@@ -220,7 +220,7 @@ function enablePerformance(types = ['measure', "function"]) {
   const { PerformanceObserver, performance } = require('perf_hooks');
   const obs = new PerformanceObserver((items) => {
     console.log(`items`, items.getEntries().map(e=>{
-      return ` ${e.duration.toString().padStart(15, ' ')} ${e.name} ${e.entryType} `
+      return ` ${e.duration.toString().padStart(15, ' ')} ${e.name} , type ${e.entryType} `
     }).join('\n'))
     // apparently you should clean up...
     // performance.clearMarks();
@@ -231,7 +231,7 @@ function enablePerformance(types = ['measure', "function"]) {
 function performance_mark(pre, cur) {
   performance.mark(cur);
   if (pre) {
-    performance.measure(`${pre} to ${cur}`)
+    performance.measure(`${pre} to ${cur}`, pre, cur)
   }
   return cur;
 }
