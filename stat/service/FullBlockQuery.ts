@@ -315,6 +315,7 @@ export class FullBlockQuery {
         let rawList;
         let count;
         if(accountAddressId){
+            options.logging = console.log; options.benchmark = true;
             const page = await AddressTransactionIndex.findAndCountAll(options);
             perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
             rawList = page?.rows;
@@ -408,14 +409,12 @@ export class FullBlockQuery {
             maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
         if(checkExist(optionObj, ['accountAddress'])){
             let start = Date.now();
-            let [hrt] = process.hrtime()
             perf_m = performance_mark(perf_m, `list-tx-checkExist`)
             const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
                 logging: console.log, benchmark: true,
             });
             perf_m = performance_mark(perf_m, `list-tx-PruneInfo.findOne`)
             console.log(`self calculate ms cost`, Date.now() - start)
-            console.log(`self calculate ms cost hrt`, process.hrtime()[0] - hrt)
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
         perf_m = performance_mark(perf_m, `list-tx-prune-info`)
