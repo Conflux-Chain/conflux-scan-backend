@@ -315,7 +315,7 @@ export class FullBlockQuery {
         let rawList;
         let count;
         if(accountAddressId){
-            options.logging = console.log; options.benchmark = true;
+            options.logging = console.log; options.benchmark = true; options.raw = true;
             const page = await AddressTransactionIndex.findAndCountAll(options);
             perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
             rawList = page?.rows;
@@ -411,7 +411,7 @@ export class FullBlockQuery {
             let start = Date.now();
             perf_m = performance_mark(perf_m, `list-tx-checkExist`)
             const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
-                logging: console.log, benchmark: true,
+                logging: console.log, benchmark: true, raw: true,
             });
             perf_m = performance_mark(perf_m, `list-tx-PruneInfo.findOne`)
             console.log(`self calculate ms cost`, Date.now() - start)
