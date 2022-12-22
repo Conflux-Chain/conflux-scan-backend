@@ -269,12 +269,20 @@ export function initApiServer() {
     })
 }
 async function checkTest() {
-    const[,,cmd, arg1] =  process.argv
-    if (cmd === 'test-list-tx') {
+    const[,,cmd, arg1, arg2] =  process.argv
+
+    async function once() {
         const {total} = await getApiService().fullBlockQuery.listTransaction({
             accountAddress: arg1
         });
         console.log(`total tx`, total)
+    }
+
+    if (cmd === 'test-list-tx') {
+        for (let i = 0; i < parseInt(arg2); i++) {
+            console.log(`----- round ${i} `)
+            await once()
+        }
         process.exit(0)
     }
 }
