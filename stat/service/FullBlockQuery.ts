@@ -408,7 +408,9 @@ export class FullBlockQuery {
             maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
         if(checkExist(optionObj, ['accountAddress'])){
             perf_m = performance_mark(perf_m, `list-tx-checkExist`)
-            const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}});
+            const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
+                logging: true, benchmark: true,
+            });
             perf_m = performance_mark(perf_m, `list-tx-PruneInfo.findOne`)
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
