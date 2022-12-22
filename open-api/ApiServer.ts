@@ -271,9 +271,10 @@ export function initApiServer() {
 async function checkTest() {
     const[,,cmd, arg1] =  process.argv
     if (cmd === 'test-list-tx') {
-        await getApiService().fullBlockQuery.listTransaction({
+        const {total} = await getApiService().fullBlockQuery.listTransaction({
             accountAddress: arg1
         });
+        console.log(`total tx`, total)
         process.exit(0)
     }
 }
