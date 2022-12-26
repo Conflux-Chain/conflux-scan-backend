@@ -450,7 +450,7 @@ export class FullBlockQuery {
                 && (pruneInfo === null || countCache.updatedAt.getTime() > pruneInfo.updatedAt.getTime())
                 // cache time is later than newest tx
                 // @ts-ignore
-                && (countCache.updatedAt.getTime() > newestTx?.createdAt.getTime())
+                && (countCache.updatedAt.getTime() > newestTx?.timestamp * 1000)
             ) {
                 finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
             } else {
