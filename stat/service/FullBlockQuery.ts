@@ -1,6 +1,7 @@
 // @ts-ignore
 import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op} from "sequelize"
+const { PerformanceObserver, performance } = require('perf_hooks');
 import {
     FullBlock,
     FullTransaction,
@@ -16,6 +17,7 @@ import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
+const { performance_mark } = require('../../common/tool.js')
 
 const lodash = require('lodash');
 /*const CONST = require('./common/constant');*/
@@ -185,6 +187,9 @@ export class FullBlockQuery {
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
                                      verboseAddress = false, sort = 'DESC'
     }) {
+        let perf_m = ''
+        let beginMark = `list-tx-begin`;
+        perf_m = performance_mark(perf_m, beginMark)
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // parse para
@@ -197,6 +202,7 @@ export class FullBlockQuery {
                 }
             })
         );
+        perf_m = performance_mark(perf_m, `list-tx-acc-to-id`)
         let accountAddressId = addressMap[accountAddress];
         let fromAddressId = addressMap[from];
         let toAddressId = addressMap[to];
@@ -287,7 +293,8 @@ export class FullBlockQuery {
             } else{
                 // conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
-        } else{
+        }
+        else{
             const {pagedCondition, txPage: tp0} = await this.buildPagedTxOptions(skip);
             txPage = tp0
             if(pagedCondition.where){
@@ -303,11 +310,14 @@ export class FullBlockQuery {
         }
         // order
         options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
+        performance.mark(`list-tx-build-options`)
         // query
         let rawList;
         let count;
         if(accountAddressId){
+            options.logging = console.log; options.benchmark = true; options.raw = true;
             const page = await AddressTransactionIndex.findAndCountAll(options);
+            perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
             rawList = page?.rows;
             count = page?.count;
         } else if(blockHash){
@@ -350,7 +360,7 @@ export class FullBlockQuery {
                     }))
                 }
             });
-
+            perf_m = performance_mark(perf_m, `list-tx-gather-props`)
             // prepare hex map and fill exec-error-msg
             const [hex40Array,failedArr] = await Promise.all([
                 Hex40Map.findAll({
@@ -360,7 +370,7 @@ export class FullBlockQuery {
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
-
+            perf_m = performance_mark(perf_m, `list-tx-query-set-hex40`)
             // prepare method map
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
@@ -371,7 +381,7 @@ export class FullBlockQuery {
                     where: {[Op.or]: txHashQueryCondition}});
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
-
+            perf_m = performance_mark(perf_m, `list-tx-hash-and-method`)
             // fields mapping
             list.forEach(row=>{
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
@@ -391,11 +401,12 @@ export class FullBlockQuery {
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
-
+            perf_m = performance_mark(perf_m, `list-tx-translate-fields`)
             // method field mapping
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
             })
+            perf_m = performance_mark(perf_m, `list-tx-fillMethodInfo`)
         }
 
         // add pruned total
@@ -403,10 +414,18 @@ export class FullBlockQuery {
         const optionObj = {minEpochNumber, maxEpochNumber, blockHash, transactionHash, nonce, minTimestamp,
             maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
         if(checkExist(optionObj, ['accountAddress'])){
-            const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}});
+            let start = Date.now();
+            perf_m = performance_mark(perf_m, `list-tx-checkExist`)
+            const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
+                logging: console.log, benchmark: true, raw: true,
+            });
+            perf_m = performance_mark(perf_m, `list-tx-PruneInfo.findOne`)
+            console.log(`self calculate ms cost`, Date.now() - start)
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
-
+        perf_m = performance_mark(perf_m, `list-tx-prune-info`)
+        performance.measure(`total`, beginMark, perf_m)
+        performance.clearMarks()
         return {total: (count ? count : 0) + prunedCntr, list, extraInfo};
     }
 

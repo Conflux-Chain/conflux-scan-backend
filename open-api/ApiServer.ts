@@ -31,6 +31,7 @@ import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
+import {enablePerformance} from "../common/tool";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
 import {billing, getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
@@ -250,6 +251,7 @@ async function initBilling(config: StatConfig) {
 }
 export function initApiServer() {
     regExitHook();
+    enablePerformance();
     if (__filename.startsWith('/scan/')) {
         redirectLog({mainPath:'OpenApi'})
     }
@@ -260,11 +262,30 @@ export function initApiServer() {
     }).then(()=>{
         return initBilling(apiServer.config)
     }).then(()=>{
+        return checkTest();
+    }).then(()=>{
         app.listen(port)
         console.log(`api server listen at ${port}`)
     })
 }
+async function checkTest() {
+    const[,,cmd, arg1, arg2] =  process.argv
 
+    async function once() {
+        const {total} = await getApiService().fullBlockQuery.listTransaction({
+            accountAddress: arg1
+        });
+        console.log(`total tx`, total)
+    }
+
+    if (cmd === 'test-list-tx') {
+        for (let i = 0; i < parseInt(arg2); i++) {
+            console.log(`----- round ${i} `)
+            await once()
+        }
+        process.exit(0)
+    }
+}
 if (module === require.main) {
     initApiServer()
 }
