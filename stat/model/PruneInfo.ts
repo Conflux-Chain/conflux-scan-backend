@@ -6,6 +6,7 @@ export interface IPrune {
     type: string
     pruned: number
     epoch: number
+    updatedAt: Date;
 }
 
 export class PruneInfo extends Model<IPrune> implements IPrune {
@@ -14,7 +15,7 @@ export class PruneInfo extends Model<IPrune> implements IPrune {
     type: string
     pruned: number
     epoch: number
-
+    updatedAt: Date;
     static register(seq: Sequelize) {
         PruneInfo.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -22,6 +23,7 @@ export class PruneInfo extends Model<IPrune> implements IPrune {
             type: {type: DataTypes.CHAR(16), allowNull: false},
             pruned: {type: DataTypes.BIGINT, allowNull: false},
             epoch: {type: DataTypes.BIGINT, allowNull: false},
+            updatedAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             sequelize: seq,
             tableName: "prune_info",

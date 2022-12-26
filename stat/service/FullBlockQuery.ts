@@ -17,6 +17,7 @@ import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
+import {TransferCount} from "../model/TransferCount";
 const { performance_mark } = require('../../common/tool.js')
 
 const lodash = require('lodash');
@@ -302,8 +303,10 @@ export class FullBlockQuery {
                 options.offset = pagedCondition.skip;
             }
         }
+        let isPureAddrQuery = false;
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
+            isPureAddrQuery = Boolean(accountAddressId);
         }
         if(conditionArray.length > 1){
             options.where = {[Op.and]: conditionArray};
@@ -313,13 +316,19 @@ export class FullBlockQuery {
         performance.mark(`list-tx-build-options`)
         // query
         let rawList;
-        let count;
+        let count = 0;
         if(accountAddressId){
-            options.logging = console.log; options.benchmark = true; options.raw = true;
-            const page = await AddressTransactionIndex.findAndCountAll(options);
-            perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
-            rawList = page?.rows;
-            count = page?.count;
+            options.logging = console.log; options.benchmark = true;
+            options.raw = true;
+            if (isPureAddrQuery) {
+                rawList = await AddressTransactionIndex.findAll(options);
+                perf_m = performance_mark(perf_m, `list-tx-find-all`)
+            } else {
+                const page = await AddressTransactionIndex.findAndCountAll(options);
+                perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
+                rawList = page?.rows;
+                count = page?.count;
+            }
         } else if(blockHash){
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
@@ -412,22 +421,54 @@ export class FullBlockQuery {
 
         // add pruned total
         let prunedCntr = 0;
-        const optionObj = {minEpochNumber, maxEpochNumber, blockHash, transactionHash, nonce, minTimestamp,
-            maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
-        if(checkExist(optionObj, ['accountAddress'])){
+        let finalCount: number;
+        if(isPureAddrQuery){
             let start = Date.now();
             perf_m = performance_mark(perf_m, `list-tx-checkExist`)
-            const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
-                logging: console.log, benchmark: true, raw: true,
-            });
-            perf_m = performance_mark(perf_m, `list-tx-PruneInfo.findOne`)
+            const [pruneInfo, countCache, newestTx] = await Promise.all([
+                PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
+                    logging: console.log, benchmark: true, raw: true,
+                }),
+                TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,
+                    logging: console.log, benchmark: true,
+                }),
+                new Promise(r=>{
+                    if (sort === 'DESC') {
+                        r(list[0])
+                    } else {
+                        // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
+                        console.log(`query newest record`)
+                        options.order.forEach(o=>o[1] = 'DESC');
+                        AddressTransactionIndex.findOne(options).then(r)
+                    }
+                })
+            ]);
+            perf_m = performance_mark(perf_m, `list-tx-PruneInfo+TransferCount`)
             console.log(`self calculate ms cost`, Date.now() - start)
-            prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
+            if (countCache
+                // cache time is later than prune info
+                && (pruneInfo === null || countCache.updatedAt.getTime() > pruneInfo.updatedAt.getTime())
+                // cache time is later than newest tx
+                // @ts-ignore
+                && (countCache.updatedAt.getTime() > newestTx?.createdAt.getTime())
+            ) {
+                finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
+            } else {
+                count = await AddressTransactionIndex.count(options).then((res)=>res[Object.keys(res)[0]]);
+                perf_m = performance_mark(perf_m, `list-tx-count-db`)
+                prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
+                finalCount = count + prunedCntr;
+                if (finalCount) {
+                    await TransferCount.upsert({addressId: accountAddressId, v: count, type: 'TX', updatedAt: new Date()})
+                }
+            }
+        } else {
+            finalCount = count;
         }
         perf_m = performance_mark(perf_m, `list-tx-prune-info`)
         performance.measure(`total`, beginMark, perf_m)
         performance.clearMarks()
-        return {total: (count ? count : 0) + prunedCntr, list, extraInfo};
+        return {total: finalCount, list, extraInfo};
     }
 
     private async buildPagedBlockOptions(skip) : Promise<{blockPage:BlockPage, pagedCondition}>{

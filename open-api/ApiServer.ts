@@ -1,4 +1,4 @@
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {ethers} from "ethers";
 import {loadConfig, StatConfig} from "../stat/config/StatConfig";
 import {patchHttpProvider} from "../stat/service/common/utils";
@@ -271,9 +271,9 @@ export function initApiServer() {
 async function checkTest() {
     const[,,cmd, arg1, arg2] =  process.argv
 
-    async function once() {
+    async function once(account, sort='DESC') {
         const {total} = await getApiService().fullBlockQuery.listTransaction({
-            accountAddress: arg1
+            accountAddress: account, sort
         });
         console.log(`total tx`, total)
     }
@@ -281,8 +281,9 @@ async function checkTest() {
     if (cmd === 'test-list-tx') {
         for (let i = 0; i < parseInt(arg2); i++) {
             console.log(`----- round ${i} `)
-            await once()
+            await once(arg1)
         }
+        await once(arg1,'ASC')
         process.exit(0)
     }
 }

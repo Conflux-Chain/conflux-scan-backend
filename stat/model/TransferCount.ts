@@ -14,6 +14,7 @@ import {AddressErc1155Transfer} from "./Erc1155Transfer";
 import {AddressCfxTransfer} from "./CfxTransfer";
 import {AddressTransfer} from "./AddrTransfer";
 import {AddrEvent3525} from "../T3525Sync";
+import {AddressTransactionIndex} from "./FullBlock";
 
 /**
  * Transfer count cache for address.
@@ -53,7 +54,7 @@ export async function getAddrTransferCount(addrId: number, type: string) : Promi
     }
     const map = {'ERC20' : AddressErc20Transfer, 'ERC721' : AddressErc721Transfer
         , 'ERC1155' : AddressErc1155Transfer
-        , 'ERC3525' : AddrEvent3525
+        , 'ERC3525' : AddrEvent3525, 'TX': AddressTransactionIndex
         , 'CFX': AddressCfxTransfer, 'ALL': AddressTransfer}
     const model = map[type]
     if (!model) {
