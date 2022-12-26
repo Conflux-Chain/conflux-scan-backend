@@ -285,7 +285,7 @@ export class FullBlockQuery {
             } else if(txType === CONST.TX_TYPE.CREATE){
                 conditionArray.push({contractCreatedId: {[Op.gt]: 0}});
             } else{
-                conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
+                // conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
         } else{
             const {pagedCondition, txPage: tp0} = await this.buildPagedTxOptions(skip);
