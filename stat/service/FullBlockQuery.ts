@@ -326,12 +326,16 @@ export class FullBlockQuery {
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
-            const failedQuery:Promise<FailedTx>[] = []
+            const failedQuery:Promise<FailedTx>[] = [];
+            const txHashQueryCondition = [];
             rawList.forEach( row => {
                 txHashArray.push(row['hash']);
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['contractCreated']);
+                txHashQueryCondition.push({
+                    [Op.and]:[{epoch: row['epochNumber'], blockPosition:row['blockPosition'], txPosition:row['transactionIndex']}]
+                });
                 list.push(row);
                 if (row['status']) {
                     failedQuery.push(FailedTx.findOne({where:{
@@ -361,8 +365,10 @@ export class FullBlockQuery {
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
                 // fetch method, consider save it.
-                const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
-                    attributes:['hash','method']})
+                /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
+                    attributes:['hash','method']})*/
+                const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
+                    where: {[Op.or]: txHashQueryCondition}});
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
 
