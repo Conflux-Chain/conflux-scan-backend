@@ -3,6 +3,7 @@ const lodash = require('lodash');
 const semver = require('semver');
 const solc = require('solc');
 const cbor = require('cbor');
+const {sign} = require('js-conflux-sdk');
 const superagent = require('superagent');
 require('superagent-proxy')(superagent);
 
@@ -82,7 +83,7 @@ class SolCompileService {
       settings: {
         optimizer: { enabled: Number.isInteger(optimizeRuns), runs: optimizeRuns },
         outputSelection: { '*': { '*': ['*'] } },
-        libraries: Object.keys(libraries).length ? { [fileName]: libraries } : undefined,
+        /*libraries: Object.keys(libraries).length ? { [fileName]: libraries } : undefined,*/
         evmVersion: evmVersion ? evmVersion : undefined,
       },
     };
@@ -217,7 +218,8 @@ class SolCompileService {
     const encodedConstructorArgs = extractEncodedConstructorArgs(creationData, recompiled.creationBytecode);
     lodash.assign(match, {encodedConstructorArgs});
 
-    const { replaced } = this._addLibraryAddresses(recompiled.deployedBytecode, deployedBytecode);
+    const { replaced, libraryMap} = this._addLibraryAddresses(recompiled.deployedBytecode, deployedBytecode);
+    this._checkLibrary(libraries, libraryMap);
     recompiled.deployedBytecode = replaced;
     if (deployedBytecode === recompiled.deployedBytecode) {
       lodash.assign(match, MATCH_STATUS.DEPLOYED_FULL);
@@ -332,6 +334,30 @@ class SolCompileService {
       replaced: template,
       libraryMap
     };
+  }
+
+  _checkLibrary(libraries, libraryMap) {
+    if(!Object.keys(libraryMap).length) {
+      return;
+    }
+
+    Object.keys(libraries).forEach(libName => {
+      const libAddress = libraries[libName];
+      const placeholder = `__$${sign.keccak256(`undefined:${libName}`).toString('hex').substring(0, 34)}$__`
+      const replacedAddress = libraryMap[placeholder];
+      delete libraryMap[placeholder];
+
+      if (!replacedAddress) {
+        throw new Error(`library ${libName} name not match`);
+      }
+      if (libAddress.substring(2) !== replacedAddress) {
+        throw new Error(`library ${libName} address not match`);
+      }
+    });
+
+    if(Object.keys(libraryMap).length) {
+      throw new Error(`more libraries are needed`);
+    }
   }
 }
 
