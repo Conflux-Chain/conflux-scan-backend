@@ -454,7 +454,10 @@ export class FullBlockQuery {
             ) {
                 finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
             } else {
-                count = await AddressTransactionIndex.count(options).then((res)=>res[Object.keys(res)[0]]);
+                count = await AddressTransactionIndex.count(options).then((res)=>{
+                    console.log(`count AddressTransactionIndex`, res)
+                    return res[Object.keys(res)[0]]
+                });
                 perf_m = performance_mark(perf_m, `list-tx-count-db`)
                 prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
                 finalCount = count + prunedCntr;
