@@ -444,7 +444,7 @@ export class FullBlockQuery {
                         options.logging = buildSqlLog('\t\t query newest record: ')
                         const queryParam = {...options, limit: 1}
                         delete queryParam.offset;
-                        AddressTransactionIndex.findOne(options).then(r)
+                        AddressTransactionIndex.findOne(queryParam).then(r)
                     }
                 })
             ]);
