@@ -428,11 +428,11 @@ export class FullBlockQuery {
             let start = Date.now();
             perf_m = performance_mark(perf_m, `list-tx-checkExist`)
             const [pruneInfo, countCache, newestTx] = await Promise.all([
-                PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX},
-                    logging: console.log, benchmark: true, raw: true,
+                PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,
+                    logging: buildSqlLog('\t query prune info: '), benchmark: true,
                 }),
                 TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,
-                    logging: console.log, benchmark: true,
+                    logging: buildSqlLog('\t query count cache: '), benchmark: true,
                 }),
                 new Promise(r=>{
                     if (sort === 'DESC') {
@@ -442,6 +442,8 @@ export class FullBlockQuery {
                         console.log(`query newest record`)
                         options.order.forEach(o=>o[1] = 'DESC');
                         options.logging = buildSqlLog('\t\t query newest record: ')
+                        const queryParam = {...options, limit: 1}
+                        delete queryParam.offset;
                         AddressTransactionIndex.findOne(options).then(r)
                     }
                 })
@@ -457,6 +459,10 @@ export class FullBlockQuery {
             ) {
                 finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
             } else {
+                console.log(`count cache ${countCache?.updatedAt.getTime()
+                          }\nprune info  ${pruneInfo?.updatedAt.getTime()
+                    // @ts-ignore
+                          }\nnewest bean ${newestTx?.timestamp * 1000}`)
                 const countParam = {where: options.where,
                     beginMark: true, logging: buildSqlLog('\t\t count tx: '),
                 }

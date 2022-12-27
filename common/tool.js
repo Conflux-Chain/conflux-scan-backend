@@ -236,8 +236,8 @@ function performance_mark(pre, cur) {
   return cur;
 }
 function buildSqlLog(tag) {
-  return (sql)=>{
-    console.log(tag, sql);
+  return (...args)=>{
+    console.log(tag, ...args);
   }
 }
 // ----------------------------------------------------------------------------
