@@ -235,12 +235,17 @@ function performance_mark(pre, cur) {
   }
   return cur;
 }
+function buildSqlLog(tag) {
+  return (sql)=>{
+    console.log(tag, sql);
+  }
+}
 // ----------------------------------------------------------------------------
 
 module.exports = {
   isRunning,
   memInfo,
-  enablePerformance, performance_mark,
+  enablePerformance, performance_mark, buildSqlLog,
   sleep,
   assert,
   isExist,

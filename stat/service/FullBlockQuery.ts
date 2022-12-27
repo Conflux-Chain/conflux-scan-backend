@@ -18,7 +18,7 @@ import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
-const { performance_mark } = require('../../common/tool.js')
+const { performance_mark, buildSqlLog } = require('../../common/tool.js')
 
 const lodash = require('lodash');
 /*const CONST = require('./common/constant');*/
@@ -321,9 +321,11 @@ export class FullBlockQuery {
             options.logging = console.log; options.benchmark = true;
             options.raw = true;
             if (isPureAddrQuery) {
+                options.logging = buildSqlLog('\t\t tx-find-all: ')
                 rawList = await AddressTransactionIndex.findAll(options);
                 perf_m = performance_mark(perf_m, `list-tx-find-all`)
             } else {
+                options.logging = buildSqlLog('\t\t tx-find-and-count-all: ')
                 const page = await AddressTransactionIndex.findAndCountAll(options);
                 perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
                 rawList = page?.rows;
@@ -387,7 +389,7 @@ export class FullBlockQuery {
                 /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
                     attributes:['hash','method']})*/
                 const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
-                    benchmark: true, logging: console.log,
+                    benchmark: true, logging: buildSqlLog('\t\t query tx method: '),
                     where: {[Op.or]: txHashQueryCondition}});
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
@@ -439,6 +441,7 @@ export class FullBlockQuery {
                         // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
                         console.log(`query newest record`)
                         options.order.forEach(o=>o[1] = 'DESC');
+                        options.logging = buildSqlLog('\t\t query newest record: ')
                         AddressTransactionIndex.findOne(options).then(r)
                     }
                 })
@@ -454,8 +457,11 @@ export class FullBlockQuery {
             ) {
                 finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
             } else {
+                const countParam = {where: options.where,
+                    beginMark: true, logging: buildSqlLog('\t\t count tx: '),
+                }
                 // @ts-ignore
-                count = await AddressTransactionIndex.count(options);
+                count = await AddressTransactionIndex.count(countParam);
                 perf_m = performance_mark(perf_m, `list-tx-count-db`)
                 prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
                 finalCount = count + prunedCntr;
