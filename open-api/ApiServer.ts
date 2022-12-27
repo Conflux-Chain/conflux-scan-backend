@@ -39,7 +39,7 @@ import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
 import {redirectLog} from "../stat/config/LoggerConfig";
 import {regExitHook} from "../stat/service/tool/ProcessTool";
-import {checkTest} from "./test/Testcase";
+import {checkTest} from "./test/TestCase";
 
 const Koa = require('koa');
 const lodash = require('lodash');
