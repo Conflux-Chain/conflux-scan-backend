@@ -288,7 +288,7 @@ async function checkTest() {
         console.log(`test more condition`)
         await once(arg1,'ASC', arg1)
         console.log(`test full tx`)
-        await once(null,'DESC', null)
+        await once(undefined,'DESC', undefined)
         process.exit(0)
     }
 }
