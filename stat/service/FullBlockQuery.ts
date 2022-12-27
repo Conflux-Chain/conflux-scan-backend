@@ -375,10 +375,10 @@ export class FullBlockQuery {
                 /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
                     attributes:['hash','method']})*/
                 const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
-                    // benchmark: true, logging: buildSqlLog('\t\t query tx method: '),
                     where: {[Op.or]: txHashQueryCondition}});
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
+
             // fields mapping
             list.forEach(row=>{
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
