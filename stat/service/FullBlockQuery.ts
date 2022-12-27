@@ -188,9 +188,6 @@ export class FullBlockQuery {
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
                                      verboseAddress = false, sort = 'DESC'
     }) {
-        // let perf_m = ''
-        // let beginMark = `list-tx-begin`;
-        // perf_m = performance_mark(perf_m, beginMark)
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // parse para
@@ -203,7 +200,6 @@ export class FullBlockQuery {
                 }
             })
         );
-        // perf_m = performance_mark(perf_m, `list-tx-acc-to-id`)
         let accountAddressId = addressMap[accountAddress];
         let fromAddressId = addressMap[from];
         let toAddressId = addressMap[to];
@@ -313,24 +309,17 @@ export class FullBlockQuery {
         }
         // order
         options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
-        // perf_m = performance_mark(perf_m, `list-tx-build-options`)
         // query
         let rawList;
         let count = 0;
-        if(accountAddressId){
-            // options.logging = console.log; options.benchmark = true;
+        if (isPureAddrQuery) {
             options.raw = true;
-            if (isPureAddrQuery) {
-                // options.logging = buildSqlLog('\t\t tx-find-all: ')
-                rawList = await AddressTransactionIndex.findAll(options);
-                // perf_m = performance_mark(perf_m, `list-tx-find-all`)
-            } else {
-                // options.logging = buildSqlLog('\t\t tx-find-and-count-all: ')
-                const page = await AddressTransactionIndex.findAndCountAll(options);
-                // perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
-                rawList = page?.rows;
-                count = page?.count;
-            }
+            let {list, finalCount} = await this.computeTxCount({accountAddressId, sort, options});
+            rawList = list; count = finalCount;
+        } else if(accountAddressId){
+            const page = await AddressTransactionIndex.findAndCountAll(options);
+            rawList = page?.rows;
+            count = page?.count;
         } else if(blockHash){
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
@@ -421,70 +410,48 @@ export class FullBlockQuery {
             // perf_m = performance_mark(perf_m, `list-tx-fillMethodInfo`)
         }
 
-        // add pruned total
-        let prunedCntr = 0;
+        return {total: count, list, extraInfo};
+    }
+
+    async computeTxCount({accountAddressId, sort, options}) {
         let finalCount: number;
-        if(isPureAddrQuery){
-            // perf_m = performance_mark(perf_m, `list-tx-checkExist`)
-            const [pruneInfo, countCache, newestTx] = await Promise.all([
-                PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,
-                    // logging: buildSqlLog('\t query prune info: '), benchmark: true,
-                }),
-                TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,
-                    // logging: buildSqlLog('\t query count cache: '), benchmark: true,
-                }),
-                new Promise(r=>{
-                    if (sort === 'DESC') {
-                        r(list[0])
-                    } else {
-                        // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
-                        // console.log(`query newest record`)
-                        options.order.forEach(o=>o[1] = 'DESC');
-                        // options.logging = buildSqlLog('\t\t query newest record: ')
-                        const queryParam = {...options, limit: 1}
-                        delete queryParam.offset;
-                        AddressTransactionIndex.findOne(queryParam).then(row=>{
-                            if (row) {
-                                row['timestamp'] = row['timestamp'].getTime() / 1000;
-                            }
-                            r(row);
-                        })
-                    }
-                })
-            ]);
-            // perf_m = performance_mark(perf_m, `list-tx-PruneInfo+TransferCount`)
-            if (countCache
-                // cache time is later than prune info
-                && (pruneInfo === null || countCache.updatedAt.getTime() > pruneInfo.updatedAt.getTime())
-                // cache time is later than newest tx
-                // @ts-ignore
-                && (countCache.updatedAt.getTime() > newestTx?.timestamp * 1000)
-            ) {
-                finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
-            } else {
-                // console.log(`count cache ${countCache?.updatedAt.getTime()
-                //           }\nprune info  ${pruneInfo?.updatedAt.getTime()
-                //     // @ts-ignore
-                //           }\nnewest bean ${newestTx?.timestamp * 1000}`)
-                const countParam = {where: options.where,
-                    // benchmark: true, logging: buildSqlLog('\t\t count tx: '),
+        let [list, pruneInfo, countCache, newestTx] = await Promise.all([
+            AddressTransactionIndex.findAll(options),
+            PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,}),
+            TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,}),
+            new Promise(r=>{
+                if (sort !== 'DESC') {
+                    // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
+                    options.order.forEach(o=>o[1] = 'DESC');
+                    const queryParam = {...options, limit: 1}
+                    delete queryParam.offset;
+                    AddressTransactionIndex.findOne(queryParam).then(row=>{
+                        if (row) {
+                            row['timestamp'] = row['timestamp'].getTime() / 1000;
+                        }
+                        r(row);
+                    })
                 }
-                // @ts-ignore
-                count = await AddressTransactionIndex.count(countParam);
-                // perf_m = performance_mark(perf_m, `list-tx-count-db`)
-                prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
-                finalCount = count + prunedCntr;
-                if (finalCount) {
-                    await TransferCount.upsert({addressId: accountAddressId, v: finalCount, type: 'TX', updatedAt: new Date()})
-                }
-            }
-        } else {
-            finalCount = count;
+            })
+        ]);
+        if (sort === 'DESC') {
+            newestTx = list[0];
         }
-        // perf_m = performance_mark(perf_m, `list-tx-prune-info`)
-        // performance.measure(`total`, beginMark, perf_m)
-        // performance.clearMarks()
-        return {total: finalCount, list, extraInfo};
+        if (countCache
+            // cache time should be later than newest tx
+            // @ts-ignore
+            && (countCache.updatedAt.getTime() > newestTx?.timestamp * 1000)
+        ) {
+            finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
+        } else {
+            const countParam = {where: options.where}
+            let count = await AddressTransactionIndex.count(countParam);
+            finalCount = count + (pruneInfo?.pruned || 0);
+            if (finalCount) {
+                await TransferCount.upsert({addressId: accountAddressId, v: finalCount, type: 'TX', updatedAt: new Date()})
+            }
+        }
+        return {list, finalCount};
     }
 
     private async buildPagedBlockOptions(skip) : Promise<{blockPage:BlockPage, pagedCondition}>{
