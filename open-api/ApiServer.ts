@@ -31,7 +31,6 @@ import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
-import {enablePerformance} from "../common/tool";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
 import {billing, getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
@@ -40,6 +39,7 @@ import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
 import {redirectLog} from "../stat/config/LoggerConfig";
 import {regExitHook} from "../stat/service/tool/ProcessTool";
+import {checkTest} from "./test/Testcase";
 
 const Koa = require('koa');
 const lodash = require('lodash');
@@ -251,7 +251,6 @@ async function initBilling(config: StatConfig) {
 }
 export function initApiServer() {
     regExitHook();
-    enablePerformance();
     if (__filename.startsWith('/scan/')) {
         redirectLog({mainPath:'OpenApi'})
     }
@@ -267,30 +266,6 @@ export function initApiServer() {
         app.listen(port)
         console.log(`api server listen at ${port}`)
     })
-}
-async function checkTest() {
-    const[,,cmd, arg1, arg2] =  process.argv
-
-    async function once(account, sort='DESC', to=undefined) {
-        const {total} = await getApiService().fullBlockQuery.listTransaction({
-            accountAddress: account, sort, to
-        });
-        console.log(`total tx`, total)
-    }
-
-    if (cmd === 'test-list-tx') {
-        for (let i = 0; i < parseInt(arg2); i++) {
-            console.log(`----- round ${i} `)
-            await once(arg1)
-        }
-        console.log(`test sort ASC`)
-        await once(arg1,'ASC')
-        console.log(`test more condition`)
-        await once(arg1,'ASC', arg1)
-        console.log(`test full tx`)
-        await once(undefined,'DESC', undefined)
-        process.exit(0)
-    }
 }
 if (module === require.main) {
     initApiServer()
