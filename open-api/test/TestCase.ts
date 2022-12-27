@@ -5,9 +5,9 @@ import {enablePerformance, performance_mark} from "../../common/tool.js";
 export async function checkTest() {
     const[,,cmd, arg1, arg2] =  process.argv
 
-    async function once(account, sort='DESC', to=undefined) {
+    async function once(account, sort='DESC', to=undefined, useCountCache=true) {
         const {total} = await getApiService().fullBlockQuery.listTransaction({
-            accountAddress: account, sort, to
+            accountAddress: account, sort, to, useCountCache,
         });
         console.log(`total tx`, total)
     }
@@ -17,8 +17,10 @@ export async function checkTest() {
         for (let i = 0; i < parseInt(arg2); i++) {
             console.log(`----- round ${i} `)
             let mark = performance_mark(undefined, 'begin')
+            await once(arg1, undefined, undefined, false)
+            mark = performance_mark(mark, 'cost without cache count')
             await once(arg1)
-            performance_mark(mark, 'cost')
+            mark = performance_mark(mark, 'cost WITH cache count')
         }
         console.log(`test sort ASC`)
         await once(arg1,'ASC')

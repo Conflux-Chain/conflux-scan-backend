@@ -185,7 +185,7 @@ export class FullBlockQuery {
                                      nonce = undefined, minTimestamp = undefined, maxTimestamp = undefined,
                                      accountAddress = undefined, from = undefined, to = undefined, opponentAddress = undefined,
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
-                                     verboseAddress = false, sort = 'DESC'
+                                     verboseAddress = false, sort = 'DESC', useCountCache = true
     }) {
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
@@ -311,7 +311,7 @@ export class FullBlockQuery {
         // query
         let rawList;
         let count = 0;
-        if (isPureAddrQuery) {
+        if (isPureAddrQuery && useCountCache) {
             options.raw = true;
             let {list, finalCount} = await this.computeTxCount({accountAddressId, sort, options});
             rawList = list; count = finalCount;
