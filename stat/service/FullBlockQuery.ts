@@ -316,9 +316,12 @@ export class FullBlockQuery {
             let {list, finalCount} = await this.computeTxCount({accountAddressId, sort, options});
             rawList = list; count = finalCount;
         } else if(accountAddressId){
-            const page = await AddressTransactionIndex.findAndCountAll(options);
+            const [page, pruneInfo] = await Promise.all([
+                AddressTransactionIndex.findAndCountAll(options),
+                PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}}),
+            ]);
             rawList = page?.rows;
-            count = page?.count;
+            count = page?.count + (pruneInfo?.pruned || 0);
         } else if(blockHash){
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
