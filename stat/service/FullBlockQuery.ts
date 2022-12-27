@@ -18,7 +18,6 @@ import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
-const { performance_mark, buildSqlLog } = require('../../common/tool.js')
 
 const lodash = require('lodash');
 /*const CONST = require('./common/constant');*/
@@ -360,7 +359,6 @@ export class FullBlockQuery {
                     }))
                 }
             });
-            // perf_m = performance_mark(perf_m, `list-tx-gather-props`)
             // prepare hex map and fill exec-error-msg
             const [hex40Array,failedArr] = await Promise.all([
                 Hex40Map.findAll({
@@ -370,7 +368,6 @@ export class FullBlockQuery {
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
-            // perf_m = performance_mark(perf_m, `list-tx-query-set-hex40`)
             // prepare method map
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
@@ -382,7 +379,6 @@ export class FullBlockQuery {
                     where: {[Op.or]: txHashQueryCondition}});
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
-            // perf_m = performance_mark(perf_m, `list-tx-hash-and-method`)
             // fields mapping
             list.forEach(row=>{
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
@@ -402,12 +398,10 @@ export class FullBlockQuery {
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
-            // perf_m = performance_mark(perf_m, `list-tx-translate-fields`)
             // method field mapping
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
             })
-            // perf_m = performance_mark(perf_m, `list-tx-fillMethodInfo`)
         }
 
         return {total: count, list, extraInfo};
