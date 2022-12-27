@@ -236,7 +236,7 @@ function performance_mark(pre, cur) {
   return cur;
 }
 function buildSqlLog(tag) {
-  return (sql, ms)=>{
+  return (sql, ms)=>{ //need set benchmark: true
     console.log(tag, sql, ms, 'ms');
   }
 }

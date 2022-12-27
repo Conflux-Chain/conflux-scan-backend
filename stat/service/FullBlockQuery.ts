@@ -444,7 +444,12 @@ export class FullBlockQuery {
                         options.logging = buildSqlLog('\t\t query newest record: ')
                         const queryParam = {...options, limit: 1}
                         delete queryParam.offset;
-                        AddressTransactionIndex.findOne(queryParam).then(r)
+                        AddressTransactionIndex.findOne(queryParam).then(row=>{
+                            if (row) {
+                                row['timestamp'] = row['timestamp'].getTime() / 1000;
+                            }
+                            r(row);
+                        })
                     }
                 })
             ]);
@@ -464,7 +469,7 @@ export class FullBlockQuery {
                     // @ts-ignore
                           }\nnewest bean ${newestTx?.timestamp * 1000}`)
                 const countParam = {where: options.where,
-                    beginMark: true, logging: buildSqlLog('\t\t count tx: '),
+                    benchmark: true, logging: buildSqlLog('\t\t count tx: '),
                 }
                 // @ts-ignore
                 count = await AddressTransactionIndex.count(countParam);
