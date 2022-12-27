@@ -477,7 +477,7 @@ export class FullBlockQuery {
                 prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
                 finalCount = count + prunedCntr;
                 if (finalCount) {
-                    await TransferCount.upsert({addressId: accountAddressId, v: count, type: 'TX', updatedAt: new Date()})
+                    await TransferCount.upsert({addressId: accountAddressId, v: finalCount, type: 'TX', updatedAt: new Date()})
                 }
             }
         } else {
