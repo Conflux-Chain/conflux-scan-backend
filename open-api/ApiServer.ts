@@ -271,9 +271,9 @@ export function initApiServer() {
 async function checkTest() {
     const[,,cmd, arg1, arg2] =  process.argv
 
-    async function once(account, sort='DESC') {
+    async function once(account, sort='DESC', to=undefined) {
         const {total} = await getApiService().fullBlockQuery.listTransaction({
-            accountAddress: account, sort
+            accountAddress: account, sort, to
         });
         console.log(`total tx`, total)
     }
@@ -283,7 +283,12 @@ async function checkTest() {
             console.log(`----- round ${i} `)
             await once(arg1)
         }
+        console.log(`test sort ASC`)
         await once(arg1,'ASC')
+        console.log(`test more condition`)
+        await once(arg1,'ASC', arg1)
+        console.log(`test full tx`)
+        await once(null,'DESC', null)
         process.exit(0)
     }
 }
