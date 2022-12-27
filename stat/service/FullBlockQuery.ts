@@ -203,7 +203,7 @@ export class FullBlockQuery {
                 }
             })
         );
-        perf_m = performance_mark(perf_m, `list-tx-acc-to-id`)
+        // perf_m = performance_mark(perf_m, `list-tx-acc-to-id`)
         let accountAddressId = addressMap[accountAddress];
         let fromAddressId = addressMap[from];
         let toAddressId = addressMap[to];
@@ -318,16 +318,16 @@ export class FullBlockQuery {
         let rawList;
         let count = 0;
         if(accountAddressId){
-            options.logging = console.log; options.benchmark = true;
+            // options.logging = console.log; options.benchmark = true;
             options.raw = true;
             if (isPureAddrQuery) {
-                options.logging = buildSqlLog('\t\t tx-find-all: ')
+                // options.logging = buildSqlLog('\t\t tx-find-all: ')
                 rawList = await AddressTransactionIndex.findAll(options);
-                perf_m = performance_mark(perf_m, `list-tx-find-all`)
+                // perf_m = performance_mark(perf_m, `list-tx-find-all`)
             } else {
-                options.logging = buildSqlLog('\t\t tx-find-and-count-all: ')
+                // options.logging = buildSqlLog('\t\t tx-find-and-count-all: ')
                 const page = await AddressTransactionIndex.findAndCountAll(options);
-                perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
+                // perf_m = performance_mark(perf_m, `list-tx-find-and-count-all`)
                 rawList = page?.rows;
                 count = page?.count;
             }
@@ -371,7 +371,7 @@ export class FullBlockQuery {
                     }))
                 }
             });
-            perf_m = performance_mark(perf_m, `list-tx-gather-props`)
+            // perf_m = performance_mark(perf_m, `list-tx-gather-props`)
             // prepare hex map and fill exec-error-msg
             const [hex40Array,failedArr] = await Promise.all([
                 Hex40Map.findAll({
@@ -381,7 +381,7 @@ export class FullBlockQuery {
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
-            perf_m = performance_mark(perf_m, `list-tx-query-set-hex40`)
+            // perf_m = performance_mark(perf_m, `list-tx-query-set-hex40`)
             // prepare method map
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
@@ -389,11 +389,11 @@ export class FullBlockQuery {
                 /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
                     attributes:['hash','method']})*/
                 const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
-                    benchmark: true, logging: buildSqlLog('\t\t query tx method: '),
+                    // benchmark: true, logging: buildSqlLog('\t\t query tx method: '),
                     where: {[Op.or]: txHashQueryCondition}});
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
-            perf_m = performance_mark(perf_m, `list-tx-hash-and-method`)
+            // perf_m = performance_mark(perf_m, `list-tx-hash-and-method`)
             // fields mapping
             list.forEach(row=>{
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
@@ -413,12 +413,12 @@ export class FullBlockQuery {
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
-            perf_m = performance_mark(perf_m, `list-tx-translate-fields`)
+            // perf_m = performance_mark(perf_m, `list-tx-translate-fields`)
             // method field mapping
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
             })
-            perf_m = performance_mark(perf_m, `list-tx-fillMethodInfo`)
+            // perf_m = performance_mark(perf_m, `list-tx-fillMethodInfo`)
         }
 
         // add pruned total
@@ -426,22 +426,22 @@ export class FullBlockQuery {
         let finalCount: number;
         if(isPureAddrQuery){
             let start = Date.now();
-            perf_m = performance_mark(perf_m, `list-tx-checkExist`)
+            // perf_m = performance_mark(perf_m, `list-tx-checkExist`)
             const [pruneInfo, countCache, newestTx] = await Promise.all([
                 PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,
-                    logging: buildSqlLog('\t query prune info: '), benchmark: true,
+                    // logging: buildSqlLog('\t query prune info: '), benchmark: true,
                 }),
                 TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,
-                    logging: buildSqlLog('\t query count cache: '), benchmark: true,
+                    // logging: buildSqlLog('\t query count cache: '), benchmark: true,
                 }),
                 new Promise(r=>{
                     if (sort === 'DESC') {
                         r(list[0])
                     } else {
                         // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
-                        console.log(`query newest record`)
+                        // console.log(`query newest record`)
                         options.order.forEach(o=>o[1] = 'DESC');
-                        options.logging = buildSqlLog('\t\t query newest record: ')
+                        // options.logging = buildSqlLog('\t\t query newest record: ')
                         const queryParam = {...options, limit: 1}
                         delete queryParam.offset;
                         AddressTransactionIndex.findOne(queryParam).then(row=>{
@@ -453,7 +453,7 @@ export class FullBlockQuery {
                     }
                 })
             ]);
-            perf_m = performance_mark(perf_m, `list-tx-PruneInfo+TransferCount`)
+            // perf_m = performance_mark(perf_m, `list-tx-PruneInfo+TransferCount`)
             console.log(`self calculate ms cost`, Date.now() - start)
             if (countCache
                 // cache time is later than prune info
@@ -464,16 +464,16 @@ export class FullBlockQuery {
             ) {
                 finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
             } else {
-                console.log(`count cache ${countCache?.updatedAt.getTime()
-                          }\nprune info  ${pruneInfo?.updatedAt.getTime()
-                    // @ts-ignore
-                          }\nnewest bean ${newestTx?.timestamp * 1000}`)
+                // console.log(`count cache ${countCache?.updatedAt.getTime()
+                //           }\nprune info  ${pruneInfo?.updatedAt.getTime()
+                //     // @ts-ignore
+                //           }\nnewest bean ${newestTx?.timestamp * 1000}`)
                 const countParam = {where: options.where,
-                    benchmark: true, logging: buildSqlLog('\t\t count tx: '),
+                    // benchmark: true, logging: buildSqlLog('\t\t count tx: '),
                 }
                 // @ts-ignore
                 count = await AddressTransactionIndex.count(countParam);
-                perf_m = performance_mark(perf_m, `list-tx-count-db`)
+                // perf_m = performance_mark(perf_m, `list-tx-count-db`)
                 prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
                 finalCount = count + prunedCntr;
                 if (finalCount) {
