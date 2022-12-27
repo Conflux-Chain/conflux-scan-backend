@@ -425,7 +425,6 @@ export class FullBlockQuery {
         let prunedCntr = 0;
         let finalCount: number;
         if(isPureAddrQuery){
-            let start = Date.now();
             // perf_m = performance_mark(perf_m, `list-tx-checkExist`)
             const [pruneInfo, countCache, newestTx] = await Promise.all([
                 PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,
@@ -454,7 +453,6 @@ export class FullBlockQuery {
                 })
             ]);
             // perf_m = performance_mark(perf_m, `list-tx-PruneInfo+TransferCount`)
-            console.log(`self calculate ms cost`, Date.now() - start)
             if (countCache
                 // cache time is later than prune info
                 && (pruneInfo === null || countCache.updatedAt.getTime() > pruneInfo.updatedAt.getTime())
