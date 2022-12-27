@@ -313,7 +313,7 @@ export class FullBlockQuery {
         }
         // order
         options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
-        performance.mark(`list-tx-build-options`)
+        // perf_m = performance_mark(perf_m, `list-tx-build-options`)
         // query
         let rawList;
         let count = 0;
