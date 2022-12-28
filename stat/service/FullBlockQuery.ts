@@ -16,6 +16,7 @@ import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
+import {TransferCount} from "../model/TransferCount";
 
 const lodash = require('lodash');
 /*const CONST = require('./common/constant');*/
@@ -183,7 +184,7 @@ export class FullBlockQuery {
                                      nonce = undefined, minTimestamp = undefined, maxTimestamp = undefined,
                                      accountAddress = undefined, from = undefined, to = undefined, opponentAddress = undefined,
                                      txType = undefined, status = undefined, skip = 0, limit = 10,
-                                     verboseAddress = false, sort = 'DESC'
+                                     verboseAddress = false, sort = 'DESC', useCountCache = true
     }) {
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
@@ -295,8 +296,10 @@ export class FullBlockQuery {
                 options.offset = pagedCondition.skip;
             }
         }
+        let isPureAddrQuery = false;
         if(conditionArray.length === 1){
             options.where = conditionArray[0];
+            isPureAddrQuery = Boolean(accountAddressId);
         }
         if(conditionArray.length > 1){
             options.where = {[Op.and]: conditionArray};
@@ -305,11 +308,18 @@ export class FullBlockQuery {
         options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
         // query
         let rawList;
-        let count;
-        if(accountAddressId){
-            const page = await AddressTransactionIndex.findAndCountAll(options);
+        let count = 0;
+        if (isPureAddrQuery && useCountCache) {
+            options.raw = true;
+            let {list, finalCount} = await this.computeTxCount({accountAddressId, sort, options});
+            rawList = list; count = finalCount;
+        } else if(accountAddressId){
+            const [page, pruneInfo] = await Promise.all([
+                AddressTransactionIndex.findAndCountAll(options),
+                PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}}),
+            ]);
             rawList = page?.rows;
-            count = page?.count;
+            count = page?.count + (isPureAddrQuery ? (pruneInfo?.pruned || 0) : 0);
         } else if(blockHash){
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
@@ -398,16 +408,47 @@ export class FullBlockQuery {
             })
         }
 
-        // add pruned total
-        let prunedCntr = 0;
-        const optionObj = {minEpochNumber, maxEpochNumber, blockHash, transactionHash, nonce, minTimestamp,
-            maxTimestamp, accountAddress, from, to, opponentAddress, txType, status};
-        if(checkExist(optionObj, ['accountAddress'])){
-            const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}});
-            prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
-        }
+        return {total: count, list, extraInfo};
+    }
 
-        return {total: (count ? count : 0) + prunedCntr, list, extraInfo};
+    async computeTxCount({accountAddressId, sort, options}) {
+        let finalCount: number;
+        let [list, pruneInfo, countCache, newestTx] = await Promise.all([
+            AddressTransactionIndex.findAll(options),
+            PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,}),
+            TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,}),
+            new Promise(r=>{
+                if (sort === 'DESC') {
+                    r(undefined);
+                } else {
+                    // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
+                    options.order.forEach(o=>o[1] = 'DESC');
+                    const queryParam = {...options, limit: 1}
+                    delete queryParam.offset;
+                    AddressTransactionIndex.findOne(queryParam).then(row=>{
+                        r(row);
+                    })
+                }
+            })
+        ]);
+        if (sort === 'DESC') {
+            newestTx = list[0];
+        }
+        if (countCache
+            // cache time should be later than newest tx
+            // @ts-ignore
+            && (countCache.updatedAt.getTime() > newestTx?.timestamp.getTime())
+        ) {
+            finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
+        } else {
+            const countParam = {where: options.where}
+            let count = await AddressTransactionIndex.count(countParam);
+            finalCount = count + (pruneInfo?.pruned || 0);
+            if (finalCount) {
+                await TransferCount.upsert({addressId: accountAddressId, v: finalCount, type: 'TX', updatedAt: new Date()})
+            }
+        }
+        return {list, finalCount};
     }
 
     private async buildPagedBlockOptions(skip) : Promise<{blockPage:BlockPage, pagedCondition}>{

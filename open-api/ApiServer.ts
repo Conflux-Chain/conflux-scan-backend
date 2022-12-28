@@ -39,6 +39,7 @@ import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
 import {redirectLog} from "../stat/config/LoggerConfig";
 import {regExitHook} from "../stat/service/tool/ProcessTool";
+import {checkTest} from "./test/TestCase";
 
 const Koa = require('koa');
 const lodash = require('lodash');
@@ -259,6 +260,8 @@ export function initApiServer() {
         return register(app, apiServer, port)
     }).then(()=>{
         return initBilling(apiServer.config)
+    }).then(()=>{
+        return checkTest();
     }).then(()=>{
         app.listen(port)
         console.log(`api server listen at ${port}`)
