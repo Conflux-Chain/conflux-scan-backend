@@ -1,4 +1,4 @@
-import {Conflux, format} from "js-conflux-sdk";
+import {Conflux} from "js-conflux-sdk";
 import {ethers} from "ethers";
 import {loadConfig, StatConfig} from "../stat/config/StatConfig";
 import {patchHttpProvider} from "../stat/service/common/utils";
@@ -267,6 +267,7 @@ export function initApiServer() {
         console.log(`api server listen at ${port}`)
     })
 }
+
 if (module === require.main) {
     initApiServer()
 }
