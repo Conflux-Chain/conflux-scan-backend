@@ -219,7 +219,7 @@ function extractEncodedConstructorArgs(creationData, compiledCreationBytecode) {
 function enablePerformance(types = ['measure', "function"]) {
   const { PerformanceObserver, performance } = require('perf_hooks');
   const obs = new PerformanceObserver((items) => {
-    console.log(`items`, items.getEntries().map(e=>{
+    console.log(`performance`, items.getEntries().map(e=>{
       return ` ${e.duration.toString().padStart(15, ' ')} ${e.name}`// , type ${e.entryType} `
     }).join('\n'))
     // apparently you should clean up...
