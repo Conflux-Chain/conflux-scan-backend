@@ -321,7 +321,7 @@ export class FullBlockQuery {
                 PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}}),
             ]);
             rawList = page?.rows;
-            count = page?.count + (pruneInfo?.pruned || 0);
+            count = page?.count + (isPureAddrQuery ? (pruneInfo?.pruned || 0) : 0);
         } else if(blockHash){
             const page = await FullTransaction.findAndCountAll(options);
             rawList = page?.rows;
@@ -439,7 +439,7 @@ export class FullBlockQuery {
         if (countCache
             // cache time should be later than newest tx
             // @ts-ignore
-            && (countCache.updatedAt.getTime() > newestTx?.timestamp * 1000)
+            && (countCache.updatedAt.getTime() > newestTx?.timestamp.getTime())
         ) {
             finalCount = countCache.v; // cached value is db count + pruned count, since pruning may be under progress.
         } else {
