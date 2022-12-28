@@ -1,7 +1,6 @@
 // @ts-ignore
 import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op} from "sequelize"
-const { PerformanceObserver, performance } = require('perf_hooks');
 import {
     FullBlock,
     FullTransaction,
@@ -289,8 +288,7 @@ export class FullBlockQuery {
             } else{
                 // conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
-        }
-        else{
+        } else{
             const {pagedCondition, txPage: tp0} = await this.buildPagedTxOptions(skip);
             txPage = tp0
             if(pagedCondition.where){
@@ -362,6 +360,7 @@ export class FullBlockQuery {
                     }))
                 }
             });
+
             // prepare hex map and fill exec-error-msg
             const [hex40Array,failedArr] = await Promise.all([
                 Hex40Map.findAll({
@@ -371,6 +370,7 @@ export class FullBlockQuery {
             hex40Array.forEach(hex40=>{
                 hex40Map.set(hex40.id, hex40.hex)
             })
+
             // prepare method map
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
@@ -401,6 +401,7 @@ export class FullBlockQuery {
                 row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
+
             // method field mapping
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
