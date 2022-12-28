@@ -425,9 +425,6 @@ export class FullBlockQuery {
                     const queryParam = {...options, limit: 1}
                     delete queryParam.offset;
                     AddressTransactionIndex.findOne(queryParam).then(row=>{
-                        if (row) {
-                            row['timestamp'] = row['timestamp'].getTime() / 1000;
-                        }
                         r(row);
                     })
                 }
