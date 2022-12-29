@@ -1,39 +1,49 @@
-import {StatApp} from "../StatApp";
-
-const requestIp = require('request-ip');
-import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'sequelize'
-import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
-import {format} from "js-conflux-sdk";
+import {Sequelize, Model, DataTypes} from 'sequelize'
+import {RateLimiterMemory, BurstyRateLimiter, RateLimiterRedis} from 'rate-limiter-flexible'
 import {Errors} from "../service/common/LogicError";
-import {billing, decodeApiKey} from "web3pay-sdk-js"
+import {decodeApiKey} from "web3pay-sdk-js"
 import {getVipInfo, getWeb3pay} from "web3pay-sdk-js/lib/rpc";
-//
+
+const redis = require('redis');
+const lodash = require('lodash');
+const requestIp = require('request-ip');
+
 export interface IRateConfig {
-    id?:number;
-    name:string; weight:number;
+    id?: number;
+    name: string;
+    weight: number;
 }
-export class RateConfig extends Model<IRateConfig> implements IRateConfig{
+
+export class RateConfig extends Model<IRateConfig> implements IRateConfig {
     static defaultWeightName = 'defaultWeight'
     static addressWeightName = 'address'
-    id?:number;
-    name:string; weight:number;
-    static register(seq:Sequelize) {
+    id?: number;
+    name: string;
+    weight: number;
+
+    static register(seq: Sequelize) {
         RateConfig.init({
-          id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
-          name: {type: DataTypes.STRING(256), allowNull: false, unique: true},
-          weight: {type: DataTypes.FLOAT, allowNull: false},
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+            name: {type: DataTypes.STRING(256), allowNull: false, unique: true},
+            weight: {type: DataTypes.FLOAT, allowNull: false},
         }, {
             sequelize: seq, tableName: 'rate_config',
         })
     }
 }
-//
+
 export interface IRateHit {
-    id?:number; ip:string; path:string
+    id?: number;
+    ip: string;
+    path: string
 }
-export class RateHit extends Model<IRateHit> implements IRateHit{
-    id?:number; ip:string; path:string
-    static register(seq:Sequelize) {
+
+export class RateHit extends Model<IRateHit> implements IRateHit {
+    id?: number;
+    ip: string;
+    path: string
+
+    static register(seq: Sequelize) {
         RateHit.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
             ip: {type: DataTypes.STRING(64), allowNull: false},
@@ -43,31 +53,33 @@ export class RateHit extends Model<IRateHit> implements IRateHit{
         })
     }
 }
-//
+
 const configMap = new Map<string, IRateConfig>();
-const frequentPaths = ['/open/nft/preview','/stat/nft/checker/preview'];
-frequentPaths.forEach(name=>{
+const frequentPaths = ['/open/nft/preview', '/stat/nft/checker/preview'];
+frequentPaths.forEach(name => {
     configMap.set(name, {name, weight: 0.01})
 })
 let timer;
 export async function loadRateConfig() {
     const list = await RateConfig.findAll()
-    list.forEach(c=>{
+    list.forEach(c => {
         configMap.set(c.name, c)
     })
     if (!list.length) {
         RateConfig.bulkCreate([
             {name: RateConfig.defaultWeightName, weight: 1},
             {name: RateConfig.addressWeightName, weight: 0.1},
-            ...frequentPaths.map(path=>{return {name: path, weight: 0.01}}),
+            ...frequentPaths.map(path => {
+                return {name: path, weight: 0.01}
+            }),
         ]).then()
     }
     if (!timer) {
         timer = setInterval(loadRateConfig, 10_000)
     }
 }
-// https://github.com/animir/node-rate-limiter-flexible/wiki/BurstyRateLimiter
 
+// https://github.com/animir/node-rate-limiter-flexible/wiki/BurstyRateLimiter
 const burstyLimiter = new BurstyRateLimiter(
     new RateLimiterMemory({
         keyPrefix: '',
@@ -80,50 +92,37 @@ const burstyLimiter = new BurstyRateLimiter(
         duration: 10,
     })
 );
-export function buildCheckAddressRateFn(addressParamName:string, callNext = false) {
-    return async (ctx, next)=>{
-        const {[addressParamName]:addr} = ctx.request.query;
 
-        //console.log(`path ${ctx.path} addr ${addr}`)
-        if (addr) {
-            await checkAddressRate(addr, ctx);
-        }
-        if (callNext) {
-            return next() // for standard Koa
-        }
-        return ctx; // for the magic scan api '/v1'
-    }
-}
-// See RateLimiter.checkRete()
-export async function checkApiKey(path: string, key:string, dryRun = false) {
-    if (!getWeb3pay().client) {
-        return {ok:false, result:{}} // not configured
-    }
-    // console.log(`check api key ${path} , ${key}`)
-    if (!key) {
-        return {ok:false, result:{}};
+export async function checkRate(ctx, next) {
+    const {path} = ctx.request;
+    const ip = requestIp.getClientIp(ctx.request);
+    const key = ip
+    // resources like nftPreview should have a small weight like 0.01.
+    let pointsToConsume = configMap.get(path)?.weight || configMap.get(RateConfig.defaultWeightName)?.weight || 1
+    const {ok: paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
+    if (paid) {
+        pointsToConsume /= 10;
     }
     try {
-        // const result = await billing(path, dryRun, key)
-        const app = getWeb3pay().appContract.address;
-        const account = decodeApiKey(app, key, true);
-        const vipInfo = await getVipInfo(account);
-        const expireSecond = vipInfo.expireAt;
-        const ret = {ok:false, result: {...vipInfo, account, app, now: Math.floor(Date.now()/1000)}}
-        if (expireSecond * 1000 > Date.now()) {
-            ret.ok = true;
-        }
-        // console.log(`billing fail, path ${path} , key ${key}. result:`, result)
-        return ret;
+        await burstyLimiter.consume(key, pointsToConsume)
+        ctx?.set(`pointsIP`, pointsToConsume)
+        ctx?.set(`IP`, ip)
+        ctx?.set('paid', paid)
     } catch (e) {
-        console.log(`check api key fail:`, e)
-        return {ok:false, result:{error: e}};
+        RateHit.sequelize && RateHit.create({ip, path}).catch()
+        ctx.body = {
+            code: 429,
+            message: `Too many requests, path ${path}. Allow ${burstyLimiter["points"] / pointsToConsume}/s`
+        }
+        return
     }
+    await next()
 }
-export async function checkAddressRate(address:string, ctx:any = null) {
+
+export async function checkAddressRate(address: string, ctx: any = null) {
     let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
-    const {path} = ctx?.request || {path:'-'};
-    const {ok:paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
+    const {path} = ctx?.request || {path: '-'};
+    const {ok: paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
     if (paid) {
         pointsToConsume /= 10;
     }
@@ -134,42 +133,292 @@ export async function checkAddressRate(address:string, ctx:any = null) {
         ctx?.set(`address`, address)
         ctx?.set('paid', paid)
     } catch (e) {
-        // console.log(`rate limit address ${address}, ip ${ip}, points ${pointsToConsume} path ${path}`, e)
-        RateHit.sequelize && RateHit.create({ip, path:address+"@"+path}).catch()
-        // let hex = address;
-        // let base32 = address;
-        // try {
-        //     hex = format.hexAddress(address);
-        //     base32 = format.address(hex, StatApp.networkId);
-        // } catch (e) {
-        // } // hex [${hex}] base32 [${base32}]
-        /*const error = new Error(`Too many requests for this address [${address}] path ${path} . Allow ${burstyLimiter["points"] / pointsToConsume}/s`);
-        error['status'] = error['code'] = 429
-        throw error*/
+        RateHit.sequelize && RateHit.create({ip, path: address + "@" + path}).catch()
         throw new Errors.ApiBusyError(`Too many requests for this address [${address}] path ${path} . Allow ${burstyLimiter["points"] / pointsToConsume}/s`);
     }
 }
-export async function checkRate(ctx,next) {
-    const {path} = ctx.request;
-    const ip = requestIp.getClientIp(ctx.request);
-    const key = ip
-    // resources like nftPreview should have a small weight like 0.01.
-    let pointsToConsume = configMap.get(path)?.weight || configMap.get(RateConfig.defaultWeightName)?.weight || 1
-    const {ok:paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
-    if (paid) {
-        pointsToConsume /= 10;
+
+export function buildCheckAddressRateFn(addressParamName: string, callNext = false) {
+    return async (ctx, next) => {
+        const {[addressParamName]: addr} = ctx.request.query;
+        if (addr) {
+            await checkAddressRate(addr, ctx);
+        }
+        if (callNext) {
+            return next() // for standard Koa
+        }
+        return ctx; // for the magic scan api '/v1'
+    }
+}
+
+export async function checkApiKey(path: string, key: string, dryRun = false) {
+    if (!getWeb3pay().client) {
+        return {ok: false, result: {}} // not configured
+    }
+    if (!key) {
+        return {ok: false, result: {}};
     }
     try {
-        await burstyLimiter.consume(key, pointsToConsume)
-        ctx?.set(`pointsIP`, pointsToConsume)
-        ctx?.set(`IP`, ip)
-        ctx?.set('paid', paid)
+        const app = getWeb3pay().appContract.address;
+        const account = decodeApiKey(app, key, true);
+        const vipInfo = await getVipInfo(account);
+        const expireSecond = vipInfo.expireAt;
+        const ret = {ok: false, result: {...vipInfo, account, app, now: Math.floor(Date.now() / 1000)}}
+        if (expireSecond * 1000 > Date.now()) {
+            ret.ok = true;
+        }
+        return ret;
     } catch (e) {
-        // console.log(` rate limit ${ip} for ${path}, key ${key} points ${pointsToConsume}`, e)
-        RateHit.sequelize && RateHit.create({ip, path}).catch()
-        // ctx.status = 600
-        ctx.body = {code: 429, message:`Too many requests, path ${path}. Allow ${burstyLimiter["points"] / pointsToConsume}/s`}
-        return
+        console.log(`check api key fail:`, e)
+        return {ok: false, result: {error: e}};
     }
-    await next()
+}
+
+// Free:       5 calls/second, up to 100,000 calls/day
+// Standard:   20 calls/second, up to 500,000 calls/day
+// Enterprise: 100 calls/second, calls/day without limit
+const LEVEL_FREE = 'free';
+const LEVEL_STANDARD = 'standard';
+const LEVEL_ENTERPRISE = 'enterprise';
+
+/*
+insert into rate_key(apiKey,level,qps,effectiveAt,expireAt,remark,createdAt,updatedAt)
+values('11223344556677889900112233445566778899001234','enterprise',100,'2023-01-01 00:00:00','2023-12-31 23:59:59','xhs', now(), now());
+*/
+export interface IRateKey {
+    id?: number;
+    apiKey: string;
+    level: string; // free, standard, enterprise
+    qps: number;
+    effectiveAt: Date;
+    expireAt: Date;
+    remark: string;
+}
+
+export class RateKey extends Model<IRateKey> implements IRateKey {
+    id?: number;
+    apiKey: string;
+    level: string;
+    qps: number;
+    effectiveAt: Date;
+    expireAt: Date;
+    remark: string;
+
+    static register(seq: Sequelize) {
+        RateKey.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+            apiKey: {type: DataTypes.STRING(64), allowNull: false, unique: true},
+            level: {type: DataTypes.STRING(10), allowNull: false},
+            qps: {type: DataTypes.INTEGER, allowNull: false},
+            effectiveAt: {type: DataTypes.DATE, allowNull: false},
+            expireAt: {type: DataTypes.DATE, allowNull: false},
+            remark: {type: DataTypes.STRING(128), allowNull: false},
+        }, {
+            sequelize: seq,
+            tableName: 'rate_key',
+            timestamps: true,
+        })
+    }
+}
+
+let rateKeyConfig = {};
+
+export async function loadRateKeyConfig() {
+    async function repeat() {
+        const list = await RateKey.findAll({raw: true});
+        rateKeyConfig = lodash.keyBy(list, 'apiKey');
+    }
+
+    repeat().then(() => {
+        setInterval(repeat, 10_000)
+    })
+}
+
+let rateLimiterFree;
+let rateLimiterStandard;
+let rateLimiterEnterprise;
+let rateLimiterAddress;
+let rateLimiterDaily10W;
+let rateLimiterDaily50W;
+
+export async function initRateLimiters(redisConf) {
+    const redisClient = redis.createClient({
+        host: redisConf.host,
+        port: redisConf.port,
+        password: redisConf.pwd,
+        db: redisConf.db,
+        enable_offline_queue: redisConf.enable_offline_queue || false,
+    });
+    rateLimiterFree = new BurstyRateLimiter(
+        new RateLimiterRedis({
+            storeClient: redisClient,
+            points: 5,
+            duration: 1,
+            keyPrefix: `api-${LEVEL_FREE}`,
+        }),
+        new RateLimiterRedis({
+            storeClient: redisClient,
+            points: 15,
+            duration: 10,
+            keyPrefix: `api-burst-${LEVEL_FREE}`,
+        })
+    );
+    rateLimiterStandard = new BurstyRateLimiter(
+        new RateLimiterRedis({
+            storeClient: redisClient,
+            points: 20,
+            duration: 1,
+            keyPrefix: `api-${LEVEL_STANDARD}`,
+        }),
+        new RateLimiterRedis({
+            storeClient: redisClient,
+            points: 60,
+            duration: 10,
+            keyPrefix: `api-burst-${LEVEL_STANDARD}`,
+        })
+    );
+    rateLimiterEnterprise = new BurstyRateLimiter(
+        new RateLimiterRedis({
+            storeClient: redisClient,
+            points: 6000,
+            duration: 1,
+            keyPrefix: `api-${LEVEL_ENTERPRISE}`,
+        }),
+        new RateLimiterRedis({
+            storeClient: redisClient,
+            points: 18000,
+            duration: 10,
+            keyPrefix: `api-burst-${LEVEL_ENTERPRISE}`,
+        })
+    );
+    rateLimiterAddress = new RateLimiterRedis({
+        storeClient: redisClient,
+        points: 1000,
+        duration: 1,
+        keyPrefix: `api-address`,
+    });
+    rateLimiterDaily10W = new RateLimiterRedis({
+        storeClient: redisClient,
+        points: 100000,
+        duration: 86400,
+        keyPrefix: `api-daily-10w`,
+    });
+    rateLimiterDaily50W = new RateLimiterRedis({
+        storeClient: redisClient,
+        points: 500000,
+        duration: 86400,
+        keyPrefix: `api-daily-50w`,
+    });
+}
+
+export async function checkRateByLevel(ctx, next) {
+    let rateLimiter;
+    let rateLimiterDaily;
+    const ip = requestIp.getClientIp(ctx.request);
+    const apiKey = ctx?.request?.query?.apiKey || ctx?.headers['apiKey'];
+
+    let rateKey = ip
+    let rateId = 0;
+    let paid = false;
+    let level = LEVEL_FREE;
+    let qps = rateLimiterFree["points"];
+    try {
+        const resp = await checkApiKeyByLevel(undefined, apiKey);
+        paid = resp.ok;
+        if (paid) {
+            rateKey = resp.result['account'];
+            rateId = resp.result['rateId'] || rateId;
+            const {keys = [], values = []} = resp.result['vipInfo'];
+            level = values[lodash.findIndex(keys, key => key === 'level')];
+            qps = values[lodash.findIndex(keys, key => key === 'qps')];
+        }
+
+        ctx?.set('ip', ip);
+        ctx?.set('rate-id', rateId);
+        ctx?.set('paid', paid);
+        ctx?.set('level', `${level}-${qps}`);
+
+        switch (level) {
+            case LEVEL_FREE: rateLimiter = rateLimiterFree; rateLimiterDaily = rateLimiterDaily10W; break;
+            case LEVEL_STANDARD: rateLimiter = rateLimiterStandard; rateLimiterDaily = rateLimiterDaily50W; break;
+            case LEVEL_ENTERPRISE: rateLimiter = rateLimiterEnterprise; break;
+            default: throw new Error(`Unsupported membership level ${level}`);
+        }
+        const pointsToConsume = Math.floor(rateLimiter["points"] / qps);
+        await rateLimiter.consume(rateKey, pointsToConsume).catch(e => {e.message = 'limited';throw e;});
+        rateLimiterDaily && (await rateLimiterDaily.consume(rateKey).catch(e => {e.message = 'limitedDaily';throw e;}));
+
+    } catch (e) {
+        let msg = e.message;
+        if (msg === 'limited') {
+            msg = `Too many requests. Allow ${qps}/s`;
+        } else if (msg === 'limitedDaily') {
+            msg = `Too many requests. Allow ${rateLimiterDaily["points"]}/day`;
+        }
+        ctx.body = {code: 429, message: msg};
+        console.log(`${ctx?.url} rateId ${rateId} paid ${paid} level ${level} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
+        return;
+    }
+
+    await next();
+}
+
+export function checkRateByAddress(addressParamName: string) {
+    return async (ctx, next) => {
+        await checkRateByAddress0(addressParamName, ctx, next);
+    }
+}
+
+async function checkRateByAddress0(addressParamName, ctx, next) {
+    const {[addressParamName]: address} = ctx.request.query;
+
+    try {
+        await rateLimiterAddress.consume(address);
+        ctx?.set(`address`, address);
+    } catch (e) {
+        const msg = `Too many requests. Allow ${rateLimiterAddress["points"]}/s`;
+        ctx.body = {code: 429, message: msg};
+        console.log(`${ctx?.url} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
+        return;
+    }
+
+    await next();
+}
+
+export async function checkApiKeyByLevel(path, apiKey: string) {
+    const rateKey = rateKeyConfig[apiKey];
+    if (rateKey) {
+        return {
+            ok: (rateKey.effectiveAt.getTime() <= Date.now() && Date.now() <= rateKey.expireAt.getTime()),
+            result: {
+                vipInfo: {keys: ['level', 'qps'], values: [rateKey.level, rateKey.qps]},
+                account: apiKey.slice(-8),
+                rateId: rateKey.id,
+                now: Math.floor(Date.now() / 1000),
+            },
+        };
+    }
+
+    if (!getWeb3pay().client) {
+        return {ok: false, result: {}}; // not configured
+    }
+    if (!apiKey) {
+        return {ok: false, result: {}};
+    }
+
+    try {
+        const app = getWeb3pay().appContract.address;
+        const account = decodeApiKey(app, apiKey, true);
+        const vipInfo = await getVipInfo(account);
+        const expireSecond = vipInfo.expireAt;
+        const ret = {ok: false, result: {...vipInfo, account, app, now: Math.floor(Date.now() / 1000)}};
+        if (expireSecond * 1000 > Date.now()) {
+            ret.ok = true;
+        }
+        return ret;
+
+    } catch (e) {
+        console.log(`check api key fail:`, e);
+        return {ok: false, result: {error: e}};
+    }
 }

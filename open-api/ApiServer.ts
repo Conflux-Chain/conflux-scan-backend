@@ -39,6 +39,7 @@ import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
 import {redirectLog} from "../stat/config/LoggerConfig";
 import {regExitHook} from "../stat/service/tool/ProcessTool";
+import {initRateLimiters} from "../stat/router/RateLimiter";
 import {checkTest} from "./test/TestCase";
 
 const Koa = require('koa');
@@ -152,10 +153,11 @@ export class ApiServer {
         StatApp.readonly = config.database.readonly
         const sequelize = createDB(config.databaseRW)
         await initModel(sequelize)
-        // await sequelize.sync({})
+        await sequelize.sync({})
 
-        await RedisWrap.connect(config.redis)
-        setRateControlDB(redisWrap.client)
+        /*await RedisWrap.connect(config.redis)
+        setRateControlDB(redisWrap.client)*/
+        await initRateLimiters(config.redis);
 
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
 

@@ -43,7 +43,7 @@ info:
     </tr>
     <tr>
     <td>Standard</td>
-    <td>50 calls/second</td>
+    <td>20 calls/second</td>
     </tr>
   </table>
   "
