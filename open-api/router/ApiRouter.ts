@@ -65,7 +65,14 @@ import {
 import {
     mustBeAddressParamIfPresent,
 } from "../../stat/service/common/utils";
-import {buildCheckAddressRateFn, checkApiKey, checkRate, loadRateConfig} from "../../stat/router/RateLimiter";
+import {
+    buildCheckAddressRateFn,
+    checkApiKey,
+    checkRate,
+    checkRateByLevel,
+    checkRateByAddress,
+    loadRateConfig, loadRateKeyConfig
+} from "../../stat/router/RateLimiter";
 
 const cors = require('@koa/cors');
 
@@ -84,7 +91,8 @@ async function getTokenInfo(ctx) {
 export async function register(app: Koa, apiServer: ApiServer, port:string|number) {
     app.use(cors({'origin':'*'}))
     loadRateConfig().then()
-    app.use(checkRate)
+    loadRateKeyConfig().then()
+    app.use(checkRateByLevel)
     app.use(bodyParser({
         formLimit: '10mb',
     }))
@@ -131,16 +139,16 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
 }
 
 function registerRouter(router: Router) {
-    const checkAddressRateFn = buildCheckAddressRateFn('contract', true)
+    const checkRateByAddr = checkRateByAddress('contract');
     // accounts
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)
-    router.get('/account/crc20/transfers', checkAddressRateFn, listAccountTransfer20)
-    router.get('/account/crc721/transfers', checkAddressRateFn, listAccountTransfer721)
-    router.get('/account/crc1155/transfers', checkAddressRateFn, listAccountTransfer1155)
-    router.get('/account/crc3525/transfers', checkAddressRateFn, listAccountTransfer3525)
-    router.get('/account/transfers', checkAddressRateFn, listAccountTransfer)
-    router.get('/account/approvals', checkAddressRateFn, listApproval)
+    router.get('/account/crc20/transfers', checkRateByAddr, listAccountTransfer20)
+    router.get('/account/crc721/transfers', checkRateByAddr, listAccountTransfer721)
+    router.get('/account/crc1155/transfers', checkRateByAddr, listAccountTransfer1155)
+    router.get('/account/crc3525/transfers', checkRateByAddr, listAccountTransfer3525)
+    router.get('/account/transfers', checkRateByAddr, listAccountTransfer)
+    router.get('/account/approvals', checkRateByAddr, listApproval)
     router.get('/account/tokens', listAccountAssets)
 
     // contract
@@ -156,7 +164,7 @@ function registerRouter(router: Router) {
 
     // nft assets
     router.get('/nft/balances', listNFTBalances);
-    router.get('/nft/tokens', checkAddressRateFn, listNFTTokens);
+    router.get('/nft/tokens', checkRateByAddr, listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
 
