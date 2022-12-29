@@ -285,8 +285,8 @@ export abstract class TransferQueryBase {
                     r(undefined);
                 } else {
                     // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
-                    options.order.forEach(o=>o[1] = 'DESC');
-                    const queryParam = {...options, limit: 1}
+                    queryOptions.order.forEach(o=>o[1] = 'DESC');
+                    const queryParam = {...queryOptions, limit: 1}
                     delete queryParam.offset;
                     model.findOne(queryParam).then(row=>{
                         r(row);

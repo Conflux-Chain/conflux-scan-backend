@@ -6,10 +6,10 @@ export async function checkTest() {
     const[,,cmd, arg1, arg2] =  process.argv
 
     async function once(account, sort='DESC', to=undefined, useCountCache=true) {
-        const {total} = await getApiService().fullBlockQuery.listTransaction({
+        const {total, list} = await getApiService().fullBlockQuery.listTransaction({
             accountAddress: account, sort, to, useCountCache,
         });
-        console.log(`total tx`, total)
+        console.log(`total tx`, total, 'time ', list[0]?.timestamp)
     }
 
     if (cmd === 'test-list-tx') {
