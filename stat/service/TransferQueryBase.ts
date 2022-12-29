@@ -268,7 +268,9 @@ export abstract class TransferQueryBase {
                 }
             }
         }
-        const result = {total: (page?.count || 0) + prunedCntr, list, accountId: accountAddressId, queryWithCache: page.queryWithCache};
+        const result = {total: (page?.count || 0) + prunedCntr, list, accountId: accountAddressId,
+            queryWithCache: page.queryWithCache, hitCache: page.hitCache,
+        };
         return result;
     }
 
@@ -296,6 +298,7 @@ export abstract class TransferQueryBase {
             newestTx = rows[0];
         }
         let finalCount;
+        let hitCache = false;
         if (countCache
             // cache time should be later than prune time
             && (pruneInfo === null || countCache.updatedAt.getTime() > pruneInfo.updatedAt.getTime())
@@ -305,6 +308,7 @@ export abstract class TransferQueryBase {
         ) {
             // we have some cache already, these data do not include pruned count.
             finalCount = countCache.v + (pruneInfo?.pruned || 0);
+            hitCache = true;
         } else {
             const countParam = {where: options.where}
             let count = await model.count(countParam);
@@ -314,7 +318,7 @@ export abstract class TransferQueryBase {
                 await TransferCount.upsert({addressId, v: count, type: transferType, updatedAt: newestTx?.timestamp || new Date()})
             }
         }
-        return {count: Math.max(finalCount, rows.length) , rows, queryWithCache: true};
+        return {count: Math.max(finalCount, rows.length) , rows, queryWithCache: true, hitCache};
     }
 
     public abstract doQueryAccountAddress(options: any, queryOptions: any): Promise<any>;

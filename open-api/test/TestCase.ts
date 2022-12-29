@@ -39,10 +39,10 @@ export async function checkTest() {
 async function testTx20(arg1, arg2) {
     async function once({account, userCountCache, sort='DESC', from=undefined}) {
         // @ts-ignore
-        const {total, list, queryWithCache} = await getApiService().crc20transferQuery.listTransfer({
+        const {total, list, queryWithCache, hitCache} = await getApiService().crc20transferQuery.listTransfer({
             accountAddress: account, userCountCache, from
         });
-        console.log(`total`, total, 'time ', list[0]?.timestamp, 'queryWithCache', queryWithCache)
+        console.log(`total`, total, 'time ', list[0]?.timestamp, 'queryWithCache', queryWithCache, 'hitCache', hitCache)
     }
     for (let i = 0; i < parseInt(arg2); i++) {
         console.log(`----- round ${i} `)
