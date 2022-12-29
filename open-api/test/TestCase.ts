@@ -29,5 +29,23 @@ export async function checkTest() {
         console.log(`test full tx`)
         await once(undefined,'DESC', undefined)
         process.exit(0)
+    } else if (cmd === 'test-tx-20') {
+        enablePerformance()
+        await testTx20(arg1, arg2)
+        process.exit(0)
+    }
+}
+
+async function testTx20(arg1, arg2) {
+    async function once({account}) {
+        await getApiService().crc20transferQuery.listTransfer({accountAddress: account});
+    }
+    for (let i = 0; i < parseInt(arg2); i++) {
+        console.log(`----- round ${i} `)
+        let mark = performance_mark(undefined, 'begin')
+        await once({account: arg1})
+        mark = performance_mark(mark, 'cost without cache count')
+        // await once(arg1)
+        // mark = performance_mark(mark, 'cost WITH cache count')
     }
 }
