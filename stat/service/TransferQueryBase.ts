@@ -9,6 +9,7 @@ import {checkAddressRate} from "../router/RateLimiter";
 import {CONST} from "./common/constant"
 import {fillMethodInfo} from "../model/ContractInfo";
 import {Errors} from "./common/LogicError";
+import {TransferCount} from "../model/TransferCount";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -114,6 +115,7 @@ export abstract class TransferQueryBase {
         txMap: Map<string, FullTransaction>): Promise<any>;
 
     public async listTransfer(options) {
+        options.userCountCache = options.userCountCache ?? true;
         const{ logger, service: {fullBlockQuery} } = this.app;
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
@@ -251,19 +253,68 @@ export abstract class TransferQueryBase {
 
         // add pruned total
         let prunedCntr = 0;
-        const optionObj = {minEpochNumber, maxEpochNumber, transactionHash,
-            minTimestamp, maxTimestamp,
-            accountAddress, address, from, to, opponentAddress, tokenArray,
-            tokenId, txType , status};
-        if(checkExist(optionObj, ['accountAddress'])){
-            let pruneType = this.getAddrPruneType();
-            if(pruneType){
-                const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: pruneType}});
-                prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
+        if (!page.queryWithCache) {
+            const optionObj = {
+                minEpochNumber, maxEpochNumber, transactionHash,
+                minTimestamp, maxTimestamp,
+                accountAddress, address, from, to, opponentAddress, tokenArray,
+                tokenId, txType, status
+            };
+            if (checkExist(optionObj, ['accountAddress'])) {
+                let pruneType = this.getAddrPruneType();
+                if (pruneType) {
+                    const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: pruneType}});
+                    prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
+                }
             }
         }
         const result = {total: (page?.count || 0) + prunedCntr, list, accountId: accountAddressId};
         return result;
+    }
+
+    protected async queryWithCache(queryOptions, options, {transferType, pruneType, model}) {
+        const {where:{addressId}, order:[[,sort]]} = queryOptions;
+        let [countCache, rows, pruneInfo, newestTx] = await Promise.all([
+            TransferCount.findOne({where: {addressId, type: transferType}, raw: true,}),
+            model.findAll(queryOptions),
+            PruneInfo.findOne({where: {addressId, type: pruneType}}),
+            new Promise(r=>{
+                if (sort === 'DESC') {
+                    r(undefined);
+                } else {
+                    // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
+                    options.order.forEach(o=>o[1] = 'DESC');
+                    const queryParam = {...options, limit: 1}
+                    delete queryParam.offset;
+                    model.findOne(queryParam).then(row=>{
+                        r(row);
+                    })
+                }
+            })
+        ])
+        if (sort === 'DESC') {
+            newestTx = rows[0];
+        }
+        let finalCount;
+        if (countCache
+            // cache time should be later than prune time
+            && (pruneInfo === null || countCache.updatedAt.getTime() > pruneInfo.updatedAt.getTime())
+            // cache time should be later than newest tx
+            // @ts-ignore
+            && (!newestTx || countCache.updatedAt.getTime() > newestTx.timestamp.getTime())
+        ) {
+            // we have some cache already, these data do not include pruned count.
+            finalCount = countCache.v + (pruneInfo?.pruned || 0);
+        } else {
+            const countParam = {where: options.where}
+            let count = await model.count(countParam);
+            finalCount = count + (pruneInfo?.pruned || 0);
+            if (finalCount) {
+                // @ts-ignore
+                await TransferCount.upsert({addressId, v: count, type: transferType, updatedAt: newestTx?.timestamp || new Date()})
+            }
+        }
+        return {count: Math.max(finalCount, rows.length) , rows, queryWithCache: true};
     }
 
     public abstract doQueryAccountAddress(options: any, queryOptions: any): Promise<any>;

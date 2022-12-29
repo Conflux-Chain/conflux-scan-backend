@@ -37,16 +37,22 @@ export async function checkTest() {
 }
 
 async function testTx20(arg1, arg2) {
-    async function once({account}) {
-        const {total} = await getApiService().crc20transferQuery.listTransfer({accountAddress: account});
+    async function once({account, userCountCache, sort='DESC', from=undefined}) {
+        const {total} = await getApiService().crc20transferQuery.listTransfer({
+            accountAddress: account, userCountCache, from
+        });
         console.log(`total`, total)
     }
     for (let i = 0; i < parseInt(arg2); i++) {
         console.log(`----- round ${i} `)
         let mark = performance_mark(undefined, 'begin')
-        await once({account: arg1})
+        await once({account: arg1, userCountCache: false})
         mark = performance_mark(mark, 'cost without cache count')
-        // await once(arg1)
-        // mark = performance_mark(mark, 'cost WITH cache count')
+        await once({account: arg1, userCountCache: true})
+        mark = performance_mark(mark, 'cost WITH cache count')
     }
+    console.log(`test sort`)
+    await once({account: arg1, userCountCache: true, sort: 'ASC'})
+    console.log(`test more condition`)
+    await once({account: arg1, userCountCache: true, sort: 'ASC', from: arg1})
 }
