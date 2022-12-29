@@ -38,7 +38,8 @@ export async function checkTest() {
 
 async function testTx20(arg1, arg2) {
     async function once({account}) {
-        await getApiService().crc20transferQuery.listTransfer({accountAddress: account});
+        const {total} = await getApiService().crc20transferQuery.listTransfer({accountAddress: account});
+        console.log(`total`, total)
     }
     for (let i = 0; i < parseInt(arg2); i++) {
         console.log(`----- round ${i} `)
