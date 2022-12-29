@@ -7,6 +7,7 @@ import {StatApp} from "../StatApp";
 import {Token} from "../model/Token";
 import {CONST} from "./common/constant"
 import {FullTransaction} from "../model/FullBlock";
+import {PruneType} from "../model/PruneInfo";
 /*const CONST = require('./common/constant');*/
 
 export class Crc1155TransferQuery extends TransferQueryBase{
@@ -19,6 +20,9 @@ export class Crc1155TransferQuery extends TransferQueryBase{
 
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC1155;
+    }
+    public getAddrPruneType(): string {
+        return PruneType.ADDR_ERC1155_TRANSFER;
     }
     public buildQueryFields({txType}): any{
         return [

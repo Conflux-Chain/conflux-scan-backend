@@ -9,6 +9,7 @@ import {StatApp} from "../StatApp";
 import {IndexHints} from "sequelize";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {FullTransaction} from "../model/FullBlock";
+import {PruneType} from "../model/PruneInfo";
 
 export class Crc20TransferQuery extends TransferQueryBase{
     protected app;
@@ -21,6 +22,10 @@ export class Crc20TransferQuery extends TransferQueryBase{
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC20;
     }
+    public getAddrPruneType(): string {
+        return PruneType.ADDR_ERC20_TRANSFER;
+    }
+
     public buildQueryFields({txType}): any{
         return [
             ['epoch', 'epochNumber'],

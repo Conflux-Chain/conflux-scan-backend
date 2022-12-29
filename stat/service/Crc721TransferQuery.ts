@@ -7,6 +7,7 @@ import {StatApp} from "../StatApp";
 import {Token} from "../model/Token";
 import {CONST} from "./common/constant"
 import {FullTransaction} from "../model/FullBlock";
+import {PruneType} from "../model/PruneInfo";
 /*const CONST = require('./common/constant');*/
 
 export class Crc721TransferQuery extends TransferQueryBase{
@@ -19,6 +20,9 @@ export class Crc721TransferQuery extends TransferQueryBase{
 
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC721;
+    }
+    public getAddrPruneType(): string {
+        return PruneType.ADDR_ERC721_TRANSFER;
     }
     public buildQueryFields({txType}): any{
         return  [

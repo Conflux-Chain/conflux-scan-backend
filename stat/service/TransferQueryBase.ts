@@ -107,6 +107,7 @@ export abstract class TransferQueryBase {
     }
 
     public abstract getTransferType(): string;
+    public abstract getAddrPruneType(): string;
     public abstract buildQueryFields({txType}): any;
     public abstract doQuery(options: any, queryOptions: any): Promise<any>;
     public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
@@ -255,11 +256,7 @@ export abstract class TransferQueryBase {
             accountAddress, address, from, to, opponentAddress, tokenArray,
             tokenId, txType , status};
         if(checkExist(optionObj, ['accountAddress'])){
-            let pruneType;
-            if(this.getTransferType() === CONST.TRANSFER_TYPE.CFX) pruneType = PruneType.ADDR_CFX_TRANSFER;
-            if(this.getTransferType() === CONST.TRANSFER_TYPE.ERC20) pruneType = PruneType.ADDR_ERC20_TRANSFER;
-            if(this.getTransferType() === CONST.TRANSFER_TYPE.ERC721) pruneType = PruneType.ADDR_ERC721_TRANSFER;
-            if(this.getTransferType() === CONST.TRANSFER_TYPE.ERC1155) pruneType = PruneType.ADDR_ERC1155_TRANSFER;
+            let pruneType = this.getAddrPruneType();
             if(pruneType){
                 const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: pruneType}});
                 prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;

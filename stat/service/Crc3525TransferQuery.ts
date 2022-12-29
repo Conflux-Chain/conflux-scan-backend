@@ -10,6 +10,7 @@ import {AddrEvent3525, Event3525} from "../T3525Sync";
 import {init} from "./tool/FixDailyTokenStat";
 import {FullBlockQuery} from "./FullBlockQuery";
 import {Op} from "sequelize"
+import {PruneType} from "../model/PruneInfo";
 /*const CONST = require('./common/constant');*/
 
 export class Crc3525TransferQuery extends TransferQueryBase{
@@ -22,6 +23,9 @@ export class Crc3525TransferQuery extends TransferQueryBase{
 
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC3525;
+    }
+    public getAddrPruneType(): string {
+        return PruneType.ADDR_ERC3525_TRANSFER;
     }
     public buildQueryFields({txType}): any{
         return  [
