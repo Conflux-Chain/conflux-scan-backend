@@ -268,7 +268,7 @@ export abstract class TransferQueryBase {
                 }
             }
         }
-        const result = {total: (page?.count || 0) + prunedCntr, list, accountId: accountAddressId};
+        const result = {total: (page?.count || 0) + prunedCntr, list, accountId: accountAddressId, queryWithCache: page.queryWithCache};
         return result;
     }
 
