@@ -294,7 +294,7 @@ export async function checkRateByLevel(ctx, next) {
             rateKey = resp.result['account'];
             rateId = resp.result['rateId'] || -1;
             const {keys = [], values = []} = resp.result['vipInfo'];
-            level = values[lodash.findIndex(keys, key => key === 'level')] || LEVEL_ENTERPRISE;
+            level = values[lodash.findIndex(keys, key => key === 'level')];
         }
 
         ctx?.set('rateId', rateId);
