@@ -39,6 +39,8 @@ if (module === require.main) {
     console.log(`decoded`)
     let decoded = Buffer.from(base58.decode(arg1)).toString();
     console.log(decoded, decoded.length)
+  } else {
+    console.log(`usage <gen-key|decode-key> arg1`)
   }
 }
 module.exports = { uniquePromise, withoutCfxTransferType };
