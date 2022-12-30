@@ -90,8 +90,8 @@ async function getTokenInfo(ctx) {
 
 export async function register(app: Koa, apiServer: ApiServer, port:string|number) {
     app.use(cors({'origin':'*'}))
-    loadRateConfig().then()
-    loadRateKeyConfig().then()
+    await loadRateConfig()
+    await loadRateKeyConfig()
     app.use(checkRateByLevel)
     app.use(bodyParser({
         formLimit: '10mb',
