@@ -9,6 +9,7 @@ import {StatApp} from "../StatApp";
 import {IndexHints} from "sequelize";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {FullTransaction} from "../model/FullBlock";
+import {PruneType} from "../model/PruneInfo";
 
 export class Crc20TransferQuery extends TransferQueryBase{
     protected app;
@@ -21,6 +22,10 @@ export class Crc20TransferQuery extends TransferQueryBase{
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ERC20;
     }
+    public getAddrPruneType(): string {
+        return PruneType.ADDR_ERC20_TRANSFER;
+    }
+
     public buildQueryFields({txType}): any{
         return [
             ['epoch', 'epochNumber'],
@@ -41,6 +46,13 @@ export class Crc20TransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {
                 // only query by address id
+                if (options.userCountCache) {
+                    return this.queryWithCache(queryOptions, options, {
+                        transferType: CONST.TRANSFER_TYPE.ERC20,
+                        pruneType: PruneType.ADDR_ERC20_TRANSFER,
+                        model: AddressErc20Transfer,
+                    });
+                }
                 const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC20)
                 const rows = await AddressErc20Transfer.findAll(queryOptions);
                 return {count: Math.max(cacheCount, rows.length) , rows};

@@ -6,6 +6,7 @@ import {AddressTransfer} from "../model/AddrTransfer";
 import {CONST} from "./common/constant";
 import {FullTransaction} from "../model/FullBlock";
 import {StatApp} from "../StatApp";
+import {PruneType} from "../model/PruneInfo";
 const lodash = require('lodash');
 
 export class AddrTransferQuery extends TransferQueryBase{
@@ -20,6 +21,9 @@ export class AddrTransferQuery extends TransferQueryBase{
 
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.ALL;
+    }
+    public getAddrPruneType(): string {
+        return PruneType.ADDR_TRANSFER;
     }
 
     public buildQueryFields({txType}): any{

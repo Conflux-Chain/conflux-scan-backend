@@ -7,6 +7,7 @@ import {getAddrTransferCount} from "../model/TransferCount";
 import {CONST} from "./common/constant"
 import {Errors} from "./common/LogicError";
 import {FullTransaction} from "../model/FullBlock";
+import {PruneType} from "../model/PruneInfo";
 /*const CONST = require('./common/constant');*/
 
 export class CfxTransferQuery extends TransferQueryBase{
@@ -20,7 +21,9 @@ export class CfxTransferQuery extends TransferQueryBase{
     public getTransferType(): string{
         return CONST.TRANSFER_TYPE.CFX;
     }
-
+    public getAddrPruneType(): string {
+        return PruneType.ADDR_CFX_TRANSFER;
+    }
     public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                  minTimestamp, maxTimestamp,
                                  accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
