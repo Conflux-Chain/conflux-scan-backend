@@ -72,7 +72,7 @@ import {ENS, SearchText} from "./ens/EnsService";
 import {ApiLog} from "../monitor/ApiLog";
 import {TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
-import {RateConfig, RateHit} from "../router/RateLimiter";
+import {RateConfig, RateHit, RateKey} from "../router/RateLimiter";
 import {createAddressTransferTable} from "../model/AddrTransfer";
 import {createNftMetaPartition, NftMetaFts, NftMetaOld} from "./nftchecker/NftMetaStorage";
 import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSync";
@@ -202,6 +202,7 @@ export async function initPartialModel(sequelize) {
     MinerBlockStat.register(sequelize);
     Blacklist.register(sequelize);
     RateConfig.register(sequelize);
+    RateKey.register(sequelize);
     RateHit.register(sequelize)
     ESpaceHex40Map.register(sequelize)
 }
