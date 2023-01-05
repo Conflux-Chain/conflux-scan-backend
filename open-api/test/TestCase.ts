@@ -1,6 +1,7 @@
 import {getApiService} from "../ApiServer";
 import {enablePerformance, performance_mark} from "../../common/tool.js";
 import {polishContract} from "../service/OpenContractService";
+import {polishTransferList} from "../service/OpenTransferService";
 
 
 export async function checkTest() {
@@ -44,6 +45,7 @@ async function testTx20(arg1, arg2) {
             accountAddress: account, userCountCache: true, from, sort,
         });
         const page = {list, cacheAddrInfoCount: 0};
+        polishTransferList(page);
         await polishContract(page, useAddrInfoCache)
         console.log(`total`, total, 'time ', list[0]?.timestamp, 'queryWithCache', queryWithCache, 'hitCache', hitCache, 'cacheAddrInfoCount', page.cacheAddrInfoCount)
     }
