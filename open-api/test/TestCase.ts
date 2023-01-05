@@ -1,5 +1,7 @@
 import {getApiService} from "../ApiServer";
 import {enablePerformance, performance_mark} from "../../common/tool.js";
+import {polishContract} from "../service/OpenContractService";
+import {polishTransferList} from "../service/OpenTransferService";
 
 
 export async function checkTest() {
@@ -37,23 +39,26 @@ export async function checkTest() {
 }
 
 async function testTx20(arg1, arg2) {
-    async function once({account, userCountCache, sort='DESC', from=undefined}) {
+    async function once({account, userCountCache, useAddrInfoCache, sort='DESC', from=undefined}) {
         // @ts-ignore
         const {total, list, queryWithCache, hitCache} = await getApiService().crc20transferQuery.listTransfer({
-            accountAddress: account, userCountCache, from, sort,
+            accountAddress: account, userCountCache: true, from, sort,
         });
-        console.log(`total`, total, 'time ', list[0]?.timestamp, 'queryWithCache', queryWithCache, 'hitCache', hitCache)
+        const page = {list, cacheAddrInfoCount: 0};
+        polishTransferList(page);
+        await polishContract(page, useAddrInfoCache)
+        console.log(`total`, total, 'time ', list[0]?.timestamp, 'queryWithCache', queryWithCache, 'hitCache', hitCache, 'cacheAddrInfoCount', page.cacheAddrInfoCount)
     }
     for (let i = 0; i < parseInt(arg2); i++) {
         console.log(`----- round ${i} `)
         let mark = performance_mark(undefined, 'begin')
-        await once({account: arg1, userCountCache: false})
-        mark = performance_mark(mark, 'cost without cache count')
-        await once({account: arg1, userCountCache: true})
-        mark = performance_mark(mark, 'cost WITH cache count')
+        await once({account: arg1, userCountCache: true, useAddrInfoCache: false})
+        mark = performance_mark(mark, 'cost without cache ')
+        await once({account: arg1, userCountCache: true, useAddrInfoCache: true})
+        mark = performance_mark(mark, 'cost WITH cache ')
     }
     console.log(`test sort`)
-    await once({account: arg1, userCountCache: true, sort: 'ASC'})
+    await once({account: arg1, userCountCache: true, useAddrInfoCache: true, sort: 'ASC'})
     console.log(`test more condition`)
-    await once({account: arg1, userCountCache: true, sort: 'ASC', from: arg1})
+    await once({account: arg1, userCountCache: true, useAddrInfoCache: true, sort: 'ASC', from: arg1})
 }

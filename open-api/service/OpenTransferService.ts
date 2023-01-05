@@ -90,6 +90,8 @@ export async function listTransfer(ctx, service) {
             minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort}
     );
     polishTransferList(page)
+    let start = Date.now();
     await polishContract(page, needAddressInfo)
+    ctx.set('ms-polish-c', Date.now() - start);
     setBody(ctx, page)
 }
