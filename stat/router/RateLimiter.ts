@@ -328,9 +328,8 @@ export async function checkRateByLevel(ctx, next) {
         if (paid) {
             rateKey = resp.result['account'];
             rateId = resp.result['rateId'] || rateId;
-            const {keys = [], values = []} = resp.result['vipInfo'];
-            level = values[lodash.findIndex(keys, key => key === 'level')];
-            qps = values[lodash.findIndex(keys, key => key === 'qps')];
+            level = resp.result['values'][lodash.findIndex(resp.result['keys'], key => key === 'level')];
+            qps = resp.result['values'][lodash.findIndex(resp.result['keys'], key => key === 'qps')];
         }
 
         ctx?.set('ip', ip);
@@ -344,7 +343,7 @@ export async function checkRateByLevel(ctx, next) {
             case LEVEL_ENTERPRISE: rateLimiter = rateLimiterEnterprise; break;
             default: throw new Error(`Unsupported membership level ${level}`);
         }
-        const pointsToConsume = Math.floor(rateLimiter["points"] / qps);
+        const pointsToConsume = Math.floor(rateLimiter['points'] / qps);
         await rateLimiter.consume(rateKey, pointsToConsume).catch(e => {e.message = 'limited';throw e;});
         rateLimiterDaily && (await rateLimiterDaily.consume(rateKey).catch(e => {e.message = 'limitedDaily';throw e;}));
 
@@ -353,7 +352,7 @@ export async function checkRateByLevel(ctx, next) {
         if (msg === 'limited') {
             msg = `Too many requests. Allow ${qps}/s`;
         } else if (msg === 'limitedDaily') {
-            msg = `Too many requests. Allow ${rateLimiterDaily["points"]}/day`;
+            msg = `Too many requests. Allow ${rateLimiterDaily['points']}/day`;
         }
         ctx.body = {code: 429, message: msg};
         console.log(`${ip} ${ctx?.url} rateId ${rateId} paid ${paid} level ${level} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
@@ -377,7 +376,7 @@ async function checkRateByAddress0(addressParamName, ctx, next) {
         await rateLimiterAddress.consume(address);
         ctx?.set(`address`, address);
     } catch (e) {
-        const msg = `Too many requests. Allow ${rateLimiterAddress["points"]}/s`;
+        const msg = `Too many requests. Allow ${rateLimiterAddress['points']}/s`;
         ctx.body = {code: 429, message: msg};
         console.log(`${ip} ${ctx?.url} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
         return;
@@ -392,7 +391,8 @@ export async function checkApiKeyByLevel(path, apiKey: string) {
         return {
             ok: (rateKey.effectiveAt.getTime() <= Date.now() && Date.now() <= rateKey.expireAt.getTime()),
             result: {
-                vipInfo: {keys: ['level', 'qps'], values: [rateKey.level, rateKey.qps]},
+                keys: ['level', 'qps'],
+                values: [rateKey.level, rateKey.qps],
                 account: apiKey.slice(-8),
                 rateId: rateKey.id,
                 now: Math.floor(Date.now() / 1000),
@@ -415,6 +415,11 @@ export async function checkApiKeyByLevel(path, apiKey: string) {
         const ret = {ok: false, result: {...vipInfo, account, app, now: Math.floor(Date.now() / 1000)}};
         if (expireSecond * 1000 > Date.now()) {
             ret.ok = true;
+            if (lodash.findIndex(ret.result['keys'], key => key === 'qps') === -1 ||
+                lodash.findIndex(ret.result['keys'], key => key === 'level') === -1) {
+                ret.result['keys'] = [...['level', 'qps'], ...ret.result['keys']];
+                ret.result['values'] = [...[LEVEL_STANDARD, rateLimiterStandard['points']], ...ret.result['values']];
+            }
         }
         return ret;
 
