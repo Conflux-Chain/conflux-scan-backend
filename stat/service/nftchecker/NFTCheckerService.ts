@@ -160,12 +160,12 @@ export class NFTCheckerService {
         if (byUnique) {
             options.where = emptyField({contractId, addressId: ownerId, tokenId});
             options.order = [['id', 'desc']];
-            options.logging = (sql) => console.log(`sql1 ${sql}`);
+            // options.logging = (sql) => console.log(`sql1 ${sql}`);
             page = await Erc1155Data.findAndCountAll(options);
         } else {
             options.where = emptyField({contractId, toId: ownerId, tokenId});
             options.order = [['updatedAt', 'desc']];
-            options.logging = (sql) => console.log(`sql2 ${sql}`);
+            // options.logging = (sql) => console.log(`sql2 ${sql}`);
             if (!ownerId) options.where.toId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
             page = await NftMint.findAndCountAll(options);
         }
