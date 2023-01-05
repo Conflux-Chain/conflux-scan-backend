@@ -26,7 +26,7 @@ export async function polishContract(page, useCache = true) {
     const contract = new Set<string>();
     function add(row, key) {
         const address = row[key];
-        console.log(`address is `, address)
+        console.log(`address of ${key} is `, address)
         const cacheInfo = address && useCache ? addressInfoCache.get(address) : false;
         if (cacheInfo) {
             cacheAddrInfoCount ++;
