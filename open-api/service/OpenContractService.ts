@@ -13,16 +13,25 @@ import {CONST} from "../../stat/service/common/constant"
 
 const lodash = require('lodash');
 const util = require('util');
+const NodeCache = require( "node-cache" );
 
 const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortunately not detected for the proxy address";
 const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";
 
-export async function polishContract(page, needAddressInfo) {
+const addressInfoCache = new NodeCache()
+const addressInfoTTL = 60 * 10; //
+export async function polishContract(page, useCache = true) {
+    const cachedMap = {}
     const contract = new Set<string>();
     function add(row, key) {
         const address = row[key];
+        const cacheInfo = address && useCache ? addressInfoCache.get(address) : false;
+        if (cacheInfo) {
+            cachedMap[address] = cacheInfo;
+            return;
+        }
         if (address && address.substr(address.indexOf(':')).startsWith(':ac')) {
-            contract.add(address)
+            contract.add(address);
         }
     }
     page?.list?.forEach(row=>{
@@ -36,11 +45,9 @@ export async function polishContract(page, needAddressInfo) {
             row.contractAddress = row.contractAddress ? format.hexAddress(row.contractAddress) : '';
         }
     })
-    if (!contract.size) {
-        return
-    }
-    const accountBasic = await getApiService().accountQuery.listPatchInfo([...contract])
-    page.addressInfo = accountBasic.map
+    const accountBasic = contract.size ? await getApiService().accountQuery.listPatchInfo([...contract])
+        : {map: {}};
+    page.addressInfo = accountBasic.map;
     Object.keys(page.addressInfo).forEach(k=>{
         const contract = page.addressInfo[k]?.contract || {}
         const token = page.addressInfo[k]?.token || {}
@@ -55,7 +62,9 @@ export async function polishContract(page, needAddressInfo) {
         }
         fixIconUrl(token, 'address')
         delete token.address
+        addressInfoCache.set(k, page.addressInfo[k], addressInfoTTL);
     })
+    page.addressInfo = {...cachedMap, ...page.addressInfo};
     if (StatApp.isEVM) {
         Object.keys(page.addressInfo).forEach(k => {
             page.addressInfo[format.hexAddress(k)] = page.addressInfo[k];
