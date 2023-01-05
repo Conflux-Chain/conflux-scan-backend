@@ -39,11 +39,11 @@ info:
     </tr>
     <tr>
     <td>Free</td>
-    <td>10 calls/second</td>
+    <td>5 calls/second, up to 100,000 calls/day</td>
     </tr>
     <tr>
     <td>Standard</td>
-    <td>20 calls/second</td>
+    <td>20 calls/second, up to 500,000 calls/day</td>
     </tr>
   </table>
   "

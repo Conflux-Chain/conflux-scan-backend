@@ -258,7 +258,7 @@ export async function initRateLimiters(redisConf) {
         }),
         new RateLimiterRedis({
             storeClient: redisClient,
-            points: 15,
+            points: 30,
             duration: 10,
             keyPrefix: `api-burst-${LEVEL_FREE}`,
         })
@@ -272,7 +272,7 @@ export async function initRateLimiters(redisConf) {
         }),
         new RateLimiterRedis({
             storeClient: redisClient,
-            points: 60,
+            points: 40,
             duration: 10,
             keyPrefix: `api-burst-${LEVEL_STANDARD}`,
         })
@@ -286,7 +286,7 @@ export async function initRateLimiters(redisConf) {
         }),
         new RateLimiterRedis({
             storeClient: redisClient,
-            points: 18000,
+            points: 12000,
             duration: 10,
             keyPrefix: `api-burst-${LEVEL_ENTERPRISE}`,
         })
@@ -356,7 +356,7 @@ export async function checkRateByLevel(ctx, next) {
             msg = `Too many requests. Allow ${rateLimiterDaily["points"]}/day`;
         }
         ctx.body = {code: 429, message: msg};
-        console.log(`${ctx?.url} rateId ${rateId} paid ${paid} level ${level} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
+        console.log(`${ip} ${ctx?.url} rateId ${rateId} paid ${paid} level ${level} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
         return;
     }
 
@@ -370,6 +370,7 @@ export function checkRateByAddress(addressParamName: string) {
 }
 
 async function checkRateByAddress0(addressParamName, ctx, next) {
+    const ip = requestIp.getClientIp(ctx.request);
     const {[addressParamName]: address} = ctx.request.query;
 
     try {
@@ -378,7 +379,7 @@ async function checkRateByAddress0(addressParamName, ctx, next) {
     } catch (e) {
         const msg = `Too many requests. Allow ${rateLimiterAddress["points"]}/s`;
         ctx.body = {code: 429, message: msg};
-        console.log(`${ctx?.url} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
+        console.log(`${ip} ${ctx?.url} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
         return;
     }
 

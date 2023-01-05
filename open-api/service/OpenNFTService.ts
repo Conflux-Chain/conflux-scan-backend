@@ -47,13 +47,13 @@ export async function listNFTTokens(ctx) {
     const date = new Date();
     const veryStart = date.getTime();
     let start = date.getTime();
-    console.log(`[seqId=${seqId}][time=${date.toLocaleString()}][url=${ctx.url}]listNFTTokens start`);
+    // console.log(`[seqId=${seqId}][time=${date.toLocaleString()}][url=${ctx.url}]listNFTTokens start`);
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, tokenId, skip, limit});
-    console.log(`[[seqId=${seqId}]listNFTTokens.getNftTokensForOpenApi elapsed:${Date.now() - start}`); start = Date.now();
+    // console.log(`[seqId=${seqId}]listNFTTokens.getNftTokensForOpenApi elapsed:${Date.now() - start}`); start = Date.now();
 
     if(withBrief === 'true' || withMetadata === 'true'){
         const externalMs = await batchGetNFTInfoList({seqId, nftList: data?.list, withBrief, withMetadata});
-        console.log(`[seqId=${seqId}]listNFTTokens.batchGetNFTInfoList elapsed:${Date.now() - start}`); start = Date.now();
+        // console.log(`[seqId=${seqId}]listNFTTokens.batchGetNFTInfoList elapsed:${Date.now() - start}`); start = Date.now();
         ctx.set('external-ms', externalMs)
     }
 
@@ -62,7 +62,7 @@ export async function listNFTTokens(ctx) {
         delete row['amount'];
         StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
     });
-    console.log(`[seqId=${seqId}]listNFTTokens elapsed ${Date.now() - veryStart}`);
+    console.log(`[seqId=${seqId}][url=${ctx.url}]listNFTTokens elapsed ${Date.now() - veryStart}`);
     setBody(ctx, data)
 }
 
@@ -113,7 +113,7 @@ async function batchGetNFTInfoList({seqId, nftList, withBrief, withMetadata}){
         }
         skip = (++curPage - 1) * pageSize;
         const raw = lodash.map(nftArray, nft => lodash.pick(nft, ['contract', 'tokenId']));
-        console.log(`[seqId=${seqId}]listNFTTokens.getNFTInfo get:${JSON.stringify(raw)}, elapsed:${Date.now() - start0}`);start0 = Date.now();
+        // console.log(`[seqId=${seqId}]listNFTTokens.getNFTInfo get:${JSON.stringify(raw)}, elapsed:${Date.now() - start0}`);start0 = Date.now();
     } while (skip <= total);
     return Date.now() - start
 }
