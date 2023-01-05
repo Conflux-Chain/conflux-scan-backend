@@ -26,6 +26,7 @@ export async function polishContract(page, useCache = true) {
     const contract = new Set<string>();
     function add(row, key) {
         const address = row[key];
+        console.log(`address is `, address)
         const cacheInfo = address && useCache ? addressInfoCache.get(address) : false;
         if (cacheInfo) {
             cacheAddrInfoCount ++;
@@ -65,6 +66,7 @@ export async function polishContract(page, useCache = true) {
         fixIconUrl(token, 'address')
         delete token.address
         addressInfoCache.set(k, page.addressInfo[k], addressInfoTTL);
+        console.log(`set cache key `, k)
     })
     page.cacheAddrInfoCount = cacheAddrInfoCount;
     page.addressInfo = {...cachedMap, ...page.addressInfo};
