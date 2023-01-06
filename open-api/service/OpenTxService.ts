@@ -32,7 +32,7 @@ export async function listAccountTransaction(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     mustBeEnumParamIfPresent(ctx.request.query, 'withInput', ['false', 'true']);
     const {skip, limit} = skipLimit(ctx.request.query)
-    const {account: base32,minEpochNumber,maxEpochNumber,startBlock, endBlock, minTimestamp,maxTimestamp,from, to, sort, nonce, txType, needAddressInfo, withInput} = ctx.request.query;
+    const {account: base32,minEpochNumber,maxEpochNumber,startBlock, endBlock, minTimestamp,maxTimestamp,from, to, sort, nonce, txType, withInput} = ctx.request.query;
     if (!Boolean(base32)) {
         setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
         return
@@ -71,7 +71,7 @@ export async function listAccountTransaction(ctx) {
     }
 
     delete page.extraInfo
-    await polishContract(page, needAddressInfo)
+    await polishContract(page)
     setBody(ctx, page)
 }
 
