@@ -20,15 +20,13 @@ const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s 
 
 const addressInfoCache = new NodeCache()
 const addressInfoTTL = 60 * 10; //
-export async function polishContract(page, useCache = true) {
+export async function polishContract(page) {
     const cachedMap = {}
-    let cacheAddrInfoCount = 0;
     const contract = new Set<string>();
     function add(row, key) {
         const address = row[key];
-        const cacheInfo = address && useCache ? addressInfoCache.get(address) : false;
+        const cacheInfo = address ? addressInfoCache.get(address) : false;
         if (cacheInfo) {
-            cacheAddrInfoCount ++;
             cachedMap[address] = cacheInfo;
             return;
         }
@@ -66,7 +64,6 @@ export async function polishContract(page, useCache = true) {
         delete token.address
         addressInfoCache.set(k, page.addressInfo[k], addressInfoTTL);
     })
-    page.cacheAddrInfoCount = cacheAddrInfoCount;
     page.addressInfo = {...cachedMap, ...page.addressInfo};
     if (StatApp.isEVM) {
         Object.keys(page.addressInfo).forEach(k => {

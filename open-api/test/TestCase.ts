@@ -46,7 +46,7 @@ async function testTx20(arg1, arg2) {
         });
         const page = {list, cacheAddrInfoCount: 0};
         polishTransferList(page);
-        await polishContract(page, useAddrInfoCache)
+        await polishContract(page)
         console.log(`total`, total, 'time ', list[0]?.timestamp, 'queryWithCache', queryWithCache, 'hitCache', hitCache, 'cacheAddrInfoCount', page.cacheAddrInfoCount)
     }
     for (let i = 0; i < parseInt(arg2); i++) {
