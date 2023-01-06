@@ -313,7 +313,7 @@ export abstract class TransferQueryBase {
             finalCount = countCache.v + (pruneInfo?.pruned || 0);
             hitCache = true;
         } else {
-            const countParam = {where: options.where}
+            const countParam = {where: queryOptions.where}
             let count = await this.addrModel.count(countParam);
             finalCount = count + (pruneInfo?.pruned || 0);
             if (finalCount) {
