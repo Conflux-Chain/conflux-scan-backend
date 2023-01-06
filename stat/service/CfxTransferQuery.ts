@@ -11,18 +11,11 @@ import {PruneType} from "../model/PruneInfo";
 /*const CONST = require('./common/constant');*/
 
 export class CfxTransferQuery extends TransferQueryBase{
-    protected app;
-
     constructor(app: any) {
         super(app);
-        this.app = app;
-    }
-
-    public getTransferType(): string{
-        return CONST.TRANSFER_TYPE.CFX;
-    }
-    public getAddrPruneType(): string {
-        return PruneType.ADDR_CFX_TRANSFER;
+        this.addrPruneType = PruneType.ADDR_CFX_TRANSFER;
+        this.transferType = CONST.TRANSFER_TYPE.CFX;
+        this.addrModel = AddressCfxTransfer;
     }
     public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                  minTimestamp, maxTimestamp,
@@ -105,6 +98,9 @@ export class CfxTransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {
                 // only query by address id
+                if (options.useCountCache) {
+                    return this.queryWithCache(queryOptions, options, );
+                }
                 const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.CFX)
                 const rows = await AddressCfxTransfer.findAll(queryOptions);
                 return {count: Math.max(cacheCount, rows.length) , rows};

@@ -11,19 +11,13 @@ import {PruneType} from "../model/PruneInfo";
 /*const CONST = require('./common/constant');*/
 
 export class Crc721TransferQuery extends TransferQueryBase{
-    protected app;
-
     constructor(app: any) {
         super(app);
-        this.app = app;
+        this.addrPruneType = PruneType.ADDR_ERC721_TRANSFER;
+        this.transferType = CONST.TRANSFER_TYPE.ERC721;
+        this.addrModel = AddressErc721Transfer;
     }
 
-    public getTransferType(): string{
-        return CONST.TRANSFER_TYPE.ERC721;
-    }
-    public getAddrPruneType(): string {
-        return PruneType.ADDR_ERC721_TRANSFER;
-    }
     public buildQueryFields({txType}): any{
         return  [
             ['epoch', 'epochNumber'],
@@ -43,6 +37,9 @@ export class Crc721TransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {
                 // only query by address id
+                if (options.useCountCache) {
+                    return this.queryWithCache(queryOptions, options);
+                }
                 const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC721)
                 const rows = await AddressErc721Transfer.findAll(queryOptions);
                 return {count: Math.max(cacheCount, rows.length) , rows};

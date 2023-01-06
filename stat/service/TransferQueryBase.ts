@@ -15,6 +15,9 @@ const lodash = require('lodash');
 export abstract class TransferQueryBase {
     protected app;
     protected NAME_TYPE_MAP;
+    protected transferType;
+    protected addrPruneType;
+    protected addrModel;
 
     protected constructor(app: any) {
         this.app = app;
@@ -107,15 +110,15 @@ export abstract class TransferQueryBase {
         return queryOptions;
     }
 
-    public abstract getTransferType(): string;
-    public abstract getAddrPruneType(): string;
+    public getTransferType() {return this.transferType;}
+    public getAddrPruneType() {return this.addrPruneType;}
     public abstract buildQueryFields({txType}): any;
     public abstract doQuery(options: any, queryOptions: any): Promise<any>;
     public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
         txMap: Map<string, FullTransaction>): Promise<any>;
 
     public async listTransfer(options) {
-        options.userCountCache = options.userCountCache ?? true;
+        options.useCountCache = options.useCountCache ?? true;
         const{ logger, service: {fullBlockQuery} } = this.app;
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
@@ -274,12 +277,12 @@ export abstract class TransferQueryBase {
         return result;
     }
 
-    protected async queryWithCache(queryOptions, options, {transferType, pruneType, model}) {
+    protected async queryWithCache(queryOptions, options) {
         const {where:{addressId}, order:[[,sort]]} = queryOptions;
         let [countCache, rows, pruneInfo, newestTx] = await Promise.all([
-            TransferCount.findOne({where: {addressId, type: transferType}, raw: true,}),
-            model.findAll(queryOptions),
-            PruneInfo.findOne({where: {addressId, type: pruneType}}),
+            TransferCount.findOne({where: {addressId, type: this.transferType}, raw: true,}),
+            this.addrModel.findAll(queryOptions),
+            PruneInfo.findOne({where: {addressId, type: this.addrPruneType}}),
             new Promise(r=>{
                 if (sort === 'DESC') {
                     r(undefined);
@@ -288,7 +291,7 @@ export abstract class TransferQueryBase {
                     queryOptions.order.forEach(o=>o[1] = 'DESC');
                     const queryParam = {...queryOptions, limit: 1}
                     delete queryParam.offset;
-                    model.findOne(queryParam).then(row=>{
+                    this.addrModel.findOne(queryParam).then(row=>{
                         r(row);
                     })
                 }
@@ -311,7 +314,7 @@ export abstract class TransferQueryBase {
             hitCache = true;
         } else {
             const countParam = {where: options.where}
-            let count = await model.count(countParam);
+            let count = await this.addrModel.count(countParam);
             finalCount = count + (pruneInfo?.pruned || 0);
             if (finalCount) {
                 // @ts-ignore

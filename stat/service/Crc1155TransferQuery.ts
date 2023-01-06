@@ -11,11 +11,11 @@ import {PruneType} from "../model/PruneInfo";
 /*const CONST = require('./common/constant');*/
 
 export class Crc1155TransferQuery extends TransferQueryBase{
-    protected app;
-
     constructor(app: any) {
         super(app);
-        this.app = app;
+        this.addrPruneType = PruneType.ADDR_ERC1155_TRANSFER;
+        this.transferType = CONST.TRANSFER_TYPE.ERC1155;
+        this.addrModel = AddressErc1155Transfer;
     }
 
     public getTransferType(): string{
@@ -44,6 +44,9 @@ export class Crc1155TransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {
                 // only query by address id
+                if (options.useCountCache) {
+                    return this.queryWithCache(queryOptions, options);
+                }
                 const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC1155)
                 const rows = await AddressErc1155Transfer.findAll(queryOptions);
                 return {count: Math.max(cacheCount, rows.length) , rows};
