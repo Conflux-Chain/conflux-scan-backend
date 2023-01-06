@@ -18,12 +18,6 @@ export class Crc1155TransferQuery extends TransferQueryBase{
         this.addrModel = AddressErc1155Transfer;
     }
 
-    public getTransferType(): string{
-        return CONST.TRANSFER_TYPE.ERC1155;
-    }
-    public getAddrPruneType(): string {
-        return PruneType.ADDR_ERC1155_TRANSFER;
-    }
     public buildQueryFields({txType}): any{
         return [
             ['epoch', 'epochNumber'],
