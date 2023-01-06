@@ -318,7 +318,7 @@ export abstract class TransferQueryBase {
             finalCount = count + (pruneInfo?.pruned || 0);
             if (finalCount) {
                 // @ts-ignore
-                await TransferCount.upsert({addressId, v: count, type: transferType, updatedAt: newestTx?.timestamp || new Date()})
+                await TransferCount.upsert({addressId, v: count, type: this.transferType, updatedAt: newestTx?.timestamp || new Date()})
             }
         }
         return {count: Math.max(finalCount, rows.length) , rows, queryWithCache: true, hitCache};
