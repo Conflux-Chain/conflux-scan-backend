@@ -12,18 +12,12 @@ import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
 
 export class Crc20TransferQuery extends TransferQueryBase{
-    protected app;
 
     constructor(app: any) {
         super(app);
-        this.app = app;
-    }
-
-    public getTransferType(): string{
-        return CONST.TRANSFER_TYPE.ERC20;
-    }
-    public getAddrPruneType(): string {
-        return PruneType.ADDR_ERC20_TRANSFER;
+        this.addrPruneType = PruneType.ADDR_ERC20_TRANSFER;
+        this.transferType = CONST.TRANSFER_TYPE.ERC20;
+        this.addrModel = AddressErc20Transfer;
     }
 
     public buildQueryFields({txType}): any{
@@ -46,12 +40,8 @@ export class Crc20TransferQuery extends TransferQueryBase{
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {
                 // only query by address id
-                if (options.userCountCache) {
-                    return this.queryWithCache(queryOptions, options, {
-                        transferType: CONST.TRANSFER_TYPE.ERC20,
-                        pruneType: PruneType.ADDR_ERC20_TRANSFER,
-                        model: AddressErc20Transfer,
-                    });
+                if (options.useCountCache) {
+                    return this.queryWithCache(queryOptions, options);
                 }
                 const cacheCount = await getAddrTransferCount(queryOptions.where.addressId, CONST.TRANSFER_TYPE.ERC20)
                 const rows = await AddressErc20Transfer.findAll(queryOptions);
