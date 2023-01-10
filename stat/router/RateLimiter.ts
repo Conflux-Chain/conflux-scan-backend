@@ -258,7 +258,7 @@ export async function initRateLimiters(redisConf) {
         }),
         new RateLimiterRedis({
             storeClient: redisClient,
-            points: 30,
+            points: 20,
             duration: 10,
             keyPrefix: `api-burst-${LEVEL_FREE}`,
         })
@@ -345,7 +345,7 @@ export async function checkRateByLevel(ctx, next) {
         }
         const pointsToConsume = Math.floor(rateLimiter['points'] / qps);
         await rateLimiter.consume(rateKey, pointsToConsume).catch(e => {e.message = 'limited';throw e;});
-        rateLimiterDaily && (await rateLimiterDaily.consume(rateKey).catch(e => {e.message = 'limitedDaily';throw e;}));
+        // rateLimiterDaily && (await rateLimiterDaily.consume(rateKey).catch(e => {e.message = 'limitedDaily';throw e;}));
 
     } catch (e) {
         let msg = e.message;

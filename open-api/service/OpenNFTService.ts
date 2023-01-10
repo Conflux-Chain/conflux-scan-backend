@@ -44,16 +44,11 @@ export async function listNFTTokens(ctx) {
     const {skip, limit} = getPagination(ctx.request.query, {maxSkip, maxLimit: 100});
 
     const seqId = genSeqId(ctx.url);
-    const date = new Date();
-    const veryStart = date.getTime();
-    let start = date.getTime();
-    // console.log(`[seqId=${seqId}][time=${date.toLocaleString()}][url=${ctx.url}]listNFTTokens start`);
+    const veryStart = Date.now();
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, tokenId, skip, limit});
-    // console.log(`[seqId=${seqId}]listNFTTokens.getNftTokensForOpenApi elapsed:${Date.now() - start}`); start = Date.now();
 
     if(withBrief === 'true' || withMetadata === 'true'){
         const externalMs = await batchGetNFTInfoList({seqId, nftList: data?.list, withBrief, withMetadata});
-        // console.log(`[seqId=${seqId}]listNFTTokens.batchGetNFTInfoList elapsed:${Date.now() - start}`); start = Date.now();
         ctx.set('external-ms', externalMs)
     }
 
@@ -62,7 +57,7 @@ export async function listNFTTokens(ctx) {
         delete row['amount'];
         StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
     });
-    console.log(`[seqId=${seqId}][url=${ctx.url}]listNFTTokens elapsed ${Date.now() - veryStart}`);
+    // console.log(`[seqId=${seqId}][url=${ctx.url}]listNFTTokens elapsed ${Date.now() - veryStart}`);
     setBody(ctx, data)
 }
 

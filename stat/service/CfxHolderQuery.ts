@@ -52,7 +52,7 @@ export class CfxHolderQuery{
             offset: skip,
             limit,
             raw: true,
-            logging: msg => console.log(`listAccountGrowthStat: ${msg}`),
+            // logging: msg => console.log(`listAccountGrowthStat: ${msg}`),
         };
 
         const conditionArray = [];
