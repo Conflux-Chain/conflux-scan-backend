@@ -12,6 +12,7 @@ import {format} from "js-conflux-sdk";
 import {TokenQuery} from "../TokenQuery";
 import {toBase32} from "../tool/AddressTool";
 import {emptyField} from "../common/utils";
+import {buildSqlLog, } from "../../../common/tool.js";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -118,14 +119,14 @@ export class NFTCheckerService {
         const count = await TokenBalance.sequelize.query(`${sqlCountClause}${sqlFromClause}`, {
             type: QueryTypes.SELECT,
             replacements: [ownerAddressId],
-            logging: console.info, benchmark: true,
+            logging: buildSqlLog('count nft balances'), benchmark: true,
         }).then(list => {
             return Number(list[0]['cntr'])
         })
         const list = await TokenBalance.sequelize.query(`${sqlSelectClause}${sqlFromClause}${sqlOrderClause}${sqlLimitClause}`, {
             type: QueryTypes.SELECT,
             replacements: [ownerAddressId, skip, limit],
-            logging: console.info, benchmark: true,
+            logging: buildSqlLog('query nft balances'), benchmark: true,
         }).then(list => list.map(item => ({
             owner,
             contract: item['base32'],

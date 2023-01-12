@@ -57,9 +57,9 @@ export async function checkTest() {
 }
 async function testNftBalances(arg1, arg2) {
     async function once({account}) {
-        let ctx = {request: {query:{owner: account}}, body: {total: -1, list: []}};
+        let ctx = {request: {query:{owner: account}}, body: {data:{total: -1, list: []}}};
         await listNFTBalances(ctx)
-        const {total, list} = ctx.body;
+        const {data:{total, list}} = ctx.body;
         console.log(`total ${total}`)
     }
     for (let i = 0; i < parseInt(arg2); i++) {
