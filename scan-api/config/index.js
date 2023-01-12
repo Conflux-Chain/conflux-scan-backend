@@ -49,7 +49,7 @@ module.exports = {
 
   requestLogger: {
     level: 'info',
-    format: 'object',
+    format: 'json',
     request: { method: true, url: true, query: true, header: true, requestId: 'requestId' },
     response: { status: true, message: true, duration: true },
   },

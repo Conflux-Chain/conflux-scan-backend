@@ -36,7 +36,7 @@ class AppBase extends Koaflow {
     this.webSocket = new WSServer({ noServer: true });
     this.ttlMap = new TTLMap();
     // this.logger = new Logger(config.logger);
-    let logger = createLogger('scan', 'scan-api', './log/scan-api', 'info');
+    let logger = createLogger('scan', 'scan-api', './log/scan-api', 'info', true);
     this.logger = logger;
     // this.cfxSDK = new Conflux(config.conflux);
     console.log(`rpc config `, config.conflux)

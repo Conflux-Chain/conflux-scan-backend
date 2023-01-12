@@ -45,7 +45,7 @@ if (module === require.main) {
     console.log(`usage <gen-key|decode-key> arg1`)
   }
 }
-function createLogger(tag, label_, dirname, level='info') {
+function createLogger(tag, label_, dirname, level='info', silent = false) {
   const { combine, timestamp, label, printf } = winston.format;
   const myFormat = printf(({ level, message, label, timestamp, stack }) => {
     if (stack) {
@@ -69,11 +69,7 @@ function createLogger(tag, label_, dirname, level='info') {
     ),
     defaultMeta: { tag },
     transports: [
-      //
-      // - Write all logs with level `error` and below to `error.log`
-      // - Write all logs with level `info` and below to `combined.log`
-      //
-      new winston.transports.Console(),
+      new winston.transports.Console({silent}),
       new DailyRotateFile({dirname,
         filename: 'error.%DATE%.log', level: 'error',
         maxSize: '500mb', maxFiles: '20d', createSymlink: true, symlinkName: 'error.log'
