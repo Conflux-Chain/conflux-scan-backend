@@ -35,8 +35,9 @@ class AppBase extends Koaflow {
 
     this.webSocket = new WSServer({ noServer: true });
     this.ttlMap = new TTLMap();
-    // this.logger = new Logger(config.logger);
-    let logger = createLogger('scan', 'scan-api', './log/scan-api', 'info', true);
+    // console.log(`cwd`, process.cwd()) // it's '/'
+    // In docker container, '/log' is bind to ./log/<api|compiler>
+    let logger = createLogger('scan', config.SERVICE, `${process.cwd()}/log`, 'info', true);
     this.logger = logger;
     // this.cfxSDK = new Conflux(config.conflux);
     console.log(`rpc config `, config.conflux)
