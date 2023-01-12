@@ -45,7 +45,7 @@ if (module === require.main) {
     console.log(`usage <gen-key|decode-key> arg1`)
   }
 }
-function createLogger(tag, label_, dirName, level='info') {
+function createLogger(tag, label_, dirname, level='info') {
   const { combine, timestamp, label, printf } = winston.format;
   const myFormat = printf(({ level, message, label, timestamp, stack }) => {
     if (stack) {
