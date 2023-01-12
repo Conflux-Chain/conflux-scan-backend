@@ -21,6 +21,7 @@ const type = require('./type');
 const Prometheus = require('./Prometheus');
 const TraceLog = require('./TraceLog');
 const ConfluxSDK = require('./ConfluxSDK');
+const {createLogger} = require("./utils");
 
 // eslint-disable-next-line no-unused-vars
 class ScanLog extends Logger {
@@ -47,7 +48,8 @@ class AppBase extends Koaflow {
     this.webSocket = new WSServer({ noServer: true });
     this.ttlMap = new TTLMap();
     // this.logger = new Logger(config.logger);
-    this.logger = new ScanLog(config.logger);
+    let logger = createLogger('scan', 'scan-api', './log/scan-api', 'info');
+    this.logger = logger;
     // this.cfxSDK = new Conflux(config.conflux);
     console.log(`rpc config `, config.conflux)
     this.confluxSDK = new ConfluxSDK(config.conflux);
