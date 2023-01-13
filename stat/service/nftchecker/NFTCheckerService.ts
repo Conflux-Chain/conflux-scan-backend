@@ -119,14 +119,14 @@ export class NFTCheckerService {
         const count = await TokenBalance.sequelize.query(`${sqlCountClause}${sqlFromClause}`, {
             type: QueryTypes.SELECT,
             replacements: [ownerAddressId],
-            logging: buildSqlLog('count nft balances'), benchmark: true,
+            // logging: buildSqlLog('count nft balances'), benchmark: true,
         }).then(list => {
             return Number(list[0]['cntr'])
         })
         const list = await TokenBalance.sequelize.query(`${sqlSelectClause}${sqlFromClause}${sqlOrderClause}${sqlLimitClause}`, {
             type: QueryTypes.SELECT,
             replacements: [ownerAddressId, skip, limit],
-            logging: buildSqlLog('query nft balances'), benchmark: true,
+            // logging: buildSqlLog('query nft balances'), benchmark: true,
         }).then(list => list.map(item => ({
             owner,
             contract: item['base32'],
