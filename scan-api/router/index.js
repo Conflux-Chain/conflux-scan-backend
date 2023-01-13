@@ -13,6 +13,14 @@ router.get('/', function () {
   };
 });
 
+router.get('/switch-req-log', function () {
+  const {    app: { config: { requestLogger } },  } = this;
+  requestLogger.enable = !requestLogger.enable;
+  return {
+    enable: requestLogger.enable
+  }
+})
+
 router.post('/',
   (ctx) => ctx.request.body,
   jsonrpc,

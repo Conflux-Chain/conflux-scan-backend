@@ -68,7 +68,15 @@ class AppBase extends Koaflow {
   }
 
   listen(port) {
-    this.use(requestLogger(this.logger, this.config.requestLogger));
+    const {config: {requestLogger: reqLogConf}} = this;
+    const reqLogger = requestLogger(this.logger, this.config.requestLogger);
+    this.use(async function (ctx, next) {
+      // use curl localhost:8895/switch-req-log to control it.
+      if (reqLogConf.enable ?? true) {
+        return reqLogger(ctx, next);
+      }
+      return next();
+    });
     this.use(requestId);
 
     const server = super.listen(port || this.config.port);
