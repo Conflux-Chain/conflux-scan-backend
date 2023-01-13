@@ -7,7 +7,6 @@ const lodash = require('lodash');
 const Koaflow = require('koaflow');
 const requestLogger = require('koaflow/lib/middleware/requestLogger');
 const requestId = require('koaflow/lib/middleware/requestId');
-const Logger = require('@conflux-lib/logger');
 
 const { Conflux } = require('js-conflux-sdk');
 const WSServer = require('./lib/WSServer');
@@ -21,19 +20,9 @@ const type = require('./type');
 const Prometheus = require('./Prometheus');
 const TraceLog = require('./TraceLog');
 const ConfluxSDK = require('./ConfluxSDK');
+const {createLogger} = require("./utils");
 
-// eslint-disable-next-line no-unused-vars
-class ScanLog extends Logger {
-  log(level, object) {
-    if (!(object instanceof Object)) {
-      object = { message: `${object}` };
-    }
-    // console.log(`what's it ?`, object);
-    const time = new Date().toISOString();
-    const string = JSON.stringify({ time, level, ...object, ...this.tags });
-    return Promise.all(this.streams.map((stream) => stream.log(level, string)));
-  }
-}
+
 class AppBase extends Koaflow {
   constructor(config) {
     super();
@@ -46,8 +35,10 @@ class AppBase extends Koaflow {
 
     this.webSocket = new WSServer({ noServer: true });
     this.ttlMap = new TTLMap();
-    // this.logger = new Logger(config.logger);
-    this.logger = new ScanLog(config.logger);
+    // console.log(`cwd`, process.cwd()) // it's '/'
+    // In docker container, '/log' is bind to ./log/<api|compiler>
+    let logger = createLogger('scan', config.SERVICE, `${process.cwd()}/log`, 'info', true);
+    this.logger = logger;
     // this.cfxSDK = new Conflux(config.conflux);
     console.log(`rpc config `, config.conflux)
     this.confluxSDK = new ConfluxSDK(config.conflux);

@@ -49,19 +49,11 @@ module.exports = {
 
   requestLogger: {
     level: 'info',
-    format: 'object',
+    format: 'json',
     request: { method: true, url: true, query: true, header: true, requestId: 'requestId' },
     response: { status: true, message: true, duration: true },
   },
 
-  // level: [trace, debug, info, warn, error, fatal]
-  logger: {
-    tags: { name: 'api' },
-    streams: [
-      { type: 'daily', path: '/log/info.log', level: 'info', days: 10 },
-      { type: 'daily', path: '/log/error.log', level: 'warn', days: 30 },
-    ],
-  },
 
   dingTalk: {
     accessToken: '',
