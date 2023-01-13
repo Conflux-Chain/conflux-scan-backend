@@ -3,6 +3,7 @@ import {enablePerformance, performance_mark} from "../../common/tool.js";
 import {polishContract} from "../service/OpenContractService";
 import {polishTransferList} from "../service/OpenTransferService";
 import {TransferQueryBase} from "../../stat/service/TransferQueryBase";
+import {listNFTBalances} from "../service/OpenNFTService";
 
 
 export async function checkTest() {
@@ -48,9 +49,26 @@ export async function checkTest() {
         enablePerformance()
         await testTxToken(getApiService().cfxTransferQuery, arg1, arg2)
         process.exit(0)
+    } else if (cmd === 'test-nft-balances') {
+        enablePerformance()
+        await testNftBalances(arg1, arg2)
+        process.exit(0)
     }
 }
-
+async function testNftBalances(arg1, arg2) {
+    async function once({account}) {
+        let ctx = {request: {query:{owner: account}}, body: {data:{total: -1, list: []}}};
+        await listNFTBalances(ctx)
+        const {data:{total, list}} = ctx.body;
+        console.log(`total ${total}`)
+    }
+    for (let i = 0; i < parseInt(arg2); i++) {
+        console.log(`----- round ${i} `)
+        let mark = performance_mark(undefined, 'begin')
+        await once({account: arg1});
+        mark = performance_mark(mark, 'cost')
+    }
+}
 async function testTxToken(query:TransferQueryBase, arg1, arg2) {
     async function once({account, useCountCache, useAddrInfoCache, sort='DESC', from=undefined}) {
         // @ts-ignore
