@@ -8,6 +8,7 @@ module.exports = {
   },
 
   requestLogger: {
+    enable: true,
     level: 'info',
     format: 'json',
     request: { method: true, url: true, query: true, header: true },
