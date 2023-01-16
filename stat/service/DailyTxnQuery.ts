@@ -26,7 +26,7 @@ export class DailyTxnQuery{
             offset: skip,
             limit,
             raw: true,
-            logging: msg => console.log(`listDailyTransactionStat: ${msg}`),
+            // logging: msg => console.log(`listDailyTransactionStat: ${msg}`),
         };
 
         const conditionArray: any[] = [{statType: '1d'}];

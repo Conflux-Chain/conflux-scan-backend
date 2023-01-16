@@ -403,15 +403,21 @@ export class TokenQuery {
         const result = {base32, hex: hex40?.hex, type};
         const tokenCondition = `
         Prerequisites for a token: 
-        1. The contract has name and symbol;
+        1. The contract has name(256 characters at max) and symbol(128 characters at max);
         2. At least one token transfer record; 
         3. The ERC721 or ERC1155 token need comply with the ERC165 standard;
         `;
         if(!tokenInfo?.name){
             return lodash.defaults(result, {reason: `token name not exist. ${tokenCondition}`});
         }
+        if(tokenInfo?.name?.length > 256){
+            return lodash.defaults(result, {reason: `token name too long. ${tokenCondition}`});
+        }
         if(!tokenInfo?.symbol){
             return lodash.defaults(result, {reason: `token symbol not exist. ${tokenCondition}`});
+        }
+        if(tokenInfo?.symbol?.length > 128){
+            return lodash.defaults(result, {reason: `token symbol too long. ${tokenCondition}`});
         }
         if(!type){
             return lodash.defaults(result, {reason: `token transfer record not exist. ${tokenCondition}`});
