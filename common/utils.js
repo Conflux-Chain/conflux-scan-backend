@@ -57,6 +57,8 @@ function createLogger(tag, label_, dirname, level='info', silent = false) {
         message = message.substr(0, idx)
       }
       return `${timestamp} [${label}] ${level}: ${message}\n${stack}`;
+    } else if (typeof message === 'object') {
+      message = JSON.stringify(message);
     }
     return `${timestamp} [${label}] ${level}: ${message}`;
   });
