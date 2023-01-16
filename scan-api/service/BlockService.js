@@ -26,7 +26,13 @@ class BlockService {
     if (hash?.length === 66) {
       block = await service.conflux.getBlockByHash(hash, detail);
     } else {
-      block = await service.conflux.getBlockByEpochNumber(hash, detail);
+      try {
+        block = await service.conflux.getBlockByEpochNumber(hash, detail);
+      } catch (e) {
+        if (!e.message?.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
+          throw e;
+        }
+      }
     }
     if (!block) {
       return null;

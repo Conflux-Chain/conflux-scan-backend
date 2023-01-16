@@ -231,7 +231,14 @@ class ConfluxService {
 
     return ttlMap.cache(`ConfluxService.getBlockByEpochNumber(${epochNumber},${detail})`,
       async () => {
-        const block = await confluxSDK.getBlockByEpochNumber(epochNumber, detail);
+        let block = null;
+        try {
+          block = await confluxSDK.getBlockByEpochNumber(epochNumber, detail);
+        } catch (e) {
+          if (!e.message?.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
+            throw e;
+          }
+        }
         if (!block) {
           return block;
         }
