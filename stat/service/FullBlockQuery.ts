@@ -17,6 +17,7 @@ import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
+import {Epoch} from "../model/Epoch";
 
 const lodash = require('lodash');
 /*const CONST = require('./common/constant');*/
@@ -85,7 +86,15 @@ export class FullBlockQuery {
                 conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
             }
             if(maxTimestamp !== undefined) {
-                conditionArray.push({createdAt: { [Op.lt]: new Date(maxTimestamp * 1000)}});
+                const maxTime = new Date(maxTimestamp * 1000);
+                conditionArray.push({createdAt: { [Op.lt]: maxTime}});
+                const epoch = await Epoch.findOne({
+                    where: {timestamp: {[Op.gte]: maxTime}},
+                    order: [['timestamp', 'ASC']],
+                });
+                if(epoch) {
+                    conditionArray.push({epoch: { [Op.lt]: epoch.epoch}});
+                }
             }
         } else{
             const {pagedCondition,blockPage} = await this.buildPagedBlockOptions(skip);
@@ -600,11 +609,34 @@ export class FullBlockQuery {
                 colFee <= sponsorBalanceForCollateral;
 
             const partialCost = value + (isGasFeeSponsored ? BigInt(0) : gasFee) + (isColFeeSponsored ? BigInt(0) : colFee);
-            if(value < partialCost){
+            if(balance < partialCost){
                 lodash.assign(pendingDetail.params, {isWhitelisted, isGasFeeSponsored,isColFeeSponsored, sponsorInfo});
                 lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 23})});
                 return result;
             }
+
+            console.log(`
+                firstTxStatus ${JSON.stringify(firstTxStatus)}
+                from ${format.hexAddress(from)}
+                to ${format.hexAddress(to)}
+                value ${value}
+                gasFee ${gasFee}
+                    sponsorForGas ${sponsorForGasHex}
+                    from isWhitelisted ${isWhitelisted}
+                    sponsorGasBound ${sponsorGasBound}
+                    sponsorBalanceForGas ${sponsorBalanceForGas}
+                    covered ${gasFee <= sponsorGasBound && gasFee <= sponsorBalanceForGas}
+                colFee ${colFee}
+                    sponsorForCol ${sponsorForColHex}
+                    from isWhitelisted ${isWhitelisted}
+                    sponsorBalanceForCollateral ${sponsorBalanceForCollateral}
+                    covered ${colFee <= sponsorBalanceForCollateral}
+                cost ${partialCost}
+                balance ${balance}
+                covered ${balance >= partialCost}
+            `);
+            lodash.defaults(result, {pendingDetail: {code: 20, message: pending}});
+            return result;
         }
 
         // ready

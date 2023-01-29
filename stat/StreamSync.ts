@@ -46,7 +46,7 @@ const tableMap = {
 }
 export async function updateTokenTransferCount(contractIds: IterableIterator<number>, force = false) {
     const tokens = await Token.findAll({
-        where: {hex40id: {[Op.in]: [...contractIds]}, type: {[Op.ne]: ''}, auditResult: true},
+        where: {hex40id: {[Op.in]: [...contractIds]}, type: {[Op.ne]: ''}/*, auditResult: true*/},
         attributes: {
             include: ['hex40id', 'transfer', 'base32'],
             exclude: ['icon']

@@ -933,7 +933,7 @@ router.get('/contract',
 );
 
 // ------------------------- Contract and Token -----------------------------
-/*router.get('/contract-and-token',
+router.get('/contract-and-token',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -953,7 +953,7 @@ router.get('/contract',
   },
 );
 
-router.get('/contractBasic',
+/*router.get('/contractBasic',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
