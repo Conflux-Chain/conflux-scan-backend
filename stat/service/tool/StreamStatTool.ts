@@ -10,6 +10,7 @@ import {AddrCfxTransferHandler} from "../streamstat/business/AddrCfxTransferHand
 import {DailyCfxTransferHandler} from "../streamstat/business/DailyCfxTransferHandler";
 import {DailyTokenTransferHandler} from "../streamstat/business/DailyTokenTransferHandler";
 import {MinerBlockHandler} from "../streamstat/business/MinerBlockHandler";
+import {NFTMintHandler} from "../streamstat/business/NFTMintHandler";
 import {sleep} from "./ProcessTool";
 
 let config:StatConfig;
@@ -21,6 +22,7 @@ let addrTransactionHandler: AddrTransactionHandler;
 let addrCfxTransferHandler: AddrCfxTransferHandler;
 let dailyCfxTransferHandler: DailyCfxTransferHandler;
 let dailyTokenTransferHandler: DailyTokenTransferHandler;
+let dailyNFTMintHandler: NFTMintHandler;
 
 async function run() {
     config = await init();
@@ -38,6 +40,7 @@ async function run() {
         addrCfxTransferHandler = new AddrCfxTransferHandler(app);
         dailyCfxTransferHandler = new DailyCfxTransferHandler(app);
         dailyTokenTransferHandler = new DailyTokenTransferHandler(app);
+        dailyNFTMintHandler = new NFTMintHandler(app);
 
         if (config.streamStat) {
             StatNotifier.SWITCH_STREAM_STAT = config.streamStat;
@@ -47,6 +50,7 @@ async function run() {
             StatNotifier.SWITCH_STAT_ADDR_CFX_TRANSFER = config.statAddrCfxTransfer;
             StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = config.statTokenTransfer;
             StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = config.statDailyTokenTransfer;
+            StatNotifier.SWITCH_STAT_NFT_MINT = config.statNFTMint;
 
             config.statTokenTransfer && (await tokenTransferHandler.schedule());
             config.statMinerBlock && (await minerBlockHandler.schedule());
@@ -54,6 +58,7 @@ async function run() {
             config.statAddrCfxTransfer && (await addrCfxTransferHandler.schedule());
             config.statDailyCfxTransfer && (await dailyCfxTransferHandler.schedule());
             config.statDailyTokenTransfer && (await dailyTokenTransferHandler.schedule());
+            config.statNFTMint && (await dailyNFTMintHandler.schedule());
         }
     }
     if(type === 2){

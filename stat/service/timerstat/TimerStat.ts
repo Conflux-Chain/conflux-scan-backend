@@ -1,5 +1,4 @@
 import {CONST as SDK_CONST} from "js-conflux-sdk";
-import {DailyBlockDataStat} from "../../model/DailyBlockDataStat";
 
 const moment = require('moment');
 
@@ -54,7 +53,7 @@ export abstract class TimerStat {
 
         const epochDB = await this.firstEpochAfterRangeEnd(rangeEnd);
         this.debug && console.log(`debug-2,epochDB:${epochDB}`);
-        if(epochDB === undefined){
+        if(epochDB === undefined || isNaN(epochDB)){
             return {status: StatStatus.EPOCH_NOT_SYNC};
         }
 
@@ -126,7 +125,7 @@ export abstract class TimerStat {
         return { rangeBegin, rangeEnd };
     }
 
-    protected getStatSpanDay(lastStat, days: number): {rangeBegin: Date, rangeEnd: Date}{
+    protected getStatRangeDay(lastStat, days: number): {rangeBegin: Date, rangeEnd: Date}{
         if(!lastStat){
             const rangeBegin = new Date('2020-10-28 16:00:00');
             const rangeEnd = new Date(rangeBegin);

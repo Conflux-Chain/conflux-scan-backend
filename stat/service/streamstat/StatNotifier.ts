@@ -5,6 +5,7 @@ import {
     STREAM_STAT_DAILY_CFX_TRANSFER_Q,
     STREAM_STAT_DAILY_TOKEN_TRANSFER_Q,
     STREAM_STAT_MINER_BLOCK_Q,
+    STREAM_STAT_NFT_MINT_Q,
     STREAM_STAT_TOKEN_TRANSFER_Q
 } from "../RedisWrap";
 import {FullBlock} from "../../model/FullBlock";
@@ -21,6 +22,7 @@ export class StatNotifier {
     // stat-epoch
     public static SWITCH_STAT_TOKEN_TRANSFER = false;
     public static SWITCH_STAT_DAILY_TOKEN_TRANSFER = false;
+    public static SWITCH_STAT_NFT_MINT = false;
 
     public static async notifyStat({msg, q}) {
         if (!StatNotifier.filter({msg, q})) {
@@ -171,6 +173,22 @@ export class StatNotifier {
         const statInfo = {0: [transferCntr]};
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_DAILY_TOKEN_TRANSFER_Q});
+    }
+
+    // stat-epoch
+    public static async notifyStatNFTMint({epochNumber, epochTimestamp, action, nftMint}){
+        if (!StatNotifier.SWITCH_STAT_NFT_MINT) {
+            return Promise.resolve(false);
+        }
+
+        const addrIdArray = Object.keys(nftMint)
+        if(!addrIdArray?.length){
+            return Promise.resolve(false);
+        }
+
+        const msg = {epochNumber, epochTimestamp, action, statInfo: nftMint};
+        // console.log(`notifyStatNFTMint ${JSON.stringify(msg)}`);
+        return StatNotifier.notifyStat({msg, q: STREAM_STAT_NFT_MINT_Q});
     }
 
     private static filter({msg, q}) {

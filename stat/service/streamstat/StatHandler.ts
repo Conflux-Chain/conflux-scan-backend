@@ -105,8 +105,8 @@ export abstract class StatHandler {
     }
 
     // Notice: You need announce bucket array in your derived class for individual business, and check out them in
-    // method checkoutBucket(). In usual, you just need not to do anything. But you need add a new bucket and persist
-    // the oldest one when a newly hour arrives.
+    // method checkoutBucket(). In usual, you just need not do anything. But you need add a new bucket and persist
+    // the oldest one when a new hour arrives.
     protected async checkoutBucketForPush({statId, statTime}): Promise<StatBucket> {
         let bucketArray = this.bizStatInfo.statRecords[statId];
         if (bucketArray === undefined) {

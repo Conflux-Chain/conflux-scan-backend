@@ -94,4 +94,29 @@ export class CfxBalance extends Model<ICfxBalance> implements ICfxBalance{
         })
     }
 }
+
+export const T_NFT_BALANCE = 'nft_balance'
+export interface INFTBalance{
+    addressId:bigint
+    nft721:bigint
+    nft1155:bigint
+    total:bigint
+}
+export class NFTBalance extends Model<INFTBalance> implements INFTBalance{
+    addressId: bigint
+    nft721:bigint
+    nft1155:bigint
+    total:bigint
+    static register(seq){
+        NFTBalance.init({
+            addressId: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
+            nft721: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+            nft1155: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+            total: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+        },{
+            sequelize: seq,
+            tableName: T_NFT_BALANCE,
+        })
+    }
+}
 //

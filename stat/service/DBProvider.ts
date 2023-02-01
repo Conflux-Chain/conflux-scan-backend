@@ -13,7 +13,7 @@ import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {
-    CfxBalance, createTokenBalanceTable,
+    CfxBalance, createTokenBalanceTable, NFTBalance,
 } from "../model/Balance";
 import {DailyToken, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
@@ -77,6 +77,9 @@ import {createAddressTransferTable} from "../model/AddrTransfer";
 import {createNftMetaPartition, NftMetaFts, NftMetaOld} from "./nftchecker/NftMetaStorage";
 import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSync";
 import {AddrEvent3525, Event3525, Slot3525, SlotChanged, TaskEvent3525, TokenSlot3525} from "../T3525Sync";
+import {DailyNFTStat} from "../model/DailyNFTStat";
+import {NFTMintStat} from "../model/NFTMintStat";
+import {DailyNFTHolder} from "../model/DailyNFTHolder";
 let conf
 export function createDB(config) {
     conf = config
@@ -222,6 +225,10 @@ export async function initModel(sequelize) {
     DailyContractCreate.register(sequelize);
     DailyContractStat.register(sequelize);
     DailyContractRegister.register(sequelize);
+    DailyNFTStat.register(sequelize);
+    DailyNFTHolder.register(sequelize);
+    NFTBalance.register(sequelize);
+    NFTMintStat.register(sequelize);
     EpochTask.register(sequelize);
     EpochTaskTokenTransfer.register(sequelize);
     EpochHashTokenTransfer.register(sequelize)
