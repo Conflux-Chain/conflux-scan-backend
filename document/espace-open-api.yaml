@@ -2799,7 +2799,7 @@ components:
         type: integer
     closest:
       description: "the closest available block to the provided timestamp, either before or after"
-      name: sort
+      name: closest
       in: query
       required: false
       schema:

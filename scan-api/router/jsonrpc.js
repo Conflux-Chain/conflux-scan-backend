@@ -596,7 +596,7 @@ jsonrpc.method('listContractVerified',
   })),
 );
 
-/*jsonrpc.method('queryContractBasic',
+jsonrpc.method('queryContractBasic',
   serializeByIP(),
   buildFlow((app) => parameter({
     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
@@ -611,7 +611,7 @@ jsonrpc.method('listContractVerified',
     } = this;
     return await service.contractRdb.listBasic({ addressArray });
   },
-);*/
+);
 
 // ---------------------------------- Token ---------------------------------
 jsonrpc.method('registerToken',
