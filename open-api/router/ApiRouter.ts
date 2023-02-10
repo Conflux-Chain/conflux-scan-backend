@@ -9,7 +9,8 @@ import {
     listAccountAssets
 } from "../service/OpenAccountService";
 import {
-    abiDecode, abiDecodeRaw,
+    abiDecode,
+    abiDecodeRaw,
     listAccountTransaction
 } from "../service/OpenTxService";
 import {
@@ -18,13 +19,15 @@ import {
     listAccountTransfer721,
     listAccountTransfer1155,
     listAccountTransfer3525,
-    listAccountTransfer
+    listAccountTransfer,
+    listNFTTransfers
 } from "../service/OpenTransferService";
 import {
     checkProxyVerification,
     checkVerifyStatus,
     getABI,
-    getSourceCode, verifyProxyContract,
+    getSourceCode,
+    verifyProxyContract,
     verifySourcecode
 } from "../service/OpenContractService";
 import {
@@ -35,6 +38,7 @@ import {
     listNFTTokens,
     listNFTTokensByFts,
     getNFTPreview,
+    listNFTOwners,
 } from "../service/OpenNFTService";
 import {
     listMiningStat,
@@ -71,12 +75,11 @@ import {
     mustBeAddressParamIfPresent,
 } from "../../stat/service/common/utils";
 import {
-    buildCheckAddressRateFn,
     checkApiKey,
-    checkRate,
     checkRateByLevel,
     checkRateByAddress,
-    loadRateConfig, loadRateKeyConfig
+    loadRateConfig,
+    loadRateKeyConfig
 } from "../../stat/router/RateLimiter";
 
 const cors = require('@koa/cors');
@@ -172,14 +175,16 @@ function registerRouter(router: Router) {
     router.get('/nft/tokens', checkRateByAddr, listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
+    router.get('/nft/owners', listNFTOwners);
+    router.get('/nft/transfers', listNFTTransfers);
 
     // utils
     router.get('/util/decode/method', abiDecode);
     router.get('/util/decode/method/raw', abiDecodeRaw);
 
     // statistics
-    router.get('/statistics/mining', listMiningStat)
     router.get('/statistics/supply', getSupplyStat);
+    router.get('/statistics/mining', listMiningStat)
     router.get('/statistics/tps', listTpsStat);
     router.get('/statistics/contract', listContractStat);
     router.get('/statistics/account/cfx/holder', listCfxHolderStat);
@@ -204,6 +209,6 @@ function registerRouter(router: Router) {
     router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
     router.get('/statistics/nft/asset', listNFTAssetStat);
     router.get('/statistics/nft/contract', listNFTContractStat);
-    router.get('/statistics/nft/transfer', listNFTTransferStat)
+    router.get('/statistics/nft/transfer', listNFTTransferStat);
     router.get('/statistics/nft/holder', listNFTHolderStat);
 }

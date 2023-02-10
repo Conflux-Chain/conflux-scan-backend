@@ -57,6 +57,10 @@ export class Crc721TransferQuery extends TransferQueryBase{
             return Erc721Transfer.findAndCountAll(queryOptions);
         }
 
+        if(options.cursor !== undefined) {
+            return this.queryByCursor(Erc721Transfer, queryOptions);
+        }
+
         // either contract or address should be present. otherwise, do not count the table.
         const list = await Erc721Transfer.findAll(queryOptions);
         return {count: list.length, rows:list}

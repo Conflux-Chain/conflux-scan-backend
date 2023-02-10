@@ -70,7 +70,7 @@ import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
 import {ApiLog, checkApiLogIpField} from "../monitor/ApiLog";
-import {TransferCount} from "../model/TransferCount";
+import {NFTOwnerCount, TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
 import {RateConfig, RateHit, RateKey} from "../router/RateLimiter";
 import {createAddressTransferTable} from "../model/AddrTransfer";
@@ -151,6 +151,7 @@ export async function initPartialModel(sequelize) {
     ENS.register(sequelize)
     ApiLog.register(sequelize)
     TransferCount.register(sequelize)
+    NFTOwnerCount.register(sequelize)
     Lock.register(sequelize)
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)

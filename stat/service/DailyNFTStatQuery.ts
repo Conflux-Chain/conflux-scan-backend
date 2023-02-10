@@ -1,37 +1,33 @@
 import {Op} from "sequelize";
 import {DailyNFTStat} from "../model/DailyNFTStat";
-import {calCount} from "./common/utils";
+import {calCount, INTERVAL_TYPE} from "./common/utils";
 import {DailyNFTHolder} from "../model/DailyNFTHolder";
 
 export class DailyNFTStatQuery {
-    public INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day'};
+    public INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day', month: 'month'};
     protected app;
 
     constructor(backendApp: any) {
         this.app = backendApp;
     }
 
-    public async listNFTAssetStat({intervalType = 'hour', skip = 0, limit = 10, sort='desc',
-                               minTimestamp = undefined, maxTimestamp = undefined}) {
+    public async listNFTAssetStat({intervalType = 'day', skip, limit, sort, minTimestamp = undefined, maxTimestamp = undefined}) {
         return this.listStatByAttributeArray(DailyNFTStat, ['statTime', ['nftAsset', 'count'], ['nftAssetTotal', 'total']],
             intervalType, minTimestamp, maxTimestamp, sort, skip, limit);
     }
 
-    public async listNFTContractStat({intervalType = 'hour', skip = 0, limit = 10, sort='desc',
-                                  minTimestamp = undefined, maxTimestamp = undefined}) {
+    public async listNFTContractStat({intervalType = 'day', skip, limit, sort, minTimestamp = undefined, maxTimestamp = undefined}) {
         return this.listStatByAttributeArray(DailyNFTStat, ['statTime', ['nftContract', 'count'], ['nftContractTotal', 'total']],
             intervalType, minTimestamp, maxTimestamp, sort, skip, limit);
     }
 
-    public async listNFTTransferStat({intervalType = 'hour', skip = 0, limit = 10, sort='desc',
-                               minTimestamp = undefined, maxTimestamp = undefined}) {
+    public async listNFTTransferStat({intervalType = 'day', skip , limit , sort, minTimestamp = undefined, maxTimestamp = undefined}) {
         return this.listStatByAttributeArray(DailyNFTStat, ['statTime', ['nftTransfer', 'count'], ['nftTransferTotal', 'total']],
             intervalType, minTimestamp, maxTimestamp, sort, skip, limit);
     }
 
-    public async listNFTHolderStat({intervalType = 'day', skip = 0, limit = 10, sort='desc',
-                                         minTimestamp = undefined, maxTimestamp = undefined}) {
-        return this.listStatByAttributeArray(DailyNFTHolder, ['statTime', ['holderCount', 'count']],
+    public async listNFTHolderStat({intervalType = 'day', skip , limit , sort, minTimestamp = undefined, maxTimestamp = undefined}) {
+        return this.listStatByAttributeArray(DailyNFTHolder, ['statTime', ['holderCount', 'total']],
             intervalType, minTimestamp, maxTimestamp, sort, skip, limit);
     }
 
@@ -39,6 +35,9 @@ export class DailyNFTStatQuery {
                                            maxTimestamp: number, sort: string, skip: number, limit: number) {
         let statType;
         switch (intervalType) {
+            case this.INTERVAL_TYPE.month:
+                statType = '1M';
+                break;
             case this.INTERVAL_TYPE.day:
                 statType = '1d';
                 break;
@@ -75,13 +74,24 @@ export class DailyNFTStatQuery {
             queryOptions.where = {[Op.and]: conditionArray};
         }
 
-        const count = calCount(minTimestamp, maxTimestamp, intervalType);
-        const rows = await model.findAll(queryOptions);
+        let count;
+        let rows;
+        if(intervalType === INTERVAL_TYPE.month) {
+            const page = await model.findAndCountAll(queryOptions);
+            count = page.count;
+            rows = page.rows;
+        } else{
+            count = calCount(minTimestamp, maxTimestamp, intervalType);
+            rows = await model.findAll(queryOptions);
+        }
+
         rows.forEach(row => {
             // @ts-ignore
             row['statTime'] = row['statTime'].toISOString().replace('T', ' ').substr(0, 19);
+            if(intervalType === INTERVAL_TYPE.month) {
+                row['statTime'] = row['statTime'].substr(0,7);
+            }
         });
-        const page = {count, rows};
-        return {total: page.count, list: page.rows, intervalType};
+        return {total: count, list: rows, intervalType};
     }
 }

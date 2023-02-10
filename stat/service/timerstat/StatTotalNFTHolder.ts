@@ -31,25 +31,25 @@ export class StatTotalNFTHolder extends TimerStat{
 
     /*nft transfer via Erc721Transfer and Erc1155Transfer*/
     public async firstEpochAfterRangeEnd(rangeEnd): Promise<number> {
-        const [epoch1, epoch2] = await Promise.all([
-            Erc721Transfer.findOne({ where: {createdAt: {[Op.gte]: rangeEnd}},
-                order:[['createdAt', 'asc']]}).then(item => item?.epoch),
-            Erc1155Transfer.findOne({ where: {createdAt: {[Op.gte]: rangeEnd}},
-                order:[['createdAt', 'asc']]}).then(item => item?.epoch)
-        ]);
-        return Math.min(epoch1, epoch2);
+        return this.firstEpochViaEpochTask(rangeEnd);
     }
 
     public async stat(rangeBegin: Date, rangeEnd: Date) {
         const hStat = await this.statRaw(rangeBegin, rangeEnd);
         const dStat =
             lodash.assign({...hStat}, {statTime: this.getRangeBegin(rangeEnd, IntervalType.DAY), statType: IntervalType.DAY});
+        const mStat =
+            lodash.assign({...hStat}, {statTime: this.getRangeBegin(rangeEnd, IntervalType.MONTH), statType: IntervalType.MONTH});
         this.debug && console.log(`debug-5,hStat:${JSON.stringify(hStat)},dStat:${JSON.stringify(dStat)}`);
 
-        const statArray = [hStat, dStat];
+        const statArray = [hStat, dStat, mStat];
         await DailyNFTHolder.sequelize.transaction(async (dbTx) => {
             await DailyNFTHolder.destroy({
                 where: {statTime: dStat.statTime, statType: dStat.statType}, transaction: dbTx,
+                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
+            });
+            await DailyNFTHolder.destroy({
+                where: {statTime: mStat.statTime, statType: mStat.statType}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTHolder.bulkCreate(statArray, {

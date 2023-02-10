@@ -10,6 +10,7 @@ import {setBody} from "../router/middleware";
 import {getApiService} from "../ApiServer";
 import {CONST} from "../../stat/service/common/constant"
 import {ApprovalRelation} from "../../stat/ApprovalSync";
+import {paginateCoreStat} from "../../stat/router/ParamChecker";
 
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -20,45 +21,46 @@ export async function listMiningStat(ctx) {
     }
 
     const page = await getApiService().dailyBlockDataStatQuery.listMiningStat({intervalType, minTimestamp,  maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+        sort, skip, limit})
     setBody(ctx, page)
 }
 
 export async function listNFTAssetStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
 
-    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+    const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTAssetStat({intervalType, minTimestamp,  maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    const page = await getApiService().dailyNFTStatQuery.listNFTAssetStat({minTimestamp,  maxTimestamp, intervalType,
+        sort, skip, limit})
     setBody(ctx, page)
 }
 
 export async function listNFTContractStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
 
-    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+    const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTContractStat({intervalType, minTimestamp,  maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    const page = await getApiService().dailyNFTStatQuery.listNFTContractStat({minTimestamp,  maxTimestamp, intervalType,
+        sort, skip, limit})
     setBody(ctx, page)
 }
 
 export async function listNFTTransferStat(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
 
-    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+    const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTTransferStat({intervalType, minTimestamp,  maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    const page = await getApiService().dailyNFTStatQuery.listNFTTransferStat({minTimestamp,  maxTimestamp, intervalType,
+        sort, skip, limit})
     setBody(ctx, page)
 }
 
 export async function listNFTHolderStat(ctx) {
-    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
+    const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTHolderStat({intervalType, minTimestamp,  maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    const page = await getApiService().dailyNFTStatQuery.listNFTHolderStat({minTimestamp,  maxTimestamp, intervalType,
+        sort, skip, limit})
     setBody(ctx, page)
 }
 
@@ -76,14 +78,14 @@ export async function listTpsStat(ctx) {
     }
 
     const page = await getApiService().dailyBlockDataStatQuery.listTpsStat({intervalType, minTimestamp,  maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+        sort, skip, limit})
     setBody(ctx, page)
 }
 
 export async function listContractStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().contractCreateQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+        sort, skip, limit});
     setBody(ctx, page)
 }
 
@@ -103,35 +105,35 @@ export async function listApproval(ctx) {
 export async function listCfxHolderStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().cfxHolderQuery.listCfxHolderStat({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+        sort, skip, limit});
     setBody(ctx, page)
 }
 
 export async function listAccountGrowthStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().cfxHolderQuery.listAccountGrowthStat({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+        sort, skip, limit});
     setBody(ctx, page)
 }
 
 export async function listAccountActiveStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().cfxHolderQuery.listAccountActiveStat({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+        sort, skip, limit});
     setBody(ctx, page)
 }
 
 export async function listTransactionStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().dailyTxnQuery.listDailyTransactionStat({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+        sort, skip, limit});
     setBody(ctx, page)
 }
 
 export async function listCfxTransferStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().dailyTxnQuery.listDailyCfxTransferStat({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit});
+        sort, skip, limit});
     setBody(ctx, page)
 }
 
@@ -140,10 +142,10 @@ export async function listTokenTransferStat(ctx) {
     let page;
     if(!contract){
         page = await getApiService().dailyTxnQuery.listDailyTokenTransferStat({minTimestamp, maxTimestamp,
-            sort:(sort || 'DESC').toLowerCase(), skip, limit});
+            sort, skip, limit});
     } else{
         page = await getApiService().dailyTxnQuery.listDailyTokenAnalysis({minTimestamp, maxTimestamp,
-            sort:(sort || 'DESC').toLowerCase(), skip, limit, contract});
+            sort, skip, limit, contract});
         page.list = page.list.map(item => ({ statTime: item.statTime, transferCount: item.transferCount,
             userCount: item.uniqueParticipantCount }));
     }
@@ -249,9 +251,10 @@ function parseStatParam(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
 
-    const {skip, limit} = getPagination(ctx.request.query);
-    const {intervalType, minTimestamp, maxTimestamp, sort, contract} = ctx.request.query
-    return {skip, limit, intervalType, minTimestamp, maxTimestamp, sort, contract};
+    const sort = (ctx.request.query.sort || 'DESC').toLowerCase();
+    const {skip, limit} = paginateCoreStat(ctx.request.query);
+    const {intervalType, minTimestamp, maxTimestamp, contract} = ctx.request.query
+    return {contract, minTimestamp, maxTimestamp, intervalType, sort, skip, limit};
 }
 
 function parseTopStatParam(ctx) {
@@ -263,12 +266,12 @@ function parseTopStatParam(ctx) {
 }
 
 async function getTokenAnalysisData(ctx){
-    const {skip, limit, minTimestamp, maxTimestamp, sort, contract} = parseStatParam(ctx);
+    const {contract, minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
     if(contract === undefined) {
         throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
     }
 
-    const page = await getApiService().dailyTxnQuery.listDailyTokenAnalysis({minTimestamp, maxTimestamp,
-        sort:(sort || 'DESC').toLowerCase(), skip, limit, contract});
+    const page = await getApiService().dailyTxnQuery.listDailyTokenAnalysis({contract, minTimestamp, maxTimestamp,
+        sort, skip, limit});
     return page;
 }

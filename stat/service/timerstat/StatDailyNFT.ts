@@ -1,4 +1,4 @@
-import {Op, QueryTypes} from 'sequelize'
+import {QueryTypes} from 'sequelize'
 import {fmtDtUTC} from "../../model/Utils";
 import {IntervalType, TimerStat} from "./TimerStat";
 import {DailyNFTStat} from "../../model/DailyNFTStat";
@@ -34,28 +34,23 @@ export class StatDailyNFT extends TimerStat{
     nft contract via TraceCreateContract
     nft transfer via Erc721Transfer and Erc1155Transfer*/
     public async firstEpochAfterRangeEnd(rangeEnd): Promise<number> {
-        const [epoch1, epoch2, epoch3, epoch4] = await Promise.all([
-            NftMint.findOne({ where: {[Op.and]: [{createdAt: {[Op.gte]: rangeEnd}}]},
-                order:[['createdAt', 'asc']]}).then(item => item?.epoch),
-            TraceCreateContract.findOne({ where: {blockTime: {[Op.gte]: rangeEnd.getTime() / 1000}},
-                order:[['blockTime', 'asc']]}).then(item => item?.epochNumber),
-            Erc721Transfer.findOne({ where: {createdAt: {[Op.gte]: rangeEnd}},
-                order:[['createdAt', 'asc']]}).then(item => item?.epoch),
-            Erc1155Transfer.findOne({ where: {createdAt: {[Op.gte]: rangeEnd}},
-                order:[['createdAt', 'asc']]}).then(item => item?.epoch)
-        ]);
-        return Math.min(epoch1, epoch2, epoch3, epoch4);
+        return this.firstEpochViaEpochTask(rangeEnd);
     }
 
     public async stat(rangeBegin: Date, rangeEnd: Date){
         const hStat = await this.statRaw(rangeBegin, rangeEnd);
         const dStat = await this.statAnalysis(rangeEnd, IntervalType.HOUR, IntervalType.DAY, hStat);
+        const mStat = await this.statAnalysis(rangeEnd, IntervalType.HOUR, IntervalType.MONTH, hStat);
         this.debug && console.log(`debug-5,hStat:${JSON.stringify(hStat)},dStat:${JSON.stringify(dStat)}`);
 
-        const statArray = [hStat, dStat];
+        const statArray = [hStat, dStat, mStat];
         await DailyNFTStat.sequelize.transaction(async (dbTx) => {
             await DailyNFTStat.destroy({
                 where: {statTime: dStat.statTime, statType: dStat.statType}, transaction: dbTx,
+                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
+            });
+            await DailyNFTStat.destroy({
+                where: {statTime: mStat.statTime, statType: mStat.statType}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTStat.bulkCreate(statArray, {

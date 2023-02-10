@@ -76,6 +76,10 @@ export class Crc3525TransferQuery extends TransferQueryBase{
             return Event3525.findAndCountAll(queryOptions);
         }
 
+        if(options.cursor !== undefined) {
+            return this.queryByCursor(Event3525, queryOptions);
+        }
+
         // either contract or address should be present. otherwise, do not count the table.
         const list = await Event3525.findAll(queryOptions);
         return {count: list.length, rows:list}

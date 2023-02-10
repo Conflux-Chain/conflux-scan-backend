@@ -1,4 +1,7 @@
+import {Op} from "sequelize";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
+import {Epoch} from "../../model/Epoch";
+import {EpochTaskTokenTransfer} from "../../TokenTransferSync";
 
 const moment = require('moment');
 
@@ -89,21 +92,31 @@ export abstract class TimerStat {
         return {intervalType, intervalSec: intervalByMinutes * 60};
     }
 
-    protected getRangeBegin(endTime: Date, rangeType: IntervalType): Date{
+    protected getRangeBegin(endTime: Date, rangeType: IntervalType): Date {
         let rangeStart = new Date(endTime);
-        if(rangeType === IntervalType.DAY){
-            rangeStart.setHours(0, 0, 0, 0);
-        } else if (rangeType === IntervalType.HOUR){
-            rangeStart.setMinutes(0, 0, 0);
-        } else {
-            throw new Error(`range not supported, ${rangeType}`);
-        }
 
-        if(moment(endTime).format('HH:mm') === '00:00' && rangeType === IntervalType.DAY){
-            rangeStart.setDate(rangeStart.getDate() - 1);
-        }
-        if (moment(endTime).format('mm:ss') === '00:00' && rangeType === IntervalType.HOUR){
-            rangeStart.setHours(rangeStart.getHours() - 1);
+        switch (rangeType) {
+            case IntervalType.MONTH:
+                rangeStart.setDate(1);
+                rangeStart.setHours(0, 0, 0, 0);
+                if (moment(endTime).format('D HH:mm:ss') === '1 00:00:00') {
+                    rangeStart.setMonth(rangeStart.getMonth() - 1);
+                }
+                break;
+            case IntervalType.DAY:
+                rangeStart.setHours(0, 0, 0, 0);
+                if (moment(endTime).format('HH:mm:ss') === '00:00:00') {
+                    rangeStart.setDate(rangeStart.getDate() - 1);
+                }
+                break;
+            case IntervalType.HOUR:
+                rangeStart.setMinutes(0, 0, 0);
+                if (moment(endTime).format('mm:ss') === '00:00') {
+                    rangeStart.setHours(rangeStart.getHours() - 1);
+                }
+                break;
+            default:
+                throw new Error(`range not supported, ${rangeType}`);
         }
 
         return rangeStart;
@@ -140,6 +153,29 @@ export abstract class TimerStat {
         rangeEnd.setDate(rangeEnd.getDate() + days * 2);
         return { rangeBegin, rangeEnd };
     }
+
+    protected async firstEpochViaEpochTask(rangeEnd): Promise<number> {
+        const item = await Epoch.findOne({
+            where: {timestamp: {[Op.gte]: rangeEnd}}, order:[['timestamp', 'asc']]});
+        const epoch = item?.epoch;
+        if(epoch === undefined){
+            return undefined;
+        }
+
+        const task = await EpochTaskTokenTransfer.findOne({
+            where: {epoch: {[Op.lte]: epoch}, cursor: {[Op.gte]: epoch}}, order: [['epoch', 'desc']]});
+        if(task === null) {
+            return undefined;
+        }
+
+        const processingTask = await EpochTaskTokenTransfer.findOne({
+            where: {epoch: {[Op.lt]: task.epoch}, finished: false}});
+        if(processingTask !== null) {
+            return undefined;
+        }
+
+        return epoch;
+    }
 }
 
 export enum StatStatus {
@@ -154,4 +190,5 @@ export enum IntervalType {
     TEN_MIN = '10m',
     HOUR = '1h',
     DAY = '1d',
+    MONTH = '1m',
 }

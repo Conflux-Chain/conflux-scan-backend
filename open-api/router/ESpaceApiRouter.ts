@@ -61,12 +61,12 @@ import {
 } from "../service/OpenStatService";
 import {
     checkPresent,
-    getPaginationESpace,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
     mustBeIntParamIfPresent,
 } from "../../stat/service/common/utils";
+import {paginateEVM} from "../../stat/router/ParamChecker";
 import { CONST } from '../../stat/service/common/constant';
 
 const lodash = require('lodash');
@@ -353,7 +353,7 @@ async function listBlock(ctx) {
     const {address} = ctx.request.query;
     checkPresent({address}, ['address']);
 
-    const {page, offset} = getPaginationESpace(ctx.request.query);
+    const {page, offset} = paginateEVM(ctx.request.query);
 
     const skip = (page - 1) * offset;
     const pagedBlocks = await getApiService().fullBlockQuery.listBlock({ miner: address, skip, limit: offset});
@@ -543,7 +543,7 @@ function parseListTransferParam(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset', 'startblock', 'endblock');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc']);
-    const {page, offset} = getPaginationESpace(ctx.request.query);
+    const {page, offset} = paginateEVM(ctx.request.query);
     const {txhash, contractaddress, address, startblock, endblock, sort} = ctx.request.query;
     return {txhash, contractaddress, address, startblock, endblock, sort, page, offset};
 }
@@ -575,8 +575,8 @@ export function registerRouter(router: Router) {
     router.get('/util/decode/method/raw', abiDecodeRaw);
 
     // statistics
-    router.get('/statistics/mining', listMiningStat)
     router.get('/statistics/supply', getSupplyStat);
+    router.get('/statistics/mining', listMiningStat)
     router.get('/statistics/tps', listTpsStat);
     router.get('/statistics/contract', listContractStat);
     router.get('/statistics/account/cfx/holder', listCfxHolderStat);
