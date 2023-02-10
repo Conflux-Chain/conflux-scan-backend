@@ -72,6 +72,7 @@ export class FullEpochSync{
         StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
         StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
         StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
+        StatNotifier.SWITCH_STAT_NFT_MINT = this.config.statNFTMint;
     }
 
     public async run() {

@@ -3,6 +3,7 @@ import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import { getTimeByInterval } from "./tool/DateTool";
+import {calCount} from "./common/utils";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -73,7 +74,7 @@ export class DailyBlockDataStatQuery {
             queryOptions.where = {[Op.and]: conditionArray};
         }
 
-        const count = this.calCount(minTimestamp, maxTimestamp, intervalType);
+        const count = calCount(minTimestamp, maxTimestamp, intervalType);
         const rows = await DailyBlockDataStat.findAll(queryOptions);
         rows.forEach(row => {
             // @ts-ignore
@@ -145,28 +146,5 @@ export class DailyBlockDataStatQuery {
             partialMap[(row['statTime'])] = row['txCount']
         });
         return partialMap;
-    }
-
-    private calCount(minTimestamp, maxTimestamp, intervalType) {
-        const start = minTimestamp !== undefined ? minTimestamp : (new Date('2020-10-28 16:00:00')).getTime();
-        const end = maxTimestamp !== undefined ? maxTimestamp : Date.now();
-        const elapsed = end - start;
-
-        let count;
-        switch (intervalType) {
-            case this.INTERVAL_TYPE.day:
-                count = elapsed / (1000 * 60 * 60 * 24);
-                break;
-            case this.INTERVAL_TYPE.hour:
-                count = elapsed / (1000 * 60 * 60);
-                break;
-            case this.INTERVAL_TYPE.min:
-                count = elapsed / (1000 * 60);
-                break;
-            default:
-                throw new Error(`intervalType:${intervalType} not supported`);
-        }
-
-        return Math.ceil(count);
     }
 }

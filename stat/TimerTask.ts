@@ -24,6 +24,8 @@ import {StatDailyContractCreation} from "./service/timerstat/StatDailyContractCr
 import {StatDailyContractRegister} from "./service/timerstat/StatDailyContractRegister";
 import {StatDailyTxn} from "./service/timerstat/StatDailyTxn";
 import {StatTotalCfxHolder} from "./service/timerstat/StatTotalCfxHolder";
+import {StatDailyNFT} from "./service/timerstat/StatDailyNFT";
+import {StatTotalNFTHolder} from "./service/timerstat/StatTotalNFTHolder";
 import {Op} from "sequelize";
 
 async function main() {
@@ -62,6 +64,12 @@ async function main() {
     //
     const statDailyTxn = new StatDailyTxn({cfx});
     await statDailyTxn.schedule(1000 * 6);
+    //
+    const statDailyNFT = new StatDailyNFT({cfx});
+    await statDailyNFT.schedule(1000 * 1);
+    //
+    const statTotalNFTHolder = new StatTotalNFTHolder({cfx});
+    await statTotalNFTHolder.schedule(1000 * 3);
     //
     const statTotalCfxHolder = new StatTotalCfxHolder({cfx});
     await statTotalCfxHolder.schedule(1000 * 6);

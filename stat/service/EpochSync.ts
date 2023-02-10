@@ -25,6 +25,7 @@ import {PruneType} from "../model/PruneInfo";
 import {Errors} from "./common/LogicError";
 import {sleep} from "./tool/ProcessTool";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
+const {ethers} = require("ethers");
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -615,6 +616,11 @@ export class EpochSync extends SyncBase{
             StatNotifier.notifyStatDailyTokenTransfer(msg)
                 .catch(e => console.log(`epoch-sync.notifyStatDailyTokenTransfer epoch:${epochNumber}`, e));
         }
+        if(Object.keys(eventLogStat.nftMint).length > 0){
+            const msg = {epochNumber, epochTimestamp, action: 'push', nftMint: eventLogStat.nftMint};
+            StatNotifier.notifyStatNFTMint(msg)
+                .catch(e => console.log(`epoch-sync.noticeStatNFTMint epoch:${epochNumber}`, e));
+        }
 
         return eventLogArray
             .filter((v) => v.address !== 'CFX:TYPE.CONTRACT:ACAV5V98NP8T3M66UW7X61YER1JA1JM0DPZJ1ZYZXV'
@@ -635,38 +641,47 @@ export class EpochSync extends SyncBase{
         let erc1155Cntr = 0;
         let tokenAddrTransfer = {};
         let tokenTransfer = {};
+        let nftAddrMint = {};
+        let nftMint = {};
 
-        eventLogArray.forEach(eventLog => {
+        for (const eventLog of eventLogArray) {
             const topic0 = eventLog.topics[0];
-            let isTokenTransfer = false;
-            if(topic0 === TOPIC0_TRANSFER_ERC20){
-                if(eventLog.topics.length === 3){
-                    erc20Cntr++;
-                } else {
-                    erc721Cntr++;
-                }
-                isTokenTransfer = true;
-            }
-            if(topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE ||
-                topic0 === TOPIC0_TRANSFER_ERC1155_BATCH){
+            let incr = 1;
+            if(topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 3){
+                erc20Cntr++;
+            } else if(topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 4){
+                erc721Cntr++;
+            } else if(topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE){
                 erc1155Cntr++;
-                isTokenTransfer = true;
+            } else if(topic0 === TOPIC0_TRANSFER_ERC1155_BATCH){
+                const abiCoder = new ethers.utils.AbiCoder()
+                const decodedData = abiCoder.decode(["uint256[]","uint256[]"], eventLog.data)
+                incr = decodedData[0].length;
+                erc1155Cntr += incr;
+            } else {
+                continue;
             }
 
-            if(isTokenTransfer){
-                const addr = eventLog.address;
-                tokenAddrTransfer[addr] = tokenAddrTransfer[addr] ? (tokenAddrTransfer[addr] + 1) : 1;
+            const addr = eventLog.address;
+            tokenAddrTransfer[addr] = tokenAddrTransfer[addr] ? (tokenAddrTransfer[addr] + incr) : incr;
+
+            if ((topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 4 &&
+                    eventLog.topics[1] === CONST.ZERO_VALUE_IN_SLOT) ||
+                ((topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE || topic0 === TOPIC0_TRANSFER_ERC1155_BATCH) &&
+                    eventLog.topics[2] === CONST.ZERO_VALUE_IN_SLOT)) {
+                nftAddrMint[addr] = nftAddrMint[addr] ? (nftAddrMint[addr] + incr) : incr;
             }
-        });
+        }
 
         const addrArray = Object.keys(tokenAddrTransfer);
         for(const addr of addrArray){
             const hex = format.hexAddress(addr);
             const tokenId = (await makeId(hex)).id;
             tokenTransfer[tokenId] = [tokenAddrTransfer[addr]];
+            nftAddrMint[addr] && (nftMint[tokenId] = [nftAddrMint[addr]]);
         }
 
-        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenTransfer};
+        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenTransfer, nftMint};
     }
 
     // ---------------------------- address transfer ----------------------------

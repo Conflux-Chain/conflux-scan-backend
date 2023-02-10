@@ -125,6 +125,7 @@ export interface StatConfig{
     statAddrCfxTransfer: boolean,
     statTokenTransfer: boolean,
     statDailyTokenTransfer: boolean,
+    statNFTMint: boolean,
 
     blacklist: boolean,
 

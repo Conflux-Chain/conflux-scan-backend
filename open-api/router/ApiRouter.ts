@@ -60,7 +60,12 @@ import {
     listTokenHolderStat,
     listTokenUniqueSenderStat,
     listTokenUniqueReceiverStat,
-    listTokenUniqueParticipantStat, listApproval,
+    listTokenUniqueParticipantStat,
+    listApproval,
+    listNFTAssetStat,
+    listNFTContractStat,
+    listNFTTransferStat,
+    listNFTHolderStat,
 } from "../service/OpenStatService";
 import {
     mustBeAddressParamIfPresent,
@@ -197,4 +202,8 @@ function registerRouter(router: Router) {
     router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
     router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
     router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
+    router.get('/statistics/nft/asset', listNFTAssetStat);
+    router.get('/statistics/nft/contract', listNFTContractStat);
+    router.get('/statistics/nft/transfer', listNFTTransferStat)
+    router.get('/statistics/nft/holder', listNFTHolderStat);
 }

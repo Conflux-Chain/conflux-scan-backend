@@ -24,6 +24,44 @@ export async function listMiningStat(ctx) {
     setBody(ctx, page)
 }
 
+export async function listNFTAssetStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day']);
+
+    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+
+    const page = await getApiService().dailyNFTStatQuery.listNFTAssetStat({intervalType, minTimestamp,  maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    setBody(ctx, page)
+}
+
+export async function listNFTContractStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day']);
+
+    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+
+    const page = await getApiService().dailyNFTStatQuery.listNFTContractStat({intervalType, minTimestamp,  maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    setBody(ctx, page)
+}
+
+export async function listNFTTransferStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day']);
+
+    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+
+    const page = await getApiService().dailyNFTStatQuery.listNFTTransferStat({intervalType, minTimestamp,  maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    setBody(ctx, page)
+}
+
+export async function listNFTHolderStat(ctx) {
+    const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+
+    const page = await getApiService().dailyNFTStatQuery.listNFTHolderStat({intervalType, minTimestamp,  maxTimestamp,
+        sort:(sort || 'DESC').toLowerCase(), skip, limit})
+    setBody(ctx, page)
+}
+
 export async function getSupplyStat(ctx) {
     const marketData = await getApiService().marketDataQuery.getMarketData();
     setBody(ctx, marketData);

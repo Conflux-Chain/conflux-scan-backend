@@ -31,7 +31,7 @@ export class StatDailyContractAnalysis extends TimerStat{
             limit: 1
         });
 
-        return this.getStatSpanDay(lastStat, 1);
+        return this.getStatRangeDay(lastStat, 1);
     }
 
     public async firstEpochAfterRangeEnd(rangeEnd): Promise<number> {

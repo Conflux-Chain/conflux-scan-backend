@@ -932,6 +932,129 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TokenTransferUniqueParticipantStat"
+  /statistics/nft/asset:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of nft assets within ${limit} ${intervalType}."
+      parameters:
+        - name: intervalType
+          in: query
+          description: "Indicator calculation period, should be one of hour or day. Default is hour."
+          required: false
+          schema:
+            type: string
+            default: hour
+            enum:
+              - hour
+              - day
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - name: limit
+          in: query
+          description: "The number of records displayed on the page. The maximum value is 100 when the intervalType is hour/day."
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            default: 10
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTStat"
+  /statistics/nft/contract:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of nft contracts within ${limit} ${intervalType}."
+      parameters:
+        - name: intervalType
+          in: query
+          description: "Indicator calculation period, should be one of hour or day. Default is hour."
+          required: false
+          schema:
+            type: string
+            default: hour
+            enum:
+              - hour
+              - day
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - name: limit
+          in: query
+          description: "The number of records displayed on the page. The maximum value is 100 when the intervalType is hour/day."
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            default: 10
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTStat"
+  /statistics/nft/transfer:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of total nft transfers within ${limit} ${intervalType}."
+      parameters:
+        - name: intervalType
+          in: query
+          description: "Indicator calculation period, should be one of hour or day. Default is hour."
+          required: false
+          schema:
+            type: string
+            default: hour
+            enum:
+              - hour
+              - day
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - name: limit
+          in: query
+          description: "The number of records displayed on the page. The maximum value is 100 when the intervalType is hour/day."
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            default: 10
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTStat"
+  /statistics/nft/holder:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of nft holder within by daily."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortByDefaultDescParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTHolderStat"
 components:
   schemas:
     Version:
@@ -2244,6 +2367,53 @@ components:
                 type: string
               SwarmSource:
                 type: string
+    NFTStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'daily count.'
+                  total:
+                    type: string
+                    description: 'total count.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    NFTHolderStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'total NFT holders count by daily'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
   parameters:
     account:
       name: account
