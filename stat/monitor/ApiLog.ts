@@ -1,26 +1,20 @@
-import {
-    Transaction,
-    Model,
-    DataTypes,
-    Sequelize,
-    Op,
-    UniqueConstraintError,
-    ModelStatic,
-    DatabaseError
-} from "sequelize";
+import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
 import {API_LOG_RT_LIMIT, KV} from "../model/KV";
 
+const requestIp = require('request-ip');
+
 export interface IApiLog {
-    id?:number; path:string; query:string; rt:number; createdAt:Date;
+    id?:number; path:string; query:string; rt:number; createdAt:Date; ip:string;
 }
 export class ApiLog extends Model<IApiLog> implements IApiLog {
-    id?:number; path:string; query:string; rt:number; createdAt:Date;
+    id?:number; path:string; query:string; rt:number; createdAt:Date; ip:string;
     static register(seq:Sequelize) {
         ApiLog.init({
             id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true, autoIncrement: true},
             path: {type: DataTypes.STRING(256), allowNull: false},
             query: {type: DataTypes.STRING(2048), allowNull: false},
             rt: {type: DataTypes.INTEGER, allowNull: false},
+            ip: {type: DataTypes.STRING(64), allowNull: false, defaultValue:''},
             createdAt: {type: DataTypes.DATE, allowNull: false},
         },{
             sequelize: seq, tableName: 'api_log', updatedAt: false,
@@ -31,6 +25,18 @@ export class ApiLog extends Model<IApiLog> implements IApiLog {
             ]
         })
     }
+}
+
+export async function checkApiLogIpField() {
+    const descRes = await ApiLog.sequelize.query(`desc ${ApiLog.getTableName()}`, {type: QueryTypes.SELECT, raw: true})
+    let ipField = (descRes as any[]).find(col=>col.Field === 'ip');
+    if (ipField) {
+        console.log(`ip field exists`)
+        return;
+    }
+    console.log(`adding ip field on ApiLog...`)
+    await ApiLog.sequelize.query(`alter table ${ApiLog.getTableName()} add column ip varchar(64) not null default '' after id`, {type: QueryTypes.UPDATE});
+    console.log(`added ip field on ApiLog`);
 }
 
 let rtThreshold = 1000
@@ -64,7 +70,8 @@ export async function saveApiLog(ctx:any, rt:number) {
     if (query) {
         query = decodeURIComponent(query);
     }
+    const ip = requestIp.getClientIp(ctx.request);
     ApiLog.create({
-        path, query, createdAt: new Date(), rt,
+        path, query, createdAt: new Date(), rt, ip,
     }).then()
 }
