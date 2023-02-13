@@ -69,7 +69,7 @@ import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} f
 import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
-import {ApiLog} from "../monitor/ApiLog";
+import {ApiLog, checkApiLogIpField} from "../monitor/ApiLog";
 import {TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
 import {RateConfig, RateHit, RateKey} from "../router/RateLimiter";
@@ -254,6 +254,8 @@ export async function initModel(sequelize) {
     PosDailyStat.register(sequelize)
     PosDailyStatMix.register(sequelize)
     PosGap.register(sequelize)
+
+    await checkApiLogIpField()
 }
 
 export function createMySql(dbConf) {
