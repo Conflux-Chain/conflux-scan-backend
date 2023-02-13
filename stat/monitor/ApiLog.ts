@@ -1,5 +1,6 @@
-import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
+import {DataTypes, Model, Sequelize} from "sequelize";
 import {API_LOG_RT_LIMIT, KV} from "../model/KV";
+import QueryTypes = require("sequelize/types/lib/query-types");
 
 const requestIp = require('request-ip');
 
@@ -30,6 +31,12 @@ export class ApiLog extends Model<IApiLog> implements IApiLog {
 export async function checkApiLogIpField() {
     const descRes = await ApiLog.sequelize.query(`desc ${ApiLog.getTableName()}`, {type: QueryTypes.SELECT})
     console.log(`api log table`, descRes)
+    let ipField = (descRes as any[]).find(col=>col.Field === 'ip');
+    if (ipField) {
+        return;
+    }
+    await ApiLog.sequelize.query(`alter table ${ApiLog.getTableName()} add column ip varchar(64) not null default ''`, {type: QueryTypes.UPDATE});
+    console.log(`added ip field on ApiLog`);
 }
 
 let rtThreshold = 1000
