@@ -28,7 +28,7 @@ export class ApiLog extends Model<IApiLog> implements IApiLog {
 }
 
 export async function checkApiLogIpField() {
-    const descRes = await ApiLog.sequelize.query(`desc ${ApiLog.getTableName()}`, {type: QueryTypes.SELECT})
+    const descRes = await ApiLog.sequelize.query(`desc ${ApiLog.getTableName()}`, {type: QueryTypes.SELECT, raw: true})
     console.log(`api log table`, descRes)
     let ipField = (descRes as any[]).find(col=>col.Field === 'ip')[0];
     if (ipField) {
