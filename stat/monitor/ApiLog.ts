@@ -1,6 +1,5 @@
-import {DataTypes, Model, Sequelize} from "sequelize";
+import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
 import {API_LOG_RT_LIMIT, KV} from "../model/KV";
-import QueryTypes = require("sequelize/types/lib/query-types");
 
 const requestIp = require('request-ip');
 
