@@ -66,6 +66,6 @@ export async function saveApiLog(ctx:any, rt:number) {
     }
     const ip = requestIp.getClientIp(ctx.request);
     ApiLog.create({
-        path, query, createdAt: new Date(), rt,
+        path, query, createdAt: new Date(), rt, ip,
     }).then()
 }
