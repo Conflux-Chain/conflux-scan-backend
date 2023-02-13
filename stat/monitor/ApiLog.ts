@@ -5,10 +5,10 @@ import QueryTypes = require("sequelize/types/lib/query-types");
 const requestIp = require('request-ip');
 
 export interface IApiLog {
-    id?:number; path:string; query:string; rt:number; createdAt:Date;
+    id?:number; path:string; query:string; rt:number; createdAt:Date; ip:string;
 }
 export class ApiLog extends Model<IApiLog> implements IApiLog {
-    id?:number; path:string; query:string; rt:number; createdAt:Date;
+    id?:number; path:string; query:string; rt:number; createdAt:Date; ip:string;
     static register(seq:Sequelize) {
         ApiLog.init({
             id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true, autoIncrement: true},
