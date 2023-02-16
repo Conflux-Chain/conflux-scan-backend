@@ -97,9 +97,13 @@ export async function checkRate(ctx, next) {
     const {path} = ctx.request;
     const ip = requestIp.getClientIp(ctx.request);
     const key = ip
+    let nonVarPath = path;
+    if (path?.startsWith("/v1/transferTree/0x")) {
+        nonVarPath = "/v1/transferTree/"
+    }
     // resources like nftPreview should have a small weight like 0.01.
-    let pointsToConsume = configMap.get(path)?.weight || configMap.get(RateConfig.defaultWeightName)?.weight || 1
-    const {ok: paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
+    let pointsToConsume = configMap.get(nonVarPath)?.weight || configMap.get(RateConfig.defaultWeightName)?.weight || 1;
+    const {ok: paid} = await checkApiKey(nonVarPath, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
     if (paid) {
         pointsToConsume /= 10;
     }
