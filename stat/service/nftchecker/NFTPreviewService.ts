@@ -72,6 +72,29 @@ export class NFTPreviewService {
         return nftInfo;
     }
 
+    public async getNFTInfoForScan ({
+                                 contractAddress,
+                                 tokenId,
+                                 withDetail = false,
+                                 forceFlush = false,
+                             }: {
+        contractAddress: string;
+        tokenId: BigInt;
+        withDetail?: boolean;
+        forceFlush?: boolean;
+    }): Promise<NFTInfoType> {
+        const nftInfo = await this.getNFTInfo ({contractAddress, tokenId, withDetail , forceFlush});
+        const imageUri = nftInfo.imageUri;
+
+        let imageGateway = '';
+        const index = imageUri?.indexOf('/ipfs/');
+        if(imageUri?.startsWith('http') && index) {
+            imageGateway = `${imageUri.substring(0, index)}`;
+        }
+
+        return lodash.defaults(nftInfo, {imageGateway});
+    }
+
     public async getNFTDetail ({
          contractAddress,
          tokenId,
@@ -81,7 +104,7 @@ export class NFTPreviewService {
         tokenId: BigInt;
         forceFlush?: boolean;
     }): Promise<NFTInfoType> {
-        return this.getNFTInfo({contractAddress, tokenId, withDetail: true, forceFlush});
+        return this.getNFTInfoForScan({contractAddress, tokenId, withDetail: true, forceFlush});
     }
 
     private async getNFTInfo0 ({
