@@ -23,8 +23,15 @@ export class QuoteSync {
     private viaCETHUnilateralSet = new Set<string>(['cLEND']);
 
     private swappiRouteAddress = '0x62b0873055bf896dd869e172119871ac24aea305';
-    private usdtAddress = "0xfe97e85d13abd9c1c33384e796f10b73905637ce";
+    private wCFXAddressEVM = '0x14b2d3bc65e74dae1030eafd8ac30c533c976a9b';
+    private cUSDTAddressEVM = "0xfe97e85d13abd9c1c33384e796f10b73905637ce";
+    private straightToCUSDTEVM = new Set<string>(['PPI', 'xCFX']);
+    private viaWCFXUnilateralSetEVM = new Set<string>(['GOL', 'NUT', 'AUSD']);
     private TOKEN_PPI = {address: "0x22f41abf77905f50df398f21213290597e7414dd", name: 'Swappi Token', symbol: 'PPI'};
+    private TOKEN_GOL = {address: "0xa4b59aa3de2af57959c23e2c9c89a2fcb408ce6a", name: 'Goledo Token', symbol: 'GOL'};
+    private TOKEN_NUT = {address: "0xfe197e7968807b311d476915db585831b43a7e3b", name: 'Nucleon Governance Token', symbol: 'NUT'};
+    private TOKEN_xCFX = {address: "0x889138644274a7dc602f25a7e7d53ff40e6d0091", name: 'X nucleon CFX', symbol: 'xCFX'};
+    private TOKEN_AUSD = {address: "0xff33b107a0e2c0794ac43c3ffaf637fcea3697cf", name: 'AUSD Stablecoin', symbol: 'AUSD'};
 
     constructor(app: any) {
         this.app = app;
@@ -264,12 +271,16 @@ export class QuoteSync {
     private async updateFromSwappi(tokenList) {
         const tokenArray = tokenList?.filter((token) => token.swappiSymbol);
         tokenArray.push(this.TOKEN_PPI);
+        tokenArray.push(this.TOKEN_GOL);
+        tokenArray.push(this.TOKEN_NUT);
+        tokenArray.push(this.TOKEN_xCFX);
+        tokenArray.push(this.TOKEN_AUSD);
         if (tokenArray.length === 0) {
             return;
         }
 
         const quoteArray = await Promise.all(tokenArray.map(async ({address, name, symbol}) => {
-            const quote = await this.getFromSwappiContract(symbol, address);
+            const quote = await this.getFromSwappiContractPlus(symbol, address);
             return {
                 address: toBase32(address),
                 name,
@@ -281,11 +292,33 @@ export class QuoteSync {
         await this.upsertQuote(quoteArray);
     }
 
-    private async getFromSwappiContract(symbol = undefined, address = undefined) {
+    /*private async getFromSwappiContract(symbol = undefined, address = undefined) {
         const contract = this.cfx.Contract({address: this.swappiRouteAddress, abi});
 
-        const [amount0, amount1] = await contract.getAmountsOut(100000, [address, this.usdtAddress]);
+        const [amount0, amount1] = await contract.getAmountsOut(100000, [address, this.cUSDTAddressEVM]);
         return BigFixed(amount1).div(BigFixed(amount0)).toNumber();
+    }*/
+
+    private async getFromSwappiContractPlus(symbol = undefined, address = undefined) {
+        const contract = this.cfx.Contract({address: this.swappiRouteAddress, abi});
+
+        //PPI-USDT
+        let price;
+        if (this.straightToCUSDTEVM.has(symbol)) {
+            const srcAddr = symbol === this.TOKEN_xCFX.symbol ? this.wCFXAddressEVM : address;
+            const [amount0, amount1] = await contract.getAmountsOut(100000, [srcAddr, this.cUSDTAddressEVM]);
+            price = BigFixed(amount1).div(BigFixed(amount0)).toNumber();
+        }
+        //CFX-GOL CFX-USDT
+        //CFX-NUT CFX-USDT
+        if (this.viaWCFXUnilateralSetEVM.has(symbol)) {
+            const viaAddress = this.wCFXAddressEVM;
+            const ratio1 = await contract.getAmountsOut(100000, [viaAddress, address]);
+            const ratio2 = await contract.getAmountsOut(100000, [viaAddress, this.cUSDTAddressEVM]);
+            price = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).mul(BigFixed(ratio2[1])
+                .div(BigFixed(ratio2[0]))).toNumber();
+        }
+        return price;
     }
 
     //======================================================================
