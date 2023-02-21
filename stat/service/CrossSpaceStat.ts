@@ -7,6 +7,8 @@ import {FullTransaction} from "../model/FullBlock";
 import {IS_EVM, IS_EVM2, KV} from "../model/KV";
 import {scheduleDaily} from "./pos/PosStat";
 
+const lodash = require('lodash');
+
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
     | 'DailyCfxCountToEVM' | 'DailyCfxCountFromEVM'
 export interface ICrossSpaceStat {
@@ -38,9 +40,10 @@ export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossS
     const sql4 = `select day, v from ${t} where biz='${biz4}'`
     const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2}, t3.v as ${biz3}, t4.v as ${biz4
     } from (${sql}) t join (${sql2}) t2 on t.day = t2.day join (${sql3}) t3  on t.day = t3.day join (${sql4}) t4  on t.day = t4.day `
-    const list = await CrossSpaceStat.sequelize.query(join, {
+    let list = await CrossSpaceStat.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
     })
+    list = lodash.orderBy(list, 'day','desc');
     ctx.body = { /*code: 0,*/ total:list.length, list }
     return list;
 }
