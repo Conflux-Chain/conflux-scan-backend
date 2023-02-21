@@ -479,7 +479,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // nft preview
     router.get('/nft/checker/preview', async function (ctx) {
         const { contractAddress, tokenId} = ctx.request.query
-        ctx.body = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: BigInt(tokenId)});
+        ctx.body = await statApp.nftPreviewService.getNFTInfoForScan({contractAddress, tokenId: BigInt(tokenId)});
     })
 
     // nft detail
