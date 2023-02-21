@@ -3,11 +3,13 @@ import {getApiService} from "../ApiServer";
 import {setBody} from "../router/middleware";
 import {format, sign} from "js-conflux-sdk";
 import {
+    checkPresent,
     getPagination,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
+import {paginateCore} from "../../stat/router/ParamChecker";
 
 const lodash = require('lodash');
 
@@ -16,7 +18,7 @@ export async function listNFTBalances(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
 
     const {owner} = ctx.request.query;
-    const {skip, limit} = getPagination(ctx.request.query);
+    const {skip, limit} = paginateCore(ctx.request.query);
     const data = await getApiService().nftCheckerService.getNftBalancesForOpenApi({owner, skip, limit});
 
     if (StatApp.isEVM) {
@@ -36,19 +38,14 @@ export async function listNFTTokens(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
 
     const {owner, contract, tokenId, withBrief, withMetadata} = ctx.request.query;
+    const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
     if (contract === undefined) {
         throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)
     }
 
-    const maxSkip = !owner ? 10_000 : Number.MAX_VALUE;
-    const {skip, limit} = getPagination(ctx.request.query, {maxSkip, maxLimit: 100});
-
-    const seqId = genSeqId(ctx.url);
-    const veryStart = Date.now();
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, tokenId, skip, limit});
-
     if(withBrief === 'true' || withMetadata === 'true'){
-        const externalMs = await batchGetNFTInfoList({seqId, nftList: data?.list, withBrief, withMetadata});
+        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
         ctx.set('external-ms', externalMs)
     }
 
@@ -57,7 +54,6 @@ export async function listNFTTokens(ctx) {
         delete row['amount'];
         StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
     });
-    // console.log(`[seqId=${seqId}][url=${ctx.url}]listNFTTokens elapsed ${Date.now() - veryStart}`);
     setBody(ctx, data)
 }
 
@@ -77,22 +73,68 @@ export async function listNFTTokensByFts(ctx) {
     setBody(ctx, data)
 }
 
+/*export async function listNFTTokenOwners(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeIntParamIfPresent(ctx.request.query, 'tokenId', 'limit');
+
+    const {contract, tokenId, cursor} = ctx.request.query;
+    const {limit} = paginateCore(ctx.request.query);
+    checkPresent({contract, tokenId}, ['contract', 'tokenId']);
+
+    const data = await getApiService().nftCheckerService.getNftOwnersForOpenApi({contract, tokenId, cursor, limit});
+    if (StatApp.isEVM) {
+        data?.list?.forEach(row => {row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});
+    }
+    setBody(ctx, data)
+}
+
+export async function listNFTCollectionOwners(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeIntParamIfPresent(ctx.request.query, 'limit');
+
+    const {contract, cursor} = ctx.request.query;
+    const {limit} = paginateCore(ctx.request.query);
+    checkPresent({contract}, ['contract']);
+
+    const data = await getApiService().nftCheckerService.getNftOwnersForOpenApi({contract, cursor, limit});
+    if (StatApp.isEVM) {
+        data?.list?.forEach(row => {row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});
+    }
+    setBody(ctx, data)
+}*/
+
+export async function listNFTOwners(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeIntParamIfPresent(ctx.request.query, 'tokenId', 'limit');
+
+    const {contract, tokenId, cursor} = ctx.request.query;
+    const {limit} = paginateCore(ctx.request.query);
+    checkPresent({contract}, ['contract']);
+
+    const data = await getApiService().nftCheckerService.getNftOwnersForOpenApi({contract, tokenId, cursor, limit});
+    if (StatApp.isEVM) {
+        data?.list?.forEach(row => {row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});
+    }
+    setBody(ctx, data)
+}
+
 function genSeqId(url){
     const plain = `${url}${Date.now()}${Math.floor(Math.random() * 1000)}`;
     const random = sign.keccak256(Buffer.from(plain)).toString('hex');
     return random.substr(0, 16);
 }
 
-async function batchGetNFTInfoList({seqId, nftList, withBrief, withMetadata}){
+async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
     let total = nftList?.length;
     if (!total) {
         return 0;
     }
+
     const start = Date.now()
     let curPage = 1;
     let skip = 0;
     let pageSize = 10;
-    let start0 = Date.now();
+
     do {
         const nftArray = nftList.slice(skip, skip + pageSize)
         if (nftArray?.length) {
@@ -107,9 +149,8 @@ async function batchGetNFTInfoList({seqId, nftList, withBrief, withMetadata}){
             }));
         }
         skip = (++curPage - 1) * pageSize;
-        const raw = lodash.map(nftArray, nft => lodash.pick(nft, ['contract', 'tokenId']));
-        // console.log(`[seqId=${seqId}]listNFTTokens.getNFTInfo get:${JSON.stringify(raw)}, elapsed:${Date.now() - start0}`);start0 = Date.now();
     } while (skip <= total);
+
     return Date.now() - start
 }
 

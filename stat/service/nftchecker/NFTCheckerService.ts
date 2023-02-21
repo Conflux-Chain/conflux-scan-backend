@@ -12,7 +12,7 @@ import {format} from "js-conflux-sdk";
 import {TokenQuery} from "../TokenQuery";
 import {toBase32} from "../tool/AddressTool";
 import {emptyField} from "../common/utils";
-import {buildSqlLog, } from "../../../common/tool.js";
+import {getNFTOwnerCount} from "../../model/TransferCount";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -246,5 +246,56 @@ export class NFTCheckerService {
             })
         }
         return {total, list};
+    }
+
+    public async getNftOwnersForOpenApi({contract, tokenId, cursor = 0, limit = 10}
+        : {contract: string, tokenId?: string, cursor: number, limit: number}) {
+        const contractId = contract ? await getAddrId(contract) : contract;
+        const byCollection = tokenId === undefined;
+        if (!contract || !contractId) {
+            return {total: 0, list: []};
+        }
+
+        const {type} = await TokenQuery.detectTokenType({hex40id: contractId});
+        const {ERC721, ERC1155} = CONST.TRANSFER_TYPE;
+        if (type !== ERC721 && type !== ERC1155) {
+            return {total: 0, list: []};
+        }
+
+        const total = await getNFTOwnerCount(contractId as number, tokenId, type);
+        let rows;
+        if(byCollection) {
+            const options: any = {
+                attributes: [['addressId','id'], 'addressId', ['balance', 'amount']],
+                where: {addressId: {[Op.gt]: cursor}, contractId}, order: [['addressId', 'asc']], limit, raw: true
+            };
+            rows = await TokenBalance.findAll(options);
+        } else {
+            const options: any = {
+                where: {id: {[Op.gt]: cursor}, contractId, tokenId}, order: [['id', 'asc']], limit, raw: true
+            };
+            if (type === ERC721) {
+                rows = await NftMint.findAll(lodash.assign(options, {attributes: ['id', ['toId', 'addressId']]}));
+            } else {
+                rows = await Erc1155Data.findAll(lodash.assign(options, {attributes: ['id', 'addressId', 'amount']}));
+            }
+        }
+
+        const list = rows?.map(item => {
+            return lodash.assign(item, {amount: (type === ERC721 && !byCollection) ? 1 : item.amount});
+        });
+        const next = list?.length ? list[list.length-1].id : 0;
+        if (list?.length) {
+            const addressIdSet = new Set(list.map(item => item.addressId));
+            const hexIdHexMap = await idHex40Map([...addressIdSet] as number[]);
+            const hexIdBase32Map = convert2base32map(hexIdHexMap);
+            list.forEach(item => {
+                item['address'] = hexIdBase32Map.get(item.addressId);
+                delete item.id;
+                delete item.addressId;
+            });
+        }
+
+        return {total, next, list: list || []};
     }
 }

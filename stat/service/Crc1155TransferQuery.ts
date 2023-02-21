@@ -58,6 +58,10 @@ export class Crc1155TransferQuery extends TransferQueryBase{
             return Erc1155Transfer.findAndCountAll(queryOptions);
         }
 
+        if(options.cursor !== undefined) {
+            return this.queryByCursor(Erc1155Transfer, queryOptions);
+        }
+
         // either contract or address should be present. otherwise, do not count the table.
         const list = await Erc1155Transfer.findAll(queryOptions);
         return {count: list.length, rows:list}

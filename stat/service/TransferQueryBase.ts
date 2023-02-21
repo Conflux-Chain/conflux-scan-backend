@@ -31,7 +31,7 @@ export abstract class TransferQueryBase {
     public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
                                   minTimestamp, maxTimestamp,
                                   accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-                                  tokenId, transferType = undefined, txType, skip, limit, sort='DESC'}){
+                                  tokenId, transferType = undefined, txType, skip, limit, sort='DESC', cursor = undefined}){
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // page
@@ -91,6 +91,10 @@ export abstract class TransferQueryBase {
                 // conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
         }
+        if(cursor !== undefined && cursor !== 0) {
+            conditionArray.push({id: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
+            delete queryOptions.offset;
+        }
         if(conditionArray.length === 1){
             queryOptions.where = conditionArray[0];
         }
@@ -123,7 +127,7 @@ export abstract class TransferQueryBase {
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
-            tokenId, transferType, txType , status, skip = 0, limit = 10, sort} = options;
+            tokenId, transferType, txType , status, skip = 0, limit = 10, sort, cursor} = options;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
@@ -177,9 +181,12 @@ export abstract class TransferQueryBase {
             minEpochNumber, maxEpochNumber, txParas,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-            tokenId, transferType, txType, skip, limit, sort
+            tokenId, transferType, txType, skip, limit, sort, cursor
         });
         queryOptions.attributes = this.buildQueryFields({txType});
+        if(cursor !== undefined) {
+            queryOptions.attributes.push('id');
+        }
         if(options.txType === CONST.TX_TYPE.CREATE){
             queryOptions.attributes.push( ['traceIndex', 'transactionLogIndex'],);
         } else if(options.accountAddress !== undefined){
@@ -271,7 +278,12 @@ export abstract class TransferQueryBase {
                 }
             }
         }
-        const result = {total: (page?.count || 0) + prunedCntr, list, accountId: accountAddressId,
+        let next;
+        if(cursor !== undefined) {
+            next = list?.length ? list[list.length - 1].id : 0;
+            list?.forEach(item => delete item.id);
+        }
+        const result = {total: (page?.count || 0) + prunedCntr, next, list, accountId: accountAddressId,
             queryWithCache: page.queryWithCache, hitCache: page.hitCache,
         };
         return result;
@@ -355,5 +367,15 @@ export abstract class TransferQueryBase {
             list = [...hex40Map.values()];
         }
         return {total: list?.length || 0, list: list || [], addressId, addressHex};
+    }
+
+    protected async queryByCursor(model, queryOptions) {
+        const list = await model.findAll(queryOptions);
+
+        delete queryOptions.attributes;
+        queryOptions.where[Op.and] = queryOptions.where[Op.and].filter(item => item.id === undefined);
+        const count = await model.count(queryOptions);
+
+        return {count, rows: list}
     }
 }

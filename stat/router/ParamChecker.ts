@@ -1,47 +1,70 @@
 import {Errors} from "../service/common/LogicError";
 
-export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
-	const param = {
-		skip: intParam(obj, skipKey, 0),
-		limit: intParam(obj, limitKey, defaultLimit)
-	};
-	if (param.skip > 10000) {
-		throw new Errors.ParameterError('Parameter <skip> exceeds 10000')
-	}
-	if (param.limit > 100) {
-		throw new Errors.ParameterError('Parameter <limit> exceeds 100')
-	}
-	return param
+const lodash = require('lodash');
+
+const optCore = {skip: 0, skipMax: 10000, limit: 10, limitMax: 100};
+const optCoreStat = {skip: 0, skipMax: 10000, limit: 10, limitMax: 2000};
+const optEVM = {skip: 1, skipMax: 10000, limit: 100, limitMax: 100};
+const optEVMStat = {skip: 1, skipMax: 10000, limit: 100, limitMax: 2000};
+
+export function paginateCore(reqObj: object, options?: any) {
+    options && lodash.assign(optCore, options);
+    return paginate(reqObj, 'skip', 'limit', optCore);
 }
 
-// skip exceeds 10_000;
-export function skipLimitAny(obj) {
-	return {
-		skip: intParam(obj, 'skip', 0),
-		limit: intParam(obj, 'limit', 10)
-	};
+export function paginateCoreStat(reqObj: object, options?: any) {
+    options && lodash.assign(optCoreStat, options);
+    return paginate(reqObj, 'skip', 'limit', optCoreStat);
+}
 
+export function paginateEVM(reqObj: object, options?: any) {
+    options && lodash.assign(optEVM, options);
+    return paginate(reqObj, 'page', 'offset', optEVM);
 }
-export function skipLimit(obj) {
-	return pageParam(obj, 'skip', 'limit', 10)
+
+export function paginateEVMStat(reqObj: object, options?: any) {
+    options && lodash.assign(optEVMStat, options);
+    return paginate(reqObj, 'page', 'offset', optEVMStat);
 }
-export function intParam(obj: object, key: string, defaultV: number) {
-	const v = obj[key]
-	if (v === undefined || v === null) {
-		return defaultV
-	}
-	if (!/^[0-9]+$/.test(v)) {
-		throw new Errors.ParameterError(`Invalid parameter [${key}] with value[${v}]`)
-	}
-	let number: number;
-	try {
-		number = parseInt(v);
-	} catch (e) {
-		return defaultV
-	}
-	if (isNaN(number)) {
-		throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]`)
-	}
-	return number;
+
+function paginate(reqObj: object, skipKey: string, limitKey: string, options?: any) {
+    const {skip, skipMax, limit, limitMax} = options;
+
+    const pagination = {
+        [skipKey]: intParam(reqObj, skipKey, skip),
+        [limitKey]: intParam(reqObj, limitKey, limit)
+    };
+
+    if (pagination[skipKey] < skip) {
+        throw new Errors.ParameterError(`Parameter <${skipKey}> starts at ${skip}`)
+    }
+    if (skipMax !== undefined && pagination[skipKey] > skipMax) {
+        throw new Errors.ParameterError(`Parameter <${skipKey}> exceeds ${skipMax}`);
+    }
+    if (pagination[limitKey] < 1) {
+        throw new Errors.ParameterError(`Parameter <${limitKey}>'s minimum value is 1`)
+    }
+    if (limitMax !== undefined && pagination[limitKey] > limitMax) {
+        throw new Errors.ParameterError(`Parameter <${limitKey}> exceeds ${limitMax}`);
+    }
+
+    return pagination;
 }
-export class InvalidParamError extends Error{}
+
+function intParam(obj, key, defaultValue) {
+    const value = obj[key]
+    if (value === undefined || value === null) {
+        return defaultValue
+    }
+
+    if (!/^[0-9]+$/.test(value)) {
+        throw new Error(`Invalid parameter [${key}] with value[${value}]`)
+    }
+
+    let number = parseInt(value);
+    if(!isFinite(number)){
+        return defaultValue
+    }
+
+    return number;
+}

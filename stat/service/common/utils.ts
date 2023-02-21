@@ -203,7 +203,7 @@ export function checkPresent(options, fieldArray){
     lodash.forEach(options, (value, key) => {
         if(lodash.includes(fieldArray, key)){
             if(value === undefined || value === null){
-                throw new Errors.ParameterError(`Invalid ${key} parameter with value [${value}], ${key} is required.`);
+                throw new Errors.ParameterError(`Invalid parameter ${key} with value [${value}], ${key} is required.`);
             }
         }
     });
@@ -390,7 +390,7 @@ export function emptyField(data) {
     return data;
 }
 
-export const INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day'};
+export const INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day', month: 'month'};
 export function calCount(minTimestamp, maxTimestamp, intervalType) {
     const start = minTimestamp !== undefined ? minTimestamp : (new Date('2020-10-28 16:00:00')).getTime();
     const end = maxTimestamp !== undefined ? maxTimestamp : Date.now();

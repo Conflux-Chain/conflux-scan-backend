@@ -497,6 +497,7 @@ export class NFTPreviewService {
             const usable = uriSegments?.length > 1 && this.ipfsGatewaySet.has(uriSegments[1]);
             if (usable) {
                 uri = `${gateway.endsWith('/') ? gateway.substr(0, gateway.length - 1) : gateway}/ipfs/${rawUrl.substr(7)}`;
+                return uri;
             }
         }
 

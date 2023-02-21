@@ -4,10 +4,13 @@ import {createDB, initModel} from "../DBProvider";
 import {Conflux} from "js-conflux-sdk";
 import {patchHttpProvider} from "../common/utils";
 import {NftMint, Token} from "../../model/Token";
-import {Op} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {Epoch} from "../../model/Epoch";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {sleep} from "./ProcessTool";
+import {DailyNFTStat} from "../../model/DailyNFTStat";
+import {fmtDtUTC} from "../../model/Utils";
+import {DailyNFTHolder} from "../../model/DailyNFTHolder";
 const fs = require('fs');
 
 let cfx:Conflux;
@@ -128,8 +131,78 @@ function toCSV(collateralArray){
     console.log(`done!`);
 }
 
+async function statNFTByMonthly() {
+    await init();
+    const sql1 = "select * from daily_nft_stat where statType = '1d' and date_format(statTime,'%e') = 1 order by id";
+    const monArray: DailyNFTStat[] = await DailyNFTStat.sequelize.query(sql1,{type: QueryTypes.SELECT, raw: true});
+
+    const recordArray=[];
+    for (const mon of monArray) {
+        const {statTime} = mon;
+        const rangeEnd = new Date(statTime);
+        const rangeStart = new Date(statTime);
+        rangeStart.setMonth(rangeStart.getMonth() - 1);
+
+        const sql2 = "select sum(nftAsset) as nftAsset, sum(nftContract) as nftContract, sum(nftTransfer) as nftTransfer from daily_nft_stat where statTime >= ? and statTime < ? and statType = '1h'";
+        const countStatArray: DailyNFTStat[] = await DailyNFTStat.sequelize.query(sql2,{type: QueryTypes.SELECT, raw: true, replacements: [fmtDtUTC(rangeStart), fmtDtUTC(rangeEnd)],});
+        console.log(`${rangeStart} countStat ${JSON.stringify(countStatArray[0])}`)
+
+        const sql3 = "select * from daily_nft_stat where statTime >= ? and statTime < ? and statType = '1h' order by statTime desc limit 1";
+        const totalStatArray: DailyNFTStat[] = await DailyNFTStat.sequelize.query(sql3,{type: QueryTypes.SELECT, raw: true, replacements: [fmtDtUTC(rangeStart), fmtDtUTC(rangeEnd)],});
+        console.log(`${rangeStart} totalStat ${JSON.stringify(totalStatArray[0])}`)
+
+        const record = {
+            statTime: rangeStart,
+            statType: '1M',
+            nftAsset: countStatArray[0].nftAsset,
+            nftContract: countStatArray[0].nftContract,
+            nftTransfer: countStatArray[0].nftTransfer,
+            nftAssetTotal: totalStatArray[0].nftAssetTotal,
+            nftContractTotal: totalStatArray[0].nftContractTotal,
+            nftTransferTotal: totalStatArray[0].nftTransferTotal,
+        };
+        recordArray.push(record);
+    }
+
+    await DailyNFTStat.bulkCreate(recordArray);
+}
+
+async function statNFTHolderByMonthly() {
+    await init();
+    const sql1 = "select * from daily_nft_holder where statType = '1d' and date_format(statTime,'%e') = 1 order by id";
+    const monArray: DailyNFTHolder[] = await DailyNFTHolder.sequelize.query(sql1,{type: QueryTypes.SELECT, raw: true});
+
+    const recordArray=[];
+    for (const mon of monArray) {
+        const {statTime} = mon;
+        const rangeStart = new Date(statTime);
+        rangeStart.setHours(rangeStart.getHours() - 1);
+
+        const sql3 = "select * from daily_nft_holder where statTime = ? and statType = '1h' order by statTime desc limit 1";
+        const totalStatArray: DailyNFTHolder[] = await DailyNFTStat.sequelize.query(sql3,{type: QueryTypes.SELECT, raw: true, replacements: [fmtDtUTC(rangeStart)],});
+        // console.log(`${rangeStart} totalStat ${JSON.stringify(totalStatArray[0])}`)
+
+        const statTimeByMonthly = new Date(rangeStart);
+        statTimeByMonthly.setDate(1);
+        statTimeByMonthly.setHours(0,0,0,0);
+        const record = {
+            statTime: statTimeByMonthly,
+            statType: '1M',
+            holderCount721: totalStatArray[0].holderCount721,
+            holderCount1155: totalStatArray[0].holderCount1155,
+            holderCount: totalStatArray[0].holderCount,
+        };
+
+        console.log(`record ${JSON.stringify(record)}`)
+        recordArray.push(record);
+    }
+
+    await DailyNFTHolder.bulkCreate(recordArray);
+}
+
 if (require.main === module) {
     const args = process.argv.slice(2)
     StatApp.networkId = Number(args[0]);
-    run().then();
+    // run().then();
+    statNFTByMonthly().then();
 }

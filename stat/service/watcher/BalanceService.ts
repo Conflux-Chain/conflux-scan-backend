@@ -98,6 +98,7 @@ export class BalanceService {
         const map = new Map()
         hexList.forEach(hex=>map.set(hex.id, `0x${hex.hex}`))
         const is1155 = (token.type || '').includes('1155')
+        console.log(`token ---1--- ${token.type} ${token.hex40id} ${is1155}`);
 
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
