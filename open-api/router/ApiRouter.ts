@@ -82,6 +82,7 @@ import {
     loadRateKeyConfig
 } from "../../stat/router/RateLimiter";
 
+const path = require('path');
 const cors = require('@koa/cors');
 
 async function root(ctx, tag, port: string | number) {
@@ -108,8 +109,9 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     app.use(handleException)
 
     const prefix = '/open';
-    const swaggerYaml = StatApp.isEVM ? './document/espace-open-api.yaml' : './document/open-api.yaml';
-    addSwagger(app, prefix, swaggerYaml)
+    const yaml = path.resolve(__dirname, '../../document/', StatApp.isEVM ? 'espace-open-api.yaml' : 'open-api.yaml');
+    const tld = apiServer.config.tldOpenapi
+    addSwagger(app, prefix, yaml, tld)
     getApiService().logger.info(`url prefix: ${prefix}`)
 
     const router = new Router({prefix: prefix})

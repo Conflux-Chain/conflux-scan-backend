@@ -7,20 +7,20 @@ info:
       <td>Api host</td><td>Net</td><td>Mode</td><td>Scan</td>
     </tr>
     <tr>
-      <td><a href='https://api.confluxscan.net/doc'>https://api.confluxscan.net</a></td><td>Mainnet Core</td><td>Production</td>
-      <td><a target='_blank' href='https://confluxscan.io'>https://confluxscan.io</a></td>
+      <td><a href='https://api.confluxscan.__tld__/doc'>https://api.confluxscan.__tld__</a></td><td>Mainnet Core</td><td>Production</td>
+      <td><a target='_blank' href='https://confluxscan.__tld__'>https://confluxscan.__tld__</a></td>
     </tr>
     <tr>
-      <td><a href='https://evmapi.confluxscan.net/doc'>https://evmapi.confluxscan.net</a></td><td>Mainnet eSpace</td><td>Production</td>
-      <td><a target='_blank' href='https://evm.confluxscan.io'>https://evm.confluxscan.io</a></td>
+      <td><a href='https://evmapi.confluxscan.__tld__/doc'>https://evmapi.confluxscan.__tld__</a></td><td>Mainnet eSpace</td><td>Production</td>
+      <td><a target='_blank' href='https://evm.confluxscan.__tld__'>https://evm.confluxscan.__tld__</a></td>
     </tr>
     <tr>
-      <td><a href='https://api-testnet.confluxscan.net/doc'>https://api-testnet.confluxscan.net</a></td><td>Testnet Core</td><td>Production</td>
-      <td><a target='_blank' href='https://testnet.confluxscan.io'>https://testnet.confluxscan.io</a></td>
+      <td><a href='https://api-testnet.confluxscan.__tld__/doc'>https://api-testnet.confluxscan.__tld__</a></td><td>Testnet Core</td><td>Production</td>
+      <td><a target='_blank' href='https://testnet.confluxscan.__tld__'>https://testnet.confluxscan.__tld__</a></td>
     </tr>
     <tr>
-      <td><a href='https://evmapi-testnet.confluxscan.net/doc'>https://evmapi-testnet.confluxscan.net</a></td><td>Testnet eSpace</td><td>Production</td>
-      <td><a target='_blank' href='https://evmtestnet.confluxscan.io'>https://evmtestnet.confluxscan.io</a></td>
+      <td><a href='https://evmapi-testnet.confluxscan.__tld__/doc'>https://evmapi-testnet.confluxscan.__tld__</a></td><td>Testnet eSpace</td><td>Production</td>
+      <td><a target='_blank' href='https://evmtestnet.confluxscan.__tld__'>https://evmtestnet.confluxscan.__tld__</a></td>
     </tr>
   </table>
   

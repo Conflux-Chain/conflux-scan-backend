@@ -145,6 +145,7 @@ export interface StatConfig{
     reverseRecords: string,
 
     pullPrice: boolean,
+    tldOpenapi: string,
 }
 
 export interface Erc20WatchList{
