@@ -146,6 +146,10 @@ export interface StatConfig{
 
     pullPrice: boolean,
     tldOpenapi: string,
+
+    censorAppId: string,
+    censorApiKey: string,
+    censorSecretKey: string,
 }
 
 export interface Erc20WatchList{

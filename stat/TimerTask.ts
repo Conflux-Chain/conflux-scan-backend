@@ -27,6 +27,7 @@ import {StatTotalCfxHolder} from "./service/timerstat/StatTotalCfxHolder";
 import {StatDailyNFT} from "./service/timerstat/StatDailyNFT";
 import {StatTotalNFTHolder} from "./service/timerstat/StatTotalNFTHolder";
 import {Op} from "sequelize";
+import {CensorService} from "./service/censor/CensorService";
 
 async function main() {
     redirectLog()
@@ -42,6 +43,9 @@ async function main() {
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
+    //
+    const censorService = new CensorService({config: cfg, cfx}, {tx: 10, token: 10, nft: 10});
+    await censorService.schedule(1000 * 3);
     //
     await scheduleDailyActiveAddress()
         .then(()=>{scheduleDailyTokenStat()})

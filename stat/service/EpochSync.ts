@@ -25,6 +25,8 @@ import {PruneType} from "../model/PruneInfo";
 import {Errors} from "./common/LogicError";
 import {sleep} from "./tool/ProcessTool";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
+import {CensorItem} from "../model/CensorItem";
+import {CENSOR_TYPE} from "./censor/CensorService";
 const {ethers} = require("ethers");
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -67,6 +69,7 @@ export class EpochSync extends SyncBase{
     public static SYNC_VERIFY_LINK = true;
     public static SYNC_EVM_ADDR = true;
     public static SYNC_TRANSFERRED_NFT = true;
+    public static SYNC_CENSOR_ITEM = true;
 
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
@@ -88,7 +91,7 @@ export class EpochSync extends SyncBase{
         }catch(error) {
             return {syncCode: SyncCode.RETRY, message: `${error}`};
         }
-        const {epoch, blockHashArray, blockArray} = epochData;
+        const {epoch, blockHashArray, blockArray, transactionHashArray} = epochData;
         const epochTimestamp = epoch.timestamp;
 
         const minerBlockArray = await this.getMinerBlockArray(blockArray);
@@ -107,6 +110,7 @@ export class EpochSync extends SyncBase{
         const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
             blockArray, eventLogInfo, traceArray);
         const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
+        const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
 
         PruneNotifier.notifyBlock(minerBlockArray)
             .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
@@ -118,8 +122,8 @@ export class EpochSync extends SyncBase{
             syncCode: SyncCode.SUCCESS,
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
-            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray,
-                adminDestroyTxArray, addrTransferArray, transferredNftArray},
+            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray,
+                traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
         };
     }
 
@@ -148,6 +152,10 @@ export class EpochSync extends SyncBase{
             });
             EpochSync.SYNC_TRANSFERRED_NFT && await NftMeta.bulkCreate(modelData.transferredNftArray, {
                 updateOnDuplicate:["epochNumber"],
+                transaction: dbTx,
+            });
+            EpochSync.SYNC_CENSOR_ITEM && await CensorItem.bulkCreate(modelData.censorItemArray, {
+                updateOnDuplicate:["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],
                 transaction: dbTx,
             });
         });
@@ -229,8 +237,10 @@ export class EpochSync extends SyncBase{
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
             const addrTransferDel = await AddressTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
+            const censorItemDel = await CensorItem.destroy({where: {epochNumber}, transaction: dbTx});
             console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel},
-                traceCreateDel:${traceCreateDel},addrTransferDel:${addrTransferDel},contractDestroyDel:${contractDestroyDel}`);
+                traceCreateDel:${traceCreateDel},addrTransferDel:${addrTransferDel},contractDestroyDel:${contractDestroyDel},
+                censorItemDel:${censorItemDel}`);
         });
 
         if(TransferTpsService.TPS_TRANSFER_NOTIFY) {
@@ -267,6 +277,7 @@ export class EpochSync extends SyncBase{
             throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
         }
 
+        const transactionHashArray = [];
         for (const [blockIndex, block] of blockArray.entries()) {
             if (epochNumber === 0) {
                 break;
@@ -283,6 +294,7 @@ export class EpochSync extends SyncBase{
                     transaction:${JSON.stringify(lodash.pick(tx.receipt, ['blockHash', 'transactionHash']))} and
                     receipt:${JSON.stringify(lodash.pick(tx, ['blockHash', 'hash']))}`);
                 }
+                transactionHashArray.push(tx.receipt.transactionHash);
             }
         }
 
@@ -294,7 +306,7 @@ export class EpochSync extends SyncBase{
             timestamp: new Date(pivotBlock.timestamp * 1000),
         };
 
-        return {epoch, latestState, blockHashArray, blockArray, receipts};
+        return {epoch, latestState, blockHashArray, blockArray, transactionHashArray, receipts};
     }
 
     public async getEpoch(epochNumber) {
@@ -1224,4 +1236,17 @@ export class EpochSync extends SyncBase{
         }
         throw new Errors.BizError(`not implemented`);
     }
+
+    // ------------------------------ text censor -------------------------------
+    public getCensorItemArray(epoch, transactionHashArray) {
+        const {epoch: epochNumber, timestamp: createdAt} = epoch;
+
+        const items = [];
+        transactionHashArray.forEach(transactionHash => items.push({transactionHash, censorType: CENSOR_TYPE.TX}));
+        items.forEach(item => lodash.assign(item, {epochNumber, createdAt, updatedAt: createdAt}));
+
+        return items;
+    }
 }
+
+

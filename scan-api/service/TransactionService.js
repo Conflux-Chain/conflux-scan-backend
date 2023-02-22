@@ -1,6 +1,8 @@
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const {fetchEnsMap} = require("../../stat/dist/service/ens/EnsService");
+const {CENSOR_STATUS} = require("../../stat/dist/service/censor/CensorService");
+const {hexToUtf8, utf8ToHex} = require("../../stat/dist/service/tool/CensorTool");
 // const { KV, KEY_TX_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 const RECEIPT_FIELDS = [
@@ -44,6 +46,13 @@ class TransactionService {
       // old tx might not have receipt
       receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
       receipt = lodash.pick(receipt, RECEIPT_FIELDS);
+    }
+
+    const censorResult = await service.censor.getCensorResult(hash);
+    if(censorResult && (censorResult.censorStatus === CENSOR_STATUS.REJECT || censorResult.censorStatus === CENSOR_STATUS.SUSPECT)) {
+      const {data} = hexToUtf8(transaction.data.substr(2));
+      const mosaicData = service.censor.mosaicText(data);
+      transaction.data = `0x${utf8ToHex(mosaicData).data}`;
     }
 
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`

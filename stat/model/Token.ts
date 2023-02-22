@@ -1,5 +1,6 @@
 import {Model,Sequelize,DataTypes} from "sequelize";
 import {addTokenCache} from "../service/tool/TokenTool";
+import {CENSOR_STATUS} from "../service/censor/CensorService";
 
 export interface IToken{
     id?:number
@@ -27,6 +28,7 @@ export interface IToken{
     // security info
     securityCredits?:number
     auditResult?:boolean
+    censorStatus?: number
     destroyed?:boolean
     // extra info
     icon?:string
@@ -65,6 +67,7 @@ export class Token extends Model<IToken> implements IToken{
     // security info
     securityCredits?:number
     auditResult?:boolean
+    censorStatus?: number
     destroyed?:boolean
     // extra info
     icon?:string
@@ -101,6 +104,7 @@ export class Token extends Model<IToken> implements IToken{
             // security info
             securityCredits: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
             auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
             destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             // extra info
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
