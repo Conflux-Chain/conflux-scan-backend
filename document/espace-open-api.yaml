@@ -446,7 +446,7 @@ paths:
         - 'NFT Assets'
       description: "Get balances of NFT assets for account address."
       parameters:
-        - $ref: '#/components/parameters/ownerParam'
+        - $ref: '#/components/parameters/ownerParamMust'
         - $ref: '#/components/parameters/skipParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
       responses:
@@ -462,8 +462,8 @@ paths:
         - 'NFT Assets'
       description: "Get token id array of specified NFT contract for account address."
       parameters:
-        - $ref: '#/components/parameters/ownerParam'
         - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/ownerParam'
         - $ref: '#/components/parameters/skipParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/detailParam'
@@ -498,8 +498,8 @@ paths:
         - 'NFT Assets'
       description: "Search the NFT by NFT name and/or contract address."
       parameters:
+        - $ref: '#/components/parameters/nameParamMust'
         - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/nameParam'
       responses:
         200:
           description: ''
@@ -2909,6 +2909,13 @@ components:
       required: false
       schema:
         type: string
+    ownerParamMust:
+      name: owner
+      in: query
+      description: "Owner address, it's like 0x672158893ce87d812befd2209bc1b7818fe48b2a"
+      required: true
+      schema:
+        type: string
     detailParam:
       description: "(Deprecated, see 'withBrief' parameter)If show detail, the value is true/false."
       name: detail
@@ -2977,7 +2984,7 @@ components:
       required: true
       schema:
         type: string
-    nameParam:
+    nameParamMust:
       description: "The name attribute contained in nft metadata"
       name: name
       in: query

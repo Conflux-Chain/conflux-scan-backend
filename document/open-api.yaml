@@ -398,7 +398,7 @@ paths:
         - 'NFT Assets'
       description: "Get balances of NFT assets for account address."
       parameters:
-        - $ref: '#/components/parameters/ownerParam'
+        - $ref: '#/components/parameters/ownerParamMust'
         - $ref: '#/components/parameters/skipParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
       responses:
@@ -414,8 +414,8 @@ paths:
         - 'NFT Assets'
       description: "Get token id array of specified NFT contract for account address."
       parameters:
-        - $ref: '#/components/parameters/ownerParam'
         - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/ownerParam'
         - $ref: '#/components/parameters/skipParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/detailParam'
@@ -450,8 +450,8 @@ paths:
         - 'NFT Assets'
       description: "Search the NFT by NFT name and/or contract address."
       parameters:
+        - $ref: '#/components/parameters/nameParamMust'
         - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/nameParam'
       responses:
         200:
           description: ''
@@ -459,39 +459,6 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/NFTTokenFtsList"
-#  /nft/token/owners:
-#    get:
-#      tags:
-#        - 'NFT Assets'
-#      description: "Get a list of owners for a NFT. The owners are sorted by transfer timestamp with ascending direction"
-#      parameters:
-#        - $ref: '#/components/parameters/contractParamMust'
-#        - $ref: '#/components/parameters/tokenIdParamMust'
-#        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
-#        - $ref: '#/components/parameters/limitParam'
-#      responses:
-#        200:
-#          description: ''
-#          content:
-#            "application/json":
-#              schema:
-#                $ref: "#/components/schemas/NFTTokenOwnerList"
-#  /nft/collection/owners:
-#    get:
-#      tags:
-#        - 'NFT Assets'
-#      description: "Get a list of owners for a NFT collection. The owners are sorted by transfer timestamp with ascending direction"
-#      parameters:
-#        - $ref: '#/components/parameters/contractParamMust'
-#        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
-#        - $ref: '#/components/parameters/limitParam'
-#      responses:
-#        200:
-#          description: ''
-#          content:
-#            "application/json":
-#              schema:
-#                $ref: "#/components/schemas/NFTCollectionOwnerList"
   /nft/owners:
     get:
       tags:
@@ -2680,6 +2647,14 @@ components:
       required: false
       schema:
         type: string
+    ownerParamMust:
+      name: owner
+      in: query
+      description: "Owner address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      required: true
+      schema:
+        type: string
     detailParam:
       description: "(Deprecated, see 'withBrief' parameter)If show detail, the value is true/false."
       name: detail
@@ -2762,7 +2737,7 @@ components:
       required: true
       schema:
         type: string
-    nameParam:
+    nameParamMust:
       description: "The name attribute contained in nft metadata"
       name: name
       in: query

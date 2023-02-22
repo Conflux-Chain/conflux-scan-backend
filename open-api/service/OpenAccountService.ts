@@ -1,6 +1,6 @@
 import {StatApp} from "../../stat/StatApp";
 import {format} from "js-conflux-sdk";
-import {mustBeAddressParamIfPresent, mustBeEnumParamIfPresent} from "../../stat/service/common/utils";
+import {checkPresent, mustBeAddressParamIfPresent, mustBeEnumParamIfPresent} from "../../stat/service/common/utils";
 import {BalanceService} from "../../stat/service/watcher/BalanceService";
 import {setBody} from "../router/middleware";
 
@@ -11,12 +11,11 @@ import {setBody} from "../router/middleware";
 export async function listAccountAssets(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
-    const {account: base32} = ctx.request.query;
-    // if (!Boolean(base32)) {
-    //     setBody(ctx, ctx.request.query, CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG+"account")
-    //     return
-    // }
-    const assets = await BalanceService.listAccountBalanceInner(base32)
+
+    const {account} = ctx.request.query;
+    checkPresent({account}, ['account']);
+
+    const assets = await BalanceService.listAccountBalanceInner(account)
     polishAssertList(assets)
     setBody(ctx, assets)
 }
