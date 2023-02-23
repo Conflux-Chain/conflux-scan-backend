@@ -57,6 +57,10 @@ export class QuoteSync {
     }
 
     private async run() {
+        const {
+            app: {config},
+        } = this;
+
         const rawList = await Token.findAll({
             attributes: [
                 ['base32', 'address'],
@@ -81,7 +85,7 @@ export class QuoteSync {
             return;
         }
 
-        await this.pullPrice(tokenList).catch((e) => console.log(`quote_sync.fromHk ${e?.code}`));
+        config.pullPrice && await this.pullPrice(tokenList).catch((e) => console.log(`quote_sync.fromHk ${e?.code}`));
         await this.updateFromMarketCap(tokenList).catch((e) => console.log(`quote_sync.fromCoinMarketCap ${e?.code}`));
         await this.updateFromMoonDex(tokenList).catch((e) => console.log(`quote_sync.fromMoonDex ${e?.code}`));
         await this.updateFromBinance(tokenList).catch((e) => console.log(`quote_sync.fromBinance ${e?.code}`));
@@ -323,10 +327,11 @@ export class QuoteSync {
 
     //======================================================================
     private async pullPrice(tokenList) {
+        const url = this.getSrcUrl();
         const queryParams = tokenList.map(token => `addressArray=${token['address']}`).join('&');
-        const resp = await superagent.get(`https://www.confluxscan.io/v1/token?${queryParams}`)
+        const resp = await superagent.get(`${url}/v1/token?${queryParams}`)
             .timeout({response, deadline});
-        const tokenArray = lodash.get(resp, ['body', 'data', 'list']);
+        const tokenArray = lodash.get(resp, ['body', 'data', 'list']) || lodash.get(resp, ['body', 'result', 'list']);
 
         const quoteArray = tokenArray.map(({address, name, symbol, price}) => ({
             address: toBase32(address),
@@ -336,6 +341,21 @@ export class QuoteSync {
             price,
         }));
         await this.upsertQuote(quoteArray);
+    }
+
+    private getSrcUrl() {
+        switch (StatApp.networkId) {
+            case 1029:
+                return 'https://www.confluxscan.io';
+            case 1:
+                return 'https://testnet.confluxscan.io';
+            case 1030:
+                return 'https://evm.confluxscan.io';
+            case 71:
+                return 'https://evmtestnet.confluxscan.io';
+            default:
+                throw new Error(`pull price at network ${StatApp.networkId} not supported`)
+        }
     }
 
     //======================================================================

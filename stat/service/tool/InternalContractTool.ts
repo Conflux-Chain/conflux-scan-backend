@@ -88,7 +88,9 @@ async function registerContract(contract) {
         website: contract.website,
         abi: contract.abi,
     };
-    await Contract.upsert(newContract);
+
+    const [, r1] = await Contract.upsert(newContract);
+    console.log(`newContract ---1--- r1 ${r1}, ${JSON.stringify(newContract)}`)
 
     const sourceCode = await fs.readFileSync(`../../../../contracts/${contract.name}.sol`);
     const newContractVerify = {
@@ -102,7 +104,8 @@ async function registerContract(contract) {
         createdAt: new Date(),
         updatedAt: new Date(),
     };
-    await ContractVerify.upsert(newContractVerify);
+    const [, r2] = await ContractVerify.upsert(newContractVerify);
+    console.log(`newContractVerify ---2--- r1 ${r2},  ${JSON.stringify(newContractVerify)}`)
 }
 
 async function close(){
@@ -114,7 +117,7 @@ async function run() {
     await init();
     // do business
     for (const contract of internalContractArray) {
-        if(contract.name === 'Create2Factory'){
+        if(contract.name === 'ParamsControl'){
             await registerContract(contract);
         }
     }

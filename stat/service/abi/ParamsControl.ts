@@ -107,6 +107,25 @@ export const abi = [
     {
         "inputs": [
             {
+                "internalType": "uint64",
+                "name": "",
+                "type": "uint64"
+            }
+        ],
+        "name": "posStakeForVotes",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "address",
                 "name": "addr",
                 "type": "address"
@@ -166,4 +185,4 @@ export const abi = [
         "stateMutability": "view",
         "type": "function"
     }
-];
+]

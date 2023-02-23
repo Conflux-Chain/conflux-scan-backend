@@ -98,9 +98,10 @@ export function setBody(ctx, data: any, code = 0, message = 'OK') {
     ctx.body = {code, message, data};
 }
 // https://swaggerstats.io/guide/conf.html#options
-export function addSwagger(app: Koa, prefix, swaggerYaml) {
+export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
     console.log(` loading swaggerYaml:${swaggerYaml}`)
-    let spec = yamljs.load(swaggerYaml);
+    const spec = yamljs.load(swaggerYaml);
+    spec.info.description = spec.info.description.replace(/__tld__/gi, tld)
     console.log(` loading swaggerYaml:${swaggerYaml} done`)
     // metrics
     app.use(e2k(swStats.getMiddleware({
