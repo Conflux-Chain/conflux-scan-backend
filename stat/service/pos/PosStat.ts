@@ -9,6 +9,8 @@ import {CfxTransfer} from "../../model/CfxTransfer";
 import {makeIdV} from "../../model/HexMap";
 import {intParam} from "../common/utils";
 
+const lodash = require('lodash');
+
 export interface IPosDailyStatMix {
     id?:number; day:Date; v:number; biz: BIZ
 }
@@ -117,8 +119,12 @@ export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = n
 }
 export function limitListOnBody(ctx: any) {
     const limit = intParam(ctx.request.query, 'limit', 0)
+
+    let list = ctx.body.list;
+    ctx.body.list = !list?.length ? list : lodash.orderBy(list, ['day', 'statDay'], ['desc', 'desc']);
+
     if (limit && ctx.body.list?.length > limit) {
-        ctx.body.list = ctx.body.list.slice(-limit)
+        ctx.body.list = ctx.body.list.slice(0, limit)
     }
 }
 export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any, dayCondition = '') {
