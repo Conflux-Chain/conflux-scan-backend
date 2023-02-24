@@ -21,7 +21,7 @@ const jsonrpc = new JsonRPCFlow();
 jsonrpc.method('supply',
   parameter({}),
 
-  cacheFlow(60 * 1000),
+  //cacheFlow(60 * 1000),
   durationAlarmFlow(5 * 1000, { method: 'supply' }),
   async function () {
     // const {
