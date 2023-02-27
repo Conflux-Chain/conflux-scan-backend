@@ -92,5 +92,7 @@ export const IPFSGatewayArray = [
     'ipfs.zod.tv',
     'gravity.jup.io',
     'fzdqwfb5ml56oadins5jpuhe6ki6bk33umri35p5kt2tue4fpws5efid.onion',
-    'cocafe.mypinata.cloud'
+    'cocafe.mypinata.cloud',
+    '4everland.io',
+    'gateway.4everland.link'
 ];

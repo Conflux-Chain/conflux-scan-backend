@@ -60,6 +60,8 @@ export class HomeDashboardService{
         const twoYearUnlockBalance = await confluxSDK.getBalance(CONST.TWO_YEAR_UNLOCK);
         const fourYearUnlockBalance = await confluxSDK.getBalance(CONST.FOUR_YEAR_UNLOCK);
 
+        supplyInfo.totalCirculating = `${BigInt(supplyInfo.totalCirculating) - BigInt(nullAddressBalance)}`;
+
         return { ...supplyInfo, nullAddressBalance, twoYearUnlockBalance, fourYearUnlockBalance };
     }
 
