@@ -24,7 +24,7 @@ export async function init() {
         await next();
         const rt = ctx.response.get('X-Response-Time');
         if(!ctx.url.endsWith('pos-info') && !ctx.url.endsWith('tps')){
-            console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
+            // console.log(`request logger: ${ctx.method} ${ctx.url} - ${rt}`);
         }
     });
     app.use(proxyPath)
