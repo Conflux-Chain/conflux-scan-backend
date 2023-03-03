@@ -165,7 +165,7 @@ export class CensorService {
 
     private mosaicText(str: string) {
         const len = str.length;
-        return len === 1 ? str : `${str.substr(0, 1)}***${str.substr(len - 1, len)}`;
+        return len <= 2 ? '***' : `${str.substr(0, 1)}***${str.substr(len - 1, len)}`;
     }
 
     // -------------------------- third party censor ----------------------------
