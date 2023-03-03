@@ -8,23 +8,19 @@ const optEVM = {skip: 1, skipMax: 10000, limit: 100, limitMax: 100};
 const optEVMStat = {skip: 1, skipMax: 10000, limit: 100, limitMax: 2000};
 
 export function paginateCore(reqObj: object, options?: any) {
-    options && lodash.assign(optCore, options);
-    return paginate(reqObj, 'skip', 'limit', optCore);
+    return paginate(reqObj, 'skip', 'limit', lodash.assign({...optCore}, options));
 }
 
 export function paginateCoreStat(reqObj: object, options?: any) {
-    options && lodash.assign(optCoreStat, options);
-    return paginate(reqObj, 'skip', 'limit', optCoreStat);
+    return paginate(reqObj, 'skip', 'limit', lodash.assign({...optCoreStat}, options));
 }
 
 export function paginateEVM(reqObj: object, options?: any) {
-    options && lodash.assign(optEVM, options);
-    return paginate(reqObj, 'page', 'offset', optEVM);
+    return paginate(reqObj, 'page', 'offset', lodash.assign({...optEVM}, options));
 }
 
 export function paginateEVMStat(reqObj: object, options?: any) {
-    options && lodash.assign(optEVMStat, options);
-    return paginate(reqObj, 'page', 'offset', optEVMStat);
+    return paginate(reqObj, 'page', 'offset', lodash.assign({...optEVMStat}, options));
 }
 
 function paginate(reqObj: object, skipKey: string, limitKey: string, options?: any) {

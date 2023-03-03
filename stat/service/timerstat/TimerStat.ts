@@ -2,6 +2,7 @@ import {Op} from "sequelize";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {EpochTaskTokenTransfer} from "../../TokenTransferSync";
+import {StatApp} from "../../StatApp";
 
 const moment = require('moment');
 
@@ -124,7 +125,7 @@ export abstract class TimerStat {
 
     protected getStatRangeMin(lastStat, minutes: number): {rangeBegin: Date, rangeEnd: Date}{
         if(!lastStat){
-            const rangeBegin = new Date('2020-10-28 16:00:00');
+            const rangeBegin = StatApp.isEVM ? new Date('2022-02-20 22:00:00') : new Date('2020-10-28 16:00:00');
             const rangeEnd = new Date(rangeBegin);
             rangeEnd.setMinutes(rangeEnd.getMinutes() + minutes);
             return { rangeBegin, rangeEnd };

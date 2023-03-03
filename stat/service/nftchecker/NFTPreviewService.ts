@@ -414,7 +414,7 @@ export class NFTPreviewService {
             /*const nftObj = this.getNFTCacheInfo({ address, tokenId });*/
             const nftObj = await this.getCache(address, hex40id, String(tokenId), {method, gateway});
             if (!forceFlush && nftObj && !legacyNFTs.has(address)) {
-                console.log(`hit cache contractId ${hex40id} tokenId ${tokenId}`);
+                // console.log(`hit cache contractId ${hex40id} tokenId ${tokenId}`);
                 const cacheInfo = {imageMinHeight: height};
                 return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));
             }
@@ -425,7 +425,7 @@ export class NFTPreviewService {
             .catch(e => { throw new Errors.CallNFTContractError(
                 JSON.stringify(lodash.assign(err, { message: `call contract method ${method}(${tokenId}) occurs ${e.message}`}))
             )});
-            rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16)) : rawUrl;
+            rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16).padStart(64, '0')) : rawUrl;
             gatewayUrl = this.replaceGateway({gateway, rawUrl});
 
             // get metadata
