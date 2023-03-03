@@ -26,6 +26,7 @@ const { ContractQuery } = require('../../stat/dist/service/ContractQuery');
 const { TokenQuery } = require('../../stat/dist/service/TokenQuery');
 const {ENSCheckerQuery} = require("../../stat/dist/service/ens/ENSCheckerQuery");
 const {AccountQuery} = require("../../stat/dist/service/AccountQuery");
+const {CensorService} = require("../../stat/dist/service/censor/CensorService");
 
 function serviceLoader(app) {
   return {
@@ -57,6 +58,7 @@ function serviceLoader(app) {
     tokenRdb: new TokenQuery(app),
     ensCheckerQuery: new ENSCheckerQuery(app),
     accountQuery: new AccountQuery(app),
+    censor: new CensorService(app),
   };
 }
 

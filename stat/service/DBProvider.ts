@@ -80,6 +80,7 @@ import {AddrEvent3525, Event3525, Slot3525, SlotChanged, TaskEvent3525, TokenSlo
 import {DailyNFTStat} from "../model/DailyNFTStat";
 import {NFTMintStat} from "../model/NFTMintStat";
 import {DailyNFTHolder} from "../model/DailyNFTHolder";
+import {CensorItem} from "../model/CensorItem";
 let conf
 export function createDB(config) {
     conf = config
@@ -209,6 +210,7 @@ export async function initPartialModel(sequelize) {
     RateKey.register(sequelize);
     RateHit.register(sequelize)
     ESpaceHex40Map.register(sequelize)
+    CensorItem.register(sequelize)
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

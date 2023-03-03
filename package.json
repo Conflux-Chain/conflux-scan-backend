@@ -27,6 +27,7 @@
     "abi-decoder": "^2.4.0",
     "agentkeepalive": "^4.1.4",
     "ali-oss": "~6.16.0",
+    "baidu-aip-sdk": "^4.16.10",
     "bigfixed": "0.0.2",
     "cbor": "5.1.0",
     "csv-stringify": "5.5.3",
