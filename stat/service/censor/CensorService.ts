@@ -143,7 +143,7 @@ export class CensorService {
         for (const token of tokenArray) {
             const {id, name, symbol} = token;
 
-            const result = await this.censor(`${name}${symbol}`);
+            const result = await this.censor(`${name},${symbol}`);
 
             const updateToken = {censorStatus: result.conclusionType, updatedAt: new Date()} as any;
             if(result.conclusionType === CENSOR_STATUS.REJECT || result.conclusionType === CENSOR_STATUS.SUSPECT){
