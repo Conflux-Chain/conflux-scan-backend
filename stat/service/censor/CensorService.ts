@@ -3,6 +3,7 @@ import {Op} from "sequelize";
 import {Token} from "../../model/Token";
 import {MetaStatus, NftMeta} from "../nftchecker/NftMetaStorage";
 import {hexToUtf8} from "../tool/CensorTool";
+import {Contract} from "../../model/Contract";
 
 const AipContentCensorClient = require("baidu-aip-sdk").contentCensor;
 const HttpClient = require("baidu-aip-sdk").HttpClient;
@@ -14,7 +15,7 @@ export class CensorService {
     private itemsPerTime;
     private debug = false;
 
-    public constructor(app: any, itemsPerTime: any = {tx: 1, token: 1, nft: 1}) {
+    public constructor(app: any, itemsPerTime: any = {tx: 1, contract: 1, token: 1, nft: 1}) {
         this.app = app;
         this.itemsPerTime = itemsPerTime;
     }
@@ -45,6 +46,7 @@ export class CensorService {
             this.init();
         }
         await this.censorTransactions().catch((e) => console.log(`text_censor.tx ${e}`));
+        await this.censorContracts().catch((e) => console.log(`text_censor.contract ${e}`));
         await this.censorTokens().catch((e) => console.log(`text_censor.token ${e}`));
         await this.censorNFTs().catch((e) => console.log(`text_censor.nft ${e}`));
         await this.evictCensorItems();
@@ -96,6 +98,34 @@ export class CensorService {
 
             await CensorItem.update({censorStatus: result.conclusionType, updatedAt: new Date()},
                 {where:{id}});
+        }
+    }
+
+    private async censorContracts() {
+        const contractArray = await Contract.findAll({
+            where: {censorStatus: {[Op.in]: [CENSOR_STATUS.TO_CENSOR, CENSOR_STATUS.FAIL]}},
+            order: [['createdAt', 'asc']],
+            limit: this.itemsPerTime.contract,
+        });
+        if(!contractArray?.length) {
+            return;
+        }
+
+        for (const contract of contractArray) {
+            const {id, name} = contract;
+            if(name === null) {
+                await Contract.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()} as any,
+                    {where:{id}});
+                continue;
+            }
+
+            const result = await this.censor(name);
+
+            const updateContract = {censorStatus: result.conclusionType, updatedAt: new Date()} as any;
+            if(result.conclusionType === CENSOR_STATUS.REJECT || result.conclusionType === CENSOR_STATUS.SUSPECT){
+                updateContract.name = this.mosaicText(name);
+            }
+            await Contract.update(updateContract, {where:{id}});
         }
     }
 
