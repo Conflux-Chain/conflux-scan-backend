@@ -107,8 +107,11 @@ export class EpochSync extends SyncBase{
         const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
         const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
 
-        const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
-            blockArray, eventLogInfo, traceArray);
+        const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
+        const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
+        const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
+        const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
+            txArray);
         const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
         const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
 
@@ -122,8 +125,8 @@ export class EpochSync extends SyncBase{
             syncCode: SyncCode.SUCCESS,
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
-            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray,
-                traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
+            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray,
+                adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
         };
     }
 
@@ -141,7 +144,7 @@ export class EpochSync extends SyncBase{
     async save(epochNumber, modelData) {
         const { tokenQuery } = this.app;
         await Epoch.sequelize.transaction(async (dbTx) => {
-            EpochSync.SYNC_EPOCH && await Epoch.add(modelData.epoch, dbTx);
+            EpochSync.SYNC_EPOCH && await Epoch.create(modelData.epoch, {transaction: dbTx});
             EpochSync.SYNC_BLOCK && await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             EpochSync.SYNC_ANNOUNCE && await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
             EpochSync.SYNC_TRACE && await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
@@ -697,11 +700,7 @@ export class EpochSync extends SyncBase{
     }
 
     // ---------------------------- address transfer ----------------------------
-    public async getAddrTransferArrayDB(epochNumber,epochTimestamp,blockHashArray,blockArray,eventLogInfo,traceArray){
-        const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
-        const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
-        const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
-
+    public async getAddrTransferArrayDB(epochNumber,tokenTransferArray,cfxTransferArray,txArray){
         const result = [];
         [...tokenTransferArray, ...cfxTransferArray, ...txArray].forEach( transfer => {
             result.push({...transfer, addressId: transfer.fromId})
@@ -750,7 +749,7 @@ export class EpochSync extends SyncBase{
         return addrTxArray;
     }
 
-    private async getTokenTransferArrayDB(epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
+    public async getTokenTransferArrayDB(epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
         transfer1155Array}) {
         const {
             ADDRESS_TRANSFER_TYPE: {ERC20, ERC721, ERC1155}
@@ -846,8 +845,8 @@ export class EpochSync extends SyncBase{
         return this.NAME_TYPE_MAP[typeName].code;
     }
 
-    // ---------------------------- transferred nft -----------------------------
-    public getTransferredNftArray(epochNumber, addrTransferArray){
+    // ----------------------------- nft transfer -------------------------------
+    public getTransferredNftArray(epochNumber, addrTransferArray) {
         const {
             ADDRESS_TRANSFER_TYPE: {ERC721, ERC1155}
         } = CONST;
