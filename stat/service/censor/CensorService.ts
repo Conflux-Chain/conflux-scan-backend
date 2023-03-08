@@ -4,7 +4,9 @@ import {Token} from "../../model/Token";
 import {MetaStatus, NftMeta} from "../nftchecker/NftMetaStorage";
 import {hexToUtf8} from "../tool/CensorTool";
 import {Contract} from "../../model/Contract";
+import {format} from "js-conflux-sdk";
 
+const lodash = require('lodash');
 const AipContentCensorClient = require("baidu-aip-sdk").contentCensor;
 const HttpClient = require("baidu-aip-sdk").HttpClient;
 
@@ -66,7 +68,7 @@ export class CensorService {
 
     private async censorTransactions() {
         const {
-            app: { cfx },
+            app: { cfx, traceCreateQuery },
         } = this;
 
         const txCensorArray = await CensorItem.findAll({
@@ -82,6 +84,13 @@ export class CensorService {
             const {id, transactionHash} = txCensor;
             const tx = await cfx.getTransactionByHash(transactionHash);
             if(!tx || tx.to === null || tx.data === '0x') {
+                await CensorItem.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()},
+                    {where:{id}});
+                continue;
+            }
+
+            const traceCreate = traceCreateQuery.query(format.hexAddress(tx.to));
+            if(traceCreate.address && tx.data.length > 10 && (tx.data.length - 10) % 64 === 0) {
                 await CensorItem.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()},
                     {where:{id}});
                 continue;
