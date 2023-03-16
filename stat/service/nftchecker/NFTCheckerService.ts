@@ -13,6 +13,7 @@ import {TokenQuery} from "../TokenQuery";
 import {toBase32} from "../tool/AddressTool";
 import {emptyField} from "../common/utils";
 import {getNFTOwnerCount} from "../../model/TransferCount";
+import {AddressNft} from "../../model/AddrNft";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -193,6 +194,49 @@ export class NFTCheckerService {
         }
 
         return {total, list: list || []};
+    }
+
+    public async getNftTokensForOpenApiPlus({owner, contract, tokenId, skip = 0, limit = 10}
+        : { owner?: string, contract: string, tokenId: string, skip: number, limit: number}) {
+        const ownerId = owner ? await getAddrId(owner) : owner;
+        const contractId = contract ? await getAddrId(contract) : contract;
+        if ((owner && !ownerId) || (contract && !contractId)) {
+            return {total: 0, list: []};
+        }
+
+        const {type} = await TokenQuery.detectTokenType({hex40id: contractId});
+        if (type !== CONST.TRANSFER_TYPE.ERC1155 && type !== CONST.TRANSFER_TYPE.ERC721) {
+            return {total: 0, list: []};
+        }
+
+        const options: any = {
+            where: emptyField({addressId: ownerId, contractId, tokenId, value: {[Op.gt]: 0}}),
+            order: [['updatedAt', 'desc']],
+            offset: skip,
+            limit,
+            raw: true,
+            logging: (sql) => console.log(`sql for nft tokens: ${sql}`),
+        };
+        if (!ownerId) options.where.addressId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
+        const page = await AddressNft.findAndCountAll(options);
+        const {count: total, rows} = page;
+
+        const list = [];
+        if (rows?.length) {
+            const base32 = toBase32(contract);
+            const ownerIdSet = new Set(rows.map(item => item.addressId));
+            const idHexMap = await idHex40Map([...ownerIdSet] as number[]);
+            const idBase32Map = convert2base32map(idHexMap);
+            rows.forEach(item => list.push({
+                owner: idBase32Map.get(item.addressId),
+                contract: base32,
+                tokenId: item.tokenId,
+                amount: item.value,
+                type: item.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code ? 'CRC721' : 'CRC1155',
+            }));
+        }
+
+        return {total, list};
     }
 
     public async getNftTokensByFtsForOpenApi({contract, name}: {contract?: string, name: string}) {

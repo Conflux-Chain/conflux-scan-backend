@@ -168,3 +168,13 @@ services:
       PORT: 8087
     restart: always
     command: node /stat-root/stat/dist/FullEpochSync.js backward syncTransfer prune
+  nft_transfer:
+    image: node:14.17.5
+    volumes:
+      - ./:/stat-root
+      - ./log/:/log
+    network_mode: host
+    environment:
+      PORT: 8087
+    restart: always
+    command: node /stat-root/stat/dist/FullEpochNftTransferSync.js

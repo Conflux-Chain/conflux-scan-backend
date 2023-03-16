@@ -1,6 +1,6 @@
 import {Sequelize, QueryTypes} from "sequelize";
 import {Address, AddressInfo, ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
-import {Epoch} from "../model/Epoch";
+import {Epoch, EpochNftTransfer} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV, Position} from "../model/KV";
@@ -81,6 +81,8 @@ import {DailyNFTStat} from "../model/DailyNFTStat";
 import {NFTMintStat} from "../model/NFTMintStat";
 import {DailyNFTHolder} from "../model/DailyNFTHolder";
 import {CensorItem} from "../model/CensorItem";
+import {createAddressNftTable} from "../model/AddrNft";
+import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 let conf
 export function createDB(config) {
     conf = config
@@ -146,6 +148,8 @@ export async function initPartialModel(sequelize) {
         createFullTransactionTable(sequelize),
         createAddressTxTable(sequelize),
         createAddressTransferTable(sequelize),
+        createAddressNftTransferTable(sequelize),
+        createAddressNftTable(sequelize),
     ])
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
@@ -193,6 +197,7 @@ export async function initPartialModel(sequelize) {
     StreamErrorLog.register(sequelize)
     KV.register(sequelize);
     Epoch.register(sequelize);
+    EpochNftTransfer.register(sequelize);
     ContractVerify.register(sequelize);
     ProxyVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
@@ -257,6 +262,7 @@ export async function initModel(sequelize) {
     PosDailyStat.register(sequelize)
     PosDailyStatMix.register(sequelize)
     PosGap.register(sequelize)
+    NftTransfer.register(sequelize)
 
     await checkApiLogIpField()
 }

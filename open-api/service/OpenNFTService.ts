@@ -56,6 +56,27 @@ export async function listNFTTokens(ctx) {
     setBody(ctx, data)
 }
 
+export async function listNFTTokensPlus(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner', 'contract');
+    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit', 'tokenId');
+    mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
+
+    const {owner, contract, tokenId, withBrief, withMetadata} = ctx.request.query;
+    const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
+
+    const data = await getApiService().nftCheckerService.getNftTokensForOpenApiPlus({owner, contract, tokenId, skip, limit});
+    if(withBrief === 'true' || withMetadata === 'true'){
+        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
+        ctx.set('external-ms', externalMs)
+    }
+
+    data?.list?.forEach(row => {
+        StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
+    });
+    setBody(ctx, data)
+}
+
 export async function listNFTTokensByFts(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
 
