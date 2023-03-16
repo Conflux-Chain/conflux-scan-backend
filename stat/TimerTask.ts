@@ -7,6 +7,7 @@ import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {scheduleDailyActiveAddress} from "./model/StatAddress";
 import {scheduleDailyTokenStat} from "./service/DailyTokenSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
+import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
@@ -40,11 +41,13 @@ async function main() {
     const cfxStatus:any = await cfx.getStatus()
     StatApp.networkId = cfxStatus.networkId
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+    const traceCreateQuery = new BlockTraceCreateQuery({});
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
     //
-    const censorService = new CensorService({config: cfg, cfx}, {tx: 10, token: 10, nft: 10});
+    const censorService = new CensorService({config: cfg, cfx, traceCreateQuery},
+        {tx: 10, token: 10, nft: 10});
     await censorService.schedule(1000 * 3);
     //
     await scheduleDailyActiveAddress()

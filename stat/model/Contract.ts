@@ -1,4 +1,5 @@
 import {Model, Sequelize, DataTypes, UniqueConstraintError} from "sequelize";
+import {CENSOR_STATUS} from "../service/censor/CensorService";
 
 export interface IContract{
     id?:number
@@ -11,6 +12,7 @@ export interface IContract{
     sourceCode?:string
     icon?:number
     destroyed?:boolean
+    censorStatus?: number
 }
 
 export class Contract extends Model<IContract> implements IContract{
@@ -24,6 +26,7 @@ export class Contract extends Model<IContract> implements IContract{
     sourceCode?:string
     icon?:number
     destroyed?:boolean
+    censorStatus?: number
 
     static register(seq:Sequelize) {
         Contract.init({
@@ -37,6 +40,7 @@ export class Contract extends Model<IContract> implements IContract{
             sourceCode: {type: DataTypes.TEXT({length:'long'}), allowNull: true, },
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
             destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
         },{
             tableName: 'contract',
             sequelize: seq,

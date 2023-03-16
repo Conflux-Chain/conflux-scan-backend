@@ -48,16 +48,17 @@ class TransactionService {
       receipt = lodash.pick(receipt, RECEIPT_FIELDS);
     }
 
+    let txInputData = transaction.data;
     const censorResult = await service.censor.getCensorResult(hash);
     if(censorResult && (censorResult.censorStatus === CENSOR_STATUS.REJECT || censorResult.censorStatus === CENSOR_STATUS.SUSPECT)) {
       const {data} = hexToUtf8(transaction.data.substr(2));
       const mosaicData = service.censor.mosaicText(data);
-      transaction.data = `0x${utf8ToHex(mosaicData).data}`;
+      txInputData = `0x${utf8ToHex(mosaicData).data}`;
     }
 
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
-    return lodash.defaults({ aggregate }, transaction, receipt, {
+    return lodash.defaults({ aggregate, data: txInputData }, transaction, receipt, {
       risk,
       timestamp: epoch.timestamp,
       syncTimestamp: epoch.timestamp,
