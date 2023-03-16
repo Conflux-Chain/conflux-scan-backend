@@ -639,6 +639,26 @@ export class FullBlockQuery {
             return result;
         }
 
+        // oldEpochHeight
+        if(pending === 'oldEpochHeight'){
+            const pendingDetail = {
+                code: 41,
+                message: 'The epoch height of the first tx is too old to be packed. The sender needs to submit a new transaction to update the tx pool.',
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
+        // outdatedStatus
+        if(pending === 'outdatedStatus'){
+            const pendingDetail = {
+                code: 51,
+                message: 'The full node internal error. The sender needs to submit a new transaction to update the tx pool.',
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
         // ready
         if(firstTxStatus?.endsWith('ready')){
             const proposedEpoch = epochHeight;
