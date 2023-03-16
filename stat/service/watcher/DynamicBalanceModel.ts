@@ -30,7 +30,6 @@ export class DynamicBalanceModel {
             where: {contractId: this.contractId, ...where},
             order, offset, limit, raw,
             ...rest,
-            logging: sql => console.log(`tokenBalance ---1--- ${sql}`),
         })
     }
 
