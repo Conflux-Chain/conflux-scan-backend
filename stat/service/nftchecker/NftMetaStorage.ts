@@ -2,7 +2,7 @@ import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
 import { AbortController } from "node-abort-controller";
 import {createTable} from "../DBProvider";
 import {Hex40Map} from "../../model/HexMap";
-import {NftMint} from "../../model/Token";
+import {NftMint, Token} from "../../model/Token";
 import {KV, KEY_FASTEST_IPFS_GATEWAY, NFT_META_POS_EPOCH} from "../../model/KV";
 import {CONST} from "../common/constant";
 import {createConflux} from "../common/utils";
@@ -200,11 +200,10 @@ const ErrorType = {
 }
 
 const context: any = {
-    cfx: null, metaParser: null,
+    cfx: null,
     gateway: "",
     count: 0,
-    debugStuck: "",
-    debugStuck2: "",
+    debug: false,
 }
 
 // automatically adjust request rate
@@ -236,7 +235,7 @@ async function test1() {
 
 // ------------------------- gateway command -----------------------------
 async function getGateway() {
-    await new IPFSGatewaySync({})['detectGateway']()
+    await new IPFSGatewaySync({})['detectGateways']()
     console.log(`best gateway [${IPFSGatewaySync.fastest}]`)
 }
 
@@ -247,7 +246,7 @@ async function diff(options: { save?: boolean, debug?: boolean, updateAll?: bool
     debug: false,
     nft: { cid: '', refresh: false }
 }) {
-    await setup('useDbGateway');
+    await setup();
     const processCid = options?.nft?.cid;
     const refresh = options?.nft?.refresh;
 
@@ -331,7 +330,7 @@ async function diff(options: { save?: boolean, debug?: boolean, updateAll?: bool
 }
 
 async function migrate() {
-    await setup('useDbGateway');
+    await setup();
     const nftMetaOldList = await NftMetaOld.sequelize.query('select cid, count(*) as cntr from nft_meta group by cid',
         {type: QueryTypes.SELECT, raw: true, logging: sql => console.log(`NftMetaOld group sql ${sql}`)});
     console.log(`nftMetaOldList ${nftMetaOldList.length}`)
@@ -387,7 +386,7 @@ async function reindex(options: { save?: boolean, debug?: boolean, updateAll?: b
     debug: false,
     nft: { cid: '', refresh: false }
 }) {
-    await setup('useDbGateway');
+    await setup();
     const processCid = options?.nft?.cid;
     const refresh = options?.nft?.refresh;
 
@@ -488,32 +487,27 @@ async function reindex(options: { save?: boolean, debug?: boolean, updateAll?: b
 }
 
 // --------------------------- run command -------------------------------
-async function run(cmd, gateway: string) {
+async function run(cmd, gateway) {
     await setup(gateway)
+    await syncIPFSGateway();
     await startMetaWorker(cmd);
 }
 
-async function setup(gateway: string = 'https://ipfs.io', confluxConfig: any = undefined) {
+async function setup(gateway: string = undefined, confluxConfig: any = undefined) {
     const config = confluxConfig ? {conflux: confluxConfig} : (await init());
+
     const cfx = createConflux(config.conflux)
     await cfx.updateNetworkId();
+    context.cfx = cfx;
     console.log(`networkId ${cfx.networkId}`)
 
-    if (gateway == 'useDbGateway') {
-        gateway = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, "")
-        if (!gateway) {
-            console.log(`gateway not configured in db`)
-            process.exit(404)
-        }
-        if (!gateway.startsWith("http")) {
-            gateway = `https://${gateway}`
-        }
-    }
-    console.log(`ipfs gateway ${gateway}`)
+    context.cmdGateway =  gateway;
+    console.log(`cmdGateway ${gateway}`)
+}
 
-    context.cfx = cfx;
-    context.gateway = gateway;
-    context.metaParser = new NFTMetaParser(cfx, gateway);
+async function syncIPFSGateway() {
+    const ipfsGatewaySync = new IPFSGatewaySync({});
+    await ipfsGatewaySync.schedule();
 }
 
 export async function startMetaWorker(cmd: string) {
@@ -565,7 +559,11 @@ async function syncMeta() {
 
     const contractMap = await getContractInfo(tasks.map(bean => Number(bean.contractId)));
     const results = await batchFetchMeta(tasks, contractMap);
-    const metaFtsArray = results.map(nftMeta => lodash.pick(nftMeta, ['contractId', 'tokenId', 'name']));
+    const metaFtsArray = results.map(nftMeta => {
+        const nftMetaFts = lodash.pick(nftMeta, ['contractId', 'tokenId', 'name']);
+        nftMetaFts.name = !nftMetaFts.name ? nftMetaFts.name : nftMetaFts.name?.substring(0, 256);
+        return nftMetaFts;
+    });
 
     const {epochNumber} = tasks[tasks.length - 1];
     await NftMeta.sequelize.transaction(async dbTx => {
@@ -592,7 +590,9 @@ async function getContractInfo(contractIds: number[]) {
     const contractArray = await Promise.all(contractIds.map(async contractId =>{
         const hex = await Hex40Map.findByPk(contractId);
         const typeInfo = await TokenQuery.detectTokenType({hex40id: contractId});
-        return {contractId, hex: '0x' + hex.hex, is1155: typeInfo?.type === CONST.TRANSFER_TYPE.ERC1155};
+        const token = await Token.findOne({attributes: ["ipfsGateway"], where: {hex40id: contractId}});
+        return {contractId, hex: '0x' + hex.hex, is1155: typeInfo?.type === CONST.TRANSFER_TYPE.ERC1155,
+            ipfsGateway: token.ipfsGateway};
     }));
     return lodash.keyBy(contractArray, 'contractId');
 }
@@ -600,13 +600,15 @@ async function getContractInfo(contractIds: number[]) {
 async function batchFetchMeta(taskArray, contractMap) {
     return Promise.all(taskArray.map(async ({epochNumber, contractId, tokenId}) => {
         const contractInfo = contractMap[Number(contractId)];
-        const {uri, content, name, errorType, error} = await fetchMeta(contractInfo.hex, tokenId, contractInfo.is1155);
+        const ipfsGateway = await getIpfsGateway(contractInfo.ipfsGateway);
+        const {uri, content, name, errorType, error} = await fetchMeta(contractInfo.hex, tokenId, contractInfo.is1155,
+            ipfsGateway);
         const [status, err] = error ? [MetaStatus.FAILURE, error.substr(0, 1024)] : [MetaStatus.SUCCESS, error];
         return {contractId, tokenId, epochNumber, status, retry: 0, errorType, error: err, uri, content, name};
     }));
 }
 
-async function fetchMeta(contract: string, tokenId: string, is1155: boolean)
+async function fetchMeta(contract: string, tokenId: string, is1155: boolean, ipfsGateway?: string)
     : Promise<{ uri: string, content: string, name: string, error: string, errorType?: number }> {
 
     const basicInfo = `${contract} ${is1155 ? '1155' : '721'} tokenId ${tokenId} tokenURI`;
@@ -616,14 +618,16 @@ async function fetchMeta(contract: string, tokenId: string, is1155: boolean)
     let jsonStr;
     let name;
 
+    let metaParser;
     try {
-        tokenURI = await context.metaParser.getTokenURI(contract, tokenId, is1155);
+        metaParser = new NFTMetaParser(context.cfx, ipfsGateway);
+        tokenURI = await metaParser.getTokenURI(contract, tokenId, is1155);
         const controller = new AbortController();
         timer = setTimeout(() => {
             console.log(`cancel request ${basicInfo} ${tokenURI}`);
             controller.abort();
         }, 11_000);
-        json = await context.metaParser.getMetaByURI(tokenURI, {timeout: 10_000, signal: controller.signal});
+        json = await metaParser.getMetaByURI(tokenURI, {timeout: 10_000, signal: controller.signal});
         jsonStr = JSON.stringify(json) || '';
         name = json['name'] || '';
 
@@ -647,11 +651,12 @@ async function fetchMeta(contract: string, tokenId: string, is1155: boolean)
         }
 
         console.log(`fetch fail, ${basicInfo} ${tokenURI}, ${e.message}`);
-        console.log(`debug error ${JSON.stringify(e)}---${e}`)
-        console.log(`debug error ${JSON.stringify(Object.getOwnPropertyNames(e))}---${e?.code}---${e.message}`)
+        context.debug && console.log(`debug error ${JSON.stringify(e)}---${e}`)
+        context.debug && console.log(`debug error ${JSON.stringify(Object.getOwnPropertyNames(e))}---${e?.code}---${e.message}`)
         return {uri: tokenURI, content: '', name: '', error: `${e.message}`, errorType: ErrorType.OTHERS.code}
     } finally {
         timer && clearTimeout(timer);
+        metaParser = undefined;
     }
 
     const isJsonBroken = tokenURI.length > 2 && jsonStr.length <= 2;
@@ -663,6 +668,27 @@ async function fetchMeta(contract: string, tokenId: string, is1155: boolean)
 
     console.log(`ok ${basicInfo} ${tokenURI}`);
     return {uri: tokenURI, content: jsonStr, name, error: ''};
+}
+
+const defaultGateway = 'https://ipfs.io';
+async function getIpfsGateway(userGateway) {
+    if(context.cmdGateway) {
+        return context.cmdGateway;
+    }
+
+    const userGatewayTmpl = userGateway && IPFSGatewaySync.tmplFromGateway(userGateway);
+    if(userGatewayTmpl) {
+        const pos = userGatewayTmpl.indexOf('/ipfs/:hash');
+        return pos > 0 ? userGatewayTmpl.substring(0, pos) : userGatewayTmpl;
+    }
+
+    let sysGatewayImpl = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, "");
+    if (sysGatewayImpl) {
+        const pos = sysGatewayImpl.indexOf('/ipfs/:hash');
+        return pos > 0 ? sysGatewayImpl.substring(0, pos) : sysGatewayImpl;
+    }
+
+    return defaultGateway;
 }
 
 function adjustBatchSize(elapse){

@@ -8,7 +8,6 @@ import {QueryTypes} from "sequelize";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Errors} from "../common/LogicError";
 import {CONST} from "../common/constant"
-import {IPFSGatewayArray} from "../../config/IPFSGateway";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {StatApp} from "../../StatApp";
 import {TokenQuery} from "../TokenQuery";
@@ -22,14 +21,12 @@ const legacyNFTs = new Set(Object.values(NFTMap).map(item => item.address));
 export class NFTPreviewService {
     private app;
     private cfx;
-    private ipfsGatewaySet;
     private TIMEOUT_CONN = 3000;
     private TIMEOUT_READ = 3000;
 
     constructor(app: any) {
         this.app = app;
         this.cfx = app.cfx;
-        this.ipfsGatewaySet = new Set(IPFSGatewayArray);
     }
 
     public async getNFTInfo ({
@@ -490,22 +487,19 @@ export class NFTPreviewService {
             return rawUrl;
         }
 
-        let uri = `https://ipfs.io/ipfs/${rawUrl.substr(7)}`;
+        const cid = rawUrl.substr(7);
+        let uri = `https://ipfs.io/ipfs/${cid}`;
 
         if (gateway) {
-            const uriSegments = gateway.split("//");
-            const usable = uriSegments?.length > 1 && this.ipfsGatewaySet.has(uriSegments[1]);
-            if (usable) {
-                uri = `${gateway.endsWith('/') ? gateway.substr(0, gateway.length - 1) : gateway}/ipfs/${rawUrl.substr(7)}`;
-                return uri;
+            const userGateway = IPFSGatewaySync.tmplFromGateway(gateway);
+            if (userGateway) {
+                return userGateway.replace(':hash', cid);
             }
         }
 
-        const detectGateway = IPFSGatewaySync.fastest;
-        if (config.syncIPFSGateway && detectGateway) {
-            const index0 = uri.indexOf('//') + 2;
-            const index1 = uri.indexOf('/ipfs/');
-            uri = `${uri.substr(0, index0)}${detectGateway}${uri.substr(index1, uri.length)}`
+        const sysGateway = IPFSGatewaySync.fastest;
+        if (config.syncIPFSGateway && sysGateway) {
+            uri = sysGateway.replace(':hash', cid);
         }
 
         return uri;
@@ -547,7 +541,7 @@ export class NFTPreviewService {
     }
 
     private async setCache(contractId: number, tokenId: string, uri: string, metadata: string) {
-        console.log(`add cache contractId ${contractId} tokenId ${tokenId} start`);
+        // console.log(`add cache contractId ${contractId} tokenId ${tokenId} start`);
         NftMeta.update({
             status: MetaStatus.SUCCESS,
             retry: 0,
@@ -556,7 +550,7 @@ export class NFTPreviewService {
             uri,
             content: JSON.stringify(metadata)
         }, {where: {contractId, tokenId}}).then();
-        console.log(`add cache contractId ${contractId} tokenId ${tokenId} end nftObj ${JSON.stringify(metadata)}`);
+        // console.log(`add cache contractId ${contractId} tokenId ${tokenId} end nftObj ${JSON.stringify(metadata)}`);
     }
 
     /*private getNFTCacheInfo({ address, tokenId}:
