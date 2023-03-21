@@ -417,8 +417,8 @@ paths:
         - $ref: '#/components/parameters/contractParamMust'
         - $ref: '#/components/parameters/ownerParam'
         - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/detailParam'
         - $ref: '#/components/parameters/withBriefParam'
         - $ref: '#/components/parameters/withMetadataParam'
       responses:
@@ -1960,6 +1960,9 @@ components:
           properties:
             total:
               type: integer
+            next:
+              description: A cursor to retrieve the next page
+              type: string
             list:
               type: array
               items:
@@ -2069,6 +2072,9 @@ components:
           properties:
             total:
               type: integer
+            next:
+              description: A cursor to retrieve the next page
+              type: string
             list:
               type: array
               items:

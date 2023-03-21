@@ -81,7 +81,7 @@ import {DailyNFTStat} from "../model/DailyNFTStat";
 import {NFTMintStat} from "../model/NFTMintStat";
 import {DailyNFTHolder} from "../model/DailyNFTHolder";
 import {CensorItem} from "../model/CensorItem";
-import {createAddressNftTable} from "../model/AddrNft";
+import {AddressNfts, createAddressNftTable} from "../model/AddrNft";
 import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 let conf
 export function createDB(config) {
@@ -263,6 +263,7 @@ export async function initModel(sequelize) {
     PosDailyStatMix.register(sequelize)
     PosGap.register(sequelize)
     NftTransfer.register(sequelize)
+    AddressNfts.register(sequelize)
 
     await checkApiLogIpField()
 }
