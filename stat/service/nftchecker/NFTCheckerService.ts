@@ -1,6 +1,6 @@
 import {NFTMapPlus} from "./NFTInfo";
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
-import {Op, QueryTypes} from "sequelize";
+import {Op, QueryTypes, Sequelize} from "sequelize";
 import {KEY_NFT_FROM_DB, KV} from "../../model/KV";
 import {getNftBalances} from "../NftService";
 import {Desensitizer} from "../Desensitizer";
@@ -141,6 +141,59 @@ export class NFTCheckerService {
         ))
 
         return {total: count ? count : 0, list};
+    }
+
+    public async getNftTokensForOpenApiNew({owner, contract, tokenId, skip = 0, cursor = 0, limit = 10, byUniqueToken = false}
+        : { owner?: string, contract?: string, tokenId: string, skip?: number, cursor?: number, limit: number, byUniqueToken?: boolean}) {
+        const ownerId = owner ? await getAddrId(owner) : owner;
+        const contractId = contract ? await getAddrId(contract) : contract;
+        if ((owner && !ownerId) || (contract && !contractId)) {
+            return {total: 0, list: []};
+        }
+
+        const {type} = await TokenQuery.detectTokenType({hex40id: contractId});
+        if (type !== CONST.TRANSFER_TYPE.ERC1155 && type !== CONST.TRANSFER_TYPE.ERC721) {
+            return {total: 0, list: []};
+        }
+
+        let page;
+        const options: any = { offset: skip, limit, raw: true, order: [['id', 'asc']] };
+        const byCursor = cursor > 0 && skip === 0;
+        if(byCursor) {
+            delete options.offset;
+        }
+        if(type === CONST.TRANSFER_TYPE.ERC721 || byUniqueToken) {
+            options.attributes = ['id', 'contractId', ['toId', 'addressId'], 'tokenId', [Sequelize.literal(`"1"`),'value']];
+            options.where = emptyField({contractId, toId: ownerId, tokenId});
+            if(byCursor) options.where.id = {[Op.gt]: cursor};
+            if(!ownerId) options.where.toId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
+            page = await NftMint.findAndCountAll(options);
+        }
+        if (type === CONST.TRANSFER_TYPE.ERC1155) {
+            options.attributes = ['id', 'contractId', 'addressId', 'tokenId', ['amount','value']];
+            options.where = emptyField({contractId, addressId: ownerId, tokenId});
+            if(byCursor) options.where.id = {[Op.gt]: cursor};
+            page = await Erc1155Data.findAndCountAll(options);
+        }
+
+        const list = [];
+        const {count: total, rows} = page;
+        if (rows?.length) {
+            const base32 = toBase32(contract);
+            const ownerIdSet = new Set(rows.map(item => item.addressId));
+            const idHexMap = await idHex40Map([...ownerIdSet] as number[]);
+            const idBase32Map = convert2base32map(idHexMap);
+            rows.forEach(item => list.push({
+                owner: idBase32Map.get(item.addressId),
+                contract: base32,
+                tokenId: item.tokenId,
+                amount: item.value,
+                type: type === CONST.TRANSFER_TYPE.ERC721 ? 'CRC721' : 'CRC1155',
+            }));
+        }
+        const next = rows?.length ? rows[rows.length-1].id : 0;
+
+        return {total, next, list};
     }
 
     public async getNftTokensForOpenApi({owner, contract, tokenId, withUnique = false, skip = 0, limit = 10}

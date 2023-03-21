@@ -461,7 +461,7 @@ export class ContractQuery {
         return {total: addressArray.length, map};
     }
 
-    private async queryImplementation(base32) {
+    public async queryImplementation(base32) {
         const {cfx, cfxSDK} = this.app;
         const sdk = cfxSDK || cfx;
         let result = {proxy: false};

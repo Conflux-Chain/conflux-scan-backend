@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS ${T_ADDRESS_NFT}
   \`addressId\` bigint(20) NOT NULL,
   \`contractId\` bigint(20)  NOT NULL,
   \`tokenId\` varchar(78) NOT NULL,
+  \`cursorId\` bigint(20) DEFAULT NULL,
   \`value\` varchar(78) NOT NULL,
   \`type\` smallint(6) NOT NULL,
   \`createdAt\` datetime NOT NULL,
@@ -37,13 +38,15 @@ export interface IAddressNft {
     addressId:number
     contractId: number
     tokenId:string
+    cursorId: number
     value: number
     type: number
 }
 export class AddressNft extends Model<IAddressNft> implements IAddressNft {
-    addressId:number;
+    addressId:number
     contractId: number
     tokenId:string
+    cursorId: number
     value: number
     type: number
     static register(seq:Sequelize) {
@@ -51,12 +54,55 @@ export class AddressNft extends Model<IAddressNft> implements IAddressNft {
             addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             tokenId: {type: DataTypes.STRING(78), allowNull: false, },
+            cursorId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: true, },
             value: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
             type: {type: DataTypes.SMALLINT, allowNull: false},
         },{
             sequelize: seq,
             tableName: T_ADDRESS_NFT,
             indexes: [
+            ]
+        })
+    }
+}
+
+//=================
+export const T_ADDRESS_NFTS = "address_nfts"
+
+export interface IAddressNfts {
+    id?:number
+    addressId:number
+    contractId: number
+    tokenId:string
+    value: number
+    type: number
+    updatedAt:Date
+}
+
+export class AddressNfts extends Model<IAddressNfts> implements IAddressNfts {
+    id?:number
+    addressId:number
+    contractId: number
+    tokenId:string
+    value: number
+    type: number
+    updatedAt:Date
+    static register(seq:Sequelize) {
+        AddressNfts.init({
+            id: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, autoIncrement: true, primaryKey: true},
+            addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            tokenId: {type: DataTypes.STRING(78), allowNull: false, },
+            value: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
+            type: {type: DataTypes.SMALLINT, allowNull: false},
+            updatedAt: {type: DataTypes.DATE, allowNull: false},
+        },{
+            sequelize: seq,
+            tableName: T_ADDRESS_NFTS,
+            indexes: [
+                {name: 'uk_aid_cid_tid', fields:['addressId','contractId','tokenId'], unique: true},// query by address
+                {name: 'idx_aid_type', fields:['addressId', 'type', 'updatedAt']},// query by address and type
+                {name: 'idx_cid_updateTime', fields:['contractId', 'updatedAt']},// query by contract
             ]
         })
     }

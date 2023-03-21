@@ -12,7 +12,7 @@ import {Errors} from "./common/LogicError";
 import {sleep} from "./tool/ProcessTool";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {Op} from "sequelize";
-import {AddressNft} from "../model/AddrNft";
+import {AddressNfts} from "../model/AddrNft";
 const {ethers} = require("ethers");
 const { format } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -392,15 +392,15 @@ export class EpochNftTransferSync extends SyncBase{
     // addressId|contractId|tokenId|value|type
     private async saveAddressNft(epochNumber, modelData, dbTx) {
         const {addrNftTransferArray} = modelData;
-        await this.updateAddressNft(epochNumber, addrNftTransferArray, true, dbTx);
+        await this.updateAddressNft(epochNumber, addrNftTransferArray, false, dbTx);
     }
 
     private async deleteAddressNft(epochNumber, modelData, dbTx) {
         const addrNftTransferArray = await AddressNftTransfer.findAll({where: {epoch: epochNumber}});
-        await this.updateAddressNft(epochNumber, addrNftTransferArray, false, dbTx);
+        await this.updateAddressNft(epochNumber, addrNftTransferArray, true, dbTx);
     }
 
-    private async updateAddressNft(epochNumber, addrNftTransferArray, isSave, dbTx) {
+    private async updateAddressNft(epochNumber, addrNftTransferArray, pivotSwitch, dbTx) {
         if(!addrNftTransferArray?.length) {
             return;
         }
@@ -418,11 +418,6 @@ export class EpochNftTransferSync extends SyncBase{
             nftChangeMap[key] = !nftChangeMap[key] ? val : nftChangeMap[key] + val;
             nftTypeMap[contractId] = !nftTypeMap[contractId] ? transfer.type : nftTypeMap[contractId];
         }
-        if(this.debug) {
-            console.log(`updateAddressNft ---1--- epochNumber ${epochNumber}`)
-            console.log(`updateAddressNft ---2--- nftChangeMap ${JSON.stringify(nftChangeMap)}`)
-            console.log(`updateAddressNft ---3--- nftTypeMap ${JSON.stringify(nftTypeMap)}`)
-        }
 
         for (const k of Object.keys(nftChangeMap)) {
             const key = k.split('_');
@@ -432,18 +427,18 @@ export class EpochNftTransferSync extends SyncBase{
             const contractId = Number(ctId);
 
             const primaryKey = {addressId, contractId, tokenId};
-            if(isSave) {
-                const record = await AddressNft.findOne({where: primaryKey});
+            if(pivotSwitch) {
+                await AddressNfts.increment({'value': -Number(value)}, {where: primaryKey, transaction: dbTx});
+                await AddressNfts.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx});
+            } else{
+                const record = await AddressNfts.findOne({where: primaryKey});
                 if(!record) {
                     const type = nftTypeMap[contractId];
-                    await AddressNft.create({...primaryKey, value, type}, {transaction: dbTx, logging: sql => this.debug && console.log(`updateAddressNft ---1--- sql: ${sql}`)});
+                    await AddressNfts.create({...primaryKey, value, type, updatedAt: new Date()}, {transaction: dbTx});
                 } else{
-                    await AddressNft.increment({'value': Number(value)}, {where: primaryKey, transaction: dbTx, logging: sql => this.debug && console.log(`updateAddressNft ---2--- sql: ${sql}`)});
-                    await AddressNft.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx, logging: sql => this.debug && console.log(`updateAddressNft ---3--- sql: ${sql}`)});
+                    await AddressNfts.increment({'value': Number(value)}, {where: primaryKey, transaction: dbTx});
+                    await AddressNfts.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx});
                 }
-            } else{
-                await AddressNft.increment({'value': -Number(value)}, {where: primaryKey, transaction: dbTx, logging: sql => this.debug && console.log(`updateAddressNft ---4--- sql: ${sql}`)});
-                await AddressNft.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx, logging: sql => this.debug && console.log(`updateAddressNft ---5--- sql: ${sql}`)});
             }
         }
     }

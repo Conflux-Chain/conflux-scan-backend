@@ -632,13 +632,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {contractAddr, userAddr, tokenId} = ctx.request.query;
-        const result = await statApp.nftCheckerService.getNftTokensForOpenApi({
-            owner: userAddr,
-            contract: contractAddr,
-            tokenId: tokenId?.toString(),
-            withUnique: true,
-            skip, limit
-        });
+        const result = await statApp.nftCheckerService.getNftTokensForOpenApiNew({
+            owner: userAddr, contract: contractAddr, tokenId: tokenId?.toString(), skip, limit});
 
         const addressArray = result.list.map(item => item.owner);
         const {map} = await statApp.contractQuery.listBasic({addressArray});
