@@ -7,7 +7,7 @@ import {Epoch} from "../../model/Epoch";
 import {init} from "../tool/FixDailyTokenStat";
 import {CfxTransfer} from "../../model/CfxTransfer";
 import {makeIdV} from "../../model/HexMap";
-import {intParam} from "../common/utils";
+import {intParam, mustBeIntParamIfPresent} from "../common/utils";
 import {paginateCoreStat} from "../../router/ParamChecker";
 
 const lodash = require('lodash');
@@ -119,6 +119,7 @@ export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = n
     return list;
 }
 export function limitListOnBody(ctx: any) {
+    mustBeIntParamIfPresent(ctx.request.query, 'limit');
     const {limit} = paginateCoreStat(ctx.request.query);
 
     let list = ctx.body.list;

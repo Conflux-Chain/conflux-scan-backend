@@ -3,10 +3,10 @@ import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
 import {CONST} from "./constant"
+import {StatApp} from "../../StatApp";
 
 const lodash = require('lodash');
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
-const addressUtil = require('js-conflux-sdk/src/util/address');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
@@ -78,7 +78,7 @@ export function patchFormat() {
 }
 
 export function noVerboseAddr(v) {
-    const obj = addressUtil.decodeCfxAddress(v)
+    const obj = decodeCfxAddress(v)
     const simple = sdk_format.address(obj.hexAddress, obj.netId)
     return simple;
 }
@@ -127,7 +127,7 @@ export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
         if (!/^[0-9]+$/.test(v)) {
             throw new Errors.ParameterError(`Invalid parameter [${k}] with value [${v}].`)
         }
-        obj[k] = parseInt(v);
+        obj[k] = k === 'tokenId' ? BigInt(v) : parseInt(v);
         if (/imestamp/.test(k)) {
             let dt = new Date(v * 1000)
             const tm = dt.getTime();
@@ -168,10 +168,10 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
     for(const k of keys) {
         const v = obj[k];
         if (v === undefined || v === null) {
-            continue
+            continue;
         }
         if (/0x[0-9a-fA-F]{40}/.test(v)) {
-            continue // hex 40
+            continue; // hex 40
         }
         if (!isValidCfxAddress(v)) {
             throw new Errors.ParameterError(`Invalid address parameter [${k}] with value [${v}].`);
@@ -180,9 +180,8 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
         if (addr.netId !== netId) {
             throw new Errors.ParameterError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
         }
-        if (/contract/.test(k) && addr.type !== 'contract') {
-            throw new Errors.ParameterError(`Invalid contract parameter [${k
-            }] with value [${v}], type [${addr.type}], it's not a contract address.`);
+        if (/contract/.test(k) && addr.type !== 'contract' && !StatApp.isEVM) {
+            throw new Errors.ParameterError(`Invalid contract parameter [${k}] with value [${v}], type [${addr.type}], it's not a contract address.`);
         }
     }
 }

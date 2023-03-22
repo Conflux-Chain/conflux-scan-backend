@@ -10,7 +10,6 @@ import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
 import {addDevopsRouter} from "./DevopsRouter";
-import {pickNumber} from "../model/Utils";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyCfxTxn, sumRecentCfxAmount} from "../model/CfxTransfer";
@@ -24,17 +23,14 @@ import {Epoch} from "../model/Epoch";
 import {CfxBill} from "../service/watcher/DummyNode";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
-import {listNftOfAccountByContract, list1155inventory} from "../service/NftService";
+import {listNftOfAccountByContract} from "../service/NftService";
 import {BalanceService} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
-import {queryEnsOfName} from "../service/ens/ENS";
-import {ENS, matchNamesOnChain} from "../service/ens/EnsService";
 import {
-    getPagination,
     mustBeAddressParamIfPresent,
-    mustBeEnumParamIfPresent, mustBeHex64ParamIfPresent,
+    mustBeEnumParamIfPresent,
+    mustBeHex64ParamIfPresent,
     mustBeIntParamIfPresent,
-    skipLimit
 } from "../service/common/utils";
 import {limitListOnBody} from "../service/pos/PosStat";
 import {checkRate, loadRateConfig} from "./RateLimiter";
@@ -639,7 +635,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result = await statApp.nftCheckerService.getNftTokensForOpenApi({
             owner: userAddr,
             contract: contractAddr,
-            tokenId,
+            tokenId: tokenId?.toString(),
             withUnique: true,
             skip, limit
         });
