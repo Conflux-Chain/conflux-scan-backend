@@ -32,6 +32,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/list-pos-account', async (ctx)=>{
         mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['createdAt']);
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const p = {...ctx.request.query, skip, limit,
@@ -51,6 +52,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         mustBeHex64ParamIfPresent(ctx.request.query, 'identifier');
         mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['createdAt']);
         mustBeEnumParamIfPresent(ctx.request.query, 'reverse', ['true', 'false']);
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {identifier, orderBy, reverse} = ctx.request.query
@@ -76,6 +78,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/list-pos-block', async (ctx)=>{
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {count: total, rows: list} = await statApp.posQuery.listBlock({skip, limit});
@@ -86,6 +89,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/list-pos-tx', async (ctx)=>{
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {count: total, rows: list} = await statApp.posQuery.listTx({skip, limit});
@@ -98,6 +102,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         mustBeHex64ParamIfPresent(ctx.request.query, 'identifier');
         mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['createdAt']);
         mustBeEnumParamIfPresent(ctx.request.query, 'reverse', ['true', 'false']);
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {identifier,orderBy,reverse} = ctx.request.query
@@ -110,6 +115,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/list-pos-committee', async (ctx)=>{
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {count: total, rows: list} = await statApp.posQuery.listCommittee({skip, limit});
@@ -120,7 +126,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/list-tx-by-pos-height', async (ctx)=>{
-        mustBeIntParamIfPresent(ctx.request.query, 'height');
+        mustBeIntParamIfPresent(ctx.request.query, 'height', 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {height} = ctx.request.query;
@@ -170,6 +176,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/pos-reward-rank', async (ctx)=>{
         mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['day1', 'day7', 'day14', 'day30', 'all']);
         mustBeEnumParamIfPresent(ctx.request.query, 'reverse', ['true', 'false']);
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {orderBy: rankField, reverse} = ctx.request.query
@@ -198,6 +205,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/list-pos-daily-stat', async (ctx)=>{
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {count: total, rows: list} = await statApp.posQuery.listPosDailyStat({skip, limit});
