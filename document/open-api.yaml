@@ -46,6 +46,23 @@ info:
     <td>20 calls/second, up to 500,000 calls/day</td>
     </tr>
   </table>
+  
+  SDK:<br/>
+  Reference for various API tiers and their rate limits
+  <table>
+    <tr>
+    <td>space</td>
+    <td>link</td>
+    </tr>
+    <tr>
+    <td>core</td>
+    <td><a target='_blank' href='https://www.npmjs.com/package/@conflux-lib/openapi-sdk-core'/></td>
+    </tr>
+    <tr>
+    <td>evm</td>
+    <td><a target='_blank' href='https://www.npmjs.com/package/@conflux-lib/openapi-sdk-evm'/></td>
+    </tr>
+  </table>
   "
   version: 0.0.1
 servers:
@@ -846,7 +863,7 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/TokenSenderStat"
+                $ref: "#/components/schemas/TokenSenderTopStat"
   /statistics/top/token/receiver:
     get:
       tags:
