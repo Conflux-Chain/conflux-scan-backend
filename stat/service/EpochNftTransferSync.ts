@@ -425,6 +425,9 @@ export class EpochNftTransferSync extends SyncBase{
             const [addrId, ctId, tokenId] = key;
             const addressId = Number(addrId)
             const contractId = Number(ctId);
+            if(addressId === this.app.zeroAddressId) {
+                continue;
+            }
 
             const primaryKey = {addressId, contractId, tokenId};
             if(pivotSwitch) {
