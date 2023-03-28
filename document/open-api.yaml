@@ -48,19 +48,18 @@ info:
   </table>
   
   SDK:<br/>
-  Reference for various API tiers and their rate limits
   <table>
     <tr>
-    <td>space</td>
-    <td>link</td>
+    <td>Space</td>
+    <td>Link</td>
     </tr>
     <tr>
-    <td>core</td>
-    <td><a target='_blank' href='https://www.npmjs.com/package/@conflux-lib/openapi-sdk-core'/></td>
+    <td>Core</td>
+    <td><a target='_blank' href='https://www.npmjs.com/package/@conflux-lib/openapi-sdk-core'>openapi-sdk-core</a></td>
     </tr>
     <tr>
-    <td>evm</td>
-    <td><a target='_blank' href='https://www.npmjs.com/package/@conflux-lib/openapi-sdk-evm'/></td>
+    <td>EVM</td>
+    <td><a target='_blank' href='https://www.npmjs.com/package/@conflux-lib/openapi-sdk-evm'>openapi-sdk-evm</a></td>
     </tr>
   </table>
   "
