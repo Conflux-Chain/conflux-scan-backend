@@ -61,7 +61,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/account-token-balance', async(ctx) => {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'base32');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32');
 
         const {base32} = ctx.request.query
         const list = await BalanceService.listAccountBalance(base32)
@@ -100,7 +100,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/tokens/holder-rank', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: 1000});
 
@@ -112,7 +112,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/tokens/by-address', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
 
         const {address} = ctx.request.query;
         const result = await statApp.tokenQuery.query({address});
@@ -132,7 +132,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/tokens/detect', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
 
         const {address} = ctx.request.query;
         const result = await statApp.tokenQuery.detectToken(address);
@@ -141,7 +141,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/contract/by-address', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         // mustBeEnumParamIfPresent(ctx.request.query, 'fields', ['abi', 'sourceCode']);
 
         const {fields, address} = ctx.request.query;
@@ -178,7 +178,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/tokens/list/latest', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'accountAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
         mustBeEnumParamIfPresent(ctx.request.query, 'transferType', ['ERC20', 'ERC721', 'ERC1155']);
 
         const {accountAddress, transferType} = ctx.request.query;
@@ -327,7 +327,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/get-cfx-balance-at', async ctx=>{
         mustBeIntParamIfPresent(ctx.request.query, 'epoch');
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'accountBase32');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountBase32');
 
         const {dt, epoch, accountBase32} = ctx.request.query
         if ( (dt === undefined && epoch === undefined) || accountBase32 === undefined) {
@@ -431,7 +431,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     // daily token stat
     router.get('/daily-token-stat', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'base32');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32');
         mustBeIntParamIfPresent(ctx.request.query, 'limit');
         const {limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
@@ -535,7 +535,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     });
 
     router.get('/contract/stat/list', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
@@ -546,7 +546,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     // get creat trace
     router.get('/trace/create', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
 
         const {contract} = ctx.request.query
         const createTrace = await statApp.traceCreateQuery.query(contract);
@@ -555,7 +555,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     // get creat trace
     router.post('/recaptcha/siteverify', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         // mustBeEnumParamIfPresent(ctx.request.query, 'type', ['Phish / Hack', 'Scam', 'Fishy', 'High Risk', 'Spam', 'Others']);
         mustBeHex64ParamIfPresent(ctx.request.query, 'txn_hash');
 
@@ -576,7 +576,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/nft/checker/preview', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');
         mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
 
         const { contractAddress, tokenId} = ctx.request.query
@@ -584,7 +584,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/nft/checker/detail', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');
         mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
 
         const {contractAddress, tokenId} = ctx.request.query
@@ -595,7 +595,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     const refreshRateLimiter = new RateLimiterMemory({ points: 1, duration: 600 });
     router.get('/nft/checker/refresh', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');
         mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
 
         const { contractAddress, tokenId} = ctx.request.query
@@ -614,7 +614,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/nft/checker/balance', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'ownerAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'ownerAddress');
 
         const {ownerAddress} = ctx.request.query
         const resp = await statApp.nftCheckerService.getNftBalancesForOpenApi({owner: ownerAddress, limit: 1000});
@@ -627,7 +627,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     async function list1155assets(ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractAddr', 'userAddr');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddr', 'userAddr');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit', 'tokenId');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
@@ -655,7 +655,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/nft/list1155inventory', list1155assets);
 
     router.get('/nft/active-token-ids', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
@@ -676,7 +676,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     async function nftCountAndIds (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'ownerAddress', 'contractAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'ownerAddress', 'contractAddress');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
@@ -695,7 +695,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/nft/checker/token', nftCountAndIds )
 
     router.get('/nft/account/token-by-contract', async function(ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'ownerAddress', 'contractAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'ownerAddress', 'contractAddress');
         mustBeEnumParamIfPresent(ctx.request.query, 'withDetail', ['true', 'false']);
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
@@ -737,7 +737,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/ens/lookupAddress', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
 
         const {address} = ctx.query
         const data = await statApp.ensCheckerQuery.lookupAddress(address);
@@ -745,7 +745,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/ens/ownedNames', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         const {address} = ctx.query
 
         console.log(`ownedNames address ${address}`)
@@ -755,7 +755,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/ens/resolvedNames', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
 
         const {address} = ctx.query
         const resp = await statApp.ensCheckerQuery.getResolvedNames(address);
@@ -769,7 +769,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     });
 
     router.get('/transaction/pending', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'accountAddress');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
 
         const {accountAddress} = ctx.request.query
         const result = await statApp.fullBlockQuery.listPendingTx({accountAddress});

@@ -90,7 +90,7 @@ export async function listContractStat(ctx) {
 }
 
 export async function listApproval(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'account');
     mustBeEnumParamIfPresent(ctx.request.query, 'tokenType',
         ['ERC20','ERC721','ERC1155']);
     mustBeEnumParamIfPresent(ctx.request.query, 'byTokenId',
@@ -249,7 +249,7 @@ export async function listTokenParticipantTopStat(ctx) {
 function parseStatParam(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp', 'skip', 'limit');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
 
     const sort = (ctx.request.query.sort || 'DESC').toLowerCase();
     const {skip, limit} = paginateCoreStat(ctx.request.query);

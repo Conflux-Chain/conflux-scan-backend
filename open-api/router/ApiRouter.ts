@@ -91,7 +91,7 @@ async function root(ctx, tag, port: string | number) {
 }
 
 async function getTokenInfo(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM,'contract');
     const {contract} = ctx.request.query;
 
     const result = await queryTokenInfo(contract);

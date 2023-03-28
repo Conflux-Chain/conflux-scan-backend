@@ -164,7 +164,7 @@ export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[
     }
 }
 
-export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
+export function mustBeAddressParamIfPresent(obj, netId, isEVM, ...keys:string[]) {
     for(const k of keys) {
         const v = obj[k];
         if (v === undefined || v === null) {
@@ -180,7 +180,7 @@ export function mustBeAddressParamIfPresent(obj, netId, ...keys:string[]) {
         if (addr.netId !== netId) {
             throw new Errors.ParameterError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
         }
-        if (/contract/.test(k) && addr.type !== 'contract' && !StatApp.isEVM) {
+        if (/contract/.test(k) && addr.type !== 'contract' && !isEVM) {
             throw new Errors.ParameterError(`Invalid contract parameter [${k}] with value [${v}], type [${addr.type}], it's not a contract address.`);
         }
     }

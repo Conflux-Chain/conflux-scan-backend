@@ -9,7 +9,7 @@ import {setBody} from "../router/middleware";
  * @param ctx
  */
 export async function listAccountAssets(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'account')
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'account')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
 
     const {account} = ctx.request.query;
