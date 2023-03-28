@@ -35,12 +35,11 @@ import {
 } from "../service/OpenTokenService";
 import {
     listNFTBalances,
-    listNFTTokens,
     listNFTTokensByFts,
     getNFTPreview,
     listNFTOwners,
+    listNFTTokens,
     listNFTTokensNew,
-    listNFTTokensPlus,
 } from "../service/OpenNFTService";
 import {
     listMiningStat,

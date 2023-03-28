@@ -414,7 +414,7 @@ paths:
         - 'NFT Assets'
       description: "Get token id array of specified NFT contract for account address."
       parameters:
-        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/contractParam'
         - $ref: '#/components/parameters/ownerParam'
         - $ref: '#/components/parameters/skipParamWithoutMaximum'
         - $ref: '#/components/parameters/cursorParamWithoutMaximum'

@@ -13,7 +13,7 @@ import {TokenQuery} from "../TokenQuery";
 import {toBase32} from "../tool/AddressTool";
 import {emptyField} from "../common/utils";
 import {getNFTOwnerCount} from "../../model/TransferCount";
-import {AddressNft} from "../../model/AddrNft";
+import {AddressNfts} from "../../model/AddrNft";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -151,49 +151,58 @@ export class NFTCheckerService {
             return {total: 0, list: []};
         }
 
-        const {type} = await TokenQuery.detectTokenType({hex40id: contractId});
-        if (type !== CONST.TRANSFER_TYPE.ERC1155 && type !== CONST.TRANSFER_TYPE.ERC721) {
-            return {total: 0, list: []};
-        }
-
-        let page;
         const options: any = { offset: skip, limit, raw: true, order: [['id', 'asc']] };
         const byCursor = cursor > 0 && skip === 0;
         if(byCursor) {
             delete options.offset;
         }
-        if(type === CONST.TRANSFER_TYPE.ERC721 || byUniqueToken) {
-            options.attributes = ['id', 'contractId', ['toId', 'addressId'], 'tokenId', [Sequelize.literal(`"1"`),'value']];
-            options.where = emptyField({contractId, toId: ownerId, tokenId});
+
+        let page;
+        let type;
+        const listAllNftByOwner = !contract && owner;
+        if(listAllNftByOwner) {
+            options.attributes = ['id', 'contractId', 'addressId', 'tokenId', 'value', 'type'];
+            options.where = emptyField({contractId, addressId: ownerId, tokenId, value: {[Op.gt]: 0}});
             if(byCursor) options.where.id = {[Op.gt]: cursor};
-            if(!ownerId) options.where.toId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
-            page = await NftMint.findAndCountAll(options);
-        }
-        if (type === CONST.TRANSFER_TYPE.ERC1155) {
-            options.attributes = ['id', 'contractId', 'addressId', 'tokenId', ['amount','value']];
-            options.where = emptyField({contractId, addressId: ownerId, tokenId});
-            if(byCursor) options.where.id = {[Op.gt]: cursor};
-            page = await Erc1155Data.findAndCountAll(options);
+            page = await AddressNfts.findAndCountAll(options);
+        } else{
+            type = (await TokenQuery.detectTokenType({hex40id: contractId})).type;
+            if (type !== CONST.TRANSFER_TYPE.ERC1155 && type !== CONST.TRANSFER_TYPE.ERC721) {
+                return {total: 0, list: []};
+            }
+            if(type === CONST.TRANSFER_TYPE.ERC721 || byUniqueToken) {
+                options.attributes = ['id', 'contractId', ['toId', 'addressId'], 'tokenId', [Sequelize.literal(`"1"`),'value']];
+                options.where = emptyField({contractId, toId: ownerId, tokenId});
+                if(byCursor) options.where.id = {[Op.gt]: cursor};
+                if(!ownerId) options.where.toId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
+                page = await NftMint.findAndCountAll(options);
+            }
+            if(type === CONST.TRANSFER_TYPE.ERC1155) {
+                options.attributes = ['id', 'contractId', 'addressId', 'tokenId', ['amount','value']];
+                options.where = emptyField({contractId, addressId: ownerId, tokenId});
+                if(byCursor) options.where.id = {[Op.gt]: cursor};
+                page = await Erc1155Data.findAndCountAll(options);
+            }
         }
 
         const list = [];
         const {count: total, rows} = page;
         if (rows?.length) {
-            const base32 = toBase32(contract);
-            const ownerIdSet = new Set(rows.map(item => item.addressId));
-            const idHexMap = await idHex40Map([...ownerIdSet] as number[]);
+            const addressIdSet = new Set();
+            rows.forEach(item => {addressIdSet.add(item.contractId);addressIdSet.add(item.addressId);})
+            const idHexMap = await idHex40Map([...addressIdSet] as number[]);
             const idBase32Map = convert2base32map(idHexMap);
             rows.forEach(item => list.push({
                 owner: idBase32Map.get(item.addressId),
-                contract: base32,
+                contract: idBase32Map.get(item.contractId),
                 tokenId: item.tokenId,
                 amount: item.value,
-                type: type === CONST.TRANSFER_TYPE.ERC721 ? 'CRC721' : 'CRC1155',
+                type: listAllNftByOwner ? (item.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code ? 'CRC721' : 'CRC1155') :
+                    (type === CONST.TRANSFER_TYPE.ERC721 ? 'CRC721' : 'CRC1155'),
             }));
         }
-        const next = rows?.length ? rows[rows.length-1].id : 0;
 
-        return {total, next, list};
+        return {total, list, next: rows?.length ? rows[rows.length-1].id : 0};
     }
 
     public async getNftTokensForOpenApi({owner, contract, tokenId, withUnique = false, skip = 0, limit = 10}
@@ -247,49 +256,6 @@ export class NFTCheckerService {
         }
 
         return {total, list: list || []};
-    }
-
-    public async getNftTokensForOpenApiPlus({owner, contract, tokenId, skip = 0, limit = 10}
-        : { owner?: string, contract: string, tokenId: string, skip: number, limit: number}) {
-        const ownerId = owner ? await getAddrId(owner) : owner;
-        const contractId = contract ? await getAddrId(contract) : contract;
-        if ((owner && !ownerId) || (contract && !contractId)) {
-            return {total: 0, list: []};
-        }
-
-        const {type} = await TokenQuery.detectTokenType({hex40id: contractId});
-        if (type !== CONST.TRANSFER_TYPE.ERC1155 && type !== CONST.TRANSFER_TYPE.ERC721) {
-            return {total: 0, list: []};
-        }
-
-        const options: any = {
-            where: emptyField({addressId: ownerId, contractId, tokenId, value: {[Op.gt]: 0}}),
-            order: [['updatedAt', 'desc']],
-            offset: skip,
-            limit,
-            raw: true,
-            logging: (sql) => console.log(`sql for nft tokens: ${sql}`),
-        };
-        if (!ownerId) options.where.addressId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
-        const page = await AddressNft.findAndCountAll(options);
-        const {count: total, rows} = page;
-
-        const list = [];
-        if (rows?.length) {
-            const base32 = toBase32(contract);
-            const ownerIdSet = new Set(rows.map(item => item.addressId));
-            const idHexMap = await idHex40Map([...ownerIdSet] as number[]);
-            const idBase32Map = convert2base32map(idHexMap);
-            rows.forEach(item => list.push({
-                owner: idBase32Map.get(item.addressId),
-                contract: base32,
-                tokenId: item.tokenId,
-                amount: item.value,
-                type: item.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code ? 'CRC721' : 'CRC1155',
-            }));
-        }
-
-        return {total, list};
     }
 
     public async getNftTokensByFtsForOpenApi({contract, name}: {contract?: string, name: string}) {
