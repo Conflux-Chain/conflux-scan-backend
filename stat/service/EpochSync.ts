@@ -7,7 +7,7 @@ import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Transaction} from "sequelize";
-import {batchBlockDetail, batchFetchBlock} from "./common/utils";
+import {batchBlockDetail} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
@@ -16,18 +16,15 @@ import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract
 import {PruneNotifier} from "./prune/PruneNotifier";
 import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
 import {TransferTpsService} from "./TransferTpsService";
-import {StatNotifier} from "./streamstat/StatNotifier";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
 import {AddressTransfer} from "../model/AddrTransfer";
 import {PruneType} from "../model/PruneInfo";
 import {Errors} from "./common/LogicError";
-import {sleep} from "./tool/ProcessTool";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
 import {CensorItem} from "../model/CensorItem";
 import {CENSOR_TYPE} from "./censor/CensorService";
-const {ethers} = require("ethers");
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -40,13 +37,6 @@ const FIELDS_TOKEN = [...['hex40id', 'base32'], ...FIELDS_TOKEN_BASIC, ...FIELDS
 
 const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
 const FIELDS_CONTRACT = [...['hex40id', 'base32'], ...FIELDS_CONTRACT_REGISTER];
-
-const TOPIC0_TRANSFER_ERC20 = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-const TOPIC0_TRANSFER_ERC1155_SINGLE = '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62';
-const TOPIC0_TRANSFER_ERC1155_BATCH = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb';
-const TOPIC0_ANNOUNCE = '0x14cb751d0950ff2788201931c45f715f7472443bc197311d9e3a7a0ba566b7e6';
-const TOKEN_TRANSFER_TOPICS = [[ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH,
-    TOPIC0_ANNOUNCE ]];
 
 const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
 const SELECTOR_DESTROY = '0x00f55d9d';
@@ -81,6 +71,7 @@ export class EpochSync extends SyncBase{
         super(app);
         this.app = app;
         this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
+        this.statSwitch = true;
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -125,20 +116,9 @@ export class EpochSync extends SyncBase{
             syncCode: SyncCode.SUCCESS,
             parentHash: epoch.parentHash,
             pivotHash: epoch.pivotHash,
-            modelData: {epoch, minerBlockArray, announceInfo, tokenArray, traceCreateArray, traceCrossSpaceArray,
-                adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
+            modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, traceCreateArray,
+                traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
         };
-    }
-
-    async validate(epochNumber, modelData) {
-        const blockArray = modelData.minerBlockArray;
-        const revertBlockArray = blockArray.filter(block => block.epoch !== epochNumber);
-        if(revertBlockArray.length){
-            console.log(`epoch-sync.validate epoch:${epochNumber}, minerBlockArray:${JSON.stringify(blockArray)}`)
-            return Promise.resolve(false);
-        }
-
-        return Promise.resolve(true);
     }
 
     async save(epochNumber, modelData) {
@@ -253,111 +233,8 @@ export class EpochSync extends SyncBase{
         }
     }
 
-    //---------------------- business method for epoch -----------------------
-    public async getEpochData(epochNumber) {
-        const {
-            app: { cfx },
-        } = this;
-
-        const [latestState, blockHashArray, receipts] = await Promise.all([
-            cfx.getEpochNumber('latest_state'),
-            cfx.getBlocksByEpochNumber(epochNumber)
-                .catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];}),
-            cfx.getEpochReceipts(epochNumber)
-                .then(res=>{ if (epochNumber === 0) res = []; return res;})
-                .catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];}),
-        ]);
-
-        if (latestState < epochNumber) {
-            await sleep(1_000);
-            throw new Error(`[epoch=${epochNumber}]not ready, latestState=${latestState}`);
-        }
-        if (blockHashArray.length === 0) {
-            throw new Error(`[epoch=${epochNumber}]no block`);
-        }
-        const blockArray = await batchFetchBlock(cfx,  blockHashArray);
-        if (epochNumber !== 0 && blockArray.length !== receipts.length && epochNumber !== 0) {
-            throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
-        }
-
-        const transactionHashArray = [];
-        for (const [blockIndex, block] of blockArray.entries()) {
-            if (epochNumber === 0) {
-                break;
-            }
-            if (block.transactions.length !== receipts[blockIndex].length) {
-                throw new Error(`[epoch=${epochNumber}]mismatch between transactions and receipts`);
-            }
-            for (const [txIndex, tx] of block.transactions.entries()) {
-                tx.receipt = receipts[blockIndex][txIndex];
-                const receiptStatus = tx.receipt?.outcomeStatus;
-                if((receiptStatus === 0 || receiptStatus === 1) &&
-                    (tx.receipt.blockHash !== tx.blockHash || tx.receipt.transactionHash !== tx.hash)){
-                    throw new Error(`[epoch=${epochNumber}]mismatch between
-                    transaction:${JSON.stringify(lodash.pick(tx.receipt, ['blockHash', 'transactionHash']))} and
-                    receipt:${JSON.stringify(lodash.pick(tx, ['blockHash', 'hash']))}`);
-                }
-                transactionHashArray.push(tx.receipt.transactionHash);
-            }
-        }
-
-        const pivotBlock = blockArray[blockArray.length -1];
-        const epoch = {
-            epoch: epochNumber,
-            pivotHash: pivotBlock.hash.substr(2),
-            parentHash: pivotBlock.parentHash.substr(2),
-            timestamp: new Date(pivotBlock.timestamp * 1000),
-        };
-
-        return {epoch, latestState, blockHashArray, blockArray, transactionHashArray, receipts};
-    }
-
-    public async getEpoch(epochNumber) {
-        const {
-            app: { cfx },
-        } = this;
-
-        const pivotBlock = await cfx.getBlockByEpochNumber(epochNumber, false).catch(async err=>{
-            const msg = `${err}`
-            if (msg.includes('expected a numbers with less than largest epoch number.')) {
-                const latest = await cfx.getEpochNumber('latest_state');
-                console.log(`epoch-sync.pivotBlock epoch:${epochNumber} latestState:${latest} not executed`)
-            } else {
-                console.log(`epoch-sync.pivotBlock epoch:${epochNumber} error:${msg}`)
-            }
-            throw err;
-            //return {};
-        });
-        pivotBlock.timestamp = Number(pivotBlock.timestamp);
-        const now = Math.floor(Date.now() / 1000);
-        const timestamp = lodash.min([pivotBlock.timestamp, now]);// XXX: for filter negative timestamp
-
-        return {
-            epoch: epochNumber,
-            pivotHash: pivotBlock.hash.substr(2),
-            parentHash: pivotBlock.parentHash.substr(2),
-            timestamp: new Date(timestamp * 1000),
-        };
-    }
-
     //------------------- business method for miner block --------------------
     public async getMinerBlockArray(blockArray) {
-        /*const {
-            app: { cfx },
-        } = this;
-
-        const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber).catch(async err=>{
-            const msg = `${err}`
-            if (msg.includes('expected a numbers with less than largest epoch number.')) {
-                const latest = await cfx.getEpochNumber('latest_state');
-                console.log(`epoch-sync.blockHashArray epoch:${epochNumber} latestState:${latest} not executed`)
-            } else {
-                console.log(`epoch-sync.blockHashArray epoch:${epochNumber} error:${msg}`)
-            }
-            return [];
-        });
-        const blockArray = await batchFetchBlock(cfx,  blockHashArray, true)*/
-
         let minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
             const hex40 = format.hexAddress(block.miner);
             const blockDt = new Date(block.timestamp * 1000);
@@ -365,9 +242,6 @@ export class EpochSync extends SyncBase{
             return {minerId: hex40Id, epoch: block.epochNumber, position, createdAt: blockDt};
         }));
         return lodash.orderBy(minerBlockArray, 'position', 'desc');
-
-        /*minerBlockArray = lodash.orderBy(minerBlockArray, 'position', 'desc');
-        return minerBlockArray;*/
     }
 
     //---------------- business method for admin destroy tx ------------------
@@ -568,137 +442,6 @@ export class EpochSync extends SyncBase{
             return Erc1155Transfer.count({ where: { contractId: addressId }});
     }
 
-    // -------------------------------- event log -------------------------------
-    public async getLogsGrouped({epochNumber, epochTimestamp}) {
-        const {
-            app: { tokenTool },
-        } = this;
-
-        const eventLogArray = await this.getLogs({epochNumber, epochTimestamp});
-        const groupedLogs = {
-            epochNumber,
-            transfer20Array: [],
-            transfer721Array: [],
-            transfer1155Array: [],
-            announcementArray: [],
-        };
-
-        for(const eventLog of eventLogArray) {
-            const [transfer20, transfer721, transfer1155, announcement] = await Promise.all([
-                tokenTool.decodeERC20TransferPlus(eventLog),
-                tokenTool.decodeERC721Transfer(eventLog),
-                tokenTool.decodeERC1155TransferArrayPlus(eventLog),
-                tokenTool.decodeAnnouncePlus(eventLog),
-            ]);
-            if(transfer20) {groupedLogs.transfer20Array.push(transfer20);}
-            if(transfer721) {groupedLogs.transfer721Array.push(transfer721);}
-            if(transfer1155) {groupedLogs.transfer1155Array.push(transfer1155);}
-            if(announcement) {groupedLogs.announcementArray.push(announcement);}
-        }
-        groupedLogs.transfer1155Array = lodash.flatten(groupedLogs.transfer1155Array);
-        return groupedLogs;
-    }
-
-    private async getLogs({epochNumber, epochTimestamp}) {
-        const {
-            app: { cfx },
-        } = this;
-
-        const eventLogArray = await cfx.getLogs({
-            fromEpoch: epochNumber,
-            toEpoch: epochNumber,
-            topics: TOKEN_TRANSFER_TOPICS,
-        }).catch(async err=>{
-            const msg = `${err}`
-            if (msg.includes('expected a numbers with less than largest epoch number.')) {
-                const latest = await cfx.getEpochNumber('latest_state');
-                console.log(`epoch-sync.eventLogArray epoch:${epochNumber} latestState:${latest} not executed`)
-            } else {
-                console.log(`epoch-sync.eventLogArray epoch:${epochNumber} error:${msg}`)
-            }
-            return [];
-        });
-
-        const eventLogStat = await EpochSync.countEventLog(epochNumber, eventLogArray);
-        if(TransferTpsService.TPS_TRANSFER_NOTIFY){
-            RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q)
-                .catch(e => console.log(`epoch-sync.notifyTransferTps epoch:${epochNumber}`, e));
-        }
-        if(Object.keys(eventLogStat.tokenTransfer).length > 0){
-            const msg = {epochNumber, epochTimestamp, action: 'push', tokenTransfer: eventLogStat.tokenTransfer};
-            StatNotifier.notifyStatTokenTransfer(msg)
-                .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e));
-            StatNotifier.notifyStatDailyTokenTransfer(msg)
-                .catch(e => console.log(`epoch-sync.notifyStatDailyTokenTransfer epoch:${epochNumber}`, e));
-        }
-        if(Object.keys(eventLogStat.nftMint).length > 0){
-            const msg = {epochNumber, epochTimestamp, action: 'push', nftMint: eventLogStat.nftMint};
-            StatNotifier.notifyStatNFTMint(msg)
-                .catch(e => console.log(`epoch-sync.noticeStatNFTMint epoch:${epochNumber}`, e));
-        }
-
-        return eventLogArray
-            .filter((v) => v.address !== 'CFX:TYPE.CONTRACT:ACAV5V98NP8T3M66UW7X61YER1JA1JM0DPZJ1ZYZXV'
-                && v.address !== '0x811dc7fe5B3CFCaB9c84bB3E5e846Dd00ba1561b')
-            .map((v) => EpochSync.parseEventLog(v));
-    }
-
-    private static parseEventLog(eventLog) {
-        eventLog.epochNumber = Number(eventLog.epochNumber);
-        eventLog.address = format.hexAddress(eventLog.address);
-        eventLog.transactionLogIndex = Number(eventLog.transactionLogIndex);
-        return eventLog;
-    }
-
-    private static async countEventLog(epochNumber, eventLogArray) {
-        let erc20Cntr = 0;
-        let erc721Cntr = 0;
-        let erc1155Cntr = 0;
-        let tokenAddrTransfer = {};
-        let tokenTransfer = {};
-        let nftAddrMint = {};
-        let nftMint = {};
-
-        for (const eventLog of eventLogArray) {
-            const topic0 = eventLog.topics[0];
-            let incr = 1;
-            if(topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 3){
-                erc20Cntr++;
-            } else if(topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 4){
-                erc721Cntr++;
-            } else if(topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE){
-                erc1155Cntr++;
-            } else if(topic0 === TOPIC0_TRANSFER_ERC1155_BATCH){
-                const abiCoder = new ethers.utils.AbiCoder()
-                const decodedData = abiCoder.decode(["uint256[]","uint256[]"], eventLog.data)
-                incr = decodedData[0].length;
-                erc1155Cntr += incr;
-            } else {
-                continue;
-            }
-
-            const addr = eventLog.address;
-            tokenAddrTransfer[addr] = tokenAddrTransfer[addr] ? (tokenAddrTransfer[addr] + incr) : incr;
-
-            if ((topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 4 &&
-                    eventLog.topics[1] === CONST.ZERO_VALUE_IN_SLOT) ||
-                ((topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE || topic0 === TOPIC0_TRANSFER_ERC1155_BATCH) &&
-                    eventLog.topics[2] === CONST.ZERO_VALUE_IN_SLOT)) {
-                nftAddrMint[addr] = nftAddrMint[addr] ? (nftAddrMint[addr] + incr) : incr;
-            }
-        }
-
-        const addrArray = Object.keys(tokenAddrTransfer);
-        for(const addr of addrArray){
-            const hex = format.hexAddress(addr);
-            const tokenId = (await makeId(hex)).id;
-            tokenTransfer[tokenId] = [tokenAddrTransfer[addr]];
-            nftAddrMint[addr] && (nftMint[tokenId] = [nftAddrMint[addr]]);
-        }
-
-        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenTransfer, nftMint};
-    }
-
     // ---------------------------- address transfer ----------------------------
     public async getAddrTransferArrayDB(epochNumber,tokenTransferArray,cfxTransferArray,txArray){
         const result = [];
@@ -747,56 +490,6 @@ export class EpochSync extends SyncBase{
             }
         }
         return addrTxArray;
-    }
-
-    public async getTokenTransferArrayDB(epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
-        transfer1155Array}) {
-        const {
-            ADDRESS_TRANSFER_TYPE: {ERC20, ERC721, ERC1155}
-        } = CONST;
-
-        const blockHashMap = {};
-        lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
-
-        let result = [];
-        if(transfer20Array.length){
-            result = [...result, ...await EpochSync.buildTokenTransferArray(ERC20.code, transfer20Array, epochTimestamp, blockHashMap)];
-        }
-        if(transfer721Array.length){
-            result = [...result, ...await EpochSync.buildTokenTransferArray(ERC721.code, transfer721Array, epochTimestamp, blockHashMap)];
-        }
-        if(transfer1155Array.length){
-            result = [...result, ...await EpochSync.buildTokenTransferArray(ERC1155.code, transfer1155Array, epochTimestamp, blockHashMap)];
-        }
-        return result;
-    }
-
-    private static async buildTokenTransferArray(type, transferArray, epochTimestamp, blockHashMap){
-        const addressTransferArray = [];
-        for (const item of transferArray) {
-            const transfer = {} as any;
-            transfer.epoch = item.epochNumber;
-            transfer.blockIndex = blockHashMap[item.blockHash];
-            transfer.txIndex = item.transactionIndex;
-            transfer.txLogIndex = item.transactionLogIndex;
-            transfer.batchIndex = item.batchIndex;
-
-            const [fromId, toId, contractId] = await Promise.all([
-                makeIdV(item.from, undefined, {dt:epochTimestamp}),
-                makeIdV(item.to, undefined, {dt:epochTimestamp}),
-                makeIdV(item.address, undefined, {dt:epochTimestamp}),
-            ]);
-            transfer.fromId = fromId;
-            transfer.toId = toId;
-            transfer.contractId = contractId;
-            transfer.tokenId = `${item.tokenId || 0}`;
-            transfer.value = item.value?.toString();
-
-            transfer.type = type;
-            transfer.createdAt = epochTimestamp;
-            addressTransferArray.push(lodash.defaults(transfer, {batchIndex: 0, tokenId: 0, value: 1}));
-        }
-        return addressTransferArray;
     }
 
     private async getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray) {
@@ -1227,15 +920,6 @@ export class EpochSync extends SyncBase{
         return isEIP1167;
     }
 
-    // ----------------------------- sync backward ------------------------------
-    public async getEpochNumberBackward(): Promise<number> {
-        if (EpochSync.SYNC_TRANSFER) {
-            const minEpoch: number = await AddressTransfer.min('epoch');
-            return (minEpoch || 0) - 1;
-        }
-        throw new Errors.BizError(`not implemented`);
-    }
-
     // ------------------------------ text censor -------------------------------
     public getCensorItemArray(epoch, transactionHashArray) {
         const {epoch: epochNumber, timestamp: createdAt} = epoch;
@@ -1246,6 +930,40 @@ export class EpochSync extends SyncBase{
 
         return items;
     }
+
+    // ----------------------------- sync backward ------------------------------
+    public async getEpochNumberBackward(): Promise<number> {
+        if (EpochSync.SYNC_TRANSFER) {
+            const minEpoch: number = await AddressTransfer.min('epoch');
+            return (minEpoch || 0) - 1;
+        }
+        throw new Errors.BizError(`not implemented`);
+    }
+
+    public async getEpoch(epochNumber) {
+        const {
+            app: { cfx },
+        } = this;
+
+        const pivotBlock = await cfx.getBlockByEpochNumber(epochNumber, false).catch(async err=>{
+            const msg = `${err}`
+            if (msg.includes('expected a numbers with less than largest epoch number.')) {
+                const latest = await cfx.getEpochNumber('latest_state');
+                console.log(`epoch-sync.pivotBlock epoch:${epochNumber} latestState:${latest} not executed`)
+            } else {
+                console.log(`epoch-sync.pivotBlock epoch:${epochNumber} error:${msg}`)
+            }
+            throw err;
+        });
+        pivotBlock.timestamp = Number(pivotBlock.timestamp);
+        const now = Math.floor(Date.now() / 1000);
+        const timestamp = lodash.min([pivotBlock.timestamp, now]);// XXX: for filter negative timestamp
+
+        return {
+            epoch: epochNumber,
+            pivotHash: pivotBlock.hash.substr(2),
+            parentHash: pivotBlock.parentHash.substr(2),
+            timestamp: new Date(timestamp * 1000),
+        };
+    }
 }
-
-

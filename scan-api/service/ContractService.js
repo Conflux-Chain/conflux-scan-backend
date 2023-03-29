@@ -132,7 +132,7 @@ class ContractService { // TODO: extends AccountService
       const record = await service.contractRdb.addVerify({ address, sourceCode, name, compiler: compilerType,
         version: compiler, optimizeFlag, optimizeRuns, license, libraries, evmVersion, codeHash });
 
-      const creationData = await this.getCreationData({ address }).catch(e => {throw new error.QueryCreationDataError(e)});
+      const creationData = await this.getCreationData({ address }).catch(e => {throw new error.QueryCreationDataError(`get creation data error, not sync yet:${e}`)});
       const result = await syncSDK.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
         compilerType, compilerVersion: compiler, optimizeRuns, libraries, evmVersion});
       result.verifyResult = this._getVerifyResult(result.matchCode);

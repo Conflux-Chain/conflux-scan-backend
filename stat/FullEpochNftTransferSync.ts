@@ -7,6 +7,8 @@ import {patchFormat, patchHttpProvider} from "./service/common/utils";
 import {IS_EVM2, KV} from "./model/KV";
 import {StatApp} from "./StatApp";
 import {EpochNftTransferSync} from "./service/EpochNftTransferSync";
+import {makeIdV} from "./model/HexMap";
+import {CONST} from "./service/common/constant";
 
 patchFormat();
 
@@ -16,6 +18,7 @@ export class FullEpochNftTransferSync{
     public sequelize: Sequelize;
     public tokenTool: TokenTool;
     public epochSync: EpochNftTransferSync;
+    public zeroAddressId: number;
 
     constructor(config: StatConfig) {
         this.config = config;
@@ -60,6 +63,7 @@ export class FullEpochNftTransferSync{
 
         this.tokenTool = new TokenTool(this.cfx);
         this.epochSync = new EpochNftTransferSync(this);
+        this.zeroAddressId = await makeIdV(CONST.ZERO_ADDRESS);
 
         await this.epochSync.run(this.config.syncEpochNumber);
         // await this.epochSync.syncAddressNft();

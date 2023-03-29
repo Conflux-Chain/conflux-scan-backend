@@ -600,7 +600,7 @@ class ConfluxService {
           result.addressArray = [...addressSet];
         } catch (err) {
           /*return { code: 60002, message: `parse traces fail:${err}` };*/
-          throw new error.ResponseDataParsingError(`parse traces fail:${err}`);
+          throw new error.ResponseDataParsingError(`fail to parse traces by sdk: ${err}`);
         }
         return result || {};
       },
