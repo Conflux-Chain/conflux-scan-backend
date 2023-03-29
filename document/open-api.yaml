@@ -428,7 +428,8 @@ paths:
     get:
       tags:
         - 'NFT Assets'
-      description: "Get token id array of specified NFT contract for account address."
+      description: "Get token id array of specified NFT contract for account address.
+                   \nAt least one of the parameters 'contract' and 'owner' is required."
       parameters:
         - $ref: '#/components/parameters/contractParam'
         - $ref: '#/components/parameters/ownerParam'
