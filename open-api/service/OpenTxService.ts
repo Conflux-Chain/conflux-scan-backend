@@ -29,7 +29,7 @@ const CONTRACT_CACHE = new LRU({max: 500});
  */
 export async function listAccountTransaction(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account')
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'from','to','account')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     mustBeEnumParamIfPresent(ctx.request.query, 'withInput', ['false', 'true']);
     const {skip, limit} = paginateCore(ctx.request.query)

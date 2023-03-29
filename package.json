@@ -13,7 +13,10 @@
     "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'",
     "start:dev2": "tsc-watch -p ./stat",
     "start:tools": "tsc-watch -b ./tools --onSuccess 'node ./stat/dist/test/Dev.js'",
-    "sdk": "openapi-generator-cli generate -i ../document/open-api.yaml -g typescript -o ../document/sdk/ --additional-properties=ngVersion=6.1.7,npmName=restClient,supportsES6=true,npmVersion=6.9.0,withInterfaces=true"
+    "sdk-core": "rm -rf ./document/openapi-sdk-core-ts/ | openapi-generator-cli generate -i ./document/open-api.yaml -g typescript-axios -o ./document/openapi-sdk-core-ts/ --skip-validate-spec --additional-properties=npmName=@conflux-lib/openapi-sdk-core,npmVersion=1.0.0,npmRepository=https://registry.npmjs.org/,supportsES6=true",
+    "sdk-evm": "rm -rf ./document/openapi-sdk-evm-ts/ | openapi-generator-cli generate -i ./document/espace-open-api.yaml -g typescript-axios -o ./document/openapi-sdk-evm-ts/ --skip-validate-spec --additional-properties=npmName=@conflux-lib/openapi-sdk-evm,npmVersion=1.0.0,npmRepository=https://registry.npmjs.org/,supportsES6=true",
+    "sdk-core-doc": "openapi-generator-cli generate -i ./document/open-api.yaml -g markdown -o ./document/openapi-sdk-core-ts/ --skip-validate-spec",
+    "sdk-evm-doc": "openapi-generator-cli generate -i ./document/espace-open-api.yaml -g markdown -o ./document/openapi-sdk-evm-ts/ --skip-validate-spec"
   },
   "dependencies": {
     "@conflux-dev/conflux-address-rust": "0.1.6",
@@ -21,7 +24,6 @@
     "@conflux-lib/kvstore": "3.6.2",
     "@confluxfans/nft-utils": "^1.0.4",
     "@koa/cors": "~3.1.0",
-    "@openapitools/openapi-generator-cli": "^2.5.2",
     "@types/koa-bodyparser": "~4.3.0",
     "@web3identity/address-encoder": "^0.2.20",
     "abi-decoder": "^2.4.0",
@@ -79,6 +81,7 @@
     "yamljs": "0.3.0"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.5.2",
     "@types/ali-oss": "6.0.10",
     "@types/koa": "2.11.6",
     "@types/koa-helmet": "6.0.1",

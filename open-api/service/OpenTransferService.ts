@@ -55,7 +55,7 @@ export async function listAccountTransfer(ctx) {
 }
 
 export async function listNFTTransfers(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
     mustBeIntParamIfPresent(ctx.request.query, 'cursor');
 
     let {contract, cursor} = ctx.request.query;
@@ -102,7 +102,7 @@ export function polishTransferList(page) {
 
 export async function listTransfer(ctx, service, cursor = undefined) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'from','to','account', 'contract')
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'from','to','account', 'contract')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
     mustBeEnumParamIfPresent(ctx.request.query, 'transferType', lodash.map(Object.values(CONST.ADDRESS_TRANSFER_TYPE), item => item.name))
 

@@ -14,7 +14,7 @@ import {paginateCore} from "../../stat/router/ParamChecker";
 const lodash = require('lodash');
 
 export async function listNFTBalances(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
 
     const {owner} = ctx.request.query;
@@ -33,7 +33,7 @@ export async function listNFTBalances(ctx) {
 }
 
 export async function listNFTTokensNew(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner', 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner', 'contract');
     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'cursor', 'limit', 'tokenId');
     mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
@@ -55,7 +55,7 @@ export async function listNFTTokensNew(ctx) {
 }
 
 export async function listNFTTokens(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'owner', 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner', 'contract');
     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit', 'tokenId');
     mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
@@ -79,7 +79,7 @@ export async function listNFTTokens(ctx) {
 }
 
 export async function listNFTTokensByFts(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
 
     const {contract, name: nftName} = ctx.request.query;
     checkPresent({nftName}, ['nftName']);
@@ -94,7 +94,7 @@ export async function listNFTTokensByFts(ctx) {
 }
 
 export async function listNFTOwners(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
     mustBeIntParamIfPresent(ctx.request.query, 'tokenId', 'limit');
 
     const {contract, tokenId, cursor} = ctx.request.query;
@@ -140,7 +140,7 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
 }
 
 export async function getNFTPreview(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contract');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
     mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
 

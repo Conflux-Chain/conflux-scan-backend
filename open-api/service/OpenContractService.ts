@@ -82,7 +82,7 @@ export function isEmptyObj(obj) {
 }
 
 export async function getABI(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
     const {address} = ctx.request.query;
     checkPresent({address}, ['address']);
 
@@ -97,7 +97,7 @@ export async function getABI(ctx) {
 }
 
 export async function getSourceCode(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
     const {address} = ctx.request.query;
     checkPresent({address}, ['address']);
 

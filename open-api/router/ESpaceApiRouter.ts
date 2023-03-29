@@ -190,7 +190,7 @@ async function gateway(ctx) {
 }
 
 async function getBalance(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
     mustBeEnumParamIfPresent(ctx.request.query, 'tag', EPOCH_NUMBER_LABEL_ARRAY);
     const {address, tag} = ctx.request.query;
     checkPresent({address}, ['address']);
@@ -347,7 +347,7 @@ async function listTransfer721(ctx) {
 }
 
 async function listBlock(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
     mustBeEnumParamIfPresent(ctx.request.query, 'blocktype', ['blocks']);
     mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset');
     const {address} = ctx.request.query;
@@ -367,7 +367,7 @@ async function listBlock(ctx) {
 }
 
 async function getBalanceHistory(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {address, blockno: epochNumber} = ctx.request.query;
     checkPresent({address, blockno: epochNumber}, ['address', 'blockno']);
@@ -377,7 +377,7 @@ async function getBalanceHistory(ctx) {
 }
 
 async function getTokenBalance(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress', 'address');
     const {contractaddress, address} = ctx.request.query;
     checkPresent({contractaddress, address}, ['contractaddress', 'address']);
 
@@ -386,7 +386,7 @@ async function getTokenBalance(ctx) {
 }
 
 async function getTokenBalanceHistory(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress', 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {contractaddress, address, blockno: epochNumber} = ctx.request.query;
     checkPresent({contractaddress, address, blockno: epochNumber}, ['contractaddress', 'address', 'blockno']);
@@ -458,7 +458,7 @@ async function getBlockNoByTime(ctx) {
 }
 
 async function getLogs(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
     mustBeHex64ParamIfPresent(ctx.request.query, 'topic0', 'topic1', 'topic2', 'topic3');
     let {
         fromBlock, toBlock, address,
@@ -495,7 +495,7 @@ async function getLogs(ctx) {
 }
 
 async function getTokenInfo(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
     const {contractaddress} = ctx.request.query;
     checkPresent({contractaddress}, ['contractaddress']);
 
@@ -510,7 +510,7 @@ async function getTokenInfo(ctx) {
 }
 
 async function getTokenSupply(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
     const {contractaddress} = ctx.request.query;
     checkPresent({contractaddress}, ['contractaddress']);
 
@@ -519,7 +519,7 @@ async function getTokenSupply(ctx) {
 }
 
 async function getTokenSupplyHistory(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {contractaddress, blockno: epochNumber} = ctx.request.query;
     checkPresent({contractaddress, blockno: epochNumber}, ['contractaddress', 'blockno']);
@@ -540,7 +540,7 @@ function parseGatewayParam(ctx) {
 }
 
 function parseListTransferParam(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, 'contractaddress', 'address');
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress', 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset', 'startblock', 'endblock');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc']);
     const {page, offset} = paginateEVM(ctx.request.query);
