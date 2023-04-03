@@ -4,7 +4,14 @@ import {Op, QueryTypes, Sequelize} from "sequelize";
 import {KEY_NFT_FROM_DB, KV} from "../../model/KV";
 import {getNftBalances} from "../NftService";
 import {Desensitizer} from "../Desensitizer";
-import {convert2base32map, getAddrId, idHex40Map} from "../../model/HexMap";
+import {
+    convert2base32map,
+    getAddrId,
+    getAddrIdArray,
+    getAddrIdBase32Map,
+    hex40IdMap,
+    idHex40Map
+} from "../../model/HexMap";
 import {TokenBalance} from "../../model/Balance";
 import {CONST} from "../common/constant"
 import {NftMetaFts} from "./NftMetaStorage";
@@ -141,6 +148,65 @@ export class NFTCheckerService {
         ))
 
         return {total: count ? count : 0, list};
+    }
+
+    public async getNftTokensForOpenApiPlus({owner, contract, tokenId, skip = 0, cursor = 0, limit = 10, byUniqueToken = false}
+        : { owner?: string, contract?: string[], tokenId: string, skip?: number, cursor?: number, limit: number, byUniqueToken?: boolean}) {
+        const ownerId = owner ? await getAddrId(owner) : owner;
+        const contractIdArray = contract ? await getAddrIdArray(contract) : contract;
+        if ((owner && !ownerId) || ( contract?.length && !contractIdArray?.length)) {
+            return {total: 0, list: []};
+        }
+
+        async function doQuery(model, byCursor) {
+            if(byCursor) {
+                const rows = await model.findAll(options);
+                delete options.attributes;
+                delete options.where.id;
+                const count = await model.count(options);
+                page = {count, rows};
+            } else{
+                page = await model.findAndCountAll(options);
+            }
+            return page;
+        }
+
+        const byCursor = cursor > 0 && skip === 0;
+        const options: any = { offset: skip, limit, raw: true, order: [['id', 'asc']] };
+        byCursor && delete options.offset;
+        const contractLen = contractIdArray?.length;
+        const contractId = contractLen ? (contractLen === 1 ? contractIdArray[0] : {[Op.in]: contractIdArray}) : undefined;
+
+        let page;
+        if(byUniqueToken) {
+            options.attributes = ['id', 'contractId', ['toId', 'addressId'], 'tokenId', [Sequelize.literal(`"1"`),'value']];
+            options.where = emptyField({contractId, toId: ownerId, tokenId});
+            if(byCursor) options.where.id = {[Op.gt]: cursor};
+            if(!ownerId) options.where.toId = {[Op.ne]: (await getAddrId(CONST.ZERO_ADDRESS))};
+            page = await doQuery(NftMint, byCursor);
+        } else {
+            options.attributes = ['id', 'contractId', 'addressId', 'tokenId', 'value', 'type'];
+            options.where = emptyField({addressId: ownerId, contractId, tokenId, value: {[Op.gt]: 0}});
+            if(byCursor) options.where.id = {[Op.gt]: cursor};
+            page = await doQuery(AddressNfts, byCursor);
+        }
+
+        const list = [];
+        const {count: total, rows} = page;
+        if (rows?.length) {
+            const idBase32Map = await getAddrIdBase32Map(rows, 'contractId', 'addressId');
+            const tokenMap = byUniqueToken ? await TokenQuery.getAddrIdTokenMap(rows, 'contractId') : {};
+            rows.forEach(item => list.push({
+                owner: idBase32Map.get(item.addressId),
+                contract: idBase32Map.get(item.contractId),
+                tokenId: item.tokenId,
+                amount: item.value,
+                type: byUniqueToken ? (tokenMap[item.contractId].type === CONST.TRANSFER_TYPE.ERC721 ? 'CRC721' : 'CRC1155') :
+                    (item.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code ? 'CRC721' : 'CRC1155'),
+            }));
+        }
+
+        return {total, list, next: rows?.length ? rows[rows.length-1].id : 0};
     }
 
     public async getNftTokensForOpenApiNew({owner, contract, tokenId, skip = 0, cursor = 0, limit = 10, byUniqueToken = false}
