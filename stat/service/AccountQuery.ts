@@ -4,10 +4,14 @@ import {StatApp} from "../StatApp";
 import {Contract} from "../model/Contract";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {
-    hex40IdMap,
-    POCKET_ADDRESS_MAP,
-    ESpaceHex40Map, Hex40Map
+    POCKET_ADDRESS_MAP, ESpaceHex40Map, Hex40Map, getAddrId
 } from "../model/HexMap";
+import {AddressCfxTransfer} from "../model/CfxTransfer";
+import {AddressErc20Transfer} from "../model/Erc20Transfer";
+import {AddressErc721Transfer} from "../model/Erc721Transfer";
+import {AddressErc1155Transfer} from "../model/Erc1155Transfer";
+import {FullMinerBlock} from "../model/FullMinerBlock";
+import {NftMint} from "../model/Token";
 
 const lodash = require('lodash');
 
@@ -141,6 +145,28 @@ export class AccountQuery {
         });
 
         return { total: Object.keys(map).length, map };
+    }
+
+    public async getBasicInfo(addr) {
+        const addrId = await getAddrId(addr);
+
+        const tabMap = {
+            cfxTransferTab: {model: AddressCfxTransfer, addressIdFieldName: 'addressId'},
+            erc20TransferTab: {model: AddressErc20Transfer, addressIdFieldName: 'addressId'},
+            erc721TransferTab: {model: AddressErc721Transfer, addressIdFieldName: 'addressId'},
+            erc1155TransferTab: {model: AddressErc1155Transfer, addressIdFieldName: 'addressId'},
+            nftAssetTab: {model: NftMint, addressIdFieldName: 'toId'},
+            minedBlockTab: {model: FullMinerBlock, addressIdFieldName: 'minerId'},
+        }
+
+        await Promise.all(Object.keys(tabMap).map((tabType)=>{
+            const {model, addressIdFieldName} = tabMap[tabType];
+            return model.findOne({where: {[addressIdFieldName]: addrId}}).then(record=>{
+                tabMap[tabType] = record ? 1 : 0;
+            });
+        }))
+
+        return tabMap;
     }
 
     private async idHex40Map(hexArray) {
