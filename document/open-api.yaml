@@ -500,7 +500,7 @@ paths:
       description: "Get a list of transfers for a NFT"
       parameters:
         - $ref: '#/components/parameters/contractParamMust'
-        - $ref: '#/components/parameters/tokenIdParamMust'
+        - $ref: '#/components/parameters/tokenIdParam'
         - $ref: '#/components/parameters/cursorParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/from'
@@ -1132,7 +1132,10 @@ components:
                   symbol:
                     description: 'Symbol of the token.'
                     type: string
-                    example: 'CRC20'
+                    example: 'CFX'
+                  type:
+                    description: 'Token type, CRC20、CRC721 or CRC1155'
+                    type: string
                   decimals:
                     description: 'Decimal of the token, optional.'
                     type: integer
@@ -2037,6 +2040,12 @@ components:
               type: string
             description:
               description: 'The description of NFT'
+              type: string
+            type:
+              description: 'Token type, CRC20、CRC721 or CRC1155'
+              type: string
+            owner:
+              description: 'The owner address.'
               type: string
             rawData:
               type: object
