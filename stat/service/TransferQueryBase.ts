@@ -373,7 +373,11 @@ export abstract class TransferQueryBase {
         const list = await model.findAll(queryOptions);
 
         delete queryOptions.attributes;
-        queryOptions.where[Op.and] = queryOptions.where[Op.and].filter(item => item.id === undefined);
+        if(queryOptions.where[Op.and]) {
+            queryOptions.where[Op.and] = queryOptions.where[Op.and].filter(item => item.id === undefined);
+        } else {
+            delete queryOptions.where.id;
+        }
         const count = await model.count(queryOptions);
 
         return {count, rows: list}

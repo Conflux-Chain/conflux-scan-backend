@@ -19,6 +19,7 @@ import {
     listAccountTransfer721,
     listAccountTransfer1155,
     listAccountTransfer3525,
+    listNFTTransfers,
 } from "../service/OpenTransferService";
 import {
     getABI,
@@ -36,6 +37,7 @@ import {
     listNFTTokens,
     getNFTPreview,
     listNFTTokensByFts,
+    listNFTOwners,
 } from "../service/OpenNFTService";
 import {
     getSupplyStat,
@@ -569,6 +571,8 @@ export function registerRouter(router: Router) {
     router.get('/nft/tokens', listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
+    router.get('/nft/owners', listNFTOwners);
+    router.get('/nft/transfers', listNFTTransfers);
 
     // utils
     router.get('/util/decode/method', abiDecode);

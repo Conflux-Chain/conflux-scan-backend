@@ -524,6 +524,47 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/NFTTokenFtsList"
+  /nft/owners:
+    get:
+      tags:
+        - 'NFT Assets'
+      description: "Get a list of owners for a NFT or a NFT collection. The owners are sorted by transfer timestamp with ascending direction"
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/NFTOwnerList"
+  /nft/transfers:
+    get:
+      tags:
+        - 'NFT Assets'
+      description: "Get a list of transfers for a NFT"
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TransferList"
   /util/decode/method:
     get:
       tags:
@@ -1603,6 +1644,12 @@ components:
             description:
               description: 'The description of NFT'
               type: string
+            type:
+              description: 'Token type, CRC20、CRC721 or CRC1155'
+              type: string
+            owner:
+              description: 'The owner address.'
+              type: string
             rawData:
               type: object
               properties:
@@ -1894,7 +1941,10 @@ components:
                   symbol:
                     description: 'Symbol of the token.'
                     type: string
-                    example: 'ERC20'
+                    example: 'CFX'
+                  type:
+                    description: 'Token type, CRC20、CRC721 or CRC1155'
+                    type: string
                   decimals:
                     description: 'Decimal of the token, optional.'
                     type: integer
@@ -2833,6 +2883,14 @@ components:
       required: false
       schema:
         type: integer
+        default: 0
+    cursorParamWithoutMaximum:
+      name: cursor
+      in: query
+      description: "A cursor to retrieve the next page"
+      required: false
+      schema:
+        type: string
         default: 0
     limitParam:
       name: limit
