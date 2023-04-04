@@ -10,6 +10,7 @@ import {
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {Errors} from "../../stat/service/common/LogicError";
 
 const lodash = require('lodash');
 
@@ -40,6 +41,9 @@ export async function listNFTTokensNew(ctx) {
 
     const {owner, contract, tokenId, withBrief, withMetadata, cursor} = ctx.request.query;
     const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
+    if(!contract && !owner) {
+        throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
+    }
 
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApiNew({
         owner, contract, tokenId, skip, cursor, limit});
@@ -148,10 +152,13 @@ export async function getNFTPreview(ctx) {
     checkPresent({contract, tokenId}, ['contract', 'tokenId']);
 
     const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: contract,
-        tokenId: BigInt(tokenId)});
+        tokenId: BigInt(tokenId), withDetail: true}) as any;
 
-    const data = {contract, tokenId, name: nftInfo?.imageName?.en, image: nftInfo?.imageUri,
-        description: nftInfo?.imageDesc};
+    const data = {
+        contract, tokenId,
+        name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc,
+        mintTimestamp: nftInfo?.mintTime.getTime() / 1000, owner: nftInfo?.owner, type: nftInfo?.type?.replace('ERC', 'CRC')
+    };
     const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;
     lodash.defaults(data, {...metadata, error: nftInfo?.error});
     if (StatApp.isEVM) {
