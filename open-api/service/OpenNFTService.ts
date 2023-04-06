@@ -34,6 +34,34 @@ export async function listNFTBalances(ctx) {
     setBody(ctx, data)
 }
 
+export async function listNFTTokensPro(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
+    mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'sortField', ['own_time','mint_time'])
+    mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'skip', 'limit', 'tokenId');
+    mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
+
+    const {owner, contract, tokenId, withBrief, withMetadata, sort, sortField, cursor} = ctx.request.query;
+    const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
+    if(!contract && !owner) {
+        throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
+    }
+
+    const data = await getApiService().nftCheckerService.getNftTokensForOpenApiPro({
+        owner, contract, tokenId: tokenId?.toString(), sort, sortField, cursor, skip, limit});
+    if(withBrief === 'true' || withMetadata === 'true') {
+        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
+        ctx.set('external-ms', externalMs)
+    }
+
+    data?.list?.forEach(row => {
+        StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
+    });
+    setBody(ctx, data)
+}
+
 export async function listNFTTokensPlus(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
@@ -42,7 +70,6 @@ export async function listNFTTokensPlus(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
 
     const {owner, contract, tokenId, withBrief, withMetadata, cursor} = ctx.request.query;
-    console.log(`contract ---1--- ${typeof contract} ${JSON.stringify(contract)}`);
     const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
     if(!contract && !owner) {
         throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
