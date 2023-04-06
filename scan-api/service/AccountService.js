@@ -27,7 +27,7 @@ class AccountService {
       transactionCount = await service.transaction.count({ accountAddress: address });
     }
 
-    const countMap = {}
+    /*const countMap = {}
     const typeMap = {
       cfxTransferCount: CONST.TRANSFER_TYPE.CFX,
       erc20TransferCount: CONST.TRANSFER_TYPE.ERC20,
@@ -38,12 +38,13 @@ class AccountService {
       return service.transfer.count({ accountAddress: address, transferType: typeMap[k] }).then(res=>{
         countMap[k] = res
       });
-    }))
+    }))*/
+    const tabMap = await service.accountQuery.getBasicInfo(address);
 
     return lodash.defaults({ address }, account, {
       blockCount,
       transactionCount,
-      ...countMap
+      ...tabMap
     });
   }
 }
