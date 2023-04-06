@@ -128,7 +128,7 @@ class TokenService {
 
     const total = list.length;
     list = lodash.orderBy(list, orderBy, reverse ? 'desc' : 'asc');
-    if (options.accountAddress === undefined && options.addressArray === undefined) {
+    if (/*options.accountAddress === undefined &&*/options.addressArray === undefined) {
       list = list.slice(skip, skip + limit);
     }
 

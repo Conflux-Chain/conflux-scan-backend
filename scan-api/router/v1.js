@@ -1086,7 +1086,7 @@ router.get('/token',
       orderBy: { in: 'query', type: 'string', default: 'transferCount' },
       reverse: { in: 'query', type: 'boolean', default: true },
       skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
-      limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
+      limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 100 },
       fields: {
         in: 'query', type: 'array', default: ['price'],
         items: { type: 'string', enum: ['icon', 'price'] },
