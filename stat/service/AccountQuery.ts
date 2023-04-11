@@ -149,6 +149,16 @@ export class AccountQuery {
 
     public async getBasicInfo(addr) {
         const addrId = await getAddrId(addr);
+        if(!addrId) {
+           return {
+                cfxTransferTab: 0,
+                erc20TransferTab: 0,
+                erc721TransferTab: 0,
+                erc1155TransferTab: 0,
+                nftAssetTab: 0,
+                minedBlockTab: 0,
+            };
+        }
 
         const tabMap = {
             cfxTransferTab: {model: AddressCfxTransfer, addressIdFieldName: 'addressId'},
