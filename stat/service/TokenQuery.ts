@@ -451,4 +451,18 @@ export class TokenQuery {
 
         return {hex40id, type};
     }
+
+    public static async getAddrIdTokenMap(list, ...keys) {
+        const tokenIdSet = new Set();
+        list.forEach(item => keys.forEach(key => tokenIdSet.add(item[key])));
+        const tokenIdArray = [...tokenIdSet] as number[];
+
+        const tokenArray = await Token.findAll({
+            attributes:['hex40id','type'],
+            where:{hex40id:{[Op.in]: tokenIdArray}},
+            raw: true,
+        });
+
+        return lodash.keyBy(tokenArray, 'hex40id');
+    }
 }

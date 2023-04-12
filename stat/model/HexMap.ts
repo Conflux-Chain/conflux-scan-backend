@@ -410,3 +410,15 @@ export function patchBase32prop(list:any[], fromKey: string, toKey: string, isEv
     }
     return base32arr
 }
+export async function getAddrIdArray(addressArray) {
+    const hexArray = addressArray.map(item => format.hexAddress(item));
+    const hexIdMap = await hex40IdMap(hexArray);
+    return [...hexIdMap.values()];
+}
+export async function getAddrIdBase32Map(list, ...keys) {
+    const addressIdSet = new Set();
+    list.forEach(item => keys.forEach(key => addressIdSet.add(item[key])));
+    const idHexMap = await idHex40Map([...addressIdSet] as number[]);
+    const idBase32Map = convert2base32map(idHexMap);
+    return idBase32Map;
+}

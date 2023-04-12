@@ -11,13 +11,17 @@ import {Op, QueryTypes, Sequelize} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
 import {AddressNft, AddressNfts} from "../../model/AddrNft";
-import {Epoch} from "../../model/Epoch";
+import {Epoch, EpochNftTransfer} from "../../model/Epoch";
 import {FullMinerBlock} from "../../model/FullMinerBlock";
 import {AddressTransfer} from "../../model/AddrTransfer";
 import {NftMeta} from "../nftchecker/NftMetaStorage";
 import {CensorItem} from "../../model/CensorItem";
 import {KV} from "../../model/KV";
-import {Erc1155Data} from "../../model/Token";
+import {Erc1155Data, NftMint} from "../../model/Token";
+import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
+import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {AddressNftTransfer, NftTransfer} from "../../model/NftTransfer";
+import {sleep} from "./ProcessTool";
 
 const lodash = require('lodash');
 const { format, sign } = require('js-conflux-sdk');
@@ -121,6 +125,125 @@ async function paddingIdForAddressTransfer(times: number, rows: number) {
         console.log(`timesCounter ------ ${timesCounter}`)
     } while (true)
     console.log(`done ------ cursorId ${cursorId}`)
+}
+
+async function paddingUpdatedCursor(times: number, rows: number) {
+    let lastId = 0;
+    let timesCounter = 0;
+    do{
+        timesCounter = timesCounter + 1;
+        if(timesCounter > times) break;
+
+        const list = await AddressNfts.findAll({
+            where: {id: {[Op.gt]: lastId}, updatedCursor: null},
+            order: [['id', 'asc']],
+            limit: rows,
+            raw: true,
+        })
+
+        const fetchSize = list?.length;
+        if(fetchSize) {
+            for (const addrNfts of list) {
+                const {addressId: toId, contractId, tokenId, type, updatedCursor: dbCursor,value} = addrNfts;
+                if(dbCursor) continue;
+                if(type !== 21 && type !== 55){
+                    throw new Error(`invalid nft type`);
+                }
+
+                let latestTransferTime;
+                if(type === 21) {
+                    /*let start = Date.now();*/
+                    let latestTransfer: any = await NftMint.findOne({where: {contractId, toId, tokenId}});
+                    if(!latestTransfer){
+                        latestTransfer = {updatedAt: addrNfts.updatedAt};
+                        /*console.log(`contractId ${contractId} tokenId ${tokenId} toId ${toId} value ${value}`)*/
+                    }
+                    /*const elapsed2 = Date.now() - start;
+                    console.log(`721  elapsed2 ${elapsed2}`)*/
+                    latestTransferTime = latestTransfer.updatedAt;
+                } else{
+                    /*let start = Date.now();*/
+                    let latestTransfer: any = await Erc1155Data.findOne({where: {contractId, addressId: toId, tokenId}});
+                    if(!latestTransfer) {
+                        latestTransfer = {updatedAt: addrNfts.updatedAt};
+                        console.log(`contractId ${contractId} tokenId ${tokenId} toId ${toId} value ${value}`)
+                    }
+                    /*const elapsed2 = Date.now() - start;
+                    console.log(`1155  elapsed2 ${elapsed2}`)*/
+                    latestTransferTime = latestTransfer['updatedAt'];
+                }
+                const updatedCursor = Number(`${latestTransferTime.getTime().toString().substring(0, 10)}000000`);
+                await AddressNfts.update({updatedAt: latestTransferTime, updatedCursor}, {where: {id: addrNfts.id}});
+            }
+
+            const last = list[list.length-1];
+            lastId = last.id;
+            await sleep(100);
+        }
+        console.log(`${new Date()}paddingUpdatedCursor ------ timesCounter:${timesCounter} fetchSize:${fetchSize} lastId:${lastId}`);
+    } while (true)
+    console.log(`done`)
+}
+
+const KEY_UPDATED_CURSOR = 'KEY_UPDATED_CURSOR';
+async function serializeUpdatedCursor(times: number) {
+    let timesCounter = 0;
+    const step = 1000000;
+    do{
+        /*console.log(`---1---`)*/
+        timesCounter = timesCounter + 1;
+        if(timesCounter > times) break;
+        if(timesCounter % 100 === 0) {
+            await sleep(100);
+            console.log(`${new Date()}serializeUpdatedCursor ------ timesCounter:${timesCounter}`);
+        }
+
+        const lastCursor = await KV.getNumber(KEY_UPDATED_CURSOR, 0);
+        const nextCursor = lastCursor + step;
+        /*console.log(`---2--- lastCursor ${lastCursor}`)*/
+        const row = await AddressNfts.findOne({
+            where: {
+                [Op.and]: [
+                    {updatedCursor: {[Op.gte]: nextCursor}},
+                    {updatedCursor: {[Op.lt]: 1682205766000000}},
+                ]
+            },
+            order: [['updatedCursor', 'asc']],
+            limit: 1,
+            raw: true,
+        })
+        /*console.log(`---3--- ${JSON.stringify(row)}`)*/
+        if(!row){
+           break;
+        }
+
+        const rowsSameCursor = await AddressNfts.findAll({
+            where: {updatedCursor: row.updatedCursor},
+            raw: true,
+        })
+        /*console.log(`---5--- ${rowsSameCursor.length}`)*/
+        if(rowsSameCursor.length < 2){
+            /*console.log(`---6--- lastCursor ${lastCursor}`)*/
+            await KV.saveNumber(KEY_UPDATED_CURSOR, row.updatedCursor, undefined);
+            continue
+        }
+
+        const toUpdateArray = [];
+        let index = 0;
+        rowsSameCursor.forEach(item => {
+            const updatedCursor = Number(`${item.updatedCursor.toString().substring(0, 10)}${(index++).toString().padStart(6, '0')}`);
+            toUpdateArray.push({id: item.id, updatedCursor});
+        })
+        /*console.log(`toUpdateArray ${JSON.stringify(toUpdateArray)}`)*/
+
+        await AddressNfts.sequelize.transaction(async (dbTx) => {
+            for (const toUpdate of toUpdateArray) {
+                await AddressNfts.update({updatedCursor: toUpdate.updatedCursor}, {where: {id: toUpdate.id}});
+            }
+            await KV.saveNumber(KEY_UPDATED_CURSOR, row.updatedCursor, dbTx);
+        });
+    } while (true)
+    console.log(`done`)
 }
 
 async function testUpdateByLiteral(amount) {
@@ -526,6 +649,12 @@ async function run() {
     if(type === 10) {
         await searchBeaconContract();
     }
+    if(type === 11) {
+        await paddingUpdatedCursor(times, rows);
+    }
+    if(type === 12) {
+        await serializeUpdatedCursor(times);
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
@@ -533,9 +662,11 @@ type = Number(args[1]);
 if(type === 6) {
  base32 = args[2];
 }
-if(type === 7 || type === 8) {
+if(type === 7 || type === 8 || type === 11 || type === 12) {
     times = Number(args[2]);
-    rows = Number(args[3]);
+    if(args[3]) {
+        rows = Number(args[3]);
+    }
 }
 if(type === 9) {
     amount = args[2];

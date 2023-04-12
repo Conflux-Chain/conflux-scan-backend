@@ -76,7 +76,9 @@ export interface IAddressNfts {
     tokenId:string
     value: number
     type: number
+    createdAt:Date
     updatedAt:Date
+    updatedCursor: number
 }
 
 export class AddressNfts extends Model<IAddressNfts> implements IAddressNfts {
@@ -86,7 +88,9 @@ export class AddressNfts extends Model<IAddressNfts> implements IAddressNfts {
     tokenId:string
     value: number
     type: number
+    createdAt:Date
     updatedAt:Date
+    updatedCursor: number
     static register(seq:Sequelize) {
         AddressNfts.init({
             id: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, autoIncrement: true, primaryKey: true},
@@ -95,10 +99,13 @@ export class AddressNfts extends Model<IAddressNfts> implements IAddressNfts {
             tokenId: {type: DataTypes.STRING(78), allowNull: false, },
             value: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
             type: {type: DataTypes.SMALLINT, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
             updatedAt: {type: DataTypes.DATE, allowNull: false},
+            updatedCursor: {type: DataTypes.BIGINT({unsigned: true}), allowNull: true, },
         },{
             sequelize: seq,
             tableName: T_ADDRESS_NFTS,
+            timestamps: false,
             indexes: [
                 {name: 'uk_aid_cid_tid', fields:['addressId','contractId','tokenId'], unique: true},// query by address
                 {name: 'idx_aid_type', fields:['addressId', 'type', 'updatedAt']},// query by address and type

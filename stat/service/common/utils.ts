@@ -186,6 +186,36 @@ export function mustBeAddressParamIfPresent(obj, netId, isEVM, ...keys:string[])
     }
 }
 
+export function mustBeAddressArrayParamIfPresent(obj, netId, isEVM, ...keys:string[]) {
+    for(const k of keys) {
+        let vArray = obj[k];
+        if (vArray === undefined || vArray === null) {
+            continue;
+        }
+
+        if (!lodash.isArray(vArray)) {
+            vArray = [vArray];
+        }
+
+        for (const v of vArray) {
+            if (/0x[0-9a-fA-F]{40}/.test(v)) {
+                continue; // hex 40
+            }
+            if (!isValidCfxAddress(v)) {
+                throw new Errors.ParameterError(`Invalid address parameter [${k}] with value [${v}].`);
+            }
+            const addr = decodeCfxAddress(v)
+            if (addr.netId !== netId) {
+                throw new Errors.ParameterError(`Invalid address parameter [${k}] with value [${v}], prefix is invalid.`);
+            }
+            if (/contract/.test(k) && addr.type !== 'contract' && !isEVM) {
+                throw new Errors.ParameterError(`Invalid contract parameter [${k}] with value [${v}], type [${addr.type}], it's not a contract address.`);
+            }
+        }
+        obj[k] = vArray;
+    }
+}
+
 export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
     for (const k of keys) {
         const v = obj[k];

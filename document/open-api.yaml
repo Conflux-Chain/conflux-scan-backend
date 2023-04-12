@@ -433,8 +433,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/contractParam'
         - $ref: '#/components/parameters/ownerParam'
-        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/sortFieldParam'
         - $ref: '#/components/parameters/cursorParamWithoutMaximum'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/withBriefParam'
         - $ref: '#/components/parameters/withMetadataParam'
@@ -2633,6 +2635,14 @@ components:
       schema:
         type: string
         default: 'DESC'
+    sortFieldParam:
+      description: "The field used for sorting. The value is own_time or mint_time"
+      name: sortField
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'own_time'
     transferTypeParam:
       description: "Query the transfer record of the address based on the specified transferType which includes
                               1. Transaction
