@@ -2636,13 +2636,13 @@ components:
         type: string
         default: 'DESC'
     sortFieldParam:
-      description: "The field used for sorting. The value is own_time or mint_time"
+      description: "The field used for sorting. The value is latest_update_time or mint_time"
       name: sortField
       in: query
       required: false
       schema:
         type: string
-        default: 'own_time'
+        default: 'latest_update_time'
     transferTypeParam:
       description: "Query the transfer record of the address based on the specified transferType which includes
                               1. Transaction

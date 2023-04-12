@@ -20,7 +20,6 @@ export class DailyContractCreateQuery{
             limit,
             order: [['statDay', sort]],
             raw: true,
-            logging: msg => console.log(`listDeployedContractStat: ${msg}`),
         };
 
         const conditionArray: any[] = [{statType: '1d'}];

@@ -21,7 +21,6 @@ export class CfxHolderQuery{
             offset: skip,
             limit,
             raw: true,
-            logging: msg => console.log(`listCfxHolderStat: ${msg}`),
         };
 
         const conditionArray: any[] = [{statType: '1d'}];
@@ -83,7 +82,6 @@ export class CfxHolderQuery{
             offset: skip,
             limit,
             raw: true,
-            logging: msg => console.log(`listAccountActiveStat: ${msg}`),
         };
 
         const conditionArray = [];
