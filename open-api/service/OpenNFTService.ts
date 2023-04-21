@@ -38,7 +38,7 @@ export async function listNFTTokensPro(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
-    mustBeEnumParamIfPresent(ctx.request.query, 'sortField', ['own_time','mint_time'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'sortField', ['latest_update_time','mint_time'])
     mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'skip', 'limit', 'tokenId');
     mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
@@ -51,6 +51,9 @@ export async function listNFTTokensPro(ctx) {
 
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApiPro({
         owner, contract, tokenId: tokenId?.toString(), sort, sortField, cursor, skip, limit});
+    if(sortField) {
+        console.log(`listNFTTokensPro ---1--- sortField ${sortField} `);
+    }
     if(withBrief === 'true' || withMetadata === 'true') {
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
         ctx.set('external-ms', externalMs)
@@ -160,7 +163,7 @@ export async function listNFTOwners(ctx) {
     const {limit} = paginateCore(ctx.request.query);
     checkPresent({contract}, ['contract']);
 
-    const data = await getApiService().nftCheckerService.getNftOwnersForOpenApi({contract, tokenId, cursor, limit});
+    const data = await getApiService().nftCheckerService.getNftOwnersForOpenApi({contract, tokenId: tokenId?.toString(), cursor, limit});
 
     if (StatApp.isEVM) {
         data?.list?.forEach(row => {row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});

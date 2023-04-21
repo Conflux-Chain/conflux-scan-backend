@@ -150,7 +150,7 @@ export class NFTCheckerService {
         return {total: count ? count : 0, list};
     }
 
-    public async getNftTokensForOpenApiPro({owner, contract, tokenId, sort = 'DESC', sortField = 'own_time', cursor = 0, skip = 0, limit = 10, byUniqueToken = false}
+    public async getNftTokensForOpenApiPro({owner, contract, tokenId, sort = 'DESC', sortField = 'latest_update_time', cursor = 0, skip = 0, limit = 10, byUniqueToken = false}
         : { owner?: string, contract?: string[], tokenId?: string, sort?: string, sortField?: string, cursor?: number, skip?: number, limit?: number, byUniqueToken?: boolean}) {
         const ownerId = owner ? await getAddrId(owner) : owner;
         const contractIdArray = contract ? await getAddrIdArray(contract) : contract;
@@ -158,8 +158,8 @@ export class NFTCheckerService {
             return {total: 0, list: []};
         }
 
-        const cursorField = sortField === 'own_time' ? (byUniqueToken ? 'updatedAt' : 'updatedCursor') : 'id';
-        const cursorValue = sortField === 'own_time' ? (byUniqueToken ? (cursor > 0 ? new Date(cursor) : cursor) : cursor) : cursor;
+        const cursorField = sortField === 'latest_update_time' ? (byUniqueToken ? 'updatedAt' : 'updatedCursor') : 'id';
+        const cursorValue = sortField === 'latest_update_time' ? (byUniqueToken ? (cursor > 0 ? new Date(cursor) : cursor) : cursor) : cursor;
         async function doQuery(model) {
             if(cursor > 0 && skip === 0) {
                 delete options.offset;

@@ -57,7 +57,6 @@ export class DailyTxnQuery{
             offset: skip,
             limit,
             raw: true,
-            logging: msg => console.log(`listDailyCfxTransferStat: ${msg}`),
         };
 
         const conditionArray = [];
@@ -93,7 +92,6 @@ export class DailyTxnQuery{
             offset: skip,
             limit,
             raw: true,
-            logging: msg => console.log(`listDailyTokenTransferStat: ${msg}`),
         };
 
         const conditionArray = [];

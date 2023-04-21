@@ -2992,6 +2992,14 @@ components:
       schema:
         type: string
         default: 'DESC'
+    sortFieldParam:
+      description: "The field used for sorting. The value is latest_update_time or mint_time"
+      name: sortField
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'latest_update_time'
     ownerParam:
       name: owner
       in: query
