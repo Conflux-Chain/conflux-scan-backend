@@ -143,9 +143,16 @@ export class EpochNftTransferSync extends SyncBase{
             nftTypeMap[contractId] = !nftTypeMap[contractId] ? transfer.type : nftTypeMap[contractId];
         }
 
-        let index = 0;
-        function nextCursor() {
-            return Number(`${epochTimestamp.getTime().toString().substring(0, 10)}${(index++).toString().padStart(6, '0')}`);
+        let cursor: number;
+        async function nextCursor() {
+            if(cursor === undefined) {
+                const start = Number(`${epochTimestamp.getTime().toString().substring(0, 10)}${''.padStart(6, '0')}`);
+                const end = start + Number(`${'1'.padEnd(7, '0')}`);
+                const maxCursor: number = (await AddressNfts.max('updatedCursor', {where: {
+                    [Op.and]: [{updatedCursor: {[Op.gte]: start}}, {updatedCursor: {[Op.lt]: end}}]}})) || (start - 1);
+                cursor = maxCursor + 1;
+            }
+            return cursor++;
         }
 
         for (const k of Object.keys(nftChangeMap)) {
@@ -159,7 +166,7 @@ export class EpochNftTransferSync extends SyncBase{
             }
 
             const primaryKey = {addressId, contractId, tokenId};
-            const updatedCursor = nextCursor();
+            const updatedCursor = await nextCursor();
             if(pivotSwitch) {
                 await AddressNfts.update(
                     {'value': Sequelize.literal(`value - ${Number(value)}`), updatedAt: epochTimestamp, updatedCursor},
