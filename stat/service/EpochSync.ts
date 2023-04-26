@@ -127,7 +127,10 @@ export class EpochSync extends SyncBase{
             EpochSync.SYNC_EPOCH && await Epoch.create(modelData.epoch, {transaction: dbTx});
             EpochSync.SYNC_BLOCK && await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
             EpochSync.SYNC_ANNOUNCE && await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
-            EpochSync.SYNC_TRACE && await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {transaction: dbTx});
+            EpochSync.SYNC_TRACE && await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {
+                updateOnDuplicate:["epochNumber","blockTime","txHash","traceIndex"],
+                transaction: dbTx
+            });
             EpochSync.SYNC_TRANSFER && await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx});
             EpochSync.SYNC_DESTROY && await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
                 updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],
