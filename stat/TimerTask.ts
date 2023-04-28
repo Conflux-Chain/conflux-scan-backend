@@ -29,6 +29,8 @@ import {StatDailyNFT} from "./service/timerstat/StatDailyNFT";
 import {StatTotalNFTHolder} from "./service/timerstat/StatTotalNFTHolder";
 import {Op} from "sequelize";
 import {CensorService} from "./service/censor/CensorService";
+import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
+import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 
 async function main() {
     redirectLog()
@@ -80,6 +82,12 @@ async function main() {
     //
     const statTotalCfxHolder = new StatTotalCfxHolder({cfx});
     await statTotalCfxHolder.schedule(1000 * 6);
+    //
+    const statDailyPosReward = new StatDailyPosReward({cfx});
+    await statDailyPosReward.schedule(1000 * 1);
+    //
+    const statDailyPowReward = new StatDailyPowReward({cfx});
+    await statDailyPowReward.schedule(1000 * 1);
     //
     setInterval(countTable, 60_000)
     console.log(`----- Timer tasks scheduled. -----`)

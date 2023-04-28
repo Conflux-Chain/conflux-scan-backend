@@ -1,0 +1,51 @@
+import {DataTypes, Model} from "sequelize";
+
+export interface IDailyPowRewardStat{
+    id?: number,
+    statTime: Date,
+    statType: string,
+
+    powReward: bigint,
+    powRewardTotal: bigint,
+}
+
+export class DailyPowRewardStat extends Model<IDailyPowRewardStat> implements IDailyPowRewardStat{
+    id?: number;
+    statTime: Date;
+    statType: string;
+
+    powReward: bigint;
+    powRewardTotal: bigint;
+
+    static register(sequelize) {
+        DailyPowRewardStat.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
+            statTime: {type: DataTypes.DATE, allowNull: false},
+            statType: {type: DataTypes.CHAR(2), allowNull: false, defaultValue: '1d'},
+
+            powReward: {type: DataTypes.DECIMAL(65,18), allowNull: false, defaultValue: 0},
+            powRewardTotal: {type: DataTypes.DECIMAL(65,18), allowNull: false, defaultValue: 0},
+        },{
+            sequelize: sequelize,
+            tableName: 'daily_pow_reward_stat',
+            timestamps: true,
+            indexes: [{
+                name: "idx_statTime_statType",
+                fields: ["statTime", "statType"],
+                unique: true,
+            }]
+        })
+    }
+
+    static async add(powRewardStat: DailyPowRewardStat, dbTx = undefined): Promise<IDailyPowRewardStat> {
+        return await DailyPowRewardStat.create({
+            statTime: powRewardStat.statTime,
+            statType: powRewardStat.statType,
+
+            powReward: powRewardStat.powReward,
+            powRewardTotal: powRewardStat.powRewardTotal,
+        }, {
+            transaction: dbTx
+        })
+    }
+}
