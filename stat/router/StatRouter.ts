@@ -263,7 +263,24 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/top-cfx-holder', async (ctx)=>{
-        mustBeEnumParamIfPresent(ctx.request.query, 'type', ['rank_address_by_total_cfx', 'rank_address_by_cfx', 'rank_address_by_staking']);
+        mustBeEnumParamIfPresent(ctx.request.query, 'type', [
+            'rank_address_by_total_cfx',
+            'rank_address_by_cfx',
+            'rank_address_by_staking',
+            'rank_contract_by_number_of_transfers_7d',
+            'rank_contract_by_number_of_transfers_3d',
+            'rank_contract_by_number_of_transfers_1d',
+            'rank_contract_by_number_of_senders_7d',
+            'rank_contract_by_number_of_senders_3d',
+            'rank_contract_by_number_of_senders_1d',
+            'rank_contract_by_number_of_receivers_7d',
+            'rank_contract_by_number_of_receivers_3d',
+            'rank_contract_by_number_of_receivers_1d',
+            'rank_contract_by_number_of_participants_7d',
+            'rank_contract_by_number_of_participants_3d',
+            'rank_contract_by_number_of_participants_1d',
+            ]
+        );
         mustBeIntParamIfPresent(ctx.request.query, 'limit');
         const {limit} = paginateCore(ctx.request.query);
 
@@ -272,7 +289,23 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/top-cfx-holder-csv', async (ctx) => {
-        mustBeEnumParamIfPresent(ctx.request.query, 'type', ['rank_address_by_total_cfx', 'rank_address_by_cfx', 'rank_address_by_staking']);
+        mustBeEnumParamIfPresent(ctx.request.query, 'type', [
+            'rank_address_by_total_cfx',
+            'rank_address_by_cfx',
+            'rank_address_by_staking',
+            'rank_contract_by_number_of_transfers_7d',
+            'rank_contract_by_number_of_transfers_3d',
+            'rank_contract_by_number_of_transfers_1d',
+            'rank_contract_by_number_of_senders_7d',
+            'rank_contract_by_number_of_senders_3d',
+            'rank_contract_by_number_of_senders_1d',
+            'rank_contract_by_number_of_receivers_7d',
+            'rank_contract_by_number_of_receivers_3d',
+            'rank_contract_by_number_of_receivers_1d',
+            'rank_contract_by_number_of_participants_7d',
+            'rank_contract_by_number_of_participants_3d',
+            'rank_contract_by_number_of_participants_1d',
+        ]);
         mustBeEnumParamIfPresent(ctx.request.query, 'lang', ['cn', 'en']);
         mustBeIntParamIfPresent(ctx.request.query, 'limit');
         const {limit: size} = paginateCore(ctx.request.query, {limitMax: 5000});
@@ -393,7 +426,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeEnumParamIfPresent(ctx.request.query, 'span', ['3', '7', '24']);
         mustBeEnumParamIfPresent(ctx.request.query, 'rows', ['10']);
         mustBeEnumParamIfPresent(ctx.request.query, 'type', ['d', 'h']);
-        mustBeEnumParamIfPresent(ctx.request.query, 'action', ['cfxSend', 'cfxReceive', 'txnSend', 'txnReceive']);
+        mustBeEnumParamIfPresent(ctx.request.query, 'action', ['cfxSend', 'cfxReceived', 'txnSend', 'txnReceived']);
 
         const { span, type, rows, action } = ctx.request.query;
         const top = await statApp.txnSync.txTopBy(span, type, parseInt(rows), action, StatApp.networkId);
