@@ -1085,6 +1085,64 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/NFTHolderStat"
+  /statistics/reward/pow:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of pow reward within ${limit} ${intervalType}."
+      parameters:
+        - name: intervalType
+          in: query
+          description: "Indicator calculation period, should be one of hour、day or month. Default is day."
+          required: false
+          schema:
+            type: string
+            default: day
+            enum:
+              - hour
+              - day
+              - month
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/RewardStat"
+  /statistics/reward/pos:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of pos reward within ${limit} ${intervalType}."
+      parameters:
+        - name: intervalType
+          in: query
+          description: "Indicator calculation period, should be one of hour、day or month. Default is day."
+          required: false
+          schema:
+            type: string
+            default: day
+            enum:
+              - hour
+              - day
+              - month
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/RewardStat"
 components:
   schemas:
     Version:
@@ -2432,6 +2490,31 @@ components:
               SwarmSource:
                 type: string
     NFTStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'daily count.'
+                  total:
+                    type: string
+                    description: 'total count.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    RewardStat:
       type: object
       properties:
         code:
