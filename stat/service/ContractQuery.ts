@@ -768,10 +768,13 @@ export class ContractQuery {
         const verifyRequest = {
             contractaddress: verify.base32,
             sourceCode: verify.sourceCode,
+            codeformat: verify.compiler,
             contractname: verify.name,
             compilerversion: verify.version,
             optimizationUsed: verify.optimizeFlag,
             runs: verify.optimizeRuns,
+            constructorArguements: verify.constructorArgs,
+            evmversion: verify.evmVersion,
             licenseType: lodash.findKey(CONST.LICENSE, (v) => v.code === verify.license),
         };
         let verifyUrl = `${config.syncAcrossRegionHost}/contract/verifysourcecode`;

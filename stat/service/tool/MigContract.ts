@@ -9,6 +9,7 @@ import {Hex40Map, makeId} from "../../model/HexMap";
 import {Conflux, format} from "js-conflux-sdk";
 import {TokenTool} from "./TokenTool";
 import {ContractVerify} from "../../model/ContractVerify";
+import {CONST} from "../common/constant";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -39,6 +40,47 @@ async function run(round) {
     }
     if(type === 3){
         await insertContractVerify();
+    }
+    if(type === 4){
+        await getVerifiedAddressArray();
+    }
+    if(type === 5){
+        await getNotVerifiedAddressArray();
+    }
+    if(type === 6){
+        await updateNotifyStatusForNotSynced();
+    }
+}
+
+async function getVerifiedAddressArray(){
+    const verifyArray = await ContractVerify.findAll({
+        attributes: ['base32'],
+        where: {verifyResult: true},
+        raw: true
+    });
+    const verifyAddressJSON = JSON.stringify(verifyArray.map(item => item.base32));
+    fs.writeFileSync(`${__dirname}/verifiedAddress/verified.json`, verifyAddressJSON);
+}
+
+async function getNotVerifiedAddressArray(){
+    const verifyAddressJSON = await fs.readFileSync(`${__dirname}/verifiedAddress/verified.json`);
+    const verifyAddressArray = JSON.parse(verifyAddressJSON);
+    const notVerifyAddressArray = [];
+    for (const base32 of verifyAddressArray) {
+        const item = await ContractVerify.findOne({attributes: ['base32'], where: {base32, verifyResult: true}});
+        if(!item) {
+            notVerifyAddressArray.push(base32);
+        }
+    }
+    const notVerifyAddressJSON = JSON.stringify(notVerifyAddressArray);
+    fs.writeFileSync(`${__dirname}/verifiedAddress/not-verified.json`, notVerifyAddressJSON);
+}
+
+async function updateNotifyStatusForNotSynced(){
+    const notVerifyAddressJSON = await fs.readFileSync(`${__dirname}/verifiedAddress/not-verified.json`);
+    const verifyAddressArray = JSON.parse(notVerifyAddressJSON);
+    for (const base32 of verifyAddressArray) {
+        await ContractVerify.update({notifyStatus: CONST.NOTIFY_STATUS.NEED_NOTIFY}, {where: {base32, verifyResult: true}});
     }
 }
 
