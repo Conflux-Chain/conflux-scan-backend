@@ -42,6 +42,7 @@ import {regExitHook} from "../stat/service/tool/ProcessTool";
 import {initRateLimiters} from "../stat/router/RateLimiter";
 import {checkTest} from "./test/TestCase";
 import {DailyNFTStatQuery} from "../stat/service/DailyNFTStatQuery";
+import {DailyRewardStatQuery} from "../stat/service/DailyRewardStatQuery";
 
 const Koa = require('koa');
 const lodash = require('lodash');
@@ -65,6 +66,7 @@ export class ApiService {
     addrTransferQuery: AddrTransferQuery
     dailyBlockDataStatQuery: DailyBlockDataStatQuery
     dailyNFTStatQuery: DailyNFTStatQuery
+    dailyRewardStatQuery: DailyRewardStatQuery
     rankService: RankService;
     tokenTool: TokenTool;
     tokenQuery: TokenQuery;
@@ -133,6 +135,7 @@ export class ApiServer {
         apiService.addrTransferQuery = new AddrTransferQuery(apiApp)
         apiService.dailyBlockDataStatQuery = new DailyBlockDataStatQuery(apiApp)
         apiService.dailyNFTStatQuery = new DailyNFTStatQuery(apiApp)
+        apiService.dailyRewardStatQuery = new DailyRewardStatQuery(apiApp)
         apiService.rankService = new RankService(apiApp)
         apiService.marketDataQuery = new MarketDataQuery(apiApp);
         apiService.contractCreateQuery = new DailyContractCreateQuery();

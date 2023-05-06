@@ -83,6 +83,8 @@ import {DailyNFTHolder} from "../model/DailyNFTHolder";
 import {CensorItem} from "../model/CensorItem";
 import {AddressNfts, createAddressNftTable} from "../model/AddrNft";
 import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
+import {DailyPosRewardStat} from "../model/DailyPosReward";
+import {DailyPowRewardStat} from "../model/DailyPowReward";
 let conf
 export function createDB(config) {
     conf = config
@@ -235,6 +237,8 @@ export async function initModel(sequelize) {
     DailyContractRegister.register(sequelize);
     DailyNFTStat.register(sequelize);
     DailyNFTHolder.register(sequelize);
+    DailyPosRewardStat.register(sequelize);
+    DailyPowRewardStat.register(sequelize);
     NFTBalance.register(sequelize);
     NFTMintStat.register(sequelize);
     EpochTask.register(sequelize);

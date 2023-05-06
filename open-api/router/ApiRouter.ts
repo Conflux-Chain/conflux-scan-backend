@@ -73,6 +73,8 @@ import {
     listNFTContractStat,
     listNFTTransferStat,
     listNFTHolderStat,
+    listPowRewardStat,
+    listPosRewardStat,
 } from "../service/OpenStatService";
 import {
     mustBeAddressParamIfPresent,
@@ -216,4 +218,6 @@ function registerRouter(router: Router) {
     router.get('/statistics/nft/contract', listNFTContractStat);
     router.get('/statistics/nft/transfer', listNFTTransferStat);
     router.get('/statistics/nft/holder', listNFTHolderStat);
+    router.get('/statistics/reward/pow', listPowRewardStat);
+    router.get('/statistics/reward/pos', listPosRewardStat);
 }

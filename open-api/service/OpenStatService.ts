@@ -275,3 +275,23 @@ async function getTokenAnalysisData(ctx){
         sort, skip, limit});
     return page;
 }
+
+export async function listPowRewardStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
+
+    const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
+
+    const page = await getApiService().dailyRewardStatQuery.listPowRewardStat({minTimestamp,  maxTimestamp, intervalType,
+        sort, skip, limit})
+    setBody(ctx, page)
+}
+
+export async function listPosRewardStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
+
+    const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
+
+    const page = await getApiService().dailyRewardStatQuery.listPosRewardStat({minTimestamp,  maxTimestamp, intervalType,
+        sort, skip, limit})
+    setBody(ctx, page)
+}
