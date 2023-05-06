@@ -131,6 +131,11 @@ export class ContractQuery {
         verify.codeHash = codeHash;
         verify.guid = this.genGUID(base32);
 
+        const verified = await ContractVerify.findOne({where: {base32, verifyResult: true}});
+        if (verified !== null) {
+            throw new Errors.ContractVerifyError(`Contract source code already verified`);
+        }
+
         const result = await ContractVerify.add(verify);
         logger?.info({ src: `[${address}]stat verify request`, addResult: `${JSON.stringify(result)}` });
         return result;
@@ -552,11 +557,11 @@ export class ContractQuery {
         const sdk = cfxSDK || cfx;
 
         try{
-            address = format.hexAddress(address);
-            const verify = await this.queryVerify({ address });
-            if (verify !== null) {
+            const verified = await ContractVerify.findOne({where: {base32: toBase32(address), verifyResult: true}});
+            if (verified !== null) {
                 throw new Errors.ContractVerifyError(`Contract source code already verified`);
             }
+            address = format.hexAddress(address);
             const code = await sdk.getCode(address);
             if (code === undefined || code === '0x') {
                 throw new Errors.ContractVerifyError(`Invalid contract's code:${code}`);
