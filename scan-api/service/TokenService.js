@@ -1,4 +1,5 @@
 const lodash = require('lodash');
+const BigFixed = require("bigfixed");
 const { TokenQuery } = require('../../stat/dist/service/TokenQuery');
 const { Token } = require('../../stat/dist/model/Token');
 const { KV, /*KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/dist/model/KV');
@@ -127,12 +128,34 @@ class TokenService {
     }
 
     const total = list.length;
-    list = lodash.orderBy(list, orderBy, reverse ? 'desc' : 'asc');
+    /*list = lodash.orderBy(list, orderBy, reverse ? 'desc' : 'asc');*/
+    list =  this._sortCustomized(list);
     if (/*options.accountAddress === undefined &&*/options.addressArray === undefined) {
       list = list.slice(skip, skip + limit);
     }
 
     return { total, list };
+  }
+
+  // --------------------------------------------------------------------------
+  _sortCustomized(tokenArray) {
+    if(!tokenArray?.length) {
+      return tokenArray;
+    }
+
+    tokenArray.forEach(token => {
+      token.type = Number(token.transferType.substring(3));
+      token.marketcapHeld = (token.price && token.balance && Number.isInteger(token.decimals))
+          ? BigFixed(token.price).mul(token.balance).div(BigFixed(10).pow(token.decimals)).toNumber()
+          : 0;
+    });
+
+    const groupedTokenArray = lodash.groupBy(tokenArray, 'type');
+    for (const type of Object.keys(groupedTokenArray)) {
+      groupedTokenArray[type] = lodash.orderBy(groupedTokenArray[type], ['marketcapHeld', 'balance', 'transferCount'], ['desc', 'desc', 'desc']);
+    }
+
+    return lodash.flatten(Object.values(groupedTokenArray));
   }
 
   // --------------------------------------------------------------------------
