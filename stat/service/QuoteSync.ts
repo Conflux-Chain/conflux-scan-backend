@@ -3,46 +3,30 @@ import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {Op} from 'sequelize'
 import {toBase32} from "./tool/AddressTool";
 import {StatApp} from "../StatApp";
+import {format} from "js-conflux-sdk";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
 const BigFixed = require('bigfixed');
-const {abi} = require('./abi/MoonswapRoute');
+const {abi: abiSwappiFarmController} = require('./abi/SwappiFarmController');
+const {abi: abiSwappiPair} = require('./abi/SwappiPair');
+const {abi: abiSwappiRouter} = require('./abi/SwappiRouter');
 const response = 10_000;
 const deadline = 10_000;
 
 export class QuoteSync {
-    private app;
-    private cfx;
-    private moonSwapRouteAddress = 'cfx:acam64yj323zd4t1fhybxh3jsg7hu4012yz9kakxs9';
-    private wCFXAddress = "cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx";
-    private cETHAddress = "cfx:acdrf821t59y12b4guyzckyuw2xf1gfpj2ba0x4sj6";
-    private cUSDTAddress = "cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7";
-    private viaWCFXSet = new Set<string>(['cITF', 'cFLUX', 'TREA', 'YAO', 'POOLGO', 'DAN', 'POS']);
-    private viaCETHSet = new Set<string>(['cFOR']);
-    private viaCETHUnilateralSet = new Set<string>(['cLEND']);
-
-    private swappiRouteAddress = '0x62b0873055bf896dd869e172119871ac24aea305';
-    private wCFXAddressEVM = '0x14b2d3bc65e74dae1030eafd8ac30c533c976a9b';
-    private cUSDTAddressEVM = "0xfe97e85d13abd9c1c33384e796f10b73905637ce";
-    private straightToCUSDTEVM = new Set<string>(['PPI', 'xCFX']);
-    private viaWCFXUnilateralSetEVM = new Set<string>(['GOL', 'NUT', 'AUSD']);
-    private TOKEN_PPI = {address: "0x22f41abf77905f50df398f21213290597e7414dd", name: 'Swappi Token', symbol: 'PPI'};
-    private TOKEN_GOL = {address: "0xa4b59aa3de2af57959c23e2c9c89a2fcb408ce6a", name: 'Goledo Token', symbol: 'GOL'};
-    private TOKEN_NUT = {address: "0xfe197e7968807b311d476915db585831b43a7e3b", name: 'Nucleon Governance Token', symbol: 'NUT'};
-    private TOKEN_xCFX = {address: "0x889138644274a7dc602f25a7e7d53ff40e6d0091", name: 'X nucleon CFX', symbol: 'xCFX'};
-    private TOKEN_AUSD = {address: "0xff33b107a0e2c0794ac43c3ffaf637fcea3697cf", name: 'AUSD Stablecoin', symbol: 'AUSD'};
+    private readonly app;
+    private tick = -1; // 1 min per tick
 
     constructor(app: any) {
         this.app = app;
-        this.cfx = app.cfx;
     }
 
     public async query({address, convertSymbol = 'USDT'}) {
         return await TokenQuoteTrack.findOne({where: {[Op.and]: [{address}, {convertSymbol}]}});
     }
 
-    public async schedule(delay: number = 1000 * 60 * 60) {
+    public async schedule(delay: number = 1000 * 60) {
         console.log(`schedule token_quote sync with delay: ${delay}`)
         const that = this
 
@@ -61,142 +45,65 @@ export class QuoteSync {
             app: {config},
         } = this;
 
-        const rawList = await Token.findAll({
-            attributes: [
-                ['base32', 'address'],
-                'name',
-                'symbol',
-                'marketCapId',
-                'moonDexSymbol',
-                'binanceSymbol',
-                'moonSwapSymbol'
-            ],
-            where: {
-                [Op.or]: [
-                    {'marketCapId': {[Op.not]: null}},
-                    {'moonDexSymbol': {[Op.not]: null}},
-                    {'binanceSymbol': {[Op.not]: null}},
-                    {'moonSwapSymbol': {[Op.not]: null}},
-                ]
-            },
-        });
-        const tokenList = rawList.map(row => row.toJSON());
-        if (tokenList.length === 0) {
-            return;
-        }
+        this.tick ++;
+        const fetchViaDex = this.tick % 3 === 0;
+        const fetchViaCex = this.tick % 60 === 0;
+        this.tick = fetchViaCex ? 0 : this.tick;
 
-        config.pullPrice && await this.pullPrice(tokenList).catch((e) => console.log(`quote_sync.fromHk ${e?.code}`));
-        await this.updateFromMarketCap(tokenList).catch((e) => console.log(`quote_sync.fromCoinMarketCap ${e?.code}`));
-        await this.updateFromMoonDex(tokenList).catch((e) => console.log(`quote_sync.fromMoonDex ${e?.code}`));
-        await this.updateFromBinance(tokenList).catch((e) => console.log(`quote_sync.fromBinance ${e?.code}`));
-        await this.updateFromMoonSwap(tokenList).catch((e) => console.log(`quote_sync.fromMoonSwap ${e?.code}`));
-        if (StatApp.networkId === 1030) {
-            await this.updateFromSwappi(tokenList).catch((e) => console.log(`quote_sync.fromSwappi ${e?.code}`));
-        }
-    }
-
-    //======================================================================
-    private async updateFromMarketCap(tokenList) {
-        const {
-            app: {config},
-        } = this;
-
-        const convertSymbolArray: Array<string> = config.quoteConvertSymbolArray;
-        if (convertSymbolArray.length === 0) {
-            return;
-        }
-        const tokenArray = tokenList?.filter((token) => token.marketCapId);
-        if (tokenArray.length === 0) {
-            return;
-        }
-
-        convertSymbolArray.map(async (convert) => {
-            const tokenMarketCapIdArray = tokenArray.map((token) => {
-                return token.marketCapId;
+        if(fetchViaCex) {
+            const tokenList = await Token.findAll({
+                attributes: [
+                    ['base32', 'address'],
+                    'name',
+                    'symbol',
+                    'cmcId',
+                    'bnId',
+                ],
+                where: {
+                    [Op.or]: [
+                        {'bnId': {[Op.not]: null}},
+                        {'cmcId': {[Op.not]: null}},
+                    ]
+                },
+                raw: true,
+                logging: sql => console.log(`token_quote ${sql}`),
             });
-
-            const marketCapIdToQuote = await this.getFromMarketCap(tokenMarketCapIdArray, convert).catch(e => {
-                console.log(`quote_sync.fromCoinMarketCap ${e?.code}`)
-                return undefined
-            });
-            if (marketCapIdToQuote === undefined) {
-                return
+            if (tokenList?.length) {
+                config.pullPrice && await this.pullPrice(tokenList).catch((e) => console.log(`token_quote.fromHk ${e}`));
+                await this.updateByBN(tokenList).catch((e) => console.log(`token_quote.fromBN ${e}`));
+                await this.updateByCMC(tokenList).catch((e) => console.log(`token_quote.fromCMC ${e}`));
             }
-            const quoteArray = tokenArray.map((token) => {
-                const quote = marketCapIdToQuote[token.marketCapId] || {};
-                return {
-                    address: token.address,
-                    name: token.name,
-                    symbol: token.symbol,
-                    convertSymbol: convert,
-                    price: quote.price || null,
-                };
-            });
-            await this.upsertQuote(quoteArray);
-        });
-    }
+        }
 
-    private async getFromMarketCap(idArray, convert = 'USDT') {
-        const {
-            app: {config},
-        } = this;
-
-        const resp = await superagent.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest')
-            .set('X-CMC_PRO_API_KEY', config.marketCapToken)
-            .timeout({response, deadline})
-            .query({id: idArray.join(','), convert});
-        return lodash.mapValues(resp.body.data, (each) => each.quote[convert]);
+        if(fetchViaDex) {
+            if (StatApp.networkId === 1029) {
+                await this.updateByMoonswap().catch((e) => console.log(`token_quote.fromMoonswap ${e}`));
+            }
+            if (StatApp.networkId === 1030) {
+                await this.updateBySwappi().catch((e) => console.log(`token_quote.fromSwappi ${e}`));
+            }
+        }
     }
 
     //======================================================================
-    private async updateFromMoonDex(tokenList) {
-        const tokenArray = tokenList?.filter((token) => token.moonDexSymbol);
-        if (tokenArray.length === 0) {
+    private async updateByBN(tokenList) {
+        const tokenArray = tokenList?.filter((token) => token.bnId);
+        if (!tokenArray?.length) {
             return;
         }
 
-        const quoteArray = await Promise.all(tokenArray.map(async (token) => {
-            const quote = await this.getFromMoonDex(token.moonDexSymbol) || {};
-            const result = {
-                address: token.address,
-                name: token.name,
-                symbol: token.symbol,
-                convertSymbol: 'USDT',
-                price: quote.price || null,
-            };
-            return result;
-        }));
-        await this.upsertQuote(quoteArray);
-    }
-
-    private async getFromMoonDex(symbol, convert = 'USDT') {
-        const resp = await superagent.get('https://api.moondex.io/opt/trade/pairs')
-            .timeout({response, deadline})
-            .query({pair: `${symbol}-${convert}`});
-        return lodash.get(resp, ['body', 'data', 0]);
-    }
-
-    //======================================================================
-    private async updateFromBinance(tokenList) {
-        const tokenArray = tokenList?.filter((token) => token.binanceSymbol);
-        if (tokenArray.length === 0) {
-            return;
-        }
-
-        const quoteArray = await Promise.all(tokenArray.map(async ({address, name, symbol, binanceSymbol}) => {
-            const quote = await this.getFromBinance(binanceSymbol) || {};
+        const quoteArray = await Promise.all(tokenArray.map(async ({address, bnId}) => {
+            const quote = await this.getFromBN(bnId) || {};
             return {
                 address,
-                name,
-                symbol,
-                convertSymbol: 'USDT',
                 price: quote || null,
+                src: 'BN',
             };
         }));
         await this.upsertQuote(quoteArray);
     }
 
-    private async getFromBinance(symbol, convert = 'USDT') {
+    private async getFromBN(symbol, convert = 'USDT') {
         const {
             app: {config},
         } = this;
@@ -211,118 +118,143 @@ export class QuoteSync {
     }
 
     //======================================================================
-    private async updateFromMoonSwap(tokenList) {
-        const tokenArray = tokenList?.filter((token) => token.moonSwapSymbol);
+    private async updateByCMC(tokenList) {
+        const tokenArray = tokenList?.filter((token) => token.cmcId);
         if (tokenArray.length === 0) {
             return;
         }
 
-        const quoteArray = await Promise.all(tokenArray.map(async ({address, name, symbol}) => {
-            const quoteMap = await this.getFromMoonSwapSite() || {};
-            if (quoteMap[address] === undefined) {
-                quoteMap[address] = await this.getFromMoonSwapContract(symbol, address);
-            }
+        const cmdIdArray = tokenArray.map(token => token.cmcId);
+        const cmcIdQuoteMap = await this.getFromCMC(cmdIdArray, 'USDT').catch(e => {
+            console.log(`token_quote.fromCMC ${e}`)
+            return undefined
+        });
+        if (cmcIdQuoteMap === undefined) {
+            return
+        }
+
+        const quoteArray = tokenArray.map((token) => {
+            const quote = cmcIdQuoteMap[token.cmcId] || {};
             return {
-                address,
-                name,
-                symbol,
-                convertSymbol: 'USDT',
-                price: quoteMap[address] || null,
+                address: token.address,
+                price: quote.price || null,
+                src: 'CMC',
             };
-        }));
+        });
         await this.upsertQuote(quoteArray);
     }
 
-    private async getFromMoonSwapSite() {
+    private async getFromCMC(idArray, convert = 'USDT') {
         const {
             app: {config},
         } = this;
 
-        const quoteMap = {};
-        const resp = await superagent.get('https://moonswap.fi/api/route/opt/swap/main/token-price')
-            .timeout({response, deadline});
-        const data = lodash.get(resp, ['body', 'data']);
-        data.forEach(item => quoteMap[item.contract_address] = item.price_usd);
-        return quoteMap;
-    }
-
-
-    private async getFromMoonSwapContract(symbol = undefined, address = undefined) {
-        const contract = this.cfx.Contract({address: this.moonSwapRouteAddress, abi});
-
-        //cYAO-wCFX wCFX-cUSDT
-        //cFOR-cETH cETH-cUSDT
-        let price;
-        if (this.viaWCFXSet.has(symbol) || this.viaCETHSet.has(symbol)) {
-            const viaAddress = this.viaWCFXSet.has(symbol) ? this.wCFXAddress : this.cETHAddress;
-            const ratio1 = await contract.getAmountsOut(100000, [address, viaAddress]);
-            const ratio2 = await contract.getAmountsOut(100000, [viaAddress, this.cUSDTAddress]);
-            price = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).mul(BigFixed(ratio2[1])
-                .div(BigFixed(ratio2[0]))).toNumber();
-        }
-        //cETH-cLEND cETH-cUSDT
-        if (this.viaCETHUnilateralSet.has(symbol)) {
-            const viaAddress = this.cETHAddress;
-            const ratio1 = await contract.getAmountsOut(100000, [viaAddress, address]);
-            const ratio2 = await contract.getAmountsOut(100000, [viaAddress, this.cUSDTAddress]);
-            price = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).mul(BigFixed(ratio2[1])
-                .div(BigFixed(ratio2[0]))).toNumber();
-        }
-        return price;
+        const resp = await superagent.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest')
+            .set('X-CMC_PRO_API_KEY', config.marketCapToken)
+            .timeout({response, deadline})
+            .query({id: idArray.join(','), convert});
+        return lodash.mapValues(resp.body.data, (each) => each.quote[convert]);
     }
 
     //======================================================================
-    private async updateFromSwappi(tokenList) {
-        const tokenArray = tokenList?.filter((token) => token.swappiSymbol);
-        tokenArray.push(this.TOKEN_PPI);
-        tokenArray.push(this.TOKEN_GOL);
-        tokenArray.push(this.TOKEN_NUT);
-        tokenArray.push(this.TOKEN_xCFX);
-        tokenArray.push(this.TOKEN_AUSD);
-        if (tokenArray.length === 0) {
-            return;
-        }
+    private async updateByMoonswap() {
+        // define const
+        const ROUTER = 'cfx:acam64yj323zd4t1fhybxh3jsg7hu4012yz9kakxs9';
+        const wUSDT = "cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7";
+        const wETH = "cfx:acdrf821t59y12b4guyzckyuw2xf1gfpj2ba0x4sj6"; // direct swap
+        const wCFX = "cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx";
+        const wTokens = new Set([wETH, wCFX]); // exclude tokens fetching price via binance
+        const wITF = 'cfx:acc8599utu7nayj50w393eycznhv4e23g2ys6xmvf5'; // forward swap via wCFX
+        const wFLUX = 'cfx:acgbjtsmfpex2mbn97dsygtkfrt952sp0psmh8pnvz';
+        const TREA = 'cfx:acb9wkgbefcja9rkpds5ve4cm5643jmebae7xjzz8f';
+        const YAO = 'cfx:acaucwuza1nm7wfj1bwkjttz7b0eh4ak7ur7fue1dy';
+        const POOLGO = 'cfx:acc8ya1f2a2bfphxg5ax7a8h29k47d5xsebxfj24nd';
+        const DAN = 'cfx:acbyzcbfpymaz43rr6s1gtx0fb08guj88uzc05rchf';
+        const POS = 'cfx:acav5v98np8t3m66uw7x61yer1ja1jm0dpzj1zyzxv';
+        const wMOON = 'cfx:achcuvuasx3t8zcumtwuf35y51sksewvca0h0hj71a'; // backward swap via wCFX
+        const FC = 'cfx:achc8nxj7r451c223m18w2dwjnmhkd6rxawrvkvsy2';
+        const wFOR = 'cfx:acc1uh4ftd4jhser99uk8nk8unkbz8ykmyxt0n27v5'; // forward swap via wETH
+        const wLEND = 'cfx:acff13n54n4t02cy6uc8xfdxrf4enanr5jh6vy761g'; // backward sway via wETH
 
-        const quoteArray = await Promise.all(tokenArray.map(async ({address, name, symbol}) => {
-            const quote = await this.getFromSwappiContractPlus(symbol, address);
-            return {
-                address: toBase32(address),
-                name,
-                symbol,
-                convertSymbol: 'USDT',
-                price: quote || null,
-            };
-        }));
+        // collect swap map
+        const directSwap = {};
+        const forwardSwap = {};
+        const backwardSwap = {};
+        directSwap[wETH] = {token0: wETH, token1: wUSDT};
+        directSwap[wCFX] = {token0: wCFX, token1: wUSDT};
+        forwardSwap[wITF] = {token0: wITF, token1: wCFX};
+        forwardSwap[wFLUX] = {token0: wFLUX, token1: wCFX};
+        forwardSwap[TREA] = {token0: TREA, token1: wCFX};
+        forwardSwap[YAO] = {token0: YAO, token1: wCFX};
+        forwardSwap[POOLGO] = {token0: POOLGO, token1: wCFX};
+        forwardSwap[DAN] = {token0: DAN, token1: wCFX};
+        forwardSwap[POS] = {token0: POS, token1: wCFX};
+        backwardSwap[wMOON] = {token0: wCFX, token1: wMOON};
+        backwardSwap[FC] = {token0: wCFX, token1: FC};
+        forwardSwap[wFOR] = {token0: wFOR, token1: wETH};
+        backwardSwap[wLEND] = {token0: wETH, token1: wLEND};
+
+        // swap
+        const tokenPriceMap = await this.swap(ROUTER, wUSDT, directSwap, forwardSwap, backwardSwap);
+
+        // update price
+        const quoteUri = 'https://moonswap.fi/analytics/token/';
+        const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens.has(token))
+            .map(token => ({address: token, price: tokenPriceMap[token], src: 'moonswap',
+                quoteUrl: `${quoteUri}${format.address(token, StatApp.networkId)}`}));
         await this.upsertQuote(quoteArray);
     }
+    //======================================================================
+    private async updateBySwappi() {
+        const {cfx} = this.app;
+        // define const
+        const FARM_CONTROLLER = '0xca49dbc049fca1916a1e51315b992a0d1eb308e7';
+        const ROUTER = '0x62b0873055bf896dd869e172119871ac24aea305';
+        const wUSDT_EVM = '0xfe97e85d13abd9c1c33384e796f10b73905637ce';
+        const wBTC_EVM = '0x1f545487c62e5acfea45dcadd9c627361d1616d8';
+        const wETH_EVM = '0xa47f43de2f9623acb395ca4905746496d2014d57';
+        const wBNB_EVM = '0x94bd7a37d2ce24cc597e158facaa8d601083ffec';
+        const wUSDC_EVM = '0x6963efed0ab40f6c3d7bda44a05dcf1437c44372';
+        const wCFX_EVM = '0x14b2d3bc65e74dae1030eafd8ac30c533c976a9b';
+        const wTokens_EVM = new Set([wBTC_EVM, wETH_EVM, wBNB_EVM, wUSDC_EVM, wCFX_EVM]); // exclude tokens fetching price via binance
+        const contractFarmController = cfx.Contract({address: FARM_CONTROLLER, abi: abiSwappiFarmController});
+        const poolArray = await contractFarmController.getPoolInfo(0);
 
-    /*private async getFromSwappiContract(symbol = undefined, address = undefined) {
-        const contract = this.cfx.Contract({address: this.swappiRouteAddress, abi});
-
-        const [amount0, amount1] = await contract.getAmountsOut(100000, [address, this.cUSDTAddressEVM]);
-        return BigFixed(amount1).div(BigFixed(amount0)).toNumber();
-    }*/
-
-    private async getFromSwappiContractPlus(symbol = undefined, address = undefined) {
-        const contract = this.cfx.Contract({address: this.swappiRouteAddress, abi});
-
-        //PPI-USDT
-        let price;
-        if (this.straightToCUSDTEVM.has(symbol)) {
-            const srcAddr = symbol === this.TOKEN_xCFX.symbol ? this.wCFXAddressEVM : address;
-            const [amount0, amount1] = await contract.getAmountsOut(100000, [srcAddr, this.cUSDTAddressEVM]);
-            price = BigFixed(amount1).div(BigFixed(amount0)).toNumber();
+        // collect swap map
+        const directSwap = {};
+        const pairArray = [];
+        for (const pool of poolArray) {
+            const {token: pairAddr} = pool;
+            const contractPair = cfx.Contract({address: pairAddr, abi: abiSwappiPair});
+            const token0 = format.hexAddress(await contractPair.token0());
+            const token1 = format.hexAddress(await contractPair.token1());
+            pairArray.push({pairAddr, token0, token1});
+            if(token0 !== wUSDT_EVM && token1 === wUSDT_EVM) {
+                directSwap[token0] = {pairAddr, token0, token1};
+            }
         }
-        //CFX-GOL CFX-USDT
-        //CFX-NUT CFX-USDT
-        if (this.viaWCFXUnilateralSetEVM.has(symbol)) {
-            const viaAddress = this.wCFXAddressEVM;
-            const ratio1 = await contract.getAmountsOut(100000, [viaAddress, address]);
-            const ratio2 = await contract.getAmountsOut(100000, [viaAddress, this.cUSDTAddressEVM]);
-            price = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).mul(BigFixed(ratio2[1])
-                .div(BigFixed(ratio2[0]))).toNumber();
+        const forwardSwap = {};
+        const backwardSwap = {};
+        const directSet = new Set(Object.keys(directSwap));
+        for (const pair of pairArray) {
+            const {pairAddr, token0, token1} = pair;
+            if((!directSet.has(token0) && token0 !== wUSDT_EVM) && directSet.has(token1)) {
+                forwardSwap[token0] = {pairAddr, token0, token1};
+            }
+            if(directSet.has(token0) && (!directSet.has(token1) && token1 !== wUSDT_EVM)) {
+                backwardSwap[token1] = {pairAddr, token0, token1};
+            }
         }
-        return price;
+
+        // swap
+        const tokenPriceMap = await this.swap(ROUTER, wUSDT_EVM, directSwap, forwardSwap, backwardSwap);
+
+        // update price
+        const quoteUri = 'https://info.swappi.io/token/';
+        const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens_EVM.has(token))
+            .map(token => ({address: token, price: tokenPriceMap[token], src: 'swappi',
+                quoteUrl: `${quoteUri}${token}`}));
+        await this.upsertQuote(quoteArray);
     }
 
     //======================================================================
@@ -335,10 +267,8 @@ export class QuoteSync {
 
         const quoteArray = tokenArray.map(({address, name, symbol, price}) => ({
             address: toBase32(address),
-            name,
-            symbol,
-            convertSymbol: 'USDT',
             price,
+            src: 'HK',
         }));
         await this.upsertQuote(quoteArray);
     }
@@ -359,23 +289,57 @@ export class QuoteSync {
     }
 
     //======================================================================
+    private async swap(routerAddr, usdtAddr, directSwap, forwardSwap, backwardSwap) {
+        const {cfx} = this.app;
+        const tokenPriceMap = {};
+
+        // direct swap
+        const directConvertTokens = Object.keys(directSwap);
+        const contractRouter = cfx.Contract({address: routerAddr, abi: abiSwappiRouter});
+        for (const token0 of directConvertTokens) {
+            const [amount0, amount1] = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
+            tokenPriceMap[token0] = BigFixed(amount1).div(BigFixed(amount0)).toNumber();
+        }
+
+        // forward swap
+        const forwardConvertTokens = Object.keys(forwardSwap);
+        for (const token0 of forwardConvertTokens) {
+            const {token1} = forwardSwap[token0];
+            const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
+            const ratio2 = await contractRouter.getAmountsOut(100000, [token1, usdtAddr]);
+            tokenPriceMap[token0] = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).mul(BigFixed(ratio2[1])
+                .div(BigFixed(ratio2[0]))).toNumber();
+        }
+
+        // backward swap
+        const backwardConvertTokens = Object.keys(backwardSwap);
+        for (const token1 of backwardConvertTokens) {
+            const {token0} = backwardSwap[token1];
+            const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
+            const ratio2 = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
+            tokenPriceMap[token1] = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).mul(BigFixed(ratio2[1])
+                .div(BigFixed(ratio2[0]))).toNumber();
+        }
+
+        return tokenPriceMap;
+    }
+
+    //======================================================================
     private async upsertQuote(quoteArray) {
         quoteArray.map(async quote => {
-            const {address, convertSymbol, price} = quote;
-            /*const dbQuote: TokenQuoteTrack = await TokenQuoteTrack.findOne({where: {address, convertSymbol}});
-            if (dbQuote) {
-                await dbQuote.update(lodash.assign(quote, {updatedAt: Date.now()}), {where: {id: dbQuote.id}});
-            } else {
-                await TokenQuoteTrack.add(quote);
-            }*/
-
-            const dbToken: Token = await Token.findOne({where: {base32: address}});
+            const {address, price, src, quoteUrl} = quote;
+            const base32 = format.address(address, StatApp.networkId);
+            const dbToken: Token = await Token.findOne({where: {base32}});
             if (dbToken) {
                 let totalPrice = (price && dbToken.totalSupply && Number.isInteger(dbToken.decimals))
                     ? BigFixed(price).mul(dbToken.totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
                     : null;
                 totalPrice = totalPrice === 0 ? null : totalPrice;
                 await Token.update({price, totalPrice, updatedAt: new Date()}, {where: {id: dbToken.id}});
+                if(!dbToken.quoteUrl && quoteUrl) {
+                    await Token.update({quoteUrl, updatedAt: new Date()}, {where: {id: dbToken.id}});
+                }
+                // console.log(`[token_quote] via ${src} ${dbToken.symbol} ${price}`);
             }
         });
     }

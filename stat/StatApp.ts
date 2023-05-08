@@ -149,7 +149,7 @@ export class StatApp{
         this.accountQuery = new AccountQuery(this);
         this.txnSync.scheduleCache()
         if (this.config.syncQuote) {
-            await this.quoteSync.schedule(this.config.syncQuoteDelay); // token quote
+            await this.quoteSync.schedule();
         }
         if (this.config.syncIPFSGateway) {
             IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
