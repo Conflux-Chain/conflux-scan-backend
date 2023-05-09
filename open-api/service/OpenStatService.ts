@@ -126,7 +126,14 @@ export async function listAccountActiveStat(ctx) {
 export async function listTransactionStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
     const page = await getApiService().dailyTxnQuery.listDailyTransactionStat({minTimestamp, maxTimestamp,
-        sort, skip, limit});
+        sort, skip, limit, field: 'txCount'});
+    setBody(ctx, page)
+}
+
+export async function listTransactionSenderStat(ctx) {
+    const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
+    const page = await getApiService().dailyTxnQuery.listDailyTransactionStat({minTimestamp, maxTimestamp,
+        sort, skip, limit, field: 'senderCount'});
     setBody(ctx, page)
 }
 

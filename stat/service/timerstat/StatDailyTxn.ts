@@ -1,4 +1,4 @@
-import {col, fn, Op, QueryTypes} from 'sequelize'
+import {col, fn, literal, Op, QueryTypes} from 'sequelize'
 import {DailyTransaction} from "../../model/DailyTransaction";
 import {FullTransaction} from "../../model/FullBlock";
 import {fmtDtUTC} from "../../model/Utils";
@@ -61,6 +61,7 @@ export class StatDailyTxn extends TimerStat{
 
         const stat: any = await FullTransaction.findOne({
             attributes:[
+                [literal(`count(distinct fromId)`), 'senderCount'],
                 [fn('count',col('*')), 'txCount'],
                 [fn('sum',col('gas')), 'gasFee'],
             ],
@@ -75,10 +76,10 @@ export class StatDailyTxn extends TimerStat{
             /*logging: msg => console.log(`[${this.bizAlias()}]tx daily query ${msg}`)*/
         });
 
-        const {txCount, gasFee} = stat;
+        const {senderCount, txCount, gasFee} = stat;
         return {
             statDay: beginTime, statType: intervalType,
-            txCount, gasFee: gasFee || 0
+            senderCount, txCount, gasFee: gasFee || 0
         } as DailyTransaction;
     }
 
@@ -86,7 +87,7 @@ export class StatDailyTxn extends TimerStat{
                               latestStat = undefined): Promise<DailyTransaction> {
         const beginTime = this.getRangeBegin(endTime, destStatType);
 
-        const statSql = `SELECT statDay,statType,txCount,gasFee FROM tx_daily 
+        const statSql = `SELECT statDay,statType,senderCount,txCount,gasFee FROM tx_daily 
                     WHERE statDay >= ? and statDay < ? and statType = '${srcStatType}'` ;
         const statList = await DailyTransaction.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
@@ -97,15 +98,17 @@ export class StatDailyTxn extends TimerStat{
         }
 
         const statDay = beginTime;
+        let senderCount = BigFixed(0);
         let txCount = BigFixed(0);
         let gasFee = BigFixed(0);
         lodash.forEach(statList, stat => {
+            senderCount = senderCount.add(BigFixed(stat['senderCount']));
             txCount = txCount.add(BigFixed(stat['txCount']));
             gasFee = gasFee.add(BigFixed(stat['gasFee'] || 0));
         });
 
         return {statDay, statType: destStatType,
-            txCount, gasFee
+            senderCount, txCount, gasFee
         } as DailyTransaction;
     }
 }

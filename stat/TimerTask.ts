@@ -31,6 +31,7 @@ import {Op} from "sequelize";
 import {CensorService} from "./service/censor/CensorService";
 import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
+import {addTxSenderCountDaily} from "./service/tool/MigContract";
 
 async function main() {
     redirectLog()

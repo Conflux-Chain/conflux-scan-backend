@@ -5,6 +5,7 @@ export interface IDailyTransaction{
     statDay: Date,
     statType: string,
     txCount: number
+    senderCount: number
     gasFee: number
 }
 
@@ -13,6 +14,7 @@ export class DailyTransaction extends Model<IDailyTransaction> implements IDaily
     statDay: Date;
     statType: string;
     txCount: number;
+    senderCount: number;
     gasFee: number;
     static register(sequelize) {
         DailyTransaction.init({
@@ -20,6 +22,7 @@ export class DailyTransaction extends Model<IDailyTransaction> implements IDaily
             statDay: {type: DataTypes.DATE, allowNull: false},
             statType: {type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d'},
             txCount: {type: DataTypes.BIGINT, allowNull: false},
+            senderCount: {type: DataTypes.BIGINT, allowNull: true},
             gasFee: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: '0'},
         },{
             sequelize: sequelize,
@@ -38,6 +41,7 @@ export class DailyTransaction extends Model<IDailyTransaction> implements IDaily
             statDay: dailyTx.statDay,
             statType: dailyTx.statType,
             txCount: dailyTx.txCount,
+            senderCount: dailyTx.gasFee,
             gasFee: dailyTx.gasFee
         }, {
             transaction: dbTx
