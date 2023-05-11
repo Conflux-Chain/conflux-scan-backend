@@ -734,7 +734,25 @@ paths:
     get:
       tags:
         - 'Statistics'
-      description: "Get statistics of active account by daily."
+      description: "Get statistics of tx sender by daily."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AccountActiveStat"
+  /statistics/account/active/overall:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of unique addresses that were active on the network as a sender or receiver of CFX or Token."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
         - $ref: '#/components/parameters/maxTimestampParam'

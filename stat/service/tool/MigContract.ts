@@ -10,6 +10,9 @@ import {Conflux, format} from "js-conflux-sdk";
 import {TokenTool} from "./TokenTool";
 import {ContractVerify} from "../../model/ContractVerify";
 import {CONST} from "../common/constant";
+import {DailyTransaction} from "../../model/DailyTransaction";
+import {FullTransaction} from "../../model/FullBlock";
+import {col, fn, literal, Op} from "sequelize";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -50,6 +53,46 @@ async function run(round) {
     if(type === 6){
         await updateNotifyStatusForNotSynced();
     }
+}
+
+export async function addTxSenderCountDaily() {
+    let count;
+    do{
+        const items = await DailyTransaction.findAll({
+            where: {senderCount: null},
+            order:[["id","asc"]],
+            limit: 100
+        });
+        count = items?.length;
+
+        if(count) {
+            for (const item of items) {
+                const {id, statDay: beginTime, statType} = item;
+
+                const endTime = new Date(beginTime);
+                const minutes = (statType === '1d') ? 24 * 60 : 10;
+                endTime.setMinutes(endTime.getMinutes() + minutes);
+
+                const stat: any = await FullTransaction.findOne({
+                    attributes: [
+                        [literal(`count(distinct fromId)`), 'senderCount'],
+                    ],
+                    where: {
+                        [Op.and]: [
+                            {createdAt: {[Op.gte]: beginTime}},
+                            {createdAt: {[Op.lt]: endTime}},
+                            {status: 0},
+                        ]
+                    },
+                    raw: true,
+                });
+
+                const {senderCount} = stat;
+                await DailyTransaction.update({senderCount}, {where: {id}});
+            }
+        }
+    }while (count);
+    console.log(`padding senderCount for tx daily done!`)
 }
 
 async function getVerifiedAddressArray(){

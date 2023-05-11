@@ -51,9 +51,6 @@ export async function listNFTTokensPro(ctx) {
 
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApiPro({
         owner, contract, tokenId: tokenId?.toString(), sort, sortField, cursor, skip, limit});
-    if(sortField) {
-        console.log(`listNFTTokensPro ---1--- sortField ${sortField} `);
-    }
     if(withBrief === 'true' || withMetadata === 'true') {
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
         ctx.set('external-ms', externalMs)

@@ -75,6 +75,7 @@ import {
     listNFTHolderStat,
     listPowRewardStat,
     listPosRewardStat,
+    listTransactionSenderStat,
 } from "../service/OpenStatService";
 import {
     mustBeAddressParamIfPresent,
@@ -196,7 +197,8 @@ function registerRouter(router: Router) {
     router.get('/statistics/contract', listContractStat);
     router.get('/statistics/account/cfx/holder', listCfxHolderStat);
     router.get('/statistics/account/growth', listAccountGrowthStat);
-    router.get('/statistics/account/active', listAccountActiveStat);
+    router.get('/statistics/account/active', listTransactionSenderStat);
+    router.get('/statistics/account/active/overall', listAccountActiveStat);
     router.get('/statistics/transaction', listTransactionStat);
     router.get('/statistics/cfx/transfer', listCfxTransferStat);
     router.get('/statistics/token/transfer', listTokenTransferStat);

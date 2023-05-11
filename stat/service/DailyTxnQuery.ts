@@ -19,9 +19,9 @@ export class DailyTxnQuery{
     }
 
     async listDailyTransactionStat({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
-                                    skip = 0, limit = 10}) {
+                                    skip = 0, limit = 10, field}) {
         const queryOptions: any = {
-            attributes: [['statDay', 'statTime'], ['txCount', 'count']],
+            attributes: [['statDay', 'statTime'], [field, 'count']],
             order: [['statDay', sort]],
             offset: skip,
             limit,
