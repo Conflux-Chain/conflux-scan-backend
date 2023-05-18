@@ -53,6 +53,25 @@ async function run(round) {
     if(type === 6){
         await updateNotifyStatusForNotSynced();
     }
+    if(type === 7){
+        await sdkCall();
+    }
+}
+
+async function sdkCall() {
+    const config = {
+        url: 'http://localhost:12550/',
+        keepAlive: true,
+    };
+
+    const cfx = new Conflux(config);
+    const epochNumber = await cfx.getEpochNumber();
+    console.log(`epochNumber ------ ${epochNumber}`);
+
+    await cfx.updateNetworkId();
+    const cfxStatus:any = await cfx.getStatus()
+    console.log(`cfxStatus ------ ${JSON.stringify(cfxStatus)}`);
+
 }
 
 export async function addTxSenderCountDaily() {

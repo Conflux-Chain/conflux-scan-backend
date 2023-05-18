@@ -11,7 +11,7 @@ import {AddressErc20Transfer} from "../model/Erc20Transfer";
 import {AddressErc721Transfer} from "../model/Erc721Transfer";
 import {AddressErc1155Transfer} from "../model/Erc1155Transfer";
 import {FullMinerBlock} from "../model/FullMinerBlock";
-import {NftMint} from "../model/Token";
+import {Erc1155Data, NftMint} from "../model/Token";
 
 const lodash = require('lodash');
 
@@ -166,8 +166,9 @@ export class AccountQuery {
             erc721TransferTab: {model: AddressErc721Transfer, addressIdFieldName: 'addressId'},
             erc1155TransferTab: {model: AddressErc1155Transfer, addressIdFieldName: 'addressId'},
             nftAssetTab: {model: NftMint, addressIdFieldName: 'toId'},
+            nftAssetTab2: {model: Erc1155Data, addressIdFieldName: 'addressId'},
             minedBlockTab: {model: FullMinerBlock, addressIdFieldName: 'minerId'},
-        }
+        } as any;
 
         await Promise.all(Object.keys(tabMap).map((tabType)=>{
             const {model, addressIdFieldName} = tabMap[tabType];
@@ -175,6 +176,8 @@ export class AccountQuery {
                 tabMap[tabType] = record ? 1 : 0;
             });
         }))
+        tabMap.nftAssetTab = tabMap.nftAssetTab || tabMap.nftAssetTab2;
+        delete tabMap.nftAssetTab2;
 
         return tabMap;
     }
