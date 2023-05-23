@@ -18,6 +18,7 @@ export class IPFSGatewaySync {
   private URL_GATEWAY = 'https://raw.githubusercontent.com/ipfs/public-gateway-checker/master/src/gateways.json';
   private CID_FOR_SAMPLE = 'bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m'; // Hello from IPFS Gateway Checker
   private app;
+  private tick = 0; // 1 min per tick
 
   constructor(app: any) {
     this.app = app;
@@ -165,6 +166,10 @@ export class IPFSGatewaySync {
 
     await KV.upsert({key: KEY_FASTEST_IPFS_GATEWAY, value: fastest});
     IPFSGatewaySync.fastest = fastest;
-    console.log(`fastest ipfs gateway ${fastest}`);
+
+    if(++this.tick % 60 === 0) {
+      this.tick = 0;
+      console.log(`fastest ipfs gateway ${fastest}`);
+    }
   }
 }

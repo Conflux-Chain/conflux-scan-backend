@@ -21,10 +21,8 @@ export interface IToken{
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    marketCapId?:number
-    moonDexSymbol?:string
-    moonSwapSymbol?:string
-    binanceSymbol?:string
+    cmcId?:number
+    bnId?:string
     // security info
     securityCredits?:number
     auditResult?:boolean
@@ -60,10 +58,8 @@ export class Token extends Model<IToken> implements IToken{
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    marketCapId?:number
-    moonDexSymbol?:string
-    moonSwapSymbol?:string
-    binanceSymbol?:string
+    cmcId?:number
+    bnId?:string
     // security info
     securityCredits?:number
     auditResult?:boolean
@@ -97,10 +93,8 @@ export class Token extends Model<IToken> implements IToken{
             price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
-            marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
-            moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
-            moonSwapSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
-            binanceSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
+            cmcId: {type: DataTypes.INTEGER, allowNull: true, },
+            bnId: {type: DataTypes.CHAR(20), allowNull: true, },
             // security info
             securityCredits: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
             auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
@@ -140,10 +134,8 @@ export class Token extends Model<IToken> implements IToken{
             price:token.price,
             totalPrice:token.totalPrice,
             quoteUrl:token.quoteUrl,
-            marketCapId:token.marketCapId,
-            moonDexSymbol:token.moonDexSymbol,
-            moonSwapSymbol:token.moonSwapSymbol,
-            binanceSymbol:token.binanceSymbol,
+            cmcId:token.cmcId,
+            bnId:token.bnId,
             // extra info
             icon:token.icon,
         }, {

@@ -18,10 +18,6 @@ export interface ITokenAutoDetect{
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    marketCapId?:number
-    moonDexSymbol?:string
-    moonSwapSymbol?:string
-    binanceSymbol?:string
     // extra info
     icon?:string
     iconUrl?:string
@@ -47,10 +43,6 @@ export class TokenAutoDetect extends Model<ITokenAutoDetect> implements ITokenAu
     price?:number
     totalPrice?:number
     quoteUrl?:string
-    marketCapId?:number
-    moonDexSymbol?:string
-    moonSwapSymbol?:string
-    binanceSymbol?:string
     // extra info
     icon?:string
     iconUrl?:string
@@ -76,10 +68,6 @@ export class TokenAutoDetect extends Model<ITokenAutoDetect> implements ITokenAu
             price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
             quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
-            marketCapId: {type: DataTypes.INTEGER, allowNull: true, },
-            moonDexSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
-            moonSwapSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
-            binanceSymbol: {type: DataTypes.CHAR(20), allowNull: true, },
             // extra info
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
             iconUrl: {type: DataTypes.STRING(128), allowNull: true, },
@@ -110,10 +98,6 @@ export class TokenAutoDetect extends Model<ITokenAutoDetect> implements ITokenAu
             price:token.price,
             totalPrice:token.totalPrice,
             quoteUrl:token.quoteUrl,
-            marketCapId:token.marketCapId,
-            moonDexSymbol:token.moonDexSymbol,
-            moonSwapSymbol:token.moonSwapSymbol,
-            binanceSymbol:token.binanceSymbol,
             // extra info
             icon:token.icon,
         }, {

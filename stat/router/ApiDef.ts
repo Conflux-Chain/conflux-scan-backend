@@ -411,13 +411,7 @@ export default {
                                                         "type": "string",
                                                         "description": "show with accountAddress"
                                                     },
-                                                    "marketCapId": {
-                                                        "type": "number"
-                                                    },
                                                     "quoteUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "moonDexSymbol": {
                                                         "type": "string"
                                                     },
                                                     "price": {

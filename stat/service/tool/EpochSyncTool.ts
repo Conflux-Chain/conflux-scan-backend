@@ -143,9 +143,7 @@ async function countTransfer(addressId, transferType) {
         const tokenDb: Token = await Token.findOne({where: {base32: token.base32},
             transaction: dbTx, raw: true});
         if(tokenDb){
-            const updateInfo = lodash.defaults({}, {icon: token.icon, quoteUrl: token.quoteUrl,
-                marketCapId: token.marketCapId, moonDexSymbol: token.moonDexSymbol,
-                binanceSymbol: token.binanceSymbol, updatedAt: new Date()});
+            const updateInfo = lodash.defaults({}, {icon: token.icon, quoteUrl: token.quoteUrl, updatedAt: new Date()});
             const t = lodash.assign(tokenDb, updateInfo);
             // await Token.update(t, {where: {id: tokenDb.id}, transaction: dbTx});
         } else{

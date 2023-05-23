@@ -445,7 +445,7 @@ async function getBlockNoByTime(ctx) {
     const comparator = closest === 'before' ? Op.lte : Op.gte;
     const order = closest === 'before' ? 'DESC' : 'ASC';
     const datetime =  new Date(timestamp * 1000);
-    console.log(`timestamp:${timestamp},UTC:${datetime.toUTCString()},TimezoneOffset:${datetime.getTimezoneOffset()}`);
+    // console.log(`timestamp:${timestamp},UTC:${datetime.toUTCString()},TimezoneOffset:${datetime.getTimezoneOffset()}`);
     const epoch = await Epoch.findOne({
         where: {timestamp: {[comparator]: datetime}},
         order: [['timestamp', order]],

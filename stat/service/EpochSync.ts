@@ -31,8 +31,7 @@ const zlib = require('zlib');
 const abiDecoder = require('abi-decoder');
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
-const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl', 'marketCapId', 'moonDexSymbol',
-    'binanceSymbol'];
+const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl'];
 const FIELDS_TOKEN = [...['hex40id', 'base32'], ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
 
 const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
