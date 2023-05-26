@@ -290,7 +290,7 @@ export class QuoteSync {
 
     //======================================================================
     private async swap(routerAddr, usdtAddr, directSwap, forwardSwap, backwardSwap) {
-        const {cfx} = this.app;
+        const {cfx, tokenTool} = this.app;
         const tokenPriceMap = {};
 
         // direct swap
@@ -298,7 +298,9 @@ export class QuoteSync {
         const contractRouter = cfx.Contract({address: routerAddr, abi: abiSwappiRouter});
         for (const token0 of directConvertTokens) {
             const [amount0, amount1] = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
-            tokenPriceMap[token0] = BigFixed(amount1).div(BigFixed(amount0)).toNumber();
+            const token0Decimals = (await tokenTool.getToken(token0)).decimals;
+            tokenPriceMap[token0] = BigFixed(amount1).div(BigFixed(amount0)).div(BigFixed(10).pow(18 - token0Decimals))
+                .toNumber();
         }
 
         // forward swap
@@ -307,8 +309,11 @@ export class QuoteSync {
             const {token1} = forwardSwap[token0];
             const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
             const ratio2 = await contractRouter.getAmountsOut(100000, [token1, usdtAddr]);
-            tokenPriceMap[token0] = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).mul(BigFixed(ratio2[1])
-                .div(BigFixed(ratio2[0]))).toNumber();
+            const token0Decimals = (await tokenTool.getToken(token0)).decimals;
+            const token1Decimals = (await tokenTool.getToken(token1)).decimals;
+            tokenPriceMap[token0] = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).div(BigFixed(10).pow(token1Decimals - token0Decimals))
+                .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token1Decimals)))
+                .toNumber();
         }
 
         // backward swap
@@ -317,8 +322,11 @@ export class QuoteSync {
             const {token0} = backwardSwap[token1];
             const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
             const ratio2 = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
-            tokenPriceMap[token1] = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).mul(BigFixed(ratio2[1])
-                .div(BigFixed(ratio2[0]))).toNumber();
+            const token0Decimals = (await tokenTool.getToken(token0)).decimals;
+            const token1Decimals = (await tokenTool.getToken(token1)).decimals;
+            tokenPriceMap[token1] = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).div(BigFixed(10).pow(token0Decimals - token1Decimals))
+                .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token0Decimals)))
+                .toNumber();
         }
 
         return tokenPriceMap;
