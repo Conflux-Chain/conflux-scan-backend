@@ -57,6 +57,8 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
     txLogIndex: number
     fromId: number
     toId: number
+    // for erc20, it's amount; for erc721 and erc1155 with `ApproveForAll`, it's (1/0)
+    // for erc721 with `Approval`, it's token id.
     value: string
     type: string // Approval or ApprovalForAll
     static register(seq: Sequelize) {
@@ -110,6 +112,8 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
     txIndex: number
     fromId: number
     toId: number
+    // for erc20, it's amount; for erc721 and erc1155 with `ApproveForAll`, it's (1/0)
+    // for erc721 with `Approval`, it's token id.
     value:string
     type: string // Approval or ApprovalForAll
     updatedAt:Date
@@ -145,7 +149,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
     static context = {
         zeroAddrId: 0, initialized: false,
     }
-    static async queryApprovalOfAccount({account, tokenType, byTokenId}) {
+    static async queryApprovalOfAccount({account, tokenType = '', byTokenId}) {
         if (!ApprovalRelation.context.initialized) {
             ApprovalRelation.context.zeroAddrId =
                 await makeIdV(CONST.ZERO_ADDRESS)
@@ -162,7 +166,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         const token = Token.getTableName();
         const tx = FullTransaction.getTableName();
         const replacements = []
-        if (byTokenId && tokenType !== 'ERC20') {
+        if (byTokenId && tokenType === 'ERC721') {
             const approvalT = TokenApproval.getTableName();
             const value = '`value`';
             relation = ` (
@@ -175,16 +179,20 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             `
             replacements.push(fromId);
         }
+        const tokeTypeCondition = tokenType ? "and t.type=?" : "";
         const zeroId = ApprovalRelation.context.zeroAddrId;
         const sql = `
             select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type,
             t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
             from ${relation} r 
-            join ${token} t on r.contractId=t.hex40id and t.type=?
+            join ${token} t on r.contractId=t.hex40id ${tokeTypeCondition}
             left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
             where r.fromId = ? and r.toId <> ${zeroId} order by r.epoch desc limit 10000
         `;
-        replacements.push(tokenType, fromId);
+        if (tokeTypeCondition) {
+            replacements.push(tokenType);
+        }
+        replacements.push(fromId);
         let countSql = `select count(*) as count ${sql.substr(sql.indexOf('from '))}`;
         console.log(`count sql is `, countSql)
         const total = await ApprovalRelation.sequelize.query(

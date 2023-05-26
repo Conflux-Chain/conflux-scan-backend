@@ -96,7 +96,7 @@ export async function listApproval(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'byTokenId',
         ['false','true']);
     const {account, tokenType, byTokenId} = ctx.request.query;
-    checkPresent({account, tokenType}, ['account', 'tokenType']);
+    checkPresent({account, tokenType}, ['account']);
     const data = await ApprovalRelation.queryApprovalOfAccount({account, tokenType,
         byTokenId: byTokenId === 'true'})
     setBody(ctx, data);
