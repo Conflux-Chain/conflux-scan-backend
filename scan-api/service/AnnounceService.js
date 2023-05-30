@@ -6,12 +6,12 @@ class AnnounceService {
     this.app = app;
 
     const {
-      app: { config, confluxSDK },
+      app: { config, cfx },
     } = this;
 
     this._sendLocked = false;
     try {
-      this.announcer = confluxSDK.wallet.addPrivateKey(config.announcer);
+      this.announcer = cfx.wallet.addPrivateKey(config.announcer);
     } catch (e) {
       this.announcer = config.announcer;
     }
@@ -19,7 +19,7 @@ class AnnounceService {
 
   async send(array) {
     const {
-      app: { config, confluxSDK, tool, error, service },
+      app: { config, cfx, tool, error, service },
     } = this;
 
     tool.assert(Array.isArray(array), `AnnounceService.send(array) must be array, got "${array}"`);
@@ -37,14 +37,14 @@ class AnnounceService {
     try {
       this._sendLocked = true;
 
-      const nonce = await confluxSDK.getNextNonce(this.announcer);
+      const nonce = await cfx.getNextNonce(this.announcer);
       let { announcementAddress } = config;
       const dbConfigAdd = await KV.getString(ANNOUNCEMENT_CONTRACT, '');
       if (dbConfigAdd !== '') {
         announcementAddress = dbConfigAdd;
       }
       return await Promise.all(groupArray.map(
-        async (group, index) => confluxSDK.sendAnnounceTransaction(group, {
+        async (group, index) => cfx.sendAnnounceTransaction(group, {
           nonce: Number(nonce) + index,
           from: this.announcer,
           to: announcementAddress,

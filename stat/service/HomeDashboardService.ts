@@ -38,27 +38,27 @@ export class HomeDashboardService{
 
     private async blockchainInfo() {
         const {
-            app: {confluxSDK},
+            app: {cfx},
         } = this;
 
         const addressCount = await KV.getNumber(ADDRESS_COUNT_ALL, 0)
         const transactionCount = await KV.getNumber(KEY_FULL_TX_COUNT, 0);
         const contractCount = await KV.getNumber(CONTRACT_COUNT_ALL, 0)
         const maxBlock = await FullBlock.findOne({order: [['epoch', 'desc']]});
-        const {blockNumber} = await confluxSDK.getStatus().catch(() => undefined);
+        const {blockNumber} = await cfx.getStatus().catch(() => undefined);
 
         return {addressCount, transactionCount, contractCount, epochNumber: maxBlock.epoch, blockNumber};
     }
 
     private async supplyInfo() {
         const {
-            app: {confluxSDK},
+            app: {cfx},
         } = this;
 
-        const supplyInfo = await confluxSDK.getSupplyInfo();
-        const nullAddressBalance = await confluxSDK.getBalance(CONST.ZERO_ADDRESS);
-        const twoYearUnlockBalance = await confluxSDK.getBalance(CONST.TWO_YEAR_UNLOCK);
-        const fourYearUnlockBalance = await confluxSDK.getBalance(CONST.FOUR_YEAR_UNLOCK);
+        const supplyInfo = await cfx.getSupplyInfo();
+        const nullAddressBalance = await cfx.getBalance(CONST.ZERO_ADDRESS);
+        const twoYearUnlockBalance = await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
+        const fourYearUnlockBalance = await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
 
         supplyInfo.totalCirculating = `${BigInt(supplyInfo.totalCirculating) - BigInt(nullAddressBalance)}`;
 
@@ -67,13 +67,13 @@ export class HomeDashboardService{
 
     async dagInfo({ limit = 10 } = {}) {
         const {
-            app: { confluxSDK },
+            app: { cfx },
         } = this;
 
-        const epochNumber = await confluxSDK.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
+        const epochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
         const matrix = await Promise.all(lodash.range(limit).map(async (index) => {
-            const blockHashArray = await confluxSDK.getBlocksByEpochNumber(epochNumber - index);
-            const blockArray = await Promise.all(blockHashArray.map((hash) => confluxSDK.getBlockByHash(hash)));
+            const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber - index);
+            const blockArray = await Promise.all(blockHashArray.map((hash) => cfx.getBlockByHash(hash)));
             return [...blockArray].reverse();
         }));
 

@@ -302,11 +302,11 @@ export class TokenQuery {
 
     private async getTokenInfo(base32) {
         const {
-            app: {tokenTool, confluxSDK},
+            app: {tokenTool, cfx},
         } = this;
 
         const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
-        const toolkit = tokenTool || confluxSDK;
+        const toolkit = tokenTool || cfx;
         const [tokenBasic, totalSupply, transferInfo] = await Promise.all([
             toolkit.getToken(base32),
             toolkit.getTokenTotalSupply(base32),
@@ -386,10 +386,10 @@ export class TokenQuery {
 
     public async detectToken(base32){
         const {
-            app: {tokenTool, confluxSDK},
+            app: {tokenTool, cfx},
         } = this;
 
-        const toolkit = tokenTool || confluxSDK;
+        const toolkit = tokenTool || cfx;
         let [tokenInfo, interface721, interface1155, typeInfo] = await Promise.all([
             toolkit.getToken(base32),
             toolkit.supportsInterface(base32, EpochSync.erc721Interface),

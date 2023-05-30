@@ -49,55 +49,55 @@ class ConfluxService {
   // ---------------------------------- address -------------------------------
   async getAccount(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getAccount(${address},${epochNumber})`,
-      () => confluxSDK.getAccount(address, epochNumber),
+      () => cfx.getAccount(address, epochNumber),
       { ttl: this._calculateTTL(epochNumber) },
     );
   }
 
   async getAdmin(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getAdmin(${address},${epochNumber})`,
-      () => confluxSDK.getAdmin(address, epochNumber),
+      () => cfx.getAdmin(address, epochNumber),
       { ttl: this._calculateTTL(epochNumber) },
     );
   }
 
   async getSponsorInfo(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getSponsorInfo(${address},${epochNumber})`,
-      () => confluxSDK.getSponsorInfo(address, epochNumber),
+      () => cfx.getSponsorInfo(address, epochNumber),
       { ttl: this._calculateTTL(epochNumber, 60 * 1000) },
     );
   }
 
   async getCode(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getCode(${address},${epochNumber})`,
-      () => confluxSDK.getCode(address, epochNumber).catch(() => undefined),
+      () => cfx.getCode(address, epochNumber).catch(() => undefined),
       { ttl: (code) => (code ? 5 * 60 * 1000 : 60 * 1000) },
     );
   }
 
   async getToken(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getToken(${address},${epochNumber})`,
-      () => confluxSDK.getToken(address, epochNumber),
+      () => cfx.getToken(address, epochNumber),
       { ttl: 60 * 60 * 1000 },
     );
   }
@@ -109,55 +109,55 @@ class ConfluxService {
 
   async isCustodianToken(address, custodianAddress, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService_isCustodianToken(${address},${custodianAddress},${epochNumber})`,
-      () => confluxSDK.isCustodianToken(address, custodianAddress, epochNumber),
+      () => cfx.isCustodianToken(address, custodianAddress, epochNumber),
       { ttl: 60 * 60 * 1000 },
     );
   }
 
   async getTokenTotalSupply(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTokenTotalSupply(${address},${epochNumber})`,
-      () => confluxSDK.getTokenTotalSupply(address, epochNumber),
+      () => cfx.getTokenTotalSupply(address, epochNumber),
       { ttl: 60 * 1000 },
     );
   }
 
   async getTokenAccountCount(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTokenAccountCount(${address},${epochNumber})`,
-      () => confluxSDK.getTokenAccountCount(address, epochNumber),
+      () => cfx.getTokenAccountCount(address, epochNumber),
       { ttl: 10 * 1000 },
     );
   }
 
   async getBalances(account, contracts, utilContract) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTokenBalance(${account})`,
-      () => confluxSDK.getBalances(account, contracts, utilContract),
+      () => cfx.getBalances(account, contracts, utilContract),
       { ttl: 10 * 1000 },
     );
   }
 
   async getTokenBalance(address, epochNumber) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTokenBalance(${address},${epochNumber})`,
-      () => confluxSDK.getTokenBalance(address, epochNumber),
+      () => cfx.getTokenBalance(address, epochNumber),
       { ttl: 10 * 1000 },
     );
   }
@@ -165,23 +165,23 @@ class ConfluxService {
   // -------------------------------- epochNumber -----------------------------
   async getEpochNumber(epochLabel) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getEpochNumber(${epochLabel})`,
-      () => confluxSDK.getEpochNumber(epochLabel),
+      () => cfx.getEpochNumber(epochLabel),
       { ttl: 1000 },
     );
   }
 
   async getEpochByEpochNumber(epochNumber) {
     const {
-      app: { confluxSDK, ttlMap/* , kvStore */ },
+      app: { cfx, ttlMap/* , kvStore */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getEpochByEpochNumber(${epochNumber})`,
       // () => kvStore.cache(`ConfluxService.getEpochByEpochNumber(${epochNumber})`,
-      () => confluxSDK.getEpochByEpochNumber(epochNumber),
+      () => cfx.getEpochByEpochNumber(epochNumber),
       //   { isSave: this._calculateIsSave(epochNumber) },
       // ),
       { ttl: this._calculateTTL(epochNumber) },
@@ -190,12 +190,12 @@ class ConfluxService {
 
   async getBlocksByEpochNumber(epochNumber) {
     const {
-      app: { confluxSDK, ttlMap/* , kvStore */ },
+      app: { cfx, ttlMap/* , kvStore */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlocksByEpochNumber(${epochNumber})`,
       // () => kvStore.cache(`ConfluxService.getBlocksByEpochNumber(${epochNumber})`,
-      () => confluxSDK.getBlocksByEpochNumber(epochNumber),
+      () => cfx.getBlocksByEpochNumber(epochNumber),
       //   { isSave: this._calculateIsSave(epochNumber) },
       // ),
       { ttl: this._calculateTTL(epochNumber) },
@@ -204,14 +204,14 @@ class ConfluxService {
 
   async getBlockRewardInfo(epochNumber) {
     const {
-      app: { confluxSDK, ttlMap/* , kvStore */ },
+      app: { cfx, ttlMap/* , kvStore */ },
     } = this;
 
     let result;
     try {
       result = ttlMap.cache(`ConfluxService.getBlockRewardInfo(${epochNumber})`,
         // () => kvStore.cache(`ConfluxService.getBlockRewardInfo(${epochNumber})`,
-        () => confluxSDK.getBlockRewardInfo(epochNumber),
+        () => cfx.getBlockRewardInfo(epochNumber),
         //   { isSave: this._calculateIsSave(epochNumber) },
         // ),
         { ttl: this._calculateTTL(epochNumber) },
@@ -226,14 +226,14 @@ class ConfluxService {
   // ---------------------------------- block ---------------------------------
   async getBlockByEpochNumber(epochNumber, detail) {
     const {
-      app: { CONST, confluxSDK, ttlMap/* , kvStore */ },
+      app: { CONST, cfx, ttlMap/* , kvStore */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlockByEpochNumber(${epochNumber},${detail})`,
       async () => {
         let block = null;
         try {
-          block = await confluxSDK.getBlockByEpochNumber(epochNumber, detail);
+          block = await cfx.getBlockByEpochNumber(epochNumber, detail);
         } catch (e) {
           if (!e.message?.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
             throw e;
@@ -267,13 +267,13 @@ class ConfluxService {
 
   async getBlockByHash(blockHash, detail) {
     const {
-      app: { CONST, confluxSDK, ttlMap/* , kvStore */ },
+      app: { CONST, cfx, ttlMap/* , kvStore */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlockByHash(${blockHash},${detail})`,
       // () => kvStore.cache(`ConfluxService.getBlockByHash(${blockHash},${detail})`,
       async () => {
-        const block = await confluxSDK.getBlockByHash(blockHash, detail);
+        const block = await cfx.getBlockByHash(blockHash, detail);
         if (!block) {
           return block;
         }
@@ -304,11 +304,11 @@ class ConfluxService {
 
   async getConfirmationRiskByHash(blockHash) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getConfirmationRiskByHash(${blockHash})`,
-      () => confluxSDK.getConfirmationRiskByHash(blockHash),
+      () => cfx.getConfirmationRiskByHash(blockHash),
       {
         ttl: (risk) => {
           if (risk <= 1e-8) {
@@ -329,13 +329,13 @@ class ConfluxService {
   // ------------------------------- transaction ------------------------------
   async getTransactionByHash(transactionHash) {
     const {
-      app: { CONST, confluxSDK, ttlMap/* , kvStore, logger */ },
+      app: { CONST, cfx, ttlMap/* , kvStore, logger */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionByHash(${transactionHash})`,
       // () => kvStore.cache(`ConfluxService.getTransactionByHash(${transactionHash})`,
       async () => {
-        const transaction = await confluxSDK.getTransactionByHash(transactionHash);
+        const transaction = await cfx.getTransactionByHash(transactionHash);
         if (transaction && transaction.blockHash) {
           const block = await this.getBlockByHash(transaction.blockHash);
           transaction.epochNumber = block.epochNumber; // for calculateTTL to cache
@@ -357,7 +357,7 @@ class ConfluxService {
 
   async getTransactionReceipt(transactionHash) {
     const {
-      app: { CONST, confluxSDK, ttlMap/* , kvStore */ },
+      app: { CONST, cfx, ttlMap/* , kvStore */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionReceipt(${transactionHash})`,
@@ -366,7 +366,7 @@ class ConfluxService {
         if (transactionHash in CONST.GENESIS_TX_TO_CONTRACT) {
           return { gasUsed: 0, gasFee: 0, txExecErrorMsg: null };
         }
-        return confluxSDK.getTransactionReceipt(transactionHash);
+        return cfx.getTransactionReceipt(transactionHash);
       },
       //   { isSave: (receipt) => this._calculateIsSave(lodash.get(receipt, 'epochNumber')) },
       // ),
@@ -387,13 +387,13 @@ class ConfluxService {
 
   async getTransactionERC20TransferArray(transactionHash) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionERC20TransferArray(${transactionHash})`,
       async () => {
         const eventLogArray = await this.getLogsByTransactionHash(transactionHash);
-        return eventLogArray.map((eventLog) => confluxSDK.decodeERC20Transfer(eventLog)).filter(Boolean);
+        return eventLogArray.map((eventLog) => cfx.decodeERC20Transfer(eventLog)).filter(Boolean);
       },
       { ttl: 5 * 1000 },
     );
@@ -401,13 +401,13 @@ class ConfluxService {
 
   async getTransactionERC721TransferArray(transactionHash) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionERC721TransferArray(${transactionHash})`,
       async () => {
         const eventLogArray = await this.getLogsByTransactionHash(transactionHash);
-        return eventLogArray.map((eventLog) => confluxSDK.decodeERC721Transfer(eventLog)).filter(Boolean);
+        return eventLogArray.map((eventLog) => cfx.decodeERC721Transfer(eventLog)).filter(Boolean);
       },
       { ttl: 5 * 1000 },
     );
@@ -415,13 +415,13 @@ class ConfluxService {
 
   async getTransactionERC777TransferArray(transactionHash) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionERC777TransferArray(${transactionHash})`,
       async () => {
         const eventLogArray = await this.getLogsByTransactionHash(transactionHash);
-        return eventLogArray.map((eventLog) => confluxSDK.decodeERC777Transfer(eventLog)).filter(Boolean);
+        return eventLogArray.map((eventLog) => cfx.decodeERC777Transfer(eventLog)).filter(Boolean);
       },
       { ttl: 5 * 1000 },
     );
@@ -429,13 +429,13 @@ class ConfluxService {
 
   async getTransactionERC1155TransferArray(transactionHash) {
     const {
-      app: { confluxSDK, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionERC1155TransferArray(${transactionHash})`,
       async () => {
         const eventLogArray = await this.getLogsByTransactionHash(transactionHash);
-        return lodash.flatten(eventLogArray.map((eventLog) => confluxSDK.decodeERC1155TransferArray(eventLog))).filter(Boolean);
+        return lodash.flatten(eventLogArray.map((eventLog) => cfx.decodeERC1155TransferArray(eventLog))).filter(Boolean);
       },
       { ttl: 5 * 1000 },
     );
@@ -475,13 +475,13 @@ class ConfluxService {
   // ---------------------------------- trace ---------------------------------
   async getBlockTraceArray(blockHash) {
     const {
-      app: { confluxSDK, ttlMap/* , kvStore */ },
+      app: { cfx, ttlMap/* , kvStore */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlockTraceArray(${blockHash})`,
       // () => kvStore.cache(`ConfluxService.getBlockTraceArray(${blockHash})`,
       async () => {
-        const blockTrace = await confluxSDK.traceBlock(blockHash);
+        const blockTrace = await cfx.traceBlock(blockHash);
         if (!blockTrace) {
           return [];
         }
@@ -516,7 +516,7 @@ class ConfluxService {
 
   async getTransactionTraceArray(transactionHash) {
     const {
-      app: { confluxSDK },
+      app: { cfx },
     } = this;
 
     const transaction = await this.getTransactionByHash(transactionHash);
@@ -527,7 +527,7 @@ class ConfluxService {
     const array = await this.getBlockTraceArray(transaction.blockHash);
     const object = lodash.groupBy(array, 'transactionHash');
     const traces = object[transaction.hash] || [];
-    return confluxSDK.matchTrace(traces, transaction);
+    return cfx.matchTrace(traces, transaction);
   }
 
   async getTransactionCFXTransferArray(transactionHash, zeroValue = false) {
@@ -570,14 +570,14 @@ class ConfluxService {
 
   async getTransactionCFXTransferTree(transactionHash) {
     const {
-      app: { confluxSDK, error, ttlMap },
+      app: { cfx, error, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionTraceTree(${transactionHash})`,
       async () => {
         let traceArray;
         try {
-          traceArray = await confluxSDK.traceTransaction(transactionHash);
+          traceArray = await cfx.traceTransaction(transactionHash);
         } catch (err) {
           throw new error.ResponseDataParsingError(`fail to traceTransaction by sdk: ${err}`);
         }
@@ -590,11 +590,11 @@ class ConfluxService {
           if (trace?.action?.init) trace.action.init = undefined;
           if (trace?.action?.input) trace.action.input = undefined;
           if (trace?.action?.from) {
-            trace.action.from = patchPocketAddress(fromPocket, noVerboseAddr(trace.action.from), confluxSDK.networkId)
+            trace.action.from = patchPocketAddress(fromPocket, noVerboseAddr(trace.action.from), cfx.networkId)
             addressSet.add(trace.action.from);
           }
           if (trace?.action?.to) {
-            trace.action.to = patchPocketAddress(toPocket, noVerboseAddr(trace.action.to),  confluxSDK.networkId)
+            trace.action.to = patchPocketAddress(toPocket, noVerboseAddr(trace.action.to),  cfx.networkId)
             addressSet.add(trace.action.to);
           }
           if (trace?.action?.addr) addressSet.add(trace.action.addr);

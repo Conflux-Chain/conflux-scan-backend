@@ -1,7 +1,6 @@
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
 const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
-const { format } = require('js-conflux-sdk');
 const type = require('../../common/type');
 const CONST = require('../../common/const');
 const parameter = require('../../common/parameter');
@@ -21,19 +20,8 @@ const jsonrpc = new JsonRPCFlow();
 jsonrpc.method('supply',
   parameter({}),
 
-  //cacheFlow(60 * 1000),
   durationAlarmFlow(5 * 1000, { method: 'supply' }),
   async function () {
-    // const {
-    //   app: { confluxSDK },
-    // } = this;
-    //
-    // const supplyInfo = await confluxSDK.getSupplyInfo();
-    // const nullAddressBalance = await confluxSDK.getBalance(CONST.NULL_ADDRESS);
-    // const twoYearUnlockBalance = await confluxSDK.getBalance(CONST.TWO_YEAR_UNLOCK);
-    // const fourYearUnlockBalance = await confluxSDK.getBalance(CONST.FOUR_YEAR_UNLOCK);
-    //
-    // return { ...supplyInfo, nullAddressBalance, twoYearUnlockBalance, fourYearUnlockBalance };
     const {
       app: { service },
     } = this;
@@ -52,11 +40,6 @@ jsonrpc.method('dag',
   concurrenceControl(10),
   durationAlarmFlow(5 * 1000, { method: 'dag' }),
   async function () {
-    // const {
-    //   app: { service },
-    // } = this;
-    //
-    // return service.statistic.dag(options);
     const {
       app: { service },
     } = this;
@@ -123,23 +106,6 @@ jsonrpc.method('homeDashboard',
   cacheFlow(5 * 1000),
   durationAlarmFlow(5 * 1000, { method: 'homeDashboard' }),
   async function () {
-    // const {
-    //   app: { confluxSDK, service, logger },
-    // } = this;
-    //
-    // const dashboardData = await service.homeDashboard.getData();
-    // const { epochNumber, blockNumber } = await confluxSDK.getStatus();
-    // let result = { ...dashboardData, epochNumber, blockNumber };
-    //
-    // try {
-    //   const pagedBlock = await service.block.countAndList({ reverse: true, skip: 0, limit: 1 });
-    //   const latestBlock = pagedBlock.list.shift();
-    //   result = lodash.assign(result, { epochNumber: latestBlock.epochNumber });
-    // } catch (e) {
-    //   logger.error({ src: 'homeDashboard.epochNumber', msg: e });
-    // }
-    //
-    // return result;
     const {
       app: { service },
     } = this;
@@ -378,14 +344,7 @@ jsonrpc.method('registerContract',
       app: { service },
     } = this;
 
-    const list = await service.contract.register({ address, ...options });
-
-    // if (token) {
-    //   // XXX: register token for compatible old api
-    //   list.push(...await service.token.register({ address, ...token }).catch(() => []));
-    // }
-
-    return list;
+    return service.contract.register({ address, ...options });
   },
 );
 
@@ -946,11 +905,6 @@ jsonrpc.method('exportTransaction',
       app: { service, tool },
     } = this;
 
-    // const verifyResult = await service.recaptcha.verify(options.token);
-    // if (verifyResult.code !== 0) {
-    //   throw new error.LogicError('recaptcha verify fail!');
-    // }
-
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
     const { list } = await service.transaction.countAndList(options);
@@ -1022,11 +976,6 @@ jsonrpc.method('exportTransfer',
     const {
       app: { tool, service, logger },
     } = this;
-
-    // const verifyResult = await service.recaptcha.verify(options.token);
-    // if (verifyResult.code !== 0) {
-    //   throw new error.LogicError('recaptcha verify fail!');
-    // }
 
     logger.error(`exportTransfer-----------------options:${JSON.stringify(options)}`);
     const accountBase32 = options.accountAddress !== undefined

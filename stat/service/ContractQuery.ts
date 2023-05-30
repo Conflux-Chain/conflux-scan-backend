@@ -295,14 +295,13 @@ export class ContractQuery {
     }
 
     public async queryDestroyInfo({address}) {
-        const {cfx, cfxSDK, logger} = this.app;
-        const sdk = cfxSDK || cfx;
+        const {cfx, logger} = this.app;
         const hex = format.hexAddress(address);
 
         if(lodash.includes(CONST.INTERNAL_CONTRACT, hex)){
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
-        const {codeHash} = await sdk.getAccount(hex);
+        const {codeHash} = await cfx.getAccount(hex);
         if(codeHash !== CONST.CODEHASH_NO_BYTECODE){
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
@@ -467,13 +466,12 @@ export class ContractQuery {
     }
 
     public async queryImplementation(base32) {
-        const {cfx, cfxSDK} = this.app;
-        const sdk = cfxSDK || cfx;
+        const {cfx} = this.app;
         let result = {proxy: false};
 
         const [implementation, beacon] = await Promise.all([
-            sdk.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT),
-            sdk.getStorageAt(base32, CONST.POSITION_BEACON_SLOT),
+            cfx.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT),
+            cfx.getStorageAt(base32, CONST.POSITION_BEACON_SLOT),
         ]);
 
         let beaconHex40;
@@ -483,7 +481,7 @@ export class ContractQuery {
         }
         if (beacon !== null && beacon !== CONST.ZERO_VALUE_IN_SLOT) {
             beaconHex40 = `0x${beacon.substr(26)}`;
-            const contract = sdk.Contract({abi});
+            const contract = cfx.Contract({abi});
             const impl = await contract.implementation()
                 .call({to: beaconHex40}, undefined)
                 .catch(() => undefined);
@@ -506,13 +504,12 @@ export class ContractQuery {
 
     // verify sourcecode
     public async verify({ address, name, sourcecode, compiler, optimizeRuns, license, libraries, evmVersion, constructorArgs }) {
-        const { cfx, cfxSDK, jsonRpc } = this.app;
-        const sdk = cfxSDK || cfx;
+        const { cfx, jsonRpc } = this.app;
 
         const sourceCode = this.rmRedundantLicense(sourcecode);
         const response = { name, sourceCode, optimizeRuns };
 
-        const code = await sdk.getCode(address);
+        const code = await cfx.getCode(address);
         if (code === undefined || code === '0x') {
             return lodash.assign(response, { errors: [`invalid contract's code:${code}`] });
         }
@@ -553,8 +550,7 @@ export class ContractQuery {
 
     public async submitVerify({ address, name, sourcecode, compilerType, compilerVersion, optimizeFlag, optimizeRuns,
         license, constructorArgs, libraries, evmVersion }) {
-        const { cfx, cfxSDK, jsonRpc } = this.app;
-        const sdk = cfxSDK || cfx;
+        const { cfx, jsonRpc } = this.app;
 
         try{
             const verified = await ContractVerify.findOne({where: {base32: toBase32(address), verifyResult: true}});
@@ -562,7 +558,7 @@ export class ContractQuery {
                 throw new Errors.ContractVerifyError(`Contract source code already verified`);
             }
             address = format.hexAddress(address);
-            const code = await sdk.getCode(address);
+            const code = await cfx.getCode(address);
             if (code === undefined || code === '0x') {
                 throw new Errors.ContractVerifyError(`Invalid contract's code:${code}`);
             }
@@ -592,13 +588,12 @@ export class ContractQuery {
 
     public async doVerify({ id, address, fileName, name, sourceCode, compilerType, compilerVersion, optimizeFlag,
         optimizeRuns, license, libraries, evmVersion, constructorArgs }) {
-        const { cfx, cfxSDK, jsonRpc } = this.app;
-        const sdk = cfxSDK || cfx;
+        const { cfx, jsonRpc } = this.app;
 
         try {
             address = format.hexAddress(address);
             await this.queryVerify({ address }).catch(() => {throw new Errors.ContractVerifyError(`the contract already verified`)});
-            const code = await sdk.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`invalid contract's code:${code}`)});
+            const code = await cfx.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`invalid contract's code:${code}`)});
             const creationData = await this.getCreationData({ address })
                 .catch(e => {throw new Errors.QueryCreationDataError(`get creation data error:${e}`)});
 
@@ -681,8 +676,7 @@ export class ContractQuery {
     }
 
     private async getCreationData({ address }) {
-        const { cfx, cfxSDK } = this.app;
-        const sdk = cfxSDK || cfx;
+        const { cfx } = this.app;
 
         const hexAddress = format.hexAddress(address);
         const sql = "select * from trace_create_contract where `to` = (select id from hex40 where hex = ?)";
@@ -690,8 +684,8 @@ export class ContractQuery {
             replacements:[hexAddress.substr(2)], logging: console.log }) as TraceCreateContract[];
         const transactionHash = array?.length ? '0x' + array[0].txHash : undefined;
 
-        const transaction = await sdk.getTransactionByHash(transactionHash);
-        const transactionTraceArray = await sdk.traceTransaction(transaction.hash);
+        const transaction = await cfx.getTransactionByHash(transactionHash);
+        const transactionTraceArray = await cfx.traceTransaction(transaction.hash);
         const traceArray = await EpochSync.matchTrace(transactionTraceArray, transaction);
         const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
             trace.transactionHash === transaction.hash &&

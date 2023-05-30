@@ -31,7 +31,7 @@ export class ENSCheckerQuery {
     protected graphql;
 
     public constructor(app) {
-        this.cfx = app.cfxSDK || app.cfx;
+        this.cfx = app.cfx;
         this.ensEnable = app.config.ensEnable;
         this.ensCheckerAddr = app.config.ensChecker;
         this.ensAddr = app.config.ens;

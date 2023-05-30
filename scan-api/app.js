@@ -1,8 +1,6 @@
 const lodash = require('lodash');
-// const Knex = require('knex');
 const { address, format } = require('js-conflux-sdk');
 const { Sequelize } = require('sequelize');
-// const KVStoreMap = require('../common/KVStoreMap');
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
@@ -11,7 +9,6 @@ const { KV, IS_EVM2 } = require('../stat/dist/model/KV');
 const AppBase = require('../common/AppBase');
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 const countRequestByIp = require('../common/middleware/countRequestByIp');
-// const modelLoader = require('./model');
 const serviceLoader = require('./service');
 const router = require('./router');
 const jsonrpc = require('./router/jsonrpc');
@@ -21,53 +18,8 @@ const { initPartialModel } = require('../stat/dist/service/DBProvider');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
 class ApiApp extends AppBase {
-  // eslint-disable-next-line no-useless-constructor
   constructor(config) {
     super(config);
-    // integrate with stat service
-    // this.sequelize = createDB(config.database);
-    // this.sequelize = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
-    // this.type.checksumAddress = this.type((v) => this.confluxSDK.ChecksumAddress(v))
-    //     .$validate((v) => v.toObject().netName === this.confluxSDK.netName, `net must be "${this.confluxSDK.netName}"`)
-    //     .$validate((v) => v.isValid(), 'isValid');
-    // this.type.address = (this.type.checksumAddress.$after((v) => v.toHex())).$or(this.type.hex40);
-    // this.type.simpleAddress = this.type.checksumAddress.$after((v) => v.toSimple());
-
-    // this.kvStore = new KVStoreMap(config.kvStore);
-    // this.knex = new Knex(config.knex);
-    // this.syncSDK = new JsonRPCSDK(config.sync);
-    // this.model = modelLoader(this);
-    // this.service = serviceLoader(this);
-    // this.router = router;
-
-    // traceLog
-    // this.traceLog.traceMethod(this.syncSDK, 'call', {
-    //   module: 'syncSDK',
-    //   level: 'debug',
-    //   params: (...args) => args,
-    //   error: (e) => e.message,
-    // });
-    // lodash.forEach(jsonrpc.methods, (func, method) => {
-    //   this.traceLog.traceMethod(jsonrpc.methods, method, {
-    //     module: 'JsonRPC',
-    //     level: 'debug',
-    //     params: (params) => lodash.first(params),
-    //     error: (e) => e.message,
-    //   });
-    // });
-    // lodash.forEach(this.service, (object) => {
-    //   this.traceLog.traceModule(object, { level: 'debug' });
-    // });
-    // lodash.forEach(this.model, (object) => {
-    //   this.traceLog.traceModule(object, { level: 'debug' });
-    // });
-
-    // prometheus
-    // this.prometheus.traceModule(this.service.conflux);
-    // this.prometheus.traceMethod(this.syncSDK, 'call', (method) => ({ module: 'SyncSDK', method }));
-    // lodash.forEach(jsonrpc.methods, (func, method) => {
-    //   this.prometheus.traceMethod(jsonrpc.methods, method, () => ({ module: 'JsonRPC', method }));
-    // });
   }
 
   startLog() {
@@ -101,10 +53,6 @@ class ApiApp extends AppBase {
     });
   }
 
-  // async createTable() {
-  //   await Promise.all(lodash.map(this.model, (model) => model.createTable()));
-  // }
-
   listen(port) {
     const pathArr = this.router.stack.map((layer) => {
       return layer.path.split('/').map((sec) => {
@@ -115,8 +63,6 @@ class ApiApp extends AppBase {
     pathArr.forEach((p) => {
       pathDef[p] = { get: {} };
     });
-    // console.log(` path def is `, pathDef, this.router.stack[5]);
-    // console.log(`routers :`, paths);
     apiSpec.paths = pathDef;
     this.use(countRequestByIp);
     loadRateConfig().then()
@@ -145,18 +91,17 @@ class ApiApp extends AppBase {
   }
 
   async run() {
-    const { config, confluxSDK } = this;
-    const cfxStatus = await confluxSDK.getStatus();
+    const { config, cfx } = this;
+    const cfxStatus = await cfx.getStatus();
     console.log(`================= start api , networkId ${cfxStatus.networkId} =============`);
 
     // networkId
-    await confluxSDK.updateNetworkId();
+    await cfx.updateNetworkId();
     this.networkId = cfxStatus.chainId;
 
     // db
     this.sequelize = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
     await RedisWrap.connect(config.redis);
-    // await this.createTable();
 
     // type converter
     this.type.checksumAddress = this.type((v) => format.address(v, this.networkId, true));
@@ -192,14 +137,10 @@ class ApiApp extends AppBase {
   }
 
   async clear() {
-    // await Promise.all(lodash.map(this.model, (model) => model.clear()));
-    // await this.kvStore.clear();
     return super.clear();
   }
 
   async close() {
-    // await this.kvStore.close();
-    // await this.knex.destroy(); // although named 'destroy' but just close, not clear db
     await this.syncSDK.close();
     await KV.sequelize.close();
     await redisWrap.client.end(false);
