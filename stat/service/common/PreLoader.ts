@@ -71,6 +71,7 @@ export class PreLoader<T> {
             try {
                 loaded = await this.fn(epoch)
             } catch (e) {
+                console.log(`[epoch=${epoch}]Preloader.get`, e);
                 loaded = e;
             }
         } else {
@@ -94,7 +95,7 @@ export class PreLoader<T> {
             try {
                 v = await this.fn(fetchEpoch)
             } catch (e) {
-                // console.log(` pre load outer catch, ${e.message}`)
+                console.log(`[epoch=${fetchEpoch}]Preloader.checkPreLoadSize`, e);
                 v = e
             }
             this.fetchTimes++

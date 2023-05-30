@@ -15,7 +15,7 @@ import {
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "./service/common/utils";
+import {batchFetchBlock, patchHttpProvider} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
@@ -37,6 +37,7 @@ import {RedisWrap} from "./service/RedisWrap";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
+const lodash = require('lodash');
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -137,6 +138,38 @@ function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool:
     }
     return result;
 }
+async function validate(cfx, epoch, blockHashArray, receipts) {
+    if (epoch !== 0 && receipts === null) {
+        throw new Error(`[epoch=${epoch}]validate, null receipts`);
+    }
+
+    const blockArray = await batchFetchBlock(cfx,  blockHashArray);
+    const revertBlockArray = blockArray.filter(block => block.epochNumber !== epoch);
+    if(revertBlockArray.length){
+        throw new Error(`[epoch=${epoch}]validate, mismatch epoch (blockArray:${JSON.stringify(blockArray)})`);
+    }
+
+    if (epoch !== 0 && blockArray.length !== receipts.length) {
+        throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks, receipts)`);
+    }
+
+    for (const [blockIndex, block] of blockArray.entries()) {
+        if (epoch === 0) {
+            return;
+        }
+        if (block.transactions.length !== receipts[blockIndex].length) {
+            throw new Error(`[epoch=${epoch}]validate, mismatch length (transactions, receipts)`);
+        }
+        for (const [txIndex, tx] of block.transactions.entries()) {
+            tx.receipt = receipts[blockIndex][txIndex];
+            const receiptStatus = tx.receipt?.outcomeStatus;
+            if((receiptStatus === 0 || receiptStatus === 1) &&
+                (tx.receipt.blockHash !== tx.blockHash || tx.receipt.transactionHash !== tx.hash)){
+                throw new Error(`[epoch=${epoch}]validate, mismatch hash (transaction:${JSON.stringify(lodash.pick(tx.receipt, ['blockHash', 'transactionHash']))} receipt:${JSON.stringify(lodash.pick(tx, ['blockHash', 'hash']))})`);
+            }
+        }
+    }
+}
 async function batchSaveTransfer(mainModel, addrModel, arr, dataForAddr, dbTx) {
     return Promise.all([
         mainModel.bulkCreate(arr, {transaction: dbTx}),
@@ -210,6 +243,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
             cfx.getBlocksByEpochNumber(epoch),
             cfx.getBlockByEpochNumber(epoch),
         ])
+        await validate(cfx, epoch, blockHashes, receipts);
         const pivotHash = block.hash;
         if (pivotHash !== blockHashes[blockHashes.length - 1]) {
             throw new CheckPivotHashError(` epoch ${epoch}, block hash mismatch at epoch ${epoch
@@ -311,7 +345,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                         await  localPop(epoch - 1)
                         delay = 10_000
                         break;
-                    } else if (parentHash && data.parentHash !== parentHash) {
+                    } else if (data?.parentHash && parentHash && data.parentHash !== parentHash) {
                         console.log(` before save check, parent hash not match, on hand epoch ${epoch
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
@@ -412,7 +446,7 @@ async function pop(epoch:number, taskBegin: number) {
         }
         return Promise.all([
             mainModel.destroy({where: {epoch}, transaction:dbTx}).then((cnt)=>`M:${cnt}`),
-            partitionModel.destroy({where: {addressId:{[Op.in]:addrIdArr}}, transaction:dbTx}).then((cnt)=>`P:${cnt}/${addrIdArr.length}`)
+            partitionModel.destroy({where: {addressId:{[Op.in]:addrIdArr}, epoch}, transaction:dbTx}).then((cnt)=>`P:${cnt}/${addrIdArr.length}`)
         ]);
     }
     async function popTaskCursor(dbTx: Transaction) {

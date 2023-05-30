@@ -219,6 +219,9 @@ export abstract class SyncBase{
         if (blockHashArray.length === 0) {
             throw new Error(`[epoch=${epochNumber}]no block`);
         }
+        if (receipts === null) {
+            throw new Error(`[epoch=${epochNumber}]not ready, receipts is null`);
+        }
         const blockArray = await batchFetchBlock(cfx,  blockHashArray);
         if (epochNumber !== 0 && blockArray.length !== receipts.length && epochNumber !== 0) {
             throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
