@@ -4,6 +4,7 @@ import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
 import {CONST} from "./constant"
 import {StatApp} from "../../StatApp";
+import {ethers} from "ethers";
 
 const lodash = require('lodash');
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
@@ -256,10 +257,16 @@ export function removeLongData(obj) {
     }
 }
 
-export function createConflux(cfxConf:ConfluxOption) {
-    const cfx = new Conflux(cfxConf);
-    patchHttpProvider(cfx, cfxConf)
+export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = undefined) {
+    const cfx = new Conflux(confluxOption);
+    patchHttpProvider(cfx, confluxOption, tag);
+    await cfx.updateNetworkId();
+    console.log(`conflux networkId:${cfx.networkId}, config:${JSON.stringify(confluxOption)}`);
     return cfx;
+}
+
+export function initEthSdk(url) {
+    return new ethers.providers.JsonRpcProvider(url);
 }
 
 export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {

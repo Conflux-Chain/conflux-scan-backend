@@ -9,10 +9,8 @@ module.exports = app;
 
 // ----------------------------------------------------------------------------
 if (process.mainModule.filename === __filename) {
-  app.run().catch((err) => {
-    // eslint-disable-next-line no-console
+  console.log(`....... start api app, port ${config.port} ..........`);
+  app.start().catch((err) => {
     console.log('error when running:', err);
-  }).finally(() => app.close().finally(()=>{
-    process.exit(0)
-  }));
+  }).finally(() => app.close());
 }

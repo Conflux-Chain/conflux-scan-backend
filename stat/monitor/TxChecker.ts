@@ -5,10 +5,10 @@
  */
 import {AddressTransactionIndex, FailedTx, FullBlock, FullTransaction, IFullTransaction} from "../model/FullBlock";
 import {Conflux, format} from "js-conflux-sdk";
-import {Sequelize,Model,DataTypes,fn,col,Op} from "sequelize";
+import {Sequelize,Model,DataTypes,Op} from "sequelize";
 import {getAddrId, makeIdV} from "../model/HexMap";
 import {FullBlockService} from "../service/FullBlockService";
-import {patchHttpProvider, removeLongData} from "../service/common/utils";
+import {initCfxSdk, removeLongData} from "../service/common/utils";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {sleep} from "../service/tool/ProcessTool";
 import {TransactionReceipt, Transaction} from "js-conflux-sdk/dist/types/rpc/types/formatter";
@@ -220,15 +220,13 @@ let startMS = 0
 async function run() {
     const [,,url,epochL, epochR] = process.argv
     // @ts-ignore
-    cfx = new Conflux({url, clientConfig: {maxReceivedMessageSize: 0x0FFFFFFFF}})
+    cfx = await initCfxSdk({url, clientConfig: {maxReceivedMessageSize: 0x0FFFFFFFF}});
     if (url.includes('ws')) {
         // options.clientConfig.maxReceivedMessageSize=0x800000
-    } else {
-        patchHttpProvider(cfx, {url})
     }
-    let st = await cfx.getStatus()
+    console.log(`----------- network ${cfx.networkId} ------ getClientVersion ${(await cfx.getClientVersion())} -----`)
+
     await init();
-    console.log(`----------- network ${st.networkId} ------ getClientVersion ${(await cfx.getClientVersion())} -----`)
     await fixEvmPhantomTx(); // check command inside.
     let start = parseInt(epochL)
     const veryStart = start
@@ -236,6 +234,7 @@ async function run() {
     // [start, end]
     startMS = Date.now()
     let processed = 0
+    let st = await cfx.getStatus()
     while (true) {
         // check anchor epoch
         while (start > st.latestConfirmed) {

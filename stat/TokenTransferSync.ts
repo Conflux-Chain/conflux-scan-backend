@@ -10,12 +10,11 @@ import {
     Sequelize,
     Op,
     UniqueConstraintError,
-    ModelStatic,
     DatabaseError
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchFetchBlock, patchHttpProvider} from "./service/common/utils";
+import {batchFetchBlock, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
@@ -34,7 +33,7 @@ import {NftMint, Token} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
-import {FullBlock, FullTransaction} from "./model/FullBlock";
+import {FullBlock} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 const lodash = require('lodash');
@@ -547,11 +546,10 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
-    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
-    let cfx = new Conflux(cfxOp)
-    patchHttpProvider(cfx, cfxOp)
-    const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} --------`)
+    const confluxOption = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
+    let cfx = await initCfxSdk(confluxOption);
+    console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} --------`)
+
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {

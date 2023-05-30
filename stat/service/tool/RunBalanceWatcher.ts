@@ -1,16 +1,14 @@
 import {init} from "./FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 import {Token} from "../../model/Token";
 import {StatApp} from "../../StatApp";
+import {initCfxSdk} from "../common/utils";
 
 async function run() {
-    init().then(async (config)=>{
-        const cfx = new Conflux(config.conflux)
-        // @ts-ignore
-        await cfx.updateNetworkId()
+    init().then(async (config) => {
+        const cfx = await initCfxSdk(config.conflux);
+        StatApp.networkId = cfx.networkId;
         // init contract
-        StatApp.networkId = cfx['networkId']
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` net work id ${StatApp.networkId}, util contract ${ utilContract}`)
         const w = new BatchBalanceWatcher(cfx,null, utilContract)

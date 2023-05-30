@@ -10,9 +10,8 @@ import {TokenTool} from "./TokenTool";
 import {Op} from "sequelize";
 import { AddressTransactionIndex } from "../../model/FullBlock";
 import {EpochSync} from "../EpochSync";
-import {batchBlockDetail} from "../common/utils";
+import {batchBlockDetail, initCfxSdk} from "../common/utils";
 import {StatApp} from "../../StatApp";
-import {AddressTransfer} from "../../model/AddrTransfer";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -43,8 +42,9 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 
-    cfx = new Conflux({...config.conflux})
-    await cfx.updateNetworkId();
+    cfx = await initCfxSdk(config.conflux)
+    StatApp.networkId = cfx.networkId;
+
     tokenTool = new TokenTool(cfx);
 
     const app = {cfx, networkId: StatApp.networkId, tokenTool};

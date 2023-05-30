@@ -4,22 +4,21 @@ const lodash = require('lodash');
 import {Conflux, Contract, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
 import {CfxWatcher} from "./BalanceWatcher";
-import {buildHexSet, hex40IdMap, Hex40Map, idHex40Map, makeId, makeIdV} from "../../model/HexMap";
+import {buildHexSet, Hex40Map, idHex40Map, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
-import {Sequelize, Op,fn, col, QueryTypes} from 'sequelize'
+import {Op,fn, col} from 'sequelize'
 import {KEY_1155data_EPOCH, KEY_NFT_FROM_MINT_TABLE, KV, SCAN_UTIL_CONTRACT} from "../../model/KV";
 import {TokenTool} from "../tool/TokenTool";
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {handleTokenTransferWithContract, scheduleTransferUpdater, updateTokenTransferCount} from "../../StreamSync";
 import {ContractUser} from "../../model/Erc20Transfer";
-import {createConflux, patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenBalance} from "../../model/Balance";
 import {abi1155, CONFIRM_GAP, destroyedContracts, fetch1155balance, fix1155data, rewind} from "./Erc1155DataSync";
-/*import {initNftMetaWorkerContext, startMetaWorker} from "../nftchecker/NftMetaStorage";*/
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -366,18 +365,21 @@ async function run() {
         process.exit(0)
         return
     } else if (cfxUrl === 'fix1155data') {
-        await fix1155data(createConflux(cfg.conflux));
+        const cfx = await initCfxSdk(cfg.conflux);
+        await fix1155data(cfx);
         return;
     } else if (cfxUrl === 'fix20holder') {
-        await fix20holder(createConflux(cfg.conflux))
+        const cfx = await initCfxSdk(cfg.conflux);
+        await fix20holder(cfx);
         return
     }
     redirectLog()
     regExitHook()
+
     const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
-    const cfx = new Conflux({url});
-    patchHttpProvider(cfx, {url})
-    await cfx.updateNetworkId();
+    const cfx = await initCfxSdk({url});
+    StatApp.networkId = cfx.networkId;
+
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
     if (limitStr === 'repeatSync1155data') {
@@ -385,7 +387,6 @@ async function run() {
         return
     }
     const st = await cfx.getStatus()
-    StatApp.networkId = st.networkId;
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     new BatchBalanceWatcher(cfx, null, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)

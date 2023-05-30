@@ -12,6 +12,7 @@ import {StatApp} from "../../StatApp";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {initCfxSdk} from "../common/utils";
 const lodash = require('lodash');
 const zlib = require('zlib');
 const INTERFACE_ERC_721 = [0x80, 0xac, 0x58, 0xcd];
@@ -31,7 +32,7 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 
-    cfx = new Conflux({...config.conflux})
+    cfx = await initCfxSdk(config.conflux);
     tokenTool = new TokenTool(cfx);
 }
 

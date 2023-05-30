@@ -1,7 +1,7 @@
 import {Block, Transaction} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {Conflux} from "js-conflux-sdk"
 import {sleep} from "../service/tool/ProcessTool";
-import {patchHttpProvider} from "../service/common/utils";
+import {initCfxSdk} from "../service/common/utils";
 const mismatchEpochs = new Set<number>()
 const map = new Map<number, Block[][]>()
 async function load(epoch:number, times:number, delay: number) {
@@ -85,9 +85,8 @@ async function doIt() {
     const wsUrl = url.replace('12537', '12535');
     const times = parseInt(t || '100');
     const delay = parseInt(d || '20');
-    cfx = new Conflux({url:wsUrl})
-    // patchHttpProvider(cfx, {url})
-    const ws = new Conflux({url: wsUrl})
+    cfx = await initCfxSdk({url: wsUrl});
+    const ws = await initCfxSdk({url: wsUrl});
     // @ts-ignore
     const subscription = await ws.subscribeEpochs('latest_state');
     // @ts-ignore

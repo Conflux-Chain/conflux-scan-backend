@@ -1,7 +1,8 @@
 const {ethers, ethers: {utils: {formatEther}}} = require('ethers')
-const {Conflux, format, Transaction, sign: {publicKeyToAddress}} = require('js-conflux-sdk');
+const {format, Transaction, sign: {publicKeyToAddress}} = require('js-conflux-sdk');
 const rlp = require('js-conflux-sdk/src/util/rlp');
 const cfxFormat = require('js-conflux-sdk/src/rpc/types/formatter');
+const {initCfxSdk} = require('../../stat/dist/service/common/utils');
 
 // ---------------- consortium transaction definition --------------------
 class ConsortiumTransaction extends Transaction{
@@ -229,12 +230,12 @@ async function deploy() {
 
 // ------------------------ entry point method ---------------------------
 async function init() {
-    cfx = new Conflux({
+    cfx = await initCfxSdk({
         url,
         networkId,
         defaultGasPrice: 1_000_000_000,
+        logger: console,
     });
-    console.log(`networkId ${cfx.networkId}`);
 
     if(type === 10) {
         const account = cfx.wallet.addPrivateKey(fromAddressPrivateKey);

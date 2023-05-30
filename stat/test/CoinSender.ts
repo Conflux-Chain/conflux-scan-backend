@@ -1,8 +1,14 @@
-import {Conflux} from "js-conflux-sdk";
 import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
+import {initCfxSdk} from "../service/common/utils";
 const addressSdk = require('js-conflux-sdk/src/util/address')
 const conf = require('./CoinSenderConf')
+
+let cfx;
+let sender = {};
+const receivers = [];
+
 async function run(round) {
+    cfx = await initCfxSdk({url: conf.rpcHost});
     await buildMainAccount()
     await checkBalance()
     let i = BigInt(0)
@@ -30,7 +36,7 @@ async function checkBalance() {
     let cfxU = BalanceWatcher.drip2cfx(ban, 1e+18)
     console.log(`balance of main account ${sender.toString()} is ${cfxU}`)
 }
-const receivers = []
+
 async function send(i:BigInt, nonce:number) {
     if (receivers.length < 1000) {
         receivers.push(cfx.wallet.addRandom())
@@ -55,11 +61,8 @@ async function send(i:BigInt, nonce:number) {
 }
 
 async function buildMainAccount() {
-    const st = await cfx.getStatus()
     // @ts-ignore
-    await cfx.updateNetworkId()
-    // @ts-ignore
-    console.log(`${conf.rpcHost} net work id ${st.networkId} vs ${cfx.networkId}`)
+    console.log(`${conf.rpcHost} networkId ${cfx.networkId}`)
     if (!conf.mainAccountPK) {
         sender = cfx.wallet.addRandom()
         // @ts-ignore
@@ -73,8 +76,7 @@ async function buildMainAccount() {
         console.log(`wallet key: ${key}`)
     }
 }
-let cfx = new Conflux({url: conf.rpcHost})
-let sender = {}
+
 const args = process.argv.slice(2)
 const round = Number(args[0] || 1)
 run(round).then(()=>{

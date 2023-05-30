@@ -8,7 +8,17 @@ const jsonrpc = require('./router/jsonrpc');
 class App extends AppBase {
   constructor(config = {}) {
     super(config);
+  }
 
+  async init() {
+    await super.init();
+
+    // networkId
+    this.networkId = this.cfx.networkId;
+    console.log(`================== start compiler, networkId ${this.cfx.networkId} ==================`);
+
+    // backend service
+    const {config} = this;
     this.fileMap = new FileMap(config.fileMap);
     this.service = new Service(this);
     this.router = router;
@@ -22,7 +32,6 @@ class App extends AppBase {
         error: (e) => e.message,
       });
     });
-
     this.traceLog.traceMethod(this.service, 'listVersion', { level: 'debug' });
     this.traceLog.traceMethod(this.service, 'loadVersion', { level: 'debug' });
     this.traceLog.traceMethod(this.service, 'compile', {
@@ -45,13 +54,21 @@ class App extends AppBase {
 
     process.on('warning', e => console.warn(e.stack));
 
+    console.log(`================== scan compiler listen on port ${port || this.config.port} ==================`);
     return super.listen(port);
+  }
+
+  async start() {
+    await this.init();
+    this.listen();
+    await super.run();
+    console.log('compiler runs over.');
   }
 
   async close() {
     await super.close();
-    console.log(`close scan compiler`)
-    process.exit(0)
+    console.log(`================== close scan compiler ==================`)
+    process.exit(0);
   }
 }
 

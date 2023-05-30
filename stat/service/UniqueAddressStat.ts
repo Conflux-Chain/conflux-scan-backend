@@ -11,7 +11,7 @@ import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux, format} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
-import {patchHttpProvider} from "./common/utils";
+import {initCfxSdk, patchHttpProvider} from "./common/utils";
 import {PreLoader} from "./common/PreLoader";
 import {Log as CfxLog} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./tool/TokenTool";
@@ -552,11 +552,11 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     await testDaily();
     await benchmark();
     await clean();
-    const cfxOp = cfxUrl === 'useConfigRpc' ? config.conflux : {url: cfxUrl}
-    let cfx = new Conflux(cfxOp)
-    patchHttpProvider(cfx, cfxOp)
-    const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n -------- network ${st.networkId} --------`)
+    const confluxOption = cfxUrl === 'useConfigRpc' ? config.conflux : {url: cfxUrl}
+
+    let cfx = await initCfxSdk(confluxOption);
+    console.log(` ${process.argv[1]} \n -------- network ${cfx.networkId} --------`)
+
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode

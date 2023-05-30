@@ -1,12 +1,14 @@
-const { sleepMs } = require('limit-map');
+const {sleepMs} = require('limit-map');
 const {ethers, ethers:{utils:{parseEther, formatEther}}} = require('ethers')
-const { Conflux, format } = require('js-conflux-sdk');
-const { removeLongData } = require('../../stat/dist/service/common/utils');
-const { abi: abiUtil, bytecode: bytecodeUti } = require('../contracts/build/contracts/UtilImpl.json');
+const {format} = require('js-conflux-sdk');
+const {initCfxSdk} = require('../../stat/dist/service/common/utils');
+const {abi: abiUtil, bytecode: bytecodeUti} = require('../contracts/build/contracts/UtilImpl.json');
+
 // 1820: 0x88887eD889e776bCBe2f0f9932EcFaBcDfCd1820
 //       cfxtest:aceju902vhx1rtf8f6h3wp1p9m8r9xj2ea400xyd8y
 // announce: 0x81bbe80b1282387e19d7e1a57476869081c7d965
 // eslint-disable-next-line no-unused-vars
+
 async function waitReceipt(cfx, hash) {
   do {
     const r = await cfx.getTransactionReceipt(hash);
@@ -16,6 +18,7 @@ async function waitReceipt(cfx, hash) {
     await sleepMs(1000);
   } while (true);
 }
+
 async function accountInfo(cfx, account) {
   const b = await cfx.getBalance(account.toString());
   console.log(`account ${account} , \n hex ${format.hexAddress(account.toString())
@@ -43,6 +46,7 @@ async function deployAnnounce(cfx, acc) {
   console.log('deploy announce by data code, tx hash', txHash);
   console.log(`contractCreated`, contractCreated)
 }
+
 async function showCodeHash(cfx, addr) {
   const accInfo = await cfx.getAccount(addr)
   console.log('account', addr)
@@ -68,6 +72,7 @@ async function deploy1820(cfx, acc) {
   }).executed();
   console.log(`1820 tx hash ${txHash} contractCreated`, contractCreated);
 }
+
 async function create1820evm(cfx,account) {
   const {transactionHash, contractCreated} = await cfx.sendTransaction({
     from: account,
@@ -77,13 +82,14 @@ async function create1820evm(cfx,account) {
   console.log(`create1820evm tx ${transactionHash
   } \n contractCreated`, contractCreated)
 }
+
 async function deploy(url, pkey) {
-  const cfx = new Conflux({
-    url, defaultGasPrice: 1_000_000_000,
-    // logger: console,
+  const cfx = await initCfxSdk({
+    url,
+    defaultGasPrice: 1_000_000_000,
+    logger: console,
   });
-  await cfx.updateNetworkId();
-  console.log(`network id : ${cfx.chainId || cfx.networkId}`);
+
   const account = cfx.wallet.addPrivateKey(pkey);
   await accountInfo(cfx, account);
 
@@ -108,10 +114,11 @@ async function main() {
   const args = process.argv.slice(2);
   const pkey = args[0];
   const url = args[1];
-// node this pkey url
+  // node this pkey url
   deploy(url, pkey).then();
 }
 main().then();
+
 /*
 node common/contract/deploy.js pk url
 announcement : net8888:aca514ancmbdu9u349u4m7d0u4jjdv83pyk5mtkf5u  0x81bbe80b1282387e19d7e1a57476869081c7d965

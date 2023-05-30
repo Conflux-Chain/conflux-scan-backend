@@ -20,7 +20,13 @@ Bill struct:
  seq is the sequence in the epoch, used in `order by` when fetching the last record of one address.
  -
  */
-import {batchBlockDetail, batchFetchBlock, batchTraceBlock, markCallResult, patchHttpProvider} from "../common/utils";
+import {
+    batchBlockDetail,
+    batchFetchBlock,
+    batchTraceBlock,
+    initCfxSdk,
+    markCallResult,
+} from "../common/utils";
 
 /**
  Aggregate reward:
@@ -557,9 +563,8 @@ function main() {
     node.verbose = Boolean(verbose)
     node.dingToken = dingToken
     let epoch;
-    init().then(config=>{
-        node.cfx = new Conflux(config.conflux)
-        patchHttpProvider(node.cfx, config.conflux, 'DummyNode')
+    init().then(async (config) => {
+        node.cfx = await initCfxSdk(config.conflux, 'DummyNode');
         return node.setupEpoch0()
     }).then(res=>{
         return node.getEpochInDB()

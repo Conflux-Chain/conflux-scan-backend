@@ -19,7 +19,7 @@ class AnnounceService {
 
   async send(array) {
     const {
-      app: { config, cfx, tool, error, service },
+      app: { config, cfx, tool, error, service, tokenTool },
     } = this;
 
     tool.assert(Array.isArray(array), `AnnounceService.send(array) must be array, got "${array}"`);
@@ -44,7 +44,7 @@ class AnnounceService {
         announcementAddress = dbConfigAdd;
       }
       return await Promise.all(groupArray.map(
-        async (group, index) => cfx.sendAnnounceTransaction(group, {
+        async (group, index) => tokenTool.sendAnnounceTransaction(group, {
           nonce: Number(nonce) + index,
           from: this.announcer,
           to: announcementAddress,

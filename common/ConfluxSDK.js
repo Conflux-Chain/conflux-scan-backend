@@ -1,7 +1,7 @@
 const lodash = require('lodash');
-const { Conflux, format } = require('js-conflux-sdk');
+const { Conflux } = require('js-conflux-sdk');
 const NodeCache = require('node-cache');
-const { isCustodianToken } = require('../stat/dist/service/tool/TokenTool');
+/*const { isCustodianToken } = require('../stat/dist/service/tool/TokenTool');*/
 const { patchHttpProvider } = require('../stat/dist/service/common/utils');
 const tool = require('./tool');
 const abi = require('./abi');
@@ -18,11 +18,7 @@ class ConfluxSDK extends Conflux {
     this.contract = this.Contract({ abi });
   }
 
-  addTokenCache(obj/*: {name?, symbol, decimals?, granularity?, base32:string} */) {
-    dbCache.set(obj.base32 || '', obj, cacheTtl);
-  }
-
-  async getEpochByEpochNumber(epochNumber) {
+  /*async getEpochByEpochNumber(epochNumber) {
     const now = Math.floor(Date.now() / 1000);
     const pivotBlock = await this.getBlockByEpochNumber(epochNumber);
 
@@ -35,11 +31,6 @@ class ConfluxSDK extends Conflux {
   }
 
   async getToken(address, epochNumber) {
-    // const cache = dbCache.get(address);
-    // if (cache) {
-    //   dbCache.set(address, cache, cacheTtl);
-    //   return cache;
-    // }
     return tool.awaitObject({
       address,
       name: this.contract.name()
@@ -119,28 +110,17 @@ class ConfluxSDK extends Conflux {
       .call({ to: address }, epochNumber)
       .then(BigInt)
       .catch(() => undefined);
-  }
+  }*/
 
   // --------------------------------------------------------------------------
-  sendAnnounceTransaction(array, options = {}) {
+  /*sendAnnounceTransaction(array, options = {}) {
     return this.contract.announce(array)
       .sendTransaction(options)
       .executed();
-  }
+  }*/
 
   // --------------------------------------------------------------------------
-  decodeAnnounce(eventLog) {
-    try {
-      const tuple = this.contract.Announce.decodeLog(eventLog);
-      return { ...eventLog, ...tuple.toObject() };
-    } catch (e) {
-      // pass
-    }
-
-    return undefined;
-  }
-
-  decodeERC20Transfer(eventLog = {}) {
+  /*decodeERC20Transfer(eventLog = {}) {
     try {
       const tuple = this.contract.Transfer.decodeLog(eventLog);
       return { ...eventLog, ...tuple.toObject() };
@@ -198,28 +178,6 @@ class ConfluxSDK extends Conflux {
     return [];
   }
 
-  parseTrace(trace) {
-    if (trace.action.from) {
-      trace.action.from = format.hexAddress(trace.action.from);
-    }
-    if (trace.action.value) {
-      trace.action.value = BigInt(trace.action.value);
-    }
-    if (trace.action.to) {
-      trace.action.to = format.hexAddress(trace.action.to);
-    }
-    if (trace.action.addr) {
-      trace.action.addr = format.hexAddress(trace.action.addr);
-    }
-    if (trace.action.input) {
-      trace.action.input = '';
-    }
-    if (trace.action.init) {
-      trace.action.init = '';
-    }
-    return trace;
-  }
-
   matchTrace(transactionTraceArray, transaction) {
     if (!transactionTraceArray.length) {
       return [];
@@ -247,25 +205,7 @@ class ConfluxSDK extends Conflux {
       transactionTraceArray[creatTraceIndex].action.to = transaction.contractCreated;
     }
     return transactionTraceArray;
-  }
-
-  // get reward info
-  getBlockReward(epochNumber, blockHash, blockMiner) {
-    return {
-      epochNumber,
-      blockHash,
-      transactionHash: blockHash,
-      transactionIndex: 0,
-      transactionTraceIndex: 0,
-      status: 0,
-      type: CONST.TRACE_TYPE.MINER_REWARD,
-      action: {
-        from: CONST.NULL_ADDRESS,
-        to: blockMiner,
-        value: 1998000000000000000n, // virtual for display
-      },
-    };
-  }
+  }*/
 }
 
 module.exports = ConfluxSDK;

@@ -1,12 +1,10 @@
 // cfx transfer contains in-correct records, caused by mis-understand of trace.action.callType like delegate call
 // Delegate call doesn't has real cfx transfer but has value > 0
-
 import {AddressCfxTransfer, BakCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {CfxBill, DummyNode} from "../watcher/DummyNode";
 import {Op, col} from 'sequelize'
 import {init} from "./FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 
 let del = false
 function mySort(a, b) {
@@ -195,9 +193,8 @@ async function doDeletion(epoch=0) {
 if (require.main === module) {
     const args = process.argv.slice(2)
     const from = Number(args[0])
-    init().then(cfg=>{
-        const cfx = new Conflux(cfg.conflux)
-        patchHttpProvider(cfx, cfg.conflux)
+    init().then(async (config) => {
+        const cfx = await initCfxSdk(config.conflux);
         const dmNode = new DummyNode(cfx)
         if (args.includes('delete')) {
             return doDeletion(from);

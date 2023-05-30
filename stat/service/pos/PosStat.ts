@@ -7,7 +7,7 @@ import {Epoch} from "../../model/Epoch";
 import {init} from "../tool/FixDailyTokenStat";
 import {CfxTransfer} from "../../model/CfxTransfer";
 import {makeIdV} from "../../model/HexMap";
-import {intParam, mustBeIntParamIfPresent} from "../common/utils";
+import {initCfxSdk, mustBeIntParamIfPresent} from "../common/utils";
 import {paginateCoreStat} from "../../router/ParamChecker";
 
 const lodash = require('lodash');
@@ -363,7 +363,7 @@ async function main() {
     console.log(`done`)
     // let url = ''
     // url = 'https://main.confluxrpc.com'
-    // const cfx = new Conflux({url})
+    // const cfx = await initCfxSdk({url});
     // const svc = new PosStat(cfx)
     // await svc.updateFinalizeGap()
     // await svc.updatePosStaking()

@@ -1,14 +1,13 @@
-import {BlockRowMark, FullTransaction, markBlockPosition, markTxPosition} from "../../model/FullBlock";
+import {FullTransaction} from "../../model/FullBlock";
 import {init} from "./FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
+import {initCfxSdk} from "../common/utils";
 
 const args = process.argv.slice(2)
 if ('txMethod' === args[0]) {
     init().then(async (config) => {
         const maxTx = await FullTransaction.findOne({order: [["epoch","desc"]], limit: 1})
         console.log(`max epoch ${maxTx.epoch}`)
-        //
-        const cfx = new Conflux(config.conflux)
+        const cfx = await initCfxSdk(config.conflux);
         // node this txMethod baseTxId round
         let baseId = Number(args[1])
         let round = Number(args[2])

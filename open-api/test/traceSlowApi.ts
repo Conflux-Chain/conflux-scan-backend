@@ -1,14 +1,15 @@
+import {format} from "js-conflux-sdk";
 import {init} from "../../stat/service/tool/FixDailyTokenStat";
 import {ApiLog} from "../../stat/monitor/ApiLog";
 import {NFTCheckerService} from "../../stat/service/nftchecker/NFTCheckerService";
 import {StatConfig} from "../../stat/config/StatConfig";
-import {Conflux, format} from "js-conflux-sdk";
 import {getAddrId, Hex40Map} from "../../stat/model/HexMap";
 import {TokenBalance} from "../../stat/model/Balance";
+import {initCfxSdk} from "../../stat/service/common/utils";
 
-let cfg:StatConfig
+let config:StatConfig
 async function main() {
-    cfg = await init()
+    config = await init()
     const {query, rt, path, createdAt} = await ApiLog.findOne({
         where: {path: '/open/nft/tokens'}, order: [['createdAt', 'desc']]
     })
@@ -35,7 +36,7 @@ async function testNftTokens(query:string) {
     const holderIdList = await TokenBalance.findAll({
         where: {contractId: cid}, limit: 50, order: [['balance', 'desc']]
     })
-    let cfx = new Conflux(cfg.conflux)
+    let cfx = await initCfxSdk(config.conflux);
     const svc = new NFTCheckerService({cfx})
     let i = 0
     async function repeat() {

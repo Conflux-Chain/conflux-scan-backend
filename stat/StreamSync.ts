@@ -1,6 +1,4 @@
 import {sleep} from "./service/tool/ProcessTool";
-
-const lodash = require('lodash');
 import {StatConfig} from "./config/StatConfig";
 import {RedisWrap} from "./service/RedisWrap";
 import {Erc20Transfer} from "./model/Erc20Transfer";
@@ -11,7 +9,7 @@ import {col, fn, Op} from "sequelize"
 import {Conflux, format} from 'js-conflux-sdk'
 import {init} from "./service/tool/FixDailyTokenStat";
 import {idHex40Map, makeIdV} from "./model/HexMap";
-import {patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk} from "./service/common/utils";
 import {TokenTool} from "./service/tool/TokenTool";
 import {NftMint, Token} from "./model/Token";
 import {NftService} from "./service/NftService";
@@ -23,7 +21,7 @@ import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
 import {CONST} from "./service/common/constant"
 
-/*const CONST = require('./service/common/constant');*/
+const lodash = require('lodash');
 
 const waitUpdateTransferTokens = {
     hex40ids: new Set<number>()
@@ -235,12 +233,11 @@ async function run() {
     config = await init()
     nftService = new NftService()
     await setupZeroAddressId()
-    cfx = new Conflux(config.conflux)
-    await cfx.updateNetworkId()
-    patchHttpProvider(cfx, config.conflux)
+    cfx = await initCfxSdk(config.conflux)
+
     // init contract
     // @ts-ignore
-    StatApp.networkId = (await cfx.getStatus()).networkId
+    StatApp.networkId = cfx.networkId
     console.log(` network id ${StatApp.networkId}`)
     new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
     if (args[0] === 'test') {
@@ -250,6 +247,7 @@ async function run() {
         console.log(` balance list is `, list)
         return
     }
+
     //
     tokenTool = new TokenTool(cfx)
     PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;

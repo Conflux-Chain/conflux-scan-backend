@@ -1,9 +1,10 @@
+import {Conflux} from "js-conflux-sdk";
 import {CfxBalance} from "../../model/Balance";
 import {CfxWatcher} from "../watcher/BalanceWatcher";
 import {Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
 import {StatApp} from "../../StatApp";
+import {initCfxSdk} from "../common/utils";
 
 async function watchCfx(col, watcher: CfxWatcher) {
     const byBal = await CfxBalance.findAll({
@@ -26,8 +27,8 @@ async function fixCfx(watcher: CfxWatcher, cfx: Conflux) {
     process.exit(0)
 }
 
-init().then(config=>{
-    const cfx = new Conflux(config.conflux)
+init().then(async (config) => {
+    const cfx = await initCfxSdk(config.conflux);
     const w = new CfxWatcher('cfx', cfx);
     return fixCfx(w, cfx);
 })

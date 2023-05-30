@@ -3,14 +3,11 @@ import {Conflux, Provider, format} from "js-conflux-sdk";
 const superagent = require("superagent")
 
 async function run() {
-    const url = ''
-    // const cfx = new Conflux({url})
     const scanUrl = 'https://confluxscan.io/stat/tokens/list'
     const client = superagent
     let transferType = 'ERC1155'
     transferType = 'ERC20'
     // transferType = 'ERC721'
-    // const is1155 = transferType === 'ERC1155'
     const filter = ['DAN']
     client.get(`${scanUrl}`)
         .query({

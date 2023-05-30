@@ -11,8 +11,9 @@ const tool = require('./tool');
 const type = require('./type');
 const Prometheus = require('./Prometheus');
 const TraceLog = require('./TraceLog');
-const ConfluxSDK = require('./ConfluxSDK');
 const {createLogger} = require("./utils");
+const {TokenTool} = require("../stat/dist/service/tool/TokenTool");
+const {initCfxSdk} = require("../stat/dist/service/common/utils");
 
 // eslint-disable-next-line no-extend-native
 BigInt.prototype.toJSON = function () {
@@ -22,8 +23,11 @@ BigInt.prototype.toJSON = function () {
 class AppBase extends Koaflow {
   constructor(config) {
     super();
-
     this.config = type.config(config);
+  }
+
+  async init() {
+    const {config} = this;
     this.CONST = CONST;
     this.error = error;
     this.tool = tool;
@@ -34,8 +38,8 @@ class AppBase extends Koaflow {
     // console.log(`cwd`, process.cwd()) // it's '/'
     // In docker container, '/log' is bind to ./log/<api|compiler>
     this.logger = createLogger('scan', config.SERVICE, `${process.cwd()}/log`, 'info', true);
-    console.log(`rpc config `, config.conflux)
-    this.cfx = new ConfluxSDK(config.conflux);
+    this.cfx = await initCfxSdk(config.conflux, 'common-conflux-sdk');
+    this.tokenTool = new TokenTool(this.cfx);
     this.dingTalk = new DingTalkRobot(lodash.defaults(config.dingTalk, {
       machine: config.machine,
       service: process.env.SERVICE,
@@ -81,10 +85,6 @@ class AppBase extends Koaflow {
     while (tool.isRunning()) {
       await tool.sleep(1000);
     }
-  }
-
-  async clear() {
-    this.ttlMap.clear(); // clear cache
   }
 
   async close() {

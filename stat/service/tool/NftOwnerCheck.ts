@@ -1,9 +1,8 @@
 import {Erc1155Data, NftMint, Token} from "../../model/Token";
-import {QueryTypes} from "sequelize";
-import {Conflux} from "js-conflux-sdk";
-import {getAddrId, Hex40Map} from "../../model/HexMap";
+import {Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
 import {check721OwnerInDb} from "./TokenTool";
+import {initCfxSdk} from "../common/utils";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 const abi = require('./abi');
@@ -89,8 +88,8 @@ async function main() {
         // node stat/dist/service/watcher/BatchBalanceWatcher.js fixNftHolder 123
         return check721OwnerInDb();
     }
-    const cfg = await init();
-    cfx = new Conflux(cfg.conflux)
+    const config = await init();
+    cfx = await initCfxSdk(config.conflux)
     if (cmd === 'checkNftMint') {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)

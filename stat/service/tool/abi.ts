@@ -325,4 +325,14 @@ module.exports = [
     stateMutability: 'view',
     type: 'function'
   }, // beacon
+  {
+    inputs: [
+      { internalType: 'address', name: 'account', type: 'address' },
+      { internalType: 'address[]', name: 'tokens', type: 'address[]' },
+    ],
+    name: 'getBalances',
+    outputs: [{ internalType: 'uint256[]', name: '', type: 'uint256[]' }],
+    stateMutability: 'view',
+    type: 'function',
+  }, // scan util
 ];

@@ -4,23 +4,17 @@ import { StatApp } from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
 import {ContractVerify} from "../../model/ContractVerify";
 import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
-import {ContractDestroy, TraceCreateContract} from "../../model/TraceCreateContract";
+import {initCfxSdk} from "../common/utils";
+import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Hex40Map} from "../../model/HexMap";
-import {Op, QueryTypes, Sequelize} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
 import {AddressNft, AddressNfts} from "../../model/AddrNft";
-import {Epoch, EpochNftTransfer} from "../../model/Epoch";
-import {FullMinerBlock} from "../../model/FullMinerBlock";
-import {AddressTransfer} from "../../model/AddrTransfer";
-import {NftMeta} from "../nftchecker/NftMetaStorage";
-import {CensorItem} from "../../model/CensorItem";
 import {KV} from "../../model/KV";
 import {Erc1155Data, NftMint} from "../../model/Token";
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
-import {AddressNftTransfer, NftTransfer} from "../../model/NftTransfer";
 import {sleep} from "./ProcessTool";
 
 const lodash = require('lodash');
@@ -38,9 +32,7 @@ let amount;
 async function init() {
     const config = loadConfig('Prod')
 
-    cfx = new Conflux(config.conflux);
-    await cfx.updateNetworkId();
-    patchHttpProvider(cfx, config.conflux);
+    cfx = await initCfxSdk(config.conflux);
 
     let seq = createDB(config.databaseRW)
     await seq.sync({})
@@ -246,10 +238,10 @@ async function serializeUpdatedCursor(times: number) {
     console.log(`done`)
 }
 
-async function fixRepeatedUpdatedCursor(updatedCursorArray: number[]) {
+/*async function fixRepeatedUpdatedCursor(updatedCursorArray: number[]) {
     for (const updatedCursor of updatedCursorArray) {
         const strUpdatedCursor = updatedCursor.toString().substring(10);
-        /*if(strUpdatedCursor !== '000000') continue;*/
+        /!*if(strUpdatedCursor !== '000000') continue;*!/
 
         async function getTransfer(row) {
             const {addressId, contractId, tokenId} = row;
@@ -295,7 +287,7 @@ async function fixRepeatedUpdatedCursor(updatedCursorArray: number[]) {
             }
         }
     }
-}
+}*/
 
 async function testUpdateByLiteral(amount) {
     const primaryKey = {contractId: 105, addressId: 366, tokenId: '1'};
@@ -707,7 +699,7 @@ async function run() {
         await serializeUpdatedCursor(times);
     }
     if(type === 13) {
-        const updatedCursor = [
+        /*const updatedCursor = [
             1666942979000000,
             1667295779000000,
             1667295779000001,
@@ -1052,7 +1044,7 @@ async function run() {
             1673363520000000,
             1673363520000001,
         ];
-        await fixRepeatedUpdatedCursor(updatedCursor);
+        await fixRepeatedUpdatedCursor(updatedCursor);*/
     }
 }
 const args = process.argv.slice(2)

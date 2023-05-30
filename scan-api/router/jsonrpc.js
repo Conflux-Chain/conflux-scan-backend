@@ -974,7 +974,7 @@ jsonrpc.method('exportTransfer',
 
   async function ({ transferType, ...options }) {
     const {
-      app: { tool, service, logger },
+      app: { tool, service, logger, tokenTool },
     } = this;
 
     logger.error(`exportTransfer-----------------options:${JSON.stringify(options)}`);
@@ -987,7 +987,7 @@ jsonrpc.method('exportTransfer',
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
         each.decimals = 18;
       } else {
-        const token = await service.conflux.getToken(each.address) || {};
+        const token = await tokenTool.getToken(each.address) || {};
         each.name = token.name;
         each.symbol = token.symbol;
         each.decimals = token.decimals || 0;

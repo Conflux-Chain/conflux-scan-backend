@@ -1,8 +1,8 @@
 // Sync pos things that happen on pow side.
 import {Conflux} from "js-conflux-sdk";
-import {IPosRegister, PosAccount, PosBlock, PosRegister} from "../../model/PoS";
+import {IPosRegister, PosAccount, PosRegister} from "../../model/PoS";
 import {abi as posAbi} from "../abi/PoSRegister";
-import {patchHttpProvider, removeLongData} from "../common/utils";
+import {initCfxSdk, removeLongData} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {POW_EPOCH_FOR_POS_Q, RedisStreamMessage, RedisWrap} from "../RedisWrap";
 import {sleep} from "../tool/ProcessTool";
@@ -168,10 +168,10 @@ export class PowSidePosSync {
 if (module===require.main) {
     const args = process.argv.slice(2)
     const url = args[0]
-    init().then(cfg=>{
-        const cfxUrl = url || cfg.conflux.url;
-        console.log(` use cfx ${cfxUrl}`)
-        const cfx = new Conflux({url: cfxUrl})
+    init().then(async (config) => {
+        const cfxUrl = url || config.conflux.url;
+        console.log(`use cfx ${cfxUrl}`)
+        const cfx = await initCfxSdk({url: cfxUrl});
         const sync = new PowSidePosSync(cfx)
         sync.init().then(()=>{
             if (args.includes('retire')) {
@@ -181,7 +181,7 @@ if (module===require.main) {
                     console.log(` retire tx:`, res)
                 })
             } else if (args.includes('listen')) {
-                return RedisWrap.connect(cfg.redis).then(()=>{
+                return RedisWrap.connect(config.redis).then(()=>{
                     return sync.listen()
                 }).then(()=>{
                     // never resolve, just hangup.

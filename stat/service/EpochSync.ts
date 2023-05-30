@@ -731,6 +731,10 @@ export class EpochSync extends SyncBase{
     }
 
     public async getTraceArray(epochNumber, detail = false) {
+        const {
+            app: { tokenTool },
+        } = this;
+
         let traceArray = [];
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
         blockArray.forEach((block, idx) => {
@@ -761,7 +765,8 @@ export class EpochSync extends SyncBase{
                             ...EpochSync.parseTrace(trace, detail),
                         });
                     });
-                    traceArray = [...traceArray, ...EpochSync.matchTrace(transactionTraceArray, transaction)];
+                    const matchedTrace = tokenTool.matchTrace(transactionTraceArray, transaction);
+                    traceArray = [...traceArray, ...matchedTrace];
                 });
         });
         return traceArray;
@@ -825,7 +830,7 @@ export class EpochSync extends SyncBase{
         return trace;
     }
 
-    public static matchTrace(transactionTraceArray, transaction){
+    /*public static matchTrace(transactionTraceArray, transaction){
         if (!transactionTraceArray.length) {
             return[];
         }
@@ -850,7 +855,7 @@ export class EpochSync extends SyncBase{
             transactionTraceArray[creatTraceIndex].action.to = transaction.contractCreated;
         }
         return transactionTraceArray;
-    }
+    }*/
 
     private async getCodeHash(address){
         const {

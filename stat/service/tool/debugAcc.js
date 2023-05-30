@@ -1,6 +1,7 @@
 const addressSdk = require('js-conflux-sdk/src/util/address')
 const superagent = require('superagent')
-const {Conflux} = require('js-conflux-sdk')
+const { initCfxSdk } = require('../../dist/service/common/utils');
+
 async function getTx(acc) {
   return page(acc, `${host}/v1/transaction`)
 }
@@ -60,7 +61,7 @@ async function getSponsorTx(arrTx, addr1, addr2) {
   return sponsorTx;
 }
 async function run() {
-  await cfx.updateNetworkId()
+  cfx = await initCfxSdk({url:`${host}/rpcv2`});
   const arrTxAll = await getTx(acc)
   const arrTx = arrTxAll.filter(obj=>obj.status === 0)
   const stakingTrace = await getStakingInternalTrace(arrTx, staking, stakingVerbose);
@@ -98,10 +99,10 @@ async function dump(arr, tag, detail) {
   console.log(`${tag} final balance: ${sum} = ${sum/BigInt(1e+18)}, sponsor count ${sponsorCnt}, staking count ${stakingCnt}`)
 }
 let host = 'https://confluxscan.io';
+let cfx;
 let acc = ''
 const sponsor = 'cfx:aaejuaaaaaaaaaaaaaaaaaaaaaaaaaaaaegg2r16ar'
 const sponsorVerbose = 'CFX:TYPE.BUILTIN:AAEJUAAAAAAAAAAAAAAAAAAAAAAAAAAAAEGG2R16AR'
 const staking = 'cfx:aaejuaaaaaaaaaaaaaaaaaaaaaaaaaaaajrwuc9jnb'
 const stakingVerbose = 'CFX:TYPE.BUILTIN:AAEJUAAAAAAAAAAAAAAAAAAAAAAAAAAAAJRWUC9JNB'
-const cfx = new Conflux({url:`${host}/rpcv2`})
 run().then()

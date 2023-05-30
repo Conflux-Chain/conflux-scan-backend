@@ -1,5 +1,5 @@
-import {batchFetchBlock, patchHttpProvider} from "../common/utils";
-import {FullTransaction, IFullBlock} from "../../model/FullBlock";
+import {initCfxSdk} from "../common/utils";
+import {FullTransaction} from "../../model/FullBlock";
 import {Conflux} from "js-conflux-sdk";
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
@@ -18,11 +18,7 @@ let methodIdSet: Set<string> = new Set<string>();
 
 async function init() {
     const config = loadConfig('Prod')
-
-    cfx = new Conflux(config.conflux);
-    await cfx.updateNetworkId();
-    patchHttpProvider(cfx, config.conflux);
-
+    cfx = await initCfxSdk(config.conflux)
     let seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)

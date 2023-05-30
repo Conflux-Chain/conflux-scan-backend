@@ -11,7 +11,7 @@ import {init} from "./tool/FixDailyTokenStat";
 import {FullBlockQuery} from "./FullBlockQuery";
 import {Op} from "sequelize"
 import {PruneType} from "../model/PruneInfo";
-/*const CONST = require('./common/constant');*/
+import {initCfxSdk} from "./common/utils";
 
 export class Crc3525TransferQuery extends TransferQueryBase{
     protected app;
@@ -101,8 +101,7 @@ export class Crc3525TransferQuery extends TransferQueryBase{
 }
 async function main() {
     let config = await init();
-    let cfx = new Conflux(config.conflux)
-    await cfx.updateNetworkId();
+    let cfx = await initCfxSdk(config.conflux);
     StatApp.networkId = cfx.networkId;
     let fullBlockQuery = new FullBlockQuery({cfx})
     let contract = '0x062ce55ec28f356b42db0783d166d76cfc0bb133'

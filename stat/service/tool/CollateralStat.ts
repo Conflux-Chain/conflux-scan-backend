@@ -1,8 +1,8 @@
 import {loadConfig} from "../../config/StatConfig";
-import { StatApp } from "../../StatApp";
+import {StatApp} from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
 import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 import {NftMint, Token} from "../../model/Token";
 import {Op, QueryTypes} from "sequelize";
 import {Epoch} from "../../model/Epoch";
@@ -20,9 +20,8 @@ async function init() {
     const config = loadConfig('Prod');
     config.conflux.url = 'http://main.confluxrpc.com/';
 
-    cfx = new Conflux(config.conflux);
-    await cfx.updateNetworkId();
-    patchHttpProvider(cfx, config.conflux);
+    cfx = await initCfxSdk(config.conflux);
+    console.log(`-----  networkId ${cfx.networkId} ------`)
 
     let seq = createDB(config.databaseRW);
     await seq.sync({});

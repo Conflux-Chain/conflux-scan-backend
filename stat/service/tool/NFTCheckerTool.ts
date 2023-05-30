@@ -1,9 +1,9 @@
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
-import {Conflux} from "js-conflux-sdk";
 import {NFTCheckerService} from "../nftchecker/NFTCheckerService";
 import {NFTPreviewService} from "../nftchecker/NFTPreviewService";
 import {NFTMap} from '../nftchecker/NFTInfo';
+import {initCfxSdk} from "../common/utils";
 
 let cfx;
 let checker;
@@ -13,7 +13,7 @@ async function init() {
     let seq = createDB(config.database)
     await seq.sync({})
     await initModel(seq)
-    cfx = new Conflux({...config.conflux})
+    cfx = await initCfxSdk(config.conflux)
     let app = {cfx};
     checker = new NFTCheckerService(app);
     previewer = new NFTPreviewService(app);

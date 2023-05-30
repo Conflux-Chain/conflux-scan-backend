@@ -4,7 +4,7 @@ import {Op} from 'sequelize'
 import {handleTokenTransferWithContract} from "../../StreamSync";
 import {init} from "./FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
@@ -38,12 +38,10 @@ async function loop(from, cfx: Conflux, type) {
     console.log(` replay: done, max ${maxId}`)
 }
 async function setup(config){
-    const cfx = new Conflux(config.conflux)
-    await cfx.updateNetworkId()
-    patchHttpProvider(cfx, config.conflux)
+    const cfx = await initCfxSdk(config.conflux);
     // init contract
     // @ts-ignore
-    StatApp.networkId = (await cfx.getStatus()).networkId
+    StatApp.networkId = cfx.networkId
     console.log(` network id ${StatApp.networkId}`)
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     console.log(` util contract ${utilContract}`)

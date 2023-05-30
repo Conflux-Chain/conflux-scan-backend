@@ -12,12 +12,12 @@ class TransferService {
 
   async _fill(transfer, fields) {
     const {
-      app: { service },
+      app: { service, tokenTool },
     } = this;
 
     let token = {};
     if (lodash.intersection(fields, TOKEN_FIELDS).length) {
-      token = await service.conflux.getToken(transfer.address) || {};
+      token = await tokenTool.getToken(transfer.address) || {};
       token = lodash.pick(token, TOKEN_FIELDS);
     }
 

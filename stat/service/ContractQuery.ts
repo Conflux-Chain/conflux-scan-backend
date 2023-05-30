@@ -676,7 +676,7 @@ export class ContractQuery {
     }
 
     private async getCreationData({ address }) {
-        const { cfx } = this.app;
+        const { cfx, tokenTool } = this.app;
 
         const hexAddress = format.hexAddress(address);
         const sql = "select * from trace_create_contract where `to` = (select id from hex40 where hex = ?)";
@@ -686,7 +686,7 @@ export class ContractQuery {
 
         const transaction = await cfx.getTransactionByHash(transactionHash);
         const transactionTraceArray = await cfx.traceTransaction(transaction.hash);
-        const traceArray = await EpochSync.matchTrace(transactionTraceArray, transaction);
+        const traceArray = await tokenTool.matchTrace(transactionTraceArray, transaction);
         const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
             trace.transactionHash === transaction.hash &&
             format.hexAddress(trace.action.to) === hexAddress));
