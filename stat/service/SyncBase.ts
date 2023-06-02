@@ -470,7 +470,7 @@ export abstract class SyncBase{
     public async validate(epochNumber, modelData) {
         const blockArray = modelData.blockArray;
         const revertBlockArray = blockArray.filter(block => block.epochNumber !== epochNumber);
-        if(revertBlockArray.length){
+        if(revertBlockArray.length && epochNumber !== 0){ // epochNumber is null in epoch 0 under consortium mode
             console.log(`epoch-sync.validate epoch:${epochNumber}, minerBlockArray:${JSON.stringify(blockArray)}`)
             return Promise.resolve(false);
         }

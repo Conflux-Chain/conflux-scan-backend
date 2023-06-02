@@ -61,15 +61,3 @@ module.exports = {
     secret: '',
   },
 };
-
-function initCfxSdk(confluxOption, tag = undefined) {
-  patchHttpProvider('cfx', 'confluxOption', tag);
-}
-
-function patchHttpProvider(cfx, cfxConf, tag='NotSet') {
-  console.log(`cfx ------ ${cfx}`);
-  console.log(`cfxConf ------ ${cfxConf}`);
-  console.log(`tag ------ ${tag}`);
-}
-
-initCfxSdk('confluxOption');

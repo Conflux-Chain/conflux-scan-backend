@@ -3,8 +3,8 @@ import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
 import {CONST} from "./constant"
-import {StatApp} from "../../StatApp";
 import {ethers} from "ethers";
+import {ConsortiumConflux} from "./ConsortiumConflux";
 
 const lodash = require('lodash');
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
@@ -258,10 +258,17 @@ export function removeLongData(obj) {
 }
 
 export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = undefined) {
-    const cfx = new Conflux(confluxOption);
-    patchHttpProvider(cfx, confluxOption, tag);
-    await cfx.updateNetworkId();
-    console.log(`conflux networkId:${cfx.networkId}, config:${JSON.stringify(confluxOption)}`);
+    let cfx: any;
+
+    if(confluxOption?.consortiumMode) {
+        cfx = new ConsortiumConflux(confluxOption);
+    } else{
+        cfx = new Conflux(confluxOption);
+        confluxOption && await cfx.updateNetworkId();
+    }
+    confluxOption && patchHttpProvider(cfx, confluxOption, tag);
+    console.log('conflux networkId', cfx.networkId, 'config', confluxOption);
+
     return cfx;
 }
 
@@ -278,7 +285,20 @@ export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
 }
 
 // batch fetch block detail, with transaction and trace.
-export function batchBlockDetail(cfx: Conflux, hashes: string[]) : Promise<[any[],any[]]> {
+export async function batchBlockDetail(cfx: Conflux, hashes: string[], consortiumMode: boolean = false) : Promise<[any[],any[]]> {
+    if(consortiumMode) {
+        const rpcBlocks = hashes.map(hash=>{return {"method": "cfx_getBlockByHash","params": [hash, true]}});
+        let traces = [];
+        for (const hash of hashes) {
+            const trace = await cfx.traceBlock(hash);
+            traces.push(trace);
+        }
+        return cfx.provider.batch(rpcBlocks).then(blocks=>{
+            formatBlock(blocks)
+            return [blocks, traces]
+        })
+    }
+
     const rpcBlocks = hashes.map(hash=>{return {"method": "cfx_getBlockByHash","params": [hash, true]}});
     const rpcTraces = hashes.map(hash=>{return {"method": "trace_block","params": [hash]}});
     const rpcBoth = [...rpcBlocks, ...rpcTraces]

@@ -22,8 +22,6 @@ services:
     network_mode: host
     restart: always
     command: node ./open-api/ApiServer.js
-
-
   compiler:
     image: node:14.17.5
     volumes:

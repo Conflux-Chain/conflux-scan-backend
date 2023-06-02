@@ -15,6 +15,7 @@ import {PruneHandler} from "./service/prune/PruneHandler";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {ContractQuery} from "./service/ContractQuery";
 import {SyncBase} from "./service/SyncBase";
+import {checkApiLogIpField} from "./monitor/ApiLog";
 import {redirectLog} from "./config/LoggerConfig";
 
 patchFormat();
@@ -44,7 +45,6 @@ export class FullEpochSync{
 
         this.sequelize = createDB(this.config.databaseRW);
         await initModel(this.sequelize);
-
         if (this.config.database.syncSchema) {
             console.log(`sync model begin...`);
             await this.sequelize.sync({});
@@ -52,6 +52,7 @@ export class FullEpochSync{
         } else {
             console.log(`skip sync db schema.`);
         }
+        await checkApiLogIpField()
     }
 
     private async initSwitch(){

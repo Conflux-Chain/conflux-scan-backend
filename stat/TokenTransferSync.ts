@@ -144,11 +144,11 @@ async function validate(cfx, epoch, blockHashArray, receipts) {
 
     const blockArray = await batchFetchBlock(cfx,  blockHashArray);
     const revertBlockArray = blockArray.filter(block => block.epochNumber !== epoch);
-    if(revertBlockArray.length){
+    if(revertBlockArray.length && epoch !== 0){
         throw new Error(`[epoch=${epoch}]validate, mismatch epoch (blockArray:${JSON.stringify(blockArray)})`);
     }
 
-    if (epoch !== 0 && blockArray.length !== receipts.length) {
+    if (blockArray.length !== receipts.length && epoch !== 0) {
         throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks, receipts)`);
     }
 

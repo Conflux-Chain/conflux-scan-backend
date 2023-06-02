@@ -11,18 +11,27 @@ import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {regExitHook} from "./service/tool/ProcessTool";
+import {checkApiLogIpField} from "./monitor/ApiLog";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
 
     let cfx = await initCfxSdk(config.conflux);
-    console.log(`Conflux ${config.conflux.url} network ${cfx.networkId}`)
-
     PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
+
     await RedisWrap.connect(config.redis)
+
     let seq = createDB(config.databaseRW)
-    await seq.sync({})
     await initModel(seq)
+    if (config.database.syncSchema) {
+        console.log(`sync model begin...`);
+        await seq.sync({})
+        console.log(`sync model finished.`);
+    } else {
+        console.log(`skip sync db schema.`);
+    }
+    await checkApiLogIpField()
+
     const svc = new FullBlockService(cfx)
     PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     StatNotifier.SWITCH_STREAM_STAT = config.streamStat;
