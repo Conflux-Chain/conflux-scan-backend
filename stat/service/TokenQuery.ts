@@ -437,6 +437,9 @@ export class TokenQuery {
             const hexBean = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
             hex40id = hexBean?.id;
         }
+        if(!hex40id){
+            return {hex40id, type: undefined};
+        }
 
         let [transfer20, transfer721, transfer1155] = await Promise.all([
             Erc20Transfer.findOne({ where: { contractId: hex40id }}),

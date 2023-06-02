@@ -143,7 +143,9 @@ class TokenService {
       return tokenArray;
     }
 
-    tokenArray.forEach(token => {
+    const tokens = [];
+    for (const token of tokenArray) {
+      if(!token.transferType) continue;
       token.type = Number(token.transferType.substring(3));
       token.amount = (token.balance && Number.isInteger(token.decimals))
           ? BigFixed(token.balance).div(BigFixed(10).pow(token.decimals)).toNumber()
@@ -151,9 +153,10 @@ class TokenService {
       token.marketcapHeld = (token.price && token.balance && Number.isInteger(token.decimals))
           ? BigFixed(token.price).mul(token.balance).div(BigFixed(10).pow(token.decimals)).toNumber()
           : 0;
-    });
+      tokens.push(token);
+    }
 
-    const groupedTokenArray = lodash.groupBy(tokenArray, 'type');
+    const groupedTokenArray = lodash.groupBy(tokens, 'type');
     for (const type of Object.keys(groupedTokenArray)) {
       groupedTokenArray[type] = lodash.orderBy(groupedTokenArray[type], ['marketcapHeld', 'amount', 'transferCount'], ['desc', 'desc', 'desc']);
     }
