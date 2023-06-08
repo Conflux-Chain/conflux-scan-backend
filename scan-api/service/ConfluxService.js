@@ -575,7 +575,12 @@ class ConfluxService {
 
     return ttlMap.cache(`ConfluxService.getTransactionTraceTree(${transactionHash})`,
       async () => {
-        const traceArray = await confluxSDK.traceTransaction(transactionHash);
+        let traceArray;
+        try {
+          traceArray = await confluxSDK.traceTransaction(transactionHash);
+        } catch (err) {
+          throw new error.ResponseDataParsingError(`fail to traceTransaction by sdk: ${err}`);
+        }
         if (!traceArray || traceArray.length === 0) {
           return {};
         }
