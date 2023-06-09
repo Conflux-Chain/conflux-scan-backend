@@ -6,7 +6,7 @@ import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {TokenQuery} from "./service/TokenQuery";
 import {EpochSync} from "./service/EpochSync";
 import {redisWrap, RedisWrap} from "./service/RedisWrap";
-import {initCfxSdk, patchFormat, patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KEY_TPS_TRANSFER_NOTIFY, KV} from "./model/KV";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {StatApp} from "./StatApp";

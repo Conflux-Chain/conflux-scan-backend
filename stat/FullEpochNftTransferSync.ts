@@ -3,7 +3,7 @@ import {createDB, initModel} from "./service/DBProvider";
 import {Sequelize} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {TokenTool} from "./service/tool/TokenTool";
-import {initCfxSdk, patchFormat, patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KV} from "./model/KV";
 import {StatApp} from "./StatApp";
 import {EpochNftTransferSync} from "./service/EpochNftTransferSync";

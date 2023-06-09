@@ -11,7 +11,7 @@ import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux, format} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
-import {initCfxSdk, patchHttpProvider} from "./common/utils";
+import {initCfxSdk} from "./common/utils";
 import {PreLoader} from "./common/PreLoader";
 import {Log as CfxLog} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./tool/TokenTool";

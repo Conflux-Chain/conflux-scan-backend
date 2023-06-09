@@ -244,7 +244,7 @@ export class EpochSync extends SyncBase{
             const hex40 = format.hexAddress(block.miner);
             const blockDt = new Date(block.timestamp * 1000);
             const hex40Id = (await makeId(hex40, undefined, {dt: blockDt})).id;
-            const epoch = epochNumber === 0 && config.conflux.consortiumMode ? 0 : block.epochNumber;
+            const epoch = (epochNumber === 0 && config.conflux.consortiumMode) ? 0 : block.epochNumber;
             return {minerId: hex40Id, epoch, position, createdAt: blockDt};
         }));
 

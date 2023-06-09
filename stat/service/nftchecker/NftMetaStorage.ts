@@ -111,6 +111,7 @@ export async function createNftMetaPartition(seq: Sequelize) {
   tokenId varchar(78) NOT NULL,
   epochNumber bigint(20) NOT NULL,
   status int(2) NOT NULL DEFAULT '20',
+  censorStatus int(2) NOT NULL DEFAULT '0',
   retry int(2) NOT NULL DEFAULT '0',
   errorType int(4) NOT NULL DEFAULT '0',
   error varchar(1024) DEFAULT NULL,

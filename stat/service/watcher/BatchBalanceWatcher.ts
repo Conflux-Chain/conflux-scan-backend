@@ -44,10 +44,10 @@ export class BatchBalanceWatcher {
         BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
     }
 
-    public static async getUtilContractAddr() {
+    public static async getUtilContractAddr(consortiumMode: boolean = false) {
         // use config in DB ?
         const utilContract = StatApp.networkId === 1 ? TESTNET_UTIL_CONTRACT :
-            StatApp.networkId === 1029 ? MAINNET_UTIL_CONTRACT : (await KV.getString(SCAN_UTIL_CONTRACT, ''))
+            (StatApp.networkId === 1029 && !consortiumMode) ? MAINNET_UTIL_CONTRACT : (await KV.getString(SCAN_UTIL_CONTRACT, ''))
         return utilContract;
     }
     logCount = 300
@@ -376,8 +376,8 @@ async function run() {
     redirectLog()
     regExitHook()
 
-    const url = cfxUrl === 'useConfigRpc' ? cfg.conflux.url : cfxUrl
-    const cfx = await initCfxSdk({url});
+    const confluxOption = cfxUrl === 'useConfigRpc' ? cfg.conflux : {url: cfxUrl};
+    const cfx = await initCfxSdk(confluxOption);
     StatApp.networkId = cfx.networkId;
 
     const zeroHex = '0x'+'0'.padStart(40, '0')
@@ -387,7 +387,7 @@ async function run() {
         return
     }
     const st = await cfx.getStatus()
-    const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
+    const utilContract = await BatchBalanceWatcher.getUtilContractAddr(cfg.conflux.consortiumMode);
     new BatchBalanceWatcher(cfx, null, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)

@@ -2,7 +2,7 @@ import {redirectLog} from "./config/LoggerConfig";
 import {Transaction, Model,DataTypes, Sequelize, Op, UniqueConstraintError, ModelStatic} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchTraceBlock, initCfxSdk, isNewFormatTrace, patchHttpProvider, removeLongData} from "./service/common/utils";
+import {batchTraceBlock, initCfxSdk, isNewFormatTrace, removeLongData} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";

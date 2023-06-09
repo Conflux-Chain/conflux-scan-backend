@@ -49,15 +49,22 @@ export class Reporter{
         });
     }
 
-    private registerSampler(){
+    private registerSampler() {
+        const {
+            app:{ config }
+        } = this;
+
         this.samplerArray = [
             new BlockTxSampler(this.app),
-            new CfxTransferSampler(this.app),
             new TokenTransferSampler(this.app),
             new EpochMiscSampler(this.app),
         ];
 
-        if(!StatApp.isEVM){
+        if(!config.conflux.consortiumMode) {
+            this.samplerArray.push(new CfxTransferSampler(this.app));
+        }
+
+        if(!StatApp.isEVM && !config.conflux.consortiumMode) {
             this.samplerArray.push(new PosBlockSampler(this.app));
         }
     }

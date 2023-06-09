@@ -5,7 +5,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
 import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "./model/KV";
-import {initCfxSdk, patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
