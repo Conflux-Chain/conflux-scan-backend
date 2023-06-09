@@ -89,9 +89,9 @@ export class ConsortiumConflux extends Conflux{
             const [latestState, blockHashArray, block] = await Promise.all([
                 confluxSdk.cfx.getEpochNumber('latest_state'),
                 confluxSdk.cfx.getBlocksByEpochNumber(epochNumber)
-                    .catch(err=>{ console.log(`fetchEpochReceipts epoch:${epochNumber} error:${err}`); return [];}),
+                    .catch(err=>{ /*console.log(`fetchEpochReceipts epoch:${epochNumber} error:${err}`);*/ return [];}),
                 confluxSdk.cfx.getBlockByEpochNumber(epochNumber, false)
-                    .catch(err=>{ console.log(`fetchEpochReceipts epoch:${epochNumber} error:${err}`); return null;}),
+                    .catch(err=>{ /*console.log(`fetchEpochReceipts epoch:${epochNumber} error:${err}`);*/ return null;}),
             ]);
 
             // pre validate
