@@ -74,7 +74,7 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/pos-info', async (ctx)=>{
-        ctx.body = await statApp.posQuery.posInfo()
+        ctx.body = statApp.config.conflux.consortiumMode ? {} : await statApp.posQuery.posInfo()
     })
 
     router.get('/list-pos-block', async (ctx)=>{

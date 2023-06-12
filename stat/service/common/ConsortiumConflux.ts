@@ -2,8 +2,6 @@ import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
 import {sleep} from "../tool/ProcessTool";
 import {ConfluxOption} from "../../config/StatConfig";
 import {isNumber} from "lodash";
-import {makeIdV} from "../../model/HexMap";
-import {CONST} from "./constant";
 
 const lodash = require('lodash');
 const formatter = require('js-conflux-sdk/src/rpc/types/formatter');
@@ -64,7 +62,6 @@ export class ConsortiumConflux extends Conflux{
         }
     }
 
-
     async getEpochReceipts(epochNumber) {
         return this.fetchEpochReceipts(this, epochNumber);
     }
@@ -82,7 +79,37 @@ export class ConsortiumConflux extends Conflux{
         return [];
     }
 
+    async getClientVersion() {
+        return "";
+    }
+
+    // @ts-ignore
+    async getSponsorInfo(address, epochNumber) {
+        return {};
+    }
+
+    async getConfirmationRiskByHash(blockHash) {
+        return 1e-8;
+    }
+
+    async getSupplyInfo() {
+        return {
+            totalCirculating: 0,
+            totalCollateral: 0,
+            totalIssued: 0,
+            totalStaking: 0
+        } as any;
+    }
+
     // ========================== getEpochReceipts ===========================
+    /*
+    curl http://main-internal.confluxrpc.com -X POST -H "Content-Type: application/json" --data '{"method":"cfx_getEpochReceipts","params":["0x7805"],"id":1,"jsonrpc":"2.0"}'
+    {"jsonrpc":"2.0","result":[[]],"id":1}
+    curl http://main-internal.confluxrpc.com -X POST -H "Content-Type: application/json" --data '{"method":"cfx_getEpochReceipts","params":["latest_state"],"id":1,"jsonrpc":"2.0"}'
+    {"jsonrpc":"2.0","result":[[],[],[]],"id":1}
+    curl http://main-internal.confluxrpc.com -X POST -H "Content-Type: application/json" --data '{"method":"cfx_getEpochReceipts","id":1,"jsonrpc":"2.0"}'
+    {"jsonrpc":"2.0","error":{"code":-32602,"message":"`params` should have at least 1 argument(s)"},"id":1}
+     */
     private async fetchEpochReceipts(confluxSdk, epochNumber) {
         do{
             // get raw data
