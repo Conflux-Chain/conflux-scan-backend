@@ -1471,6 +1471,9 @@ components:
                   approvalType:
                     description: "Approval type, could be: `Approval` or `ApprovalForAll`."
                     type: string
+                  balance:
+                    description: "Token balance for ERC20"
+                    type: string
                   contract:
                     type: string
                   spenderName:
