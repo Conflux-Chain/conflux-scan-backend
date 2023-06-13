@@ -30,10 +30,16 @@ export async function patchApprovalList({cfx, account, list} =
         if (entry.type === 'ERC20') {
             tasks.push(allowance(account, spender).then(res => {
                 entry.currentApproval = res.toString();
+                if (entry.currentApproval === '0') {
+                    entry['invalid'] = true;
+                }
             }).catch(e => setError(entry, e)));
         } else if (entry.approvalType === "ApprovalForAll") {
             tasks.push(isApprovedForAll(account, spender).then(res => {
                 entry.currentApproval = res.toString();
+                if (entry.currentApproval === 'false') {
+                    entry['invalid'] = true;
+                }
             }).catch(e => setError(entry, e)));
         } else if (entry.type === "ERC721") {
             tasks.push(getApproved(BigInt(entry.value)).then(res => {
