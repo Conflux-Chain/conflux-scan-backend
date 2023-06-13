@@ -42,6 +42,7 @@ import {buildHexSet, buildIdMap, getAddrId, idHex40Map, makeIdV, mapProp} from "
 import {StatApp} from "./StatApp";
 import {ContractInfo} from "./model/ContractInfo";
 import {CONST} from "./service/common/constant";
+import {TokenBalance} from "./model/Balance";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -182,11 +183,12 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         const tokeTypeCondition = tokenType ? "and t.type=?" : "";
         const zeroId = ApprovalRelation.context.zeroAddrId;
         const sql = `
-            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type approvalType,
+            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type approvalType, tkb.balance,
             t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
             from ${relation} r 
             join ${token} t on r.contractId=t.hex40id ${tokeTypeCondition}
             left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
+            left join ${TokenBalance.getTableName()} tkb on tkb.contractId=r.contractId and tkb.addressId = r.fromId
             where r.fromId = ? and r.toId <> ${zeroId} order by r.epoch desc limit 10000
         `;
         if (tokeTypeCondition) {
