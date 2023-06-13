@@ -246,7 +246,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
                 row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
             })
         }
-        return {total, list};
+        return {total:Math.min(list.length, Number(total)), list};
     }
 }
 export interface IEpochApproval extends IEpochTask {
