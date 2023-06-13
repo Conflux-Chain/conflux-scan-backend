@@ -31,6 +31,30 @@ module.exports = [
     outputs: [{ type: 'uint256' }],
   }, // 777
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_spender",
+        "type": "address"
+      }
+    ],
+    "name": "allowance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "remaining",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     type: 'function',
     name: 'balanceOf',
     inputs: [{ type: 'address' }],

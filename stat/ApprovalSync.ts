@@ -617,7 +617,7 @@ async function test() {
         await init();
         const cfx = new Conflux({url: arg2})
         await ApprovalRelation.queryApprovalOfAccount({
-            account: arg1, tokenType:'ERC20', byTokenId: false, cfx})
+            account: arg1, tokenType:'', byTokenId: false, cfx})
             .then(({list})=>{
                 console.log(`total ${0}`, list)
             })
