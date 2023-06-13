@@ -221,7 +221,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         })
         list.forEach(row=>{
             const {name, symbol, type, base32, decimals, iconUrl} = row;
-            ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
+            ['name', 'symbol', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
             row['tokenInfo'] = {name, symbol, type, base32, decimals, iconUrl};
             row['spenderName'] = (contractNameMap[`${row.toId}`])?.name || '';
             ['id','epoch','contractId','blockIndex','txIndex','fromId', 'toId']
