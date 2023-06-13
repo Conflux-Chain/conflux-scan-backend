@@ -43,6 +43,7 @@ import {StatApp} from "./StatApp";
 import {ContractInfo} from "./model/ContractInfo";
 import {CONST} from "./service/common/constant";
 import {TokenBalance} from "./model/Balance";
+import {patchApprovalList} from "./service/tool/ApprovalTool";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -150,7 +151,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
     static context = {
         zeroAddrId: 0, initialized: false,
     }
-    static async queryApprovalOfAccount({account, tokenType = '', byTokenId}) {
+    static async queryApprovalOfAccount({account, tokenType = '', byTokenId, cfx}) {
         if (!ApprovalRelation.context.initialized) {
             ApprovalRelation.context.zeroAddrId =
                 await makeIdV(CONST.ZERO_ADDRESS)
@@ -160,9 +161,9 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         if (!id) {
             return {total: 0, list:[], message: 'account not found'};
         }
-        return this.queryApprovalOfAccountId({fromId: id, tokenType, byTokenId});
+        return this.queryApprovalOfAccountId({account, fromId: id, tokenType, byTokenId, cfx});
     }
-    static async queryApprovalOfAccountId({fromId, tokenType, byTokenId}) {
+    static async queryApprovalOfAccountId({account, fromId, tokenType, byTokenId, cfx}) {
         let relation = ApprovalRelation.getTableName();
         const token = Token.getTableName();
         const tx = FullTransaction.getTableName();
@@ -183,7 +184,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         const tokeTypeCondition = tokenType ? "and t.type=?" : "";
         const zeroId = ApprovalRelation.context.zeroAddrId;
         const sql = `
-            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type approvalType, tkb.balance,
+            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type approvalType, ifnull(tkb.balance,"0") as balance,
             t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
             from ${relation} r 
             join ${token} t on r.contractId=t.hex40id ${tokeTypeCondition}
@@ -221,6 +222,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             infos.forEach(i=>map[`${i.hexId}`] = i)
             return map;
         })
+        await patchApprovalList({account, list, cfx})
         list.forEach(row=>{
             const {name, symbol, type, base32, decimals, iconUrl} = row;
             ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
@@ -610,11 +612,12 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 async function test() {
-    const [,,cmd,arg1] = process.argv;
+    const [,,cmd,arg1, arg2] = process.argv;
     if (cmd === 'testQuery') {
         await init();
+        const cfx = new Conflux({url: arg2})
         await ApprovalRelation.queryApprovalOfAccount({
-            account: arg1, tokenType:'ERC20', byTokenId: false})
+            account: arg1, tokenType:'ERC20', byTokenId: false, cfx})
             .then(({list})=>{
                 console.log(`total ${0}`, list)
             })

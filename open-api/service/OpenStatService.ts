@@ -98,7 +98,7 @@ export async function listApproval(ctx) {
     const {account, tokenType, byTokenId} = ctx.request.query;
     checkPresent({account, tokenType}, ['account']);
     const data = await ApprovalRelation.queryApprovalOfAccount({account, tokenType,
-        byTokenId: byTokenId === 'true'})
+        byTokenId: byTokenId === 'true', cfx:getApiService().cfx})
     setBody(ctx, data);
 }
 
