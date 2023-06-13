@@ -182,7 +182,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         const tokeTypeCondition = tokenType ? "and t.type=?" : "";
         const zeroId = ApprovalRelation.context.zeroAddrId;
         const sql = `
-            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type,
+            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type approvalType,
             t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
             from ${relation} r 
             join ${token} t on r.contractId=t.hex40id ${tokeTypeCondition}
@@ -199,7 +199,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             countSql,
             {replacements, raw: true, type: QueryTypes.SELECT,}
         ).then(([row])=>row["count"])
-        console.log(` sql is `, sql)
+
         const list:any[] = await ApprovalRelation.sequelize.query(
             sql, {replacements, raw: true, type: QueryTypes.SELECT,
                 logging: console.log,
@@ -221,7 +221,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         })
         list.forEach(row=>{
             const {name, symbol, type, base32, decimals, iconUrl} = row;
-            ['name', 'symbol', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
+            ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
             row['tokenInfo'] = {name, symbol, type, base32, decimals, iconUrl};
             row['spenderName'] = (contractNameMap[`${row.toId}`])?.name || '';
             ['id','epoch','contractId','blockIndex','txIndex','fromId', 'toId']
