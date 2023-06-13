@@ -39,7 +39,7 @@ export async function patchApprovalList({cfx, account, list} =
             tasks.push(getApproved(BigInt(entry.value)).then(res => {
                 entry.currentApproval = res.toString();
                 entry.to = res.toString();
-                if (format.hexAddress() === CONST.ZERO_ADDRESS_HEX) {
+                if (format.hexAddress(res.toString()) === CONST.ZERO_ADDRESS_HEX) {
                     entry['invalid'] = true;
                 }
             }).catch(e => setError(entry, e)));
