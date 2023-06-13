@@ -29,21 +29,21 @@ export async function patchApprovalList({cfx, account, list} =
         let spender = entry.to;
         if (entry.type === 'ERC20') {
             tasks.push(allowance(account, spender).then(res => {
-                entry.currentApproval = res.toString();
-                if (entry.currentApproval === '0') {
+                entry.value = res.toString();
+                if (entry.value === '0') {
                     entry['invalid'] = true;
                 }
             }).catch(e => setError(entry, e)));
         } else if (entry.approvalType === "ApprovalForAll") {
             tasks.push(isApprovedForAll(account, spender).then(res => {
-                entry.currentApproval = res.toString();
-                if (entry.currentApproval === 'false') {
+                entry.value = res.toString();
+                if (entry.value === 'false') {
                     entry['invalid'] = true;
                 }
             }).catch(e => setError(entry, e)));
         } else if (entry.type === "ERC721") {
             tasks.push(getApproved(BigInt(entry.value)).then(res => {
-                entry.currentApproval = res.toString();
+                entry.value = res.toString();
                 entry.to = res.toString();
                 if (format.hexAddress(res.toString()) === CONST.ZERO_ADDRESS_HEX) {
                     entry['invalid'] = true;
