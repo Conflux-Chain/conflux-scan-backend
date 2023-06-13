@@ -1,4 +1,4 @@
-import {Conflux, Contract} from "js-conflux-sdk";
+import {Conflux, CONST, Contract, format} from "js-conflux-sdk";
 
 const abi = require("./abi")
 
@@ -39,8 +39,12 @@ export async function patchApprovalList({cfx, account, list} =
             tasks.push(getApproved(BigInt(entry.value)).then(res => {
                 entry.currentApproval = res.toString();
                 entry.to = res.toString();
+                if (format.hexAddress() === CONST.ZERO_ADDRESS_HEX) {
+                    entry['invalid'] = true;
+                }
             }).catch(e => setError(entry, e)));
         }
     })
-    return Promise.all(tasks)
+    await Promise.all(tasks)
+    return list.filter(item=>!item['invalid']);
 }

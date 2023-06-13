@@ -203,7 +203,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             {replacements, raw: true, type: QueryTypes.SELECT,}
         ).then(([row])=>row["count"])
 
-        const list:any[] = await ApprovalRelation.sequelize.query(
+        let list:any[] = await ApprovalRelation.sequelize.query(
             sql, {replacements, raw: true, type: QueryTypes.SELECT,
                 logging: console.log,
             }
@@ -222,7 +222,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             infos.forEach(i=>map[`${i.hexId}`] = i)
             return map;
         })
-        await patchApprovalList({account, list, cfx})
+        list = await patchApprovalList({account, list, cfx})
         list.forEach(row=>{
             const {name, symbol, type, base32, decimals, iconUrl} = row;
             ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
