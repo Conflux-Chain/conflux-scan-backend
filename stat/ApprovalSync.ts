@@ -233,8 +233,10 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         });
         if(StatApp.isEVM) {
             list.forEach(row=>{
+                row['spender'] = row['to'];
                 if (row['tokenInfo']) {
-                    row['tokenInfo']["base32"] = format.address(row['tokenInfo']["base32"], StatApp.networkId || 1029)
+                    row['tokenInfo']["hex"] = format.hexAddress(row['tokenInfo']["base32"]);
+                    row['tokenInfo']["base32"] = row['tokenInfo']["base32"];
                 }
             })
         } else{
