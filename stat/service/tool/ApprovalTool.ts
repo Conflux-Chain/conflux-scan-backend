@@ -1,4 +1,5 @@
 import {Conflux, CONST, Contract, format} from "js-conflux-sdk";
+import {StatApp} from "../../StatApp";
 
 const abi = require("./abi")
 
@@ -61,7 +62,12 @@ export async function patchApprovalList({cfx, account, list} =
 export async function fixApprovalData(page:any) {
     const addressInfo = page.addressInfo || {};
     page.list.forEach(entry=>{
+        if (StatApp.isEVM) {
+            entry.spender = format.hexAddress(entry.spender);
+            delete entry['contractAddress'];
+        }
         entry.spenderInfo = addressInfo[entry.spender] || {};
+        entry.spenderName = entry.spenderInfo.contract?.name || entry.spenderInfo.token?.name || "";
         delete entry['to'];
     })
     delete page.addressInfo;
