@@ -43,7 +43,6 @@ export async function patchApprovalList({cfx, account, list} =
             }).catch(e => setError(entry, e)));
         } else if (entry.type === "ERC721") {
             tasks.push(getApproved(BigInt(entry.value)).then(res => {
-                entry.value = res.toString();
                 entry.to = res.toString();
                 if (format.hexAddress(res.toString()) === CONST.ZERO_ADDRESS_HEX) {
                     entry['invalid'] = true;

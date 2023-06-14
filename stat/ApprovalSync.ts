@@ -44,6 +44,7 @@ import {ContractInfo} from "./model/ContractInfo";
 import {CONST} from "./service/common/constant";
 import {TokenBalance} from "./model/Balance";
 import {patchApprovalList} from "./service/tool/ApprovalTool";
+import {polishContract} from "../open-api/service/OpenContractService";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -233,8 +234,6 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         });
         if(StatApp.isEVM) {
             list.forEach(row=>{
-                row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
-                delete row['to'];
                 if (row['tokenInfo']) {
                     row['tokenInfo']["base32"] = format.address(row['tokenInfo']["base32"], StatApp.networkId || 1029)
                 }
@@ -242,10 +241,10 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         } else{
             list.forEach(row=>{
                 row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
-                delete row['to'];
                 row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
             })
         }
+        await polishContract({list})
         return {total:Math.min(list.length, Number(total)), list};
     }
 }
