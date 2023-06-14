@@ -43,7 +43,11 @@ export async function patchApprovalList({cfx, account, list} =
             }).catch(e => setError(entry, e)));
         } else if (entry.type === "ERC721") {
             tasks.push(getApproved(BigInt(entry.value)).then(res => {
+                const preTo = entry.to;
                 entry.to = res.toString();
+                if (preTo !== entry.to) {
+                    console.log(`approval receiver changed from [${preTo}]`)
+                }
                 if (format.hexAddress(res.toString()) === CONST.ZERO_ADDRESS_HEX) {
                     entry['invalid'] = true;
                 }
@@ -52,4 +56,11 @@ export async function patchApprovalList({cfx, account, list} =
     })
     await Promise.all(tasks)
     return list.filter(item=>!item['invalid']);
+}
+
+export async function fixApprovalData(page:any) {
+    const addressInfo = page.addressInfo || {};
+    page.list.forEach(entry=>{
+        entry.spenderInfo = addressInfo[entry.spender] || {}
+    })
 }

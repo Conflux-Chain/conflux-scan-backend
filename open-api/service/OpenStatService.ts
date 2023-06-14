@@ -12,6 +12,7 @@ import {CONST} from "../../stat/service/common/constant"
 import {ApprovalRelation} from "../../stat/ApprovalSync";
 import {paginateCoreStat} from "../../stat/router/ParamChecker";
 import {polishContract} from "./OpenContractService";
+import {fixApprovalData} from "../../stat/service/tool/ApprovalTool";
 
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -101,6 +102,7 @@ export async function listApproval(ctx) {
     const data = await ApprovalRelation.queryApprovalOfAccount({account, tokenType,
         byTokenId: byTokenId === 'true', cfx:getApiService().cfx})
     await polishContract(data)
+    await fixApprovalData(data);
     setBody(ctx, data);
 }
 
