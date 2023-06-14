@@ -1183,6 +1183,40 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer3525ListResp"
+  '/account/approvals':
+    description: 'Get token approvals of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/account'
+        - name: tokenType
+          in: query
+          required: false
+          schema:
+            type: string
+            default: ''
+            enum:
+              - ERC20
+              - ERC721
+              - ERC1155
+        - name: byTokenId
+          in: query
+          description: Whether to query each NFT token id, only valid for ERC721.
+          required: false
+          schema:
+            type: string
+            default: false
+            enum:
+              - true
+              - false
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Approvals"
   '/account/tokens':
     get:
       description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
@@ -1945,6 +1979,54 @@ components:
                     type: integer
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
+    Approvals:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  value:
+                    description: "This field has different meanings according to different situations.
+                                    For ERC20, it is the approval amount. For ERC1155 it is the `ApprovalForAll` flag.
+                                     For ERC721, it is the `ApprovalForAll` flag or the `Approval` tokenId, depending on the `type` field."
+                    type: string
+                  approvalType:
+                    description: "Approval type, could be: `Approval` or `ApprovalForAll`."
+                    type: string
+                  balance:
+                    description: "Token balance for ERC20"
+                    type: string
+                  contract:
+                    type: string
+                  spenderName:
+                    type: string
+                  spender:
+                    type: string
+                  tokenInfo:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      symbol:
+                        type: string
+                      base32:
+                        type: string
+                      iconUrl:
+                        type: string
+                      type:
+                        type: string
+                      decimals:
+                        type: integer
     AssetsOfAccountResp:
       type: object
       properties:
