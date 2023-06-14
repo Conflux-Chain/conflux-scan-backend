@@ -75,49 +75,49 @@ export class EpochSync extends SyncBase{
 
     //----------------- implementation method from SyncBase -----------------
     async getData(epochNumber): Promise<SyncData> {
-        let epochData;
         try{
-            epochData = await this.getEpochData(epochNumber);
+            const epochData = await this.getEpochData(epochNumber);
+            const {epoch, blockHashArray, blockArray, transactionHashArray} = epochData;
+            const epochTimestamp = epoch.timestamp;
+
+            const minerBlockArray = await this.getMinerBlockArray(blockArray);
+            const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
+
+            const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
+            const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
+            const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
+
+            const traceArray = await this.getTraceArray(epochNumber);
+            const createArray = await this.getTraceCreateArrayPlus(traceArray);
+            const traceCreateArray = await this.getTraceCreateArrayDBPlus(createArray);
+            const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
+            const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
+
+            const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
+            const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
+            const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
+            const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
+                txArray);
+            const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
+            const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
+
+            PruneNotifier.notifyBlock(minerBlockArray)
+                .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
+            const addrIds = [...new Set(lodash.map(addrTransferArray, item => item.addressId))];
+            PruneNotifier.notifyPrune({[PruneType.ADDR_TRANSFER]: addrIds})
+                .catch(e => console.log(`epoch-sync.noticePruneAddrTransfer, epoch:${epochNumber}`, e));
+
+            return {
+                syncCode: SyncCode.SUCCESS,
+                parentHash: epoch.parentHash,
+                pivotHash: epoch.pivotHash,
+                modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, traceCreateArray,
+                    traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
+            };
         }catch(error) {
             return {syncCode: SyncCode.RETRY, message: `${error}`};
         }
-        const {epoch, blockHashArray, blockArray, transactionHashArray} = epochData;
-        const epochTimestamp = epoch.timestamp;
 
-        const minerBlockArray = await this.getMinerBlockArray(blockArray);
-        const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
-
-        const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
-        const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
-        const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
-
-        const traceArray = await this.getTraceArray(epochNumber);
-        const createArray = await this.getTraceCreateArrayPlus(traceArray);
-        const traceCreateArray = await this.getTraceCreateArrayDBPlus(createArray);
-        const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
-        const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
-
-        const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
-        const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
-        const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
-        const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
-            txArray);
-        const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
-        const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
-
-        PruneNotifier.notifyBlock(minerBlockArray)
-            .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
-        const addrIds = [...new Set(lodash.map(addrTransferArray, item => item.addressId))];
-        PruneNotifier.notifyPrune({[PruneType.ADDR_TRANSFER]: addrIds})
-            .catch(e => console.log(`epoch-sync.noticePruneAddrTransfer, epoch:${epochNumber}`, e));
-
-        return {
-            syncCode: SyncCode.SUCCESS,
-            parentHash: epoch.parentHash,
-            pivotHash: epoch.pivotHash,
-            modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, traceCreateArray,
-                traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
-        };
     }
 
     async save(epochNumber, modelData) {
@@ -148,7 +148,7 @@ export class EpochSync extends SyncBase{
         const tokenArray = modelData.tokenArray;
         for(const token of tokenArray){
             if(!EpochSync.SYNC_TOKEN_DETECT) break;
-            await Token.upsert(token).catch(e => console.log(`epoch-sync.detect, token:${JSON.stringify(token)}`, e));
+            await Token.upsert(token);
         }
 
         const addressArray = [
@@ -157,7 +157,7 @@ export class EpochSync extends SyncBase{
         ];
         for(const address of addressArray){
             if(!EpochSync.SYNC_TOKEN_AUDIT) break;
-            await tokenQuery.audit({address}).catch(e => console.log(`epoch-sync.audit, address:${address}`, e));
+            await tokenQuery.audit({address});
         }
 
         try{
@@ -193,19 +193,17 @@ export class EpochSync extends SyncBase{
                 return false;
             });
             if(isEIP1167) continue;
-            await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
+            await this.linkVerify({address, codeHash});
         }
 
         const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
         for(const traceCrossSpace of traceCrossSpaceArray){
             if(!EpochSync.SYNC_EVM_ADDR) break;
             if(traceCrossSpace.fromSpace === 'evm'){
-                await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
-                    .catch(() => undefined);
+                await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)});
             }
             if(traceCrossSpace.toSpace === 'evm'){
-                await ESpaceHex40Map.create({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)})
-                    .catch(() => undefined);
+                await ESpaceHex40Map.create({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)});
             }
         }
 
@@ -390,6 +388,7 @@ export class EpochSync extends SyncBase{
             }
         }catch (e){
             console.log(`epoch-sync.getTokensAutoDetected fail`, e);
+            throw e;
         }
         return tokenArray;
     }
