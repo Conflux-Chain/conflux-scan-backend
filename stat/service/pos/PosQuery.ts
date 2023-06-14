@@ -13,7 +13,7 @@ import {Epoch} from "../../model/Epoch";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Errors} from "../common/LogicError";
 const lodash = require('lodash')
-
+import {buildSqlLog, } from "../../../common/tool.js";
 // noinspection CommaExpressionJS
 export class PosQuery {
     private cfx: Conflux;
@@ -169,7 +169,8 @@ export class PosQuery {
         return await PosAccount.findAndCountAll({
             where: {},
             offset: skip, limit, raw: true,
-            order: [[sortBy, sort]]
+            order: [[sortBy, sort]],
+            //logging: buildSqlLog('list pos account sql:'), benchmark: true
         })
     }
     async listBlock({skip, limit}) {
