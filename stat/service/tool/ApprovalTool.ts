@@ -61,6 +61,8 @@ export async function patchApprovalList({cfx, account, list} =
 export async function fixApprovalData(page:any) {
     const addressInfo = page.addressInfo || {};
     page.list.forEach(entry=>{
-        entry.spenderInfo = addressInfo[entry.spender] || {}
+        entry.spenderInfo = addressInfo[entry.spender] || {};
+        delete entry['to'];
     })
+    delete page.addressInfo;
 }
