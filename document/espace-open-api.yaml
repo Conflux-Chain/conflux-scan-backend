@@ -1187,9 +1187,9 @@ paths:
     description: 'Get token approvals of an account'
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts(Deprecated)'
       parameters:
-        - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/accountParam'
         - name: tokenType
           in: query
           required: false
