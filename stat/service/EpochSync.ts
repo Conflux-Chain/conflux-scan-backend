@@ -143,13 +143,12 @@ export class EpochSync extends SyncBase{
                 updateOnDuplicate:["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],
                 transaction: dbTx,
             });
+            const tokenArray = modelData.tokenArray;
+            for(const token of tokenArray){
+                if(!EpochSync.SYNC_TOKEN_DETECT) break;
+                await Token.upsert(token);
+            }
         });
-
-        const tokenArray = modelData.tokenArray;
-        for(const token of tokenArray){
-            if(!EpochSync.SYNC_TOKEN_DETECT) break;
-            await Token.upsert(token);
-        }
 
         const addressArray = [
             ...modelData.announceInfo.tokenArray.map(item => item.base32),
@@ -157,7 +156,7 @@ export class EpochSync extends SyncBase{
         ];
         for(const address of addressArray){
             if(!EpochSync.SYNC_TOKEN_AUDIT) break;
-            await tokenQuery.audit({address});
+            await tokenQuery.audit({address}).catch(e => console.log(`epoch-sync.audit, address:${address}`, e));
         }
 
         try{
@@ -193,17 +192,19 @@ export class EpochSync extends SyncBase{
                 return false;
             });
             if(isEIP1167) continue;
-            await this.linkVerify({address, codeHash});
+            await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
         }
 
         const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
         for(const traceCrossSpace of traceCrossSpaceArray){
             if(!EpochSync.SYNC_EVM_ADDR) break;
             if(traceCrossSpace.fromSpace === 'evm'){
-                await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)});
+                await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
+                    .catch((e) => console.log(`epoch-sync.espaceHexAddr`, e));
             }
             if(traceCrossSpace.toSpace === 'evm'){
-                await ESpaceHex40Map.create({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)});
+                await ESpaceHex40Map.create({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)})
+                    .catch((e) => console.log(`epoch-sync.espaceHexAddr`, e));
             }
         }
 

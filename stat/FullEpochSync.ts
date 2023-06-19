@@ -15,6 +15,7 @@ import {PruneHandler} from "./service/prune/PruneHandler";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {ContractQuery} from "./service/ContractQuery";
 import {SyncBase} from "./service/SyncBase";
+import {redirectLog} from "./config/LoggerConfig";
 
 patchFormat();
 
@@ -100,6 +101,7 @@ export class FullEpochSync{
 
 async function start() {
     const config = loadConfig('Prod');
+    redirectLog({mainPath: 'EpochSync'});
     const server = new FullEpochSync(config);
     await server.run();
     registerProcessHook(server);
