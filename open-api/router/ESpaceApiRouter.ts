@@ -42,7 +42,7 @@ import {
 import {
     getSupplyStat,
     listAccountActiveStat,
-    listAccountGrowthStat,
+    listAccountGrowthStat, listApproval,
     listCfxHolderStat,
     listCfxReceiverTopStat,
     listCfxSenderTopStat,
@@ -612,5 +612,6 @@ export function registerRouter(router: Router) {
     router.get('/account/crc721/transfers', listAccountTransfer721)
     router.get('/account/crc1155/transfers', listAccountTransfer1155)
     router.get('/account/crc3525/transfers', listAccountTransfer3525)
+    router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
 }

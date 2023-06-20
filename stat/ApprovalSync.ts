@@ -42,6 +42,8 @@ import {buildHexSet, buildIdMap, getAddrId, idHex40Map, makeIdV, mapProp} from "
 import {StatApp} from "./StatApp";
 import {ContractInfo} from "./model/ContractInfo";
 import {CONST} from "./service/common/constant";
+import {TokenBalance} from "./model/Balance";
+import {patchApprovalList} from "./service/tool/ApprovalTool";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -57,6 +59,8 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
     txLogIndex: number
     fromId: number
     toId: number
+    // for erc20, it's amount; for erc721 and erc1155 with `ApproveForAll`, it's (1/0)
+    // for erc721 with `Approval`, it's token id.
     value: string
     type: string // Approval or ApprovalForAll
     static register(seq: Sequelize) {
@@ -110,6 +114,8 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
     txIndex: number
     fromId: number
     toId: number
+    // for erc20, it's amount; for erc721 and erc1155 with `ApproveForAll`, it's (1/0)
+    // for erc721 with `Approval`, it's token id.
     value:string
     type: string // Approval or ApprovalForAll
     updatedAt:Date
@@ -145,7 +151,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
     static context = {
         zeroAddrId: 0, initialized: false,
     }
-    static async queryApprovalOfAccount({account, tokenType, byTokenId}) {
+    static async queryApprovalOfAccount({account, tokenType = '', byTokenId, cfx}) {
         if (!ApprovalRelation.context.initialized) {
             ApprovalRelation.context.zeroAddrId =
                 await makeIdV(CONST.ZERO_ADDRESS)
@@ -155,14 +161,14 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         if (!id) {
             return {total: 0, list:[], message: 'account not found'};
         }
-        return this.queryApprovalOfAccountId({fromId: id, tokenType, byTokenId});
+        return this.queryApprovalOfAccountId({account, fromId: id, tokenType, byTokenId, cfx});
     }
-    static async queryApprovalOfAccountId({fromId, tokenType, byTokenId}) {
+    static async queryApprovalOfAccountId({account, fromId, tokenType, byTokenId, cfx}) {
         let relation = ApprovalRelation.getTableName();
         const token = Token.getTableName();
         const tx = FullTransaction.getTableName();
         const replacements = []
-        if (byTokenId && tokenType !== 'ERC20') {
+        if (byTokenId && tokenType === 'ERC721') {
             const approvalT = TokenApproval.getTableName();
             const value = '`value`';
             relation = ` (
@@ -175,24 +181,29 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             `
             replacements.push(fromId);
         }
+        const tokeTypeCondition = tokenType ? "and t.type=?" : "";
         const zeroId = ApprovalRelation.context.zeroAddrId;
         const sql = `
-            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type,
+            select tx.hash, r.updatedAt, r.contractId, r.toId, r.value, r.type approvalType, ifnull(tkb.balance,"0") as balance,
             t.name, t.symbol, t.iconUrl, t.type, t.decimals, t.base32
             from ${relation} r 
-            join ${token} t on r.contractId=t.hex40id and t.type=?
+            join ${token} t on r.contractId=t.hex40id ${tokeTypeCondition}
             left join ${tx} tx on r.epoch = tx.epoch and r.blockIndex = tx.blockPosition and r.txIndex = tx.txPosition
+            left join ${TokenBalance.getTableName()} tkb on tkb.contractId=r.contractId and tkb.addressId = r.fromId
             where r.fromId = ? and r.toId <> ${zeroId} order by r.epoch desc limit 10000
         `;
-        replacements.push(tokenType, fromId);
+        if (tokeTypeCondition) {
+            replacements.push(tokenType);
+        }
+        replacements.push(fromId);
         let countSql = `select count(*) as count ${sql.substr(sql.indexOf('from '))}`;
         console.log(`count sql is `, countSql)
         const total = await ApprovalRelation.sequelize.query(
             countSql,
             {replacements, raw: true, type: QueryTypes.SELECT,}
         ).then(([row])=>row["count"])
-        console.log(` sql is `, sql)
-        const list:any[] = await ApprovalRelation.sequelize.query(
+
+        let list:any[] = await ApprovalRelation.sequelize.query(
             sql, {replacements, raw: true, type: QueryTypes.SELECT,
                 logging: console.log,
             }
@@ -211,6 +222,7 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
             infos.forEach(i=>map[`${i.hexId}`] = i)
             return map;
         })
+        list = await patchApprovalList({account, list, cfx})
         list.forEach(row=>{
             const {name, symbol, type, base32, decimals, iconUrl} = row;
             ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
@@ -221,20 +233,19 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         });
         if(StatApp.isEVM) {
             list.forEach(row=>{
-                row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
-                delete row['to'];
+                row['spender'] = row['to'];
                 if (row['tokenInfo']) {
-                    row['tokenInfo']["base32"] = format.address(row['tokenInfo']["base32"], StatApp.networkId || 1029)
+                    row['tokenInfo']["hex"] = format.hexAddress(row['tokenInfo']["base32"]);
+                    row['tokenInfo']["base32"] = row['tokenInfo']["base32"];
                 }
             })
         } else{
             list.forEach(row=>{
                 row["spender"] = format.address(row["to"], StatApp.networkId || 1029)
-                delete row['to'];
                 row["contract"] = format.address(row["contract"], StatApp.networkId || 1029)
             })
         }
-        return {total, list};
+        return {total:Math.min(list.length, Number(total)), list};
     }
 }
 export interface IEpochApproval extends IEpochTask {
@@ -600,11 +611,12 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 async function test() {
-    const [,,cmd,arg1] = process.argv;
+    const [,,cmd,arg1, arg2] = process.argv;
     if (cmd === 'testQuery') {
         await init();
+        const cfx = new Conflux({url: arg2})
         await ApprovalRelation.queryApprovalOfAccount({
-            account: arg1, tokenType:'ERC20', byTokenId: false})
+            account: arg1, tokenType:'', byTokenId: false, cfx})
             .then(({list})=>{
                 console.log(`total ${0}`, list)
             })

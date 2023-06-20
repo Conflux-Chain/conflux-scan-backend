@@ -30,9 +30,8 @@ export async function polishContract(page) {
             cachedMap[address] = cacheInfo;
             return;
         }
-        if (address && address.substr(address.indexOf(':')).startsWith(':ac')) {
-            contract.add(address);
-        }
+        // addresses in e space are mixed types.
+        contract.add(address);
     }
     page?.list?.forEach(row=>{
         add(row, 'from')
