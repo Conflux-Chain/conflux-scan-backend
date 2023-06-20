@@ -45,6 +45,9 @@ export class NFTPreviewService {
         if(!token) {
             token = await TokenQuery.detectTokenType({base32: address}) as Token;
         }
+        if (token.type !== CONST.TRANSFER_TYPE.ERC1155 && token.type !== CONST.TRANSFER_TYPE.ERC721) {
+            throw new Errors.ParameterError(`The contract ${contractAddress} not a NFT contract`);
+        }
 
         let detail;
         if(withDetail){
