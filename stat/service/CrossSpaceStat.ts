@@ -1,11 +1,12 @@
 import {CfxTransfer} from "../model/CfxTransfer";
-import {Sequelize, fn, col, Op, QueryTypes, Model, DataTypes, literal} from 'sequelize'
+import {Sequelize, Op, QueryTypes, Model, DataTypes, literal} from 'sequelize'
 import {Conflux, Drip} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
 import {Hex40Map, makeIdV} from "../model/HexMap";
 import {FullTransaction} from "../model/FullBlock";
 import {IS_EVM, IS_EVM2, KV} from "../model/KV";
 import {scheduleDaily} from "./pos/PosStat";
+import {initCfxSdk} from "./common/utils";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
     | 'DailyCfxCountToEVM' | 'DailyCfxCountFromEVM'
@@ -125,8 +126,8 @@ export async function scheduleCrossSpaceStat(cfx:Conflux) {
     })
 }
 async function main() {
-    const cfg = await init()
-    const cfx = new Conflux(cfg.conflux)
+    const config = await init()
+    const cfx = await initCfxSdk(config.conflux);
     await setup(cfx)
     const [,,cmd] = process.argv
     if (cmd === 'calcDailyCfxToEvm') {

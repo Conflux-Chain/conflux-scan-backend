@@ -1,14 +1,17 @@
 import {ethers} from 'ethers'
 import {init} from "../tool/FixDailyTokenStat";
-import {scheduleSyncEnsFromSearchText, SearchText, syncSearchText} from "./EnsService";
+import {scheduleSyncEnsFromSearchText} from "./EnsService";
 import {
     getAddrOfName,
     getReverseNameByAddress,
     matchNamesOnChain,
     setupEnsChecker,
 } from "./EnsService";
-import {Conflux, format} from "js-conflux-sdk";
+import {format} from "js-conflux-sdk";
+import {initCfxSdk} from "../common/utils";
+
 const {utils: {namehash, keccak256, toUtf8Bytes}} = ethers
+
 export async function queryEnsOfName(name: string){
     name = name?.trim()
     const hash = ethers.utils.namehash(name)
@@ -88,7 +91,8 @@ async function main(){
     if (cmd === 'addRecord') {
         await addRecord(p1, p2);
     } else if (cmd === 'match') {
-        await setupEnsChecker(new Conflux({url:'https://evmtestnet.confluxrpc.com/cfxbridge'}), true);
+        const cfx = await initCfxSdk({url:'https://evmtestnet.confluxrpc.com/cfxbridge'});
+        await setupEnsChecker(cfx, true);
         const name = await getReverseNameByAddress(p1).then(res=>{
             console.log(`getReverseNameByAddress ${p1} [${res}]`)
             return res;

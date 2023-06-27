@@ -5,24 +5,33 @@ import {Conflux, format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
 import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "./model/KV";
-import {patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {regExitHook} from "./service/tool/ProcessTool";
+import {checkApiLogIpField} from "./monitor/ApiLog";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
-    let cfx = new Conflux(config.conflux);
-    patchHttpProvider(cfx, config.conflux, 'syncFullBlock')
-    const status = await cfx.getStatus();
-    console.log(`Conflux ${config.conflux.url} network ${status.networkId}`)
-    PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, status.networkId, true)
+
+    let cfx = await initCfxSdk(config.conflux);
+    PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
+
     await RedisWrap.connect(config.redis)
+
     let seq = createDB(config.databaseRW)
-    await seq.sync({})
     await initModel(seq)
+    if (config.database.syncSchema) {
+        console.log(`sync model begin...`);
+        await seq.sync({})
+        console.log(`sync model finished.`);
+    } else {
+        console.log(`skip sync db schema.`);
+    }
+    await checkApiLogIpField()
+
     const svc = new FullBlockService(cfx)
     PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     StatNotifier.SWITCH_STREAM_STAT = config.streamStat;

@@ -10,35 +10,27 @@ import {
     Sequelize,
     Op,
     UniqueConstraintError,
-    ModelStatic,
     DatabaseError, QueryTypes,
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux, format} from "js-conflux-sdk";
-import {patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
 import {
-    AddressErc20Transfer,
     aggregateTransfer,
-    buildErc20Transfer, buildTransferList2address, ContractUser,
-    Erc20Transfer, IErc20Transfer, T_ERC20_TRANSFER,
+    buildErc20Transfer,
+    IErc20Transfer,
 } from "./model/Erc20Transfer";
-import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
-import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
-import {NftMint, Token} from "./model/Token";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
-import {PruneType} from "./model/PruneInfo";
-import {RedisWrap} from "./service/RedisWrap";
+import {Token} from "./model/Token";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
-import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
-import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
-import {buildHexSet, buildIdMap, getAddrId, idHex40Map, makeIdV, mapProp} from "./model/HexMap";
+import {EpochHashTokenTransfer, fetchTask, finishTask, waitParentHashDB} from "./TokenTransferSync";
+import {buildHexSet, getAddrId, idHex40Map, makeIdV, mapProp} from "./model/HexMap";
 import {StatApp} from "./StatApp";
 import {ContractInfo} from "./model/ContractInfo";
 import {CONST} from "./service/common/constant";
@@ -581,11 +573,10 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     }
     console.log(`--------------------`)
 
-    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
-    let cfx = new Conflux(cfxOp)
-    patchHttpProvider(cfx, cfxOp)
-    const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} ${cfxOp.url} --------`)
+    const confluxOption = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
+    const cfx = await initCfxSdk(confluxOption);
+    console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} ${confluxOption.url} --------`)
+
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode

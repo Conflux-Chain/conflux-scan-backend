@@ -1,8 +1,6 @@
-import {Op,Sequelize, DataTypes, Model, QueryTypes} from "sequelize";
-import {makeId} from "./HexMap";
-import {Conflux} from "js-conflux-sdk";
-// import {StatApp} from "../StatApp";
-// import {TxnQuery} from "../service/TxnQuery";
+import {Op, DataTypes, Model, QueryTypes} from "sequelize";
+import {initCfxSdk} from "../service/common/utils";
+
 export interface IContractInfo {
     id?:number
     hexId?:number
@@ -84,7 +82,7 @@ export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
 export async function saveAbiInfo(abiObj:any) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
-    const cfx = new Conflux({url:''})
+    const cfx = await initCfxSdk({url:''});
     const contract = cfx.Contract({abi})
     const arr:IAbiInfo[] = []
     // each key is a prop of the contract, only care the exact method/event like abc(address,uint)

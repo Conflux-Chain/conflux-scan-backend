@@ -1,16 +1,14 @@
 import {init} from "./FixDailyTokenStat";
-import {Conflux, format} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
-import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
+import {initCfxSdk} from "../common/utils";
+import {AddressTransactionIndex} from "../../model/FullBlock";
 import {AddressCfxTransfer, CfxTransfer, rollupDailyCfxTxn} from "../../model/CfxTransfer";
 import {getAddrId} from "../../model/HexMap";
 import {getCfxTransferTraces, setCfxSync} from "../../CfxTransferSync";
 
-async function fixStaking(cfg) {
-    const cfx = new Conflux(cfg.conflux)
-    patchHttpProvider(cfx, cfg.conflux);
-    const st = await cfx.getStatus();
-    console.log(`-----  net ${st.networkId} ------`)
+async function fixStaking(config) {
+    const cfx = await initCfxSdk(config.conflux);
+    console.log(`-----  networkId ${cfx.networkId} ------`)
+
     setCfxSync(cfx)
     const stakingContractAddrId = await getAddrId('0x0888000000000000000000000000000000000002')
     const txList = await AddressTransactionIndex.findAll({
@@ -57,14 +55,14 @@ async function fixDailyCfxTxn() {
     console.log(`done`)
 }
 async function main() {
-    const cfg = await init()
+    const config = await init()
     const [, , cmd] = process.argv
     if (cmd === 'fix-daily-cfx-txn') {
         fixDailyCfxTxn().then(() => {
             process.exit(0)
         })
     } else if (cmd === 'fix-staking') {
-        fixStaking(cfg).then(() => {
+        fixStaking(config).then(() => {
             process.exit(0)
         })
     }

@@ -6,7 +6,7 @@ import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {TokenQuery} from "./service/TokenQuery";
 import {EpochSync} from "./service/EpochSync";
 import {redisWrap, RedisWrap} from "./service/RedisWrap";
-import {patchFormat, patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KEY_TPS_TRANSFER_NOTIFY, KV} from "./model/KV";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {StatApp} from "./StatApp";
@@ -15,6 +15,7 @@ import {PruneHandler} from "./service/prune/PruneHandler";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {ContractQuery} from "./service/ContractQuery";
 import {SyncBase} from "./service/SyncBase";
+import {checkApiLogIpField} from "./monitor/ApiLog";
 import {redirectLog} from "./config/LoggerConfig";
 
 patchFormat();
@@ -34,16 +35,6 @@ export class FullEpochSync{
         this.config = config;
     }
 
-    private async initCfxSdk() {
-        this.cfx = new Conflux({...this.config.conflux});
-        patchHttpProvider(this.cfx, this.config.conflux, 'StatApp');
-
-        await this.cfx.updateNetworkId();
-        const cfxStatus: any = await this.cfx.getStatus();
-        StatApp.networkId = cfxStatus.networkId;
-        console.log(`conflux network id:${StatApp.networkId}, config:${JSON.stringify(this.config.conflux)}`);
-    }
-
     private async initRedis() {
         let redisConf = this.config.redis;
         return RedisWrap.connect(redisConf);
@@ -54,7 +45,6 @@ export class FullEpochSync{
 
         this.sequelize = createDB(this.config.databaseRW);
         await initModel(this.sequelize);
-
         if (this.config.database.syncSchema) {
             console.log(`sync model begin...`);
             await this.sequelize.sync({});
@@ -62,6 +52,7 @@ export class FullEpochSync{
         } else {
             console.log(`skip sync db schema.`);
         }
+        await checkApiLogIpField()
     }
 
     private async initSwitch(){
@@ -77,7 +68,8 @@ export class FullEpochSync{
     }
 
     public async run() {
-        await this.initCfxSdk();
+        this.cfx = await initCfxSdk(this.config.conflux);
+        StatApp.networkId = this.cfx.networkId;
         await Promise.all([
             this.initRedis(),
             this.initDb(),

@@ -269,7 +269,7 @@ export async function initModel(sequelize) {
     NftTransfer.register(sequelize)
     AddressNfts.register(sequelize)
 
-    await checkApiLogIpField()
+    /*await checkApiLogIpField()*/
 }
 
 export function createMySql(dbConf) {

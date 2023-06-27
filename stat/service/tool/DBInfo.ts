@@ -1,13 +1,13 @@
 import {AddressErc20Transfer, Erc20Transfer} from "../../model/Erc20Transfer";
 import {init} from "./FixDailyTokenStat";
-import {Op} from 'sequelize'
 import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
 import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {StatConfig} from "../../config/StatConfig";
 import {Conflux} from "js-conflux-sdk";
+import {initCfxSdk} from "../common/utils";
 
 async function run(cfg:StatConfig) {
-    const cfx = new Conflux({url: cfg.conflux.url})
+    const cfx = await initCfxSdk({url: cfg.conflux.url});
     return repeat(cfg, cfx)
 }
 async function repeat(cfg:StatConfig, cfx:Conflux) {

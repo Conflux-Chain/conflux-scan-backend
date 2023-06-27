@@ -10,8 +10,8 @@ module.exports = app;
 
 // ----------------------------------------------------------------------------
 if (process.mainModule.filename === __filename) {
-  app.listen(config.port);
-  // eslint-disable-next-line no-console
   console.log(`....... start compiler app, port ${config.port} ..........`);
-  app.run().finally(() => app.close());
+  app.start().catch((err) => {
+    console.log('error when running:', err);
+  }).finally(() => app.close());
 }

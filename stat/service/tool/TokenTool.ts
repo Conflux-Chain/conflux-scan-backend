@@ -2,28 +2,31 @@ import {Conflux} from "js-conflux-sdk";
 import {Op} from 'sequelize'
 import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
-import {patchHttpProvider} from "../common/utils";
-import {HASH_CUSTODIAN_TOKEN, redisWrap, RedisWrap} from "../RedisWrap";
+import {initCfxSdk} from "../common/utils";
+import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
-import {StatApp} from "../../StatApp";
-import {getAddrId, Hex40Map} from "../../model/HexMap";
+import {getAddrId} from "../../model/HexMap";
+import {CONST} from "../common/constant";
+
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
 const lodash = require('lodash');
 const Web3 = require("web3");
-
 const NodeCache = require( "node-cache" );
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 50 // 50 minutes
+
 export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base32:string}) {
     dbCache.set(obj.base32 || '', obj, cacheTtl)
 }
+
 export class TokenTool {
     protected cfx;
     protected web3;
-    contract;
+    public contract;
+
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.contract = cfx.Contract({abi});
@@ -31,11 +34,6 @@ export class TokenTool {
     }
 
     async getToken(address, epochNumber = undefined): Promise<any> {
-        // const cache = dbCache.get(address)
-        // if (cache) {
-        //     dbCache.set(address, cache, cacheTtl)
-        //     return cache
-        // }
         return this.awaitObject({
             address,
             name: this.contract.name()
@@ -150,6 +148,7 @@ export class TokenTool {
     decodeERC721_ERC20Approval(eventLog = {}, copy = true) {
         return this.decodeApproval(eventLog, this.contract.Approval, 'Approval', copy)
     }
+
     decodeApproval(eventLog = {}, event, type, copy = true) {
         // @ts-ignore
         const { topics = [], data = '0x' } = eventLog;
@@ -179,6 +178,7 @@ export class TokenTool {
 
         return undefined;
     }
+
     decodeERC721Transfer(eventLog = {}, copy = true) {
         // @ts-ignore
         const { topics = [], data = '0x' } = eventLog;
@@ -294,6 +294,87 @@ export class TokenTool {
             .call({ to: custodianAddress }, epochNumber)
             .catch(() => undefined);
     }
+
+    matchTrace(transactionTraceArray, transaction){
+        if (!transactionTraceArray.length) {
+            return[];
+        }
+
+        const stack = [];
+        for(let i = 0; i < transactionTraceArray.length; i++){
+            const nextTrace = transactionTraceArray[i];
+            if(nextTrace.type !== CONST.TRACE_TYPE.CREATE && nextTrace.type !== CONST.TRACE_TYPE.CREATE_RESULT){
+                continue;
+            }
+            if(nextTrace.type === CONST.TRACE_TYPE.CREATE){
+                stack.push(i);
+            }
+            if(nextTrace.type === CONST.TRACE_TYPE.CREATE_RESULT){
+                const creatTraceIndex = stack.pop();
+                transactionTraceArray[creatTraceIndex].action.to = nextTrace.action.addr;
+                transactionTraceArray[creatTraceIndex].action.outcome = nextTrace.action.outcome;
+            }
+        }
+        if(stack.length > 0){
+            const creatTraceIndex = stack.pop();
+            transactionTraceArray[creatTraceIndex].action.to = transaction.contractCreated;
+        }
+        return transactionTraceArray;
+    }
+
+    sendAnnounceTransaction(array, options = {}) {
+        return this.contract.announce(array)
+            .sendTransaction(options)
+            .executed();
+    }
+
+    cacheErrorResult(err, key, value) {
+        const msg = err.message || '';
+        if (msg.includes('Transaction reverted') || msg.includes('Transaction execution failed')) {
+            // that contract doesnt have the method, do not call again.
+            dbCache.set(key, value);
+        }
+        return undefined;
+    }
+
+    async getTokenAccountCount(address, epochNumber) {
+        const key = `${address}_getTokenAccountCount`;
+        const cache = dbCache.get(key);
+        if (cache !== null && cache !== undefined) {
+            return cache;
+        }
+        return this.contract.accountCount()
+            .call({ to: address }, epochNumber)
+            .then(Number)
+            .catch((err) => { return this.cacheErrorResult(err, key, 0); });
+    }
+
+    async getBalances(account, contracts, utilContract) {
+        if (utilContract === undefined) {
+            console.log('util contract not set.');
+            return [];
+        }
+        return this.contract.getBalances(account, contracts)
+            .call({ to: utilContract })
+            .then((arr) => arr.map(BigInt))
+            .catch((err) => {
+                console.log('params:', account, contracts, utilContract);
+                console.log(`get balances from util contract fail: ${err}`);
+                return [];
+            });
+    }
+
+    async getEpochByEpochNumber(epochNumber) {
+        const now = Math.floor(Date.now() / 1000);
+        const pivotBlock = await this.cfx.getBlockByEpochNumber(epochNumber);
+
+        return {
+            epochNumber,
+            pivotHash: pivotBlock.hash,
+            parentHash: pivotBlock.parentHash,
+            timestamp: lodash.min([pivotBlock.timestamp, now]), // XXX: for filter negative timestamp
+        };
+    }
 }
 export async function isCustodianToken(base32:string) {
     return RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, base32, '').then(Boolean)
@@ -387,16 +468,17 @@ async function buildImages() {
     console.log(`done.`)
 }
 async function initTool() {
-    const cfg = await init()
-    const cfx = new Conflux(cfg.conflux)
-    console.log(`conflux: `, cfg.conflux)
-    patchHttpProvider(cfx, cfg.conflux)
-    await RedisWrap.connect(cfg.redis)
+    const config = await init()
+
+    const cfx = await initCfxSdk(config.conflux)
+    console.log(`networkId ${cfx.networkId} config ${JSON.stringify(config.conflux)}`);
+
+    await RedisWrap.connect(config.redis)
     const tool = new TokenTool(cfx)
     return tool;
 }
 async function testParseApproval(rpcUrl) {
-    const cfx = new Conflux({url: rpcUrl})
+    const cfx = await initCfxSdk({url: rpcUrl});
     const tool = new TokenTool(cfx);
     const txs = [
         // on net 1
@@ -500,10 +582,11 @@ export async function uploadOss(srcFile, ossFilename) {
     })
 }
 export async function check721OwnerInDb() {
-    const cfg = await init()
-    const cfx = new Conflux(cfg.conflux)
-    const st = await cfx.getStatus()
-    console.log(`------------ net ${st.networkId} version ${await cfx.getClientVersion()} latestState ${st.latestState} -----`)
+    const config = await init()
+
+    const cfx = await initCfxSdk(config.conflux);
+    console.log(`------------ networkId ${cfx.networkId} version ${await cfx.getClientVersion()} latestState ${(await cfx.getStatus()).latestState} -----`)
+
     const [, , cmd, contractIdStr] = process.argv
     if (contractIdStr) {
         const contractId = parseInt(contractIdStr)

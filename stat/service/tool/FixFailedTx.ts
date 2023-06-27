@@ -1,10 +1,9 @@
-import {AddressTransactionIndex, FailedTx, FullTransaction} from "../../model/FullBlock";
 import {Op} from 'sequelize'
-import {FullBlockService} from "../FullBlockService";
-import {init} from "./FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {Epoch} from "../../model/Epoch";
-import {patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
+import {init} from "./FixDailyTokenStat";
+import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
+
 const pLimit = require('p-limit');
 
 const limitR = pLimit(100);
@@ -105,8 +104,7 @@ async function iterAllTx(from) {
 const args = process.argv.slice(2)
 let from = args[0]
 let cfx:Conflux
-init().then((ccc)=>{
-    cfx = new Conflux(ccc.conflux)
-    patchHttpProvider(cfx, ccc.conflux)
+init().then(async (config) => {
+    cfx = await initCfxSdk(config.conflux);
     return iterAllTx(Number(from))
 })

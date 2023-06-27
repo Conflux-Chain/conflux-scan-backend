@@ -1,7 +1,6 @@
 import {redirectLog} from "./config/LoggerConfig";
 import {init} from "./service/tool/FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk} from "./service/common/utils";
 import {StatApp} from "./StatApp";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {scheduleDailyActiveAddress} from "./model/StatAddress";
@@ -31,25 +30,21 @@ import {Op} from "sequelize";
 import {CensorService} from "./service/censor/CensorService";
 import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
-import {addTxSenderCountDaily} from "./service/tool/MigContract";
 
 async function main() {
     redirectLog()
     regExitHook()
 
-    const cfg = await init()
-    const cfx = new Conflux(cfg.conflux)
-    patchHttpProvider(cfx, cfg.conflux, 'TimerTask')
-    await cfx.updateNetworkId();
-    const cfxStatus:any = await cfx.getStatus()
-    StatApp.networkId = cfxStatus.networkId
+    const config = await init()
+    const cfx = await initCfxSdk(config.conflux, 'TimerTask');
+    StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     const traceCreateQuery = new BlockTraceCreateQuery({});
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
     //
-    const censorService = new CensorService({config: cfg, cfx, traceCreateQuery},
+    const censorService = new CensorService({config, cfx, traceCreateQuery},
         {tx: 10, token: 10, nft: 10});
     await censorService.schedule(1000 * 3);
     //
@@ -57,7 +52,7 @@ async function main() {
         .then(()=>{scheduleDailyTokenStat()})
     await calcDailyUniqueAddrSchedule().then()
     //
-    const reporter = new Reporter({config: cfg, cfx});
+    const reporter = new Reporter({config, cfx});
     await reporter.start();
     //
     const statDailyBlockData = new StatDailyBlockData({cfx});

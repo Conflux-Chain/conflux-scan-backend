@@ -12,9 +12,15 @@ export interface ConfluxOption {
     defaultGasPrice?: number,
     defaultGasRatio?: number,
     defaultStorageRatio?: number,
+    consortiumMode?: boolean, // true: consortium chain; false: public chain
 }
 export interface EtherOption {
     url: string,
+}
+export interface ConsortiumBridgeOption {
+    port: number,
+    retry: number,
+    rpc: ConfluxOption,
 }
 export interface Database{
     host: string;
@@ -76,6 +82,7 @@ export interface StatConfig{
     ether: EtherOption;
     cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
     tokenTransferRpc?: ConfluxOption; // for token transfer sync
+    consortiumBridge?: ConsortiumBridgeOption;
     cfxWsUrl: string
     preload: number,
     scanApiUrl: string
@@ -170,10 +177,16 @@ export function loadConfig(specified:string = undefined): StatConfig {
     if (fs.existsSync(path)){
         defaultConf = require('./Local')
     }
+
     let specific = specified === undefined ? {default:{}} : require(`./${specified}`)
     // console.log(`template is 0 `, templateConf.default)
     // console.log(`specific is `, specific)
     const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
+    if(conf?.consortiumBridge) {
+        console.log(`web port [${conf.consortiumBridge.port}] rpc [`, conf.consortiumBridge.rpc, `]`)
+        return conf;
+    }
+
     const {databaseRW:{replication:{write:{host: writeHost, username}, read:[{host:readHost}]}}} = conf
     console.log(`database conf, host: write ${writeHost
     } read ${readHost}, user ${username} DB ${conf.databaseRW.instanceName

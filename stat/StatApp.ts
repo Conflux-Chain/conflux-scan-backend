@@ -28,7 +28,7 @@ import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {PruneHandler} from "./service/prune/PruneHandler";
-import {patchFormat, patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
@@ -83,11 +83,8 @@ export class StatApp{
         return RedisWrap.connect(redisConf)
     }
     public async init() {
-        this.cfx = new Conflux({...this.config.conflux})
-        patchHttpProvider(this.cfx, this.config.conflux, 'StatApp')
-        await this.cfx.updateNetworkId();
-        const cfxStatus:any = await this.cfx.getStatus()
-        StatApp.networkId = cfxStatus.networkId
+        this.cfx = await initCfxSdk(this.config.conflux);
+        StatApp.networkId = this.cfx.networkId
         PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
@@ -110,13 +107,9 @@ export class StatApp{
         this.txnSync = new TxnSync(this);
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
-            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx))//.schedule(this.config.cfxWatcherDelay).then()
+            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx))
             this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.cfxWatcher, utilContract)
         }
-        // this.config.erc20watchList.forEach(erc20=>{
-            // const watcher = new Erc20Watcher(erc20.name, erc20.address, this.cfx, {tokenType: erc20.tokenType})
-            // watcher.schedule(erc20.watchDelay)
-        // })
         // @ts-ignore
         this.balanceService = new BalanceService(this, [], StatApp.networkId)
         this.balanceService.schedule(60_000)

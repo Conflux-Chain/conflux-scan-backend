@@ -3,7 +3,7 @@ import {createDB, initModel} from "./service/DBProvider";
 import {Sequelize} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {TokenTool} from "./service/tool/TokenTool";
-import {patchFormat, patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KV} from "./model/KV";
 import {StatApp} from "./StatApp";
 import {EpochNftTransferSync} from "./service/EpochNftTransferSync";
@@ -22,16 +22,6 @@ export class FullEpochNftTransferSync{
 
     constructor(config: StatConfig) {
         this.config = config;
-    }
-
-    private async initCfxSdk() {
-        this.cfx = new Conflux({...this.config.conflux});
-        patchHttpProvider(this.cfx, this.config.conflux, 'StatApp');
-
-        await this.cfx.updateNetworkId();
-        const cfxStatus: any = await this.cfx.getStatus();
-        StatApp.networkId = cfxStatus.networkId;
-        console.log(`conflux network id:${StatApp.networkId}, config:${JSON.stringify(this.config.conflux)}`);
     }
 
     private async initDb(){
@@ -55,7 +45,8 @@ export class FullEpochNftTransferSync{
     }
 
     public async run() {
-        await this.initCfxSdk();
+        this.cfx = await initCfxSdk(this.config.conflux);
+        StatApp.networkId = this.cfx.networkId;
         await Promise.all([
             this.initDb(),
         ]);

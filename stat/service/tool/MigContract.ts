@@ -1,18 +1,20 @@
+// @ts-ignore
+import {Conflux, format} from "js-conflux-sdk";
 import {loadConfig} from "../../config/StatConfig";
 import {createMySql, initModel} from "../DBProvider";
-const fs = require('fs');
 import {StatApp} from "../../StatApp";
 import {ContractInfo} from "../../model/ContractInfo";
 import {Contract} from "../../model/Contract";
-import {Hex40Map, makeId} from "../../model/HexMap";
-// @ts-ignore
-import {Conflux, format} from "js-conflux-sdk";
+import {makeId} from "../../model/HexMap";
 import {TokenTool} from "./TokenTool";
 import {ContractVerify} from "../../model/ContractVerify";
 import {CONST} from "../common/constant";
 import {DailyTransaction} from "../../model/DailyTransaction";
 import {FullTransaction} from "../../model/FullBlock";
-import {col, fn, literal, Op} from "sequelize";
+import {literal, Op} from "sequelize";
+import {initCfxSdk} from "../common/utils";
+
+const fs = require('fs');
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -29,7 +31,7 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 
-    cfx = new Conflux({...config.conflux})
+    cfx = await initCfxSdk(config.conflux)
     tokenTool = new TokenTool(cfx);
 }
 
@@ -59,12 +61,12 @@ async function run(round) {
 }
 
 async function sdkCall() {
-    const config = {
+    const confluxOption = {
         url: 'http://localhost:12550/',
         keepAlive: true,
     };
 
-    const cfx = new Conflux(config);
+    const cfx = await initCfxSdk(confluxOption);
     const epochNumber = await cfx.getEpochNumber();
     console.log(`epochNumber ------ ${epochNumber}`);
 

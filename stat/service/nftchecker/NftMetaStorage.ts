@@ -5,7 +5,7 @@ import {Hex40Map} from "../../model/HexMap";
 import {NftMint, Token} from "../../model/Token";
 import {KV, KEY_FASTEST_IPFS_GATEWAY, NFT_META_POS_EPOCH} from "../../model/KV";
 import {CONST} from "../common/constant";
-import {createConflux} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {TokenQuery} from "../TokenQuery";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
@@ -111,6 +111,7 @@ export async function createNftMetaPartition(seq: Sequelize) {
   tokenId varchar(78) NOT NULL,
   epochNumber bigint(20) NOT NULL,
   status int(2) NOT NULL DEFAULT '20',
+  censorStatus int(2) NOT NULL DEFAULT '0',
   retry int(2) NOT NULL DEFAULT '0',
   errorType int(4) NOT NULL DEFAULT '0',
   error varchar(1024) DEFAULT NULL,
@@ -496,8 +497,7 @@ async function run(cmd, gateway) {
 async function setup(gateway: string = undefined, confluxConfig: any = undefined) {
     const config = confluxConfig ? {conflux: confluxConfig} : (await init());
 
-    const cfx = createConflux(config.conflux)
-    await cfx.updateNetworkId();
+    const cfx = await initCfxSdk(config.conflux)
     context.cfx = cfx;
     console.log(`networkId ${cfx.networkId}`)
 

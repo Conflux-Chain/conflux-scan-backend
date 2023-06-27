@@ -1,6 +1,5 @@
-const { sleepMs } = require('limit-map');
-const {ethers, ethers:{utils:{parseEther, formatEther}}} = require('ethers')
-const { Conflux, format } = require('js-conflux-sdk');
+const {ethers} = require('ethers')
+const {initCfxSdk} = require('../../stat/dist/service/common/utils');
 
 function buildAbi(methodArr = []) {
     const iface = new ethers.utils.Interface(methodArr);
@@ -40,9 +39,7 @@ async function core() {
     const abi = [
         'function deposit() payable'
     ]
-    const cfx = new Conflux({
-        url: arg2});
-    await cfx.updateNetworkId();
+    const cfx = await initCfxSdk({url: arg2});
     const abiJson = buildAbi(abi);
     let wcfxAddr = ''
     wcfxAddr = 'cfxtest:achs3nehae0j6ksvy1bhrffsh1rtfrw1f6w1kzv46t'

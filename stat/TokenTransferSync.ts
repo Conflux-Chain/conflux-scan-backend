@@ -10,12 +10,11 @@ import {
     Sequelize,
     Op,
     UniqueConstraintError,
-    ModelStatic,
     DatabaseError
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchFetchBlock, patchHttpProvider} from "./service/common/utils";
+import {batchFetchBlock, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
@@ -34,7 +33,7 @@ import {NftMint, Token} from "./model/Token";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
-import {FullBlock, FullTransaction} from "./model/FullBlock";
+import {FullBlock} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 const lodash = require('lodash');
@@ -145,11 +144,11 @@ async function validate(cfx, epoch, blockHashArray, receipts) {
 
     const blockArray = await batchFetchBlock(cfx,  blockHashArray);
     const revertBlockArray = blockArray.filter(block => block.epochNumber !== epoch);
-    if(revertBlockArray.length){
+    if(revertBlockArray.length && epoch !== 0){
         throw new Error(`[epoch=${epoch}]validate, mismatch epoch (blockArray:${JSON.stringify(blockArray)})`);
     }
 
-    if (epoch !== 0 && blockArray.length !== receipts.length) {
+    if (blockArray.length !== receipts.length && epoch !== 0) {
         throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks, receipts)`);
     }
 
@@ -547,11 +546,10 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
-    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
-    let cfx = new Conflux(cfxOp)
-    patchHttpProvider(cfx, cfxOp)
-    const st = await cfx.getStatus()
-    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} --------`)
+    const confluxOption = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
+    let cfx = await initCfxSdk(confluxOption);
+    console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} --------`)
+
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {

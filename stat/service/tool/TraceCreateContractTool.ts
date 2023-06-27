@@ -10,9 +10,10 @@ import {TokenTool} from "./TokenTool";
 import {Op} from "sequelize";
 import { AddressTransactionIndex } from "../../model/FullBlock";
 import {EpochSync} from "../EpochSync";
-import {batchBlockDetail} from "../common/utils";
+import {batchBlockDetail, batchFetchBlock, initCfxSdk} from "../common/utils";
 import {StatApp} from "../../StatApp";
-import {AddressTransfer} from "../../model/AddrTransfer";
+import {EpochNftTransferSync} from "../EpochNftTransferSync";
+import {sleep} from "./ProcessTool";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -43,12 +44,14 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 
-    cfx = new Conflux({...config.conflux})
-    await cfx.updateNetworkId();
+    cfx = await initCfxSdk(config.conflux)
+    StatApp.networkId = cfx.networkId;
+
     tokenTool = new TokenTool(cfx);
 
     const app = {cfx, networkId: StatApp.networkId, tokenTool};
-    epochSync = new EpochSync(app);
+    // epochSync = new EpochSync(app);
+    epochSync = new EpochNftTransferSync(app);
     contractQuery = new ContractQuery(app);
 }
 
@@ -171,6 +174,9 @@ async function run() {
         await getDataByEpochNumber();
     }
     if(type === 10) {
+        await getDataByEpochNumberForNft()
+    }
+    if(type === 11) {
         const url = 'http://172.17.127.163:9527/open/account/crc721/transfers?account=cfx:aapwjebcay7d6jv02whjrrvkm9egmw5fye09cea6zz&from=cfx:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0sfbnjm2&skip=1000&limit=100&sort=DESC&withInput=false';
         const total = 100;
         let counter = total;
@@ -191,9 +197,33 @@ async function run() {
         console.log(`url------${url}`);
         console.log(`counter:${total}------QPS:${total/elapsed}`);
     }
+    if(type === 12) {
+        let epochNumber = minEpoch;
+        do{
+            const blockArray = await getNotExecutedTransaction(epochNumber);
+            if(blockArray) {
+                console.log(`blockArray ${JSON.stringify(blockArray)}`);
+                return;
+            }
+            epochNumber = epochNumber + 1
+        } while (true);
+    }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
     await close();
+}
+
+async function getNotExecutedTransaction(epochNumber) {
+    const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber);
+    const blockArray = await batchFetchBlock(cfx,  blockHashArray);
+    for (const block of blockArray) {
+        const transactionArray = block?.transactions || [];
+        for (const transaction of transactionArray) {
+            if(transaction?.status === null) {
+                return blockArray;
+            }
+        }
+    }
 }
 
 async function checkTraceCreate(){
@@ -383,6 +413,13 @@ async function getDataByEpochNumber(){
     }
 }
 
+async function getDataByEpochNumberForNft(){
+    for(let epochNumber = minEpoch; epochNumber <= maxEpoch; epochNumber++){
+        const data = await epochSync.getData(epochNumber);
+        console.log(`data ${JSON.stringify(data)}`)
+    }
+}
+
 
 const args = process.argv.slice(2);
 StatApp.networkId = Number(args[0]);
@@ -404,7 +441,8 @@ if(type === 8 && args[2] && args[3]){
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
 }
-if(type === 9 && args[2] && args[3]){
+// node script 1029 10 minEpoch maxEpoch
+if((type === 9 || type === 10 || type === 12) && args[2] && args[3]){
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
 }

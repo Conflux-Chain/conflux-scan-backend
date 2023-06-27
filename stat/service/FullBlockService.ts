@@ -183,7 +183,7 @@ export class FullBlockService {
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
 
                 } else {
-                    console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
+                    // console.log(`FullBlock: fetch blocks by epoch number fail, epoch ${minEpochNumber}.`, err)
                 }
                 return []
             }),

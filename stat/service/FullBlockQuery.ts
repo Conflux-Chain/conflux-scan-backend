@@ -10,7 +10,7 @@ import {
     BlockPage, TxPage, FailedTx
 } from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
-import {ContractInfo, fillMethodInfo} from "../model/ContractInfo";
+import {fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
@@ -20,18 +20,15 @@ import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
 
 const lodash = require('lodash');
-/*const CONST = require('./common/constant');*/
 
 export class FullBlockQuery {
     protected app;
-    protected sdk;
     protected sponsorContract;
     protected recommendGasPrice = BigInt(0);
 
     public constructor(app: any) {
         this.app = app;
-        this.sdk = app.cfxSDK || app.cfx;
-        this.sponsorContract = this.sdk.InternalContract('SponsorWhitelistControl');
+        this.sponsorContract = app.cfx.InternalContract('SponsorWhitelistControl');
     }
 
     public async listBlock({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined,
@@ -537,11 +534,13 @@ export class FullBlockQuery {
     }
 
     public async batchGetTransactionList0({hashArray}): Promise<any> {
+        const{ cfx } = this.app;
+
         const rpcTxs = hashArray.map(hash=>{return {"method": "cfx_getTransactionByHash","params": [hash]}});
         const rpcReceipts = hashArray.map(hash=>{return {"method": "cfx_getTransactionReceipt","params": [hash]}});
         const rpcBoth = [...rpcTxs, ...rpcReceipts];
         const len = hashArray.length;
-        return this.sdk.provider.batch(rpcBoth).then(arr=>{
+        return cfx.provider.batch(rpcBoth).then(arr=>{
             const txArray = arr.slice(0, len);
             const receiptArray = arr.slice(len);
             return {txArray, receiptArray};
@@ -549,8 +548,10 @@ export class FullBlockQuery {
     }
 
     public async listPendingTx({accountAddress}){
+        const{ cfx } = this.app;
+
         // check
-        const result =  await this.sdk.getAccountPendingTransactions(accountAddress, undefined, 10);
+        const result =  await cfx.getAccountPendingTransactions(accountAddress, undefined, 10);
         const {firstTxStatus, pendingTransactions} = result;
         if(!pendingTransactions?.length){
             return result;
@@ -563,7 +564,7 @@ export class FullBlockQuery {
             const pendingDetail = {
                 code: 11,
                 message: 'The nonce in [stateNonce, txNonce) is skipped',
-                params:{txNonce: nonce, stateNonce: await this.sdk.getNextNonce(from)}
+                params:{txNonce: nonce, stateNonce: await cfx.getNextNonce(from)}
             };
             lodash.defaults(result, {pendingDetail});
             return result;
@@ -573,7 +574,7 @@ export class FullBlockQuery {
         if(pending?.endsWith('Cash')){
             const gasFee = gas * gasPrice;
             const colFee = storageLimit * BigInt(10**18) / BigInt(1024);
-            const {balance}  = await this.sdk.getAccount(from);
+            const {balance}  = await cfx.getAccount(from);
             const totalCost = value + gasFee + colFee;
             const pendingDetail = {
                 message: 'The balance is insufficient to pay value + gas * gasPrice + storageLimit * (10^18/1024)',
@@ -588,7 +589,7 @@ export class FullBlockQuery {
             }
 
             // EOA
-            const {codeHash}  = await this.sdk.getAccount(to);
+            const {codeHash}  = await cfx.getAccount(to);
             const isEOA = codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470';
             if(isEOA && balance < totalCost){
                 lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 22})});
@@ -596,7 +597,7 @@ export class FullBlockQuery {
             }
 
             // contract
-            const sponsorInfo = await this.sdk.getSponsorInfo(to);
+            const sponsorInfo = await cfx.getSponsorInfo(to);
             const isWhitelisted = await this.sponsorContract.isWhitelisted(to, from);
             const {sponsorForGas, sponsorForCollateral, sponsorGasBound, sponsorBalanceForGas,
                 sponsorBalanceForCollateral} = sponsorInfo;
@@ -662,7 +663,7 @@ export class FullBlockQuery {
         // ready
         if(firstTxStatus?.endsWith('ready')){
             const proposedEpoch = epochHeight;
-            const confirmedEpoch = BigInt(await this.sdk.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
+            const confirmedEpoch = BigInt(await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
             const epochGap = Math.abs(Number(proposedEpoch - confirmedEpoch));
             if(epochGap > 100_000){
                 const pendingDetail = {

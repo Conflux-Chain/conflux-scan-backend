@@ -1,7 +1,6 @@
 import {ethers} from "ethers";
 import {redirectLog} from "./config/LoggerConfig";
 import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
-import {Conflux} from "js-conflux-sdk";
 import {buildErc20Transfer,} from "./model/Erc20Transfer";
 import {IErc1155Transfer} from "./model/Erc1155Transfer";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -13,6 +12,7 @@ import {StatConfig} from "./config/StatConfig";
 import {TokenTool} from "./service/tool/TokenTool";
 import {makeIdV} from "./model/HexMap";
 import {CONST} from "./service/common/constant";
+import {initCfxSdk} from "./service/common/utils";
 
 export interface ISlot3525 {
     id?:number; contractId: number; slot: string;
@@ -306,7 +306,8 @@ export function decode3525logs(logs:any[], parser: ethers.utils.Interface) : IPa
 }
 async function testParseLog(rpc) {
     let tx = '0xf8c0c910a92f6eed0b46d2033c7f9c7e1277212b2fc3ca647133a9c351323f9b'
-    let cfx = new Conflux({url: rpc})
+
+    let cfx = await initCfxSdk({url: rpc});
     let {logs} = await cfx.getTransactionReceipt(tx)
     let events = decode3525logs(logs, build3525interface());
     console.log(`events`, events)
@@ -540,7 +541,7 @@ async function sync() {
     });
 }
 async function findEarliest3525contract(config: StatConfig) {
-    const cfx = new Conflux(config.conflux);
+    const cfx = await initCfxSdk(config.conflux);
     const tokenTool = new TokenTool(cfx);
     const list721 = await Token.findAll({where: {type: 'ERC721'},
         attributes:['name', 'base32','hex40id'],

@@ -2,7 +2,7 @@ import {redirectLog} from "./config/LoggerConfig";
 import {Transaction, Model,DataTypes, Sequelize, Op, UniqueConstraintError, ModelStatic} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchTraceBlock, isNewFormatTrace, patchHttpProvider, removeLongData} from "./service/common/utils";
+import {batchTraceBlock, initCfxSdk, isNewFormatTrace, removeLongData} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
@@ -270,17 +270,16 @@ async function runCounter() {
 }
 async function setup() {
     const [, , cfxUrlParam, fromEpoch, taskLen] = process.argv
-    const cfg = await init()
+    const config = await init()
     await checkCfxTransferCountKV()
-    const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (cfg.cfxTransferRpc?.url || cfg.conflux.url) : cfxUrlParam
+    const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (config.cfxTransferRpc?.url || config.conflux.url) : cfxUrlParam
     if (cfxUrl === 'counter') {
         redirectLog({subPath:'.counter'})
         await runCounter()
         return
     } else if (fromEpoch === 'holder') {
         redirectLog({subPath:'.holder'})
-        const cfx = new Conflux({url: cfxUrl});
-        patchHttpProvider(cfx, {url: cfxUrl})
+        const cfx = await initCfxSdk({url: cfxUrl});
         await runHolder(cfx);
         return;
     } else if (cfxUrl === 'marker') {
@@ -289,8 +288,7 @@ async function setup() {
         return;
     } else if (cfxUrl === 'cfxCounterHolderMarker') {
         redirectLog({subPath:'.cfxCounterHolderMarker'})
-        const cfx = new Conflux(cfg.conflux);
-        patchHttpProvider(cfx, cfg.conflux)
+        const cfx = await initCfxSdk(config.conflux);
         await Promise.all([
             runCounter(),
             runHolder(cfx),
@@ -299,15 +297,12 @@ async function setup() {
         return
     }
     redirectLog()
-    const cfx = new Conflux({url: cfxUrl});
-    patchHttpProvider(cfx, {url: cfxUrl})
-    await cfx.updateNetworkId();
-    const st = await cfx.getStatus()
-    await RedisWrap.connect(cfg.redis)
+    const cfx = await initCfxSdk({url: cfxUrl});
+    await RedisWrap.connect(config.redis)
     cfx0 = cfx;
-    await makeVirtualContractInfo(st.networkId);
+    await makeVirtualContractInfo(cfx.networkId);
     scheduleRollupDailyCfxTxn().then();
-    console.log(`---------- ${cfxUrl} ${st.networkId} ---------`)
+    console.log(`---------- ${cfxUrl} ${cfx.networkId} ---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))
         process.exit(0)

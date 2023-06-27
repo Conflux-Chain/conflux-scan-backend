@@ -14,7 +14,7 @@ import {
 import {init} from "../tool/FixDailyTokenStat";
 import {fn, col, Op, QueryTypes} from "sequelize";
 import {PosQuery} from "./PosQuery";
-import {removeLongData} from "../common/utils";
+import {initCfxSdk, removeLongData} from "../common/utils";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {
     calcDailyPosReward,
@@ -673,10 +673,11 @@ async function waitPosEnable(cfx:Conflux) {
 async function start() {
     const [,,urlParam, cmd] = process.argv
     const cfg = await init()
+
     const url = urlParam || cfg.conflux.url
-    const cfx = new Conflux({url})
-    const st = await cfx.getStatus()
-    console.log(`------ ${url} network ${st.networkId} ------`)
+    const cfx = await initCfxSdk({url});
+    console.log(`------ ${url} network ${cfx.networkId} ------`)
+
     const posSync = new PosSync(cfx);
     await posSync.init()
     await posSync.updateLatestBlockNumber()

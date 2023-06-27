@@ -3,8 +3,7 @@ import {init} from "./FixDailyTokenStat";
 import {BlockAndMinerSync} from "../BlockAndMinerSync";
 import {MinerBlock} from "../../model/MinerBlock";
 import {Epoch} from "../../model/Epoch";
-import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 import {FullBlockService} from "../FullBlockService";
 import {FullBlock} from "../../model/FullBlock";
 async function run(startDay, endDay) {
@@ -32,8 +31,9 @@ async function fixRecentMinerStat() {
     }
 }
 async function fixBlockTxFee(config: StatConfig) {
-    const cfx = new Conflux(config.conflux)
-    patchHttpProvider(cfx, config.conflux)
+    const cfx = await initCfxSdk(config.conflux);
+    console.log(`-----  networkId ${cfx.networkId} ------`)
+
     const svc = new FullBlockService(cfx)
     let epoch = await FullBlock.max('epoch') as any
     const stop = new Date('2021-11-29').getTime()

@@ -215,19 +215,19 @@ class ContractService { // TODO: extends AccountService
 
   async getCreationData({ address }) {
     const {
-      app: { confluxSDK, CONST, service, type },
+      app: { cfx, CONST, service, type, tokenTool },
     } = this;
 
     const hash = lodash.findKey(CONST.GENESIS_TX_TO_CONTRACT, (v) => format.hexAddress(v) === address);
     if(hash){
-      const transaction = await confluxSDK.getTransactionByHash(hash);
+      const transaction = await cfx.getTransactionByHash(hash);
       return transaction.data;
     }
 
     const trace = await service.traceCreate.query(address);
-    const transaction = await confluxSDK.getTransactionByHash(trace.transactionHash);
-    const transactionTraceArray = await confluxSDK.traceTransaction(transaction.hash);
-    const traceArray = await confluxSDK.matchTrace(transactionTraceArray, transaction);
+    const transaction = await cfx.getTransactionByHash(trace.transactionHash);
+    const transactionTraceArray = await cfx.traceTransaction(transaction.hash);
+    const traceArray = await tokenTool.matchTrace(transactionTraceArray, transaction);
     const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
         trace.transactionHash === transaction.hash &&
         type.address(trace.action.to) === type.address(address)));

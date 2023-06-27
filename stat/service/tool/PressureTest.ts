@@ -2,7 +2,6 @@ import {StatApp} from "../../StatApp";
 import {Conflux, format, sign} from "js-conflux-sdk";
 import {Hex40Map} from "../../model/HexMap";
 import {loadConfig} from "../../config/StatConfig";
-import {patchHttpProvider} from "../common/utils";
 import {createDB, initModel} from "../DBProvider";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";

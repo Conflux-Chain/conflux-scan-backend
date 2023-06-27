@@ -80,7 +80,7 @@ export class EpochSync extends SyncBase{
             const {epoch, blockHashArray, blockArray, transactionHashArray} = epochData;
             const epochTimestamp = epoch.timestamp;
 
-            const minerBlockArray = await this.getMinerBlockArray(blockArray);
+            const minerBlockArray = await this.getMinerBlockArray(epochNumber, blockArray);
             const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
 
             const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
@@ -235,13 +235,19 @@ export class EpochSync extends SyncBase{
     }
 
     //------------------- business method for miner block --------------------
-    public async getMinerBlockArray(blockArray) {
+    public async getMinerBlockArray(epochNumber, blockArray) {
+        const {
+            app: { config },
+        } = this;
+
         let minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
             const hex40 = format.hexAddress(block.miner);
             const blockDt = new Date(block.timestamp * 1000);
             const hex40Id = (await makeId(hex40, undefined, {dt: blockDt})).id;
-            return {minerId: hex40Id, epoch: block.epochNumber, position, createdAt: blockDt};
+            const epoch = (epochNumber === 0 && config.conflux.consortiumMode) ? 0 : block.epochNumber;
+            return {minerId: hex40Id, epoch, position, createdAt: blockDt};
         }));
+
         return lodash.orderBy(minerBlockArray, 'position', 'desc');
     }
 
@@ -731,6 +737,10 @@ export class EpochSync extends SyncBase{
     }
 
     public async getTraceArray(epochNumber, detail = false) {
+        const {
+            app: { tokenTool },
+        } = this;
+
         let traceArray = [];
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
         blockArray.forEach((block, idx) => {
@@ -761,7 +771,8 @@ export class EpochSync extends SyncBase{
                             ...EpochSync.parseTrace(trace, detail),
                         });
                     });
-                    traceArray = [...traceArray, ...EpochSync.matchTrace(transactionTraceArray, transaction)];
+                    const matchedTrace = tokenTool.matchTrace(transactionTraceArray, transaction);
+                    traceArray = [...traceArray, ...matchedTrace];
                 });
         });
         return traceArray;
@@ -769,11 +780,11 @@ export class EpochSync extends SyncBase{
 
     private async getBlockArray(epochNumber) : Promise<any[]> {
         const {
-            app: { cfx },
+            app: { cfx, config },
         } = this;
 
         const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber);
-        const [blockArray, traceArray] = await batchBlockDetail(cfx, blockHashArray);
+        const [blockArray, traceArray] = await batchBlockDetail(cfx, blockHashArray, config.conflux.consortiumMode);
         blockArray.map((v) => EpochSync.parseBlock(v, true));
         return [blockArray, traceArray];
     }
@@ -825,7 +836,7 @@ export class EpochSync extends SyncBase{
         return trace;
     }
 
-    public static matchTrace(transactionTraceArray, transaction){
+    /*public static matchTrace(transactionTraceArray, transaction){
         if (!transactionTraceArray.length) {
             return[];
         }
@@ -850,7 +861,7 @@ export class EpochSync extends SyncBase{
             transactionTraceArray[creatTraceIndex].action.to = transaction.contractCreated;
         }
         return transactionTraceArray;
-    }
+    }*/
 
     private async getCodeHash(address){
         const {

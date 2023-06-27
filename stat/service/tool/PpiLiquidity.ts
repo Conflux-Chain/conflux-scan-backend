@@ -1,5 +1,6 @@
 import {Conflux, Contract, format, Drip} from "js-conflux-sdk";
-import {TokenTool} from "./TokenTool";
+import {initCfxSdk} from "../common/utils";
+
 const abi = require('./abi');
 
 class TokenMap {
@@ -111,7 +112,7 @@ export function eqIgnoreCase(a: string, b:string) {
 }
 async function main() {
     const [,,hash] = process.argv
-    let cfx = new Conflux({url: 'http://8.210.68.176:32537/'})
+    let cfx = await initCfxSdk({url: 'http://8.210.68.176:32537/'});
     const ppi = new PpiLiquidity(cfx)
     await ppi.processTx(hash)
     // await ppi.processTx('0x981c604c0af4ad5395bab96209784be7b4b66165e2c9d8213384167d0e877a5a') // deposit cfx

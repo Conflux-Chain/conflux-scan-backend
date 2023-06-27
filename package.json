@@ -81,6 +81,8 @@
     "yamljs": "0.3.0"
   },
   "devDependencies": {
+    "@ethersproject/keccak256": "^5.7.0",
+    "@ethersproject/strings": "^5.7.0",
     "@openapitools/openapi-generator-cli": "^2.5.2",
     "@types/ali-oss": "6.0.10",
     "@types/koa": "2.11.6",

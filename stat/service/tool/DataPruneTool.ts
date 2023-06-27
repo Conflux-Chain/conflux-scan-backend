@@ -2,7 +2,7 @@ import {StatConfig} from "../../config/StatConfig";
 import {RedisWrap} from "../RedisWrap";
 import {init} from "./FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 import {PruneHandler} from "../prune/PruneHandler";
 import {PruneNotifier} from "../prune/PruneNotifier";
 import {PruneInfo, PruneType} from "../../model/PruneInfo";
@@ -14,7 +14,6 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {PruneBase} from "../prune/PruneBase";
 import {sleep} from "./ProcessTool";
 import {CONST} from "../common/constant"
-/*const CONST = require('../common/constant');*/
 
 let config:StatConfig;
 let cfx:Conflux;
@@ -130,10 +129,10 @@ async function getPrunedRowsByToken({type, hex40id}) {
 
 async function run() {
     config = await init();
-    // console.log(`config------------${JSON.stringify(config)}`)
-    cfx = new Conflux(config.conflux);
-    await cfx.updateNetworkId();
-    patchHttpProvider(cfx, config.conflux);
+
+    cfx = await initCfxSdk(config.conflux);
+    console.log(`-----  networkId ${cfx.networkId} ------`)
+
     await RedisWrap.connect(config.redis);
 
     const app = {cfx};

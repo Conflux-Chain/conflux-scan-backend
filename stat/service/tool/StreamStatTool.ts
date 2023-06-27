@@ -2,7 +2,7 @@ import {StatConfig} from "../../config/StatConfig";
 import {RedisWrap} from "../RedisWrap";
 import {init} from "./FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "../common/utils";
+import {initCfxSdk} from "../common/utils";
 import {StatNotifier} from "../streamstat/StatNotifier";
 import {TokenTransferHandler} from "../streamstat/business/TokenTransferHandler";
 import {AddrTransactionHandler} from "../streamstat/business/AddrTransactionHandler";
@@ -26,9 +26,7 @@ let dailyNFTMintHandler: NFTMintHandler;
 
 async function run() {
     config = await init();
-    cfx = new Conflux(config.conflux);
-    await cfx.updateNetworkId();
-    patchHttpProvider(cfx, config.conflux);
+    cfx = await initCfxSdk(config.conflux)
     await RedisWrap.connect(config.redis);
     // console.log(`StreamStatTool------------config:${JSON.stringify(config)}`)
 

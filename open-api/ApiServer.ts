@@ -1,10 +1,8 @@
 import {Conflux} from "js-conflux-sdk";
-import {ethers} from "ethers";
 import {loadConfig, StatConfig} from "../stat/config/StatConfig";
-import {patchHttpProvider} from "../stat/service/common/utils";
+import {initCfxSdk, initEthSdk} from "../stat/service/common/utils";
 import {StatApp} from "../stat/StatApp";
 import {createDB, initModel} from "../stat/service/DBProvider";
-import {redisWrap, RedisWrap} from "../stat/service/RedisWrap";
 import {register} from "./router/ApiRouter";
 import {FullBlockQuery} from "../stat/service/FullBlockQuery";
 import {Crc20TransferQuery} from "../stat/service/Crc20TransferQuery";
@@ -12,7 +10,6 @@ import {Crc721TransferQuery} from "../stat/service/Crc721TransferQuery";
 import {Crc1155TransferQuery} from "../stat/service/Crc1155TransferQuery";
 import {Crc3525TransferQuery} from "../stat/service/Crc3525TransferQuery";
 import {BatchBalanceWatcher} from "../stat/service/watcher/BatchBalanceWatcher";
-import {setRateControlDB} from "./router/middleware";
 import {ContractQuery} from "../stat/service/ContractQuery";
 import {TokenQuery} from "../stat/service/TokenQuery";
 import {TokenTool} from "../stat/service/tool/TokenTool";
@@ -33,7 +30,7 @@ import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
-import {billing, getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
+import {getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
 import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
@@ -45,7 +42,6 @@ import {DailyNFTStatQuery} from "../stat/service/DailyNFTStatQuery";
 import {DailyRewardStatQuery} from "../stat/service/DailyRewardStatQuery";
 
 const Koa = require('koa');
-const lodash = require('lodash');
 const app = new Koa();
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 const {createLogger} = require('../common/utils.js');
@@ -100,32 +96,26 @@ export class ApiServer {
 
     constructor() {
         this.config = config
-        this.cfx = new Conflux(config.conflux)
-        this.eth = new ethers.providers.JsonRpcProvider(config.ether.url)
     }
 
     public async init() {
         let logger = createLogger('apiServer', 'open-api', './log/open-api', 'info');
         logger.info(`-------- start api server, port ${config.apiPort}--------`)
-        patchHttpProvider(this.cfx, config.conflux)
-        // @ts-ignore
-        await this.cfx.updateNetworkId();
-        const cfxStatus:any = await this.cfx.getStatus()
-        StatApp.networkId = cfxStatus.networkId
+
+        this.cfx = await initCfxSdk(config.conflux);
+        this.eth = initEthSdk(config.ether.url)
+        StatApp.networkId = this.cfx.networkId;
 
         StatApp.readonly = config.database.readonly
         const sequelize = createDB(config.databaseRW)
         await initModel(sequelize)
         await sequelize.sync({})
 
-        /*await RedisWrap.connect(config.redis)
-        setRateControlDB(redisWrap.client)*/
         await initRateLimiters(config.redis);
 
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-
         apiService = new ApiService()
-        const apiApp = {networkId:cfxStatus.networkId, cfx: this.cfx, service: apiService, config: this.config};
+        const apiApp = {networkId: this.cfx.networkId, cfx: this.cfx, service: apiService, config: this.config};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)
         apiService.crc20transferQuery = new Crc20TransferQuery(apiApp)
         apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
@@ -204,12 +194,6 @@ async function initBilling(config: StatConfig) {
     await initWeb3payVipClient(config.ether.url, billingApp,);
     console.log(`using billing ${url}, now test...`)
     try {
-        // const result = await billing('/', true, key)
-        // if (result.code == 0) {
-        //     console.log(`test billing ok`, result)
-        // } else {
-        //     console.log(`test billing , result :`, result)
-        // }
         const result = await getVipInfo(billingApp)
         console.log(`get vip info test:`, result);
     } catch (e) {

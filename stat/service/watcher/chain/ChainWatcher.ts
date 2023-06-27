@@ -2,6 +2,7 @@ import {Conflux} from "js-conflux-sdk";
 import {IPivotSwitch, PivotSwitch} from "../../../model/Block";
 import {fmtDtUTC} from "../../../model/Utils";
 import {init} from "../../tool/FixDailyTokenStat";
+import {initCfxSdk} from "../../common/utils";
 const superagent = require("superagent")
 export class ChainWatcher{
     private ws: Conflux;
@@ -12,7 +13,7 @@ export class ChainWatcher{
         if (cfxWsUrl === '') {
             return;
         }
-        this.ws = new Conflux({url: cfxWsUrl});
+        this.ws = await initCfxSdk({url: cfxWsUrl});
         // @ts-ignore
         const subscription = await this.ws.subscribeEpochs('latest_state').catch(err=>{
             console.log(`subscribe epoch fail, from ${cfxWsUrl}:`, err)

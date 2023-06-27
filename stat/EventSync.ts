@@ -15,7 +15,7 @@ import {
 } from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {patchHttpProvider} from "./service/common/utils";
+import {initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
@@ -307,12 +307,11 @@ export async function startSyncEvent(cfxUrl:string,
     }
     console.log(`--------------------`)
 
-    const cfxOp = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
-    let cfx = new Conflux(cfxOp)
-    patchHttpProvider(cfx, cfxOp)
-    const st = await cfx.getStatus()
+    const confluxOption = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
+    let cfx = await initCfxSdk(confluxOption);
+
     await handler.init({cfx})
-    console.log(` ${process.argv[1]} \n ------- network ${st.networkId} ${cfxOp.url} --------`)
+    console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} ${confluxOption.url} --------`)
     return runTask(cfx, taskClz, handler, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
