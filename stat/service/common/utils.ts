@@ -264,9 +264,9 @@ export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = und
         cfx = new ConsortiumConflux(confluxOption);
     } else{
         cfx = new Conflux(confluxOption);
-        confluxOption && await cfx.updateNetworkId();
+        confluxOption.url && await cfx.updateNetworkId();
     }
-    confluxOption && patchHttpProvider(cfx, confluxOption, tag);
+    confluxOption.url && patchHttpProvider(cfx, confluxOption, tag);
     console.log('conflux networkId', cfx.networkId, 'config', confluxOption);
 
     return cfx;
