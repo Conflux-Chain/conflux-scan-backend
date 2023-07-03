@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk"
+import {Conflux, format} from "js-conflux-sdk"
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import {Context} from 'koa'
@@ -20,7 +20,6 @@ import {countRecentTokenTransfer} from "../service/DailyTokenSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 import {Hex40Map} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
-import {CfxBill} from "../service/watcher/DummyNode";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
 import {listNftOfAccountByContract} from "../service/NftService";
@@ -359,11 +358,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/get-cfx-balance-at', async ctx=>{
+        if (ctx.request.query.epoch === '') {
+            delete ctx.request.query.epoch
+        }
         mustBeIntParamIfPresent(ctx.request.query, 'epoch');
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountBase32');
 
         const {dt, epoch, accountBase32} = ctx.request.query
-        if ( (dt === undefined && epoch === undefined) || accountBase32 === undefined) {
+        if ( (!dt && !epoch) || !accountBase32) {
             throw new Errors.ParameterError(`miss parameter, query: ${ctx.request.query}`);
         }
         const hex = format.hexAddress(accountBase32)
@@ -372,14 +374,21 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`${accountBase32} not found`);
         }
         let cfxByEpoch;
+        let rpcUrl;
+        switch (StatApp.networkId) {
+            case 1029: rpcUrl = "https://main.confluxrpc.com"; break;
+            case 1: rpcUrl = "https://test.confluxrpc.com"; break;
+            // evm do not have this page, put it here anyway.
+            case 1030: rpcUrl = "https://evm.confluxrpc.com/cfxbridge"; break;
+            case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
+            default: throw new Errors.BizError("Unsupported network "+StatApp.networkId)
+        }
+        const stateCfx = new Conflux({url: rpcUrl});
         if (epoch) {
             const epochNumber = Number(epoch)
-            cfxByEpoch = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch:{[Op.lte]: epochNumber}},
-                order:[['epoch','desc'],['seq','desc']], limit: 1, raw: true})
-            if (cfxByEpoch) {
-                const epoch = await Epoch.findByPk(cfxByEpoch.epoch)
-                cfxByEpoch['epoch_dt'] = (epoch||{}).timestamp
-            }
+            const balance = await stateCfx.getBalance(accountBase32, epochNumber)
+            const nearestEpoch = await Epoch.findOne({where:{epoch: epochNumber}})
+            cfxByEpoch = {epoch, epoch_dt: nearestEpoch?.timestamp || '', balance}
         }
         let cfxByDt;
         if (dt) {
@@ -390,14 +399,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 throw new Error(`invalid parameter, date ${dt}`)
             }
             const nearestEpoch = await Epoch.findOne({where:{timestamp:{[Op.lte]:d}}, order:[['timestamp','desc']], limit: 1})
-            const number = nearestEpoch?.epoch || 0
-            cfxByDt = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch: {[Op.lte]: number} },
-                order:[['epoch','desc'],['seq','desc']], limit: 1, raw: true})
-            if (cfxByDt) {
-                cfxByDt['dt'] = d
-                const epoch = await Epoch.findByPk(cfxByDt.epoch)
-                cfxByDt['epoch_dt'] = (epoch||{}).timestamp
-            }
+            const epochNumber = nearestEpoch?.epoch || 0
+            const balance = await stateCfx.getBalance(accountBase32, epochNumber)
+            cfxByDt = {epoch: epochNumber, epoch_dt: nearestEpoch?.timestamp, balance}
         }
         ctx.body = {cfxByEpoch, cfxByDt}
     })
@@ -860,6 +864,11 @@ export function register(app:Koa, statApp: StatApp) {
         } catch (e) {
             if(e.code === undefined){
                 e = new Errors.BizError(e.message);
+            }
+            if (e.status === undefined || e.status === null) {
+                e.status = 500;
+                e.message = "unknown error"
+                console.log("unknown error caught by router:", e)
             }
             ctx.status = e.status;
             ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
