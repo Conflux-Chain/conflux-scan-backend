@@ -17,6 +17,7 @@ import {Desensitizer} from "./Desensitizer";
 import {CONST} from "./common/constant"
 import {EpochSync} from "./EpochSync";
 import {Errors} from "./common/LogicError";
+import {NameTag} from "../model/NameTag";
 
 const lodash = require('lodash');
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
@@ -122,6 +123,7 @@ export class TokenQuery {
         }
         // add additional info
         let contractList;
+        let eoaList;
         if(name){// add contracts for unmatched token
             const where: any = {name: {[Op.like]: `%${name}%`}};
             if(registeredTokens?.length) where.base32 = {[Op.notIn]: registeredTokens};
@@ -129,7 +131,12 @@ export class TokenQuery {
                 where.destroyed = false;
             }
             contractList = await Contract.findAll({ offset: 0, limit: 10, raw: true,
-                attributes: [['base32', 'address'], 'name', 'epoch'], where, order: [['epoch', 'ASC']]
+                attributes: [['base32', 'address'], 'name', 'epoch'], where,
+                order: [['epoch', 'ASC']]
+            });
+            eoaList = await NameTag.findAll({ offset: 0, limit: 100, raw: true,
+                attributes: ['base32', 'nameTag'], where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
+                order: [['epoch', 'ASC']]
             });
         } else if (addressArray) {// add unregistered tokens
             const unregisteredTokens = addressArray.filter(address => !lodash.includes(registeredTokens, address));
@@ -148,7 +155,7 @@ export class TokenQuery {
         // add security audit
         await this.getAuditInfo(list);
 
-        return {total: count, list, contractTotal: contractList?.length, contractList};
+        return {total: count, list, contractTotal: contractList?.length, contractList, eoaTotal: eoaList?.length, eoaList};
     }
 
     public async listLatest({accountAddress, transferType, latestTransfer = 10000}

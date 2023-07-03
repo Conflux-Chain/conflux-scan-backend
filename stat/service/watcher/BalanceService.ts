@@ -121,7 +121,9 @@ export class BalanceService {
         const accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
         retList.forEach((item) => {
             item['tokenInfo'] = accountBasic.map[item.account.address]?.token;
-            item['ensInfo'] = accountBasic[item.account.address]?.ens;
+            item['contractInfo'] = accountBasic.map[item.account.address]?.contract;
+            item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
+            item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
         });
 
         return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed}

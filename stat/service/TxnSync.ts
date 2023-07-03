@@ -95,6 +95,8 @@ export class TxnSync {
         list.filter(item => item.hex.startsWith('0x8')).forEach(item => {
             item.tokenInfo = accountBasic.map[item.base32]?.token || {};
             item.contractInfo = accountBasic.map[item.base32]?.contract || {};
+            item.ensInfo = accountBasic.map[item.base32]?.ens || {};
+            item.nameTagInfo = accountBasic.map[item.base32]?.nameTag || {};
         });
 
         let finalRet = {

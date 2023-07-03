@@ -208,6 +208,7 @@ router.get('/frontend',
     const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.contracts.forEach((item) => {
       item.ensInfo = accountBasic.map[item.address]?.ens;
+      item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
     });
     return result;
   },
@@ -303,7 +304,10 @@ router.get('/block',
             syncTimestamp: 'integer',
             gasUsed: 'string',
             totalReward: 'string',
+            minerContractInfo: 'object',
+            minerTokenInfo: 'object',
             minerENSInfo: 'object',
+            minerNameTagInfo: 'object',
           },
         ],
       },
@@ -323,6 +327,7 @@ router.get('/block',
       block.minerContractInfo = accountBasic.map[block.miner]?.contract;
       block.minerTokenInfo = accountBasic.map[block.miner]?.token;
       block.minerENSInfo = accountBasic.map[block.miner]?.ens;
+      block.minerNameTagInfo = accountBasic.map[block.miner]?.nameTag;
     });
     return result;
   },
@@ -382,6 +387,7 @@ router.get('/transaction/:hash',
         tokenTransferContractInfo: 'object',
         tokenTransferTokenInfo: 'object',
         tokenTransferENSInfo: 'object',
+        tokenTransferNameTagInfo: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -425,10 +431,13 @@ router.get('/transaction/:hash',
           const contractAddressArray = Object.keys(accountBasic.map);
           transaction.tokenTransferContractInfo = {};
           transaction.tokenTransferTokenInfo = {};
+          transaction.tokenTransferENSInfo = {};
+          transaction.tokenTransferNameTagInfo = {};
           contractAddressArray.forEach((address) => {
             transaction.tokenTransferContractInfo[address] = accountBasic.map[address]?.contract;
             transaction.tokenTransferTokenInfo[address] = accountBasic.map[address]?.token;
             transaction.tokenTransferENSInfo[address] = accountBasic.map[address]?.ens;
+            transaction.tokenTransferNameTagInfo[address] = accountBasic.map[address]?.nameTag;
           });
         } catch (e) {
           logger.error({ src: 'aggregate contract and token for transaction', msg: e.toString() });
@@ -479,8 +488,6 @@ router.get('/transaction',
           hash: 'string',
           from: 'string',
           to: OpenAPI.schema({ type: 'string', nullable: true }),
-          fromEnsInfo: 'object',
-          toEnsInfo: 'object',
           value: 'string',
           gasPrice: 'string',
           gas: 'string',
@@ -493,9 +500,11 @@ router.get('/transaction',
           gasFee: 'string',
           gasUsed: 'string',
           fromENSInfo: 'object',
+          fromNameTagInfo: 'object',
           toContractInfo: 'object',
           toTokenInfo: 'object',
           toENSInfo: 'object',
+          toNameTagInfo: 'object',
           txExecErrorMsg: OpenAPI.schema({ type: 'string', nullable: true }),
         }],
       },
@@ -514,9 +523,11 @@ router.get('/transaction',
     const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.list.forEach((tx) => {
       tx.fromENSInfo = accountBasic.map[tx.from]?.ens;
+      tx.fromNameTagInfo = accountBasic.map[tx.from]?.nameTag;
       tx.to && (tx.toContractInfo = accountBasic.map[tx.to]?.contract);
       tx.to && (tx.toTokenInfo = accountBasic.map[tx.to]?.token);
       tx.to && (tx.toENSInfo = accountBasic.map[tx.to]?.ens);
+      tx.to && (tx.toNameTagInfo = accountBasic.map[tx.to]?.nameTag);
     });
     return result;
   },
@@ -841,6 +852,8 @@ router.get('/contract/:address',
           sponsorForCollateralContractInfo: 'object',
           sponsorForGasENSInfo: 'object',
           sponsorForCollateralENSInfo: 'object',
+          sponsorForGasNameTagInfo: 'object',
+          sponsorForCollateralNameTagInfo: 'object',
         },
         token: {
           name: 'string',
@@ -883,6 +896,8 @@ router.get('/contract/:address',
     result.sponsor.sponsorForCollateralContractInfo = accountBasic.map[sponsorForCollateral]?.contract;
     result.sponsor.sponsorForGasENSInfo = accountBasic.map[sponsorForGas]?.ens;
     result.sponsor.sponsorForCollateralENSInfo = accountBasic.map[sponsorForCollateral]?.ens;
+    result.sponsor.sponsorForGasNameTagInfo = accountBasic.map[sponsorForGas]?.nameTag;
+    result.sponsor.sponsorForCollateralNameTagInfo = accountBasic.map[sponsorForCollateral]?.nameTag;
 
     return result;
   },
@@ -1116,6 +1131,7 @@ router.get('/token',
             totalPrice: 'number',
             contractName: 'string',
             ensInfo: 'object',
+            nameTagInfo: 'object',
           },
         ],
       },
@@ -1131,6 +1147,7 @@ router.get('/token',
     result.list.forEach((token) => {
       token.contractName = accountBasic.map[token.address]?.contract?.name;
       token.ensInfo = accountBasic.map[token.address]?.ens;
+      token.nameTagInfo = accountBasic.map[token.address]?.nameTag;
     });
     return result;
   },
@@ -1215,13 +1232,16 @@ router.get('/transfer',
             fromTokenInfo: 'object',
             fromENSInfo: 'object',
             fromESpaceInfo: 'object',
+            fromNameTagInfo: 'object',
             toContractInfo: 'object',
             toTokenInfo: 'object',
             toENSInfo: 'object',
             toESpaceInfo: 'object',
+            toNameTagInfo: 'object',
             transferContractInfo: 'object',
             transferTokenInfo: 'object',
             transferENSInfo: 'object',
+            transferNameTagInfo: 'object',
           },
         ],
       },
@@ -1250,13 +1270,16 @@ router.get('/transfer',
       transfer.fromTokenInfo = accountBasic.map[transfer.from]?.token;
       transfer.fromENSInfo = accountBasic.map[transfer.from]?.ens;
       transfer.fromESpaceInfo = accountBasic.map[transfer.from]?.eSpace;
+      transfer.fromNameTagInfo = accountBasic.map[transfer.from]?.nameTag;
       transfer.toContractInfo = accountBasic.map[transfer.to]?.contract;
       transfer.toTokenInfo = accountBasic.map[transfer.to]?.token;
       transfer.toENSInfo = accountBasic.map[transfer.to]?.ens;
       transfer.toESpaceInfo = accountBasic.map[transfer.to]?.eSpace;
+      transfer.toNameTagInfo = accountBasic.map[transfer.to]?.nameTag;
       transfer.transferTokenInfo = accountBasic.map[transfer.address]?.token;
       transfer.transferContractInfo = accountBasic.map[transfer.address]?.contract;
       transfer.transferENSInfo = accountBasic.map[transfer.address]?.ens;
+      transfer.transferNameTagInfo = accountBasic.map[transfer.address]?.nameTag;
     });
     return result;
   },
@@ -1287,13 +1310,15 @@ router.get('/transferTree/:transactionHash',
     });
     const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     const contractAddressArray = Object.keys(accountBasic.map);
-    result.tokenMap = {};
     result.contractMap = {};
+    result.tokenMap = {};
     result.ensMap = {};
+    result.nameTagMap = {};
     contractAddressArray.forEach((address) => {
       result.contractMap[address] = accountBasic.map[address]?.contract;
       result.tokenMap[address] = accountBasic.map[address]?.token;
       result.ensMap[address] = accountBasic.map[address]?.ens;
+      result.nameTagMap[address] = accountBasic.map[address]?.nameTag;
     });
     return result;
   },
@@ -1319,6 +1344,7 @@ router.get('/eventLog',
             data: 'string',
             topics: ['string'],
             ensInfo: 'object',
+            nameTagInfo: 'object',
           },
         ],
         logContractInfo: 'object',
@@ -1339,6 +1365,7 @@ router.get('/eventLog',
     const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.list.forEach(item => {
       item.ensInfo = accountBasic.map[item.address]?.ens;
+      item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
     });
 
     return result;
@@ -1365,6 +1392,33 @@ router.get('/ens/reverse/match',
       const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
       const map = {};
       Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.ens));
+      return {
+        total: Object.keys(map).length,
+        map,
+      };
+    },
+);
+
+// -------------------------------- name tag ----------------------------------
+router.get('/nametag',
+    OpenAPI.flow({
+      tags: ['contract'],
+      input: {
+        address: { in: 'query', type: 'array', items: { type: 'string' } },
+      },
+      output: {
+        200: {
+          total: 'integer',
+          map: 'object',
+        },
+        600: { code: 'integer', message: 'string' },
+      },
+    }),
+
+    async function (options) {
+      const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
+      const map = {};
+      Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.nameTag));
       return {
         total: Object.keys(map).length,
         map,
