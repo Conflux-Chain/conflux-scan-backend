@@ -377,7 +377,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         let rpcUrl;
         switch (StatApp.networkId) {
             case 1029: rpcUrl = "https://main.confluxrpc.com"; break;
-            case 1: rpcUrl = "https://testnet.confluxrpc.com"; break;
+            case 1: rpcUrl = "https://test.confluxrpc.com"; break;
             // evm do not have this page, put it here anyway.
             case 1030: rpcUrl = "https://evm.confluxrpc.com/cfxbridge"; break;
             case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
