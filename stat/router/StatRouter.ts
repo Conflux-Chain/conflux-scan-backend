@@ -20,7 +20,6 @@ import {countRecentTokenTransfer} from "../service/DailyTokenSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 import {Hex40Map} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
-import {CfxBill} from "../service/watcher/DummyNode";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
 import {listNftOfAccountByContract} from "../service/NftService";
@@ -375,8 +374,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`${accountBase32} not found`);
         }
         let cfxByEpoch;
-        const stateCfx = StatApp.isEVM ?  new Conflux({url: 'https://main.confluxrpc.com/cfxbridge'})
-            : new Conflux({url: 'https://main.confluxrpc.com'})
+        let rpcUrl;
+        switch (StatApp.networkId) {
+            case 1029: rpcUrl = "https://main.confluxrpc.com"; break;
+            case 1: rpcUrl = "https://tesetnet.confluxrpc.com"; break;
+            case 1030: rpcUrl = "https://evm.confluxrpc.com/cfxbridge"; break;
+            case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
+            default: throw new Errors.BizError("Unsupported network "+StatApp.networkId)
+        }
+        const stateCfx = new Conflux({url: rpcUrl});
         if (epoch) {
             const epochNumber = Number(epoch)
             const balance = await stateCfx.getBalance(accountBase32, epochNumber)
