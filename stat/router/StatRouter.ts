@@ -377,11 +377,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         let cfxByEpoch;
         let rpcUrl;
         switch (StatApp.networkId) {
-            case 1029: rpcUrl = "https://main.confluxrpc.com"; break;
-            case 1: rpcUrl = "https://test.confluxrpc.com"; break;
+            case 1029: rpcUrl = "http://main.confluxrpc.com"; break;
+            case 1: rpcUrl = "http://test.confluxrpc.com"; break;
             // evm do not have this page, put it here anyway.
-            case 1030: rpcUrl = "https://evm.confluxrpc.com/cfxbridge"; break;
-            case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
+            case 1030: rpcUrl = "http://evm.confluxrpc.com/cfxbridge"; break;
+            case 71: rpcUrl = "http://evmtestnet.confluxrpc.com/cfxbridge"; break;
             default: throw new Errors.BizError("Unsupported network "+StatApp.networkId)
         }
         const stateCfx = await initCfxSdk({url: rpcUrl, networkId: StatApp.networkId});
