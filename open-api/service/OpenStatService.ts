@@ -277,6 +277,8 @@ function parseTopStatParam(ctx) {
 }
 
 async function getTokenAnalysisData(ctx){
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
+
     const {contract, minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
     if(contract === undefined) {
         throw new Error(`Invalid parameter <contract> with value [${contract}], contract is required.`)

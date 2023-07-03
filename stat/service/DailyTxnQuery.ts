@@ -4,6 +4,8 @@ import {DailyCfxTxn} from "../model/CfxTransfer";
 import {DailyTokenTxn, T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
 import {Errors} from "./common/LogicError";
+import {format} from "js-conflux-sdk";
+import {StatApp} from "../StatApp";
 
 export class DailyTxnQuery{
 
@@ -116,9 +118,10 @@ export class DailyTxnQuery{
 
     async listDailyTokenAnalysis({minTimestamp = undefined, maxTimestamp = undefined, sort='asc',
                                          skip = 0, limit = 10, contract}) {
+        const base32 = format.address(contract, StatApp.networkId);
         const token = await Token.findOne({
             attributes: ['name', 'symbol', 'decimals', 'granularity', 'totalSupply', 'type', 'hex40id'],
-            where: {base32: contract}
+            where: {base32},
         });
         if (!token) {
             throw new Errors.ParameterError(`Token ${contract} not found.`)
