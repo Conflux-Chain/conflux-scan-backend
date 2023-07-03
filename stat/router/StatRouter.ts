@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk"
+import {Conflux, format} from "js-conflux-sdk"
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import {Context} from 'koa'
@@ -359,11 +359,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/get-cfx-balance-at', async ctx=>{
+        if (ctx.request.query.epoch === '') {
+            delete ctx.request.query.epoch
+        }
         mustBeIntParamIfPresent(ctx.request.query, 'epoch');
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountBase32');
 
         const {dt, epoch, accountBase32} = ctx.request.query
-        if ( (dt === undefined && epoch === undefined) || accountBase32 === undefined) {
+        if ( (!dt && !epoch) || !accountBase32) {
             throw new Errors.ParameterError(`miss parameter, query: ${ctx.request.query}`);
         }
         const hex = format.hexAddress(accountBase32)
@@ -372,14 +375,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`${accountBase32} not found`);
         }
         let cfxByEpoch;
+        const stateCfx = StatApp.isEVM ?  new Conflux({url: 'https://main.confluxrpc.com/cfxbridge'})
+            : new Conflux({url: 'https://main.confluxrpc.com'})
         if (epoch) {
             const epochNumber = Number(epoch)
-            cfxByEpoch = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch:{[Op.lte]: epochNumber}},
-                order:[['epoch','desc'],['seq','desc']], limit: 1, raw: true})
-            if (cfxByEpoch) {
-                const epoch = await Epoch.findByPk(cfxByEpoch.epoch)
-                cfxByEpoch['epoch_dt'] = (epoch||{}).timestamp
-            }
+            const balance = await stateCfx.getBalance(accountBase32, epochNumber)
+            const nearestEpoch = await Epoch.findOne({where:{epoch: epochNumber}})
+            cfxByEpoch = {epoch, epoch_dt: nearestEpoch?.timestamp || '', balance}
         }
         let cfxByDt;
         if (dt) {
@@ -390,14 +392,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 throw new Error(`invalid parameter, date ${dt}`)
             }
             const nearestEpoch = await Epoch.findOne({where:{timestamp:{[Op.lte]:d}}, order:[['timestamp','desc']], limit: 1})
-            const number = nearestEpoch?.epoch || 0
-            cfxByDt = await CfxBill.findOne({where:{ownerId: hexBean.id, epoch: {[Op.lte]: number} },
-                order:[['epoch','desc'],['seq','desc']], limit: 1, raw: true})
-            if (cfxByDt) {
-                cfxByDt['dt'] = d
-                const epoch = await Epoch.findByPk(cfxByDt.epoch)
-                cfxByDt['epoch_dt'] = (epoch||{}).timestamp
-            }
+            const epochNumber = nearestEpoch?.epoch || 0
+            const balance = await stateCfx.getBalance(accountBase32, epochNumber)
+            cfxByDt = {epoch: epochNumber, epoch_dt: nearestEpoch?.timestamp, balance}
         }
         ctx.body = {cfxByEpoch, cfxByDt}
     })
