@@ -86,13 +86,6 @@ export class StatApp{
     public async init() {
         this.cfx = await initCfxSdk(this.config.conflux);
         StatApp.networkId = this.cfx.networkId
-        let fullStageRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
-        if (fullStageRpc) {
-            this.fullStateCfx = await initCfxSdk({url: fullStageRpc});
-        } else {
-            console.log(`config not found for ${KEY_FULL_STATE_RPC}`);
-            this.fullStateCfx = this.cfx;
-        }
         PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
@@ -168,6 +161,13 @@ export class StatApp{
         }
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
+        }
+        let fullStageRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
+        if (fullStageRpc) {
+            this.fullStateCfx = await initCfxSdk({url: fullStageRpc});
+        } else {
+            console.log(`config not found for ${KEY_FULL_STATE_RPC}`);
+            this.fullStateCfx = this.cfx;
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)
