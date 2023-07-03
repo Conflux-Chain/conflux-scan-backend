@@ -383,7 +383,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
             default: throw new Errors.BizError("Unsupported network "+StatApp.networkId)
         }
-        const stateCfx = new Conflux({url: rpcUrl});
+        const stateCfx = new Conflux({url: rpcUrl, networkId: StatApp.networkId});
         if (epoch) {
             const epochNumber = Number(epoch)
             const balance = await stateCfx.getBalance(accountBase32, epochNumber)
