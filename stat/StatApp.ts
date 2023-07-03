@@ -29,7 +29,7 @@ import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {PruneHandler} from "./service/prune/PruneHandler";
 import {initCfxSdk, patchFormat} from "./service/common/utils";
-import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "./model/KV";
+import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KEY_FULL_STATE_RPC, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
@@ -45,6 +45,7 @@ export class StatApp{
     public rankService: RankService;
     public txnSync: TxnSync;
     public cfx: Conflux;
+    public fullStateCfx: Conflux;
     public contractService: ContractService;
     public batchBalanceWatcher: BatchBalanceWatcher;
     public cfxWatcher:CfxWatcher;
@@ -160,6 +161,13 @@ export class StatApp{
         }
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
+        }
+        let fullStageRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
+        if (fullStageRpc) {
+            this.fullStateCfx = await initCfxSdk({url: fullStageRpc});
+        } else {
+            console.log(`config not found for ${KEY_FULL_STATE_RPC}`);
+            this.fullStateCfx = this.cfx;
         }
         // Register global process events and graceful shutdown
         // registerProcessEvents(logger, this.sequelize)

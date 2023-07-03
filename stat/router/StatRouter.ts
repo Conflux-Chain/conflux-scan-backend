@@ -26,6 +26,7 @@ import {listNftOfAccountByContract} from "../service/NftService";
 import {BalanceService} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
+    initCfxSdk,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
@@ -374,19 +375,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`${accountBase32} not found`);
         }
         let cfxByEpoch;
-        let rpcUrl;
-        switch (StatApp.networkId) {
-            case 1029: rpcUrl = "https://main.confluxrpc.com"; break;
-            case 1: rpcUrl = "https://test.confluxrpc.com"; break;
-            // evm do not have this page, put it here anyway.
-            case 1030: rpcUrl = "https://evm.confluxrpc.com/cfxbridge"; break;
-            case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
-            default: throw new Errors.BizError("Unsupported network "+StatApp.networkId)
-        }
-        const stateCfx = new Conflux({url: rpcUrl});
         if (epoch) {
             const epochNumber = Number(epoch)
-            const balance = await stateCfx.getBalance(accountBase32, epochNumber)
+            const balance = await statApp.fullStateCfx.getBalance(accountBase32, epochNumber)
             const nearestEpoch = await Epoch.findOne({where:{epoch: epochNumber}})
             cfxByEpoch = {epoch, epoch_dt: nearestEpoch?.timestamp || '', balance}
         }
@@ -400,7 +391,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             }
             const nearestEpoch = await Epoch.findOne({where:{timestamp:{[Op.lte]:d}}, order:[['timestamp','desc']], limit: 1})
             const epochNumber = nearestEpoch?.epoch || 0
-            const balance = await stateCfx.getBalance(accountBase32, epochNumber)
+            const balance = await statApp.fullStateCfx.getBalance(accountBase32, epochNumber)
             cfxByDt = {epoch: epochNumber, epoch_dt: nearestEpoch?.timestamp, balance}
         }
         ctx.body = {cfxByEpoch, cfxByDt}
