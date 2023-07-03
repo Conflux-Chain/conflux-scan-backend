@@ -26,6 +26,7 @@ import {listNftOfAccountByContract} from "../service/NftService";
 import {BalanceService} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
+    initCfxSdk,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
@@ -383,7 +384,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
             default: throw new Errors.BizError("Unsupported network "+StatApp.networkId)
         }
-        const stateCfx = new Conflux({url: rpcUrl, networkId: StatApp.networkId});
+        const stateCfx = await initCfxSdk({url: rpcUrl, networkId: StatApp.networkId});
         if (epoch) {
             const epochNumber = Number(epoch)
             const balance = await stateCfx.getBalance(accountBase32, epochNumber)
