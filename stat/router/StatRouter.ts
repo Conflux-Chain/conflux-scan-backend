@@ -377,7 +377,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         let rpcUrl;
         switch (StatApp.networkId) {
             case 1029: rpcUrl = "https://main.confluxrpc.com"; break;
-            case 1: rpcUrl = "https://tesetnet.confluxrpc.com"; break;
+            case 1: rpcUrl = "https://testnet.confluxrpc.com"; break;
+            // evm do not have this page, put it here anyway.
             case 1030: rpcUrl = "https://evm.confluxrpc.com/cfxbridge"; break;
             case 71: rpcUrl = "https://evmtestnet.confluxrpc.com/cfxbridge"; break;
             default: throw new Errors.BizError("Unsupported network "+StatApp.networkId)
@@ -863,6 +864,11 @@ export function register(app:Koa, statApp: StatApp) {
         } catch (e) {
             if(e.code === undefined){
                 e = new Errors.BizError(e.message);
+            }
+            if (e.status === undefined || e.status === null) {
+                e.status = 500;
+                e.message = "unknown error"
+                console.log("unknown error caught by router:", e)
             }
             ctx.status = e.status;
             ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
