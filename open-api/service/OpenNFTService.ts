@@ -42,8 +42,9 @@ export async function listNFTTokensPro(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'skip', 'limit', 'tokenId');
     mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
     mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'suppressMetadataError', ['false', 'true']);
 
-    const {owner, contract, tokenId, withBrief, withMetadata, sort, sortField, cursor} = ctx.request.query;
+    const {owner, contract, tokenId, withBrief, withMetadata, suppressMetadataError, sort, sortField, cursor} = ctx.request.query;
     const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
     if(!contract && !owner) {
         throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
@@ -51,87 +52,15 @@ export async function listNFTTokensPro(ctx) {
 
     const data = await getApiService().nftCheckerService.getNftTokensForOpenApiPro({
         owner, contract, tokenId: tokenId?.toString(), sort, sortField, cursor, skip, limit});
+    if(withBrief === 'true') {
+        console.log(`listNFTTokensPro withBrief is true`)
+    }
     if(withBrief === 'true' || withMetadata === 'true') {
-        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
+        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata, suppressMetadataError});
         ctx.set('external-ms', externalMs)
     }
 
     data?.list?.forEach(row => {
-        StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
-    });
-    setBody(ctx, data)
-}
-
-export async function listNFTTokensPlus(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
-    mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
-    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'cursor', 'limit', 'tokenId');
-    mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
-    mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
-
-    const {owner, contract, tokenId, withBrief, withMetadata, cursor} = ctx.request.query;
-    const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
-    if(!contract && !owner) {
-        throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
-    }
-
-    const data = await getApiService().nftCheckerService.getNftTokensForOpenApiPlus({
-        owner, contract, tokenId: tokenId?.toString(), skip, cursor, limit});
-    if(withBrief === 'true' || withMetadata === 'true') {
-        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
-        ctx.set('external-ms', externalMs)
-    }
-
-    data?.list?.forEach(row => {
-        StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
-    });
-    setBody(ctx, data)
-}
-
-export async function listNFTTokensNew(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner', 'contract');
-    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'cursor', 'limit', 'tokenId');
-    mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
-    mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
-
-    const {owner, contract, tokenId, withBrief, withMetadata, cursor} = ctx.request.query;
-    const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
-    if(!contract && !owner) {
-        throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
-    }
-
-    const data = await getApiService().nftCheckerService.getNftTokensForOpenApiNew({
-        owner, contract, tokenId: tokenId?.toString(), skip, cursor, limit});
-    if(withBrief === 'true' || withMetadata === 'true') {
-        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
-        ctx.set('external-ms', externalMs)
-    }
-
-    data?.list?.forEach(row => {
-        StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
-    });
-    setBody(ctx, data)
-}
-
-export async function listNFTTokens(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner', 'contract');
-    mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit', 'tokenId');
-    mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);
-    mustBeEnumParamIfPresent(ctx.request.query, 'withMetadata', ['false', 'true']);
-
-    const {owner, contract, tokenId, withBrief, withMetadata} = ctx.request.query;
-    const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
-    checkPresent({contract}, ['contract']);
-
-    const data = await getApiService().nftCheckerService.getNftTokensForOpenApi({owner, contract, tokenId, skip, limit});
-    if(withBrief === 'true' || withMetadata === 'true'){
-        const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata});
-        ctx.set('external-ms', externalMs)
-    }
-
-    data?.list?.forEach(row => {
-        delete row['owner'];
-        delete row['amount'];
         StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
     });
     setBody(ctx, data)
@@ -168,7 +97,7 @@ export async function listNFTOwners(ctx) {
     setBody(ctx, data)
 }
 
-async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
+async function batchGetNFTInfoList({nftList, withBrief, withMetadata, suppressMetadataError}){
     let total = nftList?.length;
     if (!total) {
         return 0;
@@ -183,8 +112,13 @@ async function batchGetNFTInfoList({nftList, withBrief, withMetadata}){
         const nftArray = nftList.slice(skip, skip + pageSize)
         if (nftArray?.length) {
             await Promise.all(nftArray?.map(async (item) => {
-                const nftInfo = await getApiService().nftPreviewService.getNFTInfo({contractAddress: item.contract,
-                    tokenId: BigInt(item.tokenId)});
+                const nftInfo: any = await getApiService().nftPreviewService
+                    .getNFTInfo({contractAddress: item.contract, tokenId: BigInt(item.tokenId)})
+                    .catch(e => {
+                        if(suppressMetadataError !== 'true') throw e;
+                        return {detail: e.partialData, error: e.message};
+                    });
+
                 const brief = withBrief === 'true' ? {name: nftInfo?.imageName?.en, image: nftInfo?.imageUri,
                     description: nftInfo?.imageDesc} : undefined;
                 const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;

@@ -7,7 +7,7 @@ import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Hex40Map} from "../../model/HexMap";
-import {Op, QueryTypes} from "sequelize";
+import {literal, Op, QueryTypes} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
 import {AddressNft, AddressNfts} from "../../model/AddrNft";
@@ -16,6 +16,8 @@ import {Erc1155Data, NftMint} from "../../model/Token";
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {sleep} from "./ProcessTool";
+import {DailyTransaction} from "../../model/DailyTransaction";
+import {FullTransaction} from "../../model/FullBlock";
 
 const lodash = require('lodash');
 const { format, sign } = require('js-conflux-sdk');
@@ -47,6 +49,36 @@ async function parseVerified(base32) {
     const abi = JSON.parse(v.abi);
     await saveAbiInfo(abi);
     console.log(`generate abi info for ${base32}`);
+}
+
+export async function batchParseVerified() {
+    let total = 0;
+    let count;
+    let cursor = 0;
+    do{
+        const items = await ContractVerify.findAll({
+            attributes: ['id', 'abi', 'base32'],
+            where: {verifyResult: true, id: {[Op.gte]: cursor}},
+            order:[["id","asc"]],
+            limit: 100
+        });
+        count = items?.length;
+
+        if(count) {
+            for (const item of items) {
+                const abi = JSON.parse(item.abi);
+                try{
+                    await saveAbiInfo(abi);
+                } catch (e) {
+                    console.log(`saveAbiInfo`, item.base32, e);
+                }
+            }
+            total += count;
+            cursor = items[items.length-1].id + 1;
+            console.log(`generate abi info, total ${total}`);
+        }
+    }while (count);
+    console.log(`generate abi info, done!`)
 }
 
 async function paddingCursorIdForAddressTransfer(times: number, rows: number) {
@@ -678,7 +710,11 @@ async function run() {
         await fixMinimalProxyContract();
     }
     if(type === 6) {
-        await parseVerified(base32);
+        if(base32 === '0') {
+            await batchParseVerified();
+        } else{
+            await parseVerified(base32);
+        }
     }
     if(type === 7) {
         await paddingCursorIdForAddressTransfer(times, rows);

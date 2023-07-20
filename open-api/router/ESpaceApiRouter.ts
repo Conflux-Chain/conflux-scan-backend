@@ -34,7 +34,7 @@ import {
 } from "../service/OpenTokenService";
 import {
     listNFTBalances,
-    listNFTTokens,
+    listNFTTokensPro,
     getNFTPreview,
     listNFTTokensByFts,
     listNFTOwners,
@@ -568,7 +568,7 @@ export function registerRouter(router: Router) {
 
     // nft assets
     router.get('/nft/balances', listNFTBalances);
-    router.get('/nft/tokens', listNFTTokens);
+    router.get('/nft/tokens', listNFTTokensPro);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
     router.get('/nft/owners', listNFTOwners);

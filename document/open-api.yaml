@@ -449,6 +449,7 @@ paths:
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/withBriefParam'
         - $ref: '#/components/parameters/withMetadataParam'
+        - $ref: '#/components/parameters/suppressMetadataErrorParam'
       responses:
         200:
           description: ''
@@ -2833,6 +2834,14 @@ components:
     withMetadataParam:
       description: "If show metadata, the value is true/false."
       name: withMetadata
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
+    suppressMetadataErrorParam:
+      description: "If suppress error when withBrief and/or withMetadata is set to true to parse metadata, the value is true/false."
+      name: suppressMetadataError
       in: query
       required: false
       schema:
