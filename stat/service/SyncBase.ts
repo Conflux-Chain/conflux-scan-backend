@@ -272,7 +272,6 @@ export abstract class SyncBase{
         } = this;
 
         const eventLogArray = await this.getLogs({epochNumber, epochTimestamp});
-        console.log(`eventLogArray---2---${JSON.stringify(eventLogArray)}`)
         const groupedLogs = {
             epochNumber,
             transfer20Array: [],
@@ -292,8 +291,6 @@ export abstract class SyncBase{
                 tokenTool.decodeNameTagChanged(eventLog),
                 tokenTool.decodeLabelChanged(eventLog),
             ]);
-            console.log(`nameTag---3---${JSON.stringify(nameTag)}`)
-            console.log(`label---4---${JSON.stringify(label)}`)
             if(transfer20) {groupedLogs.transfer20Array.push(transfer20);}
             if(transfer721) {groupedLogs.transfer721Array.push(transfer721);}
             if(transfer1155) {groupedLogs.transfer1155Array.push(transfer1155);}

@@ -19,9 +19,9 @@ const lodash = require('lodash');
 
 export class AccountQuery {
     protected app: any;
-    protected cautionSet: Set<string> = new Set<string>();
     protected CAUTION_FLUSH_INTERVAL = 180_000; // 3 min
     protected cautionLoadTimestamp;
+    public cautionSet: Set<string> = new Set<string>();
 
 
     constructor(app: any) {
