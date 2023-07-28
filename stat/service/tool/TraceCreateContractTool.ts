@@ -35,6 +35,7 @@ let hash;
 let epochNumber;
 let minEpoch;
 let maxEpoch;
+let store;
 let toFindHexAddress;
 
 async function init() {
@@ -50,8 +51,8 @@ async function init() {
     tokenTool = new TokenTool(cfx);
 
     const app = {cfx, networkId: StatApp.networkId, tokenTool};
-    epochSync = new EpochSync(app);
-    // epochSync = new EpochNftTransferSync(app);
+    // epochSync = new EpochSync(app);
+    epochSync = new EpochNftTransferSync(app);
     contractQuery = new ContractQuery(app);
 }
 
@@ -419,7 +420,11 @@ async function getDataByEpochNumber(){
 async function getDataByEpochNumberForNft(){
     for(let epochNumber = minEpoch; epochNumber <= maxEpoch; epochNumber++){
         const data = await epochSync.getData(epochNumber);
-        console.log(`data ${JSON.stringify(data)}`)
+        // console.log(`data ${JSON.stringify(data)}`)
+        if(store) {
+            await epochSync.save(epochNumber, data.modelData);
+            // console.log(`store done!`)
+        }
     }
 }
 
@@ -448,6 +453,11 @@ if(type === 8 && args[2] && args[3]){
 if((type === 9 || type === 10 || type === 12) && args[2] && args[3]){
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
+}
+if(type === 10 && args[2] && args[3] && args[4]){
+    minEpoch = Number(args[2]);
+    maxEpoch = Number(args[3]);
+    store = Number(args[4]);
 }
 
 console.log(`params======networkId:${StatApp.networkId}======type:${type}======minEpoch:${minEpoch}======maxEpoch:${maxEpoch}======toFindHexAddress:${toFindHexAddress}`);

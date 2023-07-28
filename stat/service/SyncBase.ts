@@ -94,7 +94,7 @@ export abstract class SyncBase{
         try {
             data = await this.getDataForwardWithPreload(epochNumber);
             if(data.syncCode === SyncCode.RETRY) {
-                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry:${data.message}`);
+                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
                 await sleep(10_000);
                 return epochNumber;
             }
@@ -318,7 +318,7 @@ export abstract class SyncBase{
                 const latest = await cfx.getEpochNumber('latest_state');
                 console.log(`epoch-sync.eventLogArray epoch:${epochNumber} latestState:${latest} not executed`)
             } else {
-                console.log(`epoch-sync.eventLogArray epoch:${epochNumber} error:${msg}`)
+                throw new Error(`[epoch=${epochNumber}]getLogs retry: ${msg}`);
             }
             return [];
         });

@@ -34,7 +34,12 @@ export class EpochNftTransferSync extends SyncBase{
         const {epoch, blockHashArray, blockArray} = epochData;
         const epochTimestamp = epoch.timestamp;
 
-        const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
+        let eventLogInfo;
+        try{
+            eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
+        }catch(error) {
+            return {syncCode: SyncCode.RETRY, message: `${error}`};
+        }
         const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
         const nftTransferArray = await this.getNftTransferArray(epochNumber, tokenTransferArray);
         const addrNftTransferArray = await this.getAddrNftTransferArray(epochNumber,tokenTransferArray);
