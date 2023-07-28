@@ -359,7 +359,7 @@ export async function checkRateByLevel(ctx, next) {
             msg = `Too many requests. Allow ${rateLimiterDaily['points']}/day`;
         }
         ctx.body = {code: 429, message: msg};
-        console.log(`${ip} ${ctx?.url} rateId ${rateId} paid ${paid} level ${level} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
+        // console.log(`${ip} ${ctx?.url} rateId ${rateId} paid ${paid} level ${level} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
         return;
     }
 
