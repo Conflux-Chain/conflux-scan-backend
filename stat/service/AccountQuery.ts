@@ -14,6 +14,7 @@ import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Erc1155Data, NftMint} from "../model/Token";
 import {NameTag} from "../model/NameTag";
 import {KEY_CAUTION_LABELS, KV} from "../model/KV";
+import {EpochSync} from "./EpochSync";
 
 const lodash = require('lodash');
 
@@ -174,7 +175,7 @@ export class AccountQuery {
         nameTagArray.forEach(item => {
             const nameTag = lodash.pick(item, ['nameTag', 'website', 'desc', 'labels']);
             if(nameTag?.labels) {
-                nameTag.labels = nameTag.labels.split(',');
+                nameTag.labels = nameTag.labels.split(EpochSync.NAME_TAG_SPLIT);
                 const caution = nameTag.labels.find(label => this.cautionSet.has(label));
                 nameTag.labels = caution ? [caution] : nameTag.labels;
                 nameTag.caution = caution ? 1 : 0;

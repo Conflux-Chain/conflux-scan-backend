@@ -65,6 +65,8 @@ export class EpochSync extends SyncBase{
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
 
+    public static NAME_TAG_SPLIT = "__,__";
+
     protected app;
     private NAME_TYPE_MAP;
 
@@ -470,7 +472,7 @@ export class EpochSync extends SyncBase{
         const nameTagMap = lodash.keyBy(nameTagDbArray, 'base32');
         Object.keys(nameTagMap).forEach(base32 => {
             const nameTag = nameTagMap[base32];
-            nameTag.labels = new Set(nameTag.labels ? nameTag.labels.split(',') : []);
+            nameTag.labels = new Set(nameTag.labels ? nameTag.labels.split(EpochSync.NAME_TAG_SPLIT) : []);
         });
 
         for(const item of nameTagArray) {
@@ -515,7 +517,7 @@ export class EpochSync extends SyncBase{
             item['hex40id'] = addressInfoMap[item['base32']].hex40id;
             item['eoa'] = !contractIdSet.has(addressInfoMap[item['base32']].hex40id);
             item['auditor'] = format.address(item['auditor'], StatApp.networkId);
-            item['labels'] = [...item['labels']].join(',');
+            item['labels'] = [...item['labels']].join(EpochSync.NAME_TAG_SPLIT);
             return item;
         });
     }
