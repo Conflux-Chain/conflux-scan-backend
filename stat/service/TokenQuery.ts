@@ -140,7 +140,7 @@ export class TokenQuery {
                 order: [['epoch', 'ASC']]
             });
             eoaList = await NameTag.findAll({ offset: 0, limit: 100, raw: true,
-                attributes: ['base32', 'nameTag', 'labels'], where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
+                attributes: [['base32', 'address'], 'nameTag', 'labels'], where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
                 order: [['epoch', 'ASC']]
             });
             eoaList?.forEach(nameTag => {

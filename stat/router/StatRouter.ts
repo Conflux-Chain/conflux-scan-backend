@@ -199,6 +199,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (StatApp.isEVM) {
             result?.list?.forEach(item => item.address = format.hexAddress(item.address));
             result?.contractList?.forEach(item => item.address = format.hexAddress(item.address));
+            result?.eoaList?.forEach(item => item.address = format.hexAddress(item.address));
         }
 
         ctx.body = result;
