@@ -346,8 +346,10 @@ class ContractService { // TODO: extends AccountService
       implementation = { address: verified.implementation, verify: { exactMatch: verified.implementationVerified } };
     }
 
+    const collateralForStorageInfo = await service.accountQuery.getCollateralForStorageInfo(address);
+
     return lodash.defaults(account, createInfo, announceInfo, { verify }, { proxy }, {beacon}, { implementation },
-        { destroy });
+        { destroy, collateralForStorageInfo });
   }
 
   async _countAndListByAddressArrayPlus({

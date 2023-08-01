@@ -46,7 +46,7 @@ async function testNftTokens(query:string) {
 
         async function query() {
             const start = Date.now()
-            const result = await svc.getNftTokensForOpenApi(param as any)
+            const result = await svc.getNftTokensForOpenApiPro(param as any)
             console.log(`${new Date().toISOString()} costs ${Date.now() - start} ms, total ${result.total}`)
         }
 

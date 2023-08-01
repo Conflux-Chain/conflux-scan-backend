@@ -145,7 +145,7 @@ export class TokenQuery {
             });
             eoaList?.forEach(nameTag => {
                 if(nameTag?.labels) {
-                    nameTag.labels = nameTag.labels.split(',');
+                    nameTag.labels = nameTag.labels.split(EpochSync.NAME_TAG_SPLIT);
                     const caution = nameTag.labels.find(label => accountQuery?.cautionSet.has(label));
                     delete nameTag.labels;
                     nameTag.caution = caution ? 1 : 0;

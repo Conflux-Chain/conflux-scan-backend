@@ -17,6 +17,7 @@ import {KEY_CAUTION_LABELS, KV} from "../model/KV";
 import {EpochSync} from "./EpochSync";
 
 const lodash = require('lodash');
+const BigFixed = require('bigfixed');
 
 export class AccountQuery {
     protected app: any;
@@ -156,6 +157,14 @@ export class AccountQuery {
     }
 
     public async listNameTagInfo(idHexMap) {
+        // filter by tld
+        const {
+            app: { config },
+        } = this;
+        if(config?.tldOpenapi === 'net') {
+            return {total: 0, map: {}};
+        }
+
         // init caution labels
         if(!this.cautionSet.size || (Date.now() - this.cautionLoadTimestamp >= this.CAUTION_FLUSH_INTERVAL)) {
             const cautionLabels = await KV.getString(KEY_CAUTION_LABELS, '');
@@ -231,5 +240,35 @@ export class AccountQuery {
             result[hexBean.id] = `0x${hexBean.hex}`;
         })
         return result;
+    }
+
+    public async getCollateralForStorageInfo(addr) {
+        const {
+            app: { cfx },
+        } = this;
+
+        const accountInfo = await cfx.getAccount(addr);
+        const sponsorInfo = await cfx.getSponsorInfo(addr);
+
+        const usedStoragePoints = BigFixed(sponsorInfo.usedStoragePoints);
+        const usedStoragePointsInCFX = usedStoragePoints.div(BigFixed(1024)).mul(BigFixed(1e18));
+        const usedRefundableInCFX = BigFixed(accountInfo.collateralForStorage).sub(BigFixed(usedStoragePointsInCFX));
+
+        const totalStoragePoints = BigFixed(sponsorInfo.availableStoragePoints).add(BigFixed(sponsorInfo.usedStoragePoints));
+        const totalRefundableInCFX = BigFixed(sponsorInfo.sponsorBalanceForCollateral).add(usedRefundableInCFX);
+
+        const availStoragePoints = BigFixed(sponsorInfo.availableStoragePoints);
+        const availRefundableInCFX = BigFixed(sponsorInfo.sponsorBalanceForCollateral);
+
+        return {
+            storageUsed: {
+                storagePoint: usedStoragePoints, // in points
+                storageCollateral: usedRefundableInCFX, // in drip
+            },
+            storageQuota: {
+                storagePoint: availStoragePoints, // in points
+                storageCollateral: availRefundableInCFX, // in drip
+            }
+        };
     }
 }

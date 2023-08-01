@@ -5,6 +5,7 @@ import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 import {Contract} from "./Contract";
 const NodeCache = require( "node-cache" );
+const lodash = require('lodash');
 
 export const CONTRACT_STAKING = '0x0888000000000000000000000000000000000002'
 // use virtual contract address to make special transfer more readable.
@@ -411,6 +412,9 @@ export function patchBase32prop(list:any[], fromKey: string, toKey: string, isEv
     return base32arr
 }
 export async function getAddrIdArray(addressArray) {
+    if(!lodash.isArray(addressArray)) {
+        addressArray = [addressArray]
+    }
     const hexArray = addressArray.map(item => format.hexAddress(item));
     const hexIdMap = await hex40IdMap(hexArray);
     return [...hexIdMap.values()];

@@ -13,6 +13,7 @@ const concurrenceControl = require('../../common/middleware/concurrenceControl')
 const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
 const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
+const {StatApp} = require("../../stat/dist/StatApp");
 
 const jsonrpc = new JsonRPCFlow();
 
@@ -922,9 +923,9 @@ jsonrpc.method('exportTransaction',
   },
 
   buildFlow((app) => type([{
-    from: app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    to: app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    contractCreated: app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+    from: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+    to: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+    contractCreated: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
   }])),
 
   arrayToCSVFlow([
@@ -977,13 +978,10 @@ jsonrpc.method('exportTransfer',
       app: { tool, service, logger, tokenTool },
     } = this;
 
-    logger.error(`exportTransfer-----------------options:${JSON.stringify(options)}`);
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
-    logger.error(`exportTransfer-----------------transferType:${transferType},accountBase32:${accountBase32}`);
     const { list } = await service.transfer.countAndList({ ...options, transferType });
     for (const each of list) {
-      logger.error(`exportTransfer-----------------each:${JSON.stringify(each)}`);
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
         each.decimals = 18;
       } else {
@@ -1010,9 +1008,9 @@ jsonrpc.method('exportTransfer',
   },
 
   buildFlow((app) => type([{
-    address: app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    from: app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    to: app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+    address: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+    from: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+    to: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
   }])),
 
   arrayToCSVFlow([

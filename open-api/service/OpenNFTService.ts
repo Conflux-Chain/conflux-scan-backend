@@ -60,9 +60,12 @@ export async function listNFTTokensPro(ctx) {
         ctx.set('external-ms', externalMs)
     }
 
-    data?.list?.forEach(row => {
-        StatApp.isEVM && (row.contract = row.contract ? format.hexAddress(row.contract) : row.contract);
-    });
+    if(StatApp.isEVM) {
+        data?.list?.forEach(row => {
+            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+            row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
+        });
+    }
     setBody(ctx, data)
 }
 
@@ -92,7 +95,10 @@ export async function listNFTOwners(ctx) {
     const data = await getApiService().nftCheckerService.getNftOwnersForOpenApi({contract, tokenId: tokenId?.toString(), cursor, limit});
 
     if (StatApp.isEVM) {
-        data?.list?.forEach(row => {row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;});
+        data?.list?.forEach(row => {
+            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+            row.address = row.address ? format.hexAddress(row.address) : row.address;
+        });
     }
     setBody(ctx, data)
 }

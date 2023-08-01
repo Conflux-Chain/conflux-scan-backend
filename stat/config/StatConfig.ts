@@ -64,6 +64,16 @@ export interface JSONRpcOption {
     url: string,
     proxy: object,
 }
+export interface SyncQuoteOption{
+    open: boolean;
+    interval: {
+        bn: number,
+        cmc: number,
+        moonswap: number,
+        swappi: number,
+        peer: number,
+    },
+}
 export interface StatConfig{
     redis: RedisConf
     influxDB?: ISingleHostConfig
@@ -107,10 +117,10 @@ export interface StatConfig{
     recaptchaToken:string,
     reportUrl: string,
 
-    syncQuote: boolean,
-    syncQuoteDelay: number,
     syncIPFSGateway: boolean,
     syncIPFSGatewayDelay: number,
+
+    syncQuote: SyncQuoteOption,
     quoteConvertSymbolArray: Array<string>,
     marketCapToken: string,
     binanceToken: string,
@@ -151,7 +161,6 @@ export interface StatConfig{
     ensChecker: string,
     reverseRecords: string,
 
-    pullPrice: boolean,
     tldOpenapi: string,
 
     censorAppId: string,
