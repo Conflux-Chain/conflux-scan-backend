@@ -2,11 +2,11 @@ import {Epoch} from "../model/Epoch";
 import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
-import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
+import {ESpaceHex40Map, getAddrIdBase32Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
-import {Transaction} from "sequelize";
+import {Op, Transaction} from "sequelize";
 import {batchBlockDetail} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {Erc20Transfer} from "../model/Erc20Transfer";
@@ -25,6 +25,7 @@ import {Errors} from "./common/LogicError";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
 import {CensorItem} from "../model/CensorItem";
 import {CENSOR_TYPE} from "./censor/CensorService";
+import {NameTag} from "../model/NameTag";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -59,9 +60,12 @@ export class EpochSync extends SyncBase{
     public static SYNC_EVM_ADDR = true;
     public static SYNC_TRANSFERRED_NFT = true;
     public static SYNC_CENSOR_ITEM = true;
+    public static SYNC_NAME_TAG = true;
 
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
+
+    public static NAME_TAG_SPLIT = "__,__";
 
     protected app;
     private NAME_TYPE_MAP;
@@ -86,6 +90,7 @@ export class EpochSync extends SyncBase{
             const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
             const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
             const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
+            const nameTagInfo = await this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray);
 
             const traceArray = await this.getTraceArray(epochNumber);
             const createArray = await this.getTraceCreateArrayPlus(traceArray);
@@ -111,7 +116,7 @@ export class EpochSync extends SyncBase{
                 syncCode: SyncCode.SUCCESS,
                 parentHash: epoch.parentHash,
                 pivotHash: epoch.pivotHash,
-                modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, traceCreateArray,
+                modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
                     traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
             };
         }catch(error) {
@@ -147,6 +152,12 @@ export class EpochSync extends SyncBase{
             for(const token of tokenArray){
                 if(!EpochSync.SYNC_TOKEN_DETECT) break;
                 await Token.upsert(token);
+            }
+            const nameTagArray = modelData.nameTagInfo;
+            for (const nameTag of nameTagArray) {
+                if(!EpochSync.SYNC_NAME_TAG) break;
+                console.log('epoch-sync.nameTag', nameTag);
+                await NameTag.upsert(nameTag);
             }
         });
 
@@ -200,11 +211,11 @@ export class EpochSync extends SyncBase{
             if(!EpochSync.SYNC_EVM_ADDR) break;
             if(traceCrossSpace.fromSpace === 'evm'){
                 await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
-                    .catch((e) => console.log(`epoch-sync.espaceHexAddr`, e));
+                    .catch(() => undefined);
             }
             if(traceCrossSpace.toSpace === 'evm'){
                 await ESpaceHex40Map.create({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)})
-                    .catch((e) => console.log(`epoch-sync.espaceHexAddr`, e));
+                    .catch(() => undefined);
             }
         }
 
@@ -222,9 +233,9 @@ export class EpochSync extends SyncBase{
             const addrTransferDel = await AddressTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
             const censorItemDel = await CensorItem.destroy({where: {epochNumber}, transaction: dbTx});
-            console.log(`epoch-sync.delete epoch:${epochNumber}, epochDel:${epochDel}, minerBlockDel:${minerBlockDel},
-                traceCreateDel:${traceCreateDel},addrTransferDel:${addrTransferDel},contractDestroyDel:${contractDestroyDel},
-                censorItemDel:${censorItemDel}`);
+            console.log('epoch-sync.delete epoch:', epochNumber, 'epochDel:', epochDel, 'minerBlockDel:', minerBlockDel,
+                'traceCreateDel:', traceCreateDel, 'addrTransferDel:', addrTransferDel, 'contractDestroyDel:', contractDestroyDel,
+                'censorItemDel:', censorItemDel);
         });
 
         if(TransferTpsService.TPS_TRANSFER_NOTIFY) {
@@ -448,6 +459,67 @@ export class EpochSync extends SyncBase{
             return Erc721Transfer.count({ where: { contractId: addressId }});
         if(transferType === CONST.TRANSFER_TYPE.ERC1155)
             return Erc1155Transfer.count({ where: { contractId: addressId }});
+    }
+
+    // --------------------- business method for name tag -----------------------
+    private async getNameTagInfo(epochNumber, nameTagArray, labelArray) {
+        const base32Array = [...nameTagArray, ...labelArray].map(i => format.address(i.addr, StatApp.networkId));
+        if(!base32Array?.length) {
+            return [];
+        }
+
+        const nameTagDbArray = await NameTag.findAll({where: {base32: {[Op.in]: base32Array}}, raw: true});
+        const nameTagMap = lodash.keyBy(nameTagDbArray, 'base32');
+        Object.keys(nameTagMap).forEach(base32 => {
+            const nameTag = nameTagMap[base32];
+            nameTag.labels = new Set(nameTag.labels ? nameTag.labels.split(EpochSync.NAME_TAG_SPLIT) : []);
+        });
+
+        for(const item of nameTagArray) {
+            const {auditor, addr, newNameTag, newWebsite, newDesc} = item;
+            const base32 = format.address(addr, StatApp.networkId);
+            if(!nameTagMap[base32]) {
+                nameTagMap[base32] = {base32, auditor, epoch: epochNumber, labels: new Set()};
+            }
+            nameTagMap[base32].nameTag = newNameTag;
+            nameTagMap[base32].website = newWebsite;
+            nameTagMap[base32].desc = newDesc;
+        }
+        for (const item of labelArray) {
+            const {auditor, addr, oldLabel, newLabel} = item;
+            const base32 = format.address(addr, StatApp.networkId);
+            if(!nameTagMap[base32]) {
+                nameTagMap[base32] = {base32, auditor, epoch: epochNumber, labels: new Set()};
+            }
+            if(!oldLabel && newLabel) { // add
+                nameTagMap[base32].labels.add(newLabel);
+            }
+            if(oldLabel && newLabel) { // update
+                nameTagMap[base32].labels.delete(oldLabel);
+                nameTagMap[base32].labels.add(newLabel);
+            }
+            if(oldLabel && !newLabel) { // delete
+                nameTagMap[base32].labels.delete(oldLabel);
+            }
+        }
+
+        const addressInfoArray = await Promise.all(base32Array.map(async base32 => {
+            const hex40 = format.hexAddress(base32);
+            const hex40id = (await makeId(hex40)).id;
+            return {base32, hex40, hex40id};
+        }));
+        const addressInfoMap = lodash.keyBy(addressInfoArray, 'base32');
+        const contractIdArray = await TraceCreateContract.findAll({
+            attributes: ['to'], where: {to: {[Op.in]: addressInfoArray.map(item => item['hex40id'])}}, raw: true});
+        const contractIdSet = new Set<number>(contractIdArray.map(item => item.to));
+
+        return Object.values(nameTagMap).map(item => {
+            item['hex40id'] = addressInfoMap[item['base32']].hex40id;
+            item['eoa'] = !contractIdSet.has(addressInfoMap[item['base32']].hex40id);
+            item['auditor'] = format.address(item['auditor'], StatApp.networkId);
+            item['labels'] = [...item['labels']].join(EpochSync.NAME_TAG_SPLIT);
+            return item;
+        });
     }
 
     // ---------------------------- address transfer ----------------------------

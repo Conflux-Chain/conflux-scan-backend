@@ -105,6 +105,58 @@ export class TokenTool {
         return undefined;
     }
 
+    decodeNameTagChanged(eventLog) {
+        const { topics = [], data = '0x' } = eventLog;
+
+        if (topics[0] === this.contract.NameTagChanged.signature && topics.length === 3) {
+            const parameters = this.web3.eth.abi.decodeParameters([
+                {"NameTag": {
+                    "addr": 'address',
+                    "name": 'string',
+                    "website": 'string',
+                    "desc": 'string'
+                }},
+                {"NameTag": {
+                    "addr": 'address',
+                    "name": 'string',
+                    "website": 'string',
+                    "desc": 'string'
+                }}
+            ], data);
+            return {
+                ...eventLog,
+                auditor: `0x${topics[1].slice(-40)}`,
+                addr: `0x${topics[2].slice(-40)}`,
+                oldNameTag: parameters['0']['1'],
+                oldWebsite: parameters['0']['2'],
+                oldDesc: parameters['0']['3'],
+                newNameTag: parameters['1']['1'],
+                newWebsite: parameters['1']['2'],
+                newDesc: parameters['1']['3'],
+            };
+        }
+
+        return undefined;
+    }
+
+    decodeLabelChanged(eventLog) {
+        const { topics = [], data = '0x' } = eventLog;
+
+        //event LabelChanged(index_topic_1 address auditor, index_topic_2 address addr, string oldLabel, string newLabel)
+        if (topics[0] === this.contract.LabelChanged.signature && topics.length === 3) {
+            const parameters = this.web3.eth.abi.decodeParameters(['string','string'], data);
+            return {
+                ...eventLog,
+                auditor: `0x${topics[1].slice(-40)}`,
+                addr: `0x${topics[2].slice(-40)}`,
+                oldLabel: parameters['0'],
+                newLabel: parameters['1'],
+            };
+        }
+
+        return undefined;
+    }
+
     decodeERC20Transfer(eventLog = {}) {
         try {
             const tuple = this.contract.Transfer.decodeLog(eventLog);

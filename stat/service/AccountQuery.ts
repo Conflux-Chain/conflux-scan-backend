@@ -12,11 +12,18 @@ import {AddressErc721Transfer} from "../model/Erc721Transfer";
 import {AddressErc1155Transfer} from "../model/Erc1155Transfer";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Erc1155Data, NftMint} from "../model/Token";
+import {NameTag} from "../model/NameTag";
+import {KEY_CAUTION_LABELS, KV} from "../model/KV";
+import {EpochSync} from "./EpochSync";
 
 const lodash = require('lodash');
 
 export class AccountQuery {
     protected app: any;
+    protected CAUTION_FLUSH_INTERVAL = 180_000; // 3 min
+    protected cautionLoadTimestamp;
+    public cautionSet: Set<string> = new Set<string>();
+
 
     constructor(app: any) {
         this.app = app;
@@ -29,14 +36,15 @@ export class AccountQuery {
         }
 
         const idHexMap = await this.idHex40Map(hexArray);
-        const [contractResp, eSpaceResp, ensResp] = await Promise.all([
+        const [contractResp, eSpaceResp, ensResp, nameTagResp] = await Promise.all([
             this.listContractInfo(idHexMap),
             this.listESpaceInfo(idHexMap),
             this.listEnsInfo(idHexMap),
+            this.listNameTagInfo(idHexMap),
         ]);
 
         const map = {};
-        [ensResp, eSpaceResp, contractResp].forEach(
+        [ensResp, eSpaceResp, contractResp, nameTagResp].forEach(
             resp => {
                 Object.keys(resp.map).forEach(address => {
                     if(!map[address]) map[address] = {};
@@ -145,6 +153,37 @@ export class AccountQuery {
         });
 
         return { total: Object.keys(map).length, map };
+    }
+
+    public async listNameTagInfo(idHexMap) {
+        // init caution labels
+        if(!this.cautionSet.size || (Date.now() - this.cautionLoadTimestamp >= this.CAUTION_FLUSH_INTERVAL)) {
+            const cautionLabels = await KV.getString(KEY_CAUTION_LABELS, '');
+            cautionLabels.split(',').forEach(label => this.cautionSet.add(label));
+            this.cautionLoadTimestamp = Date.now();
+        }
+
+        // query name tag
+        const base32Array = Object.values(idHexMap).map(item => format.address(item, StatApp.networkId));
+        const nameTagArray = await NameTag.findAll({
+            attributes: ['base32', 'nameTag', 'website', 'desc', 'labels'],
+            where: {base32: {[Op.in]: [...base32Array]}}, raw: true
+        });
+
+        // build map
+        const map = {};
+        nameTagArray.forEach(item => {
+            const nameTag = lodash.pick(item, ['nameTag', 'website', 'desc', 'labels']);
+            if(nameTag?.labels) {
+                nameTag.labels = nameTag.labels.split(EpochSync.NAME_TAG_SPLIT);
+                const caution = nameTag.labels.find(label => this.cautionSet.has(label));
+                nameTag.labels = caution ? [caution] : nameTag.labels;
+                nameTag.caution = caution ? 1 : 0;
+            }
+            map[item.base32] = {nameTag};
+        });
+
+        return {total: Object.keys(map).length, map};
     }
 
     public async getBasicInfo(addr) {

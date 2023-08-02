@@ -17,6 +17,8 @@ import {Desensitizer} from "./Desensitizer";
 import {CONST} from "./common/constant"
 import {EpochSync} from "./EpochSync";
 import {Errors} from "./common/LogicError";
+import {NameTag} from "../model/NameTag";
+import {AccountQuery} from "./AccountQuery";
 
 const lodash = require('lodash');
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
@@ -45,6 +47,10 @@ export class TokenQuery {
       }: { addressArray?: string[], name?: string, transferType?: string, fields?: string[], orderBy?: string,
         reverse?: boolean | string, showDestroyed?: boolean, skip?: number, limit?: number
     }) {
+        const {
+            app: {accountQuery},
+        } = this;
+
         // fields
         const options: any = {raw: true};
         let attributes: any = ['hex40id', ['base32', 'address'],
@@ -122,6 +128,7 @@ export class TokenQuery {
         }
         // add additional info
         let contractList;
+        let eoaList;
         if(name){// add contracts for unmatched token
             const where: any = {name: {[Op.like]: `%${name}%`}};
             if(registeredTokens?.length) where.base32 = {[Op.notIn]: registeredTokens};
@@ -129,8 +136,21 @@ export class TokenQuery {
                 where.destroyed = false;
             }
             contractList = await Contract.findAll({ offset: 0, limit: 10, raw: true,
-                attributes: [['base32', 'address'], 'name', 'epoch'], where, order: [['epoch', 'ASC']]
+                attributes: [['base32', 'address'], 'name', 'epoch'], where,
+                order: [['epoch', 'ASC']]
             });
+            eoaList = await NameTag.findAll({ offset: 0, limit: 100, raw: true,
+                attributes: [['base32', 'address'], 'nameTag', 'labels'], where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
+                order: [['epoch', 'ASC']]
+            });
+            eoaList?.forEach(nameTag => {
+                if(nameTag?.labels) {
+                    nameTag.labels = nameTag.labels.split(',');
+                    const caution = nameTag.labels.find(label => accountQuery?.cautionSet.has(label));
+                    delete nameTag.labels;
+                    nameTag.caution = caution ? 1 : 0;
+                }
+            })
         } else if (addressArray) {// add unregistered tokens
             const unregisteredTokens = addressArray.filter(address => !lodash.includes(registeredTokens, address));
             const tokens = await Promise.all(unregisteredTokens.map(item => this.getTokenInfo(item)));
@@ -148,7 +168,7 @@ export class TokenQuery {
         // add security audit
         await this.getAuditInfo(list);
 
-        return {total: count, list, contractTotal: contractList?.length, contractList};
+        return {total: count, list, contractTotal: contractList?.length, contractList, eoaTotal: eoaList?.length, eoaList};
     }
 
     public async listLatest({accountAddress, transferType, latestTransfer = 10000}

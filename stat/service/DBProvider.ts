@@ -85,6 +85,7 @@ import {AddressNfts, createAddressNftTable} from "../model/AddrNft";
 import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 import {DailyPosRewardStat} from "../model/DailyPosReward";
 import {DailyPowRewardStat} from "../model/DailyPowReward";
+import {NameTag} from "../model/NameTag";
 let conf
 export function createDB(config) {
     conf = config
@@ -218,6 +219,7 @@ export async function initPartialModel(sequelize) {
     RateHit.register(sequelize)
     ESpaceHex40Map.register(sequelize)
     CensorItem.register(sequelize)
+    NameTag.register(sequelize)
 }
 export async function initModel(sequelize) {
     await initPartialModel(sequelize)

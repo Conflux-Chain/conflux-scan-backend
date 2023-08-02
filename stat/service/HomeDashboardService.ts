@@ -45,9 +45,9 @@ export class HomeDashboardService{
         const transactionCount = await KV.getNumber(KEY_FULL_TX_COUNT, 0);
         const contractCount = await KV.getNumber(CONTRACT_COUNT_ALL, 0)
         const maxBlock = await FullBlock.findOne({order: [['epoch', 'desc']]});
-        const {blockNumber} = await cfx.getStatus().catch(() => undefined);
+        const status = await cfx.getStatus().catch(() => undefined);
 
-        return {addressCount, transactionCount, contractCount, epochNumber: maxBlock.epoch, blockNumber};
+        return {addressCount, transactionCount, contractCount, epochNumber: maxBlock.epoch, blockNumber: status?.blockNumber};
     }
 
     private async supplyInfo() {

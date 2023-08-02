@@ -681,7 +681,7 @@ export class ContractQuery {
         const hexAddress = format.hexAddress(address);
         const sql = "select * from trace_create_contract where `to` = (select id from hex40 where hex = ?)";
         const array = await TraceCreateContract.sequelize.query(sql, {type: QueryTypes.SELECT,
-            replacements:[hexAddress.substr(2)], logging: console.log }) as TraceCreateContract[];
+            replacements:[hexAddress.substr(2)] }) as TraceCreateContract[];
         const transactionHash = array?.length ? '0x' + array[0].txHash : undefined;
 
         const transaction = await cfx.getTransactionByHash(transactionHash);

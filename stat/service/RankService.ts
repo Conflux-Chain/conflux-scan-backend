@@ -199,7 +199,8 @@ export class RankService{
         list.forEach(item => {
             item.tokenInfo = accountBasic.map[item.base32address]?.token;
             item.contractInfo = accountBasic.map[item.base32address]?.contract;
-            item.ensInfo = accountBasic[item.base32address]?.ens;
+            item.ensInfo = accountBasic.map[item.base32address]?.ens;
+            item.nameTagInfo = accountBasic.map[item.base32address]?.nameTag;
             item.name = item.contractInfo?.name || item.tokenInfo?.name;
         });
 

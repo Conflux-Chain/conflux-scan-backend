@@ -15,8 +15,14 @@ const TOPIC0_TRANSFER_ERC20 = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11
 const TOPIC0_TRANSFER_ERC1155_SINGLE = '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62';
 const TOPIC0_TRANSFER_ERC1155_BATCH = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb';
 const TOPIC0_ANNOUNCE = '0x14cb751d0950ff2788201931c45f715f7472443bc197311d9e3a7a0ba566b7e6';
-const TOKEN_TRANSFER_TOPICS = [[ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH,
-    TOPIC0_ANNOUNCE ]];
+const TOPICS_TOKEN_TRANSFER = [ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH,
+    TOPIC0_ANNOUNCE ];
+
+const TOPIC0_NAME_TAG_CHANGED = '0x516ccd4a0fb2b81543e6f874521a92f5db5ff281f362e243f7e99a292689211e';
+const TOPIC0_LABEL_CHANGED = '0xdf58130dfdd209d47be11d9978064ac9b114eb08c16df7855eb1d83be3f45a8c';
+const TOPICS_HOT_WALLET_NANE_TAG = [TOPIC0_NAME_TAG_CHANGED, TOPIC0_LABEL_CHANGED];
+
+const TOPICS_TO_TRACE = [[...TOPICS_TOKEN_TRANSFER, ...TOPICS_HOT_WALLET_NANE_TAG]];
 
 export abstract class SyncBase{
     public static SYNC_BACKWARD = false;
@@ -88,7 +94,7 @@ export abstract class SyncBase{
         try {
             data = await this.getDataForwardWithPreload(epochNumber);
             if(data.syncCode === SyncCode.RETRY) {
-                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry:${data.message}`);
+                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
                 await sleep(10_000);
                 return epochNumber;
             }
@@ -272,19 +278,25 @@ export abstract class SyncBase{
             transfer721Array: [],
             transfer1155Array: [],
             announcementArray: [],
+            nameTagArray: [],
+            labelArray: [],
         };
 
         for(const eventLog of eventLogArray) {
-            const [transfer20, transfer721, transfer1155, announcement] = await Promise.all([
+            const [transfer20, transfer721, transfer1155, announcement, nameTag, label] = await Promise.all([
                 tokenTool.decodeERC20TransferPlus(eventLog),
                 tokenTool.decodeERC721Transfer(eventLog),
                 tokenTool.decodeERC1155TransferArrayPlus(eventLog),
                 tokenTool.decodeAnnouncePlus(eventLog),
+                tokenTool.decodeNameTagChanged(eventLog),
+                tokenTool.decodeLabelChanged(eventLog),
             ]);
             if(transfer20) {groupedLogs.transfer20Array.push(transfer20);}
             if(transfer721) {groupedLogs.transfer721Array.push(transfer721);}
             if(transfer1155) {groupedLogs.transfer1155Array.push(transfer1155);}
             if(announcement) {groupedLogs.announcementArray.push(announcement);}
+            if(nameTag) {groupedLogs.nameTagArray.push(nameTag);}
+            if(label) {groupedLogs.labelArray.push(label);}
         }
         groupedLogs.transfer1155Array = lodash.flatten(groupedLogs.transfer1155Array);
         return groupedLogs;
@@ -299,14 +311,14 @@ export abstract class SyncBase{
             fromEpoch: epochNumber,
             toEpoch: epochNumber,
             // @ts-ignore
-            topics: TOKEN_TRANSFER_TOPICS,
+            topics: TOPICS_TO_TRACE,
         }).catch(async err=>{
             const msg = `${err}`
             if (msg.includes('expected a numbers with less than largest epoch number.')) {
                 const latest = await cfx.getEpochNumber('latest_state');
                 console.log(`epoch-sync.eventLogArray epoch:${epochNumber} latestState:${latest} not executed`)
             } else {
-                console.log(`epoch-sync.eventLogArray epoch:${epochNumber} error:${msg}`)
+                throw new Error(`[epoch=${epochNumber}]getLogs retry: ${msg}`);
             }
             return [];
         });
