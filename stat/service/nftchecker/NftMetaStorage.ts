@@ -592,7 +592,7 @@ async function getContractInfo(contractIds: number[]) {
         const typeInfo = await TokenQuery.detectTokenType({hex40id: contractId});
         const token = await Token.findOne({attributes: ["ipfsGateway"], where: {hex40id: contractId}});
         return {contractId, hex: '0x' + hex.hex, is1155: typeInfo?.type === CONST.TRANSFER_TYPE.ERC1155,
-            ipfsGateway: token.ipfsGateway};
+            ipfsGateway: token?.ipfsGateway};
     }));
     return lodash.keyBy(contractArray, 'contractId');
 }
