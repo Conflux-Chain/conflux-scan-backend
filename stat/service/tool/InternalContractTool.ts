@@ -117,7 +117,7 @@ async function run() {
     await init();
     // do business
     for (const contract of internalContractArray) {
-        if(contract.name === 'ParamsControl'){
+        if(contract.name === 'SponsorWhitelistControl'){
             await registerContract(contract);
         }
     }

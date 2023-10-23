@@ -12,13 +12,11 @@ import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
 import {AddressNft, AddressNfts} from "../../model/AddrNft";
 import {KV} from "../../model/KV";
-import {Erc1155Data, NftMint} from "../../model/Token";
-import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer";
-import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {Erc1155Data, NftMint, Token} from "../../model/Token";
 import {sleep} from "./ProcessTool";
-import {DailyTransaction} from "../../model/DailyTransaction";
-import {FullTransaction} from "../../model/FullBlock";
+import {MetaStatus, NftMeta} from "../nftchecker/NftMetaStorage";
 
+const fs = require('fs');
 const lodash = require('lodash');
 const { format, sign } = require('js-conflux-sdk');
 
@@ -269,6 +267,71 @@ async function serializeUpdatedCursor(times: number) {
     } while (true)
     console.log(`done`)
 }
+
+async function statNft(address) {
+    const base32 = format.address(address, StatApp.networkId);
+    let token = await Token.findOne({where: {base32: base32}, attributes: {exclude: ['icon']}})
+
+    let skip = 0;
+    let pageSize = 5000;
+    let authorTokenIdMap = {}; // author -> counter
+    let tokenIdArrayWithoutAuthor = []
+
+    while (true) {
+        const nftArray = await NftMeta.findAll({
+            where: {contractId: token.hex40id},
+            order: [['epochNumber', 'asc']],
+            offset: skip,
+            limit: pageSize,
+            raw: true,
+            logging: console.log
+        });
+
+        const nftSize = nftArray?.length
+        console.log(`skip ${skip} nftSize ${nftSize}`)
+        if (!nftSize) {
+            break
+        }
+
+        nftArray.filter(n => n.status === 22).map(n => {
+            const o = JSON.parse(n.content);
+            if(!o?.properties?.author) {
+                tokenIdArrayWithoutAuthor.push(n.tokenId)
+            }
+            return o?.properties?.author || 'author-less'
+        }).reduce((obj, author)=> {
+            if(!obj[author]) {
+                obj[author] = 1
+            } else{
+                obj[author]++
+            }
+            return obj
+        }, authorTokenIdMap)
+
+
+        skip += nftSize;
+    }
+
+    let authorTokenIdArray = []
+    Object.keys(authorTokenIdMap).forEach(
+        author => authorTokenIdArray.push({author, tokenIds: authorTokenIdMap[author]})
+    )
+    authorTokenIdArray = lodash.orderBy(authorTokenIdArray, 'tokenIds', 'desc')
+
+    let content = '\ufeffauthor,uniqueTokenIds\n';
+    authorTokenIdArray.forEach(item => {
+        content += `${item.author},${item.tokenIds}\n`;
+    });
+    fs.writeFile(`./${token.symbol||token.name}-${Date.now()}.csv`, content, (e) => console.error(`toCSV`, e));
+    console.log(`done!`);
+
+    let cntr = 0
+    do{
+        console.log(tokenIdArrayWithoutAuthor[cntr++])
+    }while (cntr < 100)
+}
+
+
 
 /*async function fixRepeatedUpdatedCursor(updatedCursorArray: number[]) {
     for (const updatedCursor of updatedCursorArray) {
@@ -546,11 +609,14 @@ async function run() {
     if(type === 12) {
         await serializeUpdatedCursor(times);
     }
+    if(type === 20) {
+        await statNft(base32)
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
 type = Number(args[1]);
-if(type === 6) {
+if(type === 6 || type === 20) {
  base32 = args[2];
 }
 if(type === 7 || type === 8 || type === 11 || type === 12) {

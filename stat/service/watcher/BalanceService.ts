@@ -51,8 +51,7 @@ export class BalanceService {
     async run() {
         const list = await Token.findAll({
             attributes: {exclude: ['icon']},
-            where: {type: {[Op.ne]: ''}, name: {[Op.ne]: ''}, symbol: {[Op.ne]: ''},
-                auditResult:true}
+            where: {type: {[Op.ne]: ''}, name: {[Op.ne]: ''}}
         })
         for (let i = 0; i < list.length; i++){
             let t = list[i];

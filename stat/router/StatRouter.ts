@@ -18,7 +18,7 @@ import {QueryTypes,Op} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer} from "../service/DailyTokenSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
-import {Hex40Map} from "../model/HexMap";
+import {getAddrId, Hex40Map} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
@@ -43,6 +43,7 @@ const swStats = require('swagger-stats');
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
 const requestIp = require('request-ip');
+const BigFixed = require('bigfixed');
 
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 10 // 10 minutes
@@ -359,6 +360,57 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = s.join('');
     })
 
+    router.get('/top-token-holder-csv', async (ctx) => {
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
+        mustBeEnumParamIfPresent(ctx.request.query, 'lang', ['cn', 'en']);
+        mustBeIntParamIfPresent(ctx.request.query, 'limit');
+
+        const {address} = ctx.request.query;
+        const {limit} = paginateCore(ctx.request.query, {limitMax: 5000});
+        const {lang} = ctx.request.query
+
+        const base32 = format.address(address, StatApp.networkId);
+        let token = await Token.findOne({where: {base32: base32}, attributes: {exclude: ['icon']}})
+        if (token == null) {
+            throw new Errors.ParameterError(`Token ${base32} not exists`);
+        }
+
+        const key = `top-token-holder_${limit}_${token.symbol}_${token.hex40id}`;
+        let list = dbCache.get(key);
+        if (!list) {
+            const data = await statApp.balanceService.rankHolder(base32, 0, limit)
+            list = data.list;
+            if (!list) {
+                ctx.body = data;
+                return;
+            }
+            dbCache.set(key, list, 60); // 60s
+        }
+
+        ctx.set('Content-disposition', 'attachment; filename=' + `${token.symbol}_${Date.now()}` + '.csv')
+        ctx.set('Content-type', 'text/csv')
+
+        const s = []
+        s.push(lang === 'cn' ? '地址,合约,名称,数量,数量,百分比' : 'Address, Contract, Name, Quantity, QuantityFloat,Percentage')
+        s.push('\n');
+
+        const decimals = token?.decimals
+        list.forEach(row=>{
+            s.push(row?.account?.address); s.push(',') // Address
+            s.push(row?.contractInfo ? "yes" : ""); s.push(',') // Contract
+            const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
+            s.push(name); s.push(',') // Name
+            s.push(row?.balance); s.push(',') // Quantity
+            const quantityFloat = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
+            s.push(quantityFloat); s.push(',') // QuantityFloat
+            const percentage = BigFixed(row?.balance).div(BigFixed(token.totalSupply))
+            s.push(percentage) // Percentage
+            s.push('\n')
+        })
+
+        ctx.body = s.join('');
+    })
+
     router.get('/get-cfx-balance-at', async ctx=>{
         if (ctx.request.query.epoch === '') {
             delete ctx.request.query.epoch
@@ -661,7 +713,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {contractAddr, userAddr, tokenId} = ctx.request.query;
-        const result = await statApp.nftCheckerService.getNftTokensForOpenApiNew({
+        const result = await statApp.nftCheckerService.getNftTokensForOpenApiPro({
             owner: userAddr, contract: contractAddr, tokenId: tokenId?.toString(), skip, limit});
 
         const addressArray = result.list.map(item => item.owner);

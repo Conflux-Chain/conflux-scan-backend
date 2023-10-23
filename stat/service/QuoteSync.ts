@@ -11,8 +11,8 @@ const BigFixed = require('bigfixed');
 const {abi: abiSwappiFarmController} = require('./abi/SwappiFarmController');
 const {abi: abiSwappiPair} = require('./abi/SwappiPair');
 const {abi: abiSwappiRouter} = require('./abi/SwappiRouter');
-const response = 10_000;
-const deadline = 10_000;
+const response = 3_000;
+const deadline = 3_000;
 
 export class QuoteSync {
     private readonly app;
@@ -26,7 +26,7 @@ export class QuoteSync {
         return await TokenQuoteTrack.findOne({where: {[Op.and]: [{address}, {convertSymbol}]}});
     }
 
-    public async schedule(delay: number = 1000 * 60) {
+    public async schedule(delay: number = 1000) {
         console.log(`schedule token_quote sync with delay: ${delay}`)
         const that = this
 
@@ -46,60 +46,73 @@ export class QuoteSync {
         } = this;
 
         this.tick ++;
-        const fetchViaDex = this.tick % 3 === 0;
-        const fetchViaCex = this.tick % 60 === 0;
-        this.tick = fetchViaCex ? 0 : this.tick;
 
-        if(fetchViaCex) {
-            const tokenList = await Token.findAll({
-                attributes: [
-                    ['base32', 'address'],
-                    'name',
-                    'symbol',
-                    'cmcId',
-                    'bnId',
-                ],
-                where: {
-                    [Op.or]: [
-                        {'bnId': {[Op.not]: null}},
-                        {'cmcId': {[Op.not]: null}},
-                    ]
-                },
-                raw: true,
-                logging: sql => console.log(`token_quote ${sql}`),
-            });
-            if (tokenList?.length) {
-                config.pullPrice && await this.pullPrice(tokenList).catch((e) => console.log(`token_quote.fromHk ${e}`));
-                await this.updateByBN(tokenList).catch((e) => console.log(`token_quote.fromBN ${e}`));
-                await this.updateByCMC(tokenList).catch((e) => console.log(`token_quote.fromCMC ${e}`));
-            }
+        const tokenList = await Token.findAll({
+            attributes: [
+                ['base32', 'address'],
+                'name',
+                'symbol',
+                'cmcId',
+                'bnId',
+            ],
+            where: {
+                [Op.or]: [
+                    {'bnId': {[Op.not]: null}},
+                    {'cmcId': {[Op.not]: null}},
+                ]
+            },
+            raw: true,
+        });
+
+        if((config.syncQuote?.interval?.peer) && (this.tick % config.syncQuote.interval.peer === 0)) {
+            await this.pullPrice(tokenList).catch((e) => console.error(`token_quote.fromHk ${e}`));
         }
 
-        if(fetchViaDex) {
-            if (StatApp.networkId === 1029) {
-                await this.updateByMoonswap().catch((e) => console.log(`token_quote.fromMoonswap ${e}`));
-            }
-            if (StatApp.networkId === 1030) {
-                await this.updateBySwappi().catch((e) => console.log(`token_quote.fromSwappi ${e}`));
-            }
+        if(config.syncQuote?.interval?.bn && (this.tick % config.syncQuote.interval.bn === 0)) {
+            await this.updateByBN(tokenList).catch((e) => console.error(`token_quote.fromBN ${e}`));
         }
+        if(config.syncQuote?.interval?.cmc && (this.tick % config.syncQuote.interval.cmc === 0)) {
+            await this.updateByCMC(tokenList).catch((e) => console.error(`token_quote.fromCMC ${e}`));
+        }
+
+        if(StatApp.networkId === 1029 && config.syncQuote?.interval?.moonswap
+            && (this.tick % config.syncQuote.interval.moonswap === 0)) {
+            await this.updateByMoonswap().catch((e) => console.error(`token_quote.fromMoonswap ${e}`));
+        }
+        if(StatApp.networkId === 1030 && config.syncQuote?.interval?.swappi
+            && (this.tick % config.syncQuote.interval.swappi === 0)) {
+            await this.updateBySwappi().catch((e) => console.error(`token_quote.fromSwappi ${e}`));
+        }
+
+        this.tick = this.tick % 3600 === 0 ? 0 : this.tick; // reset tick per hour
     }
 
     //======================================================================
     private async updateByBN(tokenList) {
+        if(!tokenList?.length) return;
+
         const tokenArray = tokenList?.filter((token) => token.bnId);
         if (!tokenArray?.length) {
             return;
         }
 
-        const quoteArray = await Promise.all(tokenArray.map(async ({address, bnId}) => {
+        const resp = await this.getFromBNBatch(tokenArray.map(token => token.bnId));
+        const quoteMap = lodash.keyBy(resp, 'symbol');
+        const quoteArray = tokenArray.map(token => {
+            return {
+                address: token['address'],
+                price: quoteMap[`${token['bnId']}USDT`]['price'],
+                src: 'BN',
+            };
+        });
+        /*const quoteArray = await Promise.all(tokenArray.map(async ({address, bnId}) => {
             const quote = await this.getFromBN(bnId) || {};
             return {
                 address,
                 price: quote || null,
                 src: 'BN',
             };
-        }));
+        }));*/
         await this.upsertQuote(quoteArray);
     }
 
@@ -117,8 +130,27 @@ export class QuoteSync {
         return lodash.get(resp, ['body', 'price']);
     }
 
+    private async getFromBNBatch(symbolArray, convert = 'USDT') {
+        const {
+            app: {config},
+        } = this;
+
+        symbolArray = [...new Set(symbolArray)];
+        const symbols = `[${symbolArray.map(symbol => `"${symbol}${convert}"`).join(",")}]`;
+
+        const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
+            .set('X-MBX-APIKEY', config.binanceToken)
+            .timeout({response, deadline})
+            .query({
+                symbols,
+            });
+        return lodash.get(resp, ['body']);
+    }
+
     //======================================================================
     private async updateByCMC(tokenList) {
+        if(!tokenList?.length) return;
+
         const tokenArray = tokenList?.filter((token) => token.cmcId);
         if (tokenArray.length === 0) {
             return;
@@ -259,6 +291,8 @@ export class QuoteSync {
 
     //======================================================================
     private async pullPrice(tokenList) {
+        if(!tokenList?.length) return;
+
         const url = this.getSrcUrl();
         const queryParams = tokenList.map(token => `addressArray=${token['address']}`).join('&');
         const resp = await superagent.get(`${url}/v1/token?${queryParams}`)
@@ -299,6 +333,7 @@ export class QuoteSync {
         for (const token0 of directConvertTokens) {
             const [amount0, amount1] = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
             const token0Decimals = (await tokenTool.getToken(token0)).decimals;
+            if(amount0 === BigInt(0)) continue
             tokenPriceMap[token0] = BigFixed(amount1).div(BigFixed(amount0)).div(BigFixed(10).pow(18 - token0Decimals))
                 .toNumber();
         }
@@ -311,6 +346,7 @@ export class QuoteSync {
             const ratio2 = await contractRouter.getAmountsOut(100000, [token1, usdtAddr]);
             const token0Decimals = (await tokenTool.getToken(token0)).decimals;
             const token1Decimals = (await tokenTool.getToken(token1)).decimals;
+            if(ratio1[0] === BigInt(0) || ratio2[0] === BigInt(0)) continue
             tokenPriceMap[token0] = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).div(BigFixed(10).pow(token1Decimals - token0Decimals))
                 .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token1Decimals)))
                 .toNumber();
@@ -324,6 +360,7 @@ export class QuoteSync {
             const ratio2 = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
             const token0Decimals = (await tokenTool.getToken(token0)).decimals;
             const token1Decimals = (await tokenTool.getToken(token1)).decimals;
+            if(ratio1[1] === BigInt(0) || ratio2[0] === BigInt(0)) continue
             tokenPriceMap[token1] = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).div(BigFixed(10).pow(token0Decimals - token1Decimals))
                 .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token0Decimals)))
                 .toNumber();

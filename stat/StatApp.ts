@@ -142,7 +142,7 @@ export class StatApp{
         this.ensCheckerQuery = new ENSCheckerQuery(this);
         this.accountQuery = new AccountQuery(this);
         this.txnSync.scheduleCache()
-        if (this.config.syncQuote) {
+        if (this.config?.syncQuote?.open) {
             await this.quoteSync.schedule();
         }
         if (this.config.syncIPFSGateway) {
