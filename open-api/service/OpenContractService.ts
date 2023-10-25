@@ -91,8 +91,7 @@ export async function getABI(ctx) {
         return;
     }
 
-    const result = contract.abi;
-    setBody(ctx, result)
+    setBody(ctx, contract.abi)
 }
 
 export async function getSourceCode(ctx) {
@@ -104,6 +103,11 @@ export async function getSourceCode(ctx) {
     if(!contract){
         setBody(ctx, undefined, 1, `contract ${address} not verified` );
         return;
+    }
+
+    let impl = ''
+    if (contract.implementation) {
+        impl = StatApp.isEVM ? format.hexAddress(contract.implementation) : contract.implementation;
     }
 
     const contractItem = lodash.defaults({}, {
@@ -118,11 +122,10 @@ export async function getSourceCode(ctx) {
         Library: "",
         LicenseType: contract.license,
         Proxy: contract.proxy ? '1' : '0',
-        Implementation: contract.implementation,
+        Implementation: impl,
         SwarmSource: "",
     });
-    const result = [contractItem];
-    setBody(ctx, result)
+    setBody(ctx, [contractItem])
 }
 
 export async function verifySourcecode(ctx) {
@@ -221,8 +224,7 @@ export async function verifyProxyContract(ctx) {
     const options = {address, expectedImpl: expectedimplementation};
     const submitResp = await getApiService().contractQuery.submitVerifyProxy(options);
 
-    const result = submitResp.guid
-    setBody(ctx, result);
+    setBody(ctx, submitResp.guid);
 }
 
 export async function checkProxyVerification(ctx) {
@@ -242,8 +244,7 @@ export async function checkProxyVerification(ctx) {
 
         const proxy = StatApp.isEVM ? format.hexAddress(verify.base32) : verify.base32;
         const impl = StatApp.isEVM ? format.hexAddress(verify.implementation) : verify.implementation;
-        const result = util.format(MSG_IMPL_MATCH, proxy, impl);
-        setBody(ctx, result);
+        setBody(ctx, util.format(MSG_IMPL_MATCH, proxy, impl));
     } catch (e){
         setBody(ctx, e.message, 1, 'NOTOK');
     }
