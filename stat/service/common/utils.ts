@@ -70,7 +70,7 @@ export function patchFormat() {
         try {
             return fun(str, networkId, verbose)
         } catch (e) {
-            console.log(`format address fail for `,str, networkId, verbose)
+            // console.log(`format address fail for `,str, networkId, verbose)
             return str;
         }
     }
@@ -469,6 +469,3 @@ export function calCount(minTimestamp, maxTimestamp, intervalType) {
 
     return Math.ceil(count);
 }
-
-
-
