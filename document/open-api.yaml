@@ -2142,6 +2142,9 @@ components:
             owner:
               description: 'The owner address.'
               type: string
+            creator:
+              description: "The nft contract's creator address."
+              type: string
             rawData:
               type: object
               properties:
