@@ -239,7 +239,7 @@ export class TokenQuery {
         }
 
         const options: any = {
-            attributes: ['name','symbol','decimals','base32', 'hex40id', 'iconUrl', 'type'],
+            attributes: ['name','symbol','decimals','base32', 'hex40id', 'iconUrl', 'type', 'price', 'quoteUrl'],
             where: { hex40id: {[Op.in]: hexIdArray}, auditResult: true, destroyed: false }, raw: true };
         const tokenArray = await Token.findAll(options);
         tokenArray.forEach(t=>{
