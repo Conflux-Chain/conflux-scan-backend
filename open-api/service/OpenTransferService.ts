@@ -95,6 +95,9 @@ export function polishTransferList(page) {
         if (StatApp.isEVM) {
             row['blockNumber'] = row.epochNumber
             delete row.epochNumber;
+            delete row.blockIndex;
+            delete row.storageFee;
+            delete row.contractAddress;
         }
     })
     delete page?.accountId
@@ -122,7 +125,7 @@ export async function listTransfer(ctx, service, cursor = undefined) {
             minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, cursor}
     );
 
-    polishTransferList(page)
     await polishContract(page)
+    polishTransferList(page)
     setBody(ctx, page)
 }

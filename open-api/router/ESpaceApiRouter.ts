@@ -20,6 +20,7 @@ import {
     listAccountTransfer1155,
     listAccountTransfer3525,
     listNFTTransfers,
+    listAccountTransfer,
 } from "../service/OpenTransferService";
 import {
     getABI,
@@ -612,6 +613,7 @@ export function registerRouter(router: Router) {
     router.get('/account/crc721/transfers', listAccountTransfer721)
     router.get('/account/crc1155/transfers', listAccountTransfer1155)
     router.get('/account/crc3525/transfers', listAccountTransfer3525)
+    router.get('/account/transfers', listAccountTransfer)
     router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
 }

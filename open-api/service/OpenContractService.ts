@@ -40,6 +40,7 @@ export async function polishContract(page) {
         if (StatApp.isEVM) {
             row.from = row.from ? format.hexAddress(row.from) : row.from;
             row.to = row.to ? format.hexAddress(row.to) : row.to;
+            row.address = row.address ? format.hexAddress(row.address) : row.address;
             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
             row.contractAddress = row.contractAddress ? format.hexAddress(row.contractAddress) : '';
         }
