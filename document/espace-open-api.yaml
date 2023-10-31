@@ -2131,6 +2131,12 @@ components:
                   amount:
                     description: 'The token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
+                  priceInUSDT:
+                    description: 'The price of token in USDT.'
+                    type: 'string'
+                  quoteUrl:
+                    description: 'The quote url of token.'
+                    type: 'string'
     VerifySourcecode:
       type: object
       properties:
