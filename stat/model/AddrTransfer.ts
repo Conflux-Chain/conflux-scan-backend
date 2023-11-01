@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS ${T_ADDRESS_TRANSFER}
   \`tokenId\` varchar(78) NULL,
   \`value\` varchar(78) NOT NULL,
   \`type\` smallint(6) NOT NULL,
+  \`cursorId\` decimal(65, 0) default NULL,
   \`createdAt\` datetime NOT NULL,
   PRIMARY KEY  (addressId DESC,epoch DESC,blockIndex DESC, txIndex DESC, txLogIndex DESC, batchIndex DESC, type DESC),
   KEY \`from_idx\` (\`epoch\`)
@@ -53,6 +54,7 @@ export interface IAddressTransfer {
     value: string
 
     type: number
+    cursorId: number
     createdAt: Date
 }
 
@@ -72,6 +74,7 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
     value: string
 
     type: number
+    cursorId: number
     createdAt: Date
     static register(seq: Sequelize) {
         AddressTransfer.init({
@@ -90,6 +93,7 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
             value: {type: DataTypes.STRING(78), allowNull: false},
 
             type: {type: DataTypes.SMALLINT, allowNull: false},
+            cursorId: {type: DataTypes.DECIMAL(65, 0), allowNull: true, },
             createdAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             sequelize: seq,

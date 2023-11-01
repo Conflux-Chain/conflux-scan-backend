@@ -16,6 +16,8 @@ import {EpochNftTransferSync} from "../EpochNftTransferSync";
 import {sleep} from "./ProcessTool";
 import {AddressTransfer} from "../../model/AddrTransfer";
 import {CONST} from "../common/constant";
+import {KV} from "../../model/KV";
+import {EpochNftTransfer} from "../../model/Epoch";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -40,6 +42,7 @@ let maxEpoch;
 let store;
 let toFindHexAddress;
 let contractId;
+let loop;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -214,6 +217,12 @@ async function run() {
     }
     if(type === 13) {
         await addContractCreatedForAddressTransfer(contractId)
+    }
+    if(type === 14) {
+        await updateCursorForAddressTransfer(loop)
+    }
+    if(type === 15) {
+        await clearEpochNftTransferBeforeFinalized(epochNumber);
     }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
@@ -548,6 +557,59 @@ async function getDataByEpochNumberForNft(){
     }
 }
 
+const keyMax = 'max_epoch_address_transfer';
+const keyCur = 'cur_epoch_address_transfer';
+
+async function updateCursorForAddressTransfer(loop) {
+    const maxEpoch = await KV.getNumber(keyMax);
+    if(!maxEpoch) {
+        console.log(`max epoch not exist`)
+        return
+    }
+
+    const curEpoch = await KV.getNumber(keyCur);
+    let nextEpoch = curEpoch ? curEpoch + 1 : (await AddressTransfer.min('epoch')) as number
+
+    let cntr = 1
+    while(true) {
+        const transferArray = await AddressTransfer.findAll({where: {epoch: nextEpoch}, raw: true})
+        if(transferArray?.length) {
+            for (const t of transferArray) {
+                const {addressId, epoch, blockIndex, txIndex, txLogIndex, batchIndex, type} = t
+                const cursorId = EpochSync.buildAddrTransferCursor(t)
+                await AddressTransfer.update({cursorId} as any, {where:{addressId, epoch, blockIndex, txIndex, txLogIndex, batchIndex, type}})
+            }
+        }
+        await KV.upsert({key: keyCur, value: nextEpoch.toString()})
+
+        nextEpoch = nextEpoch + 1
+        if(nextEpoch > maxEpoch) {
+            break
+        }
+
+        cntr = cntr + 1
+        if(loop && cntr > loop) {
+            break
+        }
+
+        if(nextEpoch % 1000 === 0) {
+            console.log(`padding address transfer's cursor at epoch ${nextEpoch}`)
+        }
+        await sleep(3)
+    }
+}
+
+async function clearEpochNftTransferBeforeFinalized(finalizedEpoch) {
+    while(true) {
+        const rows = await EpochNftTransfer.destroy({where:{epoch:{[Op.lt]: finalizedEpoch}}, limit: 10000})
+        console.log(`rows ${rows}`)
+        if(!rows) {
+            console.log(`done!`)
+            return
+        }
+    }
+}
+
 
 const args = process.argv.slice(2);
 StatApp.networkId = Number(args[0]);
@@ -562,7 +624,7 @@ if(type === 3 && args[2] && args[3]){
     maxEpoch = Number(args[3]);
     toFindHexAddress = args[4];
 }
-if(type === 6 && args[2]){
+if((type === 6 || type === 15)&& args[2]){
     epochNumber = Number(args[2]);
 }
 if(type === 8 && args[2] && args[3]){
@@ -581,6 +643,9 @@ if(type === 10 && args[2] && args[3] && args[4]){
 }
 if(type === 13 && args[2]){
     contractId = Number(args[2]);
+}
+if(type === 14 && args[2]) {
+    loop = Number(args[2]);
 }
 
 console.log(`params======networkId:${StatApp.networkId}======type:${type}======minEpoch:${minEpoch}======maxEpoch:${maxEpoch}======toFindHexAddress:${toFindHexAddress}`);

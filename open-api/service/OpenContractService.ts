@@ -72,8 +72,8 @@ export async function polishContract(page) {
         });
     }
     Object.keys(page.addressInfo).forEach(k => {
-        delete page.addressInfo[k]['contract']['address'];
-        delete page.addressInfo[k]['contract']['isVirtual'];
+        delete page.addressInfo[k]?.contract?.address;
+        delete page.addressInfo[k]?.contract?.isVirtual;
     });
 }
 export function removeEmptyKey(obj, key) {

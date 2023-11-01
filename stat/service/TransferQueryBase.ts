@@ -28,10 +28,9 @@ export abstract class TransferQueryBase {
         conditionArray.push({tokenId: tokenId.toString()});
     }
 
-    public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas,
-                                  minTimestamp, maxTimestamp,
-                                  accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-                                  tokenId, transferType = undefined, txType, skip, limit, sort='DESC', cursor = undefined}){
+    public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas, minTimestamp, maxTimestamp, accountAddressId,
+        addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray, tokenId, transferType = undefined,
+        txType, skip, limit, sort='DESC', cursor = undefined, cursorField = undefined}){
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         const{ logger } = this.app;
         // page
@@ -92,7 +91,7 @@ export abstract class TransferQueryBase {
             }
         }
         if(cursor !== undefined && cursor !== 0) {
-            conditionArray.push({id: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
+            conditionArray.push({[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
             delete queryOptions.offset;
         }
         if(conditionArray.length === 1){
@@ -127,7 +126,7 @@ export abstract class TransferQueryBase {
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
-            tokenId, transferType, txType , status, skip = 0, limit = 10, sort, cursor} = options;
+            tokenId, transferType, txType , status, skip = 0, limit = 10, sort, cursor, cursorField} = options;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
@@ -181,16 +180,16 @@ export abstract class TransferQueryBase {
             minEpochNumber, maxEpochNumber, txParas,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
-            tokenId, transferType, txType, skip, limit, sort, cursor
+            tokenId, transferType, txType, skip, limit, sort, cursor, cursorField
         });
         queryOptions.attributes = this.buildQueryFields({txType});
         if(cursor !== undefined) {
-            queryOptions.attributes.push('id');
+            queryOptions.attributes.push([cursorField, 'cursor']);
         }
         if(options.txType === CONST.TX_TYPE.CREATE){
-            queryOptions.attributes.push( ['traceIndex', 'transactionLogIndex'],);
+            queryOptions.attributes.push( ['traceIndex', 'transactionLogIndex']);
         } else if(options.accountAddress !== undefined){
-            queryOptions.attributes.push( ['txLogIndex', 'transactionLogIndex'],);
+            queryOptions.attributes.push( ['txLogIndex', 'transactionLogIndex']);
         } else{
             queryOptions.attributes.push(['id', 'transactionLogIndex']);
         }
@@ -280,8 +279,7 @@ export abstract class TransferQueryBase {
         }
         let next;
         if(cursor !== undefined) {
-            next = list?.length ? list[list.length - 1].id : 0;
-            list?.forEach(item => delete item.id);
+            next = list?.length ? list[list.length - 1]['cursor'] : 0;
         }
         const result = {total: (page?.count || 0) + prunedCntr, next, list, accountId: accountAddressId,
             queryWithCache: page.queryWithCache, hitCache: page.hitCache,

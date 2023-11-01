@@ -29,7 +29,6 @@ export async function listAccountAssets(ctx) {
 export function polishAssertList(page) {
     page?.list?.forEach(row=>{
         row.amount = row.balance
-        row.type = row.type?.replace('ERC', 'CRC')
         row.contract = row.base32
         fixIconUrl(row, 'base32')
         delete row.tokenHex40id;
@@ -38,6 +37,8 @@ export function polishAssertList(page) {
 
         if (StatApp.isEVM) {
             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
+        } else{
+            row.type = row.type?.replace('ERC', 'CRC')
         }
     })
     delete page?.candidate
