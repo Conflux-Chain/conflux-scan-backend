@@ -1,4 +1,5 @@
 const lodash = require('lodash');
+const Big = require('big.js');
 const BigFixed = require('bigfixed');
 const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
 const type = require('../../common/type');
@@ -14,7 +15,6 @@ const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
 const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
 const {StatApp} = require("../../stat/dist/StatApp");
-
 const jsonrpc = new JsonRPCFlow();
 
 // ------------------------------- Dashboard --------------------------------
@@ -910,39 +910,49 @@ jsonrpc.method('exportTransaction',
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
     const { list } = await service.transaction.countAndList(options);
     list.forEach((each) => {
-      each['Epoch Date'] = tool.timestampToString(each.timestamp * 1000);
-      each['Actual Value'] = BigFixed(each.value).div(1e18).toString();
+      each['Value(CFX)'] = Big(each.value).div(1e18).toString();
       if (accountBase32 && each.from === accountBase32) {
-        each['Out Value'] = each['Actual Value'];
+        each['Value_Out(CFX)'] = each['Value(CFX)'];
       }
       if (accountBase32 && each.to === accountBase32) {
-        each['In Value'] = each['Actual Value'];
+        each['Value_In(CFX)'] = each['Value(CFX)'];
       }
+      each['GasPrice(CFX)'] = Big(each.gasPrice).div(1e18).toString();
+      each['GasFee(CFX)'] = Big(each.gasFee).div(1e18).toString();
+      each['Status'] = each.status;
+      each['Method'] = each.method === '0x' ? '' : each.method;
+      each['DateTime'] = tool.timestampToString(each.timestamp * 1000);
     });
-    return list;
+
+      const exportFields = [
+          ['timestamp', 'UnixTimestamp'],
+          ['epochNumber', 'EpochNumber'],
+          ['hash', 'TxHash'],
+          ['from', 'From'],
+          ['to', 'To'],
+          ['contractCreated', 'ContractCreated'],
+          'Value(CFX)',
+          'Value_In(CFX)',
+          'Value_Out(CFX)',
+          'GasPrice(CFX)',
+          'GasFee(CFX)',
+          'Status',
+          'Method',
+          'DateTime',
+      ];
+    return {list, exportFields};
   },
 
-  buildFlow((app) => type([{
-    from: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    to: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    contractCreated: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-  }])),
-
-  arrayToCSVFlow([
-    'timestamp',
-    'epochNumber',
-    'status',
-    'hash',
-    'from',
-    'to',
-    'value',
-    'gasPrice',
-    'contractCreated',
-    'Epoch Date',
-    'Actual Value',
-    'Out Value',
-    'In Value',
-  ]),
+  buildFlow((app) => type({
+      list: [
+          {
+            from: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+            to: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+            contractCreated: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+          },
+      ],
+  })),
+  arrayToCSVFlow(),
 );
 
 jsonrpc.method('exportTransfer',
@@ -990,48 +1000,81 @@ jsonrpc.method('exportTransfer',
         each.symbol = token.symbol;
         each.decimals = token.decimals || 0;
       }
-      each['Epoch Date'] = tool.timestampToString(each.timestamp * 1000);
       if (transferType === CONST.TRANSFER_TYPE.ERC721) {
         each.value = 1;
-        each['Actual Value'] = 1;
+        each['Value'] = 1;
       } else {
-        each['Actual Value'] = BigFixed(each.value).div(BigInt(10) ** BigInt(each.decimals)).toString();
+        each['Value'] = BigFixed(each.value).div(BigInt(10) ** BigInt(each.decimals)).toString();
       }
       if (accountBase32 && each.from === accountBase32) {
-        each['Out Value'] = each['Actual Value'];
+        each['Value_Out'] = each['Value'];
       }
       if (accountBase32 && each.to === accountBase32) {
-        each['In Value'] = each['Actual Value'];
+        each['Value_In'] = each['Value'];
       }
+      each['Type'] = transferType;
+      each['DateTime'] = tool.timestampToString(each.timestamp * 1000);
+      each['TokenId'] = each['tokenId'] ? `\t${each['tokenId']}` : each['tokenId'];
     }
-    return list;
+
+      const exportFields = [
+          ['timestamp', 'UnixTimestamp'],
+          ['epochNumber', 'EpochNumber'],
+          ['transactionHash', 'TxHash'],
+          ['transactionLogIndex', 'TxLogIndex'],
+          ['from', 'From'],
+          ['to', 'To'],
+      ];
+      if (transferType === CONST.TRANSFER_TYPE.CFX) {
+          exportFields.push(...[
+              ['Value', 'Value(CFX)'],
+              ['Value_In', 'Value_In(CFX)'],
+              ['Value_Out', 'Value_Out(CFX)'],
+              'DateTime',
+          ])
+      }
+      if (transferType === CONST.TRANSFER_TYPE.ERC20) {
+          if (accountBase32) {
+              exportFields.push(...[
+                  ['address', 'ContractAddress'],
+                  ['name', 'TokenName'],
+                  ['symbol', 'TokenSymbol'],
+                  ['decimals', 'Decimals'],
+              ])
+          }
+          exportFields.push(...[
+              ['Value', 'Quantity'],
+              'DateTime',
+          ])
+      }
+      if (transferType === CONST.TRANSFER_TYPE.ERC721 || transferType === CONST.TRANSFER_TYPE.ERC1155) {
+          if (accountBase32) {
+              exportFields.push(...[
+                  ['address', 'ContractAddress'],
+                  ['name', 'TokenName'],
+                  ['symbol', 'TokenSymbol'],
+              ])
+          }
+          exportFields.push(...[
+              'TokenId',
+              ['Value', 'Quantity'],
+              'Type',
+              'DateTime',
+          ])
+      }
+    return {list, exportFields};
   },
 
-  buildFlow((app) => type([{
-    address: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    from: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-    to: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
-  }])),
-
-  arrayToCSVFlow([
-    'timestamp',
-    'epochNumber',
-    'transactionHash',
-    'transactionLogIndex',
-    'batchIndex',
-    'from',
-    'to',
-    'tokenId',
-    'value',
-    'address',
-    'name',
-    'symbol',
-    'decimals',
-    'Epoch Date',
-    'Actual Value',
-    'Out Value',
-    'In Value',
-  ]),
+  buildFlow((app) => type({
+      list: [
+          {
+            address: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+            from: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+            to: StatApp.isEVM ? app.type.address.$after((v) => `${v}`).$or(type.any) : app.type.simpleAddress.$after((v) => `${v}`).$or(type.any),
+          },
+      ],
+  })),
+  arrayToCSVFlow(),
 );
 
 module.exports = jsonrpc;

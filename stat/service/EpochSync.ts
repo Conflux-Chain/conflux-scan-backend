@@ -527,6 +527,9 @@ export class EpochSync extends SyncBase{
     public async getAddrTransferArrayDB(epochNumber,tokenTransferArray,cfxTransferArray,txArray){
         const result = [];
         [...tokenTransferArray, ...cfxTransferArray, ...txArray].forEach( transfer => {
+            if(transfer.contractCreatedId) {
+                lodash.assign(transfer, {contractId: transfer.contractCreatedId})
+            }
             result.push({...transfer, addressId: transfer.fromId})
 
             const dummyToId = transfer.toId || transfer.contractCreatedId

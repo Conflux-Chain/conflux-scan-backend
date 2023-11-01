@@ -65,7 +65,8 @@ export class AddrTransferQuery extends TransferQueryBase{
         const {ADDRESS_TRANSFER_TYPE: {TX, ERC20, ERC721, ERC1155}} = CONST;
         const isTx = row['type'] === TX.code;
         const isToken = row['type'] === ERC20.code || row['type'] === ERC721.code || row['type'] === ERC1155.code;
-        row['address'] = !isToken ? undefined : format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        const addr = hex40Map.get(row['address']);
+        row['address'] = !isToken && !isTx ? undefined : (addr ? format.address(`0x${addr}`, this.app?.networkId) : undefined);
         row['tokenId'] = !isToken ? undefined : row['tokenId'];
         row['type'] = this.CODE_TYPE_MAP[row['type']].name;
 

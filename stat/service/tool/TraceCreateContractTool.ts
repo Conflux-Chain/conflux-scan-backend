@@ -8,12 +8,14 @@ import {ContractDestroy, TraceCreateContract} from "../../model/TraceCreateContr
 import {ContractVerify} from "../../model/ContractVerify";
 import {TokenTool} from "./TokenTool";
 import {Op} from "sequelize";
-import { AddressTransactionIndex } from "../../model/FullBlock";
+import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
 import {EpochSync} from "../EpochSync";
 import {batchBlockDetail, batchFetchBlock, initCfxSdk} from "../common/utils";
 import {StatApp} from "../../StatApp";
 import {EpochNftTransferSync} from "../EpochNftTransferSync";
 import {sleep} from "./ProcessTool";
+import {AddressTransfer} from "../../model/AddrTransfer";
+import {CONST} from "../common/constant";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -37,6 +39,7 @@ let minEpoch;
 let maxEpoch;
 let store;
 let toFindHexAddress;
+let contractId;
 
 async function init() {
     const config = loadConfig('Prod')
@@ -209,6 +212,9 @@ async function run() {
             epochNumber = epochNumber + 1
         } while (true);
     }
+    if(type === 13) {
+        await addContractCreatedForAddressTransfer(contractId)
+    }
 
     console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
     await close();
@@ -341,6 +347,120 @@ async function addTxHashForTraceCreate(){
     }
 }
 
+async function addContractCreatedForAddressTransfer(contractId){
+    const options: any = {
+        raw: true
+    }
+    if(contractId) {
+        options.where = {to: contractId}
+    }
+    const traceCreateArray = await TraceCreateContract.findAll(options);
+
+    const result = {
+        case1Contracts: new Set(),
+        case2Contracts: new Set(),
+        case3Contracts: new Set(),
+        case4Contracts: new Set(),
+        shouldNeverHappen: new Set(),
+    }
+
+    for(const trace of traceCreateArray) {
+        // get trace
+        const {txHash, from, to, value } = trace
+
+        // get tx
+        const tx = await FullTransaction.findOne({where: {hash: `0x${txHash}`}});
+        if(!tx){
+            console.log(`tx ${hash} not exist!`);
+            continue;
+        }
+        const {epoch, blockPosition: blockIndex, txPosition: txIndex} = tx;
+
+        // update contract created
+        await updateContractCreated(from, to, value, epoch, blockIndex, txIndex, result)
+    }
+
+    console.log(`addContractCreatedForAddressTransfer\n  
+    case1Contracts:${JSON.stringify([...result.case1Contracts].length)}\n 
+    case2Contracts:${JSON.stringify([...result.case2Contracts].length)}\n  
+    case3Contracts:${JSON.stringify([...result.case3Contracts].length)}\n 
+    case4Contracts:${JSON.stringify([...result.case4Contracts].length)}\n 
+    shouldNeverHappen:${JSON.stringify([...result.shouldNeverHappen])}`)
+}
+
+// case1: create  and value = 0, tx
+// case2: create  and value > 0, tx and cfx transfer
+// case3: create2 and value = 0, nothing
+// case4: create2 and value > 0, cfx transfer
+enum CaseType {
+    case1 = 1,
+    case2,
+    case3,
+    case4
+}
+
+async function updateContractCreated(fromId, contractId, value, epoch, blockIndex, txIndex, result) {
+    const {ADDRESS_TRANSFER_TYPE: {TX, CFX_IN_CREATE}} = CONST;
+    const addressIds = [contractId, fromId]
+
+    let lastCaseType;
+    for (const addressId of addressIds) {
+        if (lastCaseType && lastCaseType === CaseType.case3) { // For contract created by op code `create2` and value = 0, no need to process `from`.
+            continue;
+        }
+
+        const tag = addressId !== contractId ? 'from' : 'to'
+        const transfers = await AddressTransfer.findAll({where: {addressId, epoch, blockIndex, txIndex, type: {[Op.in]: [TX.code, CFX_IN_CREATE.code]}}})
+
+        if (!transfers?.length) {
+            if (lastCaseType && lastCaseType !== CaseType.case3) {
+                // result.shouldNeverHappen.add({tag, fromId, contractId, lastCaseType, caseType: CaseType.case3}) // For contract created by op code `create`, and from's transfer(type=tx) has been truncated already.
+                continue;
+            }
+            lastCaseType = CaseType.case3
+            result.case3Contracts.add(contractId)
+            // console.log(`case3(create2 & value = 0): ${tag} ${addressId} no transfer, value ${value}, contractId ${contractId}`);
+            continue;
+        }
+
+        if (transfers?.length > 1) {
+            if (lastCaseType && lastCaseType !== CaseType.case2) {
+                result.shouldNeverHappen.add({tag, fromId, contractId, lastCaseType, caseType: CaseType.case2})
+                continue;
+            }
+            lastCaseType = CaseType.case2
+            result.case2Contracts.add(contractId)
+            for (const t of transfers) {
+                await AddressTransfer.update({contractId}, {where: {addressId, epoch, blockIndex, txIndex, txLogIndex: t.txLogIndex, batchIndex: t.batchIndex, type: t.type}});
+            }
+            // console.log(`case2(create & value > 0): ${tag} ${addressId} ${transfers?.length} transfer, value ${value}, contractId ${contractId}`);
+            continue;
+        }
+
+        const transfer = transfers[0]
+        const type = transfer.type
+        if (type === TX.code) {
+            if (lastCaseType && lastCaseType !== CaseType.case1) {
+                result.shouldNeverHappen.add({tag, fromId, contractId, lastCaseType, caseType: CaseType.case1})
+                continue;
+            }
+            lastCaseType = CaseType.case1
+            result.case1Contracts.add(contractId)
+            // console.log(`case1(create & value = 0): ${tag} ${addressId} 1 transfer, value ${value}, contractId ${contractId}`);
+        }
+        if (type === CFX_IN_CREATE.code) {
+            if (lastCaseType && lastCaseType !== CaseType.case4) {
+                result.shouldNeverHappen.add({tag, fromId, contractId, lastCaseType, caseType: CaseType.case4})
+                continue;
+            }
+            lastCaseType = CaseType.case4
+            result.case4Contracts.add(contractId)
+            // console.log(`case4(create2 & value > 0): ${tag} ${addressId} 1 transfer, value ${value}, contractId ${contractId}`);
+        }
+        await AddressTransfer.update({contractId}, {where: {addressId, epoch, blockIndex, txIndex, type}});
+    }
+}
+
 async function adminDestroyContract(startEpochNumber, endEpochNumber){
     const adminControlHexBean = await Hex40Map.findOne({where:{hex: INTERNAL_ADMIN_CONTROL.substr(2)}});
     const addressTxArray = await AddressTransactionIndex.findAll({
@@ -458,6 +578,9 @@ if(type === 10 && args[2] && args[3] && args[4]){
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
     store = Number(args[4]);
+}
+if(type === 13 && args[2]){
+    contractId = Number(args[2]);
 }
 
 console.log(`params======networkId:${StatApp.networkId}======type:${type}======minEpoch:${minEpoch}======maxEpoch:${maxEpoch}======toFindHexAddress:${toFindHexAddress}`);

@@ -5,7 +5,7 @@ import {
     checkPresent,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
-    mustBeIntParamIfPresent, skipLimit
+    mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
 import {StatApp} from "../../stat/StatApp";
 import {setBody} from "../router/middleware";
@@ -17,6 +17,7 @@ import {toBase32} from "../../stat/service/tool/AddressTool";
 import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
 import {QueryTypes} from "sequelize";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {formatAddr} from "../common/RestTool";
 
 const lodash = require('lodash');
 const abiDecoder = require('abi-decoder');
@@ -89,14 +90,13 @@ export async function queryAccountTx({base32,startEpoch,endEpoch,startTimestamp,
     })
 }
 
-async function getVerifiedContract(address){
-    const base32 = toBase32(address);
-    let cache = CONTRACT_CACHE.get(base32);
+async function getVerifiedContract(base32){
+    const cache = CONTRACT_CACHE.get(base32);
     if(cache) {
         return JSON.parse(cache);
     }
 
-    const verify = await ContractVerify.findOne({ attributes: ['abi'], where: { base32, verifyResult: true}});
+    const verify = await ContractVerify.findOne({ attributes: ['abi','proxy'], where: { base32, verifyResult: true}});
     if(!verify){
         return null;
     }
@@ -117,37 +117,18 @@ export async function abiDecode(ctx){
     for(const hash of hashArray) {
         const tx = txMap[hash];
         if(!tx){
-            lodash.assign(decodeMap[hash], { error: `tx:${hash} not found` });
+            lodash.assign(decodeMap[hash], { error: `Tx (${hash}) not found` });
             continue;
         }
 
         const data = tx.data;
         if(data === '0x'){
-            lodash.assign(decodeMap[hash], { error: `tx.data:${data} not found` });
+            lodash.assign(decodeMap[hash], { error: `Tx's data (${data}) not found` });
             continue;
         }
 
-        const toAddress =  tx.to;
-        const verify = await getVerifiedContract(toAddress);
-        if(!verify){
-            lodash.assign(decodeMap[hash], { error: `contract:${toAddress} not verified` });
-            continue;
-        }
-
-        const abiString = verify['abi'];
-        let abiArray;
-        let decodedData;
-        try{
-            abiArray = JSON.parse(abiString);
-            abiDecoder.addABI(abiArray);
-            decodedData = abiDecoder.decodeMethod(data);
-        } catch (e){
-            lodash.assign(decodeMap[hash], { error: `abi decode:${e.message}` });
-            continue;
-        } finally {
-            abiDecoder.removeABI(abiArray);
-        }
-        lodash.assign(decodeMap[hash], { decodedData });
+        const result = await decodeMethod(tx.to, data);
+        lodash.assign(decodeMap[hash], result);
     }
 
     const response = lodash.map(hashArray, hash => decodeMap[hash]);
@@ -161,7 +142,7 @@ export async function abiDecodeRaw(ctx){
     const contractArray = contracts.split(',');
     const inputArray = inputs.split(',');
     if(contractArray.length !== inputArray.length){
-        setBody(ctx, null, 1, `the length of contractArray and inputArray not match`);
+        setBody(ctx, null, 1, `The length of contractArray and inputArray not match`);
         return
     }
 
@@ -169,50 +150,71 @@ export async function abiDecodeRaw(ctx){
     for(const tx of response) {
         const data = tx.input;
         if(!data){
-            lodash.assign(tx, { error: `tx.input:${data} not found` });
+            lodash.assign(tx, { error: `Tx's input (${data}) not found` });
             continue;
         }
         if(!data.startsWith('0x')){
-            lodash.assign(tx, { error: `tx.input:${data} not starts with 0x` });
+            lodash.assign(tx, { error: `Tx's input (${data}) not starts with 0x` });
             continue;
         }
 
-        const toAddr =  tx.contract;
+        const toAddr = tx.contract;
         let hexAddr;
         try{
             hexAddr = format.hexAddress(toAddr).substr(2);
         } catch (e){
-            lodash.assign(tx, { error: `address:${toAddr} invalid` });
+            lodash.assign(tx, { error: `Address (${formatAddr(toAddr)}) invalid` });
             continue;
         }
         const sql = `select * from trace_create_contract trace where trace.to = (select id from hex40 where hex = ?)`;
         const trace = await TraceCreateContract.sequelize.query(sql, {type: QueryTypes.SELECT, replacements: [hexAddr]})
             .then(arr=>{ return arr[0]; });
         if(!trace){
-            lodash.assign(tx, { error: `address:${toAddr} not a contract` });
-            continue;
-        }
-        const verify = await getVerifiedContract(toAddr);
-        if(!verify){
-            lodash.assign(tx, { error: `contract:${toAddr} not verified` });
+            lodash.assign(tx, { error: `Address (${formatAddr(toAddr)}) not a contract` });
             continue;
         }
 
-        const abiString = verify['abi'];
-        let abiArray;
-        let decodedData;
-        try{
-            abiArray = JSON.parse(abiString);
-            abiDecoder.addABI(abiArray);
-            decodedData = abiDecoder.decodeMethod(data);
-        } catch (e){
-            lodash.assign(tx, { error: `abi decode:${e.message}` });
-            continue;
-        } finally {
-            abiDecoder.removeABI(abiArray);
-        }
-        lodash.assign(tx, { decodedData });
+        const result = await decodeMethod(toAddr, data);
+        lodash.assign(tx, result);
     }
 
     setBody(ctx, response);
+}
+
+async function decodeMethod(toAddr, data) {
+    const base32 = toBase32(toAddr);
+    let contract = await getVerifiedContract(base32);
+    if(!contract){
+        return  { error: `Contract (${formatAddr(toAddr)}) not verified` };
+    }
+
+    let result = decodeData(contract['abi'], data);
+    if(!(!result['error'] && !result['decodedData'] && contract.proxy)) {
+        return result;
+    }
+
+    const impl = await getApiService().contractQuery.queryImplementation(base32)
+    contract = await getVerifiedContract(impl.implementation);
+    if(!contract){
+        return  { error: `The proxy's (${formatAddr(toAddr)}) implementation contract (${formatAddr(impl.implementation)}) not verified` };
+    }
+
+    return decodeData(contract['abi'], data);
+}
+
+async function decodeData(abiString, data){
+    let abiArray;
+    let decodedData;
+
+    try{
+        abiArray = JSON.parse(abiString);
+        abiDecoder.addABI(abiArray);
+        decodedData = abiDecoder.decodeMethod(data);
+    } catch (e){
+        return { error: `Abi decode error ${e.message}` };
+    } finally {
+        abiDecoder.removeABI(abiArray);
+    }
+
+    return {decodedData}
 }

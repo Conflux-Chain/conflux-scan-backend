@@ -391,18 +391,17 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.set('Content-type', 'text/csv')
 
         const s = []
-        s.push(lang === 'cn' ? '地址,合约,名称,数量,数量,百分比' : 'Address, Contract, Name, Quantity, QuantityFloat,Percentage')
+        s.push(lang === 'cn' ? '地址,合约,名称,数量,数量,百分比' : 'HolderAddress, HolderAddressName, IsContract, Quantity, Percentage')
         s.push('\n');
 
-        const decimals = token?.decimals
+        const decimals = token.decimals || 0
         list.forEach(row=>{
-            s.push(row?.account?.address); s.push(',') // Address
-            s.push(row?.contractInfo ? "yes" : ""); s.push(',') // Contract
+            s.push(row?.account?.address); s.push(',') // HolderAddress
             const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
-            s.push(name); s.push(',') // Name
-            s.push(row?.balance); s.push(',') // Quantity
-            const quantityFloat = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
-            s.push(quantityFloat); s.push(',') // QuantityFloat
+            s.push(name); s.push(',') // HolderAddressName
+            s.push(row?.contractInfo ? "yes" : ""); s.push(',') // IsContract
+            const quantity = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
+            s.push(quantity); s.push(',') // Quantity
             const percentage = BigFixed(row?.balance).div(BigFixed(token.totalSupply))
             s.push(percentage) // Percentage
             s.push('\n')

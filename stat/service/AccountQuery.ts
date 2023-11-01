@@ -247,6 +247,10 @@ export class AccountQuery {
             app: { cfx },
         } = this;
 
+        if(StatApp.isEVM) {
+            return undefined;
+        }
+
         const accountInfo = await cfx.getAccount(addr);
         const sponsorInfo = await cfx.getSponsorInfo(addr);
 

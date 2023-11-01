@@ -174,6 +174,8 @@ export class BalanceService {
                     iconUrl: token.iconUrl,
                     type: token.type,
                     balance: fixBalance,
+                    priceInUSDT: token.price || undefined,
+                    quoteUrl: token.quoteUrl || undefined,
                 })
             }
         )
