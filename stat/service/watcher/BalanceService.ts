@@ -146,7 +146,7 @@ export class BalanceService {
             return res.list
         })
     }
-    static async listAccountBalanceInner(base32: string) :
+    static async listAccountBalanceInner(base32: string, tokenType = []) :
         Promise<{ candidate?: number; list: any[]; message?: string }>{
         const hex = format.hexAddress(base32)
         if (hex === '0x0000000000000000000000000000000000000000') {
@@ -156,7 +156,11 @@ export class BalanceService {
         if (accountBean === null) {
             return {list:[], message: 'account not found:'+hex}
         }
-        const {balanceMap, tokenArray: tokenList} = await TokenQuery.listAccountTokens({accountAddress:base32});
+        let {balanceMap, tokenArray: tokenList} = await TokenQuery.listAccountTokens({accountAddress:base32});
+        if(tokenType?.length) {
+            tokenType = tokenType.map(type => type.replace('CRC', 'ERC'))
+            tokenList = tokenList.filter(token => lodash.includes(tokenType, token.type))
+        }
         const contracts = tokenList.map(t=>t.base32);
         // fetch real time balance. 'incorrect' nft may return 0.
         const banList = await BatchBalanceWatcher.getBalances(base32, contracts)

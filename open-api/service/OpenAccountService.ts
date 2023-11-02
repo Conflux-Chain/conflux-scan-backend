@@ -1,6 +1,11 @@
 import {StatApp} from "../../stat/StatApp";
 import {format} from "js-conflux-sdk";
-import {checkPresent, mustBeAddressParamIfPresent, mustBeEnumParamIfPresent} from "../../stat/service/common/utils";
+import {
+    checkPresent,
+    mustBeAddressParamIfPresent,
+    mustBeEnumParamArrayIfPresent,
+    mustBeEnumParamIfPresent
+} from "../../stat/service/common/utils";
 import {BalanceService} from "../../stat/service/watcher/BalanceService";
 import {setBody} from "../router/middleware";
 
@@ -11,11 +16,12 @@ import {setBody} from "../router/middleware";
 export async function listAccountAssets(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'account')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+    mustBeEnumParamArrayIfPresent(ctx.request.query, 'tokenType', StatApp.isEVM ? ['ERC20', 'ERC721', 'ERC1155'] : ['CRC20', 'CRC721', 'CRC1155'])
 
-    const {account} = ctx.request.query;
+    const {account, tokenType} = ctx.request.query;
     checkPresent({account}, ['account']);
 
-    const assets = await BalanceService.listAccountBalanceInner(account)
+    const assets = await BalanceService.listAccountBalanceInner(account, tokenType)
     polishAssertList(assets)
     setBody(ctx, assets)
 }
