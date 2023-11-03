@@ -305,6 +305,7 @@ paths:
         - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/tokenTypeParam'
       responses:
         200:
           description: ''
@@ -2734,6 +2735,13 @@ components:
       name: tokenId
       in: query
       required: true
+      schema:
+        type: string
+    tokenTypeParam:
+      description: "Token type, includes CRC20、CRC721 or CRC1155. Multiple types separated by commas."
+      name: tokenType
+      in: query
+      required: false
       schema:
         type: string
     txTypeParam:

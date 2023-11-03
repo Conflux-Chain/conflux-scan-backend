@@ -151,6 +151,29 @@ export function mustBeEnumParamIfPresent(obj, key: string, options:string[]) {
     throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
 }
 
+export function mustBeEnumParamArrayIfPresent(obj, key: string, options:string[]) {
+    let v = obj[key]
+    if (v === undefined || v === null) {
+        return
+    }
+
+    const paramArray = [];
+    if (lodash.isArray(v)) {
+        v.map(e => e.trim()).filter(Boolean).forEach(e => paramArray.push(e));
+    } else {
+        v = v?.trim()
+        const splitV = v.split(',')
+        if (lodash.isArray(splitV)) {
+            splitV.map(e => e.trim()).filter(Boolean).forEach(e => paramArray.push(e));
+        } else {
+            paramArray.push(v);
+        }
+    }
+
+    paramArray.forEach(e => mustBeEnumParamIfPresent({[key]: e}, key, options))
+    obj[key] = paramArray
+}
+
 export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[]) {
     for (const key of keys) {
         const v = obj[key]
