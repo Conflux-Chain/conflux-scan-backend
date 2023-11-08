@@ -6,7 +6,8 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "lib": ["ES2020"],
-    "target": "es6" // <=
+    "target": "es6", // <=
+    "allowSyntheticDefaultImports": true
     // ...
   }
 }

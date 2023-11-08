@@ -852,7 +852,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
 
         const {accountAddress} = ctx.request.query
-        const result = await statApp.fullBlockQuery.listPendingTx({accountAddress});
+        let result;
+        if(StatApp.isEVM) {
+            result = await statApp.fullBlockQuery.listPendingTxEvm({accountAddress});
+        } else {
+            result = await statApp.fullBlockQuery.listPendingTx({accountAddress});
+        }
         ctx.body = result;
     });
 }
