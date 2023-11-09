@@ -1,4 +1,4 @@
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {Op} from 'sequelize'
 import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
@@ -8,6 +8,7 @@ import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
 import {getAddrId} from "../../model/HexMap";
 import {CONST} from "../common/constant";
+import {StatApp} from "../../StatApp";
 
 const abi = require('./abi');
 const fs = require('fs');
@@ -461,7 +462,7 @@ async function updateCustodianTokenFlag() {
 
 export async function base64ToPNG(token:Token, dir: string) {
     if (!token.icon) {
-        console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
+        // console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
         return
     }
     let raw_data = decodeUtf8(token.icon);
@@ -481,7 +482,8 @@ export async function base64ToPNG(token:Token, dir: string) {
         console.log(`unknown type ${raw_data.substr(0, 64)}`)
         return
     }
-    const filename = `${token.base32}${imageType}`;
+    const addr = StatApp.isEVM ? format.hexAddress(token.base32) : token.base32;
+    const filename = `${addr}${imageType}`;
     const absPath = path.resolve(dir, filename);
     fs.writeFileSync(absPath, data, 'base64');
     return {absPath, filename}
@@ -725,6 +727,12 @@ if (module === require.main) {
     } else if (args[0] === 'testParseApproval') {
         testParseApproval(arg1).then()
     } else if (args[0] === 'build_images') {
+        const space = args[1]
+        if (space !== 'core' && space !== 'evm') {
+            console.log(`Usage: node TokenTool.js build_images <core|evm>`)
+            process.exit(2)
+        }
+        StatApp.isEVM = space === 'evm'
         buildImages().then(()=>{
             Token.sequelize.close().then()
         })

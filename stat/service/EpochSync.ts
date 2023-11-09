@@ -151,7 +151,7 @@ export class EpochSync extends SyncBase{
             const tokenArray = modelData.tokenArray;
             for(const token of tokenArray){
                 if(!EpochSync.SYNC_TOKEN_DETECT) break;
-                if(token?.name.length > 64) token.name = token.name.substr(0, 64);
+                if(token?.name?.length > 64) token.name = token.name.substr(0, 64);
                 await Token.upsert(token);
             }
             const nameTagArray = modelData.nameTagInfo;

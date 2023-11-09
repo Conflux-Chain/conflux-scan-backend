@@ -138,7 +138,7 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/Transfer20List"
+                $ref: "#/components/schemas/TransferCfxList"
   '/account/crc20/transfers':
     get:
       description: 'Get crc20 transfer records of an account.'
@@ -278,12 +278,12 @@ paths:
             type: string
             default: ''
             enum:
-              - ERC20
-              - ERC721
-              - ERC1155
+              - CRC20
+              - CRC721
+              - CRC1155
         - name: byTokenId
           in: query
-          description: Whether to query each NFT token id, only valid for ERC721.
+          description: Whether to query each NFT token id, only valid for CRC721.
           required: false
           schema:
             type: string

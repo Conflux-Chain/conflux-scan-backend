@@ -93,8 +93,7 @@ export async function listContractStat(ctx) {
 
 export async function listApproval(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'account');
-    mustBeEnumParamIfPresent(ctx.request.query, 'tokenType',
-        ['ERC20','ERC721','ERC1155']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'tokenType', ['ERC20','ERC721','ERC1155', 'CRC20','CRC721','CRC1155']);
     mustBeEnumParamIfPresent(ctx.request.query, 'byTokenId',
         ['false','true']);
     const {account, tokenType, byTokenId} = ctx.request.query;

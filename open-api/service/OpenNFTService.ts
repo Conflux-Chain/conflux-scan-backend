@@ -61,6 +61,7 @@ export async function listNFTTokensPro(ctx) {
         data?.list?.forEach(row => {
             row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
             row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
+            row.type = row.type ? row.type.replace('CRC', 'ERC') : row.type;
         });
     }
     setBody(ctx, data)
@@ -156,6 +157,7 @@ export async function getNFTPreview(ctx) {
     if (StatApp.isEVM) {
         data.contract = data.contract ? format.hexAddress(data.contract) : data.contract;
         data.creator = data.creator ? format.hexAddress(data.creator) : data.creator;
+        data.type = data.type ? data.type.replace('CRC', 'ERC') : data.type;
     }
     setBody(ctx, data)
 }

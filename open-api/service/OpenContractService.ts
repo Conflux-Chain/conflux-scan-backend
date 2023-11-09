@@ -58,7 +58,7 @@ export async function polishContract(page) {
             token.name = contract.name
         }
         if (token.tokenType) {
-            token.tokenType = token.tokenType.replace('ERC', 'CRC')
+            token.tokenType = (!StatApp.isEVM) ? token.tokenType.replace('ERC', 'CRC') : token.tokenType;
         }
         fixIconUrl(token, 'address')
         delete token.address
