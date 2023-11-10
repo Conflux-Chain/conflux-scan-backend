@@ -18,6 +18,7 @@ import {checkExist} from "./common/utils";
 import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
+import {BigNumber} from "ethers";
 
 const lodash = require('lodash');
 
@@ -670,6 +671,116 @@ export class FullBlockQuery {
                     code: 31,
                     message: 'The epoch gap [proposedEpoch confirmedEpoch] exceeded 100,000',
                     params:{proposedEpoch, confirmedEpoch}
+                };
+                lodash.defaults(result, {pendingDetail});
+                return result;
+            }
+
+            const pendingDetail = {
+                code: 32,
+                message: 'The transaction execution can be speed up by increasing the gasPrice appropriately',
+                params:{gasPrice},
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
+        return result;
+    }
+
+    public async listPendingTxEvm({accountAddress}){
+        const{ cfx, eth } = this.app;
+
+        // check
+        const result = await eth.send('eth_getAccountPendingTransactions', [accountAddress, undefined, '10']);
+        const {firstTxStatus, pendingTransactions} = result;
+        if(!pendingTransactions?.length){
+            return result;
+        }
+
+        // future nonce
+        const {from ,to, nonce, value, gas: gasLimit, gasPrice, blockNumber} = pendingTransactions[0];
+        const pending = firstTxStatus.pending;
+        if(pending?.endsWith('Nonce')){
+            const pendingDetail = {
+                code: 11,
+                message: 'The nonce in [stateNonce, txNonce) is skipped',
+                params:{txNonce: `${parseInt(nonce)}`, stateNonce: await cfx.getNextNonce(from)}
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
+        // insufficient balance
+        if(pending?.endsWith('Cash')){
+            const gasFee = BigNumber.from(gasLimit).mul(BigNumber.from(gasPrice));
+            const {balance} = await cfx.getAccount(from);
+            const totalCost = BigNumber.from(value).add(BigNumber.from(gasFee));
+            const insufficientBalance = BigNumber.from(balance).lt(BigNumber.from(totalCost));
+            const pendingDetail = {
+                message: 'The balance is insufficient to pay value + gasLimit * gasPrice',
+                params:{balance, value, gasLimit, gasPrice},
+            };
+
+            // contract create
+            const isContractCreate = to === null;
+            if(isContractCreate && insufficientBalance){
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 21})});
+                return result;
+            }
+
+            // EOA
+            const {codeHash}  = await cfx.getAccount(to);
+            const isEOA = codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470';
+            if(isEOA && insufficientBalance){
+                lodash.defaults(result, {pendingDetail: lodash.assign(pendingDetail, {code: 22})});
+                return result;
+            }
+
+            console.log(`
+                firstTxStatus ${JSON.stringify(firstTxStatus)}
+                from ${format.hexAddress(from)}
+                to ${format.hexAddress(to)}
+                value ${value}
+                gasFee ${gasFee}
+                cost ${totalCost}
+                balance ${balance}
+                covered ${isContractCreate}
+            `);
+            lodash.defaults(result, {pendingDetail: {code: 20, message: pending}});
+            return result;
+        }
+
+        // oldBlockHeight
+        if(pending === 'oldBlockHeight'){
+            const pendingDetail = {
+                code: 41,
+                message: 'The block height of the first tx is too old to be packed. The sender needs to submit a new transaction to update the tx pool.',
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
+        // outdatedStatus
+        if(pending === 'outdatedStatus'){
+            const pendingDetail = {
+                code: 51,
+                message: 'The full node internal error. The sender needs to submit a new transaction to update the tx pool.',
+            };
+            lodash.defaults(result, {pendingDetail});
+            return result;
+        }
+
+        // ready
+        if(firstTxStatus?.endsWith('ready')){
+            const proposedBlock = blockNumber;
+            const confirmedBlock = BigInt(await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
+            const blockGap = Math.abs(Number(proposedBlock - confirmedBlock));
+            if(blockGap > 100_000){
+                const pendingDetail = {
+                    code: 31,
+                    message: 'The block gap [proposedBlock confirmedBlock] exceeded 100,000',
+                    params:{proposedBlock, confirmedBlock}
                 };
                 lodash.defaults(result, {pendingDetail});
                 return result;

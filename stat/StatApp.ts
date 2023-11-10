@@ -28,7 +28,7 @@ import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {PruneHandler} from "./service/prune/PruneHandler";
-import {initCfxSdk, patchFormat} from "./service/common/utils";
+import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KEY_FULL_STATE_RPC, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {TransferTpsService} from "./service/TransferTpsService";
@@ -37,6 +37,7 @@ import {Desensitizer} from "./service/Desensitizer";
 import {FullBlockQuery} from "./service/FullBlockQuery";
 import {ENSCheckerQuery} from "./service/ens/ENSCheckerQuery";
 import {AccountQuery} from "./service/AccountQuery";
+import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -45,6 +46,7 @@ export class StatApp{
     public rankService: RankService;
     public txnSync: TxnSync;
     public cfx: Conflux;
+    public eth: JsonRpcProvider;
     public fullStateCfx: Conflux;
     public contractService: ContractService;
     public batchBalanceWatcher: BatchBalanceWatcher;
@@ -85,6 +87,7 @@ export class StatApp{
     }
     public async init() {
         this.cfx = await initCfxSdk(this.config.conflux);
+        this.eth = await initEthSdk(this.config.ether.url)
         StatApp.networkId = this.cfx.networkId
         PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly
