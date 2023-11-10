@@ -581,7 +581,7 @@ paths:
     get:
       tags:
         - 'Utils'
-      description: "Decode the data of the transaction, where the `to` address of the transaction is the verified contract"
+      description: "Decode the data of the transaction, where the `to` address of the transaction is the verified contract. Supports up to 10 transactions at a time."
       parameters:
         - $ref: '#/components/parameters/hashesParam'
       responses:
@@ -595,7 +595,7 @@ paths:
     get:
       tags:
         - 'Utils'
-      description: "Decode the data of the raw transaction, where the `to` address of the transaction is the verified contract"
+      description: "Decode the data of the raw transaction, where the `to` address of the transaction is the verified contract. Supports up to 10 transactions at a time."
       parameters:
         - $ref: '#/components/parameters/contractsParam'
         - $ref: '#/components/parameters/inputsParam'
@@ -1199,6 +1199,7 @@ paths:
         - 'Accounts(Deprecated)'
       parameters:
         - $ref: '#/components/parameters/accountParam'
+#        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/contractParam'
@@ -1656,7 +1657,7 @@ components:
                     description: 'Symbol of the token.'
                     type: string
                   type:
-                    description: 'The type of the token, and it may be CRC721/CRC1155.'
+                    description: 'The type of the token, and it may be ERC721/ERC1155.'
                     type: string
                   webSite:
                     description: 'The web site of the token.'
@@ -1739,7 +1740,7 @@ components:
               description: 'The description of NFT'
               type: string
             type:
-              description: 'Token type, CRC20、CRC721 or CRC1155'
+              description: 'Token type, ERC20、ERC721 or ERC1155'
               type: string
             owner:
               description: 'The owner address.'
@@ -2075,6 +2076,9 @@ components:
           properties:
             total:
               type: integer
+#            next:
+#              description: A cursor to retrieve the next page
+#              type: string
             list:
               type: array
               items:
@@ -2117,26 +2121,26 @@ components:
                     type: string
                     example: 'CFX'
                   type:
-                    description: 'Token type, CRC20、CRC721 or CRC1155'
+                    description: 'Token type, ERC20、ERC721 or ERC1155'
                     type: string
                   decimals:
-                    description: 'Decimal of the token, optional.'
+                    description: 'Decimal of the token, omit if empty.'
                     type: integer
                   contract:
                     description: 'Contract address of the token.'
                     type: string
                   iconUrl:
-                    description: 'Icon url.'
+                    description: 'Icon url,optional.'
                     type: string
                     example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/xxxxxx.svg'
                   amount:
                     description: 'The token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
                   priceInUSDT:
-                    description: 'The price of token in USDT.'
+                    description: 'The price of token in USDT,optional.'
                     type: 'string'
                   quoteUrl:
-                    description: 'The quote url of token.'
+                    description: 'The quote url of token,optional.'
                     type: 'string'
     VerifySourcecode:
       type: object

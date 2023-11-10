@@ -51,18 +51,19 @@ export async function polishContract(page) {
     Object.keys(page.addressInfo).forEach(k=>{
         const contract = page.addressInfo[k]?.contract || {}
         const token = page.addressInfo[k]?.token || {}
-        if (contract.verify?.result) {
-            token.verifed = true
-        }
-        if (!token.name && contract.name) {
-            token.name = contract.name
-        }
+
         if (token.tokenType) {
             token.tokenType = (!StatApp.isEVM) ? token.tokenType.replace('ERC', 'CRC') : token.tokenType;
         }
         fixIconUrl(token, 'address')
-        delete token.address
+
         addressInfoCache.set(k, page.addressInfo[k], addressInfoTTL);
+
+        delete page.addressInfo[k]?.contract?.address;
+        delete page.addressInfo[k]?.contract?.isVirtual;
+        delete page.addressInfo[k]?.token?.address;
+        (!contract.name) && delete page.addressInfo[k]?.contract?.name;
+        (!token.website) && delete page.addressInfo[k]?.token?.website;
     })
     page.addressInfo = {...cachedMap, ...page.addressInfo};
     if (StatApp.isEVM) {
@@ -71,10 +72,6 @@ export async function polishContract(page) {
             delete page.addressInfo[k];
         });
     }
-    Object.keys(page.addressInfo).forEach(k => {
-        delete page.addressInfo[k]?.contract?.address;
-        delete page.addressInfo[k]?.contract?.isVirtual;
-    });
 }
 export function removeEmptyKey(obj, key) {
     if (isEmptyObj(obj[key])) {

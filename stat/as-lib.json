@@ -8,6 +8,7 @@
     "lib": ["ES2020"],
     "composite": true,
     "declaration": true,
-    "target": "es6"
+    "target": "es6",
+    "allowSyntheticDefaultImports": true
   }
 }

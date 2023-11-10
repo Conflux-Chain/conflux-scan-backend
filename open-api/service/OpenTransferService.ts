@@ -56,6 +56,9 @@ export async function listAccountTransfer(ctx) {
     let {cursor} = ctx.request.query;
     cursor = cursor === undefined ? 0 : cursor;
 
+    const {skip, limit} = ctx.request.query;
+    console.log(`listAccountTransfer cursor ${cursor} skip ${skip} limit ${limit}`)
+
     return listTransfer(ctx, getApiService().addrTransferQuery, cursor, 'cursorId')
 }
 
@@ -83,6 +86,10 @@ export async function listNFTTransfers(ctx) {
     }
 
     cursor = cursor === undefined ? 0 : cursor;
+
+    const {skip, limit} = ctx.request.query;
+    console.log(`listNFTTransfers cursor ${cursor} skip ${skip} limit ${limit}`)
+
     return listTransfer(ctx, service, cursor, 'id');
 }
 
