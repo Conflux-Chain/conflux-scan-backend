@@ -17,6 +17,8 @@ export async function queryTokenInfo(address) {
     if (StatApp.isEVM) {
         result.contractAddress = result.contractAddress ? format.hexAddress(result.contractAddress) :
             result.contractAddress;
+    } else{
+        result['tokenType']= result?.tokenType?.replace('ERC', 'CRC');
     }
 
     return result;

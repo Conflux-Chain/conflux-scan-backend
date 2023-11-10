@@ -1092,10 +1092,10 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/Transfer20ListResp"
-  '/account/crc20/transfers':
+                $ref: "#/components/schemas/TransferCfxListResp"
+  '/account/erc20/transfers':
     get:
-      description: 'Get crc20 transfer records of an account.'
+      description: 'Get erc20 transfer records of an account.'
       tags:
         - 'Accounts(Deprecated)'
       parameters:
@@ -1117,8 +1117,8 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer20ListResp"
-  '/account/crc721/transfers':
-    description: 'Get crc721 transfer records of an account'
+  '/account/erc721/transfers':
+    description: 'Get erc721 transfer records of an account'
     get:
       tags:
         - 'Accounts(Deprecated)'
@@ -1142,8 +1142,8 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer721ListResp"
-  '/account/crc1155/transfers':
-    description: 'Get crc1155 transfer records of an account'
+  '/account/erc1155/transfers':
+    description: 'Get erc1155 transfer records of an account'
     get:
       tags:
         - 'Accounts(Deprecated)'
@@ -1167,8 +1167,8 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Transfer1155ListResp"
-  '/account/crc3525/transfers':
-    description: 'Get crc1155 transfer records of an account'
+  '/account/erc3525/transfers':
+    description: 'Get erc1155 transfer records of an account'
     get:
       tags:
         - 'Accounts(Deprecated)'
@@ -1193,7 +1193,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Transfer3525ListResp"
   '/account/transfers':
-    description: 'Get all transfer records (includes: cfx transfer, crc20/crc721/crc1155 transfer) of an account'
+    description: 'Get all transfer records (includes: cfx transfer, erc20/erc721/erc1155 transfer) of an account'
     get:
       tags:
         - 'Accounts(Deprecated)'

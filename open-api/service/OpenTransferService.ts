@@ -51,7 +51,12 @@ export async function listAccountTransfer3525(ctx) {
  * @param ctx
  */
 export async function listAccountTransfer(ctx) {
-    return listTransfer(ctx, getApiService().addrTransferQuery)
+    mustBeIntParamIfPresent(ctx.request.query, 'cursor');
+
+    let {cursor} = ctx.request.query;
+    cursor = cursor === undefined ? 0 : cursor;
+
+    return listTransfer(ctx, getApiService().addrTransferQuery, cursor, 'cursorId')
 }
 
 export async function listNFTTransfers(ctx) {
@@ -78,7 +83,7 @@ export async function listNFTTransfers(ctx) {
     }
 
     cursor = cursor === undefined ? 0 : cursor;
-    return listTransfer(ctx, service, cursor);
+    return listTransfer(ctx, service, cursor, 'id');
 }
 
 export function polishTransferList(page) {
@@ -103,7 +108,7 @@ export function polishTransferList(page) {
     delete page?.accountId
 }
 
-export async function listTransfer(ctx, service, cursor = undefined) {
+export async function listTransfer(ctx, service, cursor = undefined, cursorField = undefined) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'from','to','account', 'contract')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
@@ -122,7 +127,7 @@ export async function listTransfer(ctx, service, cursor = undefined) {
     const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
     const page = await service.listTransfer(
         {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, tokenId, transferType,
-            minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, cursor}
+            minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, cursor, cursorField}
     );
 
     await polishContract(page)

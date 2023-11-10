@@ -17,6 +17,7 @@ import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {TokenQuery} from "../TokenQuery";
 import {Errors} from "../common/LogicError";
+import {trimPriceZero} from "../common/utils";
 
 export class BalanceService {
     private app: StatApp;
@@ -168,8 +169,9 @@ export class BalanceService {
         lodash.zip(tokenList, banList).forEach(
             ([token,ban], idx) => {
                 // use db balance for nft only
-                const fixBalance = ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0;
-                fixBalance && resultList.push({
+                const balance = ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0;
+                const priceInUSDT = token.price ? trimPriceZero(token.price.toString()) : undefined;
+                balance && resultList.push({
                     name: token.name,
                     decimals: token.decimals,
                     symbol: token.symbol,
@@ -177,8 +179,8 @@ export class BalanceService {
                     tokenHex40id: token.hex40id,
                     iconUrl: token.iconUrl,
                     type: token.type,
-                    balance: fixBalance,
-                    priceInUSDT: token.price || undefined,
+                    balance,
+                    priceInUSDT,
                     quoteUrl: token.quoteUrl || undefined,
                 })
             }

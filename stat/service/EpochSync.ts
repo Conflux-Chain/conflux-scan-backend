@@ -151,7 +151,7 @@ export class EpochSync extends SyncBase{
             const tokenArray = modelData.tokenArray;
             for(const token of tokenArray){
                 if(!EpochSync.SYNC_TOKEN_DETECT) break;
-                if(token?.name.length > 64) token.name = token.name.substr(0, 64);
+                if(token?.name?.length > 64) token.name = token.name.substr(0, 64);
                 await Token.upsert(token);
             }
             const nameTagArray = modelData.nameTagInfo;
@@ -527,6 +527,7 @@ export class EpochSync extends SyncBase{
     public async getAddrTransferArrayDB(epochNumber,tokenTransferArray,cfxTransferArray,txArray){
         const result = [];
         [...tokenTransferArray, ...cfxTransferArray, ...txArray].forEach( transfer => {
+            lodash.assign(transfer, {cursorId: EpochSync.buildAddrTransferCursor(transfer)})
             if(transfer.contractCreatedId) {
                 lodash.assign(transfer, {contractId: transfer.contractCreatedId})
             }
@@ -538,6 +539,14 @@ export class EpochSync extends SyncBase{
             }
         });
         return result;
+    }
+
+    public static buildAddrTransferCursor(t) {
+        function pad(val, len, isEnd=false) {
+            const v = val.toString()
+            return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
+        }
+        return `${t.epoch}${pad(t.blockIndex, 4)}${pad(t.txIndex, 5)}${pad(t.txLogIndex, 6)}${pad(t.type, 3, true)}`;
     }
 
     private static async getAddrTxArray(blockArray, epochTimestamp){

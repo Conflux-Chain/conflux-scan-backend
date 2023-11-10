@@ -159,6 +159,9 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         let relation = ApprovalRelation.getTableName();
         const token = Token.getTableName();
         const tx = FullTransaction.getTableName();
+        if(tokenType) {
+            tokenType = tokenType.replace('CRC', 'ERC');
+        }
         const replacements = []
         if (byTokenId && tokenType === 'ERC721') {
             const approvalT = TokenApproval.getTableName();
@@ -189,16 +192,13 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         }
         replacements.push(fromId);
         let countSql = `select count(*) as count ${sql.substr(sql.indexOf('from '))}`;
-        console.log(`count sql is `, countSql)
         const total = await ApprovalRelation.sequelize.query(
             countSql,
             {replacements, raw: true, type: QueryTypes.SELECT,}
         ).then(([row])=>row["count"])
 
         let list:any[] = await ApprovalRelation.sequelize.query(
-            sql, {replacements, raw: true, type: QueryTypes.SELECT,
-                logging: console.log,
-            }
+            sql, {replacements, raw: true, type: QueryTypes.SELECT}
         )
         // const {rows:list, count:total} = await ApprovalRelation.findAndCountAll({
         //     raw:true, where: {fromId}})
@@ -216,7 +216,10 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         })
         list = await patchApprovalList({account, list, cfx})
         list.forEach(row=>{
-            const {name, symbol, type, base32, decimals, iconUrl} = row;
+            let {name, symbol, type, base32, decimals, iconUrl} = row;
+            if(type) {
+                type = (!StatApp.isEVM) ? type.replace('ERC', 'CRC') : type;
+            }
             ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
             row['tokenInfo'] = {name, symbol, type, base32, decimals, iconUrl};
             row['spenderName'] = (contractNameMap[`${row.toId}`])?.name || '';
