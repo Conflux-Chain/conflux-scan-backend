@@ -18,9 +18,15 @@ import {AddressTransfer} from "../../model/AddrTransfer";
 import {CONST} from "../common/constant";
 import {KV} from "../../model/KV";
 import {EpochNftTransfer} from "../../model/Epoch";
+import {Token} from "../../model/Token";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
+const path = require('path')
+const fs = require('fs')
+const mineType = require("mime-types");
+const request = require("request");
+
 const POSITION_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
 
 const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
@@ -224,8 +230,14 @@ async function run() {
     if(type === 15) {
         await clearEpochNftTransferBeforeFinalized(epochNumber);
     }
+    if(type === 16){
+        await fixIconUrl();
+    }
+    if(type === 17) {
+        await updateIconUrl()
+    }
 
-    console.log(`trace by hash completed...\ntype:${type}\nhash:${hash}\ntrace:${JSON.stringify(result)}`);
+    console.log(`type:${type} hash:${hash} trace:${JSON.stringify(result)}`);
     await close();
 }
 
@@ -599,6 +611,96 @@ async function updateCursorForAddressTransfer(loop) {
     }
 }
 
+const iconUrls = [
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aac56pemfkgmryyc09fcuyrdu64z10kc5auef9d0btb.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aacxuz42mf8s2dy71n3jhg36vujs5rx5jj2027cbp4v.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aadd0sef1ajt7djpedbh5sj5hj2ggufreguhfm2u83u.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aad5t0vsucen597s2v7shuvpg1z09dfj0xaxfaentwe.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aaajepb26n5pshbjc1usr43jzdtxezw62ku779rfb1z.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aactf6u7p82ypcx2xw8jxmbunvdnnywbkyu6y3wybdg.jpeg',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aacnjc648dtgar8n6y8x4n5zutfj5e0fdh6ej03mu3r.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aabk8wdr9985xkxd4gc2p1c45xs1747rd2jtt23n1zf.jpeg',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aacwrztpt4dw1mc421jb7jkdrg0d4k777s6uts30hus.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aact43d3yjp9d90js35zw2d146jaeg72f5jwtwwjs9k.jpeg',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aacj3ba21yfcf9h2wecezey3zvdvy46namutunvh0rp.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aaan08u83zady2yypwhdjyr76b3srs2fjhe6rnsxwz4.jpeg',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aadv28pnes792dhjjjcsntn7rfk3t1m2dsjkvsp7pu9.jpeg',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aac7n2vuw1pdubhgyhswbtx8y6as3dtcf42f591w472.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aabadzdw6b3nuvxpxb95avn53xktx9r6eeu7f3psgrc.jpeg',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aacfesxknt40p8xc15smrm0bhf2cj9gngd2usu2sf0c.jpeg',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aadhjy7bn9ykdpuu2rhksgmv25ukm1wv3pyg3j8ef9g.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aackbrxzmm38c24yh8r2wunk51r5rbb40yj8vwd2m4n.png',
+    'https://scan-icons.oss-cn-hongkong.aliyuncs.com/mainnet/net1030%3Aadtetkckjm8px2rsu8e87zxzu6vf2a0r2j5ke7g9up.png',
+];
+const dstDir = path.join(__dirname+'/saveImg')
+
+async function fixIconUrl() {
+    for (const iconUrl of iconUrls) {
+        downloadImg(iconUrl, dstDir)
+    }
+}
+
+async function updateIconUrl() {
+    for (const iconUrl of iconUrls) {
+        const fileName = iconUrl.split('/').pop();
+        console.log(`fileName ${fileName}`)
+        const base64Data = imgToBase64(`${dstDir}/${fileName}`);
+        console.log(`base64Data ${base64Data.length}`)
+        const base32 = (decodeURIComponent(fileName)).split('.').shift();
+        console.log(`base32 ${base32}`)
+        const [effectRows] = await Token.update({icon: base64Data}, {where: {base32}});
+        if(effectRows) {
+            console.log(`${fileName} updated success!`);
+        } else{
+            console.log(`${fileName} updated fail!`);
+        }
+    }
+}
+
+function downloadImg(srcUrl, dstDir) {
+    if (!fs.existsSync(dstDir)) {
+        fs.mkdirSync(dstDir, { recursive: true });
+    }
+
+    const fileName = srcUrl.split('/').pop();
+
+    const process = fs.createWriteStream( `${dstDir}/${fileName}`);
+
+    request({
+        url: srcUrl,
+        timeout: 5000
+    }).pipe(process);
+
+    process.on('finish', async () => {
+        console.log(`${fileName} download success!`);
+    })
+    process.on('error', err => {
+        console.log(`${fileName} download fail!`, err);
+    })
+
+    return fileName;
+}
+
+function imgToBase64(file) {
+    let filePath = path.resolve(file);
+    const fileName = filePath.split('/').pop();
+    let fileMimeType = mineType.lookup(filePath);
+
+    if(!fileMimeType.toString().includes('image')) {
+        console.log(`Failed! ${filePath}:\tNot image file!`);
+        return;
+    }
+
+    const imageData = fs.readFileSync(filePath);
+    if (!imageData) {
+        console.log(`Failed! No imageData!`)
+        return;
+    }
+    const base64Data = Buffer.from(imageData).toString('base64');
+
+    return `data:${fileMimeType};base64,${base64Data}`;
+}
+
 async function clearEpochNftTransferBeforeFinalized(finalizedEpoch) {
     while(true) {
         const rows = await EpochNftTransfer.destroy({where:{epoch:{[Op.lt]: finalizedEpoch}}, limit: 10000})
@@ -609,7 +711,6 @@ async function clearEpochNftTransferBeforeFinalized(finalizedEpoch) {
         }
     }
 }
-
 
 const args = process.argv.slice(2);
 StatApp.networkId = Number(args[0]);
