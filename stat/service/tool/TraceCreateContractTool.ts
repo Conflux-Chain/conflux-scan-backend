@@ -62,9 +62,9 @@ async function init() {
 
     tokenTool = new TokenTool(cfx);
 
-    const app = {cfx, networkId: StatApp.networkId, tokenTool};
-    // epochSync = new EpochSync(app);
-    epochSync = new EpochNftTransferSync(app);
+    const app = {cfx, networkId: StatApp.networkId, tokenTool, config};
+    epochSync = new EpochSync(app);
+    // epochSync = new EpochNftTransferSync(app);
     contractQuery = new ContractQuery(app);
 }
 
@@ -530,31 +530,24 @@ async function adminDestroyContract(startEpochNumber, endEpochNumber){
 }
 
 async function getDataByEpochNumber(){
+    //0xe84a1abab5ab2cd9a839873c8e5d45d47e54fc29ce4d84ee3bf0c5f677faca13
+    const block = await cfx.getBlockByHash('0xe57b669f03bccbf1f74db1ac59c7e7c0c4e4b9fcff2c2bc011390ad252e1035e', true);
     for(let epochNumber = minEpoch; epochNumber <= maxEpoch; epochNumber++){
-        const epoch = await epochSync.getEpoch(epochNumber);
-        console.log(`epoch------${JSON.stringify(epoch)}`)
+        const data = await epochSync.getData(epochNumber)
+        // console.log(`data --- ${JSON.stringify(data)}`);
+       /* const epochData = await epochSync.getEpochData(epochNumber);
+        const {epoch, blockHashArray, blockArray} = epochData;
         const epochTimestamp = epoch.timestamp;
 
-        /*const {blockHashArray, blockArray} = await epochSync.getMinerBlockArray(epochNumber);
-        console.log(`blockHashArray------${JSON.stringify(blockHashArray)}`)
-        console.log(`blockArray------${JSON.stringify(blockArray)}`)*/
-
         const eventLogInfo = await epochSync.getLogsGrouped({epochNumber, epochTimestamp});
-        console.log(`eventLogInfo---1---${JSON.stringify(eventLogInfo)}`)
+        const traceArray = await epochSync.getTraceArray(epochNumber);
 
-       /* const traceArray = await epochSync.getTraceArray(epochNumber);
-        console.log(`traceArray------${JSON.stringify(traceArray)}`)
-
-        const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, epochTimestamp, blockHashArray,
-            blockArray, eventLogInfo, traceArray);
-        console.log(`addrTransferArray------${JSON.stringify(addrTransferArray)}`)
-        if(addrTransferArray?.length){
-            // await AddressTransfer.bulkCreate(addrTransferArray);
-        }
-
-        if(epochNumber % 1000 === 0){
-            console.log(`add address transfer catch up at epoch:${epochNumber}`);
-        }*/
+        const tokenTransferArray = await epochSync.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
+        const cfxTransferArray = await epochSync.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
+        const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
+        const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
+            txArray);
+        console.log(`addrTransferArray --- ${JSON.stringify(addrTransferArray)}`);*/
     }
 }
 

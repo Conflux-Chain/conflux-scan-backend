@@ -83,7 +83,7 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
     }
 }
 
-function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
+export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[]) {
     const result = {t20:[],t721:[],t1155:[]}
     function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex, txPos) {

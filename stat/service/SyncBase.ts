@@ -414,7 +414,7 @@ export abstract class SyncBase{
 
     //---------------------------- token transfer ----------------------------
     public async getTokenTransferArrayDB(epochTimestamp, blockHashArray, {transfer20Array, transfer721Array,
-        transfer1155Array}) {
+        transfer1155Array}, byRcpt = false) {
         const {
             ADDRESS_TRANSFER_TYPE: {ERC20, ERC721, ERC1155}
         } = CONST;
@@ -423,24 +423,26 @@ export abstract class SyncBase{
         lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
 
         let result = [];
-        if(transfer20Array.length){
-            result = [...result, ...await SyncBase.buildTokenTransferArray(ERC20.code, transfer20Array, epochTimestamp, blockHashMap)];
-        }
-        if(transfer721Array.length){
-            result = [...result, ...await SyncBase.buildTokenTransferArray(ERC721.code, transfer721Array, epochTimestamp, blockHashMap)];
-        }
-        if(transfer1155Array.length){
-            result = [...result, ...await SyncBase.buildTokenTransferArray(ERC1155.code, transfer1155Array, epochTimestamp, blockHashMap)];
+        const tsArray = [
+            {list: transfer20Array, type: ERC20.code},
+            {list: transfer721Array, type: ERC721.code},
+            {list: transfer1155Array, type: ERC1155.code},
+        ];
+        for (const ts of tsArray) {
+            if(!ts.list.length){
+                continue;
+            }
+            result = [...result, ...await SyncBase.buildTokenTransferArray(ts.type, ts.list, epochTimestamp, blockHashMap, byRcpt)];
         }
         return result;
     }
 
-    public static async buildTokenTransferArray(type, transferArray, epochTimestamp, blockHashMap){
+    public static async buildTokenTransferArray(type, transferArray, epochTimestamp, blockHashMap, byRcpt = false){
         const addressTransferArray = [];
         for (const item of transferArray) {
             const transfer = {} as any;
-            transfer.epoch = item.epochNumber;
-            transfer.blockIndex = blockHashMap[item.blockHash];
+            transfer.epoch = byRcpt ? item.epoch : item.epochNumber;
+            transfer.blockIndex = byRcpt ? item.blockIndex : blockHashMap[item.blockHash];
             transfer.txIndex = item.transactionIndex;
             transfer.txLogIndex = item.transactionLogIndex;
             transfer.batchIndex = item.batchIndex;

@@ -246,7 +246,7 @@ export abstract class TransferQueryBase {
                 row['input'] = txMap[row['transactionHash']]?.data;*/
                 if (row['status']) {
                     failedQuery.push(FailedTx.findOne({where:{
-                            epoch: row['epochNumber'], blockPosition: row['blockPosition'], txPosition:row['transactionIndex']
+                            epoch: row['epochNumber'], blockPosition: row['blockIndex'], txPosition:row['txIndex']
                         }}).then(ft=>{
                         if (ft) {
                             row['txExecErrorMsg'] = ft.txExecErrorMsg;

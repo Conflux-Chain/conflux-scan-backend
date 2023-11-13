@@ -26,6 +26,7 @@ import {NftMeta} from "./nftchecker/NftMetaStorage";
 import {CensorItem} from "../model/CensorItem";
 import {CENSOR_TYPE} from "./censor/CensorService";
 import {NameTag} from "../model/NameTag";
+import {decodeTransferFromReceipts} from "../TokenTransferSync";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -78,18 +79,22 @@ export class EpochSync extends SyncBase{
     }
 
     //----------------- implementation method from SyncBase -----------------
-    async getData(epochNumber): Promise<SyncData> {
+    public async getData(epochNumber): Promise<SyncData> {
+        const {
+            app: { tokenTool },
+        } = this;
+
         try{
             const epochData = await this.getEpochData(epochNumber);
-            const {epoch, blockHashArray, blockArray, transactionHashArray} = epochData;
+            const {epoch, blockHashArray, blockArray, transactionHashArray, receipts} = epochData;
             const epochTimestamp = epoch.timestamp;
 
             const minerBlockArray = await this.getMinerBlockArray(epochNumber, blockArray);
             const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
 
             const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
-            const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
             const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
+            const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
             const nameTagInfo = await this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray);
 
             const traceArray = await this.getTraceArray(epochNumber);
@@ -98,7 +103,9 @@ export class EpochSync extends SyncBase{
             const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
             const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
 
-            const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
+            const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray);
+            const tokenLogs = {transfer20Array: t20, transfer721Array: t721, transfer1155Array: t1155};
+            const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
             const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
             const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
             const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
@@ -549,13 +556,14 @@ export class EpochSync extends SyncBase{
         return `${t.epoch}${pad(t.blockIndex, 4)}${pad(t.txIndex, 5)}${pad(t.txLogIndex, 6)}${pad(t.type, 3, true)}`;
     }
 
-    private static async getAddrTxArray(blockArray, epochTimestamp){
+    public static async getAddrTxArray(blockArray, epochTimestamp){
         const addrTxArray = [];
         for(const [blockIndex, block] of blockArray.entries()){
             if(!block.transactions?.length) {
                 continue;
             }
 
+            let txPosition = 0;
             for (const [txIndex, item] of block.transactions.entries()){
                 const receiptStatus = item.receipt?.outcomeStatus;
                 if (receiptStatus != 0 && receiptStatus != 1 && block.epochNumber !== 0) {
@@ -565,7 +573,7 @@ export class EpochSync extends SyncBase{
                 const tx = {} as any;
                 tx.epoch = block.epochNumber;
                 tx.blockIndex = blockIndex;
-                tx.txIndex = txIndex;
+                tx.txIndex = txPosition++;
 
                 const [fromId, toId, contractCreatedId] = await Promise.all([
                     makeIdV(item.from, undefined, {dt: epochTimestamp}),
@@ -585,7 +593,7 @@ export class EpochSync extends SyncBase{
         return addrTxArray;
     }
 
-    private async getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray) {
+    public async getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray) {
         const blockHashMap = {};
         lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
 
@@ -840,6 +848,7 @@ export class EpochSync extends SyncBase{
             }
 
             // assemble traces
+            let txPosition = 0;
             // @ts-ignore
             lodash.zip(block.transactions, blockTrace.transactionTraces)
                 .forEach(([transaction, transactionTracesItem], transactionIndex) => {
@@ -850,7 +859,7 @@ export class EpochSync extends SyncBase{
                             blockHash: block.hash,
                             blockTime: block.timestamp,
                             transactionHash: transaction.hash,
-                            transactionIndex,
+                            transactionIndex: txPosition,
                             transactionTraceIndex,
                             status: transaction.status,
                             ...EpochSync.parseTrace(trace, detail),
@@ -858,6 +867,7 @@ export class EpochSync extends SyncBase{
                     });
                     const matchedTrace = tokenTool.matchTrace(transactionTraceArray, transaction);
                     traceArray = [...traceArray, ...matchedTrace];
+                    transaction.blockHash && txPosition ++;
                 });
         });
         return traceArray;
