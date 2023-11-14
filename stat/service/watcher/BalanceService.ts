@@ -151,11 +151,11 @@ export class BalanceService {
         Promise<{ candidate?: number; list: any[]; message?: string }>{
         const hex = format.hexAddress(base32)
         if (hex === '0x0000000000000000000000000000000000000000') {
-            return {list:[], message: 'Can not query for zero address.'}
+            throw new Errors.ParameterError(`Can not query for zero address.`);
         }
         const accountBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
         if (accountBean === null) {
-            return {list:[], message: 'account not found:'+hex}
+            throw new Errors.ParameterError(`Account ${hex} not found.`);
         }
         let {balanceMap, tokenArray: tokenList} = await TokenQuery.listAccountTokens({accountAddress:base32});
         if(tokenType?.length) {
