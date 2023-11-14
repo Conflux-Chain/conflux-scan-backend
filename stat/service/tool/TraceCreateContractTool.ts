@@ -7,7 +7,7 @@ import {ContractQuery} from "../ContractQuery";
 import {ContractDestroy, TraceCreateContract} from "../../model/TraceCreateContract";
 import {ContractVerify} from "../../model/ContractVerify";
 import {TokenTool} from "./TokenTool";
-import {Op} from "sequelize";
+import {Op, where} from "sequelize";
 import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
 import {EpochSync} from "../EpochSync";
 import {batchBlockDetail, batchFetchBlock, initCfxSdk} from "../common/utils";
@@ -19,6 +19,11 @@ import {CONST} from "../common/constant";
 import {KV} from "../../model/KV";
 import {EpochNftTransfer} from "../../model/Epoch";
 import {Token} from "../../model/Token";
+import {SyncCode, SyncData} from "../SyncBase";
+import {decodeTransferFromReceipts} from "../../TokenTransferSync";
+import {PruneNotifier} from "../prune/PruneNotifier";
+import {PruneType} from "../../model/PruneInfo";
+import {boolean} from "js-conflux-sdk/dist/types/util/format";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -184,7 +189,7 @@ async function run() {
         await adminDestroyContract(minEpoch, maxEpoch);
     }
     if(type === 9){
-        await getDataByEpochNumber();
+        await getDataByEpochNumber(minEpoch);
     }
     if(type === 10) {
         await getDataByEpochNumberForNft()
@@ -235,6 +240,9 @@ async function run() {
     }
     if(type === 17) {
         await updateIconUrl()
+    }
+    if(type === 18){
+        await updateTxPositionForAddressTransfer(loop)
     }
 
     console.log(`type:${type} hash:${hash} trace:${JSON.stringify(result)}`);
@@ -529,26 +537,22 @@ async function adminDestroyContract(startEpochNumber, endEpochNumber){
     return adminDestroyTxArray;
 }
 
-async function getDataByEpochNumber(){
-    //0xe84a1abab5ab2cd9a839873c8e5d45d47e54fc29ce4d84ee3bf0c5f677faca13
-    const block = await cfx.getBlockByHash('0xe57b669f03bccbf1f74db1ac59c7e7c0c4e4b9fcff2c2bc011390ad252e1035e', true);
-    for(let epochNumber = minEpoch; epochNumber <= maxEpoch; epochNumber++){
-        const data = await epochSync.getData(epochNumber)
-        // console.log(`data --- ${JSON.stringify(data)}`);
-       /* const epochData = await epochSync.getEpochData(epochNumber);
-        const {epoch, blockHashArray, blockArray} = epochData;
-        const epochTimestamp = epoch.timestamp;
+async function getDataByEpochNumber(epochNumber){
+    const epochData = await epochSync.getEpochData(epochNumber);
+    const {epoch, blockHashArray, blockArray, receipts} = epochData;
+    const epochTimestamp = epoch.timestamp;
 
-        const eventLogInfo = await epochSync.getLogsGrouped({epochNumber, epochTimestamp});
-        const traceArray = await epochSync.getTraceArray(epochNumber);
+    const traceArray = await epochSync.getTraceArray(epochNumber);
 
-        const tokenTransferArray = await epochSync.getTokenTransferArrayDB(epochTimestamp, blockHashArray, eventLogInfo);
-        const cfxTransferArray = await epochSync.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
-        const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
-        const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
-            txArray);
-        console.log(`addrTransferArray --- ${JSON.stringify(addrTransferArray)}`);*/
-    }
+    const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray);
+    const tokenLogs = {transfer20Array: t20, transfer721Array: t721, transfer1155Array: t1155};
+    const tokenTransferArray = await epochSync.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
+    const cfxTransferArray = await epochSync.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
+    const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
+    const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
+        txArray);
+
+    return  addrTransferArray;
 }
 
 async function getDataByEpochNumberForNft(){
@@ -602,6 +606,81 @@ async function updateCursorForAddressTransfer(loop) {
         }
         await sleep(3)
     }
+}
+
+const keyEpochMax = 'max_epoch_tx_pos_addr_ts';
+const keyEpochCur = 'cur_epoch_tx_pos_addr_ts';
+
+async function updateTxPositionForAddressTransfer(loop) {
+    const maxEpoch = await KV.getNumber(keyEpochMax);
+    if(!maxEpoch) {
+        console.log(`max epoch not exist`)
+        return
+    }
+
+    const curEpoch = await KV.getNumber(keyEpochCur);
+    let nextEpoch = curEpoch ? curEpoch + 1 : (await AddressTransfer.min('epoch')) as number
+
+    let cntr = 1
+    while(true) {
+        const tsArray = await AddressTransfer.findAll({where: {epoch: nextEpoch}, raw: true})
+        const uniqueTxs: string[] = []
+        if(tsArray?.length) {
+            uniqueTxs.push(...new Set<string>(tsArray.map(ts => (`${ts.epoch}_${ts.blockIndex}_${ts.txIndex}`))))
+        }
+
+        const fullTxs = await FullTransaction.findAll({where: {epoch: nextEpoch}, raw: true})
+        const uniqueFullTxs: string[] = []
+        if(fullTxs?.length) {
+            uniqueFullTxs.push(...new Set<string>(fullTxs.map(tx => (`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`))))
+        }
+
+        if(!checkTxPositionConsistency(uniqueTxs, uniqueFullTxs)) {
+            const tsArrayNew = await getDataByEpochNumber(nextEpoch)
+            const uniqueTxsNew: string[] = []
+            if(tsArrayNew?.length) {
+                uniqueTxsNew.push(...new Set<string>(tsArrayNew.map(ts => (`${ts.epoch}_${ts.blockIndex}_${ts.txIndex}`))))
+            }
+            if(!checkTxPositionConsistency(uniqueTxsNew, uniqueFullTxs)){
+                console.log(`Epoch ${nextEpoch} need to be checked manually`)
+                continue;
+            }
+            // console.log(`Fixed nextEpoch ${nextEpoch} tsArrayNew ${JSON.stringify(tsArrayNew)}`)
+            await AddressTransfer.destroy({where: {epoch: nextEpoch}})
+            await AddressTransfer.bulkCreate(tsArrayNew);
+        }
+
+
+        await KV.upsert({key: keyEpochCur, value: nextEpoch.toString()})
+
+        nextEpoch = nextEpoch + 1
+        if(nextEpoch > maxEpoch) {
+            break
+        }
+
+        cntr = cntr + 1
+        if(loop && cntr > loop) {
+            break
+        }
+
+        if(nextEpoch % 1000 === 0) {
+            console.log(`fix address transfer's tx position at epoch ${nextEpoch}`)
+        }
+        await sleep(3)
+    }
+}
+
+function checkTxPositionConsistency(uniqueTxs: string[], uniqueFullTxs: string[]): boolean {
+    if(uniqueTxs.length !== uniqueFullTxs.length) {
+        return false;
+    }
+
+    const interTxs = lodash.intersection(uniqueTxs, uniqueFullTxs)
+    if(interTxs?.length !== uniqueTxs.length) {
+        return false;
+    }
+
+    return true;
 }
 
 const iconUrls = [
@@ -738,7 +817,7 @@ if(type === 10 && args[2] && args[3] && args[4]){
 if(type === 13 && args[2]){
     contractId = Number(args[2]);
 }
-if(type === 14 && args[2]) {
+if((type === 14 || type === 18) && args[2]) {
     loop = Number(args[2]);
 }
 
