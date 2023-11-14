@@ -1784,6 +1784,31 @@ components:
                   name:
                     description: 'The name of NFT'
                     type: string
+    NFTOwnerList:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            next:
+              description: A cursor to retrieve the next page
+              type: string
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    description: 'The owner address.'
+                    type: string
+                  amount:
+                    description: "When a tokenId is provided, it is the amount of nft; Otherwise it is the balance of nft."
+                    type: string
     AddressInfo:
       type: object
       additionalProperties:
@@ -1825,11 +1850,11 @@ components:
     TransactionListResp:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1874,11 +1899,11 @@ components:
     TransferCfxListResp:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1904,11 +1929,11 @@ components:
     Transfer20ListResp:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1934,11 +1959,11 @@ components:
     Transfer721ListResp:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1964,11 +1989,11 @@ components:
     Transfer1155ListResp:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -1996,11 +2021,11 @@ components:
     Transfer3525ListResp:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2039,11 +2064,11 @@ components:
     Approvals:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2087,11 +2112,11 @@ components:
     TransferList:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             total:
@@ -2129,11 +2154,11 @@ components:
     AssetsOfAccountResp:
       type: object
       properties:
-        code:
+        status:
           type: integer
         message:
           type: string
-        data:
+        result:
           type: object
           properties:
             list:
