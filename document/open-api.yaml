@@ -1192,16 +1192,39 @@ components:
       additionalProperties:
         type: object
         properties:
-          name:
-            type: string
-          symbol:
-            type: string
-          iconUrl:
-            type: string
-          decimals:
-            type: integer
-          tokenType:
-            type: string
+          contract:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the contract."
+              verify:
+                type: object
+                properties:
+                  result:
+                    type: integer
+                    description: "Verify result of the contract, 1-verified, 0-not verified."
+          token:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the token."
+              symbol:
+                type: string
+                description: "Symbol of the token."
+              decimals:
+                type: integer
+                description: "Decimal of the token, omit if empty."
+              website:
+                type: string
+                description: "Website  of the token, optional"
+              iconUrl:
+                type: string
+                description: "Icon url, optional"
+              tokenType:
+                type: string
+                description: "Token type, CRC20、CRC721 or CRC1155"
     AssetsOfAccount:
       type: object
       properties:
@@ -1534,18 +1557,27 @@ components:
                 properties:
                   epochNumber:
                     type: integer
+                    description: "Epoch Number"
                   transactionHash:
                     type: string
+                    description: "Transaction Hash"
                   "from":
                     type: string
+                    description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
                   "to":
                     type: string
+                    description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
                   "amount":
                     type: string
+                    description: "The CFX value or token amount in the transfer, the string is not divided by the CFX/token decimal"
                   "tokenId":
                     type: string
+                    description: "The token id in CRC721/CRC1155 transfer, otherwise it is 0"
                   timestamp:
                     type: integer
+                    description: "Timestamp in seconds"
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
     MiningStat:
