@@ -13,6 +13,8 @@ import {getApiService} from "../ApiServer";
 import {CONST} from "../../stat/service/common/constant";
 import {TokenQuery} from "../../stat/service/TokenQuery";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {Op} from "sequelize";
+import {Errors} from "../../stat/service/common/LogicError";
 const lodash = require('lodash');
 
 export async function listAccountCfxTransfer(ctx) {
@@ -132,6 +134,16 @@ export async function listTransfer(ctx, service, cursor = undefined, cursorField
 
     const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
     const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
+
+    if(startEpoch !== undefined && endEpoch !== undefined && Number(startEpoch) > Number(endEpoch)) {
+        const errMsg = StatApp.isEVM ? `StartBlock ${startEpoch} should not greater than endBlock ${endEpoch}.`
+            : `MinEpochNumber ${minEpochNumber} should not greater than maxEpochNumber ${maxEpochNumber}.`;
+        throw new Errors.ParameterError(errMsg);
+    }
+    if(minTimestamp !== undefined && maxTimestamp !== undefined && Number(minTimestamp) > Number(maxTimestamp)) {
+        throw new Errors.ParameterError(`MinTimestamp ${minTimestamp} should not greater than maxTimestamp ${maxTimestamp}.`);
+    }
+
     const page = await service.listTransfer(
         {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, tokenId, transferType,
             minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, cursor, cursorField}
