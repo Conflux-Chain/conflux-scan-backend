@@ -3,7 +3,7 @@ const csvStringify = require('csv-stringify/lib/sync');
 
 function arrayToCSVFlow() {
   return async function (options, next) {
-    const {list, exportFields} = options;
+    const {address, contract, tokeSymbol, transferType, list, exportFields} = options;
 
     const filedNameArray = []
     const fieldAliasArray = []
@@ -18,7 +18,7 @@ function arrayToCSVFlow() {
     })
 
     const array = lodash.map(list, (each) => lodash.map(filedNameArray, (key) => lodash.get(each, key)),);
-    return next(csvStringify([fieldAliasArray, ...array]));
+    return next({address, contract, tokeSymbol, transferType, csvContent: csvStringify([fieldAliasArray, ...array])});
   };
 }
 

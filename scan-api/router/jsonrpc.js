@@ -940,7 +940,7 @@ jsonrpc.method('exportTransaction',
           'Method',
           'DateTime',
       ];
-    return {list, exportFields};
+    return {address: accountBase32, list, exportFields};
   },
 
   buildFlow((app) => type({
@@ -990,6 +990,8 @@ jsonrpc.method('exportTransfer',
 
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
+    const contractBase32 = options.address !== undefined
+      ? this.app.type.simpleAddress(options.address) : undefined;
     const { list } = await service.transfer.countAndList({ ...options, transferType });
     for (const each of list) {
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
@@ -1062,7 +1064,8 @@ jsonrpc.method('exportTransfer',
               'DateTime',
           ])
       }
-    return {list, exportFields};
+    const token = contractBase32 ? await tokenTool.getToken(contractBase32) : {};
+    return {address: accountBase32, contract: contractBase32, tokeSymbol: token?.symbol, transferType, list, exportFields};
   },
 
   buildFlow((app) => type({

@@ -26,6 +26,7 @@ import {listNftOfAccountByContract} from "../service/NftService";
 import {BalanceService} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
+    formatBalance, formatPercentage,
     initCfxSdk,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
@@ -44,6 +45,7 @@ const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
 const requestIp = require('request-ip');
 const BigFixed = require('bigfixed');
+const moment = require("moment/moment");
 
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 10 // 10 minutes
@@ -387,7 +389,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             dbCache.set(key, list, 60); // 60s
         }
 
-        ctx.set('Content-disposition', 'attachment; filename=' + `${token.symbol}_${Date.now()}` + '.csv')
+        const date = moment(new Date()).format('YYYY.MM.DD')
+        const tokenAddr = StatApp.isEVM ? format.hexAddress(base32) : base32
+        ctx.set('Content-disposition', 'attachment; filename=' + `tokenholders-${token.type}-${token.symbol}-${tokenAddr}-${date}` + '.csv')
         ctx.set('Content-type', 'text/csv')
 
         const s = []
@@ -396,14 +400,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
         const decimals = token.decimals || 0
         list.forEach(row=>{
-            s.push(row?.account?.address); s.push(',') // HolderAddress
+            const addr = StatApp.isEVM ? format.hexAddress(row?.account?.address) : row?.account?.address
+            s.push(addr); s.push(',') // HolderAddress
             const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
             s.push(name); s.push(',') // HolderAddressName
             s.push(row?.contractInfo ? "yes" : ""); s.push(',') // IsContract
             const quantity = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
-            s.push(quantity); s.push(',') // Quantity
-            const percentage = BigFixed(row?.balance).div(BigFixed(token.totalSupply))
-            s.push(percentage) // Percentage
+            s.push(`"${formatBalance(quantity.toString(), 2)}"`); s.push(',') // Quantity
+            const percentage = BigFixed(row?.balance).div(BigFixed(token.totalSupply)).mul(BigFixed(100))
+            s.push(formatPercentage(percentage.toString(), 3)) // Percentage
             s.push('\n')
         })
 

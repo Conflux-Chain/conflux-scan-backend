@@ -1564,11 +1564,11 @@ components:
                   "from":
                     type: string
                     description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
-      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+                    on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
                   "to":
                     type: string
                     description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
-      on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+                    on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
                   "amount":
                     type: string
                     description: "The CFX value or token amount in the transfer, the string is not divided by the CFX/token decimal"

@@ -18,9 +18,6 @@ export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
 
     const {skip, limit, intervalType, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
-    if (intervalType === 'min' && limit > 60) {
-        throw new Error('Parameter <limit> exceeds 60')
-    }
 
     const page = await getApiService().dailyBlockDataStatQuery.listMiningStat({intervalType, minTimestamp,  maxTimestamp,
         sort, skip, limit})
