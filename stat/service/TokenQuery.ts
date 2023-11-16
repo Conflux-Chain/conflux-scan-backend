@@ -25,9 +25,17 @@ const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d
 
 export class TokenQuery {
     protected app: any;
+    public static wrappedCFXAddr: string;
+    public static wrappedCFX: Token;
 
     constructor(app: any) {
         this.app = app;
+        if(this.app.config.asyncWrappedToken) {
+            if(!this.app.config.wrappedCFX) {
+                throw new Error(`Wrapped CFX should be config!`);
+            }
+            TokenQuery.wrappedCFXAddr = format.address(this.app.config.wrappedCFX, StatApp.networkId);
+        }
     }
 
     public async query({address}) {
@@ -487,5 +495,23 @@ export class TokenQuery {
         });
 
         return lodash.keyBy(tokenArray, 'hex40id');
+    }
+
+    public async scheduleWrappedCFX(delay: number = 1000) {
+        console.log(`schedule native token with delay: ${delay}`)
+        const that = this
+
+        async function repeat() {
+            await that.syncWrappedCFX().catch(err => {
+                console.log(`sync native token fail: `, err);
+            });
+            setTimeout(repeat, delay)
+        }
+
+        repeat().then()
+    }
+
+    private async syncWrappedCFX() {
+        TokenQuery.wrappedCFX = await Token.findOne({attributes: {exclude: ['icon']}, where: {base32: TokenQuery.wrappedCFXAddr}});
     }
 }

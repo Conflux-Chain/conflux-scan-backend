@@ -167,6 +167,7 @@ export interface StatConfig{
     censorApiKey: string,
     censorSecretKey: string,
 
+    asyncWrappedToken: boolean,
     wrappedCFX: string,
     wrappedUSDT: string,
 }

@@ -493,7 +493,7 @@ export function calCount(minTimestamp, maxTimestamp, intervalType) {
     return Math.ceil(count);
 }
 
-export function trimPriceZero(priceStr) {
+export function formatPrice(priceStr) {
     if(priceStr.indexOf('.') >=0 ) {
         priceStr = lodash.trimEnd(priceStr, '0');
         if(priceStr.charAt(priceStr.length-1) === '.'){

@@ -2173,20 +2173,20 @@ components:
                     type: string
                     example: 'CFX'
                   type:
-                    description: 'Token type, ERC20、ERC721 or ERC1155'
+                    description: 'Token type, ERC20、ERC721、ERC1155 or native'
                     type: string
                   decimals:
                     description: 'Decimal of the token, omit if empty.'
                     type: integer
                   contract:
-                    description: 'Contract address of the token.'
+                    description: 'Contract address of the token. Omit if it is native token.'
                     type: string
                   iconUrl:
                     description: 'Icon url,optional.'
                     type: string
                     example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/xxxxxx.svg'
                   amount:
-                    description: 'The token balance of an account, the string is not divided by the token decimal.'
+                    description: 'The token/native-token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
                   priceInUSDT:
                     description: 'The price of token in USDT,optional.'
@@ -3203,7 +3203,7 @@ components:
       schema:
         type: string
     tokenTypeParam:
-      description: "Token type, includes ERC20、ERC721 or ERC1155. Multiple types separated by commas."
+      description: "Token type, includes ERC20、ERC721、ERC1155 or native. Multiple types separated by commas. If not set, all tokens will be returned."
       name: tokenType
       in: query
       required: false

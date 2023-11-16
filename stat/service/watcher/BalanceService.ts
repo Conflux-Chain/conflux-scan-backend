@@ -17,7 +17,7 @@ import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {TokenQuery} from "../TokenQuery";
 import {Errors} from "../common/LogicError";
-import {trimPriceZero} from "../common/utils";
+import {formatPrice} from "../common/utils";
 
 export class BalanceService {
     private app: StatApp;
@@ -155,7 +155,7 @@ export class BalanceService {
         }
         const accountBean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
         if (accountBean === null) {
-            throw new Errors.ParameterError(`Account ${hex} not found.`);
+            throw new Errors.ParameterError(`Account ${base32} not found.`);
         }
         let {balanceMap, tokenArray: tokenList} = await TokenQuery.listAccountTokens({accountAddress:base32});
         if(tokenType?.length) {
@@ -170,7 +170,7 @@ export class BalanceService {
             ([token,ban], idx) => {
                 // use db balance for nft only
                 const balance = ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0;
-                const priceInUSDT = token.price ? trimPriceZero(token.price.toString()) : undefined;
+                const priceInUSDT = token.price ? formatPrice(token.price.toString()) : undefined;
                 balance && resultList.push({
                     name: token.name,
                     decimals: token.decimals,
