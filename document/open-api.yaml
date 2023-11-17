@@ -245,7 +245,7 @@ paths:
         - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
-#        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
+        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/contractParam'
@@ -264,7 +264,7 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/TransferList"
+                $ref: "#/components/schemas/TransferListWithCursor"
   '/account/approvals':
     description: 'Get token approvals of an account'
     get:
@@ -405,20 +405,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommonResponse'
-  '/token/tokeninfo':
+#  '/token/tokeninfo':
+#    get:
+#      tags:
+#        - 'Tokens'
+#      description: 'Get Token Info by ContractAddress'
+#      parameters:
+#        - $ref: '#/components/parameters/contractParam'
+#      responses:
+#        200:
+#          description: ''
+#          content:
+#            application/json:
+#              schema:
+#                $ref: '#/components/schemas/TokenInfo'
+  '/token/tokeninfos':
     get:
       tags:
         - 'Tokens'
-      description: 'Get Token Info by ContractAddress'
+      description: 'Get Token Info by contract addresses'
       parameters:
-        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/contractArrayParam'
       responses:
         200:
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenInfo'
+                $ref: '#/components/schemas/TokenInfos'
   /nft/balances:
     get:
       tags:
@@ -583,8 +597,7 @@ paths:
     get:
       tags:
         - 'Statistics'
-      description: "Get statistics of mining within ${limit} ${intervalType}.
-                   \nWhen intervalType is min, the maximum interval between minTimestamp and maxTimestamp is 60 minutes"
+      description: "Get statistics of mining within ${limit} ${intervalType}."
       parameters:
         - description: "Indicator calculation period, should be one of min(minute), hour or day. Default is hour."
           name: intervalType
@@ -613,8 +626,7 @@ paths:
     get:
       tags:
         - 'Statistics'
-      description: "Get statistics of tps within ${limit} ${intervalType}.
-                    \nWhen intervalType is min, the maximum interval between minTimestamp and maxTimestamp is 60 minutes"
+      description: "Get statistics of tps within ${limit} ${intervalType}."
       parameters:
         - name: intervalType
           description: "Indicate calculation period, should be one of min(minute), hour or day. Default is hour."
@@ -1239,6 +1251,9 @@ components:
               type: array
               items:
                 properties:
+                  contract:
+                    description: 'Contract address of the token. Omit if it is native token.'
+                    type: string
                   name:
                     description: 'Name of the token.'
                     type: string
@@ -1246,31 +1261,68 @@ components:
                     description: 'Symbol of the token.'
                     type: string
                     example: 'CFX'
-                  type:
-                    description: 'Token type, CRC20、CRC721、CRC1155 or native'
-                    type: string
                   decimals:
                     description: 'Decimal of the token, omit if empty.'
                     type: integer
-                  contract:
-                    description: 'Contract address of the token. Omit if it is native token.'
+                  type:
+                    description: 'Token type, CRC20、CRC721、CRC1155 or native'
                     type: string
                   iconUrl:
-                    description: 'Icon url,optional.'
+                    description: 'Icon url, optional.'
                     type: string
                     example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/xxxxxx.svg'
+                  quoteUrl:
+                    description: 'The quote url of token, optional.'
+                    type: 'string'
+                  priceInUSDT:
+                    description: 'The price of token in USDT, optional.'
+                    type: 'string'
                   amount:
                     description: 'The token/native-token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
                   stakingAmount:
                     description: 'The staking token/native-token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
-                  priceInUSDT:
-                    description: 'The price of token in USDT,optional.'
-                    type: 'string'
-                  quoteUrl:
-                    description: 'The quote url of token,optional.'
-                    type: 'string'
+    TokenInfos:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              contract:
+                description: 'Contract address of the token.'
+                type: string
+              name:
+                description: 'Name of the token.'
+                type: string
+              symbol:
+                description: 'Symbol of the token.'
+                type: string
+                example: 'CFX'
+              decimals:
+                description: 'Decimal of the token, omit if empty.'
+                type: integer
+              type:
+                description: 'Token type, CRC20、CRC721、CRC1155.'
+                type: string
+              iconUrl:
+                description: 'Icon url, optional.'
+                type: string
+                example: 'http://scan-icons.oss-cn-hongkong.aliyuncs.com/testnet/xxxxxx.svg'
+              quoteUrl:
+                description: 'The quote url of token, optional.'
+                type: 'string'
+              priceInUSDT:
+                description: 'The price of token in USDT, optional.'
+                type: 'string'
+              error:
+                description: 'A string describing a particular reason that we were unable to get token info.'
+                type: 'string'
     TokenInfo:
       type: object
       properties:
@@ -1551,9 +1603,9 @@ components:
           properties:
             total:
               type: integer
-#            next:
-#              description: A cursor to retrieve the next page
-#              type: string
+            next:
+              description: A cursor to retrieve the next page
+              type: string
             list:
               type: array
               items:
@@ -1581,6 +1633,53 @@ components:
                   timestamp:
                     type: integer
                     description: "Timestamp in seconds"
+            addressInfo:
+              $ref: '#/components/schemas/AddressInfo'
+    TransferListWithCursor:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            next:
+              description: A cursor to retrieve the next page
+              type: string
+            list:
+              type: array
+              items:
+                properties:
+                  epochNumber:
+                    type: integer
+                    description: "Epoch Number"
+                  transactionHash:
+                    type: string
+                    description: "Transaction Hash"
+                  "from":
+                    type: string
+                    description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+                    on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+                  "to":
+                    type: string
+                    description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+                    on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+                  "amount":
+                    type: string
+                    description: "The CFX value or token amount in the transfer, the string is not divided by the CFX/token decimal"
+                  "tokenId":
+                    type: string
+                    description: "The token id in CRC721/CRC1155 transfer, otherwise it is 0"
+                  timestamp:
+                    type: integer
+                    description: "Timestamp in seconds"
+                  cursor:
+                    type: string
+                    description: "The cursor of the transfer"
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
     MiningStat:
@@ -2155,7 +2254,7 @@ components:
                       metadata:
                         description: "relevant metadata for NFT contract. This is useful for viewing image url, traits, etc. without having to follow the metadata url in tokenUri to parse manually"
                   error:
-                    description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
+                    description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT."
                     type: string
     NFTPreview:
       type: object
@@ -2203,7 +2302,7 @@ components:
                 metadata:
                   description: "relevant metadata for NFT contract. This is useful for viewing image url, traits, etc. without having to follow the metadata url in tokenUri to parse manually"
             error:
-              description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT. "
+              description: "A string describing a particular reason that we were unable to fetch complete metadata for the NFT."
               type: string
     NFTTokenFtsList:
       type: object
@@ -2272,7 +2371,7 @@ components:
               description: "Decoded data of the transaction."
               type: string
             error:
-              description: "Error message when something wrong"
+              description: "Error message when something wrong."
               type: string
     DecodedMethodRaw:
       type: object
@@ -2294,7 +2393,7 @@ components:
               description: "Decoded data of the transaction."
               type: string
             error:
-              description: "Error message when something wrong"
+              description: "Error message when something wrong."
               type: string
     TokenHolderStat:
       type: object
@@ -2726,6 +2825,15 @@ components:
       in: query
       description: "Contract address, on testnet, it's like cfxtest:acepe88unk7fvs18436178up33hb4zkuf62a9dk1gv,
       on mainnet it's like cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7"
+      required: true
+      schema:
+        type: string
+    contractArrayParam:
+      description: "Contract addresses, separated by comma,
+      eg. on testnet it's like cfxtest:aaka4zypus90zrt7vzgsz437r1cwkgkahe374ds80v,cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      eg. on mainnet it's like cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp,cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      name: contracts
+      in: query
       required: true
       schema:
         type: string

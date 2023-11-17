@@ -31,6 +31,7 @@ import {
     verifySourcecode
 } from "../service/OpenContractService";
 import {
+    getTokenInfos,
     queryTokenInfo
 } from "../service/OpenTokenService";
 import {
@@ -174,6 +175,7 @@ function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfo', getTokenInfo);
+    router.get('/token/tokeninfos', getTokenInfos);
 
     // nft assets
     router.get('/nft/balances', listNFTBalances);

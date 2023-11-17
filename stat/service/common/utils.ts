@@ -218,7 +218,7 @@ export function mustBeAddressArrayParamIfPresent(obj, netId, isEVM, ...keys:stri
         }
 
         if (!lodash.isArray(vArray)) {
-            vArray = [vArray];
+            vArray = vArray.split(',');
         }
 
         for (const v of vArray) {
