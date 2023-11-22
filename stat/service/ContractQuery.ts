@@ -469,9 +469,9 @@ export class ContractQuery {
         const {cfx} = this.app;
         let result = {proxy: false};
         const implementation = await Promise.all([
-            cfx.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT),
-            cfx.getStorageAt(base32, CONST.IMPLEMENTATION_SLOT_OZ),
-            cfx.getStorageAt(base32, CONST.IMPLEMENTATION_SLOT_EIP1822),
+            base32, CONST.POSITION_IMPLEMENTATION_SLOT,
+            base32, CONST.IMPLEMENTATION_SLOT_OZ,
+            base32, CONST.IMPLEMENTATION_SLOT_EIP1822,
         ].map(slot=>{
             return cfx.getStorageAt(base32, slot).then(res=>{
                 console.log(`slot ${slot} => ${res}`);
