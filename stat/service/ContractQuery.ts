@@ -472,7 +472,12 @@ export class ContractQuery {
             cfx.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT),
             cfx.getStorageAt(base32, CONST.IMPLEMENTATION_SLOT_OZ),
             cfx.getStorageAt(base32, CONST.IMPLEMENTATION_SLOT_EIP1822),
-        ].map(slot=>cfx.getStorageAt(base32, slot)))
+        ].map(slot=>{
+            return cfx.getStorageAt(base32, slot).then(res=>{
+                console.log(`slot ${slot} => ${res}`);
+                return res;
+            })
+        }))
             .then(arr=>arr.find(implementation=>implementation !== null && implementation !== CONST.ZERO_VALUE_IN_SLOT))
 
         const [beacon] = await Promise.all([
