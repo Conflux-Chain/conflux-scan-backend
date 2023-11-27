@@ -226,7 +226,7 @@ export class TokenQuery {
         await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
             .map(tableName => {
                 TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
-                        where addressId = ${addressId} order by createdAt desc limit 10) tmp;`,
+                        where addressId = ${addressId} order by epoch desc limit 10) tmp;`,
                     {type: QueryTypes.SELECT,
                         // logging: console.log
                     })
