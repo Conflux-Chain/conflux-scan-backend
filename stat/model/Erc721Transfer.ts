@@ -23,7 +23,9 @@ const T_ADDRESS_ERC721_TRANSFER_SQL = `
 \tfromId bigint not null,
 \ttoId bigint not null,
 \ttokenId varchar(78) null,
-    primary key  (\`addressId\` desc,\`epoch\` desc, \`blockIndex\` desc, txIndex desc, txLogIndex desc)
+    primary key  (\`addressId\` desc,\`epoch\` desc, \`blockIndex\` desc, txIndex desc, txLogIndex desc),
+    KEY \`idx_addr_token_id\`( \`addressId\`, \`tokenId\`, \`epoch\` ),
+    KEY idx_addr_epoch ( addressId, epoch desc)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 13;
