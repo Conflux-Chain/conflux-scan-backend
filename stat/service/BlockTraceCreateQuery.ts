@@ -1,8 +1,9 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {Hex40Map, Hex64Map, idHex40Map, idHex64Map, hex40IdMap} from "../model/HexMap";
+import {Hex40Map, Hex64Map, idHex40Map, idHex64Map, hex40IdMap, formatToHex} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {Op} from "sequelize";
+import {FullTransaction} from "../model/FullBlock";
 const lodash = require('lodash');
 
 export class BlockTraceCreateQuery{
@@ -13,7 +14,7 @@ export class BlockTraceCreateQuery{
     }
 
     async query(address: string) {
-        const{ logger } = this.app;
+        const{ cfx, logger } = this.app;
 
         const hex40Bean = await Hex40Map.findOne({where: {hex: address.substr(2)}});
         if(!hex40Bean){
@@ -26,12 +27,24 @@ export class BlockTraceCreateQuery{
             // logger?.info({src: `trace_create`, 'result': `no trace_create_contract for contract ${address}`});
             return {msg: `get create trace, no create trace found for contract ${address}`};
         }
+        let from = undefined
+        let hash = '0x'+trace.txHash;
+        const localTx = await FullTransaction.findOne({where:{hash: hash}});
+        if (localTx) {
+            const fromHex40Bean = await Hex40Map.findOne({where: {id: localTx.fromId}});
+            from = fromHex40Bean ? `0x${fromHex40Bean.hex}` : undefined
+        } else {
+            const rpcTx = await cfx.getTransactionByHash(hash);
+            if (rpcTx) {
+                from = formatToHex(rpcTx.from)
+            }
+        }
 
-        const fromHex40Bean = await Hex40Map.findOne({where: {id: trace.from}});
+
         return {
             epochNumber: trace.epochNumber,
             transactionHash: `0x${trace.txHash}`,
-            from: fromHex40Bean ? `0x${fromHex40Bean.hex}` : undefined,
+            from,
             address,
         };
     }
