@@ -194,7 +194,7 @@ export class TokenQuery {
         if(latestTransfer <= 0 || latestTransfer > 10000) return [];
 
         const sql = `select hex from hex40 where id in (select distinct(contractId) from ( select contractId 
-            from ${tableName} where addressId = ${addressId} order by createdAt desc limit ${latestTransfer}) tmp);`;
+            from ${tableName} where addressId = ${addressId} order by epoch desc limit ${latestTransfer}) tmp);`;
         const list = await sequelize.query(sql, {type: QueryTypes.SELECT,
             // logging: console.log
         });
