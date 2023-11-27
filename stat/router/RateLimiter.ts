@@ -391,7 +391,7 @@ async function checkRateByAddress0(addressParamName, ctx, next) {
     } catch (e) {
         const msg = `Too many requests. Allow ${limiter['points']}/${limiter['duration']}s`;
         ctx.body = {code: 429, message: msg};
-        console.log(`${ip} ${ctx?.url} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
+        // console.log(`${ip} ${ctx?.url} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
         return;
     }
 
