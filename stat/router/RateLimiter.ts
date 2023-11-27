@@ -383,11 +383,13 @@ async function checkRateByAddress0(addressParamName, ctx, next) {
     const ip = requestIp.getClientIp(ctx.request);
     const {[addressParamName]: address} = ctx.request.query;
 
+    let limiter = rateLimiterAddress;
     try {
-        await (addressParamName === "account" ? rateLimiterAccount : rateLimiterAddress).consume(address);
+        limiter = addressParamName === "account" ? rateLimiterAccount : rateLimiterAddress;
+        await limiter.consume(address);
         ctx?.set(`address`, address);
     } catch (e) {
-        const msg = `Too many requests. Allow ${rateLimiterAddress['points']}/s`;
+        const msg = `Too many requests. Allow ${limiter['points']}/${limiter['duration']}s`;
         ctx.body = {code: 429, message: msg};
         console.log(`${ip} ${ctx?.url} rlt ${JSON.stringify(e)} msg ${JSON.stringify(msg)}`);
         return;
