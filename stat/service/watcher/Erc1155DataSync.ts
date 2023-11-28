@@ -206,7 +206,7 @@ export async function sumHistory1155amount(cfx:Conflux) {
                 // logging: console.log
             }
         )
-        await KV.saveNumber(KEY_history1155amount_EPOCH, confirmEpoch.toString(), undefined)
+        await KV.saveNumber(KEY_history1155amount_EPOCH, useMinEpoch.toString(), undefined)
         historyPos = useMinEpoch as number;
         process.stdout.write(`\r\u001b[2K confirm epoch ${confirmEpoch}, useMinEpoch ${useMinEpoch}`)
     }
