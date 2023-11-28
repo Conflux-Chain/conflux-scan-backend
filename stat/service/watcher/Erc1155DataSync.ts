@@ -195,7 +195,7 @@ export async function sumHistory1155amount(cfx:Conflux) {
         const erc1155data_t = Erc1155Data.getTableName();
         const erc1155amount_t = Erc1155Amount.getTableName()
         const sql = `
-          insert into ${erc1155amount_t} (ontractId, addressId, amount, epoch, createdAt, updatedAt) 
+          insert into ${erc1155amount_t} (contractId, addressId, amount, epoch, createdAt, updatedAt) 
             select * from (select entry.contractId, entry.addressId, sum(data.amount) as amount, max(data.epoch) as epoch, data.createdAt, max(data.updatedAt) as updatedAt
             from 
                 (select contractId, addressId,epoch from ${erc1155data_t} where epoch between ${useMinEpoch} and ${endEpoch} group by contractId, addressId) entry
