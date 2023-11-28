@@ -193,13 +193,13 @@ export async function sumHistory1155amount(cfx:Conflux) {
         const erc1155data_t = Erc1155Data.getTableName();
         const erc1155amount_t = Erc1155Amount.getTableName()
         const sql = `
-          insert into ${erc1155amount_t} (id, contractId, addressId, amount, epoch) values
-            (select 0, entry.contractId, entry.addressId, sum(amount) as amount, epoch
+          insert into ${erc1155amount_t} (id, contractId, addressId, amount, epoch, createdAt, updatedAt) 
+            (select 0, entry.contractId, entry.addressId, sum(amount) as amount, epoch, createdAt, updatedAt
             from 
-                (select distinct (contractId, addressId) from ${erc1155data_t} where epoch = ${useMinEpoch}) entry
-                     left join ${erc1155data_t} data using contractId, addressId
+                (select contractId, addressId from ${erc1155data_t} where epoch = ${useMinEpoch}) entry
+                     left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
             where data.epoch <= ${useMinEpoch})
-          on duplicate update amount, epoch
+          on duplicate key update amount=values(amount), epoch=values(epoch);
         `
         const [,rows] = await Erc1155Amount.sequelize.query(sql,
             {raw: true, replacements: [useMinEpoch, useMinEpoch], type: QueryTypes.UPDATE,
