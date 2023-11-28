@@ -25,7 +25,7 @@ import {
     fetch1155balance,
     fix1155data,
     rewind,
-    sum1155amountByInfo
+    sum1155amountByInfo, sumHistory1155amount
 } from "./Erc1155DataSync";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
@@ -365,7 +365,9 @@ async function run() {
         }
         await fixHolderForContract(parseInt(limitStr), byMintTable)
         process.exit(0)
-        return
+    } else if (cfxUrl === 'sumHistory1155amount') {
+        await sumHistory1155amount(new Conflux(cfg.conflux))
+        process.exit(0)
     } else if (cfxUrl === 'fixAll721holder') {
         // check721OwnerInDb in TokenTool.ts
         await fixAllNftHolder(true, 'ERC721')
