@@ -202,8 +202,8 @@ export async function sumHistory1155amount(cfx:Conflux) {
                     -- only query for stale entry
                      join ${erc1155amount_t} amt on entry.contractId=amt.contractId and entry.addressId=amt.addressId and amt.epoch < entry.epoch
                      left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
-            )
-          on duplicate key update amount=values(amount), epoch=values(epoch);
+            ) v
+          on duplicate key update amount=values(v.amount), epoch=values(v.epoch);
         `
         const [,rows] = await Erc1155Amount.sequelize.query(sql,
             {raw: true, replacements: [useMinEpoch, useMinEpoch], type: QueryTypes.UPDATE,
