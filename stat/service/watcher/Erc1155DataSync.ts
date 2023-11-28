@@ -178,7 +178,7 @@ export async function fix1155data(cfx:Conflux) {
  */
 
 export async function sumHistory1155amount(cfx:Conflux) {
-    const confirmEpoch = await cfx.getEpochNumber('latest_confirm')
+    const confirmEpoch = await cfx.getEpochNumber('latest_confirmed')
     let historyPos = await KV.getNumber(KEY_history1155amount_EPOCH, 0)
     while(true) {
         const useMinEpoch = await Erc1155Data.min("epoch", {where: {epoch: {[Op.gt]: historyPos}}})
