@@ -198,7 +198,7 @@ export async function sumHistory1155amount(cfx:Conflux) {
           insert into ${erc1155amount_t} (id, contractId, addressId, amount, epoch, createdAt, updatedAt) 
             (select 0, entry.contractId, entry.addressId, sum(amount) as amount, epoch, createdAt, updatedAt
             from 
-                (select contractId, addressId from ${erc1155data_t} where epoch between [${useMinEpoch}, ${endEpoch}] group by contractId, addressId) entry
+                (select contractId, addressId from ${erc1155data_t} where epoch between ${useMinEpoch} and ${endEpoch} group by contractId, addressId) entry
                      left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
             where data.epoch <= ${useMinEpoch})
           on duplicate key update amount=values(amount), epoch=values(epoch);
