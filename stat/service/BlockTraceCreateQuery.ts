@@ -27,6 +27,7 @@ export class BlockTraceCreateQuery{
             // logger?.info({src: `trace_create`, 'result': `no trace_create_contract for contract ${address}`});
             return {msg: `get create trace, no create trace found for contract ${address}`};
         }
+        // use EOA from as contract creator, not the trace caller.
         let from = undefined
         let hash = '0x'+trace.txHash;
         const localTx = await FullTransaction.findOne({where:{hash: hash}});
