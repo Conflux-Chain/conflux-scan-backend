@@ -196,23 +196,27 @@ export async function sumHistory1155amount(cfx:Conflux) {
         const erc1155amount_t = Erc1155Amount.getTableName()
         const sql = `
           insert into ${erc1155amount_t} (id, contractId, addressId, amount, epoch, createdAt, updatedAt) 
-            (select 0, entry.contractId, entry.addressId, sum(amount) as amount, max(data.epoch) as epoch, createdAt, max(data.updatedAt) as updatedAt
+            (select 0, entry.contractId, entry.addressId, sum(data.amount) as amount, max(data.epoch) as epoch, data.createdAt, max(data.updatedAt) as updatedAt
             from 
                 (select contractId, addressId,epoch from ${erc1155data_t} where epoch between ${useMinEpoch} and ${endEpoch} group by contractId, addressId) entry
                     -- only query for stale entry
                      join ${erc1155amount_t} amt on entry.contractId=amt.contractId and entry.addressId=amt.addressId and amt.epoch < entry.epoch
                      left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
-            ) v
-          on duplicate key update amount=values(v.amount), epoch=values(v.epoch);
+            )
+          on duplicate key update amount=values(amount), epoch=values(epoch);
         `
         const [,rows] = await Erc1155Amount.sequelize.query(sql,
             {raw: true, replacements: [useMinEpoch, useMinEpoch], type: QueryTypes.UPDATE,
                 // logging: console.log
             }
-        )
+        ).catch(e=>{
+            delete e.sql;
+            console.log(`error ${e} \n raw sql ${sql}`)
+            return [undefined, 0]
+        })
         await KV.saveNumber(KEY_history1155amount_EPOCH, endEpoch.toString(), undefined)
         historyPos = endEpoch as number;
-        process.stdout.write(`\r\u001b[2K confirm epoch ${confirmEpoch}, useMinEpoch ${useMinEpoch}`)
+        process.stdout.write(`\r\u001b[2K confirm epoch ${confirmEpoch}, useMinEpoch ${useMinEpoch}, rows ${rows}    `)
     }
 }
 
