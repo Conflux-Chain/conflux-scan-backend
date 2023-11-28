@@ -180,6 +180,7 @@ export async function fix1155data(cfx:Conflux) {
 export async function sumHistory1155amount(cfx:Conflux) {
     const confirmEpoch = await cfx.getEpochNumber('latest_confirmed')
     let historyPos = await KV.getNumber(KEY_history1155amount_EPOCH, 0)
+    const range = 1200
     while(true) {
         const useMinEpoch = await Erc1155Data.min("epoch", {where: {epoch: {[Op.gt]: historyPos}}})
         if (!useMinEpoch || isNaN(Number(useMinEpoch))) {
@@ -190,13 +191,14 @@ export async function sumHistory1155amount(cfx:Conflux) {
             console.log(`exceeds confirmEpoch, ${useMinEpoch} > ${confirmEpoch}`)
             break
         }
+        const endEpoch = Number(useMinEpoch) + range;
         const erc1155data_t = Erc1155Data.getTableName();
         const erc1155amount_t = Erc1155Amount.getTableName()
         const sql = `
           insert into ${erc1155amount_t} (id, contractId, addressId, amount, epoch, createdAt, updatedAt) 
             (select 0, entry.contractId, entry.addressId, sum(amount) as amount, epoch, createdAt, updatedAt
             from 
-                (select contractId, addressId from ${erc1155data_t} where epoch = ${useMinEpoch} group by contractId, addressId) entry
+                (select contractId, addressId from ${erc1155data_t} where epoch = between [${useMinEpoch}, ${endEpoch}] group by contractId, addressId) entry
                      left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
             where data.epoch <= ${useMinEpoch})
           on duplicate key update amount=values(amount), epoch=values(epoch);
@@ -206,8 +208,8 @@ export async function sumHistory1155amount(cfx:Conflux) {
                 // logging: console.log
             }
         )
-        await KV.saveNumber(KEY_history1155amount_EPOCH, useMinEpoch.toString(), undefined)
-        historyPos = useMinEpoch as number;
+        await KV.saveNumber(KEY_history1155amount_EPOCH, endEpoch.toString(), undefined)
+        historyPos = endEpoch as number;
         process.stdout.write(`\r\u001b[2K confirm epoch ${confirmEpoch}, useMinEpoch ${useMinEpoch}`)
     }
 }
