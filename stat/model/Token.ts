@@ -143,6 +143,28 @@ export class Token extends Model<IToken> implements IToken{
         })
     }
 }
+
+export interface IErc1155amount {
+    id?:number; contractId:number|string; addressId:number|string; amount: number;epoch: number;
+
+}
+export class Erc1155Amount extends Model<IErc1155amount> implements IErc1155amount {
+    id?:number; contractId:number; addressId:number; amount: number;epoch: number;
+    static register(seq: Sequelize) {
+        Erc1155Amount.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false,},
+            addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false,},
+            amount: {type: DataTypes.DECIMAL(65, 0), allowNull: false,},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+        }, {
+            sequelize: seq, tableName: 'erc1155_addr_amount',
+            indexes: [
+                {name: 'uk_addr_contract', fields:['addressId','contractId'], unique: true}
+            ]
+        })
+    }
+}
 // alter table erc1155_data add column latestEpoch bigint unsigned not null default 0;
 export interface IErc1155Data {
     id?:number; contractId:number; addressId:number; tokenId:string; amount: number;

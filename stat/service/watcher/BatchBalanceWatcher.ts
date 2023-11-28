@@ -18,7 +18,15 @@ import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenBalance} from "../../model/Balance";
-import {abi1155, CONFIRM_GAP, destroyedContracts, fetch1155balance, fix1155data, rewind} from "./Erc1155DataSync";
+import {
+    abi1155,
+    CONFIRM_GAP,
+    destroyedContracts,
+    fetch1155balance,
+    fix1155data,
+    rewind,
+    sum1155amountByInfo
+} from "./Erc1155DataSync";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -155,6 +163,7 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
     const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
     // build params before call contract
     const contractAddrTokenSet = new Set<string>()
+    const contractAddrSet = new Set<string>()
     for (let trans of transferList) {
         let params = contracts.get(trans.contractId)
         if (!params) {
@@ -163,6 +172,8 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
         }
         // from
         const hexFrom = `0x${addressMap.get(trans.fromId)}`;
+        contractAddrSet.add(`${trans.contractId}_${trans.fromId}`);
+        contractAddrSet.add(`${trans.contractId}_${trans.toId}`);
         const duplicateKey1 = `${trans.contractId}_${trans.fromId}_${trans.tokenId}`
         if (trans.fromId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey1)) {
             contractAddrTokenSet.add(duplicateKey1)
@@ -252,6 +263,7 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
             await value.destroy({logging: console.log})
         }
     }
+    sum1155amountByInfo(contractAddrSet, mark as number).catch(e=>{console.log(`sum1155amountByInfo error`, e)});
     return mark;
 }
 async function setupSync1155data(cfx:Conflux) {
