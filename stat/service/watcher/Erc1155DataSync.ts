@@ -196,15 +196,16 @@ export async function sumHistory1155amount(cfx:Conflux) {
         const erc1155amount_t = Erc1155Amount.getTableName()
         const sql = `
           insert into ${erc1155amount_t} (contractId, addressId, amount, epoch, createdAt, updatedAt) 
-            select * from (select entry.contractId, entry.addressId, sum(data.amount) as amount, max(data.epoch) as epoch, data.createdAt, max(data.updatedAt) as updatedAt
-            from 
-                select * from (
-                             select contractId, addressId,epoch from ${erc1155data_t} where epoch between ${useMinEpoch} and ${endEpoch} group by contractId, addressId) entry0
-                    -- only query for stale entry
-                     left join ${erc1155amount_t} amt on entry0.contractId=amt.contractId and entry0.addressId=amt.addressId
-                     where amt.epoch is null or amt.epoch < entry0.epoch
-                ) entry
-                     left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
+            select * from (
+                select entry.contractId, entry.addressId, sum(data.amount) as amount, max(data.epoch) as epoch, data.createdAt, max(data.updatedAt) as updatedAt
+                from (
+                      select entry0.* from (select contractId, addressId,epoch from ${erc1155data_t} where epoch between ${useMinEpoch} and ${endEpoch} group by contractId, addressId) entry0
+                      -- only query for stale entry
+                      left join ${erc1155amount_t} amt on entry0.contractId=amt.contractId and entry0.addressId=amt.addressId
+                      where amt.epoch is null or amt.epoch < entry0.epoch
+                  ) entry
+                      left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
+                group by entry.contractId, entry.addressId    
             ) v where v.amount is not null
           on duplicate key update amount=values(amount), epoch=values(epoch);
         `
