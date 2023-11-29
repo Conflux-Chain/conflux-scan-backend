@@ -155,7 +155,7 @@ export class Erc1155Amount extends Model<IErc1155amount> implements IErc1155amou
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false,},
             addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false,},
-            amount: {type: DataTypes.DECIMAL(65, 0), allowNull: false,},
+            amount: {type: DataTypes.STRING(78), allowNull: false, },
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
         }, {
             sequelize: seq, tableName: 'erc1155_addr_amount',
@@ -181,7 +181,7 @@ export class Erc1155Data extends Model<IErc1155Data> implements IErc1155Data {
             contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             tokenId: {type: DataTypes.STRING(78), allowNull: false, },
-            amount: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
+            amount: {type: DataTypes.STRING(78), allowNull: false, },
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             latestEpoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
         }, {

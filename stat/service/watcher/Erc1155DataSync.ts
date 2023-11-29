@@ -191,7 +191,11 @@ export async function sumHistory1155amount(cfx:Conflux) {
             console.log(`exceeds confirmEpoch, ${useMinEpoch} > ${confirmEpoch}`)
             break
         }
-        const endEpoch = Number(useMinEpoch) + range;
+        let endEpoch = Number(useMinEpoch) + range;
+        if (endEpoch > confirmEpoch) {
+            console.log(`fix end epoch to confirmed: `, confirmEpoch)
+            endEpoch = confirmEpoch
+        }
         const erc1155data_t = Erc1155Data.getTableName();
         const erc1155amount_t = Erc1155Amount.getTableName()
         const sql = `
