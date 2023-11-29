@@ -4,6 +4,7 @@ import {KEY_1155data_EPOCH, KEY_history1155amount_EPOCH, KV} from "../../model/K
 import {Conflux, Contract} from "js-conflux-sdk";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Hex40Map} from "../../model/HexMap";
+import {StatApp} from "../../StatApp";
 
 export const destroyedContracts = new Set<string>()
 export const CONFIRM_GAP = 100
@@ -247,6 +248,9 @@ export async function sum1155amountByInfo(contractAddrSet: Set<string>, epoch: n
 }
 
 export async function patchSum1155amount(tokenList: (any & {type?: string})[], addressId: number) {
+    if (!StatApp.isEVM) {
+        return
+    }
     return Promise.all(tokenList.map(async token => {
         if (!token.type?.endsWith("1155")) {
             return
@@ -257,5 +261,5 @@ export async function patchSum1155amount(tokenList: (any & {type?: string})[], a
         }
     })).catch(e=>{
         console.log(`patchSum1155amount failed, addressId `, addressId, e)
-    })
+    });
 }
