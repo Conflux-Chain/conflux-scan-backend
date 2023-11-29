@@ -245,3 +245,17 @@ export async function sum1155amountByInfo(contractAddrSet: Set<string>, epoch: n
         await update1155amount(contractIdStr, addrIdStr, epoch);
     }
 }
+
+export async function patchSum1155amount(tokenList: (any & {type?: string})[], addressId: number) {
+    return Promise.all(tokenList.map(async token => {
+        if (!token.type?.endsWith("1155")) {
+            return
+        }
+        const res = await Erc1155Amount.findOne({where: {addressId, contractId: token.hex40id}});
+        if (res) {
+            token['sumAmount'] = res.amount;
+        }
+    })).catch(e=>{
+        console.log(`patchSum1155amount failed, addressId `, addressId, e)
+    })
+}
