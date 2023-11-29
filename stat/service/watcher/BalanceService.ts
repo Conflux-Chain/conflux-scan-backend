@@ -172,10 +172,10 @@ export class BalanceService {
         const resultList = []
         lodash.zip(tokenList, banList).forEach(
             ([token,ban], idx) => {
+                const sumAmount = token['sumAmount']
                 // use db balance for nft only
                 const balance = ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0;
                 const priceInUSDT = token.price ? trimPriceZero(token.price.toString()) : undefined;
-                const sumAmount = token['sumAmount']
                 balance && resultList.push({
                     name: token.name,
                     decimals: token.decimals,
