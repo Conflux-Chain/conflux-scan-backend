@@ -1,9 +1,10 @@
-import {Erc1155Data} from "../../model/Token";
-import {Sequelize} from "sequelize";
-import {KEY_1155data_EPOCH, KV} from "../../model/KV";
+import {Erc1155Amount, Erc1155Data} from "../../model/Token";
+import {QueryTypes, Sequelize, Op} from "sequelize";
+import {KEY_1155data_EPOCH, KEY_history1155amount_EPOCH, KV} from "../../model/KV";
 import {Conflux, Contract} from "js-conflux-sdk";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Hex40Map} from "../../model/HexMap";
+import {StatApp} from "../../StatApp";
 
 export const destroyedContracts = new Set<string>()
 export const CONFIRM_GAP = 100
@@ -161,4 +162,104 @@ export async function fix1155data(cfx:Conflux) {
         }
     }
     console.log(`done`)
+}
+
+/*
+ compute addr_contract->amount
+ catchup:
+ normal:
+
+ erc1155_data may remove a record if its amount is zero, but we need that record here,
+ because the addr may still have other token(s).
+
+ refer to erc1155_data, for each round:
+ 1 fetch changed contract+addr
+ 2 mysql sum by result from step 1
+ 3 save those records
+ */
+
+export async function sumHistory1155amount(cfx:Conflux) {
+    const confirmEpoch = await cfx.getEpochNumber('latest_confirmed')
+    let historyPos = await KV.getNumber(KEY_history1155amount_EPOCH, 0)
+    const range = 1200
+    while(true) {
+        const useMinEpoch = await Erc1155Data.min("epoch", {where: {epoch: {[Op.gt]: historyPos}}})
+        if (!useMinEpoch || isNaN(Number(useMinEpoch))) {
+            console.log(`no more epoch in Erc1155Data, want > ${historyPos}`)
+            return
+        }
+        if (useMinEpoch > confirmEpoch) {
+            console.log(`exceeds confirmEpoch, ${useMinEpoch} > ${confirmEpoch}`)
+            break
+        }
+        let endEpoch = Number(useMinEpoch) + range;
+        if (endEpoch > confirmEpoch) {
+            console.log(`fix end epoch to confirmed: `, confirmEpoch)
+            endEpoch = confirmEpoch
+        }
+        const erc1155data_t = Erc1155Data.getTableName();
+        const erc1155amount_t = Erc1155Amount.getTableName()
+        const sql = `
+          insert into ${erc1155amount_t} (contractId, addressId, amount, epoch, createdAt, updatedAt) 
+            select * from (
+                select entry.contractId, entry.addressId, sum(data.amount) as amount, max(data.epoch) as epoch, data.createdAt, max(data.updatedAt) as updatedAt
+                from (
+                      select entry0.* from (select contractId, addressId,epoch from ${erc1155data_t} where epoch between ${useMinEpoch} and ${endEpoch} group by contractId, addressId) entry0
+                      -- only query for stale entry
+                      left join ${erc1155amount_t} amt on entry0.contractId=amt.contractId and entry0.addressId=amt.addressId
+                      where amt.epoch is null or amt.epoch < entry0.epoch
+                  ) entry
+                      left join ${erc1155data_t} data on entry.contractId=data.contractId and entry.addressId=data.addressId
+                group by entry.contractId, entry.addressId    
+            ) v where v.amount is not null
+          on duplicate key update amount=values(amount), epoch=values(epoch);
+        `
+        const [,rows] = await Erc1155Amount.sequelize.query(sql,
+            {raw: true, replacements: [useMinEpoch, useMinEpoch], type: QueryTypes.UPDATE,
+                // logging: console.log
+            }
+        ).catch(e=>{
+            delete e.sql;
+            console.log(`error ${e} \n raw sql ${sql}`)
+            process.exit(1)
+        })
+        await KV.saveNumber(KEY_history1155amount_EPOCH, endEpoch.toString(), undefined)
+        historyPos = endEpoch as number;
+        process.stdout.write(`\r\u001b[2K confirm epoch ${confirmEpoch}, useMinEpoch ${useMinEpoch}, rows ${rows}    `)
+    }
+}
+
+async function update1155amount(contractIdStr: string, addrIdStr: string, epoch: number) {
+    const sum = await Erc1155Data.sum("amount", {where: {contractId: contractIdStr, addressId: addrIdStr}})
+    if (!sum || isNaN(Number(sum))) {
+        await Erc1155Amount.destroy({where: {contractId: contractIdStr, addressId: addrIdStr}})
+    } else {
+        await Erc1155Amount.upsert({
+            contractId: contractIdStr, addressId: addrIdStr, amount: sum, epoch
+        })
+    }
+}
+
+export async function sum1155amountByInfo(contractAddrSet: Set<string>, epoch: number) {
+    for (const entry of contractAddrSet.values()) {
+        const [contractIdStr, addrIdStr] = entry.split("_")
+        await update1155amount(contractIdStr, addrIdStr, epoch);
+    }
+}
+
+export async function patchSum1155amount(tokenList: (any & {type?: string})[], addressId: number) {
+    if (!StatApp.isEVM) {
+        return
+    }
+    return Promise.all(tokenList.map(async token => {
+        if (!token.type?.endsWith("1155")) {
+            return
+        }
+        const res = await Erc1155Amount.findOne({where: {addressId, contractId: token.hex40id}});
+        if (res) {
+            token['sumAmount'] = res.amount;
+        }
+    })).catch(e=>{
+        console.log(`patchSum1155amount failed, addressId `, addressId, e)
+    });
 }

@@ -18,6 +18,7 @@ import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {TokenQuery} from "../TokenQuery";
 import {Errors} from "../common/LogicError";
 import {formatPrice} from "../common/utils";
+import {patchSum1155amount} from "./Erc1155DataSync";
 
 export class BalanceService {
     private app: StatApp;
@@ -164,10 +165,14 @@ export class BalanceService {
         }
         const contracts = tokenList.map(t=>t.base32);
         // fetch real time balance. 'incorrect' nft may return 0.
-        const banList = await BatchBalanceWatcher.getBalances(base32, contracts)
+        const [banList] = await Promise.all([
+            BatchBalanceWatcher.getBalances(base32, contracts),
+            patchSum1155amount(tokenList, accountBean.id),
+        ])
         const resultList = []
         lodash.zip(tokenList, banList).forEach(
             ([token,ban], idx) => {
+                const sumAmount = token['sumAmount']
                 // use db balance for nft only
                 const balance = ban || token['isNFT'] ? balanceMap[tokenList[idx]?.hex40id]?.balance : 0;
                 const priceInUSDT = token.price ? formatPrice(token.price.toString()) : undefined;
@@ -180,6 +185,7 @@ export class BalanceService {
                     iconUrl: token.iconUrl,
                     type: token.type,
                     balance,
+                    sumAmount,
                     priceInUSDT,
                     quoteUrl: token.quoteUrl || undefined,
                 })
