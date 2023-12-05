@@ -1680,6 +1680,24 @@ components:
                   cursor:
                     type: string
                     description: "The cursor of the transfer"
+                  type:
+                    type: string
+                    description: "Transfer type."
+                  nonce:
+                    type: string
+                    description: "Transaction nonce, omit if empty."
+                  method:
+                    type: string
+                    description: "Transaction method name, omit if empty."
+                  status:
+                    type: integer
+                    description: "Transaction status, 0-success, 1-fail, omit if empty."
+                  gasFee:
+                    type: string
+                    description: "Transaction fee, omit if empty."
+                  methodId:
+                    type: string
+                    description: "Transaction method id, omit if empty."
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
     MiningStat:

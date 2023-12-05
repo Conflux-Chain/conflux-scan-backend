@@ -113,6 +113,9 @@ export function polishTransferList(page, withCursor = false) {
             delete row.blockIndex;
             delete row.storageFee;
             delete row.contractAddress;
+            if(lodash.isNumber(row?.status)) {
+                row.status = row.status === 0 ? '1' : '0';
+            }
         }
     })
     delete page?.accountId

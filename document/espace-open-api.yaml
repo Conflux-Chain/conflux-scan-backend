@@ -2244,10 +2244,28 @@ components:
                     description: "The token id in CRC721/CRC1155 transfer, otherwise it is 0"
                   timestamp:
                     type: integer
-                    description: "Timestamp in seconds"
+                    description: "Timestamp in seconds."
                   cursor:
                     type: string
-                    description: "The cursor of the transfer"
+                    description: "The cursor of the transfer."
+                  type:
+                    type: string
+                    description: "Transfer type."
+                  nonce:
+                    type: string
+                    description: "Transaction nonce, omit if empty."
+                  method:
+                    type: string
+                    description: "Transaction method name, omit if empty."
+                  status:
+                    type: integer
+                    description: "Transaction status, 1-success, 0-fail, omit if empty."
+                  gasFee:
+                    type: string
+                    description: "Transaction fee, omit if empty."
+                  methodId:
+                    type: string
+                    description: "Transaction method id, omit if empty."
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
     AssetsOfAccountResp:
