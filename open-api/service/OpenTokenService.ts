@@ -32,10 +32,15 @@ export async function queryTokenInfo(address) {
     return result;
 }
 
+const MAX_TOKENS = 30;
 export async function getTokenInfos(ctx) {
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contracts');
     const { contracts: addrArray } = ctx.request.query;
     checkPresent({contracts: addrArray}, ['contracts']);
+    if(addrArray.length > MAX_TOKENS){
+        setBody(ctx, null, 1, `The max size of contracts is ${MAX_TOKENS}`);
+        return
+    }
 
     const base32Array = addrArray.map(addr => format.address(addr, StatApp.networkId));
     const tokenArray = await Token.findAll({

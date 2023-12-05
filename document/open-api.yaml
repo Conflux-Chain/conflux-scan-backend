@@ -423,7 +423,7 @@ paths:
     get:
       tags:
         - 'Tokens'
-      description: 'Get Token Info by contract addresses'
+      description: 'Get Token Info by contract addresses. Supports up to 30 tokens at a time.'
       parameters:
         - $ref: '#/components/parameters/contractArrayParam'
       responses:
