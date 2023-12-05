@@ -67,7 +67,8 @@ const ADDRESS_ERC20TRANSFER_SQL = `
   \`fromId\` bigint unsigned NOT NULL,
   \`toId\` bigint unsigned NOT NULL,
   \`value\` varchar(78) NOT NULL DEFAULT '0',
-  PRIMARY KEY (\`addressId\`,\`epoch\`,\`blockIndex\` desc, txIndex desc, txLogIndex desc)
+  PRIMARY KEY (\`addressId\`,\`epoch\`,\`blockIndex\` desc, txIndex desc, txLogIndex desc),
+    KEY idx_addr_epoch ( addressId, epoch desc)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 97;

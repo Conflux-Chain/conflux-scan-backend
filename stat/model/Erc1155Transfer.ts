@@ -29,7 +29,8 @@ create table if not exists ${T_ADDRESS_ERC1155_TRANSFER}
 \t \`value\` decimal(36) not null,
 \t tokenId varchar(78) null,
     primary key  (addressId desc,epoch desc,blockIndex desc, 
-    txIndex desc, txLogIndex desc, batchIndex desc)
+    txIndex desc, txLogIndex desc, batchIndex desc),
+    KEY idx_addr_epoch ( addressId, epoch desc)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 partition by hash (addressId)
    PARTITIONS 23;
