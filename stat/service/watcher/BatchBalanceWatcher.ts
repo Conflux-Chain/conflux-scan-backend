@@ -283,26 +283,34 @@ async function setupSync1155data(cfx:Conflux) {
 let contract1155: Contract = null;
 async function repeatSync1155data(cfx:Conflux) {
     if (!contract1155) {
-        contract1155 = await setupSync1155data(cfx)
+        contract1155 = await setupSync1155data(cfx).catch(e=>{
+            console.log(`failed to setupSync1155data`, e)
+            process.exit(1)
+        })
     }
-    let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
-    const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err=>{
-        console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
-        return -1
-    })
-    if (thatEpoch === -1) {
-        setTimeout(()=>repeatSync1155data(cfx), 5_000)
-    } else if (thatEpoch) {
-        await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
-        if (Number(thatEpoch) % 100 == 0) {
-            console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
+    try {
+        let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
+        const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err => {
+            console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
+            return -1
+        })
+        if (thatEpoch === -1) {
+            setTimeout(() => repeatSync1155data(cfx), 5_000)
+        } else if (thatEpoch) {
+            await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
+            if (Number(thatEpoch) % 100 == 0) {
+                console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
+            }
+            setTimeout(() => repeatSync1155data(cfx), 0)
+        } else {
+            console.log(` no Erc1155 data after epoch ${lastEpoch}`)
+            // rewind cursor, to check records within then CONFIRM_GAP
+            await rewind()
+            setTimeout(() => repeatSync1155data(cfx), 5_000)
         }
-        setTimeout(()=>repeatSync1155data(cfx), 0)
-    } else {
-        console.log(` no Erc1155 data after epoch ${lastEpoch}`)
-        // rewind cursor, to check records within then CONFIRM_GAP
-        await rewind()
-        setTimeout(()=>repeatSync1155data(cfx), 5_000)
+    } catch (e) {
+        console.log(`repeatSync1155data error:`, e)
+        setTimeout(() => repeatSync1155data(cfx), 5_000)
     }
 }
 async function update20holder(hex40id:number, cfx:Conflux, name='') {
