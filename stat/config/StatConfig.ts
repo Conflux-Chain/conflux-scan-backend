@@ -166,6 +166,10 @@ export interface StatConfig{
     censorAppId: string,
     censorApiKey: string,
     censorSecretKey: string,
+
+    asyncWrappedToken: boolean,
+    wrappedCFX: string,
+    wrappedUSDT: string,
 }
 
 export interface Erc20WatchList{

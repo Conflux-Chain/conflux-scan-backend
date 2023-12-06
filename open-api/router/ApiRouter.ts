@@ -31,6 +31,7 @@ import {
     verifySourcecode
 } from "../service/OpenContractService";
 import {
+    getTokenInfos,
     queryTokenInfo
 } from "../service/OpenTokenService";
 import {
@@ -153,6 +154,7 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
 
 function registerRouter(router: Router) {
     const checkRateByAddr = checkRateByAddress('contract');
+    const checkRateByAccount = checkRateByAddress('account');
     // accounts
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)
@@ -162,7 +164,7 @@ function registerRouter(router: Router) {
     router.get('/account/crc3525/transfers', checkRateByAddr, listAccountTransfer3525)
     router.get('/account/transfers', checkRateByAddr, listAccountTransfer)
     router.get('/account/approvals', checkRateByAddr, listApproval)
-    router.get('/account/tokens', listAccountAssets)
+    router.get('/account/tokens', checkRateByAccount, listAccountAssets)
 
     // contract
     router.get('/contract/getabi', getABI)
@@ -174,6 +176,7 @@ function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfo', getTokenInfo);
+    router.get('/token/tokeninfos', getTokenInfos);
 
     // nft assets
     router.get('/nft/balances', listNFTBalances);

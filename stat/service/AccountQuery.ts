@@ -98,7 +98,7 @@ export class AccountQuery {
         // build map
         contractArray.forEach((contract) => {
             map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
-                name: contract.name,
+                name: contract.name  || undefined,
                 isVirtual: POCKET_ADDRESS_MAP[contract.name] == format.hexAddress(contract.address),
                 verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
             });
@@ -110,13 +110,13 @@ export class AccountQuery {
         });
         tokenArray.forEach((token) => {
             map[token.address].token = lodash.defaults(map[token.address].token, {
-                name: token.name,
-                symbol: token.symbol,
-                decimals: token.decimals,
-                icon: token.icon,
-                iconUrl: token.iconUrl,
-                website: token.website,
-                tokenType: token.transferType,
+                name: token.name || undefined,
+                symbol: token.symbol || undefined,
+                decimals: token.decimals || undefined,
+                icon: token.icon || undefined,
+                iconUrl: token.iconUrl || undefined,
+                website: token.website || undefined,
+                tokenType: token.transferType || undefined,
             });
         });
 

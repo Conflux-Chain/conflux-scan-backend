@@ -264,6 +264,8 @@ export class ContractQuery {
             if(proxyInfo?.implementation){
                 verified.beacon = proxyInfo.beacon;
                 verified.implementation = proxyInfo.implementation;
+                verified.proxy = true
+                verified.proxyPattern = proxyInfo.proxyPattern;
             }
         }
 
@@ -468,15 +470,25 @@ export class ContractQuery {
     public async queryImplementation(base32) {
         const {cfx} = this.app;
         let result = {proxy: false};
+        const implementation = await Promise.all([
+            CONST.POSITION_IMPLEMENTATION_SLOT,
+            CONST.IMPLEMENTATION_SLOT_OZ,
+            CONST.IMPLEMENTATION_SLOT_EIP1822,
+        ].map(slot=>{
+            return cfx.getStorageAt(base32, slot).then(res=>{
+                console.log(`slot ${slot} => ${res}`);
+                return res;
+            })
+        }))
+            .then(arr=>arr.find(implementation=>implementation !== null && implementation !== CONST.ZERO_VALUE_IN_SLOT))
 
-        const [implementation, beacon] = await Promise.all([
-            cfx.getStorageAt(base32, CONST.POSITION_IMPLEMENTATION_SLOT),
+        const [beacon] = await Promise.all([
             cfx.getStorageAt(base32, CONST.POSITION_BEACON_SLOT),
         ]);
 
         let beaconHex40;
         let implHex40;
-        if (implementation !== null && implementation !== CONST.ZERO_VALUE_IN_SLOT) {
+        if (implementation) {
             implHex40 = implementation.substr(26);
         }
         if (beacon !== null && beacon !== CONST.ZERO_VALUE_IN_SLOT) {

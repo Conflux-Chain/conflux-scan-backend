@@ -112,6 +112,10 @@ export async function abiDecode(ctx){
     const hashArray = hashes.split(',');
     const decodeMap = {};
     lodash.map(hashArray, (hash) => decodeMap[hash] = {hash});
+    if(hashArray.length > 10){
+        setBody(ctx, null, 1, `The max size of hashArray is 10`);
+        return
+    }
 
     const {txMap} = await getApiService().fullBlockQuery.batchGetTransactionList({hashArray});
     for(const hash of hashArray) {
@@ -143,6 +147,10 @@ export async function abiDecodeRaw(ctx){
     const inputArray = inputs.split(',');
     if(contractArray.length !== inputArray.length){
         setBody(ctx, null, 1, `The length of contractArray and inputArray not match`);
+        return
+    }
+    if(contractArray.length > 10){
+        setBody(ctx, null, 1, `The max size of inputArray is 10`);
         return
     }
 

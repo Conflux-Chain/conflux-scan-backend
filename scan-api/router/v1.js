@@ -6,6 +6,7 @@ const error = require('../../common/error');
 const jsonrpc = require('./jsonrpc');
 const {StatApp} = require("../../stat/dist/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
+const moment = require("moment/moment");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -1458,10 +1459,15 @@ router.get('/report/transaction',
   }),
 
   jsonrpc.methodFlow('exportTransaction'),
-  async function (string) {
-    const filename = `transactions${new Date().toLocaleDateString()}.csv`;
+  async function (options) {
+    const {
+      app: { type },
+    } = this;
+    const {address, csvContent} = options;
+    const date = moment(new Date()).format('YYYY.MM.DD')
+    const filename = `address-transactions-${StatApp.isEVM ? type.address(address) : address}-${date}.csv`;
     this.set('Content-Disposition', `attachment; filename="${filename}"`);
-    return Buffer.from(string);
+    return Buffer.from(csvContent);
   },
 );
 
@@ -1497,10 +1503,31 @@ router.get('/report/transfer',
   }),
 
   jsonrpc.methodFlow('exportTransfer'),
-  async function (string) {
-    const filename = `transfers${new Date().toLocaleDateString()}.csv`;
+  async function (options) {
+    const {
+      app: { type },
+    } = this;
+
+    const {address, contract, tokeSymbol, transferType, csvContent} = options;
+    let tag = ''
+    switch (transferType){
+      case CONST.TRANSFER_TYPE.CFX:
+        tag = 'CFXtransactions';
+        break;
+      case CONST.TRANSFER_TYPE.ERC3525:
+      case CONST.TRANSFER_TYPE.ERC20:
+        tag = 'token';
+        break;
+      case CONST.TRANSFER_TYPE.ERC721:
+      case CONST.TRANSFER_TYPE.ERC1155:
+        tag = 'nfts';
+        break;
+    }
+    const date = moment(new Date()).format('YYYY.MM.DD')
+    let filename = address ? `address-${tag}-${StatApp.isEVM ? type.address(address) : address}-${date}.csv`
+        : `${tag}-${tokeSymbol}-${StatApp.isEVM ? type.address(contract) : contract}-${date}.csv`;
     this.set('Content-Disposition', `attachment; filename="${filename}"`);
-    return Buffer.from(string);
+    return Buffer.from(csvContent);
   },
 );
 

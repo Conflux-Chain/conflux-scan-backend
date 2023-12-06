@@ -15,7 +15,7 @@ import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {
     CfxBalance, createTokenBalanceTable, NFTBalance,
 } from "../model/Balance";
-import {DailyToken, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
+import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {
     CfxTransfer,
@@ -179,6 +179,7 @@ export async function initPartialModel(sequelize) {
     // Erc777Transfer.register(sequelize)
     Erc1155Transfer.register(sequelize)
     Erc1155Data.register(sequelize)
+    Erc1155Amount.register(sequelize)
     DailyTokenTxn.register(sequelize)
     CfxTransfer.register(sequelize)
     BakCfxTransfer.register(sequelize)

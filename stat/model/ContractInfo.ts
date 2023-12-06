@@ -107,7 +107,7 @@ export async function saveAbiInfo(abiObj:any) {
         console.log(`bulk create abi info fail:`, err)
     })
 }
-export async function fillMethodInfo(arr:{method?:string}[]) {
+export async function fillMethodInfo(arr:{method?:string}[], isOpenApi: boolean = false) {
     if (arr.length === 0) {
         return;
     }
@@ -125,8 +125,17 @@ export async function fillMethodInfo(arr:{method?:string}[]) {
         console.log(`build method map fail:`, err)
     })
     arr.forEach(row=>{
-        let fullName = map.get(row.method)?.fullName || row.method;
-        row.method = fullName
+        if(isOpenApi){
+            row['methodId'] = row.method
+            if(map.get(row.method)?.fullName) {
+                row.method = map.get(row.method).fullName
+            } else {
+                delete row.method
+            }
+        } else{
+            let fullName = map.get(row.method)?.fullName || row.method;
+            row.method = fullName
+        }
         // console.log(`set full name ${fullName} to ${row.method} , map v ${map.get(row.method)}`)
     })
 }

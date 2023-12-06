@@ -218,7 +218,7 @@ export function mustBeAddressArrayParamIfPresent(obj, netId, isEVM, ...keys:stri
         }
 
         if (!lodash.isArray(vArray)) {
-            vArray = [vArray];
+            vArray = vArray.split(',');
         }
 
         for (const v of vArray) {
@@ -493,10 +493,58 @@ export function calCount(minTimestamp, maxTimestamp, intervalType) {
     return Math.ceil(count);
 }
 
-export function trimPriceZero(priceStr) {
-    if(priceStr.indexOf('.')) {
-        return lodash.trimEnd(priceStr, '0');
+export function formatPrice(priceStr) {
+    if(priceStr.indexOf('.') >=0 ) {
+        priceStr = lodash.trimEnd(priceStr, '0');
+        if(priceStr.charAt(priceStr.length-1) === '.'){
+            return priceStr.substring(0, priceStr.length-1)
+        }
+        return priceStr;
     } else {
         return priceStr;
     }
+}
+
+export function formatDecimal(numStr, decimal) {
+    if(decimal < 0) {
+        throw new Error(`Decimal ${decimal} should not less than 0`)
+    }
+
+    const segArray = numStr.split('.')
+    const dot = decimal === 0 ? '' : '.'
+
+    if(segArray.length === 1) {
+        return `${numStr}${dot}${''.padEnd(decimal, '0')}`
+    }
+
+    if(segArray[1].length < decimal) {
+        return `${segArray[0]}${dot}${segArray[1].padEnd(decimal, '0')}`
+    }
+
+    return `${segArray[0]}${dot}${segArray[1].substring(0, decimal)}`
+}
+
+export function formatBalance(numStr, decimal) {
+    const str = formatDecimal(numStr, decimal)
+    console.log(`str  ${str}`)
+    const intSum = str
+        .substring(0, str.indexOf('.'))
+        .replace(/\B(?=(?:\d{3})+$)/g, ',')
+    console.log(`str.length ${str.length}`)
+    console.log(`str.indexOf('.') ${str.indexOf('.')}`)
+    let dot = str.substring(str.length, str.indexOf('.'))
+    console.log(`intSum ${intSum}`)
+    console.log(`dot ${dot}`)
+    return `${intSum}${dot}`
+}
+
+export function formatPercentage(numStr, decimal) {
+    const minVal = decimal === 0 ? '0' : `0.${''.padEnd(decimal-1, '0')}1`
+
+    if(Number(numStr) < Number(minVal)) {
+        return `<${minVal}%`
+    }
+
+    const percentage = formatDecimal(numStr, decimal)
+    return `${percentage}%`
 }

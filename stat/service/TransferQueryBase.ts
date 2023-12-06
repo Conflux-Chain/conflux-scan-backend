@@ -236,17 +236,17 @@ export abstract class TransferQueryBase {
 
         // add tx info
         if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
-            await fillMethodInfo(list).catch(error=>{ throw new Errors.BizError(`fill method info error, ${error}`);})
-            const hashArray = [...new Set(lodash.map(list, item => item['transactionHash']))];
-            const {txMap, receiptMap} = await fullBlockQuery.batchGetTransactionList({hashArray});
+            await fillMethodInfo(list, true).catch(error=>{ throw new Errors.BizError(`fill method info error, ${error}`);})
+            /*const hashArray = [...new Set(lodash.map(list, item => item['transactionHash']))];
+            const {txMap, receiptMap} = await fullBlockQuery.batchGetTransactionList({hashArray});*/
             const failedQuery:Promise<FailedTx>[] = []
             list.forEach(row=>{
                 if(row['type'] !== CONST.ADDRESS_TRANSFER_TYPE.TX.name) return;
-                row['storageFee'] = BigInt(receiptMap[row['transactionHash']]?.storageCollateralized || 0) * BigInt(10**18) / BigInt(1024);
-                row['input'] = txMap[row['transactionHash']]?.data;
+                /*row['storageFee'] = BigInt(receiptMap[row['transactionHash']]?.storageCollateralized || 0) * BigInt(10**18) / BigInt(1024);
+                row['input'] = txMap[row['transactionHash']]?.data;*/
                 if (row['status']) {
                     failedQuery.push(FailedTx.findOne({where:{
-                            epoch: row['epochNumber'], blockPosition: row['blockPosition'], txPosition:row['transactionIndex']
+                            epoch: row['epochNumber'], blockPosition: row['blockIndex'], txPosition:row['txIndex']
                         }}).then(ft=>{
                         if (ft) {
                             row['txExecErrorMsg'] = ft.txExecErrorMsg;

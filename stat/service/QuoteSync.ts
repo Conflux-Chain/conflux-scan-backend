@@ -371,16 +371,21 @@ export class QuoteSync {
 
     //======================================================================
     private async upsertQuote(quoteArray) {
+        const {config, tokenTool} = this.app;
+
+        quoteArray.push({address: config.wrappedUSDT, price: 1});
+
         quoteArray.map(async quote => {
             const {address, price, src, quoteUrl} = quote;
             const base32 = format.address(address, StatApp.networkId);
             const dbToken: Token = await Token.findOne({where: {base32}});
+            const totalSupply = await tokenTool.getTokenTotalSupply(base32);
             if (dbToken) {
-                let totalPrice = (price && dbToken.totalSupply && Number.isInteger(dbToken.decimals))
-                    ? BigFixed(price).mul(dbToken.totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
+                let totalPrice = (price && totalSupply && Number.isInteger(dbToken.decimals))
+                    ? BigFixed(price).mul(totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
                     : null;
                 totalPrice = totalPrice === 0 ? null : totalPrice;
-                await Token.update({price, totalPrice, updatedAt: new Date()}, {where: {id: dbToken.id}});
+                await Token.update({price, totalSupply, totalPrice, updatedAt: new Date()}, {where: {id: dbToken.id}});
                 if(!dbToken.quoteUrl && quoteUrl) {
                     await Token.update({quoteUrl, updatedAt: new Date()}, {where: {id: dbToken.id}});
                 }

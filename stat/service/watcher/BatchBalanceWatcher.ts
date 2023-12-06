@@ -18,7 +18,15 @@ import {init} from "../tool/FixDailyTokenStat";
 import {regExitHook, sleep} from "../tool/ProcessTool";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {TokenBalance} from "../../model/Balance";
-import {abi1155, CONFIRM_GAP, destroyedContracts, fetch1155balance, fix1155data, rewind} from "./Erc1155DataSync";
+import {
+    abi1155,
+    CONFIRM_GAP,
+    destroyedContracts,
+    fetch1155balance,
+    fix1155data,
+    rewind,
+    sum1155amountByInfo, sumHistory1155amount
+} from "./Erc1155DataSync";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -155,6 +163,7 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
     const contracts = new Map<number, {accounts:string[], tokenIds: BigInt[], addrIds: any[]}>()
     // build params before call contract
     const contractAddrTokenSet = new Set<string>()
+    const contractAddrSet = new Set<string>()
     for (let trans of transferList) {
         let params = contracts.get(trans.contractId)
         if (!params) {
@@ -163,6 +172,8 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
         }
         // from
         const hexFrom = `0x${addressMap.get(trans.fromId)}`;
+        contractAddrSet.add(`${trans.contractId}_${trans.fromId}`);
+        contractAddrSet.add(`${trans.contractId}_${trans.toId}`);
         const duplicateKey1 = `${trans.contractId}_${trans.fromId}_${trans.tokenId}`
         if (trans.fromId != zeroAddrId && !contractAddrTokenSet.has(duplicateKey1)) {
             contractAddrTokenSet.add(duplicateKey1)
@@ -252,6 +263,7 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
             await value.destroy({logging: console.log})
         }
     }
+    sum1155amountByInfo(contractAddrSet, mark as number).catch(e=>{console.log(`sum1155amountByInfo error`, e)});
     return mark;
 }
 async function setupSync1155data(cfx:Conflux) {
@@ -271,26 +283,34 @@ async function setupSync1155data(cfx:Conflux) {
 let contract1155: Contract = null;
 async function repeatSync1155data(cfx:Conflux) {
     if (!contract1155) {
-        contract1155 = await setupSync1155data(cfx)
+        contract1155 = await setupSync1155data(cfx).catch(e=>{
+            console.log(`failed to setupSync1155data`, e)
+            process.exit(1)
+        })
     }
-    let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
-    const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err=>{
-        console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
-        return -1
-    })
-    if (thatEpoch === -1) {
-        setTimeout(()=>repeatSync1155data(cfx), 5_000)
-    } else if (thatEpoch) {
-        await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
-        if (Number(thatEpoch) % 100 == 0) {
-            console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
+    try {
+        let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
+        const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err => {
+            console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
+            return -1
+        })
+        if (thatEpoch === -1) {
+            setTimeout(() => repeatSync1155data(cfx), 5_000)
+        } else if (thatEpoch) {
+            await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
+            if (Number(thatEpoch) % 100 == 0) {
+                console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
+            }
+            setTimeout(() => repeatSync1155data(cfx), 0)
+        } else {
+            console.log(` no Erc1155 data after epoch ${lastEpoch}`)
+            // rewind cursor, to check records within then CONFIRM_GAP
+            await rewind()
+            setTimeout(() => repeatSync1155data(cfx), 5_000)
         }
-        setTimeout(()=>repeatSync1155data(cfx), 0)
-    } else {
-        console.log(` no Erc1155 data after epoch ${lastEpoch}`)
-        // rewind cursor, to check records within then CONFIRM_GAP
-        await rewind()
-        setTimeout(()=>repeatSync1155data(cfx), 5_000)
+    } catch (e) {
+        console.log(`repeatSync1155data error:`, e)
+        setTimeout(() => repeatSync1155data(cfx), 5_000)
     }
 }
 async function update20holder(hex40id:number, cfx:Conflux, name='') {
@@ -353,7 +373,9 @@ async function run() {
         }
         await fixHolderForContract(parseInt(limitStr), byMintTable)
         process.exit(0)
-        return
+    } else if (cfxUrl === 'sumHistory1155amount') {
+        await sumHistory1155amount(new Conflux(cfg.conflux))
+        process.exit(0)
     } else if (cfxUrl === 'fixAll721holder') {
         // check721OwnerInDb in TokenTool.ts
         await fixAllNftHolder(true, 'ERC721')

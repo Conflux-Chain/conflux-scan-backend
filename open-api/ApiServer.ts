@@ -141,7 +141,7 @@ export class ApiServer {
         apiService.tokenTransferHandler = new TokenTransferHandler(apiApp);
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenTool = tokenTool
-        apiService.tokenQuery = new TokenQuery({tokenTool})
+        apiService.tokenQuery = new TokenQuery({tokenTool, config: this.config})
         apiService.jsonRpc = new JsonRPCSDK(config.jsonRpc);
         apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config, jsonRpc: apiService.jsonRpc,
             tokenQuery: apiService.tokenQuery, tokenTool})
@@ -160,6 +160,7 @@ export class ApiServer {
         await apiService.addrCfxTransferHandler.scheduleCache();
         await apiService.tokenTransferHandler.scheduleCache();
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
+        config.asyncWrappedToken && (await apiService.tokenQuery.scheduleWrappedCFX());
         if(config.syncIPFSGateway) {
             IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
             await apiService.ipfsGatewaySync.schedule(config.syncIPFSGatewayDelay);

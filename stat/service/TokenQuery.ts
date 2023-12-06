@@ -25,9 +25,17 @@ const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d
 
 export class TokenQuery {
     protected app: any;
+    public static wrappedCFXAddr: string;
+    public static wrappedCFX: Token;
 
     constructor(app: any) {
         this.app = app;
+        if(this.app.config.asyncWrappedToken) {
+            if(!this.app.config.wrappedCFX) {
+                throw new Error(`Wrapped CFX should be config!`);
+            }
+            TokenQuery.wrappedCFXAddr = format.address(this.app.config.wrappedCFX, StatApp.networkId);
+        }
     }
 
     public async query({address}) {
@@ -194,7 +202,7 @@ export class TokenQuery {
         if(latestTransfer <= 0 || latestTransfer > 10000) return [];
 
         const sql = `select hex from hex40 where id in (select distinct(contractId) from ( select contractId 
-            from ${tableName} where addressId = ${addressId} order by createdAt desc limit ${latestTransfer}) tmp);`;
+            from ${tableName} where addressId = ${addressId} order by epoch desc limit ${latestTransfer}) tmp);`;
         const list = await sequelize.query(sql, {type: QueryTypes.SELECT,
             // logging: console.log
         });
@@ -226,7 +234,7 @@ export class TokenQuery {
         await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
             .map(tableName => {
                 TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
-                        where addressId = ${addressId} order by createdAt desc limit 10) tmp;`,
+                        where addressId = ${addressId} order by epoch desc limit 10) tmp;`,
                     {type: QueryTypes.SELECT,
                         // logging: console.log
                     })
@@ -267,7 +275,7 @@ export class TokenQuery {
             await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
                 .map(tableName => {
                     TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
-                        where addressId = ${addressId} order by createdAt desc limit 10) tmp;`,
+                        where addressId = ${addressId} order by epoch desc limit 10) tmp;`,
                         {type: QueryTypes.SELECT,
                             // logging: console.log
                         })
@@ -487,5 +495,23 @@ export class TokenQuery {
         });
 
         return lodash.keyBy(tokenArray, 'hex40id');
+    }
+
+    public async scheduleWrappedCFX(delay: number = 1000) {
+        console.log(`schedule native token with delay: ${delay}`)
+        const that = this
+
+        async function repeat() {
+            await that.syncWrappedCFX().catch(err => {
+                console.log(`sync native token fail: `, err);
+            });
+            setTimeout(repeat, delay)
+        }
+
+        repeat().then()
+    }
+
+    private async syncWrappedCFX() {
+        TokenQuery.wrappedCFX = await Token.findOne({attributes: {exclude: ['icon']}, where: {base32: TokenQuery.wrappedCFXAddr}});
     }
 }

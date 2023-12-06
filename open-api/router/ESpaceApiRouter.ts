@@ -31,6 +31,7 @@ import {
     checkProxyVerification,
 } from "../service/OpenContractService";
 import {
+    getTokenInfos,
     queryTokenInfo
 } from "../service/OpenTokenService";
 import {
@@ -620,4 +621,7 @@ export function registerRouter(router: Router) {
     router.get('/account/transfers', listAccountTransfer)
     router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
+
+    // token(deprecated)
+    router.get('/token/tokeninfos', getTokenInfos);
 }

@@ -13,6 +13,8 @@ import {getApiService} from "../ApiServer";
 import {CONST} from "../../stat/service/common/constant";
 import {TokenQuery} from "../../stat/service/TokenQuery";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {Op} from "sequelize";
+import {Errors} from "../../stat/service/common/LogicError";
 const lodash = require('lodash');
 
 export async function listAccountCfxTransfer(ctx) {
@@ -56,7 +58,10 @@ export async function listAccountTransfer(ctx) {
     let {cursor} = ctx.request.query;
     cursor = cursor === undefined ? 0 : cursor;
 
-    return listTransfer(ctx, getApiService().addrTransferQuery, cursor, 'cursorId')
+    const {skip, limit} = ctx.request.query;
+    console.log(`listAccountTransfer cursor ${cursor} skip ${skip} limit ${limit}`)
+
+    return listTransfer(ctx, getApiService().addrTransferQuery, cursor, 'cursorId', true)
 }
 
 export async function listNFTTransfers(ctx) {
@@ -83,10 +88,14 @@ export async function listNFTTransfers(ctx) {
     }
 
     cursor = cursor === undefined ? 0 : cursor;
+
+    const {skip, limit} = ctx.request.query;
+    console.log(`listNFTTransfers cursor ${cursor} skip ${skip} limit ${limit}`)
+
     return listTransfer(ctx, service, cursor, 'id');
 }
 
-export function polishTransferList(page) {
+export function polishTransferList(page, withCursor = false) {
     page?.list?.forEach(row=>{
         row.contract = row.address
         row.amount = row.value
@@ -96,19 +105,23 @@ export function polishTransferList(page) {
         delete row.syncTimestamp
         delete row.transferType
         delete row.address
-        delete row.value
+        delete row.value;
+        (!withCursor) && (delete row.cursor)
         if (StatApp.isEVM) {
             row['blockNumber'] = row.epochNumber
             delete row.epochNumber;
             delete row.blockIndex;
             delete row.storageFee;
             delete row.contractAddress;
+            if(lodash.isNumber(row?.status)) {
+                row.status = row.status === 0 ? '1' : '0';
+            }
         }
     })
     delete page?.accountId
 }
 
-export async function listTransfer(ctx, service, cursor = undefined, cursorField = undefined) {
+export async function listTransfer(ctx, service, cursor = undefined, cursorField = undefined, withCursor = false) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'from','to','account', 'contract')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
@@ -125,12 +138,22 @@ export async function listTransfer(ctx, service, cursor = undefined, cursorField
 
     const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
     const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
+
+    if(startEpoch !== undefined && endEpoch !== undefined && Number(startEpoch) > Number(endEpoch)) {
+        const errMsg = StatApp.isEVM ? `StartBlock ${startEpoch} should not greater than endBlock ${endEpoch}.`
+            : `MinEpochNumber ${minEpochNumber} should not greater than maxEpochNumber ${maxEpochNumber}.`;
+        throw new Errors.ParameterError(errMsg);
+    }
+    if(minTimestamp !== undefined && maxTimestamp !== undefined && Number(minTimestamp) > Number(maxTimestamp)) {
+        throw new Errors.ParameterError(`MinTimestamp ${minTimestamp} should not greater than maxTimestamp ${maxTimestamp}.`);
+    }
+
     const page = await service.listTransfer(
         {accountAddress:base32, tokenArray: contract ? [contract] : undefined, skip, limit, tokenId, transferType,
             minEpochNumber: startEpoch, maxEpochNumber: endEpoch, minTimestamp, maxTimestamp, from, to, sort, cursor, cursorField}
     );
 
     await polishContract(page)
-    polishTransferList(page)
+    polishTransferList(page, withCursor)
     setBody(ctx, page)
 }
