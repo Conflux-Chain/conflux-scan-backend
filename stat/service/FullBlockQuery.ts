@@ -719,7 +719,12 @@ export class FullBlockQuery {
             const insufficientBalance = BigNumber.from(balance).lt(BigNumber.from(totalCost));
             const pendingDetail = {
                 message: 'The balance is insufficient to pay value + gasLimit * gasPrice',
-                params:{balance, value, gasLimit, gasPrice},
+                params: {
+                    balance,
+                    value: BigNumber.from(value).toString(),
+                    gasLimit: BigNumber.from(gasLimit).toString(),
+                    gasPrice: BigNumber.from(gasPrice).toString()
+                },
             };
 
             // contract create

@@ -30,7 +30,9 @@ export class AccountQuery {
         this.app = app;
     }
 
-    public async listPatchInfo(addrArray) {
+    public async listPatchInfo(addrArray, options : {
+        withContractInfo: boolean, withESpaceInfo: boolean, withEns: boolean, withNameTag: boolean
+    } = {withContractInfo: true, withESpaceInfo: true, withEns: true, withNameTag: true}) {
         const hexArray = [...new Set(addrArray?.filter(Boolean).map(item => format.hexAddress(item)))];
         if (hexArray.length === 0) {
             return { total: 0, map: {} };
@@ -38,15 +40,16 @@ export class AccountQuery {
 
         const idHexMap = await this.idHex40Map(hexArray);
         const [contractResp, eSpaceResp, ensResp, nameTagResp] = await Promise.all([
-            this.listContractInfo(idHexMap),
-            this.listESpaceInfo(idHexMap),
-            this.listEnsInfo(idHexMap),
-            this.listNameTagInfo(idHexMap),
+            options.withContractInfo ? this.listContractInfo(idHexMap) : {} as any,
+            options.withESpaceInfo ? this.listESpaceInfo(idHexMap) : {} as any,
+            options.withEns ? this.listEnsInfo(idHexMap) : {} as any,
+            options.withNameTag ? this.listNameTagInfo(idHexMap) : {} as any,
         ]);
 
         const map = {};
         [ensResp, eSpaceResp, contractResp, nameTagResp].forEach(
             resp => {
+                if(!resp?.total) return;
                 Object.keys(resp.map).forEach(address => {
                     if(!map[address]) map[address] = {};
                     map[address] = lodash.defaults(map[address], resp.map[address]);

@@ -217,9 +217,6 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         list = await patchApprovalList({account, list, cfx})
         list.forEach(row=>{
             let {name, symbol, type, base32, decimals, iconUrl} = row;
-            if(type) {
-                type = (!StatApp.isEVM) ? type.replace('ERC', 'CRC') : type;
-            }
             ['name', 'symbol', 'type', 'base32', 'decimals', 'iconUrl'].forEach(k=>delete row[k]);
             row['tokenInfo'] = {name, symbol, type, base32, decimals, iconUrl};
             row['spenderName'] = (contractNameMap[`${row.toId}`])?.name || '';

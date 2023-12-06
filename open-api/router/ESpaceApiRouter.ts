@@ -447,7 +447,6 @@ async function getBlockNoByTime(ctx) {
     const comparator = closest === 'before' ? Op.lte : Op.gte;
     const order = closest === 'before' ? 'DESC' : 'ASC';
     const datetime =  new Date(timestamp * 1000);
-    // console.log(`timestamp:${timestamp},UTC:${datetime.toUTCString()},TimezoneOffset:${datetime.getTimezoneOffset()}`);
     const epoch = await Epoch.findOne({
         where: {timestamp: {[comparator]: datetime}},
         order: [['timestamp', order]],
@@ -493,7 +492,6 @@ async function getLogs(ctx) {
     const limit = 1000;
     const options = {fromBlock, toBlock, address, topics, limit};
     const logArray = (await getApiService().eth.getLogs(options)) || [];
-    console.log(`[getLogs]options:${JSON.stringify(options)},logs:${JSON.stringify(logArray)}`);
     const result = logArray.slice(0, limit);
     setBody(ctx, result)
 }

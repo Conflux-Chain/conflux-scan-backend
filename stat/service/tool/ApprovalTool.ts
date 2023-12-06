@@ -68,6 +68,10 @@ export async function fixApprovalData(page:any) {
         }
         entry.spenderInfo = addressInfo[entry.spender] || {};
         entry.spenderName = entry.spenderInfo.contract?.name || entry.spenderInfo.token?.name || "";
+        const tokenType = entry?.spenderInfo?.token?.tokenType;
+        if(tokenType) {
+            entry.spenderInfo.token.tokenType = tokenType.replace('CRC', 'ERC');
+        }
         delete entry['to'];
     })
     delete page.addressInfo;

@@ -476,7 +476,6 @@ export class ContractQuery {
             CONST.IMPLEMENTATION_SLOT_EIP1822,
         ].map(slot=>{
             return cfx.getStorageAt(base32, slot).then(res=>{
-                console.log(`slot ${slot} => ${res}`);
                 return res;
             })
         }))

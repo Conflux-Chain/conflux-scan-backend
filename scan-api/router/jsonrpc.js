@@ -909,6 +909,8 @@ jsonrpc.method('exportTransaction',
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
     const { list } = await service.transaction.countAndList(options);
+
+    const addressSet = new Set();
     list.forEach((each) => {
       each['Value(CFX)'] = Big(each.value).div(1e18).toString();
       if (accountBase32 && each.from === accountBase32) {
@@ -919,17 +921,27 @@ jsonrpc.method('exportTransaction',
       }
       each['GasPrice(CFX)'] = Big(each.gasPrice).div(1e18).toString();
       each['GasFee(CFX)'] = Big(each.gasFee).div(1e18).toString();
-      each['Status'] = each.status;
+      each['Status'] = each.status === 0 ? 'success' : 'fail';
       each['Method'] = each.method === '0x' ? '' : each.method;
       each['DateTime'] = tool.timestampToString(each.timestamp * 1000);
+      addressSet.add(each.from);
+      addressSet.add(each.to);
     });
 
-      const exportFields = [
+    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet]);
+    list.forEach((each) => {
+      each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
+      each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';
+    });
+
+    const exportFields = [
           ['timestamp', 'UnixTimestamp'],
           ['epochNumber', 'EpochNumber'],
           ['hash', 'TxHash'],
           ['from', 'From'],
+          'From_AddressName',
           ['to', 'To'],
+          'To_AddressName',
           ['contractCreated', 'ContractCreated'],
           'Value(CFX)',
           'Value_In(CFX)',
@@ -993,6 +1005,8 @@ jsonrpc.method('exportTransfer',
     const contractBase32 = options.address !== undefined
       ? this.app.type.simpleAddress(options.address) : undefined;
     const { list } = await service.transfer.countAndList({ ...options, transferType });
+
+    const addressSet = new Set();
     for (const each of list) {
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
         each.decimals = 18;
@@ -1017,15 +1031,29 @@ jsonrpc.method('exportTransfer',
       each['Type'] = transferType;
       each['DateTime'] = tool.timestampToString(each.timestamp * 1000);
       each['TokenId'] = each['tokenId'] ? `\t${each['tokenId']}` : each['tokenId'];
+      addressSet.add(each.from);
+      addressSet.add(each.to);
+      each.address && addressSet.add(each.address);
     }
 
-      const exportFields = [
+    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet], {withContractInfo: true});
+    list.forEach((each) => {
+      each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
+      each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';
+      if(each.address) {
+          each['ContractName'] = accountBasic.map[each.address]?.contract?.name || '';
+      }
+    });
+
+    const exportFields = [
           ['timestamp', 'UnixTimestamp'],
           ['epochNumber', 'EpochNumber'],
           ['transactionHash', 'TxHash'],
           ['transactionLogIndex', 'TxLogIndex'],
           ['from', 'From'],
+          'From_AddressName',
           ['to', 'To'],
+          'To_AddressName',
       ];
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
           exportFields.push(...[
@@ -1039,6 +1067,7 @@ jsonrpc.method('exportTransfer',
           if (accountBase32) {
               exportFields.push(...[
                   ['address', 'ContractAddress'],
+                  'ContractName',
                   ['name', 'TokenName'],
                   ['symbol', 'TokenSymbol'],
                   ['decimals', 'Decimals'],
@@ -1053,6 +1082,7 @@ jsonrpc.method('exportTransfer',
           if (accountBase32) {
               exportFields.push(...[
                   ['address', 'ContractAddress'],
+                  'ContractName',
                   ['name', 'TokenName'],
                   ['symbol', 'TokenSymbol'],
               ])
