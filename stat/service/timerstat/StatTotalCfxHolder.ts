@@ -45,7 +45,7 @@ export class StatTotalCfxHolder extends TimerStat{
         const statArray = [mStat, dStat];
         await DailyCfxHolder.sequelize.transaction(async (dbTx) => {
             await DailyCfxHolder.destroy({
-                where: {statDay: dStat.statDay, statType: dStat.statType}, transaction: dbTx,
+                where: {statType: dStat.statType, statDay: dStat.statDay}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyCfxHolder.bulkCreate(statArray, {

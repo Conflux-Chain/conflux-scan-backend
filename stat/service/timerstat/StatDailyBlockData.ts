@@ -45,11 +45,11 @@ export class StatDailyBlockData extends TimerStat{
         const statArray = [mStat, hStat, dStat];
         await DailyBlockDataStat.sequelize.transaction(async (dbTx) => {
             await DailyBlockDataStat.destroy({
-                where: {statTime: hStat.statTime, statType: hStat.statType}, transaction: dbTx,
+                where: {statType: hStat.statType, statTime: hStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyBlockDataStat.destroy({
-                where: {statTime: dStat.statTime, statType: dStat.statType}, transaction: dbTx,
+                where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyBlockDataStat.bulkCreate(statArray, {
@@ -99,7 +99,7 @@ export class StatDailyBlockData extends TimerStat{
         const intervalSec = BigFixed((endTime.getTime() - beginTime.getTime())/1000);
 
         const statSql = `SELECT statTime,statType,blockCount,txCount,difficultySum FROM daily_block_data_stat 
-                    WHERE statTime >= ? and statTime < ? and statType = '${srcStatType}'` ;
+                    WHERE statType = '${srcStatType}' and statTime >= ? and statTime < ?` ;
         const statList = await DailyBlockDataStat.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
             /*logging: msg => console.log(`[${this.bizAlias()}]stat list query ${msg}`)*/

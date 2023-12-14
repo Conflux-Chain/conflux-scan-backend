@@ -45,7 +45,7 @@ export class StatDailyContractCreation extends TimerStat{
         const statArray = [mStat, dStat];
         await DailyContractCreate.sequelize.transaction(async (dbTx) => {
             await DailyContractCreate.destroy({
-                where: {statDay: dStat.statDay, statType: dStat.statType}, transaction: dbTx,
+                where: {statType: dStat.statType, statDay: dStat.statDay}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyContractCreate.bulkCreate(statArray, {
@@ -88,7 +88,7 @@ export class StatDailyContractCreation extends TimerStat{
         const beginTime = this.getRangeBegin(endTime, destStatType);
 
         const statSql = `SELECT statDay,statType,contractCount,contractTotal FROM daily_contract_create 
-                    WHERE statDay >= ? and statDay < ? and statType = '${srcStatType}'` ;
+                    WHERE statType = '${srcStatType}' and statDay >= ? and statDay < ?` ;
         const statList = await DailyContractCreate.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
             /*logging: msg => console.log(`[${this.bizAlias()}]stat list query ${msg}`)*/

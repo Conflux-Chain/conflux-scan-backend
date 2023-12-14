@@ -23,8 +23,8 @@ export class DailyContractRegister extends Model<IDailyContractRegister> impleme
             tableName: 'daily_contract_register',
             timestamps: true,
             indexes: [{
-                name: "idx_statDay_statType",
-                fields: ["statDay", "statType"],
+                name: "idx_statType_statDay",
+                fields: ["statType", "statDay"],
                 unique: true,
             }]
         })

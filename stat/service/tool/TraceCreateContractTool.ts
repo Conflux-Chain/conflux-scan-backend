@@ -752,7 +752,14 @@ async function updateTxPositionForAddressTransfer(loop) {
         }
 
         if(!checkTxPositionConsistency(uniqueTxs, uniqueFullTxs)) {
-            const tsArrayNew = await getDataByEpochNumber(nextEpoch)
+            let tsArrayNew
+            try{
+                tsArrayNew = await getDataByEpochNumber(nextEpoch)
+            } catch (e){
+                console.log(`Epoch ${nextEpoch} rpc err`, e)
+                await sleep(3)
+                continue
+            }
             const uniqueTxsNew: string[] = []
             if(tsArrayNew?.length) {
                 uniqueTxsNew.push(...new Set<string>(tsArrayNew.map(ts => (`${ts.epoch}_${ts.blockIndex}_${ts.txIndex}`))))

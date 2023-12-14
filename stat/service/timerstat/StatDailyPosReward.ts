@@ -59,11 +59,11 @@ export class StatDailyPosReward extends TimerStat{
         const statArray = [hStat, dStat, mStat];
         await DailyPosRewardStat.sequelize.transaction(async (dbTx) => {
             await DailyPosRewardStat.destroy({
-                where: {statTime: dStat.statTime, statType: dStat.statType}, transaction: dbTx,
+                where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyPosRewardStat.destroy({
-                where: {statTime: mStat.statTime, statType: mStat.statType}, transaction: dbTx,
+                where: {statType: mStat.statType, statTime: mStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyPosRewardStat.bulkCreate(statArray, {
@@ -79,7 +79,7 @@ export class StatDailyPosReward extends TimerStat{
         const { intervalType } = this.supportInterval(beginTime, endTime, this.baseInterval);
 
         const rewardSql = `select sum(reward) as posReward from ${PosReward.getTableName()} where createdAt >= ? and createdAt < ?`;
-        const rewardTotalSql = `select sum(posReward) as posRewardTotal from ${DailyPosRewardStat.getTableName()} where statTime < ? and statType = '${intervalType}'`;
+        const rewardTotalSql = `select sum(posReward) as posRewardTotal from ${DailyPosRewardStat.getTableName()} where statType = '${intervalType}' and statTime < ?`;
         const [posRewardStat, posRewardTotalStat] = await Promise.all([
             PosReward.sequelize.query(rewardSql, { type: QueryTypes.SELECT, raw: true,
                 replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
@@ -105,9 +105,9 @@ export class StatDailyPosReward extends TimerStat{
         const beginTime = this.getRangeBegin(endTime, destStatType);
 
         const statSql = `select statTime,statType,posReward from ${DailyPosRewardStat.getTableName()}
-                    where statTime >= ? and statTime < ? and statType = '${srcStatType}'` ;
+                    where statType = '${srcStatType}' and statTime >= ? and statTime < ?` ;
         const totalSql = `select sum(posReward) as posRewardTotal from ${DailyPosRewardStat.getTableName()} 
-                    where statTime < ? and statType = '${destStatType}'`;
+                    where statType = '${destStatType}' and statTime < ?`;
 
         const [statList, totalStat] = await Promise.all([
             DailyPosRewardStat.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,

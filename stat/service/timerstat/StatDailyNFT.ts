@@ -46,11 +46,11 @@ export class StatDailyNFT extends TimerStat{
         const statArray = [hStat, dStat, mStat];
         await DailyNFTStat.sequelize.transaction(async (dbTx) => {
             await DailyNFTStat.destroy({
-                where: {statTime: dStat.statTime, statType: dStat.statType}, transaction: dbTx,
+                where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTStat.destroy({
-                where: {statTime: mStat.statTime, statType: mStat.statType}, transaction: dbTx,
+                where: {statType: mStat.statType, statTime: mStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTStat.bulkCreate(statArray, {
@@ -113,9 +113,9 @@ export class StatDailyNFT extends TimerStat{
         const beginTime = this.getRangeBegin(endTime, destStatType);
 
         const statSql = `SELECT statTime,statType,nftAsset,nftContract,nftTransfer FROM ${DailyNFTStat.getTableName()} 
-                    WHERE statTime >= ? and statTime < ? and statType = '${srcStatType}'` ;
+                    WHERE statType = '${srcStatType}' and statTime >= ? and statTime < ?` ;
         const totalSql = `select sum(nftAsset) as nftAssetTotal, sum(nftContract) as nftContractTotal, 
-            sum(nftTransfer) as nftTransferTotal from ${DailyNFTStat.getTableName()} where statTime < ? and statType = '${destStatType}'`;
+            sum(nftTransfer) as nftTransferTotal from ${DailyNFTStat.getTableName()} where statType = '${destStatType}' and statTime < ?`;
 
         const [statList, totalStat] = await Promise.all([
             DailyNFTStat.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,
