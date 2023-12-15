@@ -1,4 +1,5 @@
 import {
+    GAS_USED_PER_SECOND_Q,
     RedisWrap,
     STREAM_STAT_ADDR_CFX_TRANSFER_Q,
     STREAM_STAT_ADDR_TRANSACTION_Q,
@@ -16,6 +17,7 @@ export class StatNotifier {
     // stat-block
     public static SWITCH_STAT_MINER_BLOCK = false;
     public static SWITCH_STAT_ADDR_TRANSACTION = false;
+    public static SWITCH_STAT_GAS_USED_PER_SECOND = false;
     // scan-cfx-transfer
     public static SWITCH_STAT_DAILY_CFX_TRANSFER = false;
     public static SWITCH_STAT_ADDR_CFX_TRANSFER = false;
@@ -93,6 +95,26 @@ export class StatNotifier {
 
         const msg = {epochNumber, epochTimestamp, action, statInfo};
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_ADDR_TRANSACTION_Q});
+    }
+
+    // stat-block
+    public static async notifyStatGasUsedPerSecond({epochNumber, epochTimestamp, action, txnArray}) {
+        if (!StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND) {
+            return Promise.resolve(false);
+        }
+
+        if(!txnArray?.length){
+            return Promise.resolve(false);
+        }
+
+        let gasLimitTotal = BigInt(0)
+        for (const tx of txnArray) {
+            gasLimitTotal =  gasLimitTotal + tx.gasLimit
+        }
+        const statInfo = {gasLimit: gasLimitTotal};
+        const msg = {epochNumber, epochTimestamp, action, statInfo};
+        // console.log(`notifyStatGasUsedPerSecond ${JSON.stringify(msg)}`)
+        return StatNotifier.notifyStat({msg, q: GAS_USED_PER_SECOND_Q});
     }
 
     // stat-cfx-transfer
