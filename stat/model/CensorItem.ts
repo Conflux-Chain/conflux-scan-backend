@@ -39,6 +39,7 @@ export class CensorItem extends Model<ICensorItem> implements ICensorItem {
                 {name: 'idx_epochNumber', fields: ['epochNumber']},
                 {name: 'idx_tx_hash', fields: [{name:'transactionHash', length:10}], unique: true},
                 {name: 'idx_block_time', fields: [{name: 'createdAt', order: 'DESC'}]},
+                {name: 'idx_censorStatus', fields: ['censorStatus']},
             ]
         });
     }

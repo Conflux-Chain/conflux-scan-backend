@@ -58,8 +58,8 @@ async function main() {
     const statDailyBlockData = new StatDailyBlockData({cfx});
     await statDailyBlockData.schedule(1000 * 6);
     //
-/*    const statDailyContractAnalysis = new StatDailyContractAnalysis({cfx});
-    await statDailyContractAnalysis.schedule();*/
+    const statDailyContractAnalysis = new StatDailyContractAnalysis({cfx});
+    await statDailyContractAnalysis.schedule();
     //
     const statDailyContractCreation = new StatDailyContractCreation({cfx})
     await statDailyContractCreation.schedule(1000 * 6);
