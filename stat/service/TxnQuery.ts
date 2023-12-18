@@ -6,6 +6,7 @@ import {StatApp} from "../StatApp";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {FullTransaction} from "../model/FullBlock";
 import {Errors} from "./common/LogicError";
+import {Epoch} from "../model/Epoch";
 
 export class TxnQuery{
     static async gasUsedSum(days:number) : Promise<{txCount, gasFee}> {
@@ -28,6 +29,15 @@ export class TxnQuery{
             /*return {code: 610, message: `unknown span [${span}], support ${Object.keys(def).join(',')}`}*/
             throw new Errors.ParameterError(`unknown span [${span}], support ${Object.keys(def).join(',')}`);
         }
+
+        // convert createAt to epoch
+        const minTime = new Date();
+        minTime.setDate(minTime.getDate() + spanDay);
+        const epoch = await Epoch.findOne({
+            where: {timestamp: {[Op.gte]: minTime}},
+            order: [['timestamp', 'ASC']],
+        });
+
         const list = await
             FullTransaction.findAll({
                 attributes: [
@@ -37,7 +47,7 @@ export class TxnQuery{
                 group: ['fromId'], raw: true,
                 // logging: console.log,
                 where: {status: 0,
-                    createdAt: {[Op.gte]: fn('addtime', fn('now'), `${spanDay} 0:0:0`)}
+                    epoch: {[Op.gte]: epoch.epoch}
                 },
                 order: [[col('gas'),'desc']], limit: 10,
             });
