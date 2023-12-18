@@ -29,7 +29,7 @@ export class NFTMintHandler extends StatHandler {
         checkpoint.setMinutes(0, 0, 0);
         checkpoint.setHours(checkpoint.getHours() - reservedBuckets);
 
-        const total = await NFTMintStat.count({where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'}});
+        const total = await NFTMintStat.count({where: {statType: '1h', statTime: {[Op.gte]: checkpoint}}});
         if (!total) return;
         let skip = 0;
         let pageSize = 10;
@@ -37,7 +37,7 @@ export class NFTMintHandler extends StatHandler {
 
         do {
             const statArray = await NFTMintStat.findAll({
-                where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'},
+                where: {statType: '1h', statTime: {[Op.gte]: checkpoint}},
                 offset: skip, limit: pageSize, raw: true,
             });
             if (statArray === null) return;
@@ -90,7 +90,7 @@ export class NFTMintHandler extends StatHandler {
             const searchTime = new Date(statTime);
             searchTime.setMinutes(0, 0, 0);
             stat = await NFTMintStat.findOne({
-                where: {bizId: statId, statType: '1h', statTime: searchTime},
+                where: {statType: '1h', bizId: statId, statTime: searchTime},
                 raw: true,
             });
         }
@@ -98,8 +98,8 @@ export class NFTMintHandler extends StatHandler {
         if (statEpoch !== undefined) {
             stat = await NFTMintStat.findOne({
                 where: {
-                    bizId: statId,
                     statType: '1h',
+                    bizId: statId,
                     minEpoch: {[Op.lte]: statEpoch},
                     maxEpoch: {[Op.gte]: statEpoch}
                 },
@@ -134,7 +134,7 @@ export class NFTMintHandler extends StatHandler {
             const statDays = this.statLatestDays - i;
             const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await NFTMintStat.count({
-                where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
+                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
             });
             if (!total) continue;
 
@@ -143,7 +143,7 @@ export class NFTMintHandler extends StatHandler {
             let curPage = 1;
             do {
                 const statArray = await NFTMintStat.findAll({
-                    where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]},
+                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
                     offset: skip, limit: pageSize, raw: true,
                 });
                 if (!statArray) break;
@@ -167,17 +167,17 @@ export class NFTMintHandler extends StatHandler {
         const statType = `${statDays}d`;
         const statBegin = new Date(statEnd);
         statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await NFTMintStat.findOne({where: {bizId, statType, statTime: statBegin}, raw: true});
+        const stat = await NFTMintStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
         if (stat !== null) return;
 
         const sql = `select sum(nftAsset) as statNFTAsset,
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
                      from ${NFTMintStat.getTableName()}
-                     where bizId = ?
+                     where statType = '1h'
+                       and bizId = ?
                        and statTime >= ?
-                       and statTime < ?
-                       and statType = '1h'`;
+                       and statTime < ?`;
         const statNDaysInfo = await NFTMintStat.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
         ).then(arr => {
@@ -195,10 +195,10 @@ export class NFTMintHandler extends StatHandler {
         await NFTMintStat.sequelize.transaction(async (dbTx) => {
             if (statDays === this.statLatestDays) {
                 await NFTMintStat.destroy({
-                    where: {bizId, statType: '1h', statTime: {[Op.lt]: statBegin}}, transaction: dbTx
+                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
                 });
             }
-            await NFTMintStat.destroy({where: {bizId, statType}, transaction: dbTx});
+            await NFTMintStat.destroy({where: {statType, bizId}, transaction: dbTx});
             await NFTMintStat.create(statNDaysInfo, {transaction: dbTx});
         });
     }

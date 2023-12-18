@@ -33,9 +33,15 @@ export class TokenTransferStat extends Model<ITokenTransferStat> implements ITok
             tableName: 'stat_token_transfer',
             timestamps: true,
             indexes: [{
-                name: "idx_bizId_statType_statTime",
-                fields: ["bizId", "statType", "statTime"],
-                unique: true,
+                name: "idx_statType_bizId_statTime",
+                fields: ["statType", "bizId", "statTime"],
+                unique: true
+            }, {
+                name: "idx_statType_statTime",
+                fields: ["statType", "statTime"],
+            }, {
+                name: "idx_statType_bizId_minEpoch_maxEpoch",
+                fields: ["statType", "bizId", "minEpoch", "maxEpoch"],
             }]
         })
     }

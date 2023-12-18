@@ -8,7 +8,6 @@ import {Epoch} from "../../../model/Epoch";
 import {CONST} from "../../common/constant"
 
 const lodash = require('lodash');
-/*const CONST = require('../../common/constant');*/
 
 export class AddrTransactionHandler extends StatHandler {
     protected app: any;
@@ -31,7 +30,7 @@ export class AddrTransactionHandler extends StatHandler {
         checkpoint.setMinutes(0, 0, 0);
         checkpoint.setHours(checkpoint.getHours() - reservedBuckets);
 
-        const total = await AddrTransactionStat.count({where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'}});
+        const total = await AddrTransactionStat.count({where: {statType: '1h', statTime: {[Op.gte]: checkpoint}}});
         if (!total) return;
         let skip = 0;
         let pageSize = 10;
@@ -39,7 +38,7 @@ export class AddrTransactionHandler extends StatHandler {
 
         do {
             const statArray = await AddrTransactionStat.findAll({
-                where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'},
+                where: {statType: '1h', statTime: {[Op.gte]: checkpoint}},
                 offset: skip, limit: pageSize, raw: true,
             });
             if (statArray === null) return;
@@ -96,7 +95,7 @@ export class AddrTransactionHandler extends StatHandler {
             const searchTime = new Date(statTime);
             searchTime.setMinutes(0, 0, 0);
             stat = await AddrTransactionStat.findOne({
-                where: {bizId: statId, statType: '1h', statTime: searchTime},
+                where: {statType: '1h', bizId: statId, statTime: searchTime},
                 raw: true,
             });
         }
@@ -104,8 +103,8 @@ export class AddrTransactionHandler extends StatHandler {
         if (statEpoch !== undefined) {
             stat = await AddrTransactionStat.findOne({
                 where: {
-                    bizId: statId,
                     statType: '1h',
+                    bizId: statId,
                     minEpoch: {[Op.lte]: statEpoch},
                     maxEpoch: {[Op.gte]: statEpoch}
                 },
@@ -142,7 +141,7 @@ export class AddrTransactionHandler extends StatHandler {
             const statDays = this.statLatestDays - i;
             const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await AddrTransactionStat.count({
-                where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
+                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
             });
             if (!total) continue;
 
@@ -151,7 +150,7 @@ export class AddrTransactionHandler extends StatHandler {
             let curPage = 1;
             do {
                 const statArray = await AddrTransactionStat.findAll({
-                    where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]},
+                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
                     offset: skip, limit: pageSize, raw: true,
                 });
                 if (!statArray) break;
@@ -175,7 +174,7 @@ export class AddrTransactionHandler extends StatHandler {
         const statType = `${statDays}d`;
         const statBegin = new Date(statEnd);
         statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await AddrTransactionStat.findOne({where: {bizId, statType, statTime: statBegin}, raw: true});
+        const stat = await AddrTransactionStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
         if (stat !== null) return;
 
         const sql = `select sum(sendCntr) as statSendCntr,
@@ -184,10 +183,10 @@ export class AddrTransactionHandler extends StatHandler {
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
                      from ${AddrTransactionStat.getTableName()}
-                     where bizId = ?
+                     where statType = '1h'
+                       and bizId = ?
                        and statTime >= ?
-                       and statTime < ?
-                       and statType = '1h'`;
+                       and statTime < ?`;
         const statNDaysInfo = await AddrTransactionStat.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
         ).then(arr => {
@@ -207,10 +206,10 @@ export class AddrTransactionHandler extends StatHandler {
         await AddrTransactionStat.sequelize.transaction(async (dbTx) => {
             if (statDays === this.statLatestDays) {
                 await AddrTransactionStat.destroy({
-                    where: {bizId, statType: '1h', statTime: {[Op.lt]: statBegin}}, transaction: dbTx
+                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
                 });
             }
-            await AddrTransactionStat.destroy({where: {bizId, statType}, transaction: dbTx});
+            await AddrTransactionStat.destroy({where: {statType, bizId}, transaction: dbTx});
             await AddrTransactionStat.create(statNDaysInfo, {transaction: dbTx});
         });
     }

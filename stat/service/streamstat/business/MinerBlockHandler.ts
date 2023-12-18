@@ -30,7 +30,7 @@ export class MinerBlockHandler extends StatHandler {
         checkpoint.setMinutes(0, 0, 0);
         checkpoint.setHours(checkpoint.getHours() - reservedBuckets);
 
-        const total = await MinerBlockStat.count({where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'}});
+        const total = await MinerBlockStat.count({where: {statType: '1h', statTime: {[Op.gte]: checkpoint}}});
         if (!total) return;
         let skip = 0;
         let pageSize = 10;
@@ -38,7 +38,7 @@ export class MinerBlockHandler extends StatHandler {
 
         do {
             const statArray = await MinerBlockStat.findAll({
-                where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'},
+                where: {statType: '1h', statTime: {[Op.gte]: checkpoint}},
                 offset: skip, limit: pageSize, raw: true,
             });
             if (statArray === null) return;
@@ -97,7 +97,7 @@ export class MinerBlockHandler extends StatHandler {
             const searchTime = new Date(statTime);
             searchTime.setMinutes(0, 0, 0);
             stat = await MinerBlockStat.findOne({
-                where: {bizId: statId, statType: '1h', statTime: searchTime},
+                where: {statType: '1h', bizId: statId, statTime: searchTime},
                 raw: true,
             });
         }
@@ -105,8 +105,8 @@ export class MinerBlockHandler extends StatHandler {
         if (statEpoch !== undefined) {
             stat = await MinerBlockStat.findOne({
                 where: {
-                    bizId: statId,
                     statType: '1h',
+                    bizId: statId,
                     minEpoch: {[Op.lte]: statEpoch},
                     maxEpoch: {[Op.gte]: statEpoch}
                 },
@@ -144,7 +144,7 @@ export class MinerBlockHandler extends StatHandler {
             const statDays = this.statLatestDays - i;
             const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await MinerBlockStat.count({
-                where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
+                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
             });
             if (!total) continue;
 
@@ -153,7 +153,7 @@ export class MinerBlockHandler extends StatHandler {
             let curPage = 1;
             do {
                 const statArray = await MinerBlockStat.findAll({
-                    where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]},
+                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
                     offset: skip, limit: pageSize, raw: true,
                 });
                 if (!statArray) break;
@@ -177,7 +177,7 @@ export class MinerBlockHandler extends StatHandler {
         const statType = `${statDays}d`;
         const statBegin = new Date(statEnd);
         statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await MinerBlockStat.findOne({where: {bizId, statType, statTime: statBegin}, raw: true});
+        const stat = await MinerBlockStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
         if (stat !== null) return;
 
         const sql = `select sum(blockCntr) as statBlockCntr,
@@ -187,10 +187,10 @@ export class MinerBlockHandler extends StatHandler {
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
                      from ${MinerBlockStat.getTableName()}
-                     where bizId = ?
+                     where statType = '1h'
+                       and bizId = ?
                        and statTime >= ?
-                       and statTime < ?
-                       and statType = '1h'`;
+                       and statTime < ?`;
         const statNDaysInfo = await MinerBlockStat.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
         ).then(arr => {
@@ -211,10 +211,10 @@ export class MinerBlockHandler extends StatHandler {
         await MinerBlockStat.sequelize.transaction(async (dbTx) => {
             if (statDays === this.statLatestDays) {
                 await MinerBlockStat.destroy({
-                    where: {bizId, statType: '1h', statTime: {[Op.lt]: statBegin}}, transaction: dbTx
+                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
                 });
             }
-            await MinerBlockStat.destroy({where: {bizId, statType}, transaction: dbTx});
+            await MinerBlockStat.destroy({where: {statType, bizId}, transaction: dbTx});
             await MinerBlockStat.create(statNDaysInfo, {transaction: dbTx});
         });
     }

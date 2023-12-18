@@ -8,7 +8,6 @@ import {STREAM_STAT_ADDR_CFX_TRANSFER_Q} from "../../RedisWrap";
 import {CONST} from "../../common/constant"
 
 const lodash = require('lodash');
-/*const CONST = require('../../common/constant');*/
 
 export class AddrCfxTransferHandler extends StatHandler {
     protected app: any;
@@ -31,7 +30,7 @@ export class AddrCfxTransferHandler extends StatHandler {
         checkpoint.setMinutes(0, 0, 0);
         checkpoint.setHours(checkpoint.getHours() - reservedBuckets);
 
-        const total = await AddrCfxTransferStat.count({where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'}});
+        const total = await AddrCfxTransferStat.count({where: {statType: '1h', statTime: {[Op.gte]: checkpoint}}});
         if (!total) return;
         let skip = 0;
         let pageSize = 10;
@@ -39,7 +38,7 @@ export class AddrCfxTransferHandler extends StatHandler {
 
         do {
             const statArray = await AddrCfxTransferStat.findAll({
-                where: {statTime: {[Op.gte]: checkpoint}, statType: '1h'},
+                where: {statType: '1h', statTime: {[Op.gte]: checkpoint}},
                 offset: skip, limit: pageSize, raw: true,
             });
             if (statArray === null) return;
@@ -98,7 +97,7 @@ export class AddrCfxTransferHandler extends StatHandler {
             const searchTime = new Date(statTime);
             searchTime.setMinutes(0, 0, 0);
             stat = await AddrCfxTransferStat.findOne({
-                where: {bizId: statId, statType: '1h', statTime: searchTime},
+                where: {statType: '1h', bizId: statId, statTime: searchTime},
                 raw: true,
             });
         }
@@ -106,8 +105,8 @@ export class AddrCfxTransferHandler extends StatHandler {
         if (statEpoch !== undefined) {
             stat = await AddrCfxTransferStat.findOne({
                 where: {
-                    bizId: statId,
                     statType: '1h',
+                    bizId: statId,
                     minEpoch: {[Op.lte]: statEpoch},
                     maxEpoch: {[Op.gte]: statEpoch}
                 },
@@ -145,7 +144,7 @@ export class AddrCfxTransferHandler extends StatHandler {
             const statDays = this.statLatestDays - i;
             const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await AddrCfxTransferStat.count({
-                where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
+                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
             });
             if (!total) continue;
 
@@ -154,7 +153,7 @@ export class AddrCfxTransferHandler extends StatHandler {
             let curPage = 1;
             do {
                 const statArray = await AddrCfxTransferStat.findAll({
-                    where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]},
+                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
                     offset: skip, limit: pageSize, raw: true,
                 });
                 if (!statArray) break;
@@ -178,7 +177,7 @@ export class AddrCfxTransferHandler extends StatHandler {
         const statType = `${statDays}d`;
         const statBegin = new Date(statEnd);
         statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await AddrCfxTransferStat.findOne({where: {bizId, statType, statTime: statBegin}, raw: true});
+        const stat = await AddrCfxTransferStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
         if (stat !== null) return;
 
         const sql = `select sum(sendCntr) as statSendCntr,
@@ -188,10 +187,10 @@ export class AddrCfxTransferHandler extends StatHandler {
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
                      from ${AddrCfxTransferStat.getTableName()}
-                     where bizId = ?
+                     where statType = '1h'
+                       and bizId = ?
                        and statTime >= ?
-                       and statTime < ?
-                       and statType = '1h'`;
+                       and statTime < ?`;
         const statNDaysInfo = await AddrCfxTransferStat.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
         ).then(arr => {
@@ -212,10 +211,10 @@ export class AddrCfxTransferHandler extends StatHandler {
         await AddrCfxTransferStat.sequelize.transaction(async (dbTx) => {
             if (statDays === this.statLatestDays) {
                 await AddrCfxTransferStat.destroy({
-                    where: {bizId, statType: '1h', statTime: {[Op.lt]: statBegin}}, transaction: dbTx
+                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
                 });
             }
-            await AddrCfxTransferStat.destroy({where: {bizId, statType}, transaction: dbTx});
+            await AddrCfxTransferStat.destroy({where: {statType, bizId}, transaction: dbTx});
             await AddrCfxTransferStat.create(statNDaysInfo, {transaction: dbTx});
         });
     }
