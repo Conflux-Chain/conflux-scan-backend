@@ -7,12 +7,10 @@ import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
-import {Hex40Map, makeId} from "../../model/HexMap";
+import {makeId} from "../../model/HexMap";
 import {CONST} from "../common/constant"
 import {IntervalType, TimerStat} from "./TimerStat";
 import {TokenQuery} from "../TokenQuery";
-import {format} from "js-conflux-sdk";
-import {StatApp} from "../../StatApp";
 
 export class StatDailyContractAnalysis extends TimerStat{
 

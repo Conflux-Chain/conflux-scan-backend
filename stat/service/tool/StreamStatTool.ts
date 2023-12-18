@@ -50,13 +50,13 @@ async function run() {
             StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = config.statDailyTokenTransfer;
             StatNotifier.SWITCH_STAT_NFT_MINT = config.statNFTMint;
 
-            config.statTokenTransfer && (await tokenTransferHandler.schedule());
-            config.statMinerBlock && (await minerBlockHandler.schedule());
-            config.statAddrTransaction && (await addrTransactionHandler.schedule());
-            config.statAddrCfxTransfer && (await addrCfxTransferHandler.schedule());
-            config.statDailyCfxTransfer && (await dailyCfxTransferHandler.schedule());
-            config.statDailyTokenTransfer && (await dailyTokenTransferHandler.schedule());
-            config.statNFTMint && (await dailyNFTMintHandler.schedule());
+            config.statTokenTransfer && (await tokenTransferHandler.schedule(1000 * 60 * 10));
+            config.statMinerBlock && (await minerBlockHandler.schedule(1000 * 60 * 10));
+            config.statAddrTransaction && (await addrTransactionHandler.schedule(1000 * 60 * 10));
+            config.statAddrCfxTransfer && (await addrCfxTransferHandler.schedule(1000 * 60 * 10));
+            config.statDailyCfxTransfer && (await dailyCfxTransferHandler.schedule(1000 * 60 * 10));
+            config.statDailyTokenTransfer && (await dailyTokenTransferHandler.schedule(1000 * 60 * 10));
+            config.statNFTMint && (await dailyNFTMintHandler.schedule(1000 * 60 * 10));
         }
     }
     if(type === 2){

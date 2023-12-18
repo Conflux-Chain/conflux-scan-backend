@@ -526,15 +526,10 @@ export function formatDecimal(numStr, decimal) {
 
 export function formatBalance(numStr, decimal) {
     const str = formatDecimal(numStr, decimal)
-    console.log(`str  ${str}`)
     const intSum = str
         .substring(0, str.indexOf('.'))
         .replace(/\B(?=(?:\d{3})+$)/g, ',')
-    console.log(`str.length ${str.length}`)
-    console.log(`str.indexOf('.') ${str.indexOf('.')}`)
     let dot = str.substring(str.length, str.indexOf('.'))
-    console.log(`intSum ${intSum}`)
-    console.log(`dot ${dot}`)
     return `${intSum}${dot}`
 }
 

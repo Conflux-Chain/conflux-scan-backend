@@ -91,7 +91,7 @@ export class BalanceService {
         }
         const list = await table.findAll({
             // max decimal 65 // https://dev.mysql.com/doc/refman/5.7/en/fixed-point-types.html
-            order:[[cast(col("balance"), 'Decimal(60)'),"desc"]],
+            order:[[cast(col("balance"), 'Decimal(60)'),"desc"], ["updatedAt", "desc"], ["addressId", "asc"]],
             offset: skip, limit
         })
         const elapsed = Date.now() - start;

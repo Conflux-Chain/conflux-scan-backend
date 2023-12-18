@@ -29,8 +29,8 @@ export class DailyNFTHolder extends Model<IDailyNFTHolder> implements IDailyNFTH
             tableName: 'daily_nft_holder',
             timestamps: true,
             indexes: [{
-                name: "idx_statDay_statType",
-                fields: ["statTime", "statType"],
+                name: "idx_statType_statTime",
+                fields: ["statType", "statTime"],
                 unique: true,
             }]
         })

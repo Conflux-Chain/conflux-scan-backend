@@ -279,12 +279,12 @@ paths:
             type: string
             default: ''
             enum:
-              - CRC20
-              - CRC721
-              - CRC1155
+              - ERC20
+              - ERC721
+              - ERC1155
         - name: byTokenId
           in: query
-          description: Whether to query each NFT token id, only valid for CRC721.
+          description: Whether to query each NFT token id, only valid for ERC721.
           required: false
           schema:
             type: string

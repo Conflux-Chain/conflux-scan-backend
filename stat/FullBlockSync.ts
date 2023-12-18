@@ -4,7 +4,7 @@ import {createDB, initModel} from "./service/DBProvider";
 import {Conflux, format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
-import {KEY_FILL_BLOCK_PROPS_EPOCH, KV} from "./model/KV";
+import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_GAS_USED_PER_SECOND, KEY_GAS_USED_PER_SECOND_NOTIFY, KV} from "./model/KV";
 import {initCfxSdk} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
@@ -37,6 +37,8 @@ export async function run() {
     StatNotifier.SWITCH_STREAM_STAT = config.streamStat;
     StatNotifier.SWITCH_STAT_MINER_BLOCK = config.statMinerBlock;
     StatNotifier.SWITCH_STAT_ADDR_TRANSACTION = config.statAddrTransaction;
+    StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND = await KV.getSwitch(KEY_GAS_USED_PER_SECOND_NOTIFY);
+    console.log(`StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND ----------${StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND}`)
 
     if (args[0] === 'fix') {
         // batch size 10, loop 1 time:

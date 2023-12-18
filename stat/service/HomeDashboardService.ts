@@ -1,6 +1,6 @@
 // @ts-ignore
 import {Hex40Map} from "../model/HexMap";
-import {ADDRESS_COUNT_ALL, CONTRACT_COUNT_ALL, KEY_FULL_TX_COUNT, KV} from "../model/KV";
+import {ADDRESS_COUNT_ALL, CONTRACT_COUNT_ALL, KEY_FULL_TX_COUNT, KEY_GAS_USED_PER_SECOND, KV} from "../model/KV";
 import {FullBlock} from "../model/FullBlock";
 import {CONST} from "./common/constant"
 
@@ -89,5 +89,12 @@ export class HomeDashboardService{
 
         const dagInfo = await this.dagInfo().catch(() => undefined);
         dagInfo !== undefined && lodash.assign(this.data.dagInfo, dagInfo);
+
+        const gasUsedInfo = await KV.findOne({where: {key: KEY_GAS_USED_PER_SECOND}})
+        if(gasUsedInfo !== undefined) {
+            const gasUsedInfoObj = JSON.parse(gasUsedInfo?.value)
+            lodash.assign(this.data.blockchainInfo, {gasUsedPerSecond: Number(gasUsedInfoObj.gasUsedPerSecond)})
+            // console.log(`cacheStatGasUsedPerSecond ${JSON.stringify(this.data.blockchainInfo)}`)
+        }
     }
 }

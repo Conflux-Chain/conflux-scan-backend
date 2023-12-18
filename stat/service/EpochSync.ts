@@ -108,8 +108,8 @@ export class EpochSync extends SyncBase{
             const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
             const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
             const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
-            const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
-                txArray);
+            const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, tokenTransferArray,
+                cfxTransferArray, txArray);
             const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
             const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
 
@@ -531,10 +531,13 @@ export class EpochSync extends SyncBase{
     }
 
     // ---------------------------- address transfer ----------------------------
-    public async getAddrTransferArrayDB(epochNumber,tokenTransferArray,cfxTransferArray,txArray){
+    public async getAddrTransferArrayDB(epochNumber,epochTimestamp,tokenTransferArray,cfxTransferArray,txArray){
         const result = [];
-        [...tokenTransferArray, ...cfxTransferArray, ...txArray].forEach( transfer => {
-            lodash.assign(transfer, {cursorId: EpochSync.buildAddrTransferCursor(transfer)})
+        let index = 0;
+
+        [...txArray, ...cfxTransferArray, ...tokenTransferArray].forEach( transfer => {
+            lodash.assign(transfer, {cursorId: EpochSync.buildAddrTransferCursorTs(epochNumber, index)})
+            index++
             if(transfer.contractCreatedId) {
                 lodash.assign(transfer, {contractId: transfer.contractCreatedId})
             }
@@ -545,6 +548,7 @@ export class EpochSync extends SyncBase{
                 result.push({...transfer, addressId: dummyToId})
             }
         });
+
         return result;
     }
 
@@ -554,6 +558,14 @@ export class EpochSync extends SyncBase{
             return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
         }
         return `${t.epoch}${pad(t.blockIndex, 4)}${pad(t.txIndex, 5)}${pad(t.txLogIndex, 6)}${pad(t.type, 3, true)}`;
+    }
+
+    public static buildAddrTransferCursorTs(epochNumber, index) {
+        function pad(val, len, isEnd=false) {
+            const v = val.toString()
+            return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
+        }
+        return `${epochNumber}${pad(index, 6)}`;
     }
 
     public static async getAddrTxArray(blockArray, epochTimestamp){

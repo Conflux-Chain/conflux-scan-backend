@@ -853,6 +853,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {...tps};
     });
 
+    router.get('/gasused/tps', async function (ctx) {
+        const tps = await statApp.transferTpsService.getGasUsedPerSecond();
+        ctx.body = {...tps};
+    });
+
     router.get('/transaction/pending', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
 

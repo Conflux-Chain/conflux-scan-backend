@@ -143,6 +143,7 @@ export interface StatConfig{
     statTokenTransfer: boolean,
     statDailyTokenTransfer: boolean,
     statNFTMint: boolean,
+    statGasUsedPerSecond: boolean,
 
     blacklist: boolean,
 

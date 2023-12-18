@@ -17,7 +17,7 @@ import {sleep} from "./ProcessTool";
 import {AddressTransfer} from "../../model/AddrTransfer";
 import {CONST} from "../common/constant";
 import {KV} from "../../model/KV";
-import {EpochNftTransfer} from "../../model/Epoch";
+import {Epoch, EpochNftTransfer} from "../../model/Epoch";
 import {Token} from "../../model/Token";
 import {SyncCode, SyncData} from "../SyncBase";
 import {decodeTransferFromReceipts} from "../../TokenTransferSync";
@@ -243,6 +243,9 @@ async function run() {
     }
     if(type === 18){
         await updateTxPositionForAddressTransfer(loop)
+    }
+    if(type === 19) {
+        await updateCursorForAddressTransferTs(loop)
     }
 
     console.log(`type:${type} hash:${hash} trace:${JSON.stringify(result)}`);
@@ -549,7 +552,7 @@ async function getDataByEpochNumber(epochNumber){
     const tokenTransferArray = await epochSync.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
     const cfxTransferArray = await epochSync.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
     const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
-    const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, tokenTransferArray, cfxTransferArray,
+    const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, 0, tokenTransferArray, cfxTransferArray,
         txArray);
 
     return  addrTransferArray;
@@ -608,6 +611,119 @@ async function updateCursorForAddressTransfer(loop) {
     }
 }
 
+const keyMax2 = 'max_epoch_address_transfer_2';
+const keyCur2 = 'cur_epoch_address_transfer_2';
+async function updateCursorForAddressTransferTs(loop) {
+    const maxEpoch = await KV.getNumber(keyMax2);
+    if(!maxEpoch) {
+        console.log(`max epoch not exist`)
+        return
+    }
+
+    const curEpoch = await KV.getNumber(keyCur2);
+    let nextEpoch = curEpoch ? curEpoch + 1 : (await AddressTransfer.min('epoch')) as number
+
+    let cntr = 0
+    while(true) {
+        const transferArray = await AddressTransfer.findAll({where: {epoch: nextEpoch}, raw: true})
+        if(transferArray?.length) {
+            const txMap = {}
+            const tsCfxMap = []
+            const ts20Map = []
+            const ts721Map = []
+            const ts1155Map = []
+            for (const t of transferArray) {
+                const {blockIndex, txIndex, txLogIndex} = t;
+                const key = `${blockIndex}-${txIndex}-${txLogIndex}`;
+                if(t.type === CONST.ADDRESS_TRANSFER_TYPE.TX.code) {
+                    txMap[key] = {blockIndex, txIndex, txLogIndex}
+                }
+                if(t.type >= CONST.ADDRESS_TRANSFER_TYPE.CFX_IN_CALL.code && t.type <= CONST.ADDRESS_TRANSFER_TYPE.CFX_IN_INTERNAL_BY_BALANCE.code) {
+                    tsCfxMap[key] = {blockIndex, txIndex, txLogIndex}
+                }
+                if(t.type === CONST.ADDRESS_TRANSFER_TYPE.ERC20.code) {
+                    ts20Map[key] = {blockIndex, txIndex, txLogIndex}
+                }
+                if(t.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code) {
+                    ts721Map[key] = {blockIndex, txIndex, txLogIndex}
+                }
+                if(t.type === CONST.ADDRESS_TRANSFER_TYPE.ERC1155.code) {
+                    ts1155Map[key] = {blockIndex, txIndex, txLogIndex}
+                }
+            }
+
+            const txArray = lodash.orderBy([...Object.values(txMap)], ['blockIndex', 'txIndex', 'txLogIndex'], ['asc', 'asc', 'asc'])
+            const tsCfxArray = lodash.orderBy([...Object.values(tsCfxMap)], ['blockIndex', 'txIndex', 'txLogIndex'], ['asc', 'asc', 'asc'])
+            const ts20Array = lodash.orderBy([...Object.values(ts20Map)], ['blockIndex', 'txIndex', 'txLogIndex'], ['asc', 'asc', 'asc'])
+            const ts721Array = lodash.orderBy([...Object.values(ts721Map)], ['blockIndex', 'txIndex', 'txLogIndex'], ['asc', 'asc', 'asc'])
+            const ts1155Array = lodash.orderBy([...Object.values(ts1155Map)], ['blockIndex', 'txIndex', 'txLogIndex'], ['asc', 'asc', 'asc'])
+
+            const txMap1 = {}
+            const tsCfxMap1 = []
+            const ts20Map1 = []
+            const ts721Map1 = []
+            const ts1155Map1 = []
+            let index = 0;
+            for (const t of txArray) {
+                txMap1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`] = index++;
+            }
+            for (const t of tsCfxArray) {
+                tsCfxMap1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`] = index++;
+            }
+            for (const t of ts20Array) {
+                ts20Map1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`] = index++;
+            }
+            for (const t of ts721Array) {
+                ts721Map1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`] = index++;
+            }
+            for (const t of ts1155Array) {
+                ts1155Map1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`] = index++;
+            }
+
+            const epoch = await Epoch.findOne({where:{epoch: nextEpoch}});
+            const timeStamp = epoch.timestamp.getTime()/1000;
+            for (const t of transferArray) {
+                const {addressId, epoch, blockIndex, txIndex, txLogIndex, batchIndex, type} = t
+                let index = 0
+                if(type === CONST.ADDRESS_TRANSFER_TYPE.TX.code) {
+                    index = txMap1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`]
+                }
+                if(type >= CONST.ADDRESS_TRANSFER_TYPE.CFX_IN_CALL.code && type <= CONST.ADDRESS_TRANSFER_TYPE.CFX_IN_INTERNAL_BY_BALANCE.code) {
+                    index = tsCfxMap1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`]
+                }
+                if(type === CONST.ADDRESS_TRANSFER_TYPE.ERC20.code) {
+                    index = ts20Map1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`]
+                }
+                if(type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code) {
+                    index = ts721Map1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`]
+                }
+                if(type === CONST.ADDRESS_TRANSFER_TYPE.ERC1155.code) {
+                    index = ts1155Map1[`${t.blockIndex}-${t.txIndex}-${t.txLogIndex}`]
+                }
+                const cursorId = EpochSync.buildAddrTransferCursorTs(nextEpoch, index);
+                await AddressTransfer.update({cursorId} as any, {where:{addressId, epoch, blockIndex, txIndex, txLogIndex, batchIndex, type}})
+            }
+        }
+        await KV.upsert({key: keyCur2, value: nextEpoch.toString()})
+
+        nextEpoch = nextEpoch + 1
+        if(nextEpoch > maxEpoch) {
+            break
+        }
+
+        cntr = cntr + 1
+        if(loop && cntr >= loop) {
+            break
+        }
+
+        if(nextEpoch % 1000 === 0) {
+            console.log(`padding address transfer's ts cursor at epoch ${nextEpoch}`)
+        }
+        await sleep(3)
+    }
+    console.log(`padding address transfer's ts cursor done!`)
+}
+
 const keyEpochMax = 'max_epoch_tx_pos_addr_ts';
 const keyEpochCur = 'cur_epoch_tx_pos_addr_ts';
 
@@ -636,7 +752,14 @@ async function updateTxPositionForAddressTransfer(loop) {
         }
 
         if(!checkTxPositionConsistency(uniqueTxs, uniqueFullTxs)) {
-            const tsArrayNew = await getDataByEpochNumber(nextEpoch)
+            let tsArrayNew
+            try{
+                tsArrayNew = await getDataByEpochNumber(nextEpoch)
+            } catch (e){
+                console.log(`Epoch ${nextEpoch} rpc err`, e)
+                await sleep(3)
+                continue
+            }
             const uniqueTxsNew: string[] = []
             if(tsArrayNew?.length) {
                 uniqueTxsNew.push(...new Set<string>(tsArrayNew.map(ts => (`${ts.epoch}_${ts.blockIndex}_${ts.txIndex}`))))
@@ -817,7 +940,7 @@ if(type === 10 && args[2] && args[3] && args[4]){
 if(type === 13 && args[2]){
     contractId = Number(args[2]);
 }
-if((type === 14 || type === 18) && args[2]) {
+if((type === 14 || type === 18 || type === 19) && args[2]) {
     loop = Number(args[2]);
 }
 

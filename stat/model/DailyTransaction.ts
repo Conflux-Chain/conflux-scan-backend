@@ -29,8 +29,8 @@ export class DailyTransaction extends Model<IDailyTransaction> implements IDaily
             tableName: 'tx_daily',
             timestamps: true,
             indexes: [{
-                name: "idx_statDay_statType",
-                fields: ["statDay", "statType"],
+                name: "idx_statType_statDay",
+                fields: ["statType", "statDay"],
                 unique: true,
             }]
         })

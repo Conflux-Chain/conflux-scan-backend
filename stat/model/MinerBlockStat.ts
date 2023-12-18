@@ -42,9 +42,18 @@ export class MinerBlockStat extends Model<IMinerBlockStat> implements IMinerBloc
             tableName: 'stat_miner_block',
             timestamps: true,
             indexes: [{
-                name: "idx_bizId_statType_statTime",
-                fields: ["bizId", "statType", "statTime"],
-                unique: true,
+                name: "idx_statType_bizId_statTime",
+                fields: ["statType", "bizId", "statTime"],
+                unique: true
+            }, {
+                name: "idx_statType_statTime",
+                fields: ["statType", "statTime"],
+            }, {
+                name: "idx_statType_bizId_minEpoch_maxEpoch",
+                fields: ["statType", "bizId", "minEpoch", "maxEpoch"],
+            }, {
+                name: "idx_statType_minEpoch_maxEpoch",
+                fields: ["statType", "minEpoch", "maxEpoch"],
             }]
         })
     }

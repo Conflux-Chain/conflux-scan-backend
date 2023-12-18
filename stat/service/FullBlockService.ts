@@ -413,6 +413,7 @@ export class FullBlockService {
                     txInfo.dripValue = txInfo.value
                     txInfo.status = minEpochNumber === 0 ? 0 : st
                     txInfo.method = txInfo.data.substr(0, 10)
+                    txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
                     txInfo.gas = txInfo.receipt?.gasFee || 0// save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
@@ -483,6 +484,9 @@ export class FullBlockService {
         StatNotifier.notifyStatAddrTransaction({epochNumber: minEpochNumber, epochTimestamp: blockTime, action: 'push',
             txnArray: executedTxArr
         }).catch(e => console.log(`epoch-sync.noticeStatAddrTransaction epoch:${minEpochNumber}`, e));
+        StatNotifier.notifyStatGasUsedPerSecond( {epochNumber: minEpochNumber, epochTimestamp: blockTime, action: 'push',
+            txnArray: executedTxArr
+        }).catch(e => console.log(`epoch-sync.notifyStatGasUsedPerSecond epoch:${minEpochNumber}`, e));
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length

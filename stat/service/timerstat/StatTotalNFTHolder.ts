@@ -45,11 +45,11 @@ export class StatTotalNFTHolder extends TimerStat{
         const statArray = [hStat, dStat, mStat];
         await DailyNFTHolder.sequelize.transaction(async (dbTx) => {
             await DailyNFTHolder.destroy({
-                where: {statTime: dStat.statTime, statType: dStat.statType}, transaction: dbTx,
+                where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTHolder.destroy({
-                where: {statTime: mStat.statTime, statType: mStat.statType}, transaction: dbTx,
+                where: {statType: mStat.statType, statTime: mStat.statTime}, transaction: dbTx,
                 /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTHolder.bulkCreate(statArray, {

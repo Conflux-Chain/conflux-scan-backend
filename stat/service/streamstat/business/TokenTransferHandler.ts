@@ -9,7 +9,6 @@ import {Epoch} from "../../../model/Epoch";
 import {CONST} from "../../common/constant"
 
 const lodash = require('lodash');
-/*const CONST = require('../../common/constant');*/
 
 export class TokenTransferHandler extends StatHandler {
     protected app: any;
@@ -39,7 +38,7 @@ export class TokenTransferHandler extends StatHandler {
 
         for (const token of tokens) {
             const statArray = await TokenTransferStat.findAll({
-                where: {bizId: token.hex40id, statType: '1h', statTime: {[Op.gte]: checkpoint}},
+                where: {statType: '1h', bizId: token.hex40id, statTime: {[Op.gte]: checkpoint}},
                 order: [['statTime', 'ASC']],
                 raw: true,
                 // logging: msg => console.log(`[type=${this.bizAlias()}]preload: ${msg}`),
@@ -84,7 +83,7 @@ export class TokenTransferHandler extends StatHandler {
             const searchTime = new Date(statTime);
             searchTime.setMinutes(0, 0, 0);
             stat = await TokenTransferStat.findOne({
-                where: {bizId: statId, statType: '1h', statTime: searchTime},
+                where: {statType: '1h', bizId: statId, statTime: searchTime},
                 raw: true,
                 // logging: msg => console.log(`transferStat: ${msg}`),
             });
@@ -92,7 +91,7 @@ export class TokenTransferHandler extends StatHandler {
 
         if(statEpoch !== undefined){
             stat = await TokenTransferStat.findOne({
-                where: {bizId: statId, statType: '1h', minEpoch: {[Op.lte]: statEpoch}, maxEpoch: {[Op.gte]: statEpoch}},
+                where: {statType: '1h', bizId: statId, minEpoch: {[Op.lte]: statEpoch}, maxEpoch: {[Op.gte]: statEpoch}},
                 raw: true,
                 // logging: msg => console.log(`transferStat: ${msg}`),
             });
@@ -124,7 +123,7 @@ export class TokenTransferHandler extends StatHandler {
             const statDays = this.statLatestDays - i;
             const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
             const total = await TokenTransferStat.count({
-                where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]}
+                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
             });
             if (!total) continue;
 
@@ -133,7 +132,7 @@ export class TokenTransferHandler extends StatHandler {
             let curPage = 1;
             do {
                 const statArray = await TokenTransferStat.findAll({
-                    where: {[Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}, {statType: '1h'}]},
+                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
                     offset: skip, limit: pageSize, raw: true,
                 });
                 if (!statArray) break;
@@ -157,17 +156,17 @@ export class TokenTransferHandler extends StatHandler {
         const statType = `${statDays}d`;
         const statBegin = new Date(statEnd);
         statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await TokenTransferStat.findOne({where: {bizId, statType, statTime: statBegin}, raw: true});
+        const stat = await TokenTransferStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
         if (stat !== null) return;
 
         const sql = `select sum(transferCntr) as statTransferCntr,
                             min(minEpoch) as statMinEpoch,
                             max(maxEpoch) as statMaxEpoch
                      from ${TokenTransferStat.getTableName()}
-                     where bizId = ?
+                     where statType = '1h'
+                       and bizId = ?
                        and statTime >= ?
-                       and statTime < ?
-                       and statType = '1h'`;
+                       and statTime < ?`;
         const statNDaysInfo = await TokenTransferStat.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
         ).then(arr => {
@@ -185,10 +184,10 @@ export class TokenTransferHandler extends StatHandler {
         await TokenTransferStat.sequelize.transaction(async (dbTx) => {
             if (statDays === this.statLatestDays) {
                 await TokenTransferStat.destroy({
-                    where: {bizId, statType: '1h', statTime: {[Op.lt]: statBegin}}, transaction: dbTx
+                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
                 });
             }
-            await TokenTransferStat.destroy({where: {bizId, statType}, transaction: dbTx});
+            await TokenTransferStat.destroy({where: {statType, bizId}, transaction: dbTx});
             await TokenTransferStat.create(statNDaysInfo, {transaction: dbTx});
         });
     }

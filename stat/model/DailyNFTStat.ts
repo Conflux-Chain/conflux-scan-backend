@@ -45,8 +45,8 @@ export class DailyNFTStat extends Model<IDailyNFTStat> implements IDailyNFTStat{
             tableName: 'daily_nft_stat',
             timestamps: true,
             indexes: [{
-                name: "idx_statTime_statType",
-                fields: ["statTime", "statType"],
+                name: "idx_statType_statTime",
+                fields: ["statType", "statTime"],
                 unique: true,
             }]
         })

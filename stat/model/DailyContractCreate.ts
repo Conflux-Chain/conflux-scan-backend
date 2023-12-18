@@ -27,8 +27,8 @@ export class DailyContractCreate extends Model<IDailyContractCreate> implements 
             tableName: 'daily_contract_create',
             timestamps: true,
             indexes: [{
-                name: "idx_statDay_statType",
-                fields: ["statDay", "statType"],
+                name: "idx_statType_statDay",
+                fields: ["statType", "statDay"],
                 unique: true,
             }]
         })

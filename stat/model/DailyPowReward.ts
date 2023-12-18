@@ -30,8 +30,8 @@ export class DailyPowRewardStat extends Model<IDailyPowRewardStat> implements ID
             tableName: 'daily_pow_reward_stat',
             timestamps: true,
             indexes: [{
-                name: "idx_statTime_statType",
-                fields: ["statTime", "statType"],
+                name: "idx_statType_statTime",
+                fields: ["statType", "statTime"],
                 unique: true,
             }]
         })
