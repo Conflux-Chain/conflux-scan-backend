@@ -15,7 +15,18 @@ const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
 const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
 const {StatApp} = require("../../stat/dist/StatApp");
+const {sleepMs} = require("limit-map");
 const jsonrpc = new JsonRPCFlow();
+
+// dev stuff
+jsonrpc.method('testConcurrent',
+    concurrenceControl(1),
+    durationAlarmFlow(1_000, { method: 'testConcurrent' }),
+    async function(){
+        await sleepMs(2_000)
+        return {message: 'should timeout'}
+    },
+);
 
 // ------------------------------- Dashboard --------------------------------
 jsonrpc.method('supply',
@@ -38,7 +49,7 @@ jsonrpc.method('dag',
   }),
 
   cacheFlow(1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'dag' }),
   async function () {
     const {
@@ -72,7 +83,7 @@ jsonrpc.method('plot',
   }),
 
   cacheFlow(60 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'plot' }),
   async function (options) {
     const {
@@ -91,7 +102,7 @@ jsonrpc.method('trend',
   }),
 
   cacheFlow(60 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'trend' }),
   async function (options) {
     const {
@@ -151,7 +162,7 @@ jsonrpc.method('queryBlock',
   }),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryBlock' }),
   async function (options) {
     const {
@@ -187,7 +198,7 @@ jsonrpc.method('countAndListBlock',
 
   listLimitBy(['miner', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { level: 'warning', method: 'countAndListBlock' }),
   async function ({ listLimit, ...options }) {
     const {
@@ -215,7 +226,7 @@ jsonrpc.method('queryTransaction',
   }),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryTransaction' }),
   async function (options) {
     const {
@@ -256,7 +267,7 @@ jsonrpc.method('countAndListTransaction',
 
   listLimitBy(['accountAddress', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { level: 'warning', method: 'countAndListTransaction' }),
   async function ({ listLimit, ...options }) {
     const {
@@ -285,7 +296,7 @@ jsonrpc.method('queryAccount',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryAccount' }),
   async function (options) {
     const {
@@ -308,7 +319,7 @@ jsonrpc.method('queryAccountBasic',
     })),
 
     cacheFlow(5 * 1000),
-    concurrenceControl(5),
+    concurrenceControl(500),
     durationAlarmFlow(5 * 1000, { method: 'queryAccountBasic' }),
     async function ({ addressArray }) {
         const {
@@ -338,7 +349,7 @@ jsonrpc.method('registerContract',
   })),
 
   checkPassword,
-  concurrenceControl(1),
+  concurrenceControl(500),
   durationAlarmFlow(30 * 1000, { method: 'registerContract' }),
   async function ({ address, token, ...options }) {
     const {
@@ -357,7 +368,7 @@ jsonrpc.method('deregisterContract',
   })),
 
   checkPassword,
-  concurrenceControl(1),
+  concurrenceControl(500),
   durationAlarmFlow(30 * 1000, { method: 'deregisterContract' }),
   async function (options) {
     const {
@@ -378,7 +389,7 @@ jsonrpc.method('queryContract',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryContract' }),
   async function ({ address, fields }) {
     const {
@@ -410,7 +421,7 @@ jsonrpc.method('queryContract',
 jsonrpc.method('listVersion',
   serializeByIP(),
   cacheFlow(60 * 1000),
-  concurrenceControl(2),
+  concurrenceControl(500),
   async function (options) {
     const {
       app: { service },
@@ -428,7 +439,7 @@ jsonrpc.method('listVersion',
 jsonrpc.method('listLicense',
   serializeByIP(),
   cacheFlow(60 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   async () => {
       const licenseArray =  {};
       Object.values(CONST_TS.LICENSE).forEach(value => licenseArray[value.code] = value.desc);
@@ -439,7 +450,7 @@ jsonrpc.method('listLicense',
 jsonrpc.method('listEVMVersion',
     serializeByIP(),
     cacheFlow(60 * 1000),
-    concurrenceControl(10),
+    concurrenceControl(500),
     async () => {
         return CONST_TS.EVM_VERSION;
     },
@@ -479,7 +490,7 @@ jsonrpc.method('verifyContract',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(2),
+  concurrenceControl(500),
   async function (options) {
     const {
       app: { service },
@@ -512,7 +523,7 @@ jsonrpc.method('countAndListContract',
 
   listLimitBy(['from', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'countAndListContract' }),
   async function ({ listLimit, ...options }) {
     const {
@@ -540,7 +551,7 @@ jsonrpc.method('listContractVerified',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'listContractVerified' }),
   async function (options) {
     const {
@@ -563,7 +574,7 @@ jsonrpc.method('queryContractBasic',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
   async function ({ addressArray }) {
     const {
@@ -588,7 +599,7 @@ jsonrpc.method('registerToken',
   })),
 
   checkPassword,
-  concurrenceControl(1),
+  concurrenceControl(500),
   durationAlarmFlow(30 * 1000, { method: 'registerToken' }),
   async function (options) {
     const {
@@ -607,7 +618,7 @@ jsonrpc.method('deregisterToken',
   })),
 
   checkPassword,
-  concurrenceControl(1),
+  concurrenceControl(500),
   durationAlarmFlow(30 * 1000, { method: 'deregisterToken' }),
   async function (options) {
     const {
@@ -628,7 +639,7 @@ jsonrpc.method('queryToken',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryToken' }),
   async function ({ address, fields }) {
     const {
@@ -660,7 +671,7 @@ jsonrpc.method('countAndListToken',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(10 * 1000, { method: 'countAndListToken' }),
   async function (options) {
     const {
@@ -697,7 +708,7 @@ jsonrpc.method('auditToken',
   })),
 
   checkPassword,
-  concurrenceControl(1),
+  concurrenceControl(500),
   durationAlarmFlow(30 * 1000, { method: 'auditToken' }),
   async function (options) {
     const {
@@ -715,7 +726,7 @@ jsonrpc.method('queryQuote',
     address: { path: '0', type: app.type.address, required: true },
   })),
 
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryQuote' }),
   () => {
     return { message: 'Deprecated' }; // service.quote.query(options);
@@ -731,7 +742,7 @@ jsonrpc.method('listEventLogByTransactionHash',
   }),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'listEventLogByTransactionHash' }),
   async function (options) {
     const {
@@ -750,7 +761,7 @@ jsonrpc.method('queryEventLog',
   }),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(10),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryEventLog' }),
   async function (options) {
     const {
@@ -777,7 +788,7 @@ jsonrpc.method('countAndListEventLog',
 
   listLimitBy(['address', 'signature', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'countAndListEventLog' }),
   async function ({ listLimit, ...options }) {
     const {
@@ -819,7 +830,7 @@ jsonrpc.method('countAndListTransfer',
 
   listLimitBy(['address', 'accountAddress', 'tokenId', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { level: 'warning', method: 'countAndListTransfer' }),
   async function ({ listLimit, ...options }) {
     const {
@@ -847,7 +858,7 @@ jsonrpc.method('transferTreeByTransactionHash',
   }),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(5),
+  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'transferTreeByTransactionHash' }),
   async function (options) {
     const {
@@ -866,7 +877,7 @@ jsonrpc.method('transferTreeByTransactionHash',
     })),
 
     cacheFlow(5 * 1000),
-    concurrenceControl(5),
+    concurrenceControl(500),
     durationAlarmFlow(5 * 1000, { method: 'queryENSBasic' }),
     async function ({ addressArray }) {
         const {
@@ -898,7 +909,7 @@ jsonrpc.method('exportTransaction',
     to: { path: '0', type: app.type.address }, // new add
     token: { path: '0', type: type.string },
   })),
-  concurrenceControl(1),
+  concurrenceControl(500),
   durationAlarmFlow(120 * 1000, { method: 'exportTransaction' }),
 
   async function (options) {
@@ -992,7 +1003,7 @@ jsonrpc.method('exportTransfer',
     reverse: { path: '0', type: type.bool },
     token: { path: '0', type: type.string },
   })),
-  concurrenceControl(1),
+  concurrenceControl(500),
   durationAlarmFlow(120 * 1000, { method: 'exportTransfer' }),
 
   async function ({ transferType, ...options }) {

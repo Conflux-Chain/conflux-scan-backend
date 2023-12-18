@@ -29,11 +29,11 @@ class DingTalkRobot {
           .toString('base64');
       }
 
-      await superagent.post(this.url)
+      return superagent.post(this.url)
         .query({ access_token: this.accessToken, timestamp, sign })
-        .send(data);
+        .send(data).then(res=>res.body);
     } catch (e) {
-      // pass
+      return {error: e}
     }
   }
 

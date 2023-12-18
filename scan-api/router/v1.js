@@ -54,7 +54,7 @@ router.use(async (ctx, next) => {
   try {
     await next();
     if(ctx.type === 'application/octet-stream') return;
-    if(ctx.body.code){
+    if(ctx.body?.code){
       throw lodash.assign(new Error(), {status: ctx.status}, lodash.pick(ctx.body, ['code', 'message']));
     }
     ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
@@ -72,6 +72,11 @@ router.get('/', function (ctx) {
   const { app: { config: { machine } } } = this;
   ctx.body = { message: `scan backend, [${machine}]` };
 });
+router.get('/testDing', async function(ctx){
+  const { app: { dingTalk } } = ctx;
+  ctx.body = await dingTalk.sendObject(`test-ding`, {header: ctx.headers})
+});
+router.get('/testConcurrent', jsonrpc.methodFlow('testConcurrent'));
 // --------------------------------- OpenAPI ----------------------------------
 router.get('/openAPI', () => openAPI.toObject());
 
