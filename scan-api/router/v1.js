@@ -54,7 +54,7 @@ router.use(async (ctx, next) => {
   try {
     await next();
     if(ctx.type === 'application/octet-stream') return;
-    if(ctx.body.code){
+    if(ctx.body?.code){
       throw lodash.assign(new Error(), {status: ctx.status}, lodash.pick(ctx.body, ['code', 'message']));
     }
     ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
