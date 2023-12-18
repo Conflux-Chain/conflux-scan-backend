@@ -85,6 +85,7 @@ export class PosQuery {
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
             apy, totalCirculating,
+            updatedAt: new Date().toISOString(),
         }
     }
     async calculateApy() {
