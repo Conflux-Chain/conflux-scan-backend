@@ -17,11 +17,25 @@ import {buildSqlLog, } from "../../../common/tool.js";
 // noinspection CommaExpressionJS
 export class PosQuery {
     private cfx: Conflux;
+    private cachedData: Object
 
     constructor(cfx:Conflux) {
         this.cfx = cfx
+        const that = this;
+        async function repeat() {
+            try {
+                that.cachedData = await that.posInfoReal()
+            } catch (e) {
+                console.log(`update pos info error:`, e)
+            }
+            setTimeout(repeat, 10_000)
+        }
+        repeat().then()
     }
     async posInfo() {
+        return this.cachedData || {}
+    }
+    async posInfoReal() {
         const [st, posAccountCount, posEconomics, totalPosRewardDrip, {apy, totalCirculating}] = await Promise.all([
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx.pos.getStatus(),
@@ -71,6 +85,7 @@ export class PosQuery {
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
             latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
             apy, totalCirculating,
+            updatedAt: new Date().toISOString(),
         }
     }
     async calculateApy() {
