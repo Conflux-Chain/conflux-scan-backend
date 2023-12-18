@@ -10,7 +10,7 @@ function concurrenceControl(limit) {
     } = this;
 
     if (concurrence >= limit) {
-      throw new error.ApiBusyError(`api is busy concurrence=${concurrence} >= limit=${limit}, try again later`);
+      throw new error.ApiBusyError(`The system is too busy now, please try again later. CODE[${concurrence}-${limit}]`);
     }
 
     try {

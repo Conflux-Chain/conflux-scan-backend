@@ -72,6 +72,11 @@ router.get('/', function (ctx) {
   const { app: { config: { machine } } } = this;
   ctx.body = { message: `scan backend, [${machine}]` };
 });
+router.get('/testDing', async function(ctx){
+  const { app: { dingTalk } } = ctx;
+  ctx.body = await dingTalk.sendObject(`test-ding`, {header: ctx.headers})
+});
+router.get('/testConcurrent', jsonrpc.methodFlow('testConcurrent'));
 // --------------------------------- OpenAPI ----------------------------------
 router.get('/openAPI', () => openAPI.toObject());
 
