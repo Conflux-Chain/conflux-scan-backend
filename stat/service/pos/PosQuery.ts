@@ -14,6 +14,7 @@ import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Errors} from "../common/LogicError";
 const lodash = require('lodash')
 import {buildSqlLog, } from "../../../common/tool.js";
+import {StatApp} from "../../StatApp";
 // noinspection CommaExpressionJS
 export class PosQuery {
     private cfx: Conflux;
@@ -22,6 +23,9 @@ export class PosQuery {
     constructor(cfx:Conflux) {
         this.cfx = cfx
         const that = this;
+        if (StatApp.isEVM) {
+            return
+        }
         async function repeat() {
             try {
                 that.cachedData = await that.posInfoReal()

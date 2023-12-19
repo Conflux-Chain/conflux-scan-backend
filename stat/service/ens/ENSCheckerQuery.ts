@@ -16,6 +16,7 @@ const CFX_COIN_TYPE = 503;
 export class ENSCheckerQuery {
     protected cfx;
     protected ensEnable;
+    protected disabledBeforeMS:number;
     protected ensCheckerAddr;
     protected ensAddr;
     protected reverseRegistrarAddr;
@@ -46,6 +47,21 @@ export class ENSCheckerQuery {
         this.baseRegistrar = this.cfx.Contract({abi: abiBaseRegistrar, address: this.baseRegistrarAddr});
         this.reverseRecords = this.cfx.Contract({abi: abiReverseRecords, address: this.reverseRecordsAddr});
         this.graphql = new GraphQLClient(this.ensSubGraphUrl);
+        this.repeatCheckHealth().then()
+    }
+
+    private async repeatCheckHealth() {
+        if (StatApp.isEVM) {
+            return
+        }
+        try {
+            await this.cfx.getClientVersion();
+            this.disabledBeforeMS = 0;
+        } catch (e) {
+            console.log(`It's unhealthy.`, e)
+            this.disabledBeforeMS = Date.now() + 30_000
+        }
+        setTimeout(()=>this.repeatCheckHealth(), 10_000)
     }
 
     public async addr(name: string) {
@@ -58,7 +74,10 @@ export class ENSCheckerQuery {
 
     public async nameBatch(addressArray: string[]) {
         const result = {};
-        if(!this.ensEnable) {
+        if(!this.ensEnable ||
+            // Disable for a period of time if an error occurs
+            (this.disabledBeforeMS > 0 && Date.now() < this.disabledBeforeMS)
+        ) {
             return result;
         }
 
@@ -67,9 +86,10 @@ export class ENSCheckerQuery {
         const nameArray = await this.reverseRecords.getNames(base32Array)
             .catch(e => {
                 console.log(`nameBatch ens ${this.ensAddr} reverse ${this.reverseRegistrar} error`, e);
+                this.disabledBeforeMS = Date.now() + 30_000;
                 return result;
             });
-
+        this.disabledBeforeMS = 0
         for (let i = 0; i < base32Array.length; i++) {
             result[base32Array[i]] = {name: nameArray[i] || ''};
         }
