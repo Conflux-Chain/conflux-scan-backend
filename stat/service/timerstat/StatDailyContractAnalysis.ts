@@ -95,13 +95,15 @@ export class StatDailyContractAnalysis extends TimerStat{
     }
 
     private async statByEpochRange(minEpoch, maxEpoch, model) {
-        const sqlWithFrom = `select tcc.to as addr, count(*) as cntr from trace_create_contract tcc left join ${model.getTableName()} tmp on tcc.to = tmp.toId
+        const t1 = TraceCreateContract.getTableName()
+        const t2 = model.getTableName()
+        const sqlWithFrom = `select tcc.to as addr, count(*) as cntr from ${t1} tcc left join ${t2} tmp on tcc.to = tmp.toId
                         where epoch >= ? and epoch < ? group by tcc.to`
         const sqlWithFromTo = `select t.addr as addr, sum(t.cntr) as cntr from (
-                        (select count(*) as cntr, tcc.to as addr from trace_create_contract tcc left join ${model.getTableName()} tmp on tcc.to = tmp.toId
+                        (select count(*) as cntr, tcc.to as addr from ${t1} tcc left join ${t2} tmp on tcc.to = tmp.toId
                         where epoch >= ? and epoch < ? group by tcc.to) 
                         union all 
-                        (select count(*) as cntr, tcc.to as addr from trace_create_contract tcc left join ${model.getTableName()} tmp on tcc.to = tmp.fromId
+                        (select count(*) as cntr, tcc.to as addr from ${t1} tcc left join ${t2} tmp on tcc.to = tmp.fromId
                         where epoch >= ? and epoch < ? group by tcc.to)
                         ) t group by t.addr`
 
