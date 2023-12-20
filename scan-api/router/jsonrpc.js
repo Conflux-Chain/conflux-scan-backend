@@ -16,7 +16,8 @@ const serializeByIP = require('../../common/middleware/serializeByIP');
 const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
 const {StatApp} = require("../../stat/dist/StatApp");
 const {sleepMs} = require("limit-map");
-const jsonrpc = new JsonRPCFlow();
+const MyJsonRpcFlow = require("./MyJsonRpcFlow");
+const jsonrpc = new MyJsonRpcFlow();
 
 // dev stuff
 jsonrpc.method('testConcurrent',
