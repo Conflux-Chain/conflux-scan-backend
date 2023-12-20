@@ -7,6 +7,7 @@ const jsonrpc = require('./jsonrpc');
 const {StatApp} = require("../../stat/dist/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
 const moment = require("moment/moment");
+const {patchFlowError} = require("./MyJsonRpcFlow");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -54,8 +55,9 @@ router.use(async (ctx, next) => {
   try {
     await next();
     if(ctx.type === 'application/octet-stream') return;
+    patchFlowError(ctx);
     if(ctx.body?.code){
-      throw lodash.assign(new Error(), {status: ctx.status}, lodash.pick(ctx.body, ['code', 'message']));
+      throw lodash.assign(new Error(), {status: ctx.status}, lodash.pick(ctx.body, ['code', 'message', 'detail']));
     }
     ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
         { code: 0, message: '', data: ctx.body };
@@ -64,8 +66,8 @@ router.use(async (ctx, next) => {
       e = new error.BizError(e.message);
     }
     ctx.status = e.status;
-    ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
-        { code: e.code, message: e.message, data: e.partialData };
+    ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData, detail: e.detail } :
+        { code: e.code, message: e.message, data: e.partialData, detail: e.detail };
   }
 });
 router.get('/', function (ctx) {

@@ -24,7 +24,9 @@ export const Errors = {
     BizError: LogicError.extend({ code: 50100, name: 'Unknown error, please try again later, or submit a ticket' }),
     ParameterError: LogicError.extend({ code: 50101, name: 'The parameter is wrong, please confirm it is correct' }),
     PermissionError: LogicError.extend({ code: 50102, name: 'Permission Error' }),
-    ApiBusyError: LogicError.extend({ code: 50103, name: 'API is Busy, try again later' }),
+    ApiBusyError: LogicError.extend({ code: 50103, name: 'The system is too busy now, please try again later' }),
+    RpcBusyError: LogicError.extend({ code: 50104, name: 'The underlying service is too busy now, please try again later. CODE[RPC]' }),
+    RpcBizError: LogicError.extend({ code: 50105, name: 'The underlying service returns an error, please try again later. CODE[RPC-E]' }),
 
     // network error
     NetworkError: LogicError.extend({ code: 50200, name: 'Network exception, try again later'}),
