@@ -1,5 +1,5 @@
 const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
-const {Errors} = require("../../stat/dist/service/common/LogicError");
+const {Errors, UnhandledErrorCode} = require("../../stat/dist/service/common/LogicError");
 
 /**
  * lib/OpenAPI/Flow.js contains bugs, it will swallow the error near line 135.
@@ -26,7 +26,7 @@ class MyJsonRpcFlow extends JsonRPCFlow {
 function transformError(ctx, e, msg = '', detail = '') {
   // some error may have a string code.
   let isNumber = typeof(e.code) === 'number';
-  ctx.body = { code: isNumber ? e.code : 500, message: (e.name || '')+msg + ' ' + detail + (isNumber ? '' : e.code) };
+  ctx.body = { code: isNumber ? e.code : UnhandledErrorCode, message: (e.name || '')+msg + ' ' + detail + (isNumber ? '' : e.code || '') };
   ctx.status = 600;
 }
 function patchFlowError(ctx) {
@@ -39,7 +39,7 @@ function patchFlowError(ctx) {
     } else if (message.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
       transformError(ctx, new Errors.RpcBizError(), ' ', message);
     } else {
-      transformError(ctx, ctx.methodFlowError, message);
+      transformError(ctx, ctx.methodFlowError, message, '');
     }
   }
 }

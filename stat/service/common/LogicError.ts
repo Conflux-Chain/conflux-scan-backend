@@ -18,9 +18,10 @@ class LogicError extends Error {
         return BizError;
     }
 }
-
+export const UnhandledErrorCode = 50001;
 export const Errors = {
     // common error
+    UnhandledError: LogicError.extend({ code: UnhandledErrorCode, name: 'Unhandled error' }),
     BizError: LogicError.extend({ code: 50100, name: 'Unknown error, please try again later, or submit a ticket' }),
     ParameterError: LogicError.extend({ code: 50101, name: 'The parameter is wrong, please confirm it is correct' }),
     PermissionError: LogicError.extend({ code: 50102, name: 'Permission Error' }),
