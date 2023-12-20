@@ -24,7 +24,9 @@ class MyJsonRpcFlow extends JsonRPCFlow {
   }
 }
 function transformError(ctx, e, msg = '', detail = '') {
-  ctx.body = { code: e.code, message: msg || e.name, detail };
+  // some error may have a string code.
+  let isNumber = typeof(e.code) === 'number';
+  ctx.body = { code: isNumber ? e.code : 500, message: (e.name || '')+msg + ' ' + detail + (isNumber ? '' : e.code) };
   ctx.status = 600;
 }
 function patchFlowError(ctx) {
@@ -33,11 +35,11 @@ function patchFlowError(ctx) {
   } else if (ctx.methodFlowError) {
     const { code, method: _method, url = '', message = '' } = ctx.methodFlowError;
     if (code === 'ABORTED' && _method === 'POST' && url.startsWith('http://172.31')) {
-      transformError(ctx, new Errors.RpcBusyError(), '', url.substring('http://172.31.'.length));
+      transformError(ctx, new Errors.RpcBusyError(), url.substring('http://172.31.'.length), code);
     } else if (message.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
-      transformError(ctx, new Errors.RpcBizError(), '', message);
+      transformError(ctx, new Errors.RpcBizError(), ' ', message);
     } else {
-      transformError(ctx, new Errors.BizError(''), message);
+      transformError(ctx, ctx.methodFlowError, message);
     }
   }
 }
