@@ -26,7 +26,7 @@ class MyJsonRpcFlow extends JsonRPCFlow {
 function transformError(ctx, e, msg = '', detail = '') {
   // some error may have a string code.
   let isNumber = typeof(e.code) === 'number';
-  ctx.body = { code: isNumber ? e.code : UnhandledErrorCode, message: (e.name)+':'+msg + ' ' + detail + (isNumber ? '' : e.code || '') };
+  ctx.body = { code: isNumber ? e.code : UnhandledErrorCode, message: (e.name)+': '+msg + ' ' + detail + (isNumber ? '' : e.code || '') };
   ctx.status = 600;
 }
 function patchFlowError(ctx) {
