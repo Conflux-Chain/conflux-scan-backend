@@ -4,6 +4,7 @@ const {Errors, UnhandledErrorCode} = require("../../stat/dist/service/common/Log
 /**
  * lib/OpenAPI/Flow.js contains bugs, it will swallow the error near line 135.
  */
+let cfxRpcUrl = ''
 class MyJsonRpcFlow extends JsonRPCFlow {
   methodFlow(method) {
     const jsonRPCFlow = this;
@@ -17,7 +18,7 @@ class MyJsonRpcFlow extends JsonRPCFlow {
         return ret;
       } catch (e) {
         this.methodFlowError = e;
-        console.log(`error caught at ${__filename} \n `, e);
+        console.log(`error caught at ${__filename} \n url: ${this.originalUrl} \n`, e);
         end(/* nothing but stop calling chain */);
       }
     };
@@ -34,8 +35,9 @@ function patchFlowError(ctx) {
     // console.log(`body is present, and methodFlowError is `, ctx.methodFlowError);
   } else if (ctx.methodFlowError) {
     const { code, method: _method, url = '', message = '' } = ctx.methodFlowError;
-    if (code === 'ABORTED' && _method === 'POST' && url.startsWith('http://172.31')) {
-      transformError(ctx, new Errors.RpcBusyError(), url.substring('http://172.31.'.length), code);
+    if (code === 'ABORTED' && _method === 'POST' && url.startsWith(cfxRpcUrl)) {
+      console.log(`aborted ${cfxRpcUrl}`)
+      transformError(ctx, new Errors.RpcBusyError(), ' ', code);
     } else if (message.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
       transformError(ctx, new Errors.RpcBizError(), ' ', message);
     } else {
@@ -44,5 +46,10 @@ function patchFlowError(ctx) {
   }
 }
 
+function setCfxRpcUrl(url) {
+  cfxRpcUrl = url || ''
+}
+
 module.exports = MyJsonRpcFlow;
 module.exports.patchFlowError = patchFlowError;
+module.exports.setCfxRpcUrl = setCfxRpcUrl;

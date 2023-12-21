@@ -18,6 +18,7 @@ const { initPartialModel } = require('../stat/dist/service/DBProvider');
 const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
 const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
 const { KV, IS_EVM2 } = require('../stat/dist/model/KV');
+const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
 
 class ApiApp extends AppBase {
   constructor(config) {
@@ -33,6 +34,7 @@ class ApiApp extends AppBase {
 
     // db
     const {config} = this;
+    setCfxRpcUrl(config.conflux.url)
     this.sequelize = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
     await RedisWrap.connect(config.redis);
 
