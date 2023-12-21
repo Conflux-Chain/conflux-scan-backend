@@ -16,7 +16,6 @@ const CFX_COIN_TYPE = 503;
 export class ENSCheckerQuery {
     protected cfx;
     protected ensEnable;
-    protected disabledBeforeMS:number;
     protected ensCheckerAddr;
     protected ensAddr;
     protected reverseRegistrarAddr;
@@ -47,7 +46,9 @@ export class ENSCheckerQuery {
         this.baseRegistrar = this.cfx.Contract({abi: abiBaseRegistrar, address: this.baseRegistrarAddr});
         this.reverseRecords = this.cfx.Contract({abi: abiReverseRecords, address: this.reverseRecordsAddr});
         this.graphql = new GraphQLClient(this.ensSubGraphUrl);
-        this.repeatCheckHealth().then()
+        if (this.ensEnable) {
+            this.repeatCheckHealth().then()
+        }
     }
 
     private async repeatCheckHealth() {
@@ -55,13 +56,13 @@ export class ENSCheckerQuery {
             return
         }
         try {
-            await this.cfx.getClientVersion();
-            this.disabledBeforeMS = 0;
+            await this.cfx.getTransactionReceipt(`0x${"0".repeat(64)}`)
+            this.ensEnable = true;
         } catch (e) {
-            console.log(`It's unhealthy.`, e)
-            this.disabledBeforeMS = Date.now() + 30_000
+            console.log(`${__filename} It's unhealthy, disable ens query.`, e)
+            this.ensEnable = false
         }
-        setTimeout(()=>this.repeatCheckHealth(), 10_000)
+        setTimeout(()=>this.repeatCheckHealth(), 60_000)
     }
 
     public async addr(name: string) {
@@ -74,10 +75,7 @@ export class ENSCheckerQuery {
 
     public async nameBatch(addressArray: string[]) {
         const result = {};
-        if(!this.ensEnable ||
-            // Disable for a period of time if an error occurs
-            (this.disabledBeforeMS > 0 && Date.now() < this.disabledBeforeMS)
-        ) {
+        if(!this.ensEnable) {
             return result;
         }
 
@@ -86,10 +84,9 @@ export class ENSCheckerQuery {
         const nameArray = await this.reverseRecords.getNames(base32Array)
             .catch(e => {
                 console.log(`nameBatch ens ${this.ensAddr} reverse ${this.reverseRegistrar} error`, e);
-                this.disabledBeforeMS = Date.now() + 30_000;
+                this.ensEnable = false;
                 return result;
             });
-        this.disabledBeforeMS = 0
         for (let i = 0; i < base32Array.length; i++) {
             result[base32Array[i]] = {name: nameArray[i] || ''};
         }
