@@ -248,15 +248,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         })
     })
 
-    function updateTopGasUsed() {
+    function updateTopGasUsed(forceUseCache = false) {
         return {
-            '7d': TxnQuery.topByGasUsed({span: '7d'}),
-            '3d': TxnQuery.topByGasUsed({span: '3d'}),
-            '24h': TxnQuery.topByGasUsed({span: '24h'}),
+            '7d': TxnQuery.topByGasUsed({span: '7d', forceUseCache}),
+            '3d': TxnQuery.topByGasUsed({span: '3d', forceUseCache}),
+            '24h': TxnQuery.topByGasUsed({span: '24h', forceUseCache}),
         };
     }
-    let topGasUsedCache = updateTopGasUsed();
-    setInterval(()=>{topGasUsedCache = updateTopGasUsed()}, 3600_000)
+    let topGasUsedCache = updateTopGasUsed(true);
+    setInterval(()=>{topGasUsedCache = updateTopGasUsed(false)}, 3600_000)
 
     //top gas used
     router.get('/top-gas-used', async (ctx)=>{
