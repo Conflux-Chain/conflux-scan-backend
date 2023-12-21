@@ -36,7 +36,6 @@ function patchFlowError(ctx) {
   } else if (ctx.methodFlowError) {
     const { code, method: _method, url = '', message = '' } = ctx.methodFlowError;
     if (code === 'ABORTED' && _method === 'POST' && url.startsWith(cfxRpcUrl)) {
-      console.log(`aborted ${cfxRpcUrl}`)
       transformError(ctx, new Errors.RpcBusyError(), ' ', code);
     } else if (message.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
       transformError(ctx, new Errors.RpcBizError(), ' ', message);
