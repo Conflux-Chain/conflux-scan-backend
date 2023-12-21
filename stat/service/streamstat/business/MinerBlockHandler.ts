@@ -134,124 +134,58 @@ export class MinerBlockHandler extends StatHandler {
         });
     }
 
-    public async collect() {
-        const trigger = this.bizStatInfo.trigger();
-        if (!trigger) return;
-
-        const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
-        const statEnd = latestEpoch.timestamp;
-        for (const i of lodash.range(this.statLatestDays)) {
-            const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
-            const total = await MinerBlockStat.count({
-                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
-            });
-            if (!total) continue;
-
-            let skip = 0;
-            let pageSize = 10;
-            let curPage = 1;
-            do {
-                const statArray = await MinerBlockStat.findAll({
-                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
-                    offset: skip, limit: pageSize, raw: true,
-                });
-                if (!statArray) break;
-
-                for (const statDay of statArray) {
-                    await this.doStat({bizId: statDay.bizId, statEnd, statDays: 7});
-                    if (statDays <= 3) {
-                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 3});
-                    }
-                    if (statDays <= 1) {
-                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 1});
-                    }
-                }
-                skip = (++curPage - 1) * pageSize;
-            } while (skip <= total);
-        }
-        await this.clear({model: MinerBlockStat, statEnd, statDays: this.statLatestDays});
-    }
-
-    private async doStat({bizId, statEnd, statDays}) {
-        const statType = `${statDays}d`;
-        const statBegin = new Date(statEnd);
-        statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await MinerBlockStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
-        if (stat !== null) return;
-
-        const sql = `select sum(blockCntr) as statBlockCntr,
-                            sum(rewardSum) as statRewardSum,
-                            sum(txFeeSum) as statTxFeeSum,
-                            sum(difficultySum) as statDifficultySum,
-                            min(minEpoch) as statMinEpoch,
-                            max(maxEpoch) as statMaxEpoch
-                     from ${MinerBlockStat.getTableName()}
-                     where statType = '1h'
-                       and bizId = ?
-                       and statTime >= ?
-                       and statTime < ?`;
-        const statNDaysInfo = await MinerBlockStat.sequelize.query(sql,
-            {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
-        ).then(arr => {
-            const item = arr[0];
-            return {
-                bizId,
-                statType,
-                statTime: statBegin,
-                blockCntr: item['statBlockCntr'] || 0,
-                rewardSum: item['statRewardSum'] || 0,
-                txFeeSum: item['statTxFeeSum'] || 0,
-                difficultySum: item['statDifficultySum'] || 0,
-                minEpoch: item['statMinEpoch'] || -1,
-                maxEpoch: item['statMaxEpoch'] || -1,
-            };
-        });
-
-        await MinerBlockStat.sequelize.transaction(async (dbTx) => {
-            if (statDays === this.statLatestDays) {
-                await MinerBlockStat.destroy({
-                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
-                });
-            }
-            await MinerBlockStat.destroy({where: {statType, bizId}, transaction: dbTx});
-            await MinerBlockStat.create(statNDaysInfo, {transaction: dbTx});
-        });
-    }
+    public async collect() {}
 
     public async cache() {
-        const queryOptions: any = {
-            attributes: ['bizId', 'blockCntr', 'rewardSum', 'txFeeSum', 'difficultySum', 'minEpoch', 'maxEpoch'],
-            order: [['blockCntr', 'DESC']],
-            offset: 0,
-            limit: 10,
-            raw: true,
-            // logging: msg => console.log(`listMinerStat: ${msg}`),
-        };
+        const table = MinerBlockStat.getTableName()
+        const sql = `
+            select tmp.* from
+            (
+                select tmp1.bizId,
+                       sum(blockCntr) as blockCntr,
+                       sum(rewardSum) as rewardSum,
+                       sum(txFeeSum) as txFeeSum,
+                       sum(difficultySum) as difficultySum,
+                       min(minEpoch) as minEpoch,
+                       max(maxEpoch) as maxEpoch 
+                from (select distinct(bizId) as bizId from ${table} where statType = '1h' and statTime >= :beginTime and statTime < :endTime) tmp1
+                left join ${table} tmp2 on tmp1.bizId = tmp2.bizId
+                where tmp2.statType = '1h' and tmp2.statTime >= :beginTime and tmp2.statTime < :endTime
+                group by tmp1.bizId
+            ) tmp 
+            order by tmp.blockCntr desc limit 10
+        `;
 
-        const statTypeArray = ['1d', '3d', '7d'];
-        for(const statType of statTypeArray){
-            queryOptions.where = {statType};
-            let list = await MinerBlockStat.findAll(queryOptions);
+        const statDaysArray = [1, 3, 7];
+        const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
+        const endTime = latestEpoch.timestamp;
+        for (const statDays of statDaysArray) {
+            const beginTime = new Date(endTime);
+            beginTime.setDate(endTime.getDate() - statDays);
+            let list = await MinerBlockStat.sequelize.query(sql, {type: QueryTypes.SELECT, replacements: {beginTime, endTime}});
 
+            list = await this.convertToAddress(list)
             const {minEpochNumber, maxEpochNumber, minTime, maxTime} = await this.getStatSpan(list);
             const difficultyTotal = await MinerBlockStat.sum('difficultySum', {
-                where: {statType, minEpoch: {[Op.gte]: minEpochNumber}, maxEpoch: {[Op.lte]: maxEpochNumber}},
-                // logging: msg => console.log(`listMinerStat.difficultyTotal: ${msg}`),
+                where: {statType: '1h', minEpoch: {[Op.gte]: minEpochNumber}, maxEpoch: {[Op.lte]: maxEpochNumber}},
             });
             if(minTime && maxTime){
                 const seconds = (new Date(maxTime).getTime() - new Date(minTime).getTime()) / 1000
-                list.forEach(item => { item['hashRate'] = BigFixed(item.difficultySum).div(seconds).toString();});
+                list.forEach(item => { item['hashRate'] = BigFixed(item['difficultySum']).div(seconds).toString();});
             }
 
-            list = await this.convertToAddress(list);
+            const statObjKey = `${statDays}d`
             list.forEach(item => {
                 delete item['difficultySum'];
                 delete item['minEpoch'];
                 delete item['maxEpoch'];
             });
-
-            this.cacheStatInfo[statType] = {maxTime, difficultyTotal: difficultyTotal || 0, list};
+            const statObjVal = {
+                maxTime,
+                difficultyTotal: difficultyTotal || 0,
+                list,
+            }
+            this.cacheStatInfo[statObjKey] = statObjVal
         }
     }
 }

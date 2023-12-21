@@ -9,6 +9,7 @@ import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {ethers} from "ethers";
 import {makeId, makeIdV} from "../model/HexMap";
+import {AddressTransfer} from "../model/AddrTransfer";
 
 const lodash = require('lodash');
 const TOPIC0_TRANSFER_ERC20 = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
@@ -31,6 +32,29 @@ export abstract class SyncBase{
     protected statSwitch = false;
     private forwardQueue: PreloadMap;
     private backwardQueue: PreloadMap;
+
+    protected debugInfos = [];
+    protected debugSwitch = true;
+    protected async dumpDebugInfos(epochNumber, data: SyncData) {
+        if(!this.debugSwitch) {
+            return
+        }
+
+        const preEpoch = await Epoch.findOne({where: {epoch: epochNumber -1 }, raw: true})
+        const epoch = await Epoch.findOne({where: {epoch: epochNumber}, raw: true})
+        const addressTransfers = await AddressTransfer.findAll({where:{epoch: epochNumber}, raw: true})
+
+        console.log(`curEpoch ${JSON.stringify(data.modelData?.epoch)}`)
+        console.log(`prevEpochDB ${JSON.stringify(preEpoch)}`)
+        console.log(`curEpochDB ${JSON.stringify(epoch)}`)
+
+        console.log(`curAddressTransfers ${JSON.stringify(data.modelData?.addrTransferArray)}`)
+        console.log(`curAddressTransfersDB ${JSON.stringify(addressTransfers)}`)
+
+        console.log(`debugInfos ${JSON.stringify(this.debugInfos)}`)
+
+        this.debugSwitch = false
+    }
 
     protected constructor(app: StatApp) {
         this.app = app;
@@ -70,6 +94,7 @@ export abstract class SyncBase{
         const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
         const validate = await this.validate(epochNumber, modelData);
         if (prevEpoch && parentHash !== prevEpoch.pivotHash || !validate) {
+            console.log(`saveForward reorg ${JSON.stringify({epochNumber, preEpochNumber, prevEpoch, validate, code: SyncCode.PIVOT_SWITCH})}`)
             return SyncCode.PIVOT_SWITCH;
         }
         await this.save(epochNumber, modelData);
@@ -91,36 +116,64 @@ export abstract class SyncBase{
     private async syncForward(epochNumber) {
         let syncCode;
         let data: SyncData;
-        try {
-            data = await this.getDataForwardWithPreload(epochNumber);
-            if(data.syncCode === SyncCode.RETRY) {
-                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
+        let step;
+        let errorMessage;
+        try{
+            try {
+                data = await this.getDataForwardWithPreload(epochNumber);
+                if(data.syncCode === SyncCode.RETRY) {
+                    console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
+                    await sleep(10_000);
+                    step = 1;
+                    return epochNumber;
+                }
+            } catch (e) {
+                console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
                 await sleep(10_000);
+                step = 2;
                 return epochNumber;
             }
-        } catch (e) {
-            console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
-            await sleep(10_000);
-            return epochNumber;
-        }
-        try {
-            syncCode = await this.saveForward(epochNumber, data);
-        } catch (e) {
-            console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
-            await sleep(10_000);
-            return epochNumber;
-        }
+            try {
+                syncCode = await this.saveForward(epochNumber, data);
+                step = 3;
+            } catch (e) {
+                console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
+                await sleep(10_000);
+                step = 4;
+                errorMessage = `${e}`;
+                return epochNumber;
+            }
 
-        if(syncCode === SyncCode.SUCCESS){
-            epochNumber += 1;
-        }
-        if(syncCode === SyncCode.PIVOT_SWITCH){
-            await this.forwardQueue.clear();
-            epochNumber -= 1;
-            await this.delete(epochNumber, data.modelData).catch((e) => {
-                console.log(`[epoch=${epochNumber}]sync_forward del,error`, e);
-                throw e;
+            if(syncCode === SyncCode.SUCCESS){
+                step = 5;
+                epochNumber += 1;
+            }
+            if(syncCode === SyncCode.PIVOT_SWITCH){
+                step = 6;
+                await this.forwardQueue.clear();
+                step = 7;
+                epochNumber -= 1;
+                step = 8;
+                await this.delete(epochNumber, data.modelData).catch((e) => {
+                    step = 9;
+                    console.log(`[epoch=${epochNumber}]sync_forward del,error`, e);
+                    throw e;
+                });
+                step = 10;
+            }
+        } finally {
+            this.debugInfos.push({
+                epochNumber,
+                syncCode,
+                data,
+                step,
             });
+            if(this.debugInfos?.length > 10) {
+                this.debugInfos?.shift();
+            }
+            if(errorMessage && errorMessage.includes('UniqueConstraintError')) {
+                await this.dumpDebugInfos(epochNumber, data)
+            }
         }
         return epochNumber;
     }

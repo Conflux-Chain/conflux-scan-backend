@@ -33,7 +33,7 @@ export class StatNotifier {
 
         const epochNumber = msg.epochNumber;
         if(epochNumber && (epochNumber % 100 === 0)){
-            console.log(`[q=${q}]notifyStat msg:${JSON.stringify(msg)}`);
+            // console.log(`[q=${q}]notifyStat msg:${JSON.stringify(msg)}`);
         }
 
         return RedisWrap.sendStreamMessage(msg, q).then();

@@ -28,18 +28,31 @@ async function init() {
     await initModel(seq);
 }
 
+const resultPartial = []
 async function run() {
     const result = [];
+    for (const item of resultPartial) {
+        result.push({
+            statTime: item.statTime,
+            nftContract: item.nftContract,
+            nft: item.nft,
+            increaseNft: item.increaseNft,
+            collateralStorageOverall: BigInt(item.collateralStorageOverall),
+            collateralStorageCFX: BigInt(item.collateralStorageCFX),
+            collateralStoragePointsInCFX:   BigInt(item.collateralStoragePointsInCFX),
+        })
+    }
     await init();
+    console.log(`inited`)
 
     const contractArray =  await Token.findAll({
         attributes: ['base32', 'hex40id'],
-        where: {type: {[Op.in]: ['ERC721', 'ERC1155']}}
+        where: {type: {[Op.in]: ['ERC721', 'ERC1155']}},
+        logging: console.log
     });
 
-    const start = '2020-10-01 00:00:00';
-    const veryStatTime = new Date(start);
-    let statTime = new Date(start);
+    const veryStatTime = new Date('2020-10-01 00:00:00');
+    let statTime = new Date('2023-03-01 00:00:00');
     do{
         const preStatTime =new Date(statTime);
         statTime.setMonth(statTime.getMonth() + 1);
@@ -49,15 +62,17 @@ async function run() {
         }
 
         const epoch = await Epoch.findOne({
-            where: {timestamp: {[Op.gte]: statTime}},
-            order: [['epoch', 'ASC']],
+            where: {timestamp: {[Op.lt]: statTime}},
+            order: [['epoch', 'DESC']],
+            logging: console.log
         });
-        const epochNumber = epoch.epoch;
-        console.log(`statTime ${statTime} epochNumber ${epochNumber}`);
+        const epochNumber = epoch.epoch + 1;
 
         let contractTotal = 0;
         let nftTotal = 0;
-        let collateralTotal = BigInt(0);
+        let collateralStorageOverall = BigInt(0);
+        let collateralStorageCFX = BigInt(0);
+        let collateralStoragePointsInCFX = BigInt(0);
         let counter = 0;
         for(const c of contractArray) {
             const {base32, hex40id} = c;
@@ -75,10 +90,34 @@ async function run() {
                 continue;
             }
 
-            const account = await cfx.getAccount(base32, epochNumber);
-            const collateralForStorage = account.collateralForStorage;
-            collateralTotal = collateralTotal + collateralForStorage;
+            let account;
+            do{
+                try{
+                    account = await cfx.getAccount(base32, epochNumber);
+                } catch (e){
+                    console.log(e)
+                    await sleep(3000)
+                }
+            } while(!account)
+            let sponsorInfo;
+            do{
+                try{
+                    sponsorInfo = await cfx.getSponsorInfo(base32, epochNumber);
+                } catch (e){
+                    console.log(e)
+                    await sleep(3000)
+                }
+            } while(!sponsorInfo)
+
+            const collateralForStorage = BigInt(account.collateralForStorage) / BigInt(10e18); // drip -> cfx
+            const usedStoragePoints = BigInt(sponsorInfo.usedStoragePoints);
+            const usedStoragePointsInCFX = usedStoragePoints / BigInt(1024); // drip -> cfx
+
+            collateralStorageOverall = collateralStorageOverall + collateralForStorage + usedStoragePointsInCFX;
+            collateralStorageCFX = collateralStorageCFX + collateralForStorage;
+            collateralStoragePointsInCFX = collateralStoragePointsInCFX + usedStoragePointsInCFX;
             contractTotal =  contractTotal + 1;
+
             const mintNft = await NftMint.count({where: {
                     [Op.and]: [
                         {contractId: hex40id},
@@ -106,25 +145,55 @@ async function run() {
             nftContract: contractTotal,
             nft: nftOverall,
             increaseNft: nftTotal,
-            collateralStorage: collateralTotal / BigInt(10**18)
+            collateralStorageOverall: collateralStorageOverall,
+            collateralStorageCFX: collateralStorageCFX,
+            collateralStoragePointsInCFX: collateralStoragePointsInCFX,
         };
-        console.log(`stat ${JSON.stringify(stat)}`);
         result.push(stat);
+        print(result);
     } while(true);
 
     for (let i = 0; i < result.length; i ++) {
-        const preStat = i > 0 ? result[i-1] : {nftContract: 0, collateralStorage: BigInt(0)};
+        const preStat = i > 0 ? result[i-1] : {
+            nftContract: 0,
+            collateralStorageOverall: BigInt(0),
+            collateralStorageCFX: BigInt(0),
+            collateralStoragePointsInCFX: BigInt(0)
+        };
         result[i].increaseContract =  result[i].nftContract - preStat.nftContract;
-        result[i].increaseStorage =  result[i].collateralStorage - preStat.collateralStorage;
+        result[i].increaseStorageOverall =  result[i].collateralStorageOverall - preStat.collateralStorageOverall;
+        result[i].increaseStorageCFX =  result[i].collateralStorageCFX - preStat.collateralStorageCFX;
+        result[i].increaseStoragePointsInCFX =  result[i].collateralStoragePointsInCFX - preStat.collateralStoragePointsInCFX;
     }
 
     toCSV(result);
 }
 
+function print(statArray) {
+    const result = [...statArray]
+    for (let i = 0; i < result.length; i ++) {
+        const preStat = i > 0 ? result[i-1] : {
+            nftContract: 0,
+            collateralStorageOverall: BigInt(0),
+            collateralStorageCFX: BigInt(0),
+            collateralStoragePointsInCFX: BigInt(0)
+        };
+        result[i].increaseContract =  result[i].nftContract - preStat.nftContract;
+        result[i].increaseStorageOverall =  result[i].collateralStorageOverall - preStat.collateralStorageOverall;
+        result[i].increaseStorageCFX =  result[i].collateralStorageCFX - preStat.collateralStorageCFX;
+        result[i].increaseStoragePointsInCFX =  result[i].collateralStoragePointsInCFX - preStat.collateralStoragePointsInCFX;
+    }
+    console.log(`result ${JSON.stringify(result)}`)
+}
+
+function saveCSV() {
+    toCSV(resultPartial)
+}
+
 function toCSV(collateralArray){
-    let content = '\ufeffstatTime,nftContract,increaseContract,nft,increaseNft,storageCollateral(CFX),increaseCollateral(CFX)\n';
+    let content = '\ufeffstatTime,nftContract,increaseContract,nft,increaseNft,storageCollateral(CFX),increaseCollateral(CFX),storageCollateralCFX(CFX),increaseStorageCFX(CFX),storageCollateralPoints(CFX),increaseStoragePoints(CFX)\n';
     collateralArray.forEach(item => {
-        content += `${item.statTime},${item.nftContract},${item.increaseContract},${item.nft},${item.increaseNft},${item.collateralStorage},${item.increaseStorage}\n`;
+        content += `${item.statTime},${item.nftContract},${item.increaseContract},${item.nft},${item.increaseNft},${item.collateralStorageOverall},${item.increaseStorageOverall},${item.collateralStorageCFX},${item.increaseStorageCFX},${item.collateralStoragePointsInCFX},${item.increaseStoragePointsInCFX}\n`;
     });
     fs.writeFile('./collateralStat.csv', content, (e) => console.error(`toCSV`, e));
     console.log(`done!`);
@@ -203,5 +272,6 @@ if (require.main === module) {
     const args = process.argv.slice(2)
     StatApp.networkId = Number(args[0]);
     // run().then();
-    statNFTByMonthly().then();
+    saveCSV();
+    // statNFTByMonthly().then();
 }

@@ -124,109 +124,41 @@ export class NFTMintHandler extends StatHandler {
         });
     }
 
-    public async collect() {
-        const trigger = this.bizStatInfo.trigger();
-        if (!trigger) return;
-
-        const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
-        const statEnd = latestEpoch.timestamp;
-        for (const i of lodash.range(this.statLatestDays)) {
-            const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
-            const total = await NFTMintStat.count({
-                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
-            });
-            if (!total) continue;
-
-            let skip = 0;
-            let pageSize = 10;
-            let curPage = 1;
-            do {
-                const statArray = await NFTMintStat.findAll({
-                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
-                    offset: skip, limit: pageSize, raw: true,
-                });
-                if (!statArray) break;
-
-                for (const statDay of statArray) {
-                    await this.doStat({bizId: statDay.bizId, statEnd, statDays: 7});
-                    if (statDays <= 3) {
-                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 3});
-                    }
-                    if (statDays <= 1) {
-                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 1});
-                    }
-                }
-                skip = (++curPage - 1) * pageSize;
-            } while (skip <= total);
-        }
-        await this.clear({model: NFTMintStat, statEnd, statDays: this.statLatestDays});
-    }
-
-    private async doStat({bizId, statEnd, statDays}) {
-        const statType = `${statDays}d`;
-        const statBegin = new Date(statEnd);
-        statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await NFTMintStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
-        if (stat !== null) return;
-
-        const sql = `select sum(nftAsset) as statNFTAsset,
-                            min(minEpoch) as statMinEpoch,
-                            max(maxEpoch) as statMaxEpoch
-                     from ${NFTMintStat.getTableName()}
-                     where statType = '1h'
-                       and bizId = ?
-                       and statTime >= ?
-                       and statTime < ?`;
-        const statNDaysInfo = await NFTMintStat.sequelize.query(sql,
-            {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
-        ).then(arr => {
-            const item = arr[0];
-            return {
-                bizId,
-                statType,
-                statTime: statBegin,
-                nftAsset: item['statNFTAsset'] || 0,
-                minEpoch: item['statMinEpoch'] || -1,
-                maxEpoch: item['statMaxEpoch'] || -1,
-            };
-        });
-
-        await NFTMintStat.sequelize.transaction(async (dbTx) => {
-            if (statDays === this.statLatestDays) {
-                await NFTMintStat.destroy({
-                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
-                });
-            }
-            await NFTMintStat.destroy({where: {statType, bizId}, transaction: dbTx});
-            await NFTMintStat.create(statNDaysInfo, {transaction: dbTx});
-        });
-    }
+    public async collect() {}
 
     public async cache() {
-        const queryOptions: any = {
-            attributes: ['bizId', 'nftAsset', 'minEpoch', 'maxEpoch'],
-            order: [['nftAsset', 'DESC']],
-            offset: 0,
-            limit: 10,
-            raw: true,
-            // logging: msg => console.log(`listMinerStat: ${msg}`),
-        };
+        const table = NFTMintStat.getTableName()
+        const sql = `
+            select tmp.* from
+            (
+                select tmp1.bizId,
+                       sum(nftAsset) as nftAsset,
+                       min(minEpoch) as minEpoch,
+                       max(maxEpoch) as maxEpoch 
+                from (select distinct(bizId) as bizId from ${table} where statType = '1h' and statTime >= :beginTime and statTime < :endTime) tmp1
+                left join ${table} tmp2 on tmp1.bizId = tmp2.bizId
+                where tmp2.statType = '1h' and tmp2.statTime >= :beginTime and tmp2.statTime < :endTime
+                group by tmp1.bizId
+            ) tmp 
+            order by tmp.nftAsset desc limit 10
+        `;
 
-        const statTypeArray = ['1d', '3d', '7d'];
-        for(const statType of statTypeArray){
-            queryOptions.where = {statType};
-            let list = await NFTMintStat.findAll(queryOptions);
+        const statDaysArray = [1, 3, 7];
+        const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
+        const endTime = latestEpoch.timestamp;
+        for (const statDays of statDaysArray) {
+            const beginTime = new Date(endTime);
+            beginTime.setDate(endTime.getDate() - statDays);
+            let list = await NFTMintStat.sequelize.query(sql, {type: QueryTypes.SELECT, replacements: {beginTime, endTime}});
 
             const {maxTime} = await this.getStatSpan(list);
+            list = await this.convertToAddress(list)
 
-            list = await this.convertToAddress(list);
             list.forEach(item => {
                 delete item['minEpoch'];
                 delete item['maxEpoch'];
             });
-
-            this.cacheStatInfo[statType] = {maxTime, list};
+            this.cacheStatInfo[`${statDays}d`] = {maxTime, list}
         }
     }
 }
