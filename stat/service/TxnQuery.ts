@@ -26,7 +26,11 @@ export class TxnQuery{
     }
     static loadCache(path: string, expirationSeconds: number) {
         try {
-            const content = fs.readFileSync(path)
+            if (!fs.existsSync(path)) {
+                console.log(`file not exist ${path}`)
+                return undefined
+            }
+            const content = fs.readFileSync(path);
             const str = content.toString()
             const json = JSON.parse(str)
             if (expirationSeconds > 0) {
@@ -53,7 +57,7 @@ export class TxnQuery{
             /*return {code: 610, message: `unknown span [${span}], support ${Object.keys(def).join(',')}`}*/
             throw new Errors.ParameterError(`unknown span [${span}], support ${Object.keys(def).join(',')}`);
         }
-        let cachePath = `${this.cacheFilePrefix}.${span}.json`;
+        let cachePath = `${process.cwd().length == 1 ? "/"+__dirname.split("/")[1] : process.cwd()}/${this.cacheFilePrefix}.${span}.json`;
         const cachedData = this.loadCache(cachePath, forceUseCache ? 0 : 3600 * cacheTTL_hour)
         if (cachedData) {
             return cachedData;
