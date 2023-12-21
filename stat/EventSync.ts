@@ -195,6 +195,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
     async function repeat() {
         return repeat0().catch(err=>{
             console.log(` repeat error : `, err)
+            setTimeout(repeat, 5_000)
         })
     }
     async function repeat0() {

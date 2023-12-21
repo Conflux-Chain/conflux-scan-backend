@@ -507,8 +507,9 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     await updateMaxDbEpoch()
     async function repeat() {
         return repeat0().catch(err=>{
+            // DB failure, maybe.
             console.log(` repeat error : `, err)
-            return new Promise(r=>setTimeout(r, 10_000))
+            setTimeout(repeat, 10_000)
         })
     }
     async function repeat0() {
