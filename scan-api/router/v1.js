@@ -7,6 +7,7 @@ const jsonrpc = require('./jsonrpc');
 const {StatApp} = require("../../stat/dist/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
 const moment = require("moment/moment");
+const {patchFlowError} = require("./MyJsonRpcFlow");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -54,6 +55,7 @@ router.use(async (ctx, next) => {
   try {
     await next();
     if(ctx.type === 'application/octet-stream') return;
+    patchFlowError(ctx);
     if(ctx.body?.code){
       throw lodash.assign(new Error(), {status: ctx.status}, lodash.pick(ctx.body, ['code', 'message']));
     }

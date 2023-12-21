@@ -6,7 +6,7 @@ module.exports = {
   BizError: LogicError.extend({ code: 50100, name: 'BizError' }),
   ParameterError: LogicError.extend({ code: 50101, name: 'ParameterError' }),
   PermissionsError: LogicError.extend({ code: 50102, name: 'PermissionsError' }),
-  ApiBusyError: LogicError.extend({ code: 50103, name: 'ApiBusyError' }),
+  ApiBusyError: LogicError.extend({ code: 50103, name: 'SystemBusyError' }),
 
   ResponseDataParsingError: LogicError.extend({ code: 50202, name: 'ResponseDataParsingError'}),
 
