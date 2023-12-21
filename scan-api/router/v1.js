@@ -57,7 +57,7 @@ router.use(async (ctx, next) => {
     if(ctx.type === 'application/octet-stream') return;
     patchFlowError(ctx);
     if(ctx.body?.code){
-      throw lodash.assign(new Error(), {status: ctx.status}, lodash.pick(ctx.body, ['code', 'message', 'detail']));
+      throw lodash.assign(new Error(), {status: ctx.status}, lodash.pick(ctx.body, ['code', 'message']));
     }
     ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
         { code: 0, message: '', data: ctx.body };
@@ -66,8 +66,8 @@ router.use(async (ctx, next) => {
       e = new error.BizError(e.message);
     }
     ctx.status = e.status;
-    ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData, detail: e.detail } :
-        { code: e.code, message: e.message, data: e.partialData, detail: e.detail };
+    ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
+        { code: e.code, message: e.message, data: e.partialData };
   }
 });
 router.get('/', function (ctx) {
