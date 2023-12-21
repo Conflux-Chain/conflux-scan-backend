@@ -98,7 +98,7 @@ export class TxnQuery{
             row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
         })
         let result = {/*code: 0,*/ totalGas: sumGas, list, createdAt: new Date().toISOString()};
-        fs.writeFileSync(cachePath, JSON.stringify(result, null, 4))
+        fs.writeFileSync(cachePath, JSON.stringify(result, null, 4), {flag: 'w'})
         return result
     }
 
