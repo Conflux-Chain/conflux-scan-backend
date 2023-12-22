@@ -469,6 +469,7 @@ export class PosSync {
             }
         })
         async function findRoot(position: number) {
+            const originPos = position;
             const status = await that.cfx.pos.getStatus()
             do {
                 const reward = await that.cfx.pos.getRewardsByEpoch(position)
@@ -480,7 +481,7 @@ export class PosSync {
                 position ++;
             } while (position <= status.epoch)
             console.log(`reward position not changed ${position}, max epoch ${status.epoch}`);
-            return position
+            return originPos
         }
         async function repeat() {
             try {
