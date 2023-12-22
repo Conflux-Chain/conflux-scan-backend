@@ -248,11 +248,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         })
     })
 
-    function updateTopGasUsed(forceUseCache = false) {
+    async function updateTopGasUsed(forceUseCache = false) {
+        // execute sql sequentially in order to reduce db load
+        const d7 = await TxnQuery.topByGasUsed({span: '7d', forceUseCache})
+        const d3 = await TxnQuery.topByGasUsed({span: '3d', forceUseCache})
+        const h24 = await TxnQuery.topByGasUsed({span: '24h', forceUseCache})
         return {
-            '7d': TxnQuery.topByGasUsed({span: '7d', forceUseCache}),
-            '3d': TxnQuery.topByGasUsed({span: '3d', forceUseCache}),
-            '24h': TxnQuery.topByGasUsed({span: '24h', forceUseCache}),
+            '7d': d7,
+            '3d': d3,
+            '24h': h24,
         };
     }
     let topGasUsedCache = updateTopGasUsed(true);
@@ -263,7 +267,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeEnumParamIfPresent(ctx.request.query, 'span', ['24h', '3d', '7d']);
 
         const {span} = ctx.request.query;
-        ctx.body = await topGasUsedCache[span||'24h'];
+        ctx.body = (await topGasUsedCache)[span||'24h'];
     })
 
     router.get('/top-cfx-holder', async (ctx)=>{

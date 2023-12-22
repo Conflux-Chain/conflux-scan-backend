@@ -187,7 +187,12 @@ export async function syncFinalizeGap() {
 }
 export async function scheduleSyncPosGap() {
     async function repeat() {
-        const have = await syncFinalizeGap()
+        let have: number = 0;
+        try {
+            have = await syncFinalizeGap();
+        } catch (e) {
+            console.log(`${__filename} syncFinalizeGap error `, e)
+        }
         setTimeout(repeat, have ? 0 : 50_000)
     }
     repeat().then()
