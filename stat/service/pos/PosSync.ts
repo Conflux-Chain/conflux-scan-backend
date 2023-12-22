@@ -487,9 +487,9 @@ export class PosSync {
             try {
                 const inc = await that.syncRewardByEpoch(nextEpoch)
                 if (inc === -1) {
+                    await sleep(5_000)
                     // no reward ? check max epoch and jump if necessary
                     nextEpoch = await findRoot(nextEpoch)
-                    await sleep(5_000)
                 } else {
                     nextEpoch += inc
                 }

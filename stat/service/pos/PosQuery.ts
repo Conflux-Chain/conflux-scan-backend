@@ -42,7 +42,8 @@ export class PosQuery {
     }
     async posInfoReal() {
         const cachePath = resolveDockerPath(PATH_POS_INFO)
-        const cachedData = loadCache(cachePath, 10)
+        // if cached data is not set, then load cache without checking expiration
+        const cachedData = loadCache(cachePath, this.cachedData ? 10 : 0)
         if (cachedData) {
             return cachedData
         }
