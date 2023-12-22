@@ -480,7 +480,7 @@ export class PosSync {
                 console.log(`no reward at ${position}`, reward)
                 position ++;
             } while (position <= status.epoch)
-            console.log(`reward position not changed ${position}, max epoch ${status.epoch}`);
+            console.log(`reward position not changed ${originPos}, max epoch ${status.epoch}`);
             return originPos
         }
         async function repeat() {
