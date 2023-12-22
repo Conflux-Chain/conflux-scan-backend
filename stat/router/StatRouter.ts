@@ -267,7 +267,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeEnumParamIfPresent(ctx.request.query, 'span', ['24h', '3d', '7d']);
 
         const {span} = ctx.request.query;
-        ctx.body = await topGasUsedCache[span||'24h'];
+        ctx.body = (await topGasUsedCache)[span||'24h'];
     })
 
     router.get('/top-cfx-holder', async (ctx)=>{
