@@ -7,7 +7,6 @@ import {DailyTransaction} from "../model/DailyTransaction";
 import {FullTransaction} from "../model/FullBlock";
 import {Errors} from "./common/LogicError";
 import {Epoch} from "../model/Epoch";
-import * as fs from "fs";
 import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./CacheService";
 
 export class TxnQuery{

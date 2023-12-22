@@ -1,4 +1,4 @@
-import fs from "fs";
+import * as fs from "fs";
 
 export const PATH_POS_INFO = "./cache/pos_info.json"
 export const PATH_TOP_BY_GAS = "./cache/topByGasUsed"
