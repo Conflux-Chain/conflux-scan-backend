@@ -30,8 +30,20 @@ export class PosRewardRank extends Model<IPosRewardRank> implements IPosRewardRa
         })
     }
 }
+let lockBuildPosRewardRank = false;
 export async function buildPosRewardRank() {
-    const day30list = await queryPosRewardDayN(30)
+    if (lockBuildPosRewardRank) {
+        console.log(`lockBuildPosRewardRank is locked. skip.`)
+        return
+    }
+    try {
+        return buildPosRewardRankRaw()
+    } finally {
+        lockBuildPosRewardRank = false;
+    }
+}
+export async function buildPosRewardRankRaw() {
+    const day30list = await queryPosRewardDayN(30);
     const day14list = await queryPosRewardDayN(14)
     const day7list = await queryPosRewardDayN(7)
     const day1list = await queryPosRewardDayN(1)

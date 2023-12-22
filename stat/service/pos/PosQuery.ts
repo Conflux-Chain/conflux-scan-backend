@@ -15,6 +15,7 @@ import {Errors} from "../common/LogicError";
 const lodash = require('lodash')
 import {buildSqlLog, } from "../../../common/tool.js";
 import {StatApp} from "../../StatApp";
+import {loadCache, PATH_POS_INFO, resolveDockerPath, writeCache} from "../CacheService";
 // noinspection CommaExpressionJS
 export class PosQuery {
     private cfx: Conflux;
@@ -40,6 +41,11 @@ export class PosQuery {
         return this.cachedData || {}
     }
     async posInfoReal() {
+        const cachePath = resolveDockerPath(PATH_POS_INFO)
+        const cachedData = loadCache(cachePath, 10)
+        if (cachedData) {
+            return cachedData
+        }
         const [st, posAccountCount, posEconomics, totalPosRewardDrip, {apy, totalCirculating}] = await Promise.all([
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx.pos.getStatus(),
@@ -52,7 +58,7 @@ export class PosQuery {
                 return []
             }
             throw new Errors.BizError(`posInfo error: ${err.message}`);
-        })
+        });
         if (st === undefined) {
             return {
                 totalPosRewardDrip,
@@ -77,7 +83,7 @@ export class PosQuery {
                 return {epoch: 0, timestamp: new Date((blk?.timestamp || 0) * 1000)}
             })
         ]).then(arr=>arr.map(e=>e?.timestamp.getTime() || 0))
-        return {
+        const result = {
             totalPosRewardDrip,
             latestCommitted: (st.latestCommitted || '0').toString(),
             latestVoted: (st.latestVoted || st.latestCommitted || '0').toString(),
@@ -87,10 +93,12 @@ export class PosQuery {
             distributablePosInterest: posEconomics.distributablePosInterest.toString(),
             lastDistributeBlock: posEconomics.lastDistributeBlock.toString(),
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
-            latestVotedTime,pivotDecisionTime,lastDistributeBlockTime,
+            latestVotedTime, pivotDecisionTime, lastDistributeBlockTime,
             apy, totalCirculating,
             updatedAt: new Date().toISOString(),
-        }
+        };
+        writeCache(cachePath, result)
+        return result
     }
     async calculateApy() {
         // https://forum.conflux.fun/t/conflux-pos/13395

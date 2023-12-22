@@ -8,9 +8,10 @@ import {FullTransaction} from "../model/FullBlock";
 import {Errors} from "./common/LogicError";
 import {Epoch} from "../model/Epoch";
 import * as fs from "fs";
+import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./CacheService";
 
 export class TxnQuery{
-    static cacheFilePrefix = "./cache/topByGasUsed"
+    static cacheFilePrefix = PATH_TOP_BY_GAS;
     static async gasUsedSum(days:number) : Promise<{txCount, gasFee}> {
         const sum = await DailyTransaction.findOne({
             attributes: [
@@ -24,29 +25,7 @@ export class TxnQuery{
         })
         return sum;
     }
-    static loadCache(path: string, expirationSeconds: number) {
-        try {
-            if (!fs.existsSync(path)) {
-                console.log(`file not exist ${path}`)
-                return undefined
-            }
-            const content = fs.readFileSync(path);
-            const str = content.toString()
-            const json = JSON.parse(str)
-            if (expirationSeconds > 0) {
-                const createdAt = new Date(json['createdAt']);
-                if (createdAt.getTime() + expirationSeconds * 1000 < Date.now()) {
-                    console.log(`${path} expired`)
-                    return undefined
-                }
-            }
-            console.log(`hit cache ${path}`)
-            return json
-        } catch (e) {
-            console.log(`failed to load cache at ${path} `, e)
-        }
-        return undefined
-    }
+
     static async topByGasUsed({span = '24h', forceUseCache = false}) {
         const emptyResult = {/*code: 0,*/ totalGas: 0, list:[]};
         const def = {'24h': -1, '3d': -3, '7d': -7}
@@ -57,8 +36,8 @@ export class TxnQuery{
             /*return {code: 610, message: `unknown span [${span}], support ${Object.keys(def).join(',')}`}*/
             throw new Errors.ParameterError(`unknown span [${span}], support ${Object.keys(def).join(',')}`);
         }
-        let cachePath = `${process.cwd().length == 1 ? "/"+__dirname.split("/")[1] : process.cwd()}/${this.cacheFilePrefix}.${span}.json`;
-        const cachedData = this.loadCache(cachePath, forceUseCache ? 0 : 3600 * cacheTTL_hour)
+        let cachePath = resolveDockerPath(`${this.cacheFilePrefix}.${span}.json`);
+        const cachedData = loadCache(cachePath, forceUseCache ? 0 : 3600 * cacheTTL_hour)
         if (cachedData) {
             return cachedData;
         }
@@ -101,8 +80,8 @@ export class TxnQuery{
             row['hex'] = `0x${hexMap.get(row['fromId'])}`
             row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
         })
-        let result = {/*code: 0,*/ totalGas: sumGas, list, createdAt: new Date().toISOString()};
-        fs.writeFileSync(cachePath, JSON.stringify(result, null, 4), {flag: 'w'})
+        let result = {/*code: 0,*/ totalGas: sumGas, list};
+        writeCache(cachePath, result)
         return result
     }
 

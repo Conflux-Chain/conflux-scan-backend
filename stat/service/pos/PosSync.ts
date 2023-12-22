@@ -468,30 +468,30 @@ export class PosSync {
                 return res.epoch + 1
             }
         })
-        async function findRoot() {
-            let position = 0;
+        async function findRoot(position: number) {
+            const status = await that.cfx.pos.getStatus()
             do {
                 const reward = await that.cfx.pos.getRewardsByEpoch(position)
                 if (reward?.accountRewards?.length) {
-                    console.log(` has reward at ${position}`, reward)
-                    nextEpoch = position
-                    break;
+                    console.log(` has reward at ${position}, length ${reward?.accountRewards?.length}`)
+                    return position
                 }
                 console.log(`no reward at ${position}`, reward)
                 position ++;
-                if (position > 100) {
-                    break;
-                }
-                await sleep(1_000)
-            } while (true)
+            } while (position <= status.epoch)
+            console.log(`reward position not changed ${position}, max epoch ${status.epoch}`);
+            return position
         }
         async function repeat() {
             try {
-                if (nextEpoch === 0) {
-                    await findRoot();
-                }
                 const inc = await that.syncRewardByEpoch(nextEpoch)
-                nextEpoch += inc
+                if (inc === -1) {
+                    // no reward ? check max epoch and jump if necessary
+                    nextEpoch = await findRoot(nextEpoch)
+                    await sleep(5_000)
+                } else {
+                    nextEpoch += inc
+                }
             } catch (e) {
                 console.log(` error sync pos reward at epoch ${nextEpoch}:`, e)
                 await sleep(5_000)
@@ -512,25 +512,20 @@ export class PosSync {
         let rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
         if (!rewardInfo) {
             console.log(` pos reward is ${rewardInfo} at epoch ${epoch}`);
-            if (epoch >= 7760 && epoch <= 7821 && this.cfx.networkId == 1) {
-                console.log(`known rpc node bug on testnet, skip`)
-                return 1;
-            }
-            const rewardInfoNext = await this.cfx.pos.getRewardsByEpoch(epoch+1);
-            if (rewardInfoNext) {
-                console.log(`skip to next`)
-                return 1;
-            }
-            await sleep(10_000)
-            return 0
+            // if (epoch >= 7760 && epoch <= 7821 && this.cfx.networkId == 1) {
+            //     console.log(`known rpc node bug on testnet, skip`)
+            //     return 1;
+            // }
+            // const rewardInfoNext = await this.cfx.pos.getRewardsByEpoch(epoch+1);
+            // if (rewardInfoNext) {
+            //     console.log(`skip to next`)
+            //     return 1;
+            // }
+            // await sleep(10_000)
+            // return 0
+            return -1;
         }
-        const powBlock = await this.cfx.getBlockByHash(rewardInfo.powEpochHash).catch(err=>{
-            console.log(` sync pos reward at epoch ${epoch}, `, err)
-            return null;
-        });
-        if (powBlock === null) {
-            return 0;
-        }
+        const powBlock = await this.cfx.getBlockByHash(rewardInfo.powEpochHash);
         const powDate = new Date(powBlock.timestamp * 1000);
         const accountRewards = rewardInfo.accountRewards;
         const posAddrArr = accountRewards.map(r=>r.posAddress)
