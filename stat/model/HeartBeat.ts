@@ -24,7 +24,7 @@ export const KEY_STAT = "stat_container"
 export const KEY_OPEN_API = "open_api_container"
 
 // each app tracks its own last time
-let lastTime = 0
+const lastTimeMap = new Map<string, number>()
 const minTimeSpan = 30_000
 
 export function repeatHeartBeat(key: string) {
@@ -32,12 +32,13 @@ export function repeatHeartBeat(key: string) {
 }
 
 export async function doHeartBeat(key:string) {
+    const lastTime = lastTimeMap.get(key) || 0
     const now = Date.now();
     if (now - lastTime < minTimeSpan) {
         return
     }
     return HeartBeatBean.upsert({key, updatedAt: new Date()}).then(res=>{
-        lastTime = now;
+        lastTimeMap.set(key, now)
         return res
     })
 }
