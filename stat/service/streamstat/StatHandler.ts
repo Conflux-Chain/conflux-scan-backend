@@ -209,13 +209,16 @@ export abstract class StatHandler {
 
     protected async getStatSpan(list: any[]) {
         const minEpochNumber = list.map(item => item.minEpoch).sort()[0] || -1;
-        const maxEpochNumber = list.map(item => item.maxEpoch).sort().reverse()[0] || -1;
+        let maxEpochNumber = list.map(item => item.maxEpoch).sort().reverse()[0] || -1;
         const minEpoch = await Epoch.findOne({where: {epoch: minEpochNumber}});
-        const maxEpoch = await Epoch.findOne({where: {epoch: maxEpochNumber}});
+        let maxEpoch = await Epoch.findOne({where: {epoch: maxEpochNumber}});
+        if(!maxEpoch) {
+            maxEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
+            maxEpochNumber = maxEpoch.epoch
+        }
         const minTime = minEpoch?.timestamp || null;
         const maxTime = maxEpoch?.timestamp || null;
         const statSpan = {minEpochNumber, maxEpochNumber, minTime, maxTime};
-        // console.log(`[type=${this.bizAlias()}]getStatSpan statSpan:${JSON.stringify(statSpan)}`);
         return statSpan;
     }
 

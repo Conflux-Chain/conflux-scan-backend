@@ -8,8 +8,6 @@ import {StatBucket} from "../StatBucket";
 import {Epoch} from "../../../model/Epoch";
 import {CONST} from "../../common/constant"
 
-const lodash = require('lodash');
-
 export class TokenTransferHandler extends StatHandler {
     protected app: any;
     protected statLatestDays: number;
@@ -113,124 +111,55 @@ export class TokenTransferHandler extends StatHandler {
         });
     }
 
-    public async collect() {
-        const trigger = this.bizStatInfo.trigger();
-        if (!trigger) return;
-
-        const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
-        const statEnd = latestEpoch.timestamp;
-        for (const i of lodash.range(this.statLatestDays)) {
-            const statDays = this.statLatestDays - i;
-            const {rangeBegin, rangeEnd} = this.getStatRange({statEnd, statDays});
-            const total = await TokenTransferStat.count({
-                where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]}
-            });
-            if (!total) continue;
-
-            let skip = 0;
-            let pageSize = 10;
-            let curPage = 1;
-            do {
-                const statArray = await TokenTransferStat.findAll({
-                    where: {statType: '1h', [Op.and]: [{statTime: {[Op.gte]: rangeBegin}}, {statTime: {[Op.lt]: rangeEnd}}]},
-                    offset: skip, limit: pageSize, raw: true,
-                });
-                if (!statArray) break;
-
-                for (const statDay of statArray) {
-                    await this.doStat({bizId: statDay.bizId, statEnd, statDays: 7});
-                    if (statDays <= 3) {
-                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 3});
-                    }
-                    if (statDays <= 1) {
-                        await this.doStat({bizId: statDay.bizId, statEnd, statDays: 1});
-                    }
-                }
-                skip = (++curPage - 1) * pageSize;
-            } while (skip <= total);
-        }
-        await this.clear({model: TokenTransferStat, statEnd, statDays: this.statLatestDays});
-    }
-
-    private async doStat({bizId, statEnd, statDays}) {
-        const statType = `${statDays}d`;
-        const statBegin = new Date(statEnd);
-        statBegin.setDate(statEnd.getDate() - statDays);
-        const stat = await TokenTransferStat.findOne({where: {statType, bizId, statTime: statBegin}, raw: true});
-        if (stat !== null) return;
-
-        const sql = `select sum(transferCntr) as statTransferCntr,
-                            min(minEpoch) as statMinEpoch,
-                            max(maxEpoch) as statMaxEpoch
-                     from ${TokenTransferStat.getTableName()}
-                     where statType = '1h'
-                       and bizId = ?
-                       and statTime >= ?
-                       and statTime < ?`;
-        const statNDaysInfo = await TokenTransferStat.sequelize.query(sql,
-            {type: QueryTypes.SELECT, replacements: [bizId, statBegin, statEnd]}
-        ).then(arr => {
-            const item = arr[0];
-            return {
-                bizId,
-                statType,
-                statTime: statBegin,
-                transferCntr: item['statTransferCntr'] || 0,
-                minEpoch: item['statMinEpoch'] || -1,
-                maxEpoch: item['statMaxEpoch'] || -1,
-            };
-        });
-
-        await TokenTransferStat.sequelize.transaction(async (dbTx) => {
-            if (statDays === this.statLatestDays) {
-                await TokenTransferStat.destroy({
-                    where: {statType: '1h', bizId, statTime: {[Op.lt]: statBegin}}, transaction: dbTx
-                });
-            }
-            await TokenTransferStat.destroy({where: {statType, bizId}, transaction: dbTx});
-            await TokenTransferStat.create(statNDaysInfo, {transaction: dbTx});
-        });
-    }
+    public async collect() {}
 
     public async cache() {
         const {
             app: { service },
         } = this;
 
-        const queryOptions: any = {
-            attributes: ['bizId', ['transferCntr', 'value'], 'minEpoch', 'maxEpoch'],
-            order: [['transferCntr', 'DESC']],
-            offset: 0,
-            limit: 10,
-            raw: true,
-            // logging: msg => console.log(`listTokenTransferStat: ${msg}`),
-        };
+        const table = TokenTransferStat.getTableName()
+        const sql = `
+            select tmp.* from
+            (
+                select tmp1.bizId,
+                       sum(transferCntr) as transferCntr,
+                       min(minEpoch) as minEpoch,
+                       max(maxEpoch) as maxEpoch 
+                from (select distinct(bizId) as bizId from ${table} where statType = '1h' and statTime >= :beginTime and statTime < :endTime) tmp1
+                left join ${table} tmp2 on tmp1.bizId = tmp2.bizId
+                where tmp2.statType = '1h' and tmp2.statTime >= :beginTime and tmp2.statTime < :endTime
+                group by tmp1.bizId
+            ) tmp 
+            order by tmp.transferCntr desc limit 10
+        `;
 
-        const statTypeArray = ['1d', '3d', '7d'];
-        const txTypeArray = [CONST.TX_TYPE.OUT, CONST.TX_TYPE.IN, CONST.TX_TYPE.ALL];
-        for(const statType of statTypeArray) {
-            queryOptions.where = {statType};
-            let list = await TokenTransferStat.findAll(queryOptions);
+        const statDaysArray = [1, 3, 7];
+        const latestEpoch = await Epoch.findOne({order: [['epoch', 'desc']], limit: 1})
+        const endTime = latestEpoch.timestamp;
+        for (const statDays of statDaysArray) {
+            const beginTime = new Date(endTime);
+            beginTime.setDate(endTime.getDate() - statDays);
+            let list = await TokenTransferStat.sequelize.query(sql, {type: QueryTypes.SELECT, replacements: {beginTime, endTime}});
 
             const {maxTime} = await this.getStatSpan(list);
+            list = await this.convertToAddress(list)
 
-            list = await this.convertToAddress(list);
             list.forEach(item => {
                 delete item['minEpoch'];
                 delete item['maxEpoch'];
             });
+            this.cacheStatInfo[`${statDays}d`] = {maxTime, list}
 
-            this.cacheStatInfo[statType] = {maxTime, list};
-
+            const txTypeArray = [CONST.TX_TYPE.OUT, CONST.TX_TYPE.IN, CONST.TX_TYPE.ALL];
             for (const txType of txTypeArray) {
-                const statDays = parseInt(statType[0]);
                 let statTxType = 'participants';
                 if (txType === CONST.TX_TYPE.OUT) statTxType = 'senders';
                 if (txType === CONST.TX_TYPE.IN) statTxType = 'receivers';
                 const rankInfo = await service.rankService.rankTokenUniqueAddr({day: statDays, which: statTxType});
                 const maxTime = rankInfo.maxTimeStart;
                 const rankList = rankInfo.list.map(item => ({address: item.base32address, value: item.valueN}));
-                this.cacheStatInfo[`uniqueAddr-${statType}-${txType}`] = {maxTime, list: rankList};
+                this.cacheStatInfo[`uniqueAddr-${statDays}d-${txType}`] = {maxTime, list: rankList};
             }
         }
     }
