@@ -11,7 +11,7 @@ const compilerRpc = proxy[Object.keys(proxy)[0]];
 setInterval(async ()=>{
   try {
     await superagent.get(compilerRpc)
-    await HeartBeatBean.upsert({key: `${KEY_COMPILER}_${config.machine}`, updatedAt: new Date()})
+    await doHeartBeat(`${KEY_COMPILER}_${config.machine}`)
   } catch (e) {
     console.log(`failed to call compiler rpc ${compilerRpc}`, e)
   }
