@@ -859,6 +859,11 @@ export class EpochSync extends SyncBase{
                 return traceArray;
             }
 
+            // add check
+            if(block.epochNumber !== epochNumber || blockTrace.epochNumber !== epochNumber) {
+                throw new Error(`[epoch=${epochNumber}]mismatch between block and blockTrace`);
+            }
+
             // assemble traces
             let txPosition = 0;
             // @ts-ignore

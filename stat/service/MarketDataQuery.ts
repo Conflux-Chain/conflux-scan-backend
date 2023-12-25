@@ -1,14 +1,30 @@
-/*const CONST = require('./common/constant');*/
 import {CONST} from "./common/constant"
 
 export class MarketDataQuery {
     protected app;
+    protected data;
 
     constructor(app: any) {
         this.app = app;
     }
 
-    public async getMarketData() {
+    public getMarketData() {
+        return this.data;
+    }
+
+    public async scheduleCache(delay = 1000 * 60 * 3) {
+        const that = this
+        async function repeat() {
+            await that.cache().catch(err => {
+                console.log(`MarketDataQuery fail: `, err);
+            });
+            setTimeout(repeat, delay);
+        }
+        repeat().then();
+        console.log(`Schedule MarketDataQuery service`);
+    }
+
+    protected async cache() {
         const {
             app: {cfx},
         } = this;
@@ -18,6 +34,6 @@ export class MarketDataQuery {
         const twoYearUnlockBalance = await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
         const fourYearUnlockBalance = await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
 
-        return {...supplyInfo, nullAddressBalance, twoYearUnlockBalance, fourYearUnlockBalance};
+        this.data = {...supplyInfo, nullAddressBalance, twoYearUnlockBalance, fourYearUnlockBalance};
     }
 }
