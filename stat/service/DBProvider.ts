@@ -86,6 +86,7 @@ import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 import {DailyPosRewardStat} from "../model/DailyPosReward";
 import {DailyPowRewardStat} from "../model/DailyPowReward";
 import {NameTag} from "../model/NameTag";
+import {HeartBeatBean} from "../model/HeartBeat";
 let conf
 export function createDB(config) {
     conf = config
@@ -216,6 +217,7 @@ export async function initPartialModel(sequelize) {
     MinerBlockStat.register(sequelize);
     Blacklist.register(sequelize);
     RateConfig.register(sequelize);
+    HeartBeatBean.register(sequelize);
     RateKey.register(sequelize);
     RateHit.register(sequelize)
     ESpaceHex40Map.register(sequelize)

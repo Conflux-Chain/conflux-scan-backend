@@ -7,6 +7,7 @@ import {TaskCfxTransfer} from "../CfxTransferSync";
 import {EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
+import {HeartBeatBean} from "../model/HeartBeat";
 async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a.epoch) {
     // model = TaskCfxTransfer;
     const max = await model.findOne({order: [['epoch', 'desc']]})
@@ -18,6 +19,24 @@ async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a
         (max.createdAt || max.timestamp).toISOString()}, biz ${biz}`)
     return write(inf, measurement, {epoch: epochField(max), createdAt: max.createdAt || max.timestamp, biz})
 }
+async function heartBeat(inf: InfluxDB) {
+    const arr = await HeartBeatBean.findAll()
+    const measureArr = arr.map(bean=>{
+        return {
+            measurement,
+            tags: { biz: bean.key, },
+            fields: {
+                epoch: bean.updatedAt.getTime(),
+                createdAt: bean.updatedAt.getTime(),
+                biz: bean.key
+            },
+        }
+    })
+
+    return inf.writePoints(measureArr).catch(err=>{
+        console.log(`heart beat want write:`, measureArr, err)
+    })
+}
 async function copyAll(inf: InfluxDB) {
     await copy(inf, TaskCfxTransfer, 'task-cfx-x', a=>a.cursor)
     await copy(inf, EpochTaskTokenTransfer, 'task-token-x', a=>a.cursor)
@@ -25,6 +44,7 @@ async function copyAll(inf: InfluxDB) {
     await copy(inf, FullBlock, 'sync-block-and-tx')
     // influx worker itself
     await write(inf, measurement, {epoch: Date.now(), createdAt: new Date(), biz: 'influx-worker'})
+    await heartBeat(inf)
     console.log(`---`)
 }
 class EpochMax {
