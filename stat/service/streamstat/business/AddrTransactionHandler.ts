@@ -159,14 +159,12 @@ export class AddrTransactionHandler extends StatHandler {
         for (const statDays of statDaysArray) {
             const beginTime = new Date(endTime);
             beginTime.setDate(endTime.getDate() - statDays);
-            const [sendCntrTopN, recvCntrTopN, gasFeeTopN] = await Promise.all([
-                await AddrTransactionStat.sequelize.query(sql.replace('_order', 'tmp.sendCntr'),
-                    {type: QueryTypes.SELECT, replacements: {beginTime, endTime}}),
-                await AddrTransactionStat.sequelize.query(sql.replace('_order', 'tmp.recvCntr'),
-                    {type: QueryTypes.SELECT, replacements: {beginTime, endTime}}),
-                await AddrTransactionStat.sequelize.query(sql.replace('_order', 'tmp.gasFee'),
+            const sendCntrTopN = await AddrTransactionStat.sequelize.query(sql.replace('_order', 'tmp.sendCntr'),
                     {type: QueryTypes.SELECT, replacements: {beginTime, endTime}})
-            ]);
+            const recvCntrTopN = await AddrTransactionStat.sequelize.query(sql.replace('_order', 'tmp.recvCntr'),
+                    {type: QueryTypes.SELECT, replacements: {beginTime, endTime}})
+            const gasFeeTopN = await AddrTransactionStat.sequelize.query(sql.replace('_order', 'tmp.gasFee'),
+                    {type: QueryTypes.SELECT, replacements: {beginTime, endTime}})
 
             const topN2D = [
                 {list: sendCntrTopN, type: CONST.TX_TYPE.OUT},
