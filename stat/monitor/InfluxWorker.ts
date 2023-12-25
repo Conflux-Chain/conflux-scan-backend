@@ -8,6 +8,8 @@ import {EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
 import {HeartBeatBean} from "../model/HeartBeat";
+import {KEY_1155data_EPOCH, KV} from "../model/KV";
+import {Op} from "sequelize";
 async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a.epoch) {
     // model = TaskCfxTransfer;
     const max = await model.findOne({order: [['epoch', 'desc']]})
@@ -37,6 +39,27 @@ async function heartBeat(inf: InfluxDB) {
         console.log(`heart beat want write:`, measureArr, err)
     })
 }
+async function epochCursorInConfig(inf: InfluxDB) {
+    const arr = await KV.findAll({where: {key:{[Op.in]: [
+        KEY_1155data_EPOCH,
+                ]}}})
+    const now = Date.now();
+    const measureArr = arr.map(bean=>{
+        return {
+            measurement,
+            tags: { biz: bean.key, },
+            fields: {
+                epoch: parseInt(bean.value),
+                createdAt: now,
+                biz: bean.key
+            },
+        }
+    })
+
+    return inf.writePoints(measureArr).catch(err=>{
+        console.log(`epochCursorInConfig want write:`, measureArr, err)
+    })
+}
 async function copyAll(inf: InfluxDB) {
     await copy(inf, TaskCfxTransfer, 'task-cfx-x', a=>a.cursor)
     await copy(inf, EpochTaskTokenTransfer, 'task-token-x', a=>a.cursor)
@@ -45,6 +68,7 @@ async function copyAll(inf: InfluxDB) {
     // influx worker itself
     await write(inf, measurement, {epoch: Date.now(), createdAt: new Date(), biz: 'influx-worker'})
     await heartBeat(inf)
+    await epochCursorInConfig(inf)
     console.log(`---`)
 }
 class EpochMax {
