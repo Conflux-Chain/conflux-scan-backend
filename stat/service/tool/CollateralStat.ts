@@ -63,7 +63,7 @@ async function run() {
 
         const epoch = await Epoch.findOne({
             where: {timestamp: {[Op.lt]: statTime}},
-            order: [['epoch', 'DESC']],
+            order: [['timestamp', 'DESC'], ['epoch', 'DESC']],
             logging: console.log
         });
         const epochNumber = epoch.epoch + 1;
