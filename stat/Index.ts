@@ -7,6 +7,7 @@ import {redisWrap} from "./service/RedisWrap";
 import {Server} from 'http'
 import {proxyPath} from "./router/DevopsRouter";
 import {saveApiLog} from "./monitor/ApiLog";
+import {KEY_STAT, repeatHeartBeat} from "./model/HeartBeat";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -43,6 +44,7 @@ export async function init() {
     const config = loadConfig('Prod')
     const statApp = new StatApp(config);
     await statApp.init();
+    repeatHeartBeat(`${KEY_STAT}_${config.serverTag}`)
     register(app, statApp)
     const server = app.listen(config.port || 8087);
     regProcessHook(server)

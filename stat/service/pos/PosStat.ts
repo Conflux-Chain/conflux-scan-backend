@@ -160,8 +160,8 @@ export async function syncFinalizeGap() {
     const {pivotDecision, createdAt, height} = posBlock
     const [powEpochAtThatTime, finalizedEpoch] = await Promise.all([
         Epoch.findOne({where: {
-            timestamp: {[Op.lte]: createdAt}, epoch: {[Op.between]:[pivotDecision, pivotDecision+2_000]},
-            }, order: [['epoch', 'desc']],
+            timestamp: {[Op.lte]: createdAt},
+            }, order: [['timestamp', 'desc'], ['epoch', 'desc']],
             // logging: console.log, benchmark: true
         }),
         Epoch.findOne({where:{epoch: pivotDecision}})

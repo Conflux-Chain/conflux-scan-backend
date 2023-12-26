@@ -27,6 +27,7 @@ import {
     rewind,
     sum1155amountByInfo, sumHistory1155amount
 } from "./Erc1155DataSync";
+import {doHeartBeat, KEY_1155_SYNC, KEY_CONTRACT_USER} from "../../model/HeartBeat";
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
@@ -281,7 +282,7 @@ async function setupSync1155data(cfx:Conflux) {
     return contract
 }
 let contract1155: Contract = null;
-async function repeatSync1155data(cfx:Conflux) {
+async function repeatSync1155data(cfx:Conflux, serverTag: string) {
     if (!contract1155) {
         contract1155 = await setupSync1155data(cfx).catch(e=>{
             console.log(`failed to setupSync1155data`, e)
@@ -289,28 +290,29 @@ async function repeatSync1155data(cfx:Conflux) {
         })
     }
     try {
+        await doHeartBeat(KEY_1155_SYNC+serverTag);
         let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
         const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err => {
             console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
             return -1
         })
         if (thatEpoch === -1) {
-            setTimeout(() => repeatSync1155data(cfx), 5_000)
+            setTimeout(() => repeatSync1155data(cfx, serverTag), 5_000)
         } else if (thatEpoch) {
             await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
             if (Number(thatEpoch) % 100 == 0) {
                 console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
             }
-            setTimeout(() => repeatSync1155data(cfx), 0)
+            setTimeout(() => repeatSync1155data(cfx, serverTag), 0)
         } else {
             console.log(` no Erc1155 data after epoch ${lastEpoch}`)
             // rewind cursor, to check records within then CONFIRM_GAP
             await rewind()
-            setTimeout(() => repeatSync1155data(cfx), 5_000)
+            setTimeout(() => repeatSync1155data(cfx, serverTag), 5_000)
         }
     } catch (e) {
         console.log(`repeatSync1155data error:`, e)
-        setTimeout(() => repeatSync1155data(cfx), 5_000)
+        setTimeout(() => repeatSync1155data(cfx, serverTag), 5_000)
     }
 }
 async function update20holder(hex40id:number, cfx:Conflux, name='') {
@@ -405,7 +407,7 @@ async function run() {
     const zeroHex = '0x'+'0'.padStart(40, '0')
     zeroAddrId = await makeIdV(zeroHex)
     if (limitStr === 'repeatSync1155data') {
-        await repeatSync1155data(cfx)
+        await repeatSync1155data(cfx, cfg.serverTag)
         return
     }
     const st = await cfx.getStatus()
@@ -413,10 +415,10 @@ async function run() {
     new BatchBalanceWatcher(cfx, null, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)
-    scheduleTransferUpdater();
+    scheduleTransferUpdater(cfg.serverTag);
     const useLegacyNftMint = await KV.getSwitch(KEY_NFT_FROM_MINT_TABLE)
     if (!useLegacyNftMint) {
-        repeatSync1155data(cfx).then()
+        repeatSync1155data(cfx, cfg.serverTag).then()
     }
     /*await initNftMetaWorkerContext(cfx, "useDbGateway");
     startMetaWorker("latest_mint").then();*/
@@ -424,6 +426,7 @@ async function run() {
     async function repeat() {
         let cnt: number = 0;
         try {
+            await doHeartBeat(KEY_CONTRACT_USER+cfg.serverTag)
             cnt = await processContractUser(cfx, limit);
         } catch (e) {
             console.log(`processContractUser error.`, e)

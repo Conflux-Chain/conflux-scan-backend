@@ -1,4 +1,4 @@
-import {Sequelize, QueryTypes} from "sequelize";
+import {QueryTypes, Sequelize} from "sequelize";
 import {Address, AddressInfo, ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch, EpochNftTransfer} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
@@ -9,19 +9,18 @@ import {Database} from "../config/StatConfig";
 import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
-import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
+import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
-import {
-    CfxBalance, createTokenBalanceTable, NFTBalance,
-} from "../model/Balance";
+import {CfxBalance, createTokenBalanceTable, NFTBalance,} from "../model/Balance";
 import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {
+    BakCfxTransfer,
     CfxTransfer,
+    CfxTransferRowMark,
     createAddressCfxTransferTable,
     DailyCfxTxn,
-    CfxTransferRowMark, BakCfxTransfer,
 } from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 // import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
@@ -30,7 +29,10 @@ import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
 import {Contract} from "../model/Contract";
 import {
-    BlockRowMark, createAddressTxTable, createFullBlockTable, createFullTransactionTable,
+    BlockRowMark,
+    createAddressTxTable,
+    createFullBlockTable,
+    createFullTransactionTable,
     FailedTx,
     TxnRowMark
 } from "../model/FullBlock";
@@ -51,8 +53,12 @@ import {
     PosAccountBlock,
     PosBlock,
     PosCommittee,
-    PosCommitteeNode, PosDailyStat, PosEpochRewardHash, PosGap,
-    PosRegister, PosReward,
+    PosCommitteeNode,
+    PosDailyStat,
+    PosEpochRewardHash,
+    PosGap,
+    PosRegister,
+    PosReward,
     PosTransaction
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
@@ -69,7 +75,7 @@ import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} f
 import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
-import {ApiLog, checkApiLogIpField} from "../monitor/ApiLog";
+import {ApiLog} from "../monitor/ApiLog";
 import {NFTOwnerCount, TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
 import {RateConfig, RateHit, RateKey} from "../router/RateLimiter";
@@ -86,6 +92,8 @@ import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 import {DailyPosRewardStat} from "../model/DailyPosReward";
 import {DailyPowRewardStat} from "../model/DailyPowReward";
 import {NameTag} from "../model/NameTag";
+import {HeartBeatBean} from "../model/HeartBeat";
+
 let conf
 export function createDB(config) {
     conf = config
@@ -216,6 +224,7 @@ export async function initPartialModel(sequelize) {
     MinerBlockStat.register(sequelize);
     Blacklist.register(sequelize);
     RateConfig.register(sequelize);
+    HeartBeatBean.register(sequelize);
     RateKey.register(sequelize);
     RateHit.register(sequelize)
     ESpaceHex40Map.register(sequelize)
@@ -290,10 +299,7 @@ export function createMySql(dbConf) {
     //     // },
     // });
 
-    const seq = new Sequelize(dbConf.instanceName, null, null, dbConf);
-    //autoAddPartition(seq).then()
-    setInterval(()=>autoAddPartition(seq), 600_000)
-    return seq
+    return new Sequelize(dbConf.instanceName, null, null, dbConf)
 }
 
 

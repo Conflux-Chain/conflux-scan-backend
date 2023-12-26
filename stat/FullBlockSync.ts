@@ -1,6 +1,6 @@
 import {redirectLog} from "./config/LoggerConfig";
 import {loadConfig, StatConfig} from "./config/StatConfig";
-import {createDB, initModel} from "./service/DBProvider";
+import {autoAddPartition, createDB, initModel} from "./service/DBProvider";
 import {Conflux, format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
@@ -30,6 +30,7 @@ export async function run() {
     } else {
         console.log(`skip sync db schema.`);
     }
+    setInterval(()=>autoAddPartition(seq), 600_000)
     await checkApiLogIpField()
 
     const svc = new FullBlockService(cfx)

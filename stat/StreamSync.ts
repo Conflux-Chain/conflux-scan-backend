@@ -20,22 +20,32 @@ import {StatApp} from "./StatApp";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
 import {CONST} from "./service/common/constant"
+import {doHeartBeat, KEY_TRANSFER_COUNT} from "./model/HeartBeat";
 
 const lodash = require('lodash');
 
 const waitUpdateTransferTokens = {
     hex40ids: new Set<number>()
 }
-export function scheduleTransferUpdater() {
-    function repeat() {
-        console.log(` updater works `)
-        const ids = waitUpdateTransferTokens.hex40ids
-        waitUpdateTransferTokens.hex40ids = new Set<number>()
-        updateTokenTransferCount(ids.keys(), true).then(()=>{
-            setTimeout(repeat, 60_000_0)
-        })
+export function scheduleTransferUpdater(serverTag:string) {
+    let counter = 0
+    async function repeat() {
+        counter ++;
+        console.log(` scheduleTransferUpdater works `)
+        await doHeartBeat(KEY_TRANSFER_COUNT+serverTag).then()
+        // 10s * 60 times = 10 minutes
+        if (counter % 60 === 1) {
+            try {
+                const ids = waitUpdateTransferTokens.hex40ids;
+                waitUpdateTransferTokens.hex40ids = new Set<number>();
+                await updateTokenTransferCount(ids.keys(), true);
+            } catch(e) {
+                console.log(`updateTokenTransferCount error `, e);
+            }
+        }
+        setTimeout(repeat, 10_000) // 10s
     }
-    repeat()
+    repeat().then()
 }
 const tableMap = {
     'ERC20': Erc20Transfer,
@@ -253,7 +263,7 @@ async function run() {
     PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     RedisWrap.connect(config.redis).then(()=>{
     }).then(()=>{
-        return scheduleTransferUpdater()
+        return scheduleTransferUpdater(config.serverTag)
     })
 }
 const args = process.argv.slice(2)

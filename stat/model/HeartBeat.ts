@@ -1,0 +1,47 @@
+import {DataTypes, Model, Transaction, Sequelize, UniqueConstraintError} from "sequelize";
+
+export interface IHeartBeatBean {
+    key: string; updatedAt: Date;
+}
+
+export class HeartBeatBean extends Model<IHeartBeatBean> implements IHeartBeatBean {
+    key: string; updatedAt: Date;
+    static register(sequelize:Sequelize) {
+        HeartBeatBean.init({
+            key: {type: DataTypes.CHAR(64), primaryKey: true},
+            updatedAt: {type: DataTypes.DATE},
+        }, {
+            sequelize,
+            tableName: "heart_beat",
+            createdAt: false,
+        });
+    }
+}
+
+export const KEY_COMPILER = "HB_compiler"
+export const KEY_SCAN_API = "HB_scan_api"
+export const KEY_STAT = "HB_stat"
+export const KEY_OPEN_API = "HB_open_api"
+export const KEY_1155_SYNC = "HB_sync1155"
+export const KEY_TRANSFER_COUNT = "HB_transfer_count"
+export const KEY_CONTRACT_USER = "HB_contract_user"
+
+// each app tracks its own last time
+const lastTimeMap = new Map<string, number>()
+const minTimeSpan = 30_000
+
+export function repeatHeartBeat(key: string) {
+    setInterval(()=>doHeartBeat(key), 10_000)
+}
+
+export async function doHeartBeat(key:string) {
+    const lastTime = lastTimeMap.get(key) || 0
+    const now = Date.now();
+    if (now - lastTime < minTimeSpan) {
+        return
+    }
+    return HeartBeatBean.upsert({key, updatedAt: new Date()}).then(res=>{
+        lastTimeMap.set(key, now)
+        return res
+    })
+}
