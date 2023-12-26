@@ -21,7 +21,10 @@ export class HeartBeatBean extends Model<IHeartBeatBean> implements IHeartBeatBe
 export const KEY_COMPILER = "compiler_container"
 export const KEY_SCAN_API = "scan_api_container"
 export const KEY_STAT = "stat_container"
-export const KEY_OPEN_API = "open_api_container"
+export const KEY_OPEN_API = "open_api"
+export const KEY_1155_SYNC = "sync1155"
+export const KEY_TRANSFER_COUNT = "transfer_count"
+export const KEY_CONTRACT_USER = "contract_user"
 
 // each app tracks its own last time
 const lastTimeMap = new Map<string, number>()

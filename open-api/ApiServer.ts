@@ -40,6 +40,7 @@ import {initRateLimiters} from "../stat/router/RateLimiter";
 import {checkTest} from "./test/TestCase";
 import {DailyNFTStatQuery} from "../stat/service/DailyNFTStatQuery";
 import {DailyRewardStatQuery} from "../stat/service/DailyRewardStatQuery";
+import {KEY_OPEN_API, repeatHeartBeat} from "../stat/model/HeartBeat";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -215,6 +216,7 @@ export function initApiServer() {
     }).then(()=>{
         return checkTest();
     }).then(()=>{
+        repeatHeartBeat(KEY_OPEN_API+apiServer.config.serverTag+port)
         app.listen(port)
         console.log(`api server listen at ${port}`)
     })
