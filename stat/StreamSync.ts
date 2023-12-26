@@ -28,19 +28,24 @@ const waitUpdateTransferTokens = {
     hex40ids: new Set<number>()
 }
 export function scheduleTransferUpdater(serverTag:string) {
-    function repeat() {
-        console.log(` updater works `)
-        doHeartBeat(KEY_TRANSFER_COUNT+serverTag).then()
-        const ids = waitUpdateTransferTokens.hex40ids
-        waitUpdateTransferTokens.hex40ids = new Set<number>()
-        updateTokenTransferCount(ids.keys(), true).then(()=>{
-            setTimeout(repeat, 60_000_0)
-        }).catch(e=>{
-            console.log(`updateTokenTransferCount error `, e)
-            setTimeout(repeat, 60_000_0)
-        })
+    let counter = 0
+    async function repeat() {
+        counter ++;
+        console.log(` scheduleTransferUpdater works `)
+        await doHeartBeat(KEY_TRANSFER_COUNT+serverTag).then()
+        // 10s * 60 times = 10 minutes
+        if (counter % 60 === 1) {
+            try {
+                const ids = waitUpdateTransferTokens.hex40ids;
+                waitUpdateTransferTokens.hex40ids = new Set<number>();
+                await updateTokenTransferCount(ids.keys(), true);
+            } catch(e) {
+                console.log(`updateTokenTransferCount error `, e);
+            }
+        }
+        setTimeout(repeat, 10_000) // 10s
     }
-    repeat()
+    repeat().then()
 }
 const tableMap = {
     'ERC20': Erc20Transfer,

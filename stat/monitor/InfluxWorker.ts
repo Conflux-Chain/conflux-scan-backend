@@ -39,9 +39,10 @@ async function heartBeat(inf: InfluxDB) {
         console.log(`heart beat want write:`, measureArr, err)
     })
 }
+// not used for now
 async function epochCursorInConfig(inf: InfluxDB) {
     const arr = await KV.findAll({where: {key:{[Op.in]: [
-        KEY_1155data_EPOCH,
+        '',
                 ]}}})
     const now = Date.now();
     const measureArr = arr.map(bean=>{
@@ -68,7 +69,7 @@ async function copyAll(inf: InfluxDB) {
     // influx worker itself
     await write(inf, measurement, {epoch: Date.now(), createdAt: new Date(), biz: 'influx-worker'})
     await heartBeat(inf)
-    await epochCursorInConfig(inf)
+    // await epochCursorInConfig(inf)
     console.log(`---`)
 }
 class EpochMax {
