@@ -18,13 +18,13 @@ export class HeartBeatBean extends Model<IHeartBeatBean> implements IHeartBeatBe
     }
 }
 
-export const KEY_COMPILER = "compiler_container"
-export const KEY_SCAN_API = "scan_api_container"
-export const KEY_STAT = "stat_container"
-export const KEY_OPEN_API = "open_api"
-export const KEY_1155_SYNC = "sync1155"
-export const KEY_TRANSFER_COUNT = "transfer_count"
-export const KEY_CONTRACT_USER = "contract_user"
+export const KEY_COMPILER = "HB_compiler"
+export const KEY_SCAN_API = "HB_scan_api"
+export const KEY_STAT = "HB_stat"
+export const KEY_OPEN_API = "HB_open_api"
+export const KEY_1155_SYNC = "HB_sync1155"
+export const KEY_TRANSFER_COUNT = "HB_transfer_count"
+export const KEY_CONTRACT_USER = "HB_contract_user"
 
 // each app tracks its own last time
 const lastTimeMap = new Map<string, number>()
