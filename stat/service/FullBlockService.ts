@@ -387,6 +387,7 @@ export class FullBlockService {
         const failedTxArr = []
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
+            let sumGasLimit = BigInt(0)
             let pos = 0
             for (const txInfo of block.transactions) {
                 // status has value, fail (!0) or success (0) or genesis epoch.
@@ -426,12 +427,14 @@ export class FullBlockService {
                         txByAddressArr.push(clone)
                     }
                     sumGasPrice += txInfo.gasPrice
+                    sumGasLimit += txInfo.gasLimit
                 }
                 if (st == 1) { // has value and is not zero: failed.
                     failedTxArr.push(FullBlockService.syncFailedTx(minEpochNumber, txInfo))
                 }
             }
             block.executedTxnCount = pos
+            block.gasUsed = sumGasLimit
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         const failedBeans = failedTxArr
