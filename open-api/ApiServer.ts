@@ -160,6 +160,7 @@ export class ApiServer {
         await apiService.minerBlockHandler.scheduleCache();
         await apiService.addrCfxTransferHandler.scheduleCache();
         await apiService.tokenTransferHandler.scheduleCache();
+        await apiService.marketDataQuery.scheduleCache();
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
         config.asyncWrappedToken && (await apiService.tokenQuery.scheduleWrappedCFX());
         if(config.syncIPFSGateway) {

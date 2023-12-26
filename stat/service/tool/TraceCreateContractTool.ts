@@ -541,7 +541,8 @@ async function adminDestroyContract(startEpochNumber, endEpochNumber){
 }
 
 async function getDataByEpochNumber(epochNumber){
-    const epochData = await epochSync.getEpochData(epochNumber);
+    await epochSync.getTraceArray(epochNumber);
+    /*const epochData = await epochSync.getEpochData(epochNumber);
     const {epoch, blockHashArray, blockArray, receipts} = epochData;
     const epochTimestamp = epoch.timestamp;
 
@@ -555,7 +556,7 @@ async function getDataByEpochNumber(epochNumber){
     const addrTransferArray = await epochSync.getAddrTransferArrayDB(epochNumber, 0, tokenTransferArray, cfxTransferArray,
         txArray);
 
-    return  addrTransferArray;
+    return  addrTransferArray;*/
 }
 
 async function getDataByEpochNumberForNft(){

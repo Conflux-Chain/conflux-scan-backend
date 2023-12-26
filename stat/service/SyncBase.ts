@@ -138,9 +138,12 @@ export abstract class SyncBase{
                 step = 3;
             } catch (e) {
                 console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
-                await sleep(10_000);
                 step = 4;
                 errorMessage = `${e}`;
+                if(errorMessage && errorMessage.includes('UniqueConstraintError')) {
+                    await this.dumpDebugInfos(epochNumber, data)
+                }
+                await sleep(10_000);
                 return epochNumber;
             }
 
@@ -170,9 +173,6 @@ export abstract class SyncBase{
             });
             if(this.debugInfos?.length > 10) {
                 this.debugInfos?.shift();
-            }
-            if(errorMessage && errorMessage.includes('UniqueConstraintError')) {
-                await this.dumpDebugInfos(epochNumber, data)
             }
         }
         return epochNumber;

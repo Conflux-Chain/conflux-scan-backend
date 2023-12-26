@@ -1,5 +1,5 @@
 import {StatConfig} from "../../config/StatConfig";
-import {RedisWrap} from "../RedisWrap";
+import {PRUNE_Q, RedisWrap, xLen} from "../RedisWrap";
 import {init} from "./FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
@@ -14,6 +14,11 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {PruneBase} from "../prune/PruneBase";
 import {sleep} from "./ProcessTool";
 import {CONST} from "../common/constant"
+import {Hex40Map} from "../../model/HexMap";
+import {Op, QueryTypes} from "sequelize";
+import {AddressTransfer} from "../../model/AddrTransfer";
+import {KV} from "../../model/KV";
+import * as Process from "process";
 
 let config:StatConfig;
 let cfx:Conflux;
@@ -223,6 +228,84 @@ async function run() {
             }
             console.log(`assemblePruneMessageBatch------------token counter:${tokenArray.length},message counter:${cntr},message sent:${sent}`)
         } while (true)
+    }
+    if(type === 8){
+        const batch = 1000
+        const keyNextPuneAddrId = 'next_pune_addr_id'
+        const nextPuneAddrId = await KV.getNumber(keyNextPuneAddrId)
+        let id = nextPuneAddrId ? nextPuneAddrId : 1
+
+        let qLen
+        while (true) {
+            const addressArray = await Hex40Map.sequelize.query(`select * from hex40 where id >= ? and id < ?`,
+                {type: QueryTypes.SELECT, replacements: [id, id + batch]}
+            )
+
+            const notifyAddressArray = []
+            if(addressArray.length) {
+                for (const address of addressArray) {
+                    const records = await AddressTransfer.sequelize.query(`select * from address_transfer where addressId = ? limit 20000, 1`,
+                        {type: QueryTypes.SELECT, replacements: [address['id']]})
+                    if(records.length > 0) {
+                        notifyAddressArray.push(address)
+                    }
+                }
+
+                if(notifyAddressArray.length) {
+                    const msg = {
+                        [PruneType.ADDR_TRANSFER]: [...new Set(notifyAddressArray.map(item => item['id']))],
+                    }
+                    await PruneNotifier.notifyPrune(msg);
+                    qLen = await xLen(PRUNE_Q)
+                    console.log(`prune_notify,queueLen:${qLen},msg:${JSON.stringify(msg)}`);
+                }
+            }
+
+            id = id + batch
+            await KV.upsert({key: keyNextPuneAddrId, value: id.toString()})
+            if(id > 74721992) {
+                break
+            }
+
+            if(qLen > 100) {
+                await sleep(1000 * 10)
+            } else{
+                await sleep(10)
+            }
+        }
+        console.log(`done!`)
+    }
+    if(type === 9) {
+        let errorMessage;
+        try {
+            const record = {
+                addressId: 74709885,
+                epoch: 85720932,
+                blockIndex: 0,
+                txIndex: 1,
+                txLogIndex: 0,
+                batchIndex: 0,
+                fromId: 39855,
+                toId: 74709885,
+                contractId: 0,
+                tokenId: '0',
+                value: '1681686603287073031',
+                type: 10,
+                cursorId: 85720932000001,
+                createdAt: new Date('2023-12-18 19:44:33'),
+            }
+            const result = await AddressTransfer.create(record as AddressTransfer)
+            console.log(`---1--- sync_forward sync,result: ${JSON.stringify(result)}`);
+        } catch (e) {
+            console.log(`---2--- sync_forward sync,error:`, e);
+            errorMessage = `${e}`;
+            if(errorMessage && errorMessage.includes('UniqueConstraintError')) {
+                console.log(`---4--- UniqueConstraintError dump`)
+            }
+            console.log(`---3--- UniqueConstraintError errorMessage ${errorMessage}`)
+            await sleep(10_000);
+        }
+
     }
 }
 
