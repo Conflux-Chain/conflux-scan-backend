@@ -140,7 +140,7 @@ async function run() {
 
     await RedisWrap.connect(config.redis);
 
-    const app = {cfx};
+    const app = {cfx, config};
     if(type === 1){
         pruneHandler = new PruneHandler(app);
         await pruneHandler.scheduleRefreshConfig();
