@@ -7,7 +7,7 @@ import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Token} from "../../model/Token";
 import {KEY_PRUNE_CONFIG_SWITCH, KV} from "../../model/KV";
-import {KEY_PRUNE, repeatHeartBeat} from "../../model/HeartBeat";
+import {doHeartBeat, KEY_PRUNE, repeatHeartBeat} from "../../model/HeartBeat";
 const lodash = require('lodash');
 
 export abstract class PruneBase {
@@ -148,7 +148,7 @@ export abstract class PruneBase {
                 where: {id: pruneDb.id, pruned: pruneDb.pruned},
                 transaction: dbTx
             });
-            repeatHeartBeat(KEY_PRUNE+config.serverTag)
+            await doHeartBeat(KEY_PRUNE+config.serverTag)
             PruneBase.doMetricStep(type, 'updatePrune', start);
         });
         return {delDelta, delCntr, prune, pruneDb};
