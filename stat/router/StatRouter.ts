@@ -862,6 +862,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {...tps};
     });
 
+    router.get('/gasprice/tracker', async function (ctx) {
+        const tps = await statApp.transferTpsService.getGasPrice();
+        ctx.body = {...tps};
+    });
+
     router.get('/transaction/pending', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
 

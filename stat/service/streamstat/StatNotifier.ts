@@ -1,4 +1,5 @@
 import {
+    GAS_PRICE_TRACKER_Q,
     GAS_USED_PER_SECOND_Q,
     RedisWrap,
     STREAM_STAT_ADDR_CFX_TRANSFER_Q,
@@ -97,8 +98,8 @@ export class StatNotifier {
         return StatNotifier.notifyStat({msg, q: STREAM_STAT_ADDR_TRANSACTION_Q});
     }
 
-    // stat-block
-    public static async notifyStatGasUsedPerSecond({epochNumber, epochTimestamp, action, txnArray}) {
+    // stat-block stat gas used and gas price
+    public static async notifyStatGas({epochNumber, epochTimestamp, action, txnArray}) {
         if (!StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND) {
             return Promise.resolve(false);
         }
@@ -107,13 +108,21 @@ export class StatNotifier {
             return Promise.resolve(false);
         }
 
+        const gasPriceSet = new Set()
         let gasLimitTotal = BigInt(0)
         for (const tx of txnArray) {
+            gasPriceSet.add(tx.gasPrice)
             gasLimitTotal =  gasLimitTotal + tx.gasLimit
+        }
+
+        if(gasPriceSet.size) {
+            const statInfo = {gasPrice: [...gasPriceSet]}
+            const msg = {epochNumber, epochTimestamp, action, statInfo};
+            // console.log(`notifyStatGas ${JSON.stringify(msg)}`)
+            await StatNotifier.notifyStat({msg, q: GAS_PRICE_TRACKER_Q});
         }
         const statInfo = {gasLimit: gasLimitTotal};
         const msg = {epochNumber, epochTimestamp, action, statInfo};
-        // console.log(`notifyStatGasUsedPerSecond ${JSON.stringify(msg)}`)
         return StatNotifier.notifyStat({msg, q: GAS_USED_PER_SECOND_Q});
     }
 
