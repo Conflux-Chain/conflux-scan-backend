@@ -165,7 +165,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
                     hash as 'parentHash'.
          */
         console.log(` local pop ${ep}`)
-        await pop(ep, taskBegin, (typeof task), handler)
+        await pop(ep, taskBegin, taskClz, handler)
         epoch = ep
         console.log(` set cursor to ${epoch}`)
         parentHash = await waitParentHashDB(task, ep - 1, EpochHashTokenTransfer)
@@ -193,8 +193,13 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
     await updateMaxDbEpoch()
     let firstWait = true
     async function repeat() {
+        const originalEpoch = epoch;
         return repeat0().catch(err=>{
             console.log(` repeat error : `, err)
+            if (epoch > originalEpoch ) {
+                epoch = originalEpoch;
+                console.log(`force epoch down to  `, epoch)
+            }
             setTimeout(repeat, 5_000)
         })
     }
