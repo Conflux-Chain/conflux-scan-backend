@@ -224,15 +224,15 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
                         await  localPop(epoch - 1)
                         delay = 10_000
                         break;
+                    } else if (data instanceof Error) {
+                        console.log(` error at epoch ${epoch}`, data)
+                        delay = 10_000;
+                        break;
                     } else if (parentHash && data.parentHash !== parentHash) {
                         console.log(` before save check, parent hash not match, on hand epoch ${epoch
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
                         delay = 10_000
-                        break;
-                    } else if (data instanceof Error) {
-                        console.log(` error at epoch ${epoch}`, data)
-                        delay = 10_000;
                         break;
                     }
                     await processData(epoch, data);
