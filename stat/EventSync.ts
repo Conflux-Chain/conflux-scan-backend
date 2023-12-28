@@ -243,9 +243,8 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
                         break;
                     }
                     const failMsg = `process epoch fail at ${epoch}, task start epoch ${taskBegin}, `;
-                    console.log(failMsg, e)
-                    await notifyError(failMsg, e);
-                    process.exit(1)
+                    console.log(failMsg, e.message)
+                    throw e;
                 }
                 break;
             case "wait":
