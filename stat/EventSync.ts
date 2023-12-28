@@ -139,6 +139,11 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
         }
         // simulatePivotSwitch(epoch, 3)
         const dt = new Date(block.timestamp * 1000);
+        try {
+            for (let receiptsInBlock of receipts) {}
+        } catch (e) {
+            console.log(`bad receipts, that is `, receipts)
+        }
         let parsedResult = decodeFromReceipts(receipts, tokenTool, dt, blockHashes, handler);
         let postProcessedResult = await handler.postProcess(parsedResult, dt, epoch);
         return {...postProcessedResult, dt, pivotHash, parentHash: block.parentHash}
