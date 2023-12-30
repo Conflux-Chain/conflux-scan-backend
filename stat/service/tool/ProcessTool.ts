@@ -31,3 +31,17 @@ export function regExitHook() {
 export function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms)); // sleep
 }
+
+export function registerProcessHook(server) {
+  process.on('SIGINT', exitOnSignal(server));
+  process.on('SIGTERM', exitOnSignal(server));
+}
+
+export function exitOnSignal(server) {
+  return async (signal) => {
+    console.log(`receive ${signal}...`);
+    await server.close();
+    console.log(`server shutdown.`);
+    process.exit(0);
+  }
+}

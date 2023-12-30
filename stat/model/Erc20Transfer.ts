@@ -163,7 +163,7 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
             tableName: T_ERC20_TRANSFER,
             indexes: [
                 {
-                    name: 'idx_contractId_epoch',  // used in PruneService.
+                    name: 'idx_contractId_epoch',
                     fields: ['contractId','epoch']
                 },
                 {

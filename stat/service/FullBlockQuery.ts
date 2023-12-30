@@ -14,7 +14,7 @@ import {fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
-import {checkExist} from "./common/utils";
+import {isContains} from "./common/utils";
 import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
@@ -201,7 +201,7 @@ export class FullBlockQuery {
         // add pruned total
         let prunedCntr = 0;
         const optionObj = {minEpochNumber, maxEpochNumber, blockHash, minTimestamp, maxTimestamp, miner};
-        if(checkExist(optionObj, ['miner'])){
+        if(isContains(optionObj, ['miner'])){
             const pruneInfo = await PruneInfo.findOne({where: {addressId: minerId, type: PruneType.MINER_BLOCK}});
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }

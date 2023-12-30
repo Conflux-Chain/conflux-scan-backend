@@ -13,14 +13,12 @@ import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
-import {PruneNotifier} from "./prune/PruneNotifier";
 import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
 import {TransferTpsService} from "./TransferTpsService";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
 import {AddressTransfer} from "../model/AddrTransfer";
-import {PruneType} from "../model/PruneInfo";
 import {Errors} from "./common/LogicError";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
 import {CensorItem} from "../model/CensorItem";
@@ -126,12 +124,6 @@ export class EpochSync extends SyncBase{
 
             const nftTransferArray = await this.getNftTransferArray(epochNumber, tokenTransferArray);
             const addrNftTransferArray = await this.getAddrNftTransferArray(epochNumber,tokenTransferArray);
-
-            PruneNotifier.notifyBlock(minerBlockArray)
-                .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
-            const addrIds = [...new Set(lodash.map(addrTransferArray, item => item.addressId))];
-            PruneNotifier.notifyPrune({[PruneType.ADDR_TRANSFER]: addrIds})
-                .catch(e => console.log(`epoch-sync.noticePruneAddrTransfer, epoch:${epochNumber}`, e));
 
             return {
                 syncCode: SyncCode.SUCCESS,

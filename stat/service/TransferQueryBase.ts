@@ -4,7 +4,7 @@ import {Op} from "sequelize"
 import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
-import {checkExist} from "./common/utils";
+import {isContains} from "./common/utils";
 import {checkAddressRate} from "../router/RateLimiter";
 import {CONST} from "./common/constant"
 import {fillMethodInfo} from "../model/ContractInfo";
@@ -269,7 +269,7 @@ export abstract class TransferQueryBase {
                 accountAddress, address, from, to, opponentAddress, tokenArray,
                 tokenId, txType, status
             };
-            if (checkExist(optionObj, ['accountAddress'])) {
+            if (isContains(optionObj, ['accountAddress'])) {
                 let pruneType = this.getAddrPruneType();
                 if (pruneType) {
                     const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: pruneType}});

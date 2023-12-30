@@ -433,16 +433,16 @@ export function reverseMap(map:Map<any, any>) {
     return ret;
 }
 
-export function checkExist(options, fieldArray){
-    let prunedFlag = true;
+export function isContains(options, fieldArray){
+    let containsFlag = true;
     lodash.forEach(options, (value, key) => {
         if(lodash.includes(fieldArray, key)){
-            prunedFlag = prunedFlag && (value !== undefined);
+            containsFlag = containsFlag && (value !== undefined);
         } else {
-            prunedFlag = prunedFlag && (value === undefined);
+            containsFlag = containsFlag && (value === undefined);
         }
     });
-    return prunedFlag;
+    return containsFlag;
 }
 
 export function checkLibrary(libMap) {

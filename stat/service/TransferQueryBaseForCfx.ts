@@ -3,7 +3,7 @@ import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {Hex64Map, hex40IdMap, idHex40Map, idHex64Map, Hex40Map} from "../model/HexMap";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
-import {checkExist} from "./common/utils";
+import {isContains} from "./common/utils";
 import {CONST} from "./common/constant"
 /*const CONST = require('./common/constant');*/
 
@@ -195,7 +195,7 @@ export abstract class TransferQueryBaseForCfx {
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
             tokenId, txType , status};
-        if(checkExist(optionObj, ['accountAddress'])){
+        if(isContains(optionObj, ['accountAddress'])){
             let pruneType;
             if(this.getTransferType() === CONST.TRANSFER_TYPE.CFX) pruneType = PruneType.ADDR_CFX_TRANSFER;
             if(this.getTransferType() === CONST.TRANSFER_TYPE.ERC20) pruneType = PruneType.ADDR_ERC20_TRANSFER;

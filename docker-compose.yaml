@@ -61,14 +61,14 @@ services:
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000 # prune
+    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000
   token_transfer: # token transfer sync
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000 prune
+    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000
   # deprecated
   token_approval: # token approval sync
     image: node:14.17.5
@@ -114,14 +114,14 @@ services:
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000 # prune streamStat
+    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000
   cfx_transfer: # cfx transfer sync
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000 prune streamStat
+    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000
   cfxCounterHolderMarker:
     image: node:14.17.5
     network_mode: host
@@ -152,13 +152,10 @@ services:
     command: node /stat-root/stat/dist/service/pos/PosSync.js http://192.168.8.165:12537 345000
   epoch:
     image: node:14.17.5
+    network_mode: host
+    restart: always
     volumes:
       - ./:/stat-root
-      - ./log/:/log
-    network_mode: host
-    environment:
-      PORT: 8087
-    restart: always
     command: node /stat-root/stat/dist/FullEpochSync.js
   stat_task:
     image: node:14.17.5
@@ -174,3 +171,10 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/nftchecker/NftMetaStorage.js metadata
+  prune:
+    image: node:14.17.5
+    network_mode: host
+    restart: always
+    volumes:
+      - ./:/stat-root
+    command: node /stat-root/stat/dist/service/prune/PruneService.js all

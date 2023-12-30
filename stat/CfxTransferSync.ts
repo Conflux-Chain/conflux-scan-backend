@@ -20,7 +20,6 @@ import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
 import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {RedisWrap} from "./service/RedisWrap";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
@@ -472,7 +471,6 @@ async function processEpoch(epoch, data, taskBegin) {
     await save(data, epoch, taskBegin)
     try {
         if(data?.result?.length){
-            PruneNotifier.notifyCFXTransfer(data.addrBeans).then();
             const msg = {epochNumber: data.result[0].epoch, epochTimestamp: data.result[0].createdAt, action: 'push',
                 cfxTransferArray: data.result};
             StatNotifier.notifyStatAddrCfxTransfer(msg).then();
@@ -593,9 +591,6 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
 }
 if (module === require.main) {
     regExitHook()
-    if (process.argv.includes('prune')) {
-        PruneNotifier.SWITCH_SYNC_PRUNE = true;
-    }
     if (process.argv.includes('streamStat')) {
         StatNotifier.SWITCH_STREAM_STAT = true;
         StatNotifier.SWITCH_STAT_DAILY_CFX_TRANSFER = true;
