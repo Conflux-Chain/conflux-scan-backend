@@ -525,17 +525,18 @@ export class TokenTypeCache {
 
     }
 }
-async function sync() {
-    redirectLog()
-    regExitHook()
+async function sync3525() {
     // cfxUrl: useConfigRpc
     // fromEpoch:
     // -1 : use former unfinished task; exclude mode.
     // N  : use task N if it's not finished, fallback to *.
     // *  : auto create based on max task.
-    const handler = new Event3525handler();
     const [, , cmd, cfxUrl, fromEpoch, taskLen] = process.argv
-    startSyncEvent(cfxUrl, TaskEvent3525, handler, fromEpoch, taskLen).then().catch(err => {
+    return startSync3525(cfxUrl, fromEpoch, taskLen)
+}
+export async function startSync3525(cfxUrl: string, fromEpoch: string, taskLen: string) {
+    const handler = new Event3525handler();
+    return startSyncEvent(cfxUrl, TaskEvent3525, handler, fromEpoch, taskLen).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)
         process.exit(1)
     });
@@ -582,7 +583,9 @@ async function main() {
                 console.log(`owner is `, res)
             })
     } else if (cmd === 'sync') {
-        await sync();
+        redirectLog()
+        regExitHook()
+        await sync3525();
     }
     console.log(`done`);
 }

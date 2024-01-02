@@ -350,7 +350,10 @@ async function fix20holder(cfx:Conflux) {
 // ---
 let zeroAddrId = 0
 async function run() {
-    const [, script,cfxUrl,limitStr, opt] = process.argv;
+    const [, script, cfxUrl, limitStr] = process.argv;
+    return startBalanceTask(script, cfxUrl, limitStr)
+}
+export async function startBalanceTask(script: string, cfxUrl: string, limitStr: string) {
     console.log(`${script} ${cfxUrl} ${limitStr}`)
     const cfg = await init();
     if (cfxUrl === 'fixNftHolder') {
