@@ -114,7 +114,7 @@ export async function rewind() {
             order: [['epoch','asc']]
         })
         if (!minOne) {
-            console.log(` all record within [${lowerEpoch} , ${upperEpoch}] is beyond confirm gap ${CONFIRM_GAP}.`)
+            console.log(`Sync1155data: all record within [${lowerEpoch} , ${upperEpoch}] is beyond confirm gap ${CONFIRM_GAP}.`)
             break;
         } else if (minOne.epoch == lowerEpoch) {
             // there may be smaller one.
@@ -123,7 +123,7 @@ export async function rewind() {
         } else {
             // this is the smallest one, rewind
             await KV.saveNumber(KEY_1155data_EPOCH, minOne.epoch - 1, null)
-            console.log(` Sync1155data rewind to epoch ${minOne.epoch - 1}`)
+            console.log(`Sync1155data rewind to epoch ${minOne.epoch - 1}`)
             break;
         }
     } while (true)

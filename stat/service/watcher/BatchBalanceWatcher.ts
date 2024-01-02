@@ -293,7 +293,7 @@ async function repeatSync1155data(cfx:Conflux, serverTag: string) {
         await doHeartBeat(KEY_1155_SYNC+serverTag);
         let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
         const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err => {
-            console.log(`syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
+            console.log(`BatchBalanceWatcher syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
             return -1
         })
         if (thatEpoch === -1) {
@@ -301,17 +301,17 @@ async function repeatSync1155data(cfx:Conflux, serverTag: string) {
         } else if (thatEpoch) {
             await KV.saveNumber(KEY_1155data_EPOCH, BigInt(thatEpoch), undefined)
             if (Number(thatEpoch) % 100 == 0) {
-                console.log(` sync Erc1155 data at epoch ${thatEpoch}`)
+                console.log(`BatchBalanceWatcher  sync Erc1155 data at epoch ${thatEpoch}`)
             }
             setTimeout(() => repeatSync1155data(cfx, serverTag), 0)
         } else {
-            console.log(` no Erc1155 data after epoch ${lastEpoch}`)
+            console.log(`BatchBalanceWatcher no Erc1155 data after epoch ${lastEpoch}`)
             // rewind cursor, to check records within then CONFIRM_GAP
             await rewind()
             setTimeout(() => repeatSync1155data(cfx, serverTag), 5_000)
         }
     } catch (e) {
-        console.log(`repeatSync1155data error:`, e)
+        console.log(`BatchBalanceWatcher repeatSync1155data error:`, e)
         setTimeout(() => repeatSync1155data(cfx, serverTag), 5_000)
     }
 }
@@ -320,7 +320,7 @@ async function update20holder(hex40id:number, cfx:Conflux, name='') {
         attributes: ['addressId'],
         where: {contractId: hex40id}
     })
-    console.log(`contract id ${hex40id} name [${name}], holder count ${holderList.length}`)
+    console.log(`BatchBalanceWatcher contract id ${hex40id} name [${name}], holder count ${holderList.length}`)
     const chunks2d: any[][] = lodash.chunk(holderList, 10);
     for(const chunk of chunks2d) {
         const map = new Map<number, Set<number>>()
@@ -399,9 +399,11 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
         const cfx = await initCfxSdk(cfg.conflux);
         await fix20holder(cfx);
         return
+    } else if (script) {
+        // scripts is empty when calling from TokenMiscSync.ts
+        redirectLog()
+        regExitHook()
     }
-    redirectLog()
-    regExitHook()
 
     const confluxOption = cfxUrl === 'useConfigRpc' ? cfg.conflux : {url: cfxUrl};
     const cfx = await initCfxSdk(confluxOption);
@@ -448,7 +450,7 @@ async function processContractUser(cfx:Conflux, limit:number) {
         order: [['id', 'asc']], limit
     })
     if (list.length === 0) {
-        console.log(` ${new Date().toISOString()} empty contract user table .`)
+        console.log(`BatchBalanceWatcher: empty contract user table .`)
         return 0;
     }
     // const maxDbId = await ContractUser.findOne({order:[['id','desc']]}).then(res=>res.id)
@@ -457,11 +459,11 @@ async function processContractUser(cfx:Conflux, limit:number) {
     // if (maxDbId - maxId < 10) {
     // }
     const ms = Date.now();
-    console.log(`${new Date().toISOString()} process ${minId}, ${maxId}, count ${list.length} begin.`)
+    console.log(`BatchBalanceWatcher process ${minId}, ${maxId}, count ${list.length} begin.`)
     try {
         await addTransferInfo(list, cfx);
     } catch (e) {
-        console.log(` process fail . `, e)
+        console.log(`BatchBalanceWatcher process fail . `, e)
         return 0;
     }
     const confirmedEpoch = await cfx.getEpochNumber('latest_confirmed');
@@ -470,12 +472,12 @@ async function processContractUser(cfx:Conflux, limit:number) {
     }});
     const hasUnconfirmed = list.find(r=>r.epoch>confirmedEpoch);
     if (hasUnconfirmed) {
-        console.log(`hasUnconfirmed, wait a moment`)
+        console.log(`BatchBalanceWatcher hasUnconfirmed, wait a moment`)
         await sleep(5_000)
     }
     const elapse = Date.now() - ms;
     const avg = (elapse / list.length).toPrecision(5)
-    console.log(`${new Date().toISOString()} process contract user, count ${list.length
+    console.log(`BatchBalanceWatcher process contract user, count ${list.length
     },  deleted ${delCnt}, [${minId},${maxId}], avg ${avg}ms.`)
 }
 let tokenTool:TokenTool
