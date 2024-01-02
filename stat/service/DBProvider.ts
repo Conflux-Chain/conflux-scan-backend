@@ -31,6 +31,7 @@ import {Contract} from "../model/Contract";
 import {
     BlockRowMark,
     createAddressTxTable,
+    createFullBlockExtTable,
     createFullBlockTable,
     createFullTransactionTable,
     FailedTx,
@@ -161,6 +162,7 @@ export async function initPartialModel(sequelize) {
         createAddressTransferTable(sequelize),
         createAddressNftTransferTable(sequelize),
         createAddressNftTable(sequelize),
+        createFullBlockExtTable(sequelize),
     ])
     NegativeCfxBill.register(sequelize)
     Position.register(sequelize)

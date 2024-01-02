@@ -4,7 +4,12 @@ import {autoAddPartition, createDB, initModel} from "./service/DBProvider";
 import {Conflux, format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock} from "./model/FullBlock";
-import {KEY_FILL_BLOCK_PROPS_EPOCH, KEY_GAS_USED_PER_SECOND, KEY_GAS_USED_PER_SECOND_NOTIFY, KV} from "./model/KV";
+import {
+    IS_EVM2,
+    KEY_FILL_BLOCK_PROPS_EPOCH,
+    KEY_GAS_USED_PER_SECOND_NOTIFY,
+    KV
+} from "./model/KV";
 import {initCfxSdk} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
@@ -12,6 +17,7 @@ import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {checkApiLogIpField} from "./monitor/ApiLog";
+import {StatApp} from "./StatApp";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -33,7 +39,12 @@ export async function run() {
     setInterval(()=>autoAddPartition(seq), 600_000)
     await checkApiLogIpField()
 
-    const svc = new FullBlockService(cfx)
+    StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+    let cfx2
+    if(StatApp.isEVM) {
+        cfx2 = await initCfxSdk(config.conflux2)
+    }
+    const svc = new FullBlockService(cfx, cfx2)
     PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     StatNotifier.SWITCH_STREAM_STAT = config.streamStat;
     StatNotifier.SWITCH_STAT_MINER_BLOCK = config.statMinerBlock;

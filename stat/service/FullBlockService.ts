@@ -6,7 +6,7 @@ import {
     BlockRowMark,
     countNonMarkBlockRows,
     countNonMarkTxRows, FailedTx,
-    FullBlock,
+    FullBlock, FullBlockExt,
     FullTransaction,
     IBlockRowMark, IFailedTx,
     IFullBlock,
@@ -34,6 +34,7 @@ import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
+import {StatApp} from "../StatApp";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -42,10 +43,12 @@ const CODE_CONTINUE = 2020102903
 const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
+    public cfx2: Conflux;
     public debugLog:boolean = true
     preLoadMap:PreloadMap
-    constructor(cfx:Conflux) {
+    constructor(cfx:Conflux, cfx2?:Conflux) {
         this.cfx = cfx;
+        this.cfx2 = cfx2
         this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this))
     }
     // sync metrics
@@ -212,6 +215,26 @@ export class FullBlockService {
             }
         }
         let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
+
+        let blocksEvm: number = 0
+        if(StatApp.isEVM) {
+            const hashes = await this.cfx2.getBlocksByEpochNumber(minEpochNumber).catch(()=>{return []})
+            if (hashes.length === 0) {
+                return {
+                    code: CODE_EMPTY_BLOCK, message: "core block list is empty", blockCount: 0, epoch: minEpochNumber
+                }
+            }
+            if(blockList[0].hash !== hashes[hashes.length - 1]) {
+                return {code: CODE_CONTINUE, message: 'pivot block not match between core and evm space'}
+            }
+            const blockList2 = await batchFetchBlock(this.cfx2, hashes, true, true,
+                { noCheck: false, epochNumber: minEpochNumber })
+            blockList2.forEach(blk => {
+                if(blk.height % 5 === 0){
+                    blocksEvm++
+                }
+            })
+        }
         // fill tx receipts to block-> tx
         if (blockList.length !== receipts.length && minEpochNumber !== 0) {
             const msg = `block list length ${blockList.length} mismatch receipts length ${receipts.length
@@ -256,7 +279,7 @@ export class FullBlockService {
                 break;
             }
         }
-        return {code, message, blockList, rewardList, latest_state, receipts}
+        return {code, message, blockList, rewardList, latest_state, receipts, blocksEvm}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -342,6 +365,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: preEpoch, addressId: [...addresses],},
                         transaction: dbTx}),
+                    StatApp.isEVM ? FullBlockExt.destroy({where:{epoch: preEpoch}, transaction: dbTx}) : undefined,
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     RedisWrap.sendStreamMessage({action:'pop', epoch: preEpoch}, POW_EPOCH_FOR_POS_Q)
@@ -435,6 +459,7 @@ export class FullBlockService {
             }
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
+            StatApp.isEVM && (block.gasLimit = preLoadResult.blocksEvm * 15000000)
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         const failedBeans = failedTxArr
@@ -446,6 +471,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
+                StatApp.isEVM ? FullBlockExt.create({epoch: minEpochNumber, coreBlock: preLoadResult.blocksEvm === 0}) : undefined,
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 PowSidePosSync.sendMq(preLoadResult.receipts, minEpochNumber),
