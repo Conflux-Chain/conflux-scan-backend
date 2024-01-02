@@ -10,10 +10,10 @@ async function main() {
     regExitHook()
     // init firstly
     await init()
-    await startSync3525('useConfigRpc', "-1", "10000")
-    await startBalanceTask("", "useConfigRpc", "500")
-    await startApprovalSync()
-    console.log(`${__filename} started.`)
+    startSync3525('useConfigRpc', "-1", "10000").then()
+    startBalanceTask("", "useConfigRpc", "500").then()
+    startApprovalSync().then()
+    console.log(`\n${__filename} started.\n`)
 }
 
 if (module === require.main) {
