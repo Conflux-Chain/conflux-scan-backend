@@ -3,6 +3,7 @@ import {regExitHook} from "./service/tool/ProcessTool";
 import {startSync3525} from "./T3525Sync";
 import {startBalanceTask} from "./service/watcher/BatchBalanceWatcher";
 import { init } from "./service/tool/FixDailyTokenStat";
+import {startApprovalSync} from "./ApprovalSync";
 
 async function main() {
     redirectLog()
@@ -11,6 +12,8 @@ async function main() {
     await init()
     await startSync3525('useConfigRpc', "-1", "10000")
     await startBalanceTask("", "useConfigRpc", "500")
+    await startApprovalSync()
+    console.log(`${__filename} started.`)
 }
 
 if (module === require.main) {

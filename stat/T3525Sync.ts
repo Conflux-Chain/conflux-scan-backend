@@ -319,6 +319,9 @@ class Event3525handler implements SyncHandler {
     constructor() {
         this.parser = build3525interface();
     }
+    name() {
+        return "T3525"
+    }
     init({cfx}) : Promise<any>{
         this.tokenTypeCache = new TokenTypeCache(new TokenTool(cfx));
         return new Promise<any>(async r=>{
@@ -537,7 +540,7 @@ async function sync3525() {
 export async function startSync3525(cfxUrl: string, fromEpoch: string, taskLen: string) {
     const handler = new Event3525handler();
     return startSyncEvent(cfxUrl, TaskEvent3525, handler, fromEpoch, taskLen).then().catch(err => {
-        console.log(`${process.argv[1]}\n`, err)
+        console.log(`T3525 failed: ${process.argv[1]}\n`, err)
         process.exit(1)
     });
 }
@@ -563,9 +566,9 @@ async function findEarliest3525contract(config: StatConfig) {
                 BigInt(creation?.epochNumber) : minEpoch;
         }
     }
-    console.log(`minimum epoch is`, minEpoch);
-    console.log(`current epoch is`, currentEpoch);
-    console.log(`find earliest`, minEpoch < currentEpoch)
+    console.log(`T3525 minimum epoch is`, minEpoch);
+    console.log(`T3525 current epoch is`, currentEpoch);
+    console.log(`T3525 find earliest`, minEpoch < currentEpoch)
     process.exit(0)
 }
 async function main() {
@@ -580,14 +583,14 @@ async function main() {
         await Event3525.queryPreviousBalance(21394052,'13')
         await Event3525.queryPreviousOwner(21394052,'13')
             .then(res=>{
-                console.log(`owner is `, res)
+                // console.log(`owner is `, res)
             })
     } else if (cmd === 'sync') {
         redirectLog()
         regExitHook()
         await sync3525();
     }
-    console.log(`done`);
+    console.log(`T3525 done`);
 }
 if (module === require.main) {
     main().then()

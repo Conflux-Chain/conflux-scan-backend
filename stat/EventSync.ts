@@ -151,7 +151,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
         try {
             await measure.call('save', () => handler.save(epoch, finalData as any, taskBegin))
         } catch (e) {
-            console.log(` processData catch it, epoch ${epoch}, ${e.message}`)
+            console.log(`${handler.name()}  processData catch it, epoch ${epoch}, ${e.message}`)
             return Promise.reject(e)
         }
         if (parentHash) { // checking mode.
@@ -167,12 +167,12 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
          epoch - 2: after (epoch - 1) is popped, it will be the top element on the stack. use its pivot
                     hash as 'parentHash'.
          */
-        console.log(` local pop ${ep}`)
+        console.log(`${handler.name()}  local pop ${ep}`)
         await pop(ep, taskBegin, taskClz, handler)
         epoch = ep
-        console.log(` set cursor to ${epoch}`)
+        console.log(`${handler.name()}  set cursor to ${epoch}`)
         parentHash = await waitParentHashDB(task, ep - 1, EpochHashTokenTransfer)
-        console.log(` local pop ${ep} end -`)
+        console.log(`${handler.name()}  local pop ${ep} end -`)
         return ep
     }
     const loader = new PreLoader(cfx, fetchAndBuild, 3, stopBeforeEpoch);
@@ -187,22 +187,18 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
         }
         const maxE = await FullBlock.max('epoch')
         if (typeof maxE !== 'number') {
-            console.log(` FullTransaction is empty. ${new Date().toISOString()}`)
+            console.log(`${handler.name()}  FullTransaction is empty. ${new Date().toISOString()}`)
             return;
         }
         maxEpochOfBlock = maxE;
-        console.log(` update max epoch of block to ${maxE} `)
+        console.log(`${handler.name()}  update max epoch of block to ${maxE} `)
     }
     await updateMaxDbEpoch()
     let firstWait = true
     async function repeat() {
         const originalEpoch = epoch;
         return repeat0().catch(err=>{
-            console.log(` repeat error : `, err)
-            if (epoch > originalEpoch ) {
-                epoch = originalEpoch;
-                console.log(`force epoch down to  `, epoch)
-            }
+            console.log(`${handler.name()}  repeat error : `, err)
             setTimeout(repeat, 5_000)
         })
     }
@@ -218,16 +214,16 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
             case "ok":
                 try {
                     if (data instanceof CheckPivotHashError) {
-                        console.log(` checking pivot hash error, ${data.message}`);
+                        console.log(`${handler.name()}  checking pivot hash error, ${data.message}`);
                         await  localPop(epoch - 1)
                         delay = 10_000
                         break;
                     } else if (data instanceof Error) {
-                        console.log(` error at epoch ${epoch}`, data)
+                        console.log(`${handler.name()}  error at epoch ${epoch}`, data)
                         delay = 10_000;
                         break;
                     } else if (parentHash && data.parentHash !== parentHash) {
-                        console.log(` before save check, parent hash not match, on hand epoch ${epoch
+                        console.log(`${handler.name()}  before save check, parent hash not match, on hand epoch ${epoch
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
                         delay = 10_000
@@ -235,22 +231,22 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
                     }
                     await processData(epoch, data);
                     if (epoch % dumpPerRound === 0) {
-                        console.log(` sync transfer sample log, at epoch ${epoch}`);
+                        console.log(`${handler.name()}  sync transfer sample log, at epoch ${epoch}`);
                         measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', fetchAndBuildTag, 'save');
                     }
                     epoch ++
                 } catch (e) {
                     if (e instanceof UniqueConstraintError) {
-                        console.log(` UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
+                        console.log(`${handler.name()}  UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
                         await sleep(10_000)
                         break;
                     } else if (e instanceof DatabaseError) {
-                        const message = ` DatabaseError, epoch ${epoch}, ${e.message}`;
+                        const message = `${handler.name()}  DatabaseError, epoch ${epoch}, ${e.message}`;
                         console.log(message, e)
                         await sleep(10_000)
                         break;
                     }
-                    const failMsg = `process epoch fail at ${epoch}, task start epoch ${taskBegin}, `;
+                    const failMsg = `${handler.name()} process epoch fail at ${epoch}, task start epoch ${taskBegin}, `;
                     console.log(failMsg, e.message)
                     throw e;
                 }
@@ -282,6 +278,7 @@ export interface SyncHandler {
     save:(epoch:number, {pivotHash}, taskBegin:number)=>Promise<void>,
     popAction: (epoch, dbTx) => Promise<void>
     needCheckMaxEpoch:()=>boolean
+    name(): string
 }
 async function pop(epoch:number, taskBegin: number, taskClz, handler:SyncHandler) {
     async function popTaskCursor(dbTx: Transaction) {
@@ -297,7 +294,7 @@ async function pop(epoch:number, taskBegin: number, taskClz, handler:SyncHandler
             popTaskCursor(dbTx).then((cnt)=>`CURSOR ${cnt}`),
         ])
     }).then(res=>{
-        console.log(` pop done. epoch ${epoch}, ${JSON.stringify(res)}`)
+        console.log(`${handler.name()} pop done. epoch ${epoch}, ${JSON.stringify(res)}`)
         return res;
     })
 }
@@ -313,13 +310,13 @@ export async function startSyncEvent(cfxUrl:string,
     notifyError = async (msg, err)=>{
         return dingMsg(`[${config.serverTag}] Approval-SYNC ${msg}: ${err}`, config.dingTalkToken)
     }
-    console.log(`--------------------`)
+    console.log(`${handler.name()} --------------------`)
 
     const confluxOption = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
     let cfx = await initCfxSdk(confluxOption);
 
     await handler.init({cfx})
-    console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} ${confluxOption.url} --------`)
+    console.log(`${handler.name()}  ${process.argv[1]} \n ------- network ${cfx.networkId} ${confluxOption.url} --------`)
     return runTask(cfx, taskClz, handler, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
@@ -327,7 +324,7 @@ async function runTask(cfx:Conflux, taskClz,
                        handler:SyncHandler,
                        fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch, cfx, taskClz)
-    console.log(` start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
+    console.log(`${handler.name()}  start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
     if (fromEpoch === -1) {
         // -1 means 'continue unfinished task',
@@ -340,7 +337,7 @@ async function runTask(cfx:Conflux, taskClz,
         }, handler)
     })
     if (len === 0) {
-        console.log(`length parameter is zero, quit.`)
+        console.log(`${handler.name()} length parameter is zero, quit.`)
         process.exit(0)
     } else {
         setTimeout(() => runTask(cfx, taskClz, handler, fromEpoch, len), 0)
