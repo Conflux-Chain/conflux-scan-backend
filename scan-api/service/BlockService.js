@@ -1,6 +1,7 @@
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const BigFixed = require('bigfixed');
+const {StatApp} = require("../../stat/dist/StatApp");
 // const { KV, KEY_BLOCK_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
 const DETAIL_FIELDS = ['newTransactionCount', 'avgGasPrice'];
@@ -72,17 +73,29 @@ class BlockService {
     let newTransactionCount = 0;
     let gasPriceCount = BigInt(0);
 
+    let gasUsed = BigInt(0);
+    let crossSpaceTransactionCount = 0;
     lodash.forEach(transactions, (transaction) => {
       if (transaction.blockHash === hash) {
         newTransactionCount += 1;
         gasPriceCount += BigInt(transaction.gasPrice);
       }
+      gasUsed += BigInt(transaction.gas)
+      if(!transaction.gasPrice){
+        crossSpaceTransactionCount++
+      }
     });
 
-    return {
+    const result = {
       newTransactionCount,
       avgGasPrice: newTransactionCount ? BigFixed(gasPriceCount).div(newTransactionCount) : BigFixed(0),
     };
+    result['gasUsed'] = gasUsed;
+    if(StatApp.isEVM) {
+      result['crossSpaceTransactionCount'] = crossSpaceTransactionCount;
+    }
+
+    return result;
   }
 
   async _getPivot({ hash, epochNumber }) {

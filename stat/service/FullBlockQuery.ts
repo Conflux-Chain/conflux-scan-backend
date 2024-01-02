@@ -1,6 +1,6 @@
 // @ts-ignore
 import {CONST as SDK_CONST, format} from "js-conflux-sdk";
-import {Op} from "sequelize"
+import {Op, QueryTypes} from "sequelize"
 import {
     FullBlock,
     FullTransaction,
@@ -19,6 +19,7 @@ import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
 import {BigNumber} from "ethers";
+import {StatApp} from "../StatApp";
 
 const lodash = require('lodash');
 
@@ -152,6 +153,14 @@ export class FullBlockQuery {
                 count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
             }
         }
+        // cross space tx
+        const epochCrossSpaceTxMap = {}
+        if(StatApp.isEVM && rawList?.length) {
+            const items = await FullTransaction.sequelize.query(
+                `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
+                { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
+            items.forEach(item => epochCrossSpaceTxMap[item['epoch']] = item['cntr'])
+        }
         // fields mapping
         const list = [];
         if(rawList){
@@ -172,6 +181,9 @@ export class FullBlockQuery {
                 row['pivotHash'] = row['pivotHash'] ? row['hash'] : undefined;
                 if(row['totalReward'] === '0'){
                     row['totalReward'] = undefined;
+                }
+                if(StatApp.isEVM) {
+                    row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0;
                 }
             })
         }
