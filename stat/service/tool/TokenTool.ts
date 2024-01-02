@@ -619,7 +619,7 @@ export async function initOss(conf) {
     return checkOssBucket(accessId, accessKey, bucket).then(res=>{
     }).catch(err=>{
         console.log(`check oss bucket fail: `, err)
-        process.exit(1)
+        //process.exit(1)
     });
 }
 export async function uploadOss(srcFile, ossFilename) {

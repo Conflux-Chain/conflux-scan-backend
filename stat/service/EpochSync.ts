@@ -9,7 +9,7 @@ import {Token} from "../model/Token";
 import {Op, Transaction} from "sequelize";
 import {batchBlockDetail} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
-import {Erc20Transfer} from "../model/Erc20Transfer";
+import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
@@ -104,7 +104,12 @@ export class EpochSync extends SyncBase{
             const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
 
             const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray);
-            const tokenLogs = {transfer20Array: t20, transfer721Array: t721, transfer1155Array: t1155};
+            const t20Aggregated = aggregateTransfer(t20)
+            const tokenLogs = {
+                transfer20Array: t20Aggregated.filter(t => t.value && t.value > BigInt(0)),
+                transfer721Array: t721,
+                transfer1155Array: t1155.filter(t => t.value && t.value > BigInt(0)),
+            };
             const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
             const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
             const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
