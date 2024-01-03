@@ -7,7 +7,7 @@ import {
     AddressTransactionIndex,
     pagingFullBlock,
     pagingFullTx,
-    BlockPage, TxPage, FailedTx
+    BlockPage, TxPage, FailedTx, FullBlockExt
 } from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {fillMethodInfo} from "../model/ContractInfo";
@@ -155,11 +155,18 @@ export class FullBlockQuery {
         }
         // cross space tx
         const epochCrossSpaceTxMap = {}
+        const epochCoreBlockMap = {}
         if(StatApp.isEVM && rawList?.length) {
-            const items = await FullTransaction.sequelize.query(
-                `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
-                { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
-            items.forEach(item => epochCrossSpaceTxMap[item['epoch']] = item['cntr'])
+            const [txCounts, blockExts] = await Promise.all([
+                FullTransaction.sequelize.query(
+                    `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
+                    { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]}),
+                FullBlockExt.sequelize.query(
+                    `select * from full_block_ext where epoch>=? and epoch<=?`,
+                    { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
+            ])
+            txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr']),
+            blockExts.forEach(blockExt => epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock'])
         }
         // fields mapping
         const list = [];
@@ -184,6 +191,7 @@ export class FullBlockQuery {
                 }
                 if(StatApp.isEVM) {
                     row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0;
+                    row['coreBlock'] = epochCoreBlockMap[row['epochNumber']];
                 }
             })
         }

@@ -127,6 +127,61 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
         })
     }
 }
+export interface IFullBlockExt {
+    epoch: number;
+    coreBlock: boolean;
+}
+const FULL_BLOCK_EXT_SQL = `CREATE TABLE if not exists \`full_block_ext\` (
+                              \`epoch\` bigint unsigned NOT NULL,
+                              \`coreBlock\` tinyint(1) NOT NULL DEFAULT '1',
+                              primary key  (\`epoch\` desc)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4
+partition by range (epoch) (
+    PARTITION p1 VALUES LESS THAN (30000000),
+    PARTITION p2 VALUES LESS THAN (40000000),
+    PARTITION p3 VALUES LESS THAN (50000000),
+    PARTITION p4 VALUES LESS THAN (60000000),
+    PARTITION p5 VALUES LESS THAN (70000000),
+    PARTITION p8 VALUES LESS THAN (80000000),
+    PARTITION p9 VALUES LESS THAN (90000000),
+    PARTITION p10 VALUES LESS THAN (100000000),
+    PARTITION p11 VALUES LESS THAN (110000000),
+    PARTITION p12 VALUES LESS THAN (120000000),
+    PARTITION p13 VALUES LESS THAN (130000000),
+    PARTITION p14 VALUES LESS THAN (140000000),
+    PARTITION p15 VALUES LESS THAN (150000000),
+    PARTITION p16 VALUES LESS THAN (160000000),
+    PARTITION p17 VALUES LESS THAN (170000000)
+    );`
+
+export async function createFullBlockExtTable(seq:Sequelize) {
+    return createTable(seq, FULL_BLOCK_EXT_SQL)
+        .then(()=>{
+            return FullBlockExt.register(seq)
+        }).then(()=>{
+            FullBlockExt.removeAttribute("id")
+        }).catch(err=>{
+            console.log(`createFullBlockExtTable fail, sql ${FULL_BLOCK_EXT_SQL}:`, err)
+            process.exit(9)
+        })
+}
+export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt {
+    epoch: number;
+    coreBlock: boolean;
+
+    static register(sequelize) {
+        FullBlockExt.init({
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            coreBlock: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: 1},
+        }, {
+            tableName: 'full_block_ext',
+            sequelize,
+            timestamps: false,
+            indexes: [
+            ],
+        })
+    }
+}
 export interface IFailedTx {
     id?:number
     epoch:number

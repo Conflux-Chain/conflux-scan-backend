@@ -341,12 +341,15 @@ function formatBlock(arr) {
     })
 }
 
-export function batchFetchBlock(cfx:Conflux, hashes:string[],
-                                detail = true, doFormat = true) : Promise<any[]> {
+export function batchFetchBlock(cfx:Conflux, hashes:string[], detail = true, doFormat = true,
+    checkPivotOptions: { check: boolean, epochNumber?: number } = { check: false }) : Promise<any[]> {
+    const method = checkPivotOptions.check ? "cfx_getBlockByHashWithPivotAssumption" : "cfx_getBlockByHash"
+    const pivotBlockHash = hashes[hashes.length - 1]
+    const epoch = `0x${Number(checkPivotOptions.epochNumber).toString(16)}`
     return cfx.provider.batch(
         hashes.map(hash=>{
-            return {"method": "cfx_getBlockByHash",
-                params: [hash, detail]}
+            const params = checkPivotOptions.check ? [hash, pivotBlockHash, epoch] : [hash, detail]
+            return {method, params}
         })
     ).then(arr=>{
         if (doFormat) {
