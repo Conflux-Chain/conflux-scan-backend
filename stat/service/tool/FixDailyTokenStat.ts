@@ -3,7 +3,7 @@ process.env.TZ = 'UTC'
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
 import {getYesterday} from "./DateTool";
 
-import {loadConfig} from "../../config/StatConfig";
+import {loadConfig, StatConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {
     calcAllRegisteredTokenDailyStat,
@@ -17,12 +17,20 @@ import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
 import {redisWrap, RedisWrap, xLen} from "../RedisWrap";
 import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
+
+let configCache: StatConfig|null = null;
+
+// do not call this method concurrently
 export async function init() {
-    const config = loadConfig('Prod')
+    if (configCache) {
+        return configCache
+    }
+    const config = loadConfig('Prod');
     // let seq = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW as Options);//createDB(config.database)
     let seq = createDB(config.databaseRW)
     await initModel(seq)
     await seq.sync({})
+    configCache = config;
     return config
 }
 export async function fixDate(hexId=0, dtStr = '2020-10-28') {

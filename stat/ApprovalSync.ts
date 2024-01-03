@@ -386,7 +386,7 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
         try {
             await measure.call('save', () => save(epoch, finalData as any, taskBegin))
         } catch (e) {
-            console.log(` processData catch it, epoch ${epoch}, ${e.message}`)
+            console.log(`Approval-SYNC  processData catch it, epoch ${epoch}, ${e.message}`)
             return Promise.reject(e)
         }
         if (parentHash) { // checking mode.
@@ -402,12 +402,12 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
          epoch - 2: after (epoch - 1) is popped, it will be the top element on the stack. use its pivot
                     hash as 'parentHash'.
          */
-        console.log(` local pop ${ep}`)
+        console.log(`Approval-SYNC  local pop ${ep}`)
         await pop(ep, taskBegin)
         epoch = ep
-        console.log(` set cursor to ${epoch}`)
+        console.log(`Approval-SYNC  set cursor to ${epoch}`)
         parentHash = await waitParentHashDB(task, ep - 1, EpochHashTokenTransfer)
-        console.log(` local pop ${ep} end -`)
+        console.log(`Approval-SYNC  local pop ${ep} end -`)
         return ep
     }
     const loader = new PreLoader(cfx, fetchAndBuild, 3, stopBeforeEpoch);
@@ -417,17 +417,17 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
     async function updateMaxDbEpoch() {
         const maxE = await FullBlock.max('epoch')
         if (typeof maxE !== 'number') {
-            console.log(` FullTransaction is empty. ${new Date().toISOString()}`)
+            console.log(`Approval-SYNC  FullTransaction is empty. ${new Date().toISOString()}`)
             return;
         }
         maxEpochOfBlock = maxE;
-        console.log(` update max epoch of block to ${maxE} `)
+        console.log(`Approval-SYNC  update max epoch of block to ${maxE} `)
     }
     await updateMaxDbEpoch()
     let firstWait = true
     async function repeat() {
         return repeat0().catch(err=>{
-            console.log(` repeat error : `, err)
+            console.log(`Approval-SYNC  repeat error : `, err)
             setTimeout(repeat, 5_000)
         })
     }
@@ -443,39 +443,39 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
             case "ok":
                 try {
                     if (data instanceof CheckPivotHashError) {
-                        console.log(` checking pivot hash error, ${data.message}`);
-                        await  localPop(epoch - 1)
-                        delay = 10_000
-                        break;
-                    } else if (parentHash && data.parentHash !== parentHash) {
-                        console.log(` before save check, parent hash not match, on hand epoch ${epoch
-                        } with PH ${data.parentHash} != ${parentHash} (parent)`)
+                        console.log(`Approval-SYNC  checking pivot hash error, ${data.message}`);
                         await  localPop(epoch - 1)
                         delay = 10_000
                         break;
                     } else if (data instanceof Error) {
-                        console.log(` error at epoch ${epoch}`, data)
+                        console.log(`Approval-SYNC  error at epoch ${epoch}`, data)
                         delay = 10_000;
+                        break;
+                    } else if (parentHash && data.parentHash !== parentHash) {
+                        console.log(`Approval-SYNC  before save check, parent hash not match, on hand epoch ${epoch
+                        } with PH ${data.parentHash} != ${parentHash} (parent)`)
+                        await  localPop(epoch - 1)
+                        delay = 10_000
                         break;
                     }
                     await processData(epoch, data);
                     if (epoch % dumpPerRound === 0) {
-                        console.log(` sync transfer sample log, at epoch ${epoch}`);
+                        console.log(`Approval-SYNC  sync transfer sample log, at epoch ${epoch}`);
                         measure.dump(` ------ sync transfer metrics: `, 1, 'epoch', fetchAndBuildTag, 'save');
                     }
                     epoch ++
                 } catch (e) {
                     if (e instanceof UniqueConstraintError) {
-                        console.log(` UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
+                        console.log(`Approval-SYNC  UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
                         await sleep(10_000)
                         break;
                     } else if (e instanceof DatabaseError) {
-                        const message = ` DatabaseError, epoch ${epoch}, ${e.message}`;
+                        const message = `Approval-SYNC  DatabaseError, epoch ${epoch}, ${e.message}`;
                         console.log(message, e)
                         await sleep(10_000)
                         break;
                     }
-                    const failMsg = `process epoch fail at ${epoch}, task start epoch ${taskBegin}, `;
+                    const failMsg = `Approval-SYNC process epoch fail at ${epoch}, task start epoch ${taskBegin}, `;
                     console.log(failMsg, e)
                     await notifyError(failMsg, e);
                     process.exit(1)
@@ -555,7 +555,7 @@ async function pop(epoch:number, taskBegin: number) {
             popTaskCursor(dbTx).then((cnt)=>`CURSOR ${cnt}`),
         ])
     }).then(res=>{
-        console.log(` pop done. epoch ${epoch}, ${JSON.stringify(res)}`)
+        console.log(`Approval-SYNC  pop done. epoch ${epoch}, ${JSON.stringify(res)}`)
         return res;
     })
 }
@@ -572,18 +572,18 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     notifyError = async (msg, err)=>{
         return dingMsg(`[${config.serverTag}] Approval-SYNC ${msg}: ${err}`, config.dingTalkToken)
     }
-    console.log(`--------------------`)
+    console.log(`Approval-SYNC --------------------`)
 
     const confluxOption = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
     const cfx = await initCfxSdk(confluxOption);
-    console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} ${confluxOption.url} --------`)
+    console.log(`Approval-SYNC  ${process.argv[1]} \n ------- network ${cfx.networkId} ${confluxOption.url} --------`)
 
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch, cfx, TaskEpochApproval)
-    console.log(` start approval task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
+    console.log(`Approval-SYNC  start approval task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
     if (fromEpoch === -1) {
         // -1 means 'continue unfinished task',
@@ -596,7 +596,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
         })
     })
     if (len === 0) {
-        console.log(`length parameter is zero, quit.`)
+        console.log(`Approval-SYNC length parameter is zero, quit.`)
         process.exit(0)
     } else {
         setTimeout(() => runTask(cfx, fromEpoch, len), 0)
@@ -610,7 +610,7 @@ async function test() {
         await ApprovalRelation.queryApprovalOfAccount({
             account: arg1, tokenType:'', byTokenId: false, cfx})
             .then(({list})=>{
-                console.log(`total ${0}`, list)
+                console.log(`Approval-SYNC total ${0}`, list)
             })
         process.exit();
     }
@@ -630,9 +630,13 @@ async function main() {
     // *  : auto create based on max task.
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
-        console.log(`${process.argv[1]}\n`, err)
+        console.log(`Approval-SYNC ${process.argv[1]}\n`, err)
         process.exit(1)
     });
+}
+
+export async function startApprovalSync() {
+    return setup("useConfigRpc", "-1", "10000")
 }
 // 721 1030 0xf31216bd4c532effff0a8c397d21c4f931e6c3b23620328693dd91f10d500245 epoch 5371609
 // 20  1030 0x00a5164cc7b88758ad8d087387cc4015b07d073c4ff2b9abcafb934fca66ce53 epoch 62237

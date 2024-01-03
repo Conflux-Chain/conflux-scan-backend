@@ -345,15 +345,15 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                         await  localPop(epoch - 1)
                         delay = 10_000
                         break;
+                    } else if (data instanceof Error) {
+                        console.log(` error at epoch ${epoch}`, data)
+                        delay = 10_000;
+                        break;
                     } else if (data?.parentHash && parentHash && data.parentHash !== parentHash) {
                         console.log(` before save check, parent hash not match, on hand epoch ${epoch
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
                         delay = 10_000
-                        break;
-                    } else if (data instanceof Error) {
-                        console.log(` error at epoch ${epoch}`, data)
-                        delay = 10_000;
                         break;
                     }
                     await processData(epoch, data);
@@ -400,7 +400,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
 }
 export async function finishTask(epoch, model) {
     await model.update({finished: true}, {where: {epoch}})
-    console.log(` ---- finish task ${epoch} ---- `)
+    console.log(` ---- finish task ${epoch} ---- ${model.getTableName()}`)
 }
 async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155addr, pivotHash, nfts}, taskBegin:number) {
     return KV.sequelize.transaction(dbTx=>{
