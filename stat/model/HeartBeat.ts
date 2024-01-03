@@ -26,6 +26,7 @@ export const KEY_1155_SYNC = "HB_sync1155"
 export const KEY_TRANSFER_COUNT = "HB_transfer_count"
 export const KEY_CONTRACT_USER = "HB_contract_user"
 export const KEY_PRUNE = "HB_prune"
+export const KEY_STAT_TASK = "HB_stat_task"
 
 // each app tracks its own last time
 const lastTimeMap = new Map<string, number>()

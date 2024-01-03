@@ -231,7 +231,7 @@ export class FullBlockService {
                 return {code: CODE_CONTINUE, message: 'pivot block not match between core and evm space'}
             }
             const blockList2 = await batchFetchBlock(this.cfx2, hashes, true, true,
-                { noCheck: false, epochNumber: minEpochNumber })
+                { check: true, epochNumber: minEpochNumber })
             blockList2.forEach(blk => {
                 if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
                     blocksEvm++
