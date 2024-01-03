@@ -218,7 +218,10 @@ export class FullBlockService {
 
         let blocksEvm: number = 0
         if(StatApp.isEVM) {
-            const hashes = await this.cfx2.getBlocksByEpochNumber(minEpochNumber).catch(()=>{return []})
+            const hashes = await this.cfx2.getBlocksByEpochNumber(minEpochNumber).catch(err => {
+                console.log(`fetch core blocks fail at epoch ${minEpochNumber}`, err)
+                return []
+            })
             if (hashes.length === 0) {
                 return {
                     code: CODE_EMPTY_BLOCK, message: "core block list is empty", blockCount: 0, epoch: minEpochNumber
@@ -230,7 +233,7 @@ export class FullBlockService {
             const blockList2 = await batchFetchBlock(this.cfx2, hashes, true, true,
                 { noCheck: false, epochNumber: minEpochNumber })
             blockList2.forEach(blk => {
-                if(blk.height % 5 === 0){
+                if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
                     blocksEvm++
                 }
             })
@@ -459,7 +462,7 @@ export class FullBlockService {
             }
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
-            StatApp.isEVM && (block.gasLimit = preLoadResult.blocksEvm * 15000000)
+            StatApp.isEVM && (block.gasLimit = preLoadResult.blocksEvm * 15_000_000)
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         const failedBeans = failedTxArr
