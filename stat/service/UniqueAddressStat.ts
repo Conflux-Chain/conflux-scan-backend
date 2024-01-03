@@ -97,12 +97,12 @@ export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : 
             model.findOne({where: {finished: false}}), // resume running task
         ])
         if (exactOne) {
-            console.log(` resume exists task ${fromEpoch}`)
+            console.log(`UniqueAddr resume exists task ${fromEpoch}`)
             return exactOne;
         }
         if (fromEpoch == -1) {
             if (runningOne) {
-                console.log(` resume running task ${runningOne.epoch}`)
+                console.log(`UniqueAddr resume running task ${runningOne.epoch}`)
                 return runningOne;
             }else {
                 fromEpoch = 0
@@ -116,10 +116,10 @@ export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : 
         const newOne:IEpochTask = {epoch: preEnd, range: len, finished: false, createdAt: now, updatedAt: now}
         let ok = false
         await model.create(newOne).then(()=>{
-            console.log(`create task, epoch ${preEnd}`)
+            console.log(`UniqueAddr create task, epoch ${preEnd}`)
             ok = true
         }).catch(err=>{
-            console.log(`create task fail, ${err}, try again`)
+            console.log(`UniqueAddr create task fail, ${err}, try again`)
             return sleep(1000)
         })
         if (ok) {
@@ -185,7 +185,7 @@ export async function calcDailyUniqueAddr() {
     await calcOneDayUniqueArr(dt)
 }
 export async function calcDailyTokenOnChain(dt: Date) {
-    console.log(`calcDailyTokenOnChain ${dt.toISOString()}`)
+    // console.log(`calcDailyTokenOnChain ${dt.toISOString()}`)
     const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
     const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
     const transferCount = await DailyToken.sum('transferCount',{
@@ -231,7 +231,7 @@ export async function calcOneDayUniqueArr(dt:Date) {
             updateOnDuplicate: ['uniqueSender','uniqueReceiver', 'participants'],
         })
     }
-    console.log(` calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
+    console.log(`UniqueAddr calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
     await calcDailyTokenOnChain(dt);
 }
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
@@ -239,7 +239,7 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
     const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
     if (maxUnique === null) {
         if (!this.___show_log){
-            console.log(` no unique address record found.`)
+            console.log(`UniqueAddr no unique address record found.`)
             this.___show_log = true;
         }
         return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0)}
@@ -279,7 +279,7 @@ export async function clean(indexBucket = '', force = false) {
     }
     const zSetKey = indexBucket || zSetKeyArg
     let size = await redisWrap.zcard(zSetKey);
-    console.log(` ${zSetKey} size ${size}`)
+    console.log(`UniqueAddr ${zSetKey} size ${size}`)
     do {
         if (size === 0) {
             break;
@@ -288,7 +288,7 @@ export async function clean(indexBucket = '', force = false) {
             new Date('5050').getTime(), 0, 'WITHSCORES', 'LIMIT', 0, 1)
         await redisWrap.del(maxKey)
         await redisWrap.zrem(zSetKey, maxKey)
-        console.log(` remove ${maxKey}`)
+        console.log(`UniqueAddr remove ${maxKey}`)
         size --
     } while (true)
     !force && process.exit(0)
@@ -312,7 +312,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
         const {address, topics: [t, t1, t2, t3]} = log
         // console.log(`${address} ${t}`)
         if (t1 === undefined || t2 === undefined) {
-            console.log(` invalid topics at epoch ${epoch
+            console.log(`UniqueAddr invalid topics at epoch ${epoch
             }, block ${log.blockHash} tx ${log.transactionHash
             }, tx log index ${log.transactionLogIndex} `, log.topics)
             continue
@@ -359,7 +359,7 @@ async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epo
                 ])
         )
         if (!contractId) {
-            console.log(`contract id is not set !, contract ${address} ${contractHex}`)
+            console.log(`UniqueAddr contract id is not set !, contract ${address} ${contractHex}`)
         }
         measure.execute('set prop', ()=>{
             log['contractId'] = contractId;
@@ -390,7 +390,7 @@ async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
             })
         ])
     }).then(()=>{
-        console.log(` save unique address, contract count ${aggregator.allMap.size
+        console.log(`UniqueAddr save unique address, contract count ${aggregator.allMap.size
         } addr count ${beanArr.length}`)
     })
 
@@ -441,7 +441,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         switch (action) {
             case "ok":
                 if (data instanceof Error) {
-                    console.log(`error data, epoch ${epoch}. `, data)
+                    console.log(`UniqueAddr error data, epoch ${epoch}. `, data)
                     delay = 10_000 // retry.
                     break;
                 }
@@ -449,7 +449,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                 try {
                     transfers = data;
                 } catch (e) {
-                    console.log(`error when load data, epoch ${epoch}. `, e)
+                    console.log(`UniqueAddr error when load data, epoch ${epoch}. `, e)
                     delay = 10_000 // retry.
                     break;
                 }
@@ -464,33 +464,33 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                     // skip
                 } else if (sample) {
                     const epochHour = transfers.epochTime.getHours();
-                    console.log(`${new Date().toISOString()} sample transfer at epoch ${epoch} hour ${epochHour
+                    console.log(`UniqueAddr sample transfer at epoch ${epoch} hour ${epochHour
                     }, contract ${sample.contractId
                     } : ${sample.from} -> ${sample.to
                     }, preload size ${loader.data.size}, epoch time ${transfers.epochTime.toISOString()
                     } transfer count ${transfers.arr.length}`)
                 } else {
-                    console.log(` no transfer at ${epoch}`)
+                    console.log(`UniqueAddr no transfer at ${epoch}`)
                 }
                 if (epoch % 100 === 0) {
-                    measure.dump(`\n --`, undefined,epochMeasureKey, 'rpc', 'polishLogs','buildMap', 'idLength');
+                    measure.dump(`\n UniqueAddr --`, undefined,epochMeasureKey, 'rpc', 'polishLogs','buildMap', 'idLength');
                     loader.dumpMetrics(` --------------- get logs metrics , addr count ${addrIdMap.size}`)
                 }
                 epoch++
                 break;
             case "pop":
-                console.log(`pop ${epoch}`);
+                console.log(`UniqueAddr pop ${epoch}`);
                 epoch --
                 break;
             case "wait":
-                console.log(`wait for ${epoch}`)
+                console.log(`UniqueAddr wait for ${epoch}`)
                 delay = 5000
                 break;
         }
         if (epoch < stopBeforeEpoch) {
             setTimeout(repeat, delay)
         } else {
-            console.log(` round end, [${fromEpoch}, ${stopBeforeEpoch})`)
+            console.log(`UniqueAddr round end, [${fromEpoch}, ${stopBeforeEpoch})`)
             await saveUniqueAddrToDb(aggregator, {
                 epoch: fromEpoch
             })
@@ -516,8 +516,8 @@ async function benchmark() {
         const m = aggregator.buildMap([{from:rnd, to: rnd+1, contractId: rnd}], i, dt)
     }
     const ms = Date.now() - start
-    console.log(`times ${times}, avg ${(ms / times).toPrecision(5)}`)
-    measure.dump(`----`)
+    console.log(`UniqueAddr times ${times}, avg ${(ms / times).toPrecision(5)}`)
+    measure.dump(`UniqueAddr ----`)
     process.exit(0);
 }
 async function testTop() {
@@ -547,7 +547,7 @@ async function testDaily() {
 async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
     await RedisWrap.connect(config.redis)
-    console.log(`--------------------`)
+    console.log(`UniqueAddr --------------------`)
     await testTop();
     await testDaily();
     await benchmark();
@@ -555,32 +555,37 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const confluxOption = cfxUrl === 'useConfigRpc' ? config.conflux : {url: cfxUrl}
 
     let cfx = await initCfxSdk(confluxOption);
-    console.log(` ${process.argv[1]} \n -------- network ${cfx.networkId} --------`)
+    // console.log(` ${process.argv[1]} \n -------- network ${cfx.networkId} --------`)
 
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     const task = await fetchTask(len, fromEpoch)
-    console.log(` start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
+    console.log(`UniqueAddr start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
     await new Promise(r=>{
         run(cfx, task.epoch, task.epoch + task.range, ()=>{
             r(0)
         })
     })
     if (len === 0) {
-        console.log(`length parameter is zero, quit.`)
+        console.log(`UniqueAddr length parameter is zero, quit.`)
         process.exit(0)
     } else {
         setTimeout(() => runTask(cfx, fromEpoch, len), 0)
     }
 }
+
+export async function startUniqueAddrStat() {
+    return setup("useConfigRpc", "-1", "3000")
+}
+
 if (module === require.main) {
     redirectLog()
     regExitHook()
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
-        console.log(`${process.argv[1]}\n`, err)
+        console.log(`UniqueAddr ${process.argv[1]}\n`, err)
         process.exit(1)
     })
 }
