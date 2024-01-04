@@ -30,13 +30,23 @@ import {Op} from "sequelize";
 import {CensorService} from "./service/censor/CensorService";
 import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
+import {RedisWrap} from "./service/RedisWrap";
+import {TokenTransferHandler} from "./service/streamstat/business/TokenTransferHandler";
+import {MinerBlockHandler} from "./service/streamstat/business/MinerBlockHandler";
+import {AddrTransactionHandler} from "./service/streamstat/business/AddrTransactionHandler";
+import {AddrCfxTransferHandler} from "./service/streamstat/business/AddrCfxTransferHandler";
+import {DailyCfxTransferHandler} from "./service/streamstat/business/DailyCfxTransferHandler";
+import {DailyTokenTransferHandler} from "./service/streamstat/business/DailyTokenTransferHandler";
+import {NFTMintHandler} from "./service/streamstat/business/NFTMintHandler";
+import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 
 async function main() {
     redirectLog()
     regExitHook()
 
     const config = await init()
-    const cfx = await initCfxSdk(config.conflux, 'TimerTask');
+    const cfx = await initCfxSdk(config.conflux, 'StatTask');
+    await RedisWrap.connect(config.redis);
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     const traceCreateQuery = new BlockTraceCreateQuery({});
@@ -85,8 +95,12 @@ async function main() {
     const statDailyPowReward = new StatDailyPowReward({cfx});
     await statDailyPowReward.schedule(1000 * 1);
     //
+    await startStreamStat(cfx, config)
+    //
     setInterval(countTable, 60_000)
-    console.log(`----- Timer tasks scheduled. -----`)
+    //
+    repeatHeartBeat(KEY_STAT_TASK+config.serverTag)
+    console.log(`----- Stat tasks scheduled. -----`)
 }
 async function countTable() {
     await countTableDelta(Hex40Map, ADDRESS_COUNT_ALL, ADDRESS_COUNT_ID);
@@ -116,6 +130,27 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
     });
 }
 
+async function startStreamStat(cfx, config) {
+    if (config.streamStat) {
+        const app = {cfx};
+        const tokenTransferHandler = new TokenTransferHandler(app);
+        const minerBlockHandler = new MinerBlockHandler(app);
+        const addrTransactionHandler = new AddrTransactionHandler(app);
+        const addrCfxTransferHandler = new AddrCfxTransferHandler(app);
+        const dailyCfxTransferHandler = new DailyCfxTransferHandler(app);
+        const dailyTokenTransferHandler = new DailyTokenTransferHandler(app);
+        const dailyNFTMintHandler = new NFTMintHandler(app);
+
+        config.statTokenTransfer && (await tokenTransferHandler.schedule(1000 * 60 * 10));
+        config.statMinerBlock && (await minerBlockHandler.schedule(1000 * 60 * 10));
+        config.statAddrTransaction && (await addrTransactionHandler.schedule(1000 * 60 * 10));
+        config.statAddrCfxTransfer && (await addrCfxTransferHandler.schedule(1000 * 60 * 10));
+        config.statDailyCfxTransfer && (await dailyCfxTransferHandler.schedule(1000 * 60 * 10));
+        config.statDailyTokenTransfer && (await dailyTokenTransferHandler.schedule(1000 * 60 * 10));
+        config.statNFTMint && (await dailyNFTMintHandler.schedule(1000 * 60 * 10));
+    }
+}
+
 main().then().catch(err=>{
-    console.log(`Timer task fail:`, err)
+    console.log(`Stat task fail:`, err)
 })

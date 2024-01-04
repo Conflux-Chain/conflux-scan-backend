@@ -135,13 +135,13 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/pos/PosSync.js
-  timer_task:
+  stat_task:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/TimerTask.js
+    command: node /stat-root/stat/dist/StatTask.js
   bill:
     image: node:14.17.5
     network_mode: host
