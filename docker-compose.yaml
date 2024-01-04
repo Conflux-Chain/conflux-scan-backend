@@ -141,7 +141,7 @@ services:
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/TimerTask.js
+    command: node /stat-root/stat/dist/StatTask.js
   bill:
     image: node:14.17.5
     network_mode: host
