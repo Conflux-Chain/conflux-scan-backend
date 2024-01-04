@@ -62,7 +62,7 @@ class BlockService {
     }
 
     const epoch = await service.epoch.query({ epochNumber: block.epochNumber }) || {};
-    return lodash.defaults({}, block, pivotInfo, detailInfo, reward, {
+    return lodash.defaults(detailInfo, block, pivotInfo, detailInfo, reward, {
       risk,
       syncTimestamp: epoch.timestamp,
       transactionCount: block.transactions.length,
@@ -70,9 +70,12 @@ class BlockService {
   }
 
   async _getDetail({ hash, transactions }) {
+    const {
+      app: { service },
+    } = this;
+
     let newTransactionCount = 0;
     let gasPriceCount = BigInt(0);
-
     let gasUsed = BigInt(0);
     let crossSpaceTransactionCount = 0;
     lodash.forEach(transactions, (transaction) => {
@@ -93,6 +96,10 @@ class BlockService {
     result['gasUsed'] = gasUsed;
     if(StatApp.isEVM) {
       result['crossSpaceTransactionCount'] = crossSpaceTransactionCount;
+      const blockList = await service.fullBlock.listBlock({blockHash: hash});
+      if(blockList?.list?.length){
+        result['gasLimit'] = blockList.list[0]['gasLimit']
+      }
     }
 
     return result;
