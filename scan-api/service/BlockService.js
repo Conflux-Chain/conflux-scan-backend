@@ -65,7 +65,7 @@ class BlockService {
     return lodash.defaults(detailInfo, block, pivotInfo, detailInfo, reward, {
       risk,
       syncTimestamp: epoch.timestamp,
-      transactionCount: block.transactions.length,
+      transactionCount: block.transactions.length - (StatApp.isEVM ? detailInfo['crossSpaceTransactionCount']: 0),
     });
   }
 
@@ -96,6 +96,7 @@ class BlockService {
     result['gasUsed'] = gasUsed;
     if(StatApp.isEVM) {
       result['crossSpaceTransactionCount'] = crossSpaceTransactionCount;
+      result['newTransactionCount'] = result['newTransactionCount'] - crossSpaceTransactionCount;
       const blockList = await service.fullBlock.listBlock({blockHash: hash});
       if(blockList?.list?.length){
         result['gasLimit'] = blockList.list[0]['gasLimit']
