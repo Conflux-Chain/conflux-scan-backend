@@ -60,7 +60,7 @@ class TraceLog {
         const module = options.module || object.constructor.name;
 
         if (error) {
-          if (e.code !== parameterErrorCode) {
+          if (error.code !== parameterErrorCode) {
             logger.error({duration, module, method, params: args, error: options.error(error)});
           }
         } else {
