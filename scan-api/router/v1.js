@@ -65,6 +65,7 @@ router.use(async (ctx, next) => {
     if(e.code === undefined){
       e = new error.BizError(e.message);
     }
+    // common/parameter.js throws ParameterError, which defined in common/error.js
     ctx.status = e.status;
     ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
         { code: e.code, message: e.message, data: e.partialData };

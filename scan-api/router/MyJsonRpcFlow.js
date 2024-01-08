@@ -1,8 +1,9 @@
 const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
+const {parameterErrorCode} = require('../../common/error')
 const {Errors, UnhandledErrorCode} = require("../../stat/dist/service/common/LogicError");
 
 /**
- * lib/OpenAPI/Flow.js contains bugs, it will swallow the error near line 135.
+ * lib/OpenAPI/Flow.js contains bugs, it swallows the error near line 135.
  */
 let cfxRpcUrl = ''
 class MyJsonRpcFlow extends JsonRPCFlow {
@@ -13,12 +14,12 @@ class MyJsonRpcFlow extends JsonRPCFlow {
       // console.log(`enter ${__filename} `);
       try {
         const flow = jsonRPCFlow.methods[method]; // dynamic get method
-        const ret = await flow.call(this, [arg], next, end);
-        // console.log(`leave ${__filename}`);
-        return ret;
+        return await flow.call(this, [arg], next, end);
       } catch (e) {
         this.methodFlowError = e;
-        console.log(`error caught at ${__filename} \n url: ${this.originalUrl} \n`, e);
+        if (e.code !== parameterErrorCode) {
+          console.log(`error caught at ${__filename} \n url: ${this.originalUrl} \n`, e);
+        }
         end(/* nothing but stop calling chain */);
       }
     };

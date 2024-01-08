@@ -100,6 +100,7 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/TokenMiscSync.js
+  # deprecated
   uniqueAddressStat: # UniqueAddressStat
     image: node:14.17.5
     network_mode: host
