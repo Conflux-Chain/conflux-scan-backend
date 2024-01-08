@@ -1,6 +1,6 @@
 const util = require('util');
 const lodash = require('lodash');
-
+const {parameterErrorCode} = require('./error')
 // ----------------------------------------------------------------------------
 const EMPTY_LOGGER = {
   trace: () => undefined,
@@ -60,7 +60,9 @@ class TraceLog {
         const module = options.module || object.constructor.name;
 
         if (error) {
-          logger.error({ duration, module, method, params: args, error: options.error(error) });
+          if (e.code !== parameterErrorCode) {
+            logger.error({duration, module, method, params: args, error: options.error(error)});
+          }
         } else {
           logger[options.level]({ duration, module, method, params: options.params(...args), result: options.result(result) });
         }
