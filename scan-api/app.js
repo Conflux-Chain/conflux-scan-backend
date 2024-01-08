@@ -5,6 +5,7 @@ const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 
 const AppBase = require('../common/AppBase');
+const {parameterErrorCode} = require('../common/error')
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 const countRequestByIp = require('../common/middleware/countRequestByIp');
 const serviceLoader = require('./service');
@@ -122,7 +123,9 @@ class ApiApp extends AppBase {
         level: 'debug',
         params: (params) => lodash.first(params),
         error: (e) => {
-          console.log(` json rpc error: ${method}`, e);
+          if (e.code !== parameterErrorCode) {
+            console.log(` json rpc error: ${method}`, e);
+          }
           return e.message;
         },
       });
