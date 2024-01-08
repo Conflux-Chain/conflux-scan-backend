@@ -191,8 +191,8 @@ export class FullBlockQuery {
                 }
                 if(StatApp.isEVM) {
                     row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0;
-                    row['transactionCount'] = row['transactionCount'] - row['crossSpaceTransactionCount']
-                    row['executedTransactionCount'] = row['executedTransactionCount'] - row['crossSpaceTransactionCount']
+                    row['transactionCount'] = row['transactionCount']
+                    row['executedTransactionCount'] = row['executedTransactionCount']
                     row['coreBlock'] = epochCoreBlockMap[row['epochNumber']];
                 }
             })
