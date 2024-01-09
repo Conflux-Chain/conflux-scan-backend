@@ -203,7 +203,13 @@ export class TransferTpsService {
                 blockHeight: stat.blockHeight,
             };
         } else {
-            const latest: any = statArray[0];
+            const latest: any = statArray.find(item => {
+                const prices = item.statInfo.gasPrice
+                if(!prices?.length) return false
+                const validPrice = prices.find(price => price !== '0')
+                if(!validPrice) return false
+                return true
+            }); // find first none-zero gas price in evm space
             const oldest: any = statArray[statArray.length - 1];
             const gasPriceSet = new Set();
             statArray.forEach(stat => stat.statInfo.gasPrice.forEach(gasPrice => gasPriceSet.add(gasPrice)));
