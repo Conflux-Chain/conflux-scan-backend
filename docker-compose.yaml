@@ -136,13 +136,6 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/pos/PosSync.js
-  stat_task:
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/StatTask.js
   bill:
     image: node:14.17.5
     network_mode: host
@@ -166,34 +159,18 @@ services:
     environment:
       PORT: 8087
     restart: always
-    command: node /stat-root/stat/dist/FullEpochSync.js prune
-  epoch_backward:
+    command: node /stat-root/stat/dist/FullEpochSync.js
+  stat_task:
     image: node:14.17.5
+    network_mode: host
+    restart: always
     volumes:
       - ./:/stat-root
-      - ./log/:/log
-    network_mode: host
-    environment:
-      PORT: 8087
-    restart: always
-    command: node /stat-root/stat/dist/FullEpochSync.js backward syncTransfer prune
-  nft_transfer:
+    command: node /stat-root/stat/dist/StatTask.js
+  nft_meta:
     image: node:14.17.5
+    network_mode: host
+    restart: always
     volumes:
       - ./:/stat-root
-      - ./log/:/log
-    network_mode: host
-    environment:
-      PORT: 8087
-    restart: always
-    command: node /stat-root/stat/dist/FullEpochNftTransferSync.js
-  consortium_bridge:
-    image: node:14.17.5
-    volumes:
-      - ./:/stat-root
-      - ./log/:/log
-    network_mode: host
-    environment:
-      PORT: 8087
-    restart: always
-    command: node /stat-root/stat/dist/ConsortiumBridge.js
+    command: node /stat-root/stat/dist/service/nftchecker/NftMetaStorage.js metadata
