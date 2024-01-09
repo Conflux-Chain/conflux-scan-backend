@@ -9,7 +9,7 @@ const {PerformanceObserver, performance} = require("perf_hooks");
 let running = true;
 
 process.on('SIGINT', () => {
-  console.log('receive signal [SIGINT]');
+  console.log(`${__filename} receive signal [SIGINT]`);
   running = false;
 });
 process.on('SIGTERM', () => {

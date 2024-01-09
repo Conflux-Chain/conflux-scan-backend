@@ -78,12 +78,13 @@ export class RedisWrap{
         if (redisWrap.client) {
             return
         }
-        console.log(`connect to redis: ${redisConf.host} ${redisConf.port} db ${redisConf.db}`);
+        console.log(`try to connect to redis: ${redisConf.host} ${redisConf.port} db ${redisConf.db}`);
         const client = redis.createClient({
             host: redisConf.host,
             port: redisConf.port,
             password: redisConf.pwd,
             db: redisConf.db,
+            connect_timeout: 5_000,
         });
         //client.subscribe()
         RedisWrap.init(client)

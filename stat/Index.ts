@@ -52,7 +52,7 @@ export async function init() {
 
 function exitOnSignal(server: Server) {
     return async (signal) => {
-        console.log(`receive ${signal}`)
+        console.log(`${__filename} receive ${signal}`)
         // stop service
         server.close()
         // close db first, make sure that unfinished message will not be deleted from redis.

@@ -15,7 +15,9 @@ const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
 const { StatApp } = require('../stat/dist/StatApp');
 const { checkRate, loadRateConfig } = require("../stat/dist/router/RateLimiter");
+const { setSwStatFn } = require("../stat/dist/router/StatRouter");
 const { initPartialModel } = require('../stat/dist/service/DBProvider');
+const ApiDef = require("../stat/dist/router/ApiDef");
 const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
 const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
 const { KV, IS_EVM2 } = require('../stat/dist/model/KV');
@@ -78,24 +80,25 @@ class ApiApp extends AppBase {
         return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
       }).join('/');
     });
-    const pathDef = {};
+    const pathDef = process.env['unified_mod'] ? ApiDef.default.paths : {};
     pathArr.forEach((p) => {
       pathDef[p] = { get: {} };
     });
     apiSpec.paths = pathDef;
 
-    this.use(countRequestByIp);
     loadRateConfig().then()
 
     this.use(checkRate)
 
     // metrics
-    this.use(e2k(swStats.getMiddleware({
+    const swStat = e2k(swStats.getMiddleware({
       swaggerSpec: apiSpec,
       uriPath: '/v1/api-stat', // ui at /v1/api-stat/
       hostname: 'scan-backend-api-stat', // Prevent exposure of server ip
       basePath: '',
-    })));
+    }));
+    setSwStatFn(swStat)
+    this.use(swStat);
 
     this.use(async (ctx,next)=>{
       const start = Date.now();
