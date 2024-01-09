@@ -22,6 +22,10 @@ const { KV, IS_EVM2 } = require('../stat/dist/model/KV');
 const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
 
 class ApiApp extends AppBase {
+  static injectedSequelize;
+  static injectContext(seq) {
+    this.injectedSequelize = seq;
+  }
   constructor(config) {
     super(config);
   }
@@ -36,7 +40,7 @@ class ApiApp extends AppBase {
     // db
     const {config} = this;
     setCfxRpcUrl(config.conflux.url)
-    this.sequelize = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
+    this.sequelize = ApiApp.injectedSequelize || new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
     await RedisWrap.connect(config.redis);
 
     // type converter
@@ -45,20 +49,21 @@ class ApiApp extends AppBase {
     this.type.simpleAddress = this.type.checksumAddress.$after((v) => address.simplifyCfxAddress(v));
     this.router = router;
 
-    // backend service
+    // 2024.1.9, it only calls to compiler.
     this.syncSDK = new JsonRPCSDK(config.sync);
     this.service = serviceLoader(this);
     this.startLog();
-    this.startPrometheus();
 
     // stat service
     StatApp.readonly = config.database.readonly;
     StatApp.networkId = this.networkId;
-    await initPartialModel(this.sequelize);
-    if (config.database.syncSchema) {
-      await this.sequelize.sync({ alter: false });
-    } else {
-      console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
+    if (!ApiApp.injectedSequelize) {
+      await initPartialModel(this.sequelize);
+      if (config.database.syncSchema) {
+        await this.sequelize.sync({alter: false});
+      } else {
+        console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
+      }
     }
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     await this.service.homeDashboard.schedule().catch(() => undefined);
@@ -99,13 +104,6 @@ class ApiApp extends AppBase {
       saveApiLog(ctx, ms).catch()
     })
 
-    // websocket json rpc
-    this.webSocket.on('message', async (client, message) => {
-      const input = JSON.parse(message);
-      const output = await jsonrpc.call({ app: this, request: client.request }, input);
-      await client.send(JSON.stringify(output));
-    });
-
     console.log(`================== scan api listen on port ${port || this.config.port} ==================`);
     return super.listen(port);
   }
@@ -135,14 +133,6 @@ class ApiApp extends AppBase {
     });
   }
 
-  startPrometheus() {
-    this.prometheus.traceModule(this.service.conflux);
-    this.prometheus.traceMethod(this.syncSDK, 'call', (method) => ({ module: 'SyncSDK', method }));
-    lodash.forEach(jsonrpc.methods, (func, method) => {
-      this.prometheus.traceMethod(jsonrpc.methods, method, () => ({ module: 'JsonRPC', method }));
-    });
-  }
-
   async start() {
     await this.init();
     this.listen();
@@ -152,8 +142,10 @@ class ApiApp extends AppBase {
 
   async close() {
     await this.syncSDK.close();
-    await KV.sequelize.close();
-    await redisWrap.client.end(false);
+    if (!ApiApp.injectedSequelize) {
+      await KV.sequelize.close();
+      redisWrap.client.end(false);
+    }
     await super.close();
     console.log('================== close scan api ==================');
     process.exit(0);

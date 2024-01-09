@@ -54,12 +54,12 @@ function exitOnSignal(server: Server) {
     return async (signal) => {
         console.log(`receive ${signal}`)
         // stop service
-        await server.close()
+        server.close()
         // close db first, make sure that unfinished message will not be deleted from redis.
         // When handling redis message, we call XDEL after all operation is finished.
         await KV.sequelize.close()
         // close redis.
-        await redisWrap.client.end(false)
+        redisWrap.client.end(false)
         console.log(`server shutdown.`)
         process.exit(0)
     }
@@ -69,4 +69,7 @@ function regProcessHook(server: Server) {
     process.on('SIGINT', exitOnSignal(server));
     process.on('SIGTERM', exitOnSignal(server));
 }
-init().then()
+
+if (require.main === module) {
+    init().then();
+}

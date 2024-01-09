@@ -75,7 +75,10 @@ export class RedisWrap{
     }
 
     static async connect(redisConf:RedisConf) {
-        console.log(`connect to redis: ${redisConf.host} ${redisConf.port} db ${redisConf.db}`)
+        if (redisWrap.client) {
+            return
+        }
+        console.log(`connect to redis: ${redisConf.host} ${redisConf.port} db ${redisConf.db}`);
         const client = redis.createClient({
             host: redisConf.host,
             port: redisConf.port,

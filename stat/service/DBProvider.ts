@@ -154,7 +154,7 @@ export async function initPartialModel(sequelize) {
         createAddressErc1155TransferTable(sequelize),
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
-        createV2CfxBillTable(sequelize),
+        // createV2CfxBillTable(sequelize),
         createTokenBalanceTable(sequelize),
         createFullBlockTable(sequelize),
         createFullTransactionTable(sequelize),
@@ -164,7 +164,7 @@ export async function initPartialModel(sequelize) {
         createAddressNftTable(sequelize),
         createFullBlockExtTable(sequelize),
     ])
-    NegativeCfxBill.register(sequelize)
+    // NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
     ENS.register(sequelize)
     ApiLog.register(sequelize)

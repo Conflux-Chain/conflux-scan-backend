@@ -2,14 +2,12 @@ const lodash = require('lodash');
 const Koaflow = require('koaflow');
 const requestLogger = require('koaflow/lib/middleware/requestLogger');
 const requestId = require('koaflow/lib/middleware/requestId');
-const WSServer = require('./lib/WSServer');
 const TTLMap = require('./lib/TTLMap');
 const DingTalkRobot = require('./lib/DingTalkRobot');
 const CONST = require('./const');
 const error = require('./error');
 const tool = require('./tool');
 const type = require('./type');
-const Prometheus = require('./Prometheus');
 const TraceLog = require('./TraceLog');
 const {createLogger} = require("./utils");
 const {TokenTool} = require("../stat/dist/service/tool/TokenTool");
@@ -33,7 +31,6 @@ class AppBase extends Koaflow {
     this.tool = tool;
     this.type = type;
 
-    this.webSocket = new WSServer({ noServer: true });
     this.ttlMap = new TTLMap();
     // console.log(`cwd`, process.cwd()) // it's '/'
     // In docker container, '/log' is bind to ./log/<api|compiler>
@@ -54,14 +51,6 @@ class AppBase extends Koaflow {
       params: (...args) => args,
       error: (e) => e.message,
     });
-
-    // prometheus
-    this.prometheus = new Prometheus({
-      machine: config.machine,
-      service: process.env.SERVICE,
-    });
-    this.prometheus.traceMethod(this.cfx.provider, 'call', (method) => ({ module: 'conflux', method }));
-    this.prometheus.traceModule(this.cfx);
   }
 
   listen(port) {
@@ -76,9 +65,7 @@ class AppBase extends Koaflow {
     });
     this.use(requestId);
 
-    const server = super.listen(port || this.config.port);
-    server.on('upgrade', (...args) => this.webSocket.handleUpgrade(...args));
-    return server;
+    super.listen(port || this.config.port);
   }
 
   async run() {
@@ -89,7 +76,6 @@ class AppBase extends Koaflow {
 
   async close() {
     await this.cfx.close();
-    await this.webSocket.close();
     this.ttlMap.close();
     await super.close();
   }
