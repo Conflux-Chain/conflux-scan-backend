@@ -11,12 +11,13 @@ import {IS_EVM2, KEY_TPS_TRANSFER_NOTIFY, KV} from "./model/KV";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {StatApp} from "./StatApp";
 import {PruneNotifier} from "./service/prune/PruneNotifier";
-import {PruneHandler} from "./service/prune/PruneHandler";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {ContractQuery} from "./service/ContractQuery";
 import {SyncBase} from "./service/SyncBase";
 import {checkApiLogIpField} from "./monitor/ApiLog";
 import {redirectLog} from "./config/LoggerConfig";
+import {makeIdV} from "./model/HexMap";
+import {CONST} from "./service/common/constant";
 
 patchFormat();
 
@@ -28,8 +29,7 @@ export class FullEpochSync{
     public tokenQuery: TokenQuery;
     public contractQuery: ContractQuery;
     public epochSync: EpochSync;
-    public pruneHandler: PruneHandler;
-    public transferTpsService: TransferTpsService;
+    public zeroAddressId: number;
 
     constructor(config: StatConfig) {
         this.config = config;
@@ -80,6 +80,7 @@ export class FullEpochSync{
         this.tokenTool = new TokenTool(this.cfx);
         this.tokenQuery = new TokenQuery(this);
         this.contractQuery = new ContractQuery(this);
+        this.zeroAddressId = await makeIdV(CONST.ZERO_ADDRESS);
         this.epochSync = new EpochSync(this);
 
         await this.epochSync.run(this.config.syncEpochNumber);
@@ -114,22 +115,5 @@ function exitOnSignal(server: FullEpochSync) {
 }
 
 if (module === require.main) {
-    if (process.argv.includes('backward')) {
-        SyncBase.SYNC_BACKWARD = true;
-        EpochSync.SYNC_EPOCH = process.argv.includes('syncEpoch');
-        EpochSync.SYNC_BLOCK = process.argv.includes('syncBlock');
-        EpochSync.SYNC_ANNOUNCE = process.argv.includes('syncAnnounce');
-        EpochSync.SYNC_TRACE = process.argv.includes('syncTrace');
-        EpochSync.SYNC_TRANSFER = process.argv.includes('syncTransfer');
-        EpochSync.SYNC_DESTROY = process.argv.includes('syncDestroy');
-        EpochSync.SYNC_TOKEN_DETECT = process.argv.includes('syncTokenDetect');
-        EpochSync.SYNC_TOKEN_AUDIT = process.argv.includes('syncTokenAudit');
-        EpochSync.SYNC_TOKEN_ICON = process.argv.includes('syncTokenIcon');
-        EpochSync.SYNC_VERIFY_LINK = process.argv.includes('syncVerifyLink');
-        EpochSync.SYNC_EVM_ADDR = process.argv.includes('syncEvmAddr');
-    }
-    if (process.argv.includes('prune')) {
-        PruneNotifier.SWITCH_SYNC_PRUNE = true;
-    }
     start().then();
 }

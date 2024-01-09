@@ -12,7 +12,6 @@ import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
 import {EpochSync} from "../EpochSync";
 import {batchBlockDetail, batchFetchBlock, initCfxSdk} from "../common/utils";
 import {StatApp} from "../../StatApp";
-import {EpochNftTransferSync} from "../EpochNftTransferSync";
 import {sleep} from "./ProcessTool";
 import {AddressTransfer} from "../../model/AddrTransfer";
 import {CONST} from "../common/constant";
@@ -69,7 +68,6 @@ async function init() {
 
     const app = {cfx, networkId: StatApp.networkId, tokenTool, config};
     epochSync = new EpochSync(app);
-    // epochSync = new EpochNftTransferSync(app);
     contractQuery = new ContractQuery(app);
 }
 

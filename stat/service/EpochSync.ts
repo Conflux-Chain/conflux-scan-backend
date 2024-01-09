@@ -2,11 +2,11 @@ import {Epoch} from "../model/Epoch";
 import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
-import {ESpaceHex40Map, getAddrIdBase32Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
+import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
-import {Op, Transaction} from "sequelize";
+import {Op, Sequelize, Transaction} from "sequelize";
 import {batchBlockDetail} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
@@ -27,6 +27,8 @@ import {CensorItem} from "../model/CensorItem";
 import {CENSOR_TYPE} from "./censor/CensorService";
 import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
+import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
+import {AddressNfts} from "../model/AddrNft";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -62,6 +64,10 @@ export class EpochSync extends SyncBase{
     public static SYNC_TRANSFERRED_NFT = true;
     public static SYNC_CENSOR_ITEM = true;
     public static SYNC_NAME_TAG = true;
+
+    public static SYNC_NFT_TRANSFER = true;
+    public static SYNC_ADDR_NFT_TRANSFER = true;
+    public static SYNC_ADDR_NFT = true;
 
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
@@ -118,6 +124,9 @@ export class EpochSync extends SyncBase{
             const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
             const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
 
+            const nftTransferArray = await this.getNftTransferArray(epochNumber, tokenTransferArray);
+            const addrNftTransferArray = await this.getAddrNftTransferArray(epochNumber,tokenTransferArray);
+
             PruneNotifier.notifyBlock(minerBlockArray)
                 .catch(e => console.log(`epoch-sync.noticePruneBlock, epoch:${epochNumber}`, e));
             const addrIds = [...new Set(lodash.map(addrTransferArray, item => item.addressId))];
@@ -129,7 +138,9 @@ export class EpochSync extends SyncBase{
                 parentHash: epoch.parentHash,
                 pivotHash: epoch.pivotHash,
                 modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
-                    traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray},
+                    traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray,
+                    nftTransferArray, addrNftTransferArray
+                },
             };
         }catch(error) {
             return {syncCode: SyncCode.RETRY, message: `${error}`};
@@ -160,6 +171,10 @@ export class EpochSync extends SyncBase{
                 updateOnDuplicate:["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],
                 transaction: dbTx,
             });
+            EpochSync.SYNC_ADDR_NFT && await this.saveAddressNft(epochNumber, modelData, dbTx);
+            EpochSync.SYNC_NFT_TRANSFER && await NftTransfer.bulkCreate(modelData.nftTransferArray, {transaction: dbTx});
+            EpochSync.SYNC_ADDR_NFT_TRANSFER && await AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray,
+                {transaction: dbTx});
             const tokenArray = modelData.tokenArray;
             for(const token of tokenArray){
                 if(!EpochSync.SYNC_TOKEN_DETECT) break;
@@ -246,9 +261,13 @@ export class EpochSync extends SyncBase{
             const addrTransferDel = await AddressTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
             const censorItemDel = await CensorItem.destroy({where: {epochNumber}, transaction: dbTx});
-            console.log('epoch-sync.delete epoch:', epochNumber, 'epochDel:', epochDel, 'minerBlockDel:', minerBlockDel,
-                'traceCreateDel:', traceCreateDel, 'addrTransferDel:', addrTransferDel, 'contractDestroyDel:', contractDestroyDel,
-                'censorItemDel:', censorItemDel);
+            const addrNftDel = await this.deleteAddressNft(epochNumber, modelData, dbTx);
+            const nftTransferDel = await NftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+            const addrNftTransferDel = await AddressNftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+            console.log(`epoch-sync.delete epoch ${epochNumber} epochDel ${epochDel} minerBlockDel ${minerBlockDel}
+                traceCreateDel ${traceCreateDel} addrTransferDel ${addrTransferDel} contractDestroyDel ${contractDestroyDel}
+                censorItemDel ${censorItemDel} addrNftDel ${addrNftDel} nftTransferDel ${nftTransferDel} 
+                addrNftTransferDel ${addrNftTransferDel}`);
         });
 
         if(TransferTpsService.TPS_TRANSFER_NOTIFY) {
@@ -1059,6 +1078,114 @@ export class EpochSync extends SyncBase{
         items.forEach(item => lodash.assign(item, {epochNumber, createdAt, updatedAt: createdAt}));
 
         return items;
+    }
+
+    // ----------------------------- nft transfer -------------------------------
+    public async getNftTransferArray(epochNumber, tokenTransferArray) {
+        const {
+            ADDRESS_TRANSFER_TYPE: {ERC721, ERC1155}
+        } = CONST;
+
+        return tokenTransferArray.filter(t => t.type === ERC721.code|| t.type === ERC1155.code);
+    }
+
+    public async getAddrNftTransferArray(epochNumber,tokenTransferArray){
+        const {
+            ADDRESS_TRANSFER_TYPE: {ERC721, ERC1155}
+        } = CONST;
+
+        const result = [];
+        tokenTransferArray.filter(t => t.type === ERC721.code|| t.type === ERC1155.code).forEach( transfer => {
+            result.push({...transfer, addressId: transfer.fromId})
+            const dummyToId = transfer.toId || transfer.contractCreatedId
+            if (dummyToId && dummyToId !== transfer.fromId) {
+                result.push({...transfer, addressId: dummyToId})
+            }
+        });
+
+        return result;
+    }
+
+    // ------------------------------ address nft -------------------------------
+    // addressId|epoch|blockIndex|txIndex|txLogIndex|batchIndex|fromId|toId|contractId|tokenId|value|type
+    // addressId|contractId|tokenId|value|type
+    private async saveAddressNft(epochNumber, modelData, dbTx) {
+        const {addrNftTransferArray, epoch} = modelData;
+        await this.updateAddressNft(epochNumber, epoch.timestamp, addrNftTransferArray, false, dbTx);
+    }
+
+    private async deleteAddressNft(epochNumber, modelData, dbTx) {
+        const {epoch} = modelData;
+        const addrNftTransferArray = await AddressNftTransfer.findAll({where: {epoch: epochNumber}});
+        await this.updateAddressNft(epochNumber, epoch.timestamp, addrNftTransferArray, true, dbTx);
+    }
+
+    private async updateAddressNft(epochNumber, epochTimestamp, addrNftTransferArray, pivotSwitch, dbTx) {
+        if(!addrNftTransferArray?.length) {
+            return;
+        }
+
+        const nftChangeMap = {};
+        const nftTypeMap = {};
+        for (const transfer of addrNftTransferArray) {
+            const {addressId, fromId, toId, contractId, tokenId, value} = transfer;
+            if(fromId === toId){
+                continue;
+            }
+
+            const key = `${addressId}_${contractId}_${tokenId}`;
+            const val = addressId === fromId ? -BigInt(value) : BigInt(value);
+            nftChangeMap[key] = !nftChangeMap[key] ? val : nftChangeMap[key] + val;
+            nftTypeMap[contractId] = !nftTypeMap[contractId] ? transfer.type : nftTypeMap[contractId];
+        }
+
+        let cursor: number;
+        async function nextCursor() {
+            if(cursor === undefined) {
+                const start = Number(`${epochTimestamp.getTime().toString().substring(0, 10)}${''.padStart(6, '0')}`);
+                const end = start + Number(`${'1'.padEnd(7, '0')}`);
+                const maxCursor: number = (await AddressNfts.max('updatedCursor', {where: {
+                        [Op.and]: [{updatedCursor: {[Op.gte]: start}}, {updatedCursor: {[Op.lt]: end}}]}})) || (start - 1);
+                cursor = maxCursor + 1;
+            }
+            return cursor++;
+        }
+
+        for (const k of Object.keys(nftChangeMap)) {
+            const key = k.split('_');
+            const value = nftChangeMap[k]
+            const [addrId, ctId, tokenId] = key;
+            const addressId = Number(addrId)
+            const contractId = Number(ctId);
+            if(addressId === this.app.zeroAddressId) {
+                continue;
+            }
+
+            const primaryKey = {addressId, contractId, tokenId};
+            const updatedCursor = await nextCursor();
+            if(pivotSwitch) {
+                await AddressNfts.update(
+                    {'value': Sequelize.literal(`value - ${Number(value)}`), updatedAt: epochTimestamp, updatedCursor},
+                    {where: primaryKey, transaction: dbTx}
+                );
+                await AddressNfts.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx});
+            } else{
+                const record = await AddressNfts.findOne({where: primaryKey});
+                if(!record) {
+                    const type = nftTypeMap[contractId];
+                    await AddressNfts.create(
+                        {...primaryKey, value, type, createdAt: epochTimestamp, updatedAt: epochTimestamp, updatedCursor},
+                        {transaction: dbTx}
+                    );
+                } else{
+                    await AddressNfts.update(
+                        {'value': Sequelize.literal(`value + ${Number(value)}`), updatedAt: epochTimestamp, updatedCursor},
+                        {where: primaryKey, transaction: dbTx}
+                    )
+                    await AddressNfts.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx});
+                }
+            }
+        }
     }
 
     // ----------------------------- sync backward ------------------------------
