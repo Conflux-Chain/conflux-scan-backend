@@ -13,7 +13,8 @@ services:
       - ./data/api:/data
     network_mode: host
     restart: always
-    command: node /scan/scan-api
+#    command: node /scan/scan-api
+    command: node /scan/scan-api/starter.js
   open_api:
     image: node:14.17.5
     volumes:
@@ -31,6 +32,7 @@ services:
     network_mode: host
     restart: always
     command: node /scan/scan-compiler
+  # deprecated
   stat:
     image: node:14.17.5
     volumes:
