@@ -17,7 +17,6 @@ import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
 import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {StatApp} from "./StatApp";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
 import {CONST} from "./service/common/constant"
 import {doHeartBeat, KEY_TRANSFER_COUNT} from "./model/HeartBeat";
@@ -260,7 +259,6 @@ async function run() {
 
     //
     tokenTool = new TokenTool(cfx)
-    PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     RedisWrap.connect(config.redis).then(()=>{
     }).then(()=>{
         return scheduleTransferUpdater(config.serverTag)

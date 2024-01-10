@@ -333,3 +333,8 @@ export async function autoAddPartition(seq:Sequelize) {
         await seq.query(addSql, {type:QueryTypes.UPDATE, logging: console.log})
     }
 }
+
+export async function getSlaveStatus(seq:Sequelize) {
+    return seq.query('SHOW SLAVE STATUS', {type: QueryTypes.SELECT, raw: true})
+        .then(arr => {return arr[0]})
+}

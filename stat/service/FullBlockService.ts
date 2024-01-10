@@ -29,7 +29,6 @@ import {PreloadMap} from "./SyncBase";
 import {Epoch} from "../model/Epoch";
 import {batchFetchBlock, noVerboseAddr} from "./common/utils";
 import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
-import {PruneNotifier} from "./prune/PruneNotifier";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {Contract} from "../model/Contract";
@@ -511,8 +510,6 @@ export class FullBlockService {
             console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
             throw err;
         });
-        PruneNotifier.notifyTransaction(executedTxArr)
-            .catch(e => console.log(`block-sync.noticePruneTx, epoch:${executedTxArr[0].epoch}`, e));
         StatNotifier.notifyStatAddrTransaction({epochNumber: minEpochNumber, epochTimestamp: blockTime, action: 'push',
             txnArray: executedTxArr
         }).catch(e => console.log(`epoch-sync.noticeStatAddrTransaction epoch:${minEpochNumber}`, e));

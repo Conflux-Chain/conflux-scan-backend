@@ -27,7 +27,6 @@ import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
-import {PruneHandler} from "./service/prune/PruneHandler";
 import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KEY_FULL_STATE_RPC, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
@@ -68,7 +67,6 @@ export class StatApp{
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
-    public pruneHandler: PruneHandler;
     public transferTpsService: TransferTpsService;
     public fullBlockQuery: FullBlockQuery;
     public ensCheckerQuery: ENSCheckerQuery;
@@ -137,7 +135,6 @@ export class StatApp{
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
-        this.pruneHandler = new PruneHandler(this);
         this.transferTpsService = new TransferTpsService(this);
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)

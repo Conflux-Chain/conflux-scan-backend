@@ -30,8 +30,6 @@ import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
-import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
 import {FullBlock} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
@@ -273,22 +271,6 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         }
         if (parentHash) { // checking mode.
             parentHash = finalData['pivotHash'];
-        }
-        async function notifyPrune(type, {contractIds, addrIds}, addrType) {
-            if (contractIds.length === 0) {
-                return;
-            }
-            return Promise.all([
-                PruneNotifier.notifyPrune({[type]:contractIds}),
-                PruneNotifier.notifyPrune({[addrType]:addrIds}),
-            ]);
-        }
-        try {
-            notifyPrune(PruneType.ERC20_TRANSFER, finalData.ids20, PruneType.ADDR_ERC20_TRANSFER).then()
-            notifyPrune(PruneType.ERC721_TRANSFER, finalData.ids721, PruneType.ADDR_ERC721_TRANSFER).then()
-            notifyPrune(PruneType.ERC1155_TRANSFER, finalData.ids1155, PruneType.ADDR_ERC1155_TRANSFER).then()
-        } catch (e) {
-            console.log(`notify prune fail:`, e)
         }
         return finalData;
     }
@@ -615,9 +597,6 @@ if (module === require.main) {
     // N  : use task N if it's not finished, fallback to *.
     // *  : auto create based on max task.
     const [, , cfxUrl, fromEpoch, taskLen] = process.argv
-    if (process.argv.includes('prune')) {
-        PruneNotifier.SWITCH_SYNC_PRUNE = true;
-    }
     setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)
         process.exit(1)

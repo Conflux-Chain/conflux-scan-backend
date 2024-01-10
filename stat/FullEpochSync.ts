@@ -10,7 +10,6 @@ import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KEY_TPS_TRANSFER_NOTIFY, KV} from "./model/KV";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {StatApp} from "./StatApp";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {TransferTpsService} from "./service/TransferTpsService";
 import {ContractQuery} from "./service/ContractQuery";
 import {SyncBase} from "./service/SyncBase";
@@ -83,6 +82,7 @@ export class FullEpochSync{
         this.zeroAddressId = await makeIdV(CONST.ZERO_ADDRESS);
         this.epochSync = new EpochSync(this);
 
+        await this.epochSync.checkAnnounceConfig()
         await this.epochSync.run(this.config.syncEpochNumber);
     }
 

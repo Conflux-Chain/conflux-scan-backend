@@ -433,18 +433,6 @@ export function reverseMap(map:Map<any, any>) {
     return ret;
 }
 
-export function checkExist(options, fieldArray){
-    let prunedFlag = true;
-    lodash.forEach(options, (value, key) => {
-        if(lodash.includes(fieldArray, key)){
-            prunedFlag = prunedFlag && (value !== undefined);
-        } else {
-            prunedFlag = prunedFlag && (value === undefined);
-        }
-    });
-    return prunedFlag;
-}
-
 export function checkLibrary(libMap) {
     const libraries = {};
     Object.keys(libMap).forEach(library => {

@@ -1,14 +1,14 @@
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
 import {loadConfig} from "../../config/StatConfig";
-import {createDB, initModel} from "../DBProvider";
+import {createDB, getSlaveStatus, initModel} from "../DBProvider";
 import {Hex40Map, Hex64Map} from "../../model/HexMap";
 import {ContractQuery} from "../ContractQuery";
 import {ContractDestroy, TraceCreateContract} from "../../model/TraceCreateContract";
 import {ContractVerify} from "../../model/ContractVerify";
 import {TokenTool} from "./TokenTool";
-import {Op, where} from "sequelize";
-import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
+import {Op, Sequelize, where} from "sequelize";
+import {AddressTransactionIndex, FailedTx, FullBlock, FullTransaction} from "../../model/FullBlock";
 import {EpochSync} from "../EpochSync";
 import {batchBlockDetail, batchFetchBlock, initCfxSdk} from "../common/utils";
 import {StatApp} from "../../StatApp";
@@ -20,9 +20,8 @@ import {Epoch, EpochNftTransfer} from "../../model/Epoch";
 import {Token} from "../../model/Token";
 import {SyncCode, SyncData} from "../SyncBase";
 import {decodeTransferFromReceipts} from "../../TokenTransferSync";
-import {PruneNotifier} from "../prune/PruneNotifier";
-import {PruneType} from "../../model/PruneInfo";
 import {boolean} from "js-conflux-sdk/dist/types/util/format";
+import {FullMinerBlock} from "../../model/FullMinerBlock";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -60,6 +59,8 @@ async function init() {
     seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
+    await getSlaveStatus(seq)
+
 
     cfx = await initCfxSdk(config.conflux)
     StatApp.networkId = cfx.networkId;

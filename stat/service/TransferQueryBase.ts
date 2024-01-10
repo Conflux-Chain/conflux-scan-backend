@@ -4,7 +4,6 @@ import {Op} from "sequelize"
 import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
-import {checkExist} from "./common/utils";
 import {checkAddressRate} from "../router/RateLimiter";
 import {CONST} from "./common/constant"
 import {fillMethodInfo} from "../model/ContractInfo";
@@ -263,13 +262,7 @@ export abstract class TransferQueryBase {
         // add pruned total
         let prunedCntr = 0;
         if (!page.queryWithCache) {
-            const optionObj = {
-                minEpochNumber, maxEpochNumber, transactionHash,
-                minTimestamp, maxTimestamp,
-                accountAddress, address, from, to, opponentAddress, tokenArray,
-                tokenId, txType, status
-            };
-            if (checkExist(optionObj, ['accountAddress'])) {
+            if (accountAddressId) {
                 let pruneType = this.getAddrPruneType();
                 if (pruneType) {
                     const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: pruneType}});

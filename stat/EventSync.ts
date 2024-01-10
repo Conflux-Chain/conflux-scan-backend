@@ -31,8 +31,6 @@ import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
-import {PruneType} from "./model/PruneInfo";
 import {RedisWrap} from "./service/RedisWrap";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";

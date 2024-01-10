@@ -21,7 +21,7 @@ import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {
     POW_EPOCH_FOR_POS_Q,
-    PRUNE_Q, STREAM_STAT_ADDR_CFX_TRANSFER_Q, STREAM_STAT_ADDR_TRANSACTION_Q,
+    STREAM_STAT_ADDR_CFX_TRANSFER_Q, STREAM_STAT_ADDR_TRANSACTION_Q,
     STREAM_STAT_DAILY_CFX_TRANSFER_Q,
     STREAM_STAT_DAILY_TOKEN_TRANSFER_Q, STREAM_STAT_MINER_BLOCK_Q,
     STREAM_STAT_TOKEN_TRANSFER_Q,
@@ -118,7 +118,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     })
     router.get('/devops/stream-queue-report', async (ctx)=>{
         const qs = [
-            PRUNE_Q,
             POW_EPOCH_FOR_POS_Q,
             TPS_TRANSFER_Q,
             STREAM_STAT_TOKEN_TRANSFER_Q,
@@ -148,9 +147,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         const {orderBy} = ctx.request.query;
         const list = await PruneInfo.findAll({order:[[orderBy || 'pruned','desc']], limit: 100})
         ctx.body = {list}
-    })
-    router.get('/devops/prune-metrics',async (ctx) => {
-        ctx.body = statApp.pruneHandler.getDevMetrics();
     })
     router.get('/devops/set-address-name',
         checkLocal,

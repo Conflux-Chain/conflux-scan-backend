@@ -12,7 +12,6 @@ import {
 } from "./model/KV";
 import {initCfxSdk} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
-import {PruneNotifier} from "./service/prune/PruneNotifier";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -45,7 +44,6 @@ export async function run() {
         cfx2 = await initCfxSdk(config.conflux2)
     }
     const svc = new FullBlockService(cfx, cfx2)
-    PruneNotifier.SWITCH_SYNC_PRUNE = config.syncPrune;
     StatNotifier.SWITCH_STREAM_STAT = config.streamStat;
     StatNotifier.SWITCH_STAT_MINER_BLOCK = config.statMinerBlock;
     StatNotifier.SWITCH_STAT_ADDR_TRANSACTION = config.statAddrTransaction;
