@@ -433,18 +433,6 @@ export function reverseMap(map:Map<any, any>) {
     return ret;
 }
 
-export function isContains(options, fieldArray){
-    let containsFlag = true;
-    lodash.forEach(options, (value, key) => {
-        if(lodash.includes(fieldArray, key)){
-            containsFlag = containsFlag && (value !== undefined);
-        } else {
-            containsFlag = containsFlag && (value === undefined);
-        }
-    });
-    return containsFlag;
-}
-
 export function checkLibrary(libMap) {
     const libraries = {};
     Object.keys(libMap).forEach(library => {

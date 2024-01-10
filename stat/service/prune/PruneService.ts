@@ -1,4 +1,5 @@
 import {
+    KEY_PRUNE_ADJUST_BY_SBM,
     KEY_PRUNE_DEL_ROWS_PER_LOOP,
     KEY_PRUNE_DELAY_EPOCHS_AGAINST_LATEST,
     KEY_PRUNE_EPOCH_ADDR_TRANSFER,
@@ -21,9 +22,8 @@ import {AddressErc20Transfer, Erc20Transfer} from "../../model/Erc20Transfer"
 import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer"
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer"
 import {FullMinerBlock} from "../../model/FullMinerBlock"
-import {loadConfig} from "../../config/StatConfig"
+import {loadConfig, StatConfig} from "../../config/StatConfig"
 import {redirectLog} from "../../config/LoggerConfig"
-import {initCfxSdk} from "../common/utils"
 import {StatApp} from "../../StatApp"
 import {registerProcessHook, sleep} from "../tool/ProcessTool"
 import {createDB, getSlaveStatus, initModel} from "../DBProvider"
@@ -31,12 +31,19 @@ import {doHeartBeat, KEY_PRUNE} from "../../model/HeartBeat"
 
 const lodash = require('lodash');
 
+class Options {
+    table: string                // prune_info: prune address from prune_info, address_transfer: prune address_transfer, all: prune all tables
+    type: string                 // skip if max epoch is less than pruned epoch, 1-skip, 0-not skip
+    skipPrunedEpoch?: number = 1 // only used for table = 'prune_info', refer to PruneType, it will prune all type if pruneType is not set
+}
+
 export class PruneService {
-    private readonly app
-    private readonly opts
+    private readonly config: StatConfig
+    private readonly opts: Options
+    private switchAdjustBySbm: boolean
     private KEEP_ROWS = 20000
     private sbmLastTime = 0
-    private sbmAlertTimes = 0
+    private pruneHappens = false
     private pruneCfg = {
         pruneEpochsPerTime: 100,
         delRowsPerLoop: 500,
@@ -44,9 +51,25 @@ export class PruneService {
         delayEpochsAgainstLatest: 1000,
     }
 
-    public constructor(app, opts?: any) {
-        this.app = app
+    public constructor(config: StatConfig, opts?: Options) {
+        this.config = config
         this.opts = opts
+    }
+
+    public async checkSlaveStatus() {
+        this.switchAdjustBySbm = await KV.getSwitch(KEY_PRUNE_ADJUST_BY_SBM)
+        if(this.switchAdjustBySbm) {
+            try{
+                const slaveStatus = await getSlaveStatus(KV.sequelize)
+                if(!slaveStatus) {
+                    console.log(`get null salve status`) // Run prune service on master db.
+                    process.exit(9)
+                }
+            } catch (err) {
+                console.log(`get salve status fail:`, err) // Error occurs, eg. insufficient permission.
+                process.exit(9)
+            }
+        }
     }
 
     public async refreshConfig(delay = 60_000) {
@@ -65,15 +88,14 @@ export class PruneService {
         const that = this
         async function repeat() {
             await that.prune()
-            setTimeout(repeat, delay)
+            setTimeout(repeat, that.pruneHappens ? 0 : delay)
+            that.pruneHappens = false
         }
         repeat().then()
         console.log(`schedule prune service in ${delay/1000}s interval`)
     }
 
     private async getConfig(){
-        const {sequelize} = this.app
-
         let [pruneEpochsPerTime, delRowsPerLoop, sleepMsPerLoop, delayEpochsAgainstLatest] = await Promise.all([
             KV.getNumber(KEY_PRUNE_EPOCHS_PER_TIME, this.pruneCfg.pruneEpochsPerTime),
             KV.getNumber(KEY_PRUNE_DEL_ROWS_PER_LOOP, this.pruneCfg.delRowsPerLoop),
@@ -82,19 +104,21 @@ export class PruneService {
         ])
 
         // Adjust the parameter `delRowsPerLoop` according to the `Seconds_Behind_Master` status of MySQL.
-        // If sbm is greater than 200 for three consecutive minutes and is greater than the previous value,
-        // subtract 50 from delRowsPerLoop.
-        const status = await getSlaveStatus(sequelize) as any
-        const sbm = status?.Seconds_Behind_Master
-        if(lodash.isNumber(sbm)) {
-            if(sbm > 200 && this.sbmLastTime > 200 && (sbm - this.sbmLastTime) > 0) {
-                this.sbmAlertTimes ++
+        // If sbm is greater than 200 and is greater than the previous value, subtract 50 from delRowsPerLoop.
+        if(this.switchAdjustBySbm) {
+            const status = await getSlaveStatus(KV.sequelize) as any
+            const sbm = status?.Seconds_Behind_Master
+            if (lodash.isNumber(sbm)) {
+                if (sbm > 200 && this.sbmLastTime > 200 && (sbm - this.sbmLastTime) > 0) {
+                    delRowsPerLoop -= 50
+                    delRowsPerLoop = Math.max(delRowsPerLoop, 1)
+                    await KV.saveNumber(KEY_PRUNE_DEL_ROWS_PER_LOOP, delRowsPerLoop, undefined)
+                } else if (sbm === 0) {
+                    delRowsPerLoop += 50
+                    await KV.saveNumber(KEY_PRUNE_DEL_ROWS_PER_LOOP, delRowsPerLoop, undefined)
+                }
+                this.sbmLastTime = sbm
             }
-            this.sbmLastTime = sbm
-        }
-        if(this.sbmAlertTimes >= 3) {
-            delRowsPerLoop -= 50
-            this.sbmAlertTimes = 0
         }
 
         this.pruneCfg = {
@@ -204,11 +228,10 @@ export class PruneService {
         for (const addressId of addressIds) {
             await this.pruneAddress(addressId, type, epochs.maxEpoch)
         }
+        this.pruneHappens = true
     }
 
     private async pruneAddress(addressId, type, maxEpoch?) {
-        const {config} = this.app
-
         const [_, model] = this.getTables(type)
         const one = await (model as any).findOne({
             where: {addressId}, order: [["epoch", "desc"]], offset: this.KEEP_ROWS, limit: 1, raw: true
@@ -241,7 +264,7 @@ export class PruneService {
             })
 
             this.pruneCfg.sleepMsPerLoop && await sleep(this.pruneCfg.sleepMsPerLoop)
-            await doHeartBeat(KEY_PRUNE+config.serverTag)
+            await doHeartBeat(KEY_PRUNE+this.config.serverTag)
             if(++loop % 10 === 0) {
                 console.log(`prune ${type} ${addressId} ${this.pruneCfg.delRowsPerLoop} ${pruned - prune.pruned}`)
             }
@@ -275,18 +298,14 @@ export class PruneService {
 
     private getSql0(fullModel): string {
         return `select distinct(fromId) as id from ${fullModel.getTableName()} where epoch >= :minEpoch and epoch <= :maxEpoch
-                \runion 
-                \rselect distinct(toId) as id from ${fullModel.getTableName()} where epoch >= :minEpoch and epoch <= :maxEpoch`
+                \r union 
+                \r select distinct(toId) as id from ${fullModel.getTableName()} where epoch >= :minEpoch and epoch <= :maxEpoch`
     }
 
     public async close() {
         await KV.sequelize.close();
     }
 }
-
-let table // 1-prune address from prune_info, 2-prune address_transfer, 3-prune all tables
-let skipPrunedEpoch = 1 // skip if max epoch is less than pruned epoch, 1-skip, 0-not skip
-let type // only used for table = 'prune_info', refer to PruneType, it will prune all type if pruneType is not set
 
 async function start(opts: any) {
     const config = loadConfig('Prod')
@@ -307,11 +326,8 @@ async function start(opts: any) {
         console.log(`skip sync db schema.`)
     }
 
-    const cfx = await initCfxSdk(config.conflux)
-    StatApp.networkId = cfx.networkId
-
-    const app = {cfx, config, sequelize}
-    const srv = new PruneService(app, opts)
+    const srv = new PruneService(config, opts)
+    await srv.checkSlaveStatus()
     await srv.refreshConfig()
     await srv.run()
 
@@ -323,14 +339,15 @@ async function start(opts: any) {
 // node script all              [skipPrunedEpoch]             # prune all tables
 if (module === require.main) {
     const args = process.argv.slice(2)
+    const opts: Options = new Options()
     if(args[0]) {
-        table = args[0]
+        opts.table = args[0]
     }
     if(args[1]) {
-        skipPrunedEpoch = Number(args[1])
+        opts.skipPrunedEpoch = Number(args[1])
     }
-    if(table === 'prune_info' && args[2]) {
-        type = args[2]
+    if(opts.table === 'prune_info' && args[2]) {
+        opts.type = args[2]
     }
-    start({table, skipPrunedEpoch, type}).then()
+    start(opts).then()
 }

@@ -6,7 +6,7 @@ import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
-import {Op, Sequelize, Transaction} from "sequelize";
+import {Op, QueryTypes, Sequelize, Transaction} from "sequelize";
 import {batchBlockDetail} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
@@ -27,6 +27,7 @@ import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
+import {ANNOUNCEMENT_CONTRACT, KV} from "../model/KV";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -67,6 +68,7 @@ export class EpochSync extends SyncBase{
     public static SYNC_ADDR_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT = true;
 
+    public static ANNOUNCEMENT_CONTRACT
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
 
@@ -80,6 +82,15 @@ export class EpochSync extends SyncBase{
         this.app = app;
         this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
         this.statSwitch = true;
+    }
+
+    public async checkAnnounceConfig() {
+        const announcement = await KV.getString(ANNOUNCEMENT_CONTRACT, '');
+        if(!announcement) {
+            console.log(`get null announcement contract`)
+            process.exit(9)
+        }
+        EpochSync.ANNOUNCEMENT_CONTRACT = format.hexAddress(announcement)
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -352,10 +363,10 @@ export class EpochSync extends SyncBase{
             const key = Buffer.from(announce.key, 'base64').toString();
             const params = key.split('/');
             if(params[0] === 'token') {
-                EpochSync.parseAnnounce(epochNumber, params, announce, tokenMap);
+                this.parseAnnounce(epochNumber, params, announce, tokenMap);
             }
             if(params[0] === 'contract') {
-                EpochSync.parseAnnounce(epochNumber, params, announce, contractMap);
+                this.parseAnnounce(epochNumber, params, announce, contractMap);
             }
         }
 
@@ -383,7 +394,12 @@ export class EpochSync extends SyncBase{
         return {tokenArray, contractArray};
     }
 
-    private static parseAnnounce(epochNumber, params, announce, map){
+    private parseAnnounce(epochNumber, params, announce, map){
+        const contract = params[1] === 'list' ? params[2] : params[1]
+        if(!this.checkAnnounce(epochNumber, announce['address'], announce['announcer'], contract)) {
+            return map
+        }
+
         if(params[1] === 'list'){
             const [ , , hex] = params;
             map[hex] = map[hex] || {};
@@ -408,6 +424,27 @@ export class EpochSync extends SyncBase{
             map[hex] = item;
         }
         return map;
+    }
+
+    private async checkAnnounce(epochNumber, announcement, announcer, contract) {
+        if(announcement !== EpochSync.ANNOUNCEMENT_CONTRACT) {
+            console.log(`checkAnnounce epoch ${epochNumber} announcement ${announcement} not match with config ${EpochSync.ANNOUNCEMENT_CONTRACT}`)
+            return false
+        }
+
+        const creator = await Hex40Map.sequelize.query(`select hex from hex40 where id = (select \`from\`
+            from trace_create_contract where \`to\` = (select id from hex40 where hex = ?))`, {
+            type: QueryTypes.SELECT, replacements: [contract.substr(2)]
+        }).then(array => {
+            return array?.length ? array[0]['hex'] : undefined;
+        });
+        const announcerAddr = announcer.substr(2)
+        if(creator !== announcerAddr) {
+            console.log(`checkAnnounce epoch ${epochNumber} announcer ${announcerAddr} not match with creator ${creator}`)
+            return false
+        }
+
+        return true
     }
 
     // ----------------------- business method for token ------------------------

@@ -55,13 +55,6 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/StreamSync.js
-  token_transfer_alone: # token transfer sync
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000
   token_transfer: # token transfer sync
     image: node:14.17.5
     network_mode: host
@@ -108,13 +101,6 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/dist/service/UniqueAddressStat.js useConfigRpc -1 3000
-  cfx_transfer_alone: # cfx transfer sync
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000
   cfx_transfer: # cfx transfer sync
     image: node:14.17.5
     network_mode: host
