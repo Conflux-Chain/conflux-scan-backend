@@ -45,15 +45,6 @@ class App extends AppBase {
   }
 
   listen(port) {
-    // websocket json rpc
-    this.webSocket.on('message', async (client, message) => {
-      const input = JSON.parse(message);
-      const output = await jsonrpc.call({ app: this }, input);
-      await client.send(JSON.stringify(output));
-    });
-
-    process.on('warning', e => console.warn(e.stack));
-
     console.log(`================== scan compiler listen on port ${port || this.config.port} ==================`);
     return super.listen(port);
   }
