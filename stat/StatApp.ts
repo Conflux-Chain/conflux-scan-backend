@@ -162,9 +162,11 @@ export class StatApp{
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
         }
-        let fullStageRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
-        if (fullStageRpc) {
-            this.fullStateCfx = await initCfxSdk({url: fullStageRpc});
+        let fullStateRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
+        if (fullStateRpc) {
+            this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{
+                console.log(`failed to init fullStateRpc ${fullStateRpc}`, e)
+            });
         } else {
             console.log(`config not found for ${KEY_FULL_STATE_RPC}`);
             this.fullStateCfx = this.cfx;
