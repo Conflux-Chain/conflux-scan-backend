@@ -147,7 +147,7 @@ export class PruneService {
         const epochBlock: number = await FullBlock.max('epoch')
 
         if(epochs.maxEpoch <= epochBlock - this.pruneCfg.delayEpochsAgainstLatest){
-            const sql = `select distinct(minerId) from ${FullBlock.getTableName()} where epoch >= :minEpoch and epoch <= :maxEpoch`
+            const sql = `select distinct(minerId) as id from ${FullBlock.getTableName()} where epoch >= :minEpoch and epoch <= :maxEpoch`
             await this.pruneTable(PruneType.MINER_BLOCK, epochs, sql)
             await this.pruneTable(PruneType.ADDR_TX, epochs)
             await KV.upsert({key: KEY_PRUNE_EPOCH_BLOCK, value: `${epochs.maxEpoch}`})
@@ -233,8 +233,9 @@ export class PruneService {
 
     private async pruneAddress(addressId, type, maxEpoch?) {
         const [_, model] = this.getTables(type)
+        const whereOpt = model === FullMinerBlock ? {minerId: addressId} : {addressId}
         const one = await (model as any).findOne({
-            where: {addressId}, order: [["epoch", "desc"]], offset: this.KEEP_ROWS, limit: 1, raw: true
+            where: whereOpt, order: [["epoch", "desc"]], offset: this.KEEP_ROWS, limit: 1, raw: true
         })
         if (!one) {
             return
@@ -255,7 +256,7 @@ export class PruneService {
         do {
             await PruneInfo.sequelize.transaction(async (dbTx) => {
                 del = await (model as any).destroy({transaction: dbTx,
-                    where: {addressId, epoch: {[Op.lt]: one.epoch}}, limit: this.pruneCfg.delRowsPerLoop})
+                    where: {...whereOpt, epoch: {[Op.lt]: one.epoch}}, limit: this.pruneCfg.delRowsPerLoop})
                 if (del) {
                     pruned += del
                     await PruneInfo.update({pruned, epoch: one.epoch}, {
