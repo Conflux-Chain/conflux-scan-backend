@@ -32,6 +32,7 @@ export class FullBlockQuery {
         this.sponsorContract = app.cfx.InternalContract('SponsorWhitelistControl');
     }
 
+    // Notice: remember to update `otherFilter` logic when adjust params
     public async listBlock({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined,
                                minTimestamp = undefined, maxTimestamp = undefined, miner = undefined,
                                skip = 0, limit = 10}) {
@@ -199,7 +200,8 @@ export class FullBlockQuery {
 
         // add pruned total
         let prunedCntr = 0;
-        if(minerId){
+        const otherFilter = minEpochNumber ?? maxEpochNumber ?? blockHash ?? minTimestamp ?? maxTimestamp ?? null
+        if(minerId && otherFilter === null){
             const pruneInfo = await PruneInfo.findOne({where: {addressId: minerId, type: PruneType.MINER_BLOCK}});
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }

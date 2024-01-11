@@ -3,8 +3,7 @@ import {format} from "js-conflux-sdk";
 import {Op} from "sequelize"
 import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
-import {PruneInfo, PruneType} from "../model/PruneInfo";
-import {checkAddressRate} from "../router/RateLimiter";
+import {PruneInfo} from "../model/PruneInfo";
 import {CONST} from "./common/constant"
 import {fillMethodInfo} from "../model/ContractInfo";
 import {Errors} from "./common/LogicError";
@@ -31,7 +30,6 @@ export abstract class TransferQueryBase {
         addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray, tokenId, transferType = undefined,
         txType, skip, limit, sort='DESC', cursor = undefined, cursorField = undefined}){
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
-        const{ logger } = this.app;
         // page
         const queryOptions: any = {offset: skip, limit, raw: true};
         // condition
@@ -119,9 +117,9 @@ export abstract class TransferQueryBase {
     public abstract processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
         txMap: Map<string, FullTransaction>): Promise<any>;
 
+    // Notice: remember to update `otherFilter` logic when adjust params
     public async listTransfer(options) {
         options.useCountCache = options.useCountCache ?? true;
-        const{ logger, service: {fullBlockQuery} } = this.app;
         const {minEpochNumber, maxEpochNumber, transactionHash,
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
@@ -129,9 +127,6 @@ export abstract class TransferQueryBase {
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }
-        // if (address) {
-            // await checkAddressRate(address)
-        // }
 
         // parameter
         const addressMap = {};
@@ -236,13 +231,9 @@ export abstract class TransferQueryBase {
         // add tx info
         if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
             await fillMethodInfo(list, true).catch(error=>{ throw new Errors.BizError(`fill method info error, ${error}`);})
-            /*const hashArray = [...new Set(lodash.map(list, item => item['transactionHash']))];
-            const {txMap, receiptMap} = await fullBlockQuery.batchGetTransactionList({hashArray});*/
             const failedQuery:Promise<FailedTx>[] = []
             list.forEach(row=>{
                 if(row['type'] !== CONST.ADDRESS_TRANSFER_TYPE.TX.name) return;
-                /*row['storageFee'] = BigInt(receiptMap[row['transactionHash']]?.storageCollateralized || 0) * BigInt(10**18) / BigInt(1024);
-                row['input'] = txMap[row['transactionHash']]?.data;*/
                 if (row['status']) {
                     failedQuery.push(FailedTx.findOne({where:{
                             epoch: row['epochNumber'], blockPosition: row['blockIndex'], txPosition:row['txIndex']
@@ -262,7 +253,9 @@ export abstract class TransferQueryBase {
         // add pruned total
         let prunedCntr = 0;
         if (!page.queryWithCache) {
-            if (accountAddressId) {
+            const otherFilter = minEpochNumber ?? maxEpochNumber ?? transactionHash ?? minTimestamp ?? maxTimestamp ??
+                address ?? from ?? to ?? opponentAddress ?? tokenArray ?? tokenId ?? transferType ?? txType ?? status ?? null
+            if (accountAddressId && otherFilter === null) {
                 let pruneType = this.getAddrPruneType();
                 if (pruneType) {
                     const pruneInfo = await PruneInfo.findOne({where: {addressId: accountAddressId, type: pruneType}});
@@ -343,10 +336,7 @@ export abstract class TransferQueryBase {
             return {total: 0, list: [], addressId, addressHex};
         }
 
-        const queryOptions: any = {where: {contractId: addressId},
-            offset: skip, limit, raw: true,
-            //logging: console.log,
-        };
+        const queryOptions: any = {where: {contractId: addressId}, offset: skip, limit, raw: true};
         const page = await this.doQueryAccountAddress(options, queryOptions);
         let list ;
         if(page?.rows){
