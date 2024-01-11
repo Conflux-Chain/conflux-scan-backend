@@ -166,6 +166,7 @@ export class StatApp{
         if (fullStateRpc) {
             this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{
                 console.log(`failed to init fullStateRpc ${fullStateRpc}`, e)
+                process.exit(9)
             });
         } else {
             console.log(`config not found for ${KEY_FULL_STATE_RPC}`);
