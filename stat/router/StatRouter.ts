@@ -880,6 +880,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = result;
     });
 }
+// swagger stat doesn't support multiple instances,
+// use this hook to bypass.
+let swStatFn = function(ctx, next) {
+    console.log(`call to stub`)
+    return next()
+}
+
+export function setSwStatFn(fn) {
+    swStatFn = fn
+}
 
 function addSwagger(app: Application, router: Router<any, {}>) {
     const docPath = `${ROUTER_PREFIX}/api-doc-stat`
@@ -909,12 +919,17 @@ function addSwagger(app: Application, router: Router<any, {}>) {
     });
     // @ts-ignore
     ApiDef.paths = pathDef;
-    app.use(e2k(swStats.getMiddleware({
-        swaggerSpec: ApiDef,
-        uriPath: '/stat/api-stat', // ui at /stat/api-stat/
-        hostname: 'stat-api', // Prevent exposure of server ip
-        // basePath: '/', // api definition has a prefix.
-    })));
+    if (process.env['unified_mod']) {
+        console.log(`do not register swagger-stat on stat-router.`)
+        app.use((ctx,next)=>swStatFn(ctx, next))
+    } else {
+        app.use(e2k(swStats.getMiddleware({
+            swaggerSpec: ApiDef,
+            uriPath: '/stat/api-stat', // ui at /stat/api-stat/
+            hostname: 'stat-api', // Prevent exposure of server ip
+            // basePath: '/', // api definition has a prefix.
+        })));
+    }
     // router.use((ctx,next)=>{
     // ctx.set("script-src 'self'", 'sha256-bLIba9y02h2X9/32+3oS/4EmGe/+1HjpiNUBsaTTIGY=')
     // })

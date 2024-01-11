@@ -154,7 +154,7 @@ export async function initPartialModel(sequelize) {
         createAddressErc1155TransferTable(sequelize),
         createAddressCfxTransferTable(sequelize),
         createFullMinerBlockTable(sequelize),
-        createV2CfxBillTable(sequelize),
+        // createV2CfxBillTable(sequelize),
         createTokenBalanceTable(sequelize),
         createFullBlockTable(sequelize),
         createFullTransactionTable(sequelize),
@@ -164,7 +164,7 @@ export async function initPartialModel(sequelize) {
         createAddressNftTable(sequelize),
         createFullBlockExtTable(sequelize),
     ])
-    NegativeCfxBill.register(sequelize)
+    // NegativeCfxBill.register(sequelize)
     Position.register(sequelize)
     ENS.register(sequelize)
     ApiLog.register(sequelize)
@@ -233,7 +233,8 @@ export async function initPartialModel(sequelize) {
     CensorItem.register(sequelize)
     NameTag.register(sequelize)
 }
-export async function initModel(sequelize) {
+export async function initModel(sequelize: Sequelize) {
+    console.log(`init models ...`)
     await initPartialModel(sequelize)
     MinerBlock.register(sequelize);
     TopBatchIndex.register(sequelize)
@@ -284,6 +285,7 @@ export async function initModel(sequelize) {
     AddressNfts.register(sequelize)
 
     /*await checkApiLogIpField()*/
+    console.log(`init models ok`)
 }
 
 export function createMySql(dbConf) {
