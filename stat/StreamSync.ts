@@ -46,11 +46,6 @@ export function scheduleTransferUpdater(serverTag:string) {
     }
     repeat().then()
 }
-const tableMap = {
-    'ERC20': Erc20Transfer,
-    'ERC721': Erc721Transfer,
-    'ERC1155': Erc1155Transfer,
-}
 export async function updateTokenTransferCount(contractIds: IterableIterator<number>, force = false) {
     const tokens = await Token.findAll({
         where: {hex40id: {[Op.in]: [...contractIds]}, type: {[Op.ne]: ''}/*, auditResult: true*/},
@@ -75,6 +70,11 @@ export async function updateTokenTransferCount(contractIds: IterableIterator<num
 export async function updateTransferCountReal(t: Token) {
     if (!t) {
         return
+    }
+    const tableMap = {
+        'ERC20': Erc20Transfer,
+        'ERC721': Erc721Transfer,
+        'ERC1155': Erc1155Transfer,
     }
     const table = tableMap[t.type]
     if (!table) {
