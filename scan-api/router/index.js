@@ -26,7 +26,6 @@ router.post('/',
   jsonrpc,
 );
 
-router.sub('/metrics', require('./metrics'));
 router.sub('/supply', require('./supply'));
 router.sub('/v1', require('./v1'));
 
