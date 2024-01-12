@@ -9,33 +9,29 @@ import {StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "../watcher/BatchBalanceWatcher";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {Token} from "../../model/Token";
 
-async function loop(from, cfx: Conflux, type) {
-    const batch = 1000
+async function loop(token:Token, cfx: Conflux) {
+    const type = token.type.substring(3);
+    const batch = 10000;
     const model = {'20':Erc20Transfer, '1155': Erc1155Transfer, '721': Erc721Transfer}[type]
-    const maxId = await model.max('id')
-    do {
-        const list = await model.findAll({
-            where: {id: {[Op.between]:[from, from+batch-1]}}
-        })
-        const map = new Map<number,Set<number>>()
-        for (const t of list) {
-            let set = map.get(t.contractId)
-            if (!set) {
-                set = new Set<number>()
-                map.set(t.contractId, set)
-            }
-            set.add(t.fromId)
-            set.add(t.toId)
+    const list = await model.findAll({
+        where: {contractId: token.hex40id},
+        order: [['epoch', 'desc']],
+        limit: batch,
+    })
+    const map = new Map<number,Set<number>>()
+    for (const t of list) {
+        let set = map.get(t.contractId)
+        if (!set) {
+            set = new Set<number>()
+            map.set(t.contractId, set)
         }
-        await handleTokenTransferWithContract(map, cfx)
-        process.stderr.write(`\r\u001b[2K replay: id ${from}, max ${maxId} , ${from * 100 / Number(maxId)}%    ` )
-        from += batch
-        if (from >= maxId) {
-            break;
-        }
-    } while (true)
-    console.log(` replay: done, max ${maxId}`)
+        set.add(t.fromId)
+        set.add(t.toId)
+    }
+    await handleTokenTransferWithContract(map, cfx)
+    process.stderr.write(`\r\u001b[2K replay: name ${token.name} transfer x ${list.length}    ` )
 }
 async function setup(config){
     const cfx = await initCfxSdk(config.conflux);
@@ -47,8 +43,15 @@ async function setup(config){
     console.log(` util contract ${utilContract}`)
     new BatchBalanceWatcher(cfx,null, utilContract)
     // type could be 20, 721, 1155
-    const [from, type] = process.argv
-    return loop(parseInt(from), cfx, type)
+    const [,,from, type] = process.argv
+    const tokenList = await Token.findAll({
+        attributes: ['hex40id','symbol','name','base32'],
+        where: {destroyed: false, type: 'ERC20'},
+    })
+    console.log(`token count ${tokenList.length}`)
+    for (const token of tokenList) {
+        await loop(token, cfx)
+    }
 }
 init().then((config)=> {
     return setup(config)
