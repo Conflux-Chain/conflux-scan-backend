@@ -32,6 +32,7 @@ async function loop(token:Token, cfx: Conflux) {
         set.add(t.toId)
     }
     console.log(` replay: name ${token.name} transfer x ${list.length}` )
+    // this function will split the whole task to small pieces, don't worry.
     await handleTokenTransferWithContract(map, cfx)
 }
 async function setup(config){
