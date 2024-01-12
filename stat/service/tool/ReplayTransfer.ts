@@ -16,7 +16,7 @@ async function loop(token:Token, cfx: Conflux) {
     const batch = 11000;
     const model = {'20':Erc20Transfer, '1155': Erc1155Transfer, '721': Erc721Transfer}[type]
     const list = await model.findAll({
-        attributes: ["fromId", "toId"],
+        attributes: ["fromId", "toId", "contractId"],
         where: {contractId: token.hex40id},
         order: [['epoch', 'desc']],
         limit: batch,
@@ -32,7 +32,7 @@ async function loop(token:Token, cfx: Conflux) {
         set.add(t.fromId)
         set.add(t.toId)
         idx ++
-        if (idx % 100 == 0) {
+        if (idx % 100 == 0 || idx === list.length) {
             // handle part of the list each round
             await handleTokenTransferWithContract(map, cfx)
             process.stderr.write(`\r\u001b[2K replay: name ${token.name} transfer x ${list.length} , ${idx}   ` )
@@ -51,8 +51,8 @@ async function setup(config){
     // type could be 20, 721, 1155
     const [,,from, type] = process.argv
     const tokenList = await Token.findAll({
-        attributes: ['hex40id','symbol','name','base32'],
-        where: {destroyed: false, type: 'ERC20'},
+        attributes: ['hex40id','symbol','name','base32', 'type'],
+        where: {destroyed: false, type: 'ERC20'}, raw: true,
     })
     console.log(`token count ${tokenList.length}`)
     for (const token of tokenList) {

@@ -150,7 +150,7 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
         await fetchAll(addressArr, contractHex40, banList, cfx)
         const allIsZeroFromContract = banList.filter(Boolean).length === 0
         if (allIsZeroFromContract && token?.type === 'ERC721') {
-            console.log(` util returns all zero, ${contractHex40}, cid ${contractId}`, banList.join(','))
+            console.log(` util returns all zero, ${contractHex40}, cid ${contractId} [${banList.join(',')}]`, )
             const list = await fetchNftBalanceFromDB(contractId, addressIds);
             console.log(` compute nft balance from DB, ${contractHex40} list length ${list.length}`)
             // When the only one user transfer out his/her last NFT, this happens. It's good case.
@@ -167,8 +167,8 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 console.log(` user ${hexId} holds 0 NFT of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
-        } else {
-            console.log(` util returns balance list ${banList.join(',')} of ${contractHex40} cid ${contractId}`)
+        } else if (banList.length === existsAddrArr.length) { // banList will be empty when error occurs
+            console.log(` util returns balance list [${banList.join(',')}] of ${contractHex40} cid ${contractId}`)
             let i = 0
             const tasks = []
             for (const addr of existsAddrArr) {
