@@ -853,17 +853,17 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/transfer/tps', async function (ctx) {
-        const tps = await statApp.transferTpsService.getTps();
+        const tps = await statApp.statOnRealtime.getTokenTransferPerSecond();
         ctx.body = {...tps};
     });
 
     router.get('/gasused/tps', async function (ctx) {
-        const tps = await statApp.transferTpsService.getGasUsedPerSecond();
+        const tps = await statApp.statOnRealtime.getGasUsedPerSecond();
         ctx.body = {...tps};
     });
 
     router.get('/gasprice/tracker', async function (ctx) {
-        const tps = await statApp.transferTpsService.getGasPrice();
+        const tps = await statApp.statOnRealtime.getGasPriceTracker();
         ctx.body = {...tps};
     });
 
