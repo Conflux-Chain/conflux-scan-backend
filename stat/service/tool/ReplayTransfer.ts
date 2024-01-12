@@ -21,9 +21,8 @@ async function loop(token:Token, cfx: Conflux) {
         order: [['epoch', 'desc']],
         limit: batch,
     })
-    let idx = 0;
+    const map = new Map<number,Set<number>>()
     for (const t of list) {
-        const map = new Map<number,Set<number>>()
         let set = map.get(t.contractId)
         if (!set) {
             set = new Set<number>()
@@ -31,13 +30,9 @@ async function loop(token:Token, cfx: Conflux) {
         }
         set.add(t.fromId)
         set.add(t.toId)
-        idx ++
-        if (idx % 100 == 0 || idx === list.length) {
-            // handle part of the list each round
-            await handleTokenTransferWithContract(map, cfx)
-            process.stderr.write(`\r\u001b[2K replay: name ${token.name} transfer x ${list.length} , ${idx}   ` )
-        }
     }
+    console.log(` replay: name ${token.name} transfer x ${list.length}` )
+    await handleTokenTransferWithContract(map, cfx)
 }
 async function setup(config){
     const cfx = await initCfxSdk(config.conflux);
