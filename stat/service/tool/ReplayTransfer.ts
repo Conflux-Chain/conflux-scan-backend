@@ -13,15 +13,17 @@ import {Token} from "../../model/Token";
 
 async function loop(token:Token, cfx: Conflux) {
     const type = token.type.substring(3);
-    const batch = 10000;
+    const batch = 11000;
     const model = {'20':Erc20Transfer, '1155': Erc1155Transfer, '721': Erc721Transfer}[type]
     const list = await model.findAll({
+        attributes: ["fromId", "toId"],
         where: {contractId: token.hex40id},
         order: [['epoch', 'desc']],
         limit: batch,
     })
-    const map = new Map<number,Set<number>>()
+    let idx = 0;
     for (const t of list) {
+        const map = new Map<number,Set<number>>()
         let set = map.get(t.contractId)
         if (!set) {
             set = new Set<number>()
@@ -29,9 +31,13 @@ async function loop(token:Token, cfx: Conflux) {
         }
         set.add(t.fromId)
         set.add(t.toId)
+        idx ++
+        if (idx % 100 == 0) {
+            // handle part of the list each round
+            await handleTokenTransferWithContract(map, cfx)
+            process.stderr.write(`\r\u001b[2K replay: name ${token.name} transfer x ${list.length} , ${idx}   ` )
+        }
     }
-    await handleTokenTransferWithContract(map, cfx)
-    process.stderr.write(`\r\u001b[2K replay: name ${token.name} transfer x ${list.length}    ` )
 }
 async function setup(config){
     const cfx = await initCfxSdk(config.conflux);
