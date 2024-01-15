@@ -131,7 +131,6 @@ export class EpochSync extends SyncBase{
             const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
 
             const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray);
-            const tokenTransferCntr = {erc20Cntr: t20.length, erc721Cntr: t721.length, erc1155Cntr: t1155.length}
             await this.statByTokenTransfer(epochNumber, epochTimestamp,{t20, t721, t1155})
             const t20Aggregated = aggregateTransfer(t20)
             const tokenLogs = {
@@ -159,7 +158,7 @@ export class EpochSync extends SyncBase{
                 pivotHash: epoch.pivotHash,
                 modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
                     traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray,
-                    nftTransferArray, addrNftTransferArray, transactionArray, tokenTransferCntr
+                    nftTransferArray, addrNftTransferArray, transactionArray
                 },
             };
         }catch(error) {
@@ -266,7 +265,7 @@ export class EpochSync extends SyncBase{
             }
         }
 
-        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.tokenTransferCntr)
+        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray)
 
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
@@ -1246,9 +1245,8 @@ export class EpochSync extends SyncBase{
         await this.statOnRealtime.schedule()
     }
 
-    private realtimeStat(epoch, action, txArray?, tokenTransferCntr?) {
+    private realtimeStat(epoch, action, txArray?) {
         this.statOnRealtime.setGasInfo(epoch, action, txArray)
-        this.statOnRealtime.setTokenTransferInfo(epoch, action, tokenTransferCntr)
     }
 
     // ------------------------------ token stat --------------------------------

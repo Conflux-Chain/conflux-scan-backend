@@ -1,15 +1,14 @@
-import {
-    KEY_GAS_PRICE_TRACKER,
-    KEY_GAS_USED_PER_SECOND,
-    KEY_TOKEN_TRANSFER_PER_SECOND,
-    KV
-} from "../../model/KV"
+import {KEY_GAS_PRICE_TRACKER, KEY_GAS_USED_PER_SECOND, KEY_TOKEN_TRANSFER_PER_SECOND, KV} from "../../model/KV"
+import {EpochHashTokenTransfer} from "../../TokenTransferSync";
+import {Op, QueryTypes} from "sequelize";
+import {Erc20Transfer} from "../../model/Erc20Transfer";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
 
 const lodash = require('lodash')
 
 export class StatOnRealtime {
     private STAT_EPOCHS_AGAINST_LATEST_STATE = 60
-    private TOKEN_TRANSFER_COUNTER: any = {}
     private GAS_USED_COUNTER: any = {}
     private GAS_PRICE_COUNTER: any = {}
 
@@ -77,25 +76,6 @@ export class StatOnRealtime {
             this.checkLength(this.GAS_PRICE_COUNTER, this.STAT_EPOCHS_AGAINST_LATEST_STATE)
             this.GAS_PRICE_COUNTER[epoch] = lodash.defaults(msg, {gasPrice: [...gasPrices]})
         }
-    }
-
-    /*message format:
-    token transfer counter
-    {
-       epoch: 8888,
-       timestamp: 123456,
-       erc20Cntr: 8888,
-       erc712Cntr: 8888,
-       erc1155Cntr: 8888,
-     }*/
-    public setTokenTransferInfo(epochInfo, action, tokenTransferCntr) {
-        const {epoch, blockHeight, timestamp} = epochInfo
-        if(action === 'pop'){
-            delete this.TOKEN_TRANSFER_COUNTER[epoch]
-        }
-
-        this.checkLength(this.TOKEN_TRANSFER_COUNTER, this.STAT_EPOCHS_AGAINST_LATEST_STATE)
-        this.TOKEN_TRANSFER_COUNTER[epoch] = {epoch, timestamp, blockHeight, ...tokenTransferCntr}
     }
 
     public async getGasPriceTracker(){
@@ -207,46 +187,28 @@ export class StatOnRealtime {
     }
 
     private async statTokenTransferPerSecond(){
-        let statArray: any[] = Object.values(this.TOKEN_TRANSFER_COUNTER)
-        statArray = lodash.orderBy(statArray, 'epoch', 'desc')
+        const maxEpoch: number = await EpochHashTokenTransfer.max('epoch')
+        const minEpoch = Math.max(maxEpoch - this.STAT_EPOCHS_AGAINST_LATEST_STATE, 0)
 
-        let result
-        const len = statArray.length
-        if( len === 0 ){
-            result = {
-                tps: 0,
-                maxEpoch: null,
-                minEpoch: null,
-                maxTime: null,
-                minTime: null
-            }
-        } else if( len === 1 ){
-            const statInfo = statArray[0]
-            const tps = statInfo.erc20Cntr + statInfo.erc721Cntr + statInfo.erc1155Cntr
-            result = {
-                tps ,
-                maxEpoch: statInfo.epoch,
-                minEpoch: statInfo.epoch,
-                maxTime: statInfo.timestamp,
-                minTime: statInfo.timestamp
-            }
-        } else {
-            const latest: any = statArray[0]
-            const oldest: any = statArray[statArray.length - 1]
-            const timeInterval = (latest.timestamp.getTime() - oldest.timestamp.getTime())/1000
-            let transferTotal = 0
-            statArray.forEach(statInfo => {
-                transferTotal = transferTotal + statInfo.erc20Cntr + statInfo.erc721Cntr + statInfo.erc1155Cntr
-            })
-            const tps = transferTotal / timeInterval
-            result = {
-                tps ,
-                maxEpoch: latest.epoch,
-                minEpoch: oldest.epoch,
-                maxTime: latest.timestamp,
-                minTime: oldest.timestamp
-            }
-        }
+        const sql = `
+            select sum(t.cntr) as total from (
+                select count(*) as cntr from ${Erc20Transfer.getTableName()} where epoch between :minEpoch and :maxEpoch
+                union all
+                select count(*) as cntr from ${Erc721Transfer.getTableName()} where epoch between :minEpoch and :maxEpoch
+                union all
+                select count(*) as cntr from ${Erc1155Transfer.getTableName()} where epoch between :minEpoch and :maxEpoch
+            ) t`
+        const transferTotal = await Erc20Transfer.sequelize.query(sql, {
+            type: QueryTypes.SELECT, replacements: {minEpoch, maxEpoch}}).then(arr => (arr[0]['total']))
+
+        const epochRange = await EpochHashTokenTransfer.findAll({where: {epoch: {[Op.in]: [minEpoch, maxEpoch]}}})
+            .then(epochs => lodash.keyBy(epochs, 'epoch'))
+        const maxTime = epochRange[maxEpoch]['createdAt']
+        const minTime = epochRange[minEpoch]['createdAt']
+        const timeInterval = (maxTime.getTime() - minTime.getTime())/1000
+        const tps = transferTotal / timeInterval
+
+        const result = {tps, maxEpoch, minEpoch, maxTime, minTime}
         await KV.upsert({value: JSON.stringify(result), key: KEY_TOKEN_TRANSFER_PER_SECOND})
     }
 
