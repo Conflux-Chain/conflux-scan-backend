@@ -248,26 +248,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         })
     })
 
-    async function updateTopGasUsed(forceUseCache = false) {
-        // execute sql sequentially in order to reduce db load
-        const d7 = await TxnQuery.topByGasUsed({span: '7d', forceUseCache})
-        const d3 = await TxnQuery.topByGasUsed({span: '3d', forceUseCache})
-        const h24 = await TxnQuery.topByGasUsed({span: '24h', forceUseCache})
-        return {
-            '7d': d7,
-            '3d': d3,
-            '24h': h24,
-        };
-    }
-    let topGasUsedCache = updateTopGasUsed(true);
-    setInterval(()=>{topGasUsedCache = updateTopGasUsed(false)}, 3600_000)
-
     //top gas used
     router.get('/top-gas-used', async (ctx)=>{
         mustBeEnumParamIfPresent(ctx.request.query, 'span', ['24h', '3d', '7d']);
 
         const {span} = ctx.request.query;
-        ctx.body = (await topGasUsedCache)[span||'24h'];
+        ctx.body = statApp.txnQuery.topGasUsedCache[span||'24h'];
     })
 
     router.get('/top-cfx-holder', async (ctx)=>{

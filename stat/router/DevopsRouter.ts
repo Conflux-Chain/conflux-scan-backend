@@ -21,10 +21,6 @@ import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {
     POW_EPOCH_FOR_POS_Q,
-    STREAM_STAT_ADDR_CFX_TRANSFER_Q, STREAM_STAT_ADDR_TRANSACTION_Q,
-    STREAM_STAT_DAILY_CFX_TRANSFER_Q,
-    STREAM_STAT_DAILY_TOKEN_TRANSFER_Q, STREAM_STAT_MINER_BLOCK_Q,
-    STREAM_STAT_TOKEN_TRANSFER_Q,
     xLen
 } from "../service/RedisWrap";
 import {TxnQuery} from "../service/TxnQuery";
@@ -118,12 +114,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/stream-queue-report', async (ctx)=>{
         const qs = [
             POW_EPOCH_FOR_POS_Q,
-            STREAM_STAT_TOKEN_TRANSFER_Q,
-            STREAM_STAT_DAILY_TOKEN_TRANSFER_Q,
-            STREAM_STAT_DAILY_CFX_TRANSFER_Q,
-            STREAM_STAT_MINER_BLOCK_Q,
-            STREAM_STAT_ADDR_TRANSACTION_Q,
-            STREAM_STAT_ADDR_CFX_TRANSFER_Q,
         ]
         const arr = await Promise.all(qs.map(q=>{
             return xLen(q).then(len=>{

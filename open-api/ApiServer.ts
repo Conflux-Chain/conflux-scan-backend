@@ -19,10 +19,6 @@ import {MarketDataQuery} from "../stat/service/MarketDataQuery";
 import {DailyContractCreateQuery} from "../stat/service/DailyContractCreateQuery";
 import {CfxHolderQuery} from "../stat/service/CfxHolderQuery";
 import {DailyTxnQuery} from "../stat/service/DailyTxnQuery";
-import {AddrTransactionHandler} from "../stat/service/streamstat/business/AddrTransactionHandler";
-import {MinerBlockHandler} from "../stat/service/streamstat/business/MinerBlockHandler";
-import {AddrCfxTransferHandler} from "../stat/service/streamstat/business/AddrCfxTransferHandler";
-import {TokenTransferHandler} from "../stat/service/streamstat/business/TokenTransferHandler";
 import {RankService} from "../stat/service/RankService";
 import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
@@ -41,6 +37,8 @@ import {checkTest} from "./test/TestCase";
 import {DailyNFTStatQuery} from "../stat/service/DailyNFTStatQuery";
 import {DailyRewardStatQuery} from "../stat/service/DailyRewardStatQuery";
 import {KEY_OPEN_API, repeatHeartBeat} from "../stat/model/HeartBeat";
+import {TxnQuery} from "../stat/service/TxnQuery";
+import {TxnSync} from "../stat/service/TxnSync";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -75,11 +73,9 @@ export class ApiService {
     nftPreviewService: NFTPreviewService;
     ensCheckerQuery: ENSCheckerQuery;
     accountQuery: AccountQuery;
-    addrTransactionHandler : AddrTransactionHandler;
-    minerBlockHandler : MinerBlockHandler;
-    addrCfxTransferHandler : AddrCfxTransferHandler;
-    tokenTransferHandler : TokenTransferHandler;
     ipfsGatewaySync: IPFSGatewaySync;
+    txnQuery: TxnQuery;
+    txnSync: TxnSync;
     cfx: Conflux;
     eth;
     jsonRpc;
@@ -135,11 +131,8 @@ export class ApiServer {
         apiService.nftCheckerService = new NFTCheckerService(apiApp);
         apiService.nftPreviewService = new NFTPreviewService(apiApp);
         apiService.ensCheckerQuery = new ENSCheckerQuery(apiApp);
-        apiService.accountQuery = new AccountQuery(apiApp);
-        apiService.addrTransactionHandler = new AddrTransactionHandler(apiApp);
-        apiService.minerBlockHandler = new MinerBlockHandler(apiApp);
-        apiService.addrCfxTransferHandler = new AddrCfxTransferHandler(apiApp);
-        apiService.tokenTransferHandler = new TokenTransferHandler(apiApp);
+        const accountQuery = new AccountQuery(apiApp);
+        apiService.accountQuery = accountQuery;
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenTool = tokenTool
         apiService.tokenQuery = new TokenQuery({tokenTool, config: this.config})
@@ -147,6 +140,8 @@ export class ApiServer {
         apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config, jsonRpc: apiService.jsonRpc,
             tokenQuery: apiService.tokenQuery, tokenTool})
         apiService.ipfsGatewaySync = new IPFSGatewaySync(apiApp);
+        apiService.txnQuery = new TxnQuery()
+        apiService.txnSync = new TxnSync({cfx: this.cfx, accountQuery})
         apiService.cfx = this.cfx;
         apiService.eth = this.eth;
         apiService.logger = logger;
@@ -156,11 +151,8 @@ export class ApiServer {
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
         new BatchBalanceWatcher(this.cfx, null, utilContract)
-        await apiService.addrTransactionHandler.scheduleCache();
-        await apiService.minerBlockHandler.scheduleCache();
-        await apiService.addrCfxTransferHandler.scheduleCache();
-        await apiService.tokenTransferHandler.scheduleCache();
         await apiService.marketDataQuery.scheduleCache();
+        await apiService.txnQuery.scheduleCache()
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
         config.asyncWrappedToken && (await apiService.tokenQuery.scheduleWrappedCFX());
         if(config.syncIPFSGateway) {

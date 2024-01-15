@@ -16,7 +16,7 @@ export class TxnSync {
     private app: StatApp;
     private cfx: Conflux;
     private rankCache: Map<string, Object>
-    constructor(app:StatApp) {
+    constructor(app:any) {
         this.app = app;
         this.cfx = app.cfx
         this.rankCache = new Map<string, Object>()
@@ -25,7 +25,7 @@ export class TxnSync {
     public async txTopBy(n: number, type: string, limit: number, action: string = 'cfxSend',
                          networkId: number = 1029, useCache=true) {
         const {
-            app: { accountQuery, contractQuery },
+            app: { accountQuery },
         } = this;
 
         limit = pickNumber(limit, 10)

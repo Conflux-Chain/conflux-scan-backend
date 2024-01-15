@@ -323,7 +323,7 @@ export class TokenQuery {
 
             return Promise.resolve({code: 0, msg: `token:${address} audit success`});
         } catch (e) {
-            console.log(`token-audit fail, address:${address}`, e);
+            // console.log(`token-audit fail, address:${address}`, e);
             return Promise.resolve({code: 9999, msg: `token:${address} audit fail`});
         }
     }

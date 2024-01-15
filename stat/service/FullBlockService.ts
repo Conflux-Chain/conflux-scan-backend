@@ -26,11 +26,9 @@ import {
     KV
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
-import {Epoch} from "../model/Epoch";
 import {batchFetchBlock, noVerboseAddr} from "./common/utils";
 import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
-import {StatNotifier} from "./streamstat/StatNotifier";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
@@ -510,9 +508,6 @@ export class FullBlockService {
             console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
             throw err;
         });
-        StatNotifier.notifyStatAddrTransaction({epochNumber: minEpochNumber, epochTimestamp: blockTime, action: 'push',
-            txnArray: executedTxArr
-        }).catch(e => console.log(`epoch-sync.noticeStatAddrTransaction epoch:${minEpochNumber}`, e));
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
@@ -601,10 +596,6 @@ export class FullBlockService {
             })
             const updatedArr = await Promise.all(tx)
             // const allModified = updatedArr.reduce((a,b)=>a+b)
-        }).then(()=>{
-            const msg = {epochNumber: epoch, epochTimestamp: undefined, action: 'push', blockList: blockStatArray};
-            StatNotifier.notifyStatMinerBlock(msg)
-                .catch(e => console.log(`epoch-sync.notifyStatMinerBlock epoch:${epoch}`, e));
         }).then(()=>{
             return {code: CODE_OK, message: 'ok'}
         })

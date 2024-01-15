@@ -90,4 +90,31 @@ export class TxnQuery{
         }
         return format.address(hex, networkId)
     }
+
+    public topGasUsedCache
+    public async scheduleCache(delay: number = 3600_000) {
+        console.log(`schedule top_gas_used with delay:${delay}`)
+        const that = this
+        await that.updateTopGasUsed(true).catch(err =>{
+            console.log(`schedule top_gas_used error:${err}`)
+        })
+        async function repeat() {
+            await that.updateTopGasUsed(false).catch(err =>{
+                console.log(`schedule top_gas_used error:${err}`)
+            })
+            setTimeout(repeat, delay)
+        }
+        repeat().then()
+    }
+    public async updateTopGasUsed(forceUseCache = false) {
+        // execute sql sequentially in order to reduce db load
+        const d7 = await TxnQuery.topByGasUsed({span: '7d', forceUseCache})
+        const d3 = await TxnQuery.topByGasUsed({span: '3d', forceUseCache})
+        const h24 = await TxnQuery.topByGasUsed({span: '24h', forceUseCache})
+        this.topGasUsedCache = {
+            '7d': d7,
+            '3d': d3,
+            '24h': h24,
+        };
+    }
 }
