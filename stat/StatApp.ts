@@ -30,13 +30,13 @@ import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KEY_FULL_STATE_RPC, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
-import {TransferTpsService} from "./service/TransferTpsService";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {Desensitizer} from "./service/Desensitizer";
 import {FullBlockQuery} from "./service/FullBlockQuery";
 import {ENSCheckerQuery} from "./service/ens/ENSCheckerQuery";
 import {AccountQuery} from "./service/AccountQuery";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
+import {StatOnRealtime} from "./service/streamstat/StatOnRealtime"
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -67,12 +67,12 @@ export class StatApp{
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
     public tokenSecurityAuditSync: TokenSecurityAuditSync;
-    public transferTpsService: TransferTpsService;
     public fullBlockQuery: FullBlockQuery;
     public ensCheckerQuery: ENSCheckerQuery;
     public accountQuery: AccountQuery;
     public desensitizer: Desensitizer;
     public tokenTool: TokenTool;
+    public statOnRealtime: StatOnRealtime
     public static networkId = 1029
     public static readonly = false
     public static isEVM = false;
@@ -135,12 +135,12 @@ export class StatApp{
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
-        this.transferTpsService = new TransferTpsService(this);
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)
         this.fullBlockQuery = new FullBlockQuery(this);
         this.ensCheckerQuery = new ENSCheckerQuery(this);
         this.accountQuery = new AccountQuery(this);
+        this.statOnRealtime = new StatOnRealtime()
         this.txnSync.scheduleCache()
         if (this.config?.syncQuote?.open) {
             await this.quoteSync.schedule();
@@ -154,10 +154,6 @@ export class StatApp{
         }
         if (this.config.syncTokenSecurityAudit) {
             await this.tokenSecurityAuditSync.schedule();
-        }
-        if (this.config.syncTransferTps) {
-            await this.transferTpsService.scheduleRefreshConfig();
-            await this.transferTpsService.schedule();
         }
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();

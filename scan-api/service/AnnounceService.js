@@ -1,5 +1,5 @@
 const { format } = require('js-conflux-sdk');
-const { KV, ANNOUNCEMENT_CONTRACT } = require('../../stat/dist/model/KV');
+const { KV, CONTRACT_ANNOUNCEMENT } = require('../../stat/dist/model/KV');
 
 class AnnounceService {
   constructor(app) {
@@ -39,7 +39,7 @@ class AnnounceService {
 
       const nonce = await cfx.getNextNonce(this.announcer);
       let { announcementAddress } = config;
-      const dbConfigAdd = await KV.getString(ANNOUNCEMENT_CONTRACT, '');
+      const dbConfigAdd = await KV.getString(CONTRACT_ANNOUNCEMENT, '');
       if (dbConfigAdd !== '') {
         announcementAddress = dbConfigAdd;
       }

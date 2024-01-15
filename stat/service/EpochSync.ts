@@ -13,8 +13,6 @@ import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
-import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
-import {TransferTpsService} from "./TransferTpsService";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
@@ -27,7 +25,10 @@ import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
-import {ANNOUNCEMENT_CONTRACT, KV} from "../model/KV";
+import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KV} from "../model/KV";
+import {StatOnRealtime} from "./streamstat/StatOnRealtime";
+import {StatNotifier} from "./streamstat/StatNotifier";
+import {ethers} from "ethers";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -68,29 +69,41 @@ export class EpochSync extends SyncBase{
     public static SYNC_ADDR_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT = true;
 
-    public static ANNOUNCEMENT_CONTRACT
+    public static CONTRACT_ANNOUNCEMENT
+    public static CONTRACT_ADDRESS_METADATA // Notice: Adjust config when proxy contract is changed
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
 
     public static NAME_TAG_SPLIT = "__,__";
 
     protected app;
+    private statOnRealtime: StatOnRealtime
     private NAME_TYPE_MAP;
+    private readonly statSwitch
 
     constructor(app: StatApp | any) {
         super(app);
         this.app = app;
         this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
+        this.statOnRealtime = new StatOnRealtime()
         this.statSwitch = true;
     }
 
-    public async checkAnnounceConfig() {
-        const announcement = await KV.getString(ANNOUNCEMENT_CONTRACT, '');
+    public async checkContractConfig() {
+        const [announcement, addressMetadata] = await Promise.all([
+            KV.getString(CONTRACT_ANNOUNCEMENT, ''),
+            KV.getString(CONTRACT_ADDRESS_METADATA, '')
+        ])
         if(!announcement) {
-            console.log(`get null announcement contract`)
+            console.log(`contract announcement not set`)
             process.exit(9)
         }
-        EpochSync.ANNOUNCEMENT_CONTRACT = format.hexAddress(announcement)
+        if(!addressMetadata) {
+            console.log(`contract addressMetadata not set`)
+            process.exit(9)
+        }
+        EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
+        EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -101,14 +114,13 @@ export class EpochSync extends SyncBase{
 
         try{
             const epochData = await this.getEpochData(epochNumber);
-            const {epoch, blockHashArray, blockArray, transactionHashArray, receipts} = epochData;
+            const {epoch, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts} = epochData;
             const epochTimestamp = epoch.timestamp;
 
             const minerBlockArray = await this.getMinerBlockArray(epochNumber, blockArray);
             const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
 
             const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
-            const tokenArray = await this.getTokensAutoDetected(eventLogInfo);
             const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
             const nameTagInfo = await this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray);
 
@@ -119,22 +131,27 @@ export class EpochSync extends SyncBase{
             const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
 
             const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray);
+            const tokenTransferCntr = {erc20Cntr: t20.length, erc721Cntr: t721.length, erc1155Cntr: t1155.length}
+            await this.statByTokenTransfer(epochNumber, epochTimestamp,{t20, t721, t1155})
             const t20Aggregated = aggregateTransfer(t20)
             const tokenLogs = {
                 transfer20Array: t20Aggregated.filter(t => t.value && t.value > BigInt(0)),
                 transfer721Array: t721,
                 transfer1155Array: t1155.filter(t => t.value && t.value > BigInt(0)),
             };
+            const tokenArray = await this.getTokensAutoDetected(tokenLogs);
+
             const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
             const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
-            const txArray = await EpochSync.getAddrTxArray(blockArray, epochTimestamp);
+            const txArray = await EpochSync.getTransactionArrayDB(blockArray, epochTimestamp);
             const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, tokenTransferArray,
                 cfxTransferArray, txArray);
-            const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
-            const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
 
+            const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
             const nftTransferArray = await this.getNftTransferArray(epochNumber, tokenTransferArray);
             const addrNftTransferArray = await this.getAddrNftTransferArray(epochNumber,tokenTransferArray);
+
+            const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
 
             return {
                 syncCode: SyncCode.SUCCESS,
@@ -142,13 +159,12 @@ export class EpochSync extends SyncBase{
                 pivotHash: epoch.pivotHash,
                 modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
                     traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray,
-                    nftTransferArray, addrNftTransferArray
+                    nftTransferArray, addrNftTransferArray, transactionArray, tokenTransferCntr
                 },
             };
         }catch(error) {
             return {syncCode: SyncCode.RETRY, message: `${error}`};
         }
-
     }
 
     async save(epochNumber, modelData) {
@@ -250,6 +266,8 @@ export class EpochSync extends SyncBase{
             }
         }
 
+        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.tokenTransferCntr)
+
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
         }
@@ -273,11 +291,7 @@ export class EpochSync extends SyncBase{
                 addrNftTransferDel ${addrNftTransferDel}`);
         });
 
-        if(TransferTpsService.TPS_TRANSFER_NOTIFY) {
-            RedisWrap.sendStreamMessage({epochNumber, action: 'pop'}, TPS_TRANSFER_Q).then().catch(
-                err => console.log(`epoch-sync.transfer-tps-pop epoch:${epochNumber} error:${err}`)
-            );
-        }
+        this.realtimeStat(modelData.epoch, 'pop')
     }
 
     //------------------- business method for miner block --------------------
@@ -427,8 +441,8 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkAnnounce(epochNumber, announcement, announcer, contract) {
-        if(announcement !== EpochSync.ANNOUNCEMENT_CONTRACT) {
-            console.log(`checkAnnounce epoch ${epochNumber} announcement ${announcement} not match with config ${EpochSync.ANNOUNCEMENT_CONTRACT}`)
+        if(announcement !== EpochSync.CONTRACT_ANNOUNCEMENT) {
+            console.log(`checkAnnounce epoch ${epochNumber} announcement ${announcement} not match with config ${EpochSync.CONTRACT_ANNOUNCEMENT}`)
             return false
         }
 
@@ -524,6 +538,8 @@ export class EpochSync extends SyncBase{
 
     // --------------------- business method for name tag -----------------------
     private async getNameTagInfo(epochNumber, nameTagArray, labelArray) {
+        nameTagArray = nameTagArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
+        labelArray = labelArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
         const base32Array = [...nameTagArray, ...labelArray].map(i => format.address(i.addr, StatApp.networkId));
         if(!base32Array?.length) {
             return [];
@@ -583,6 +599,14 @@ export class EpochSync extends SyncBase{
         });
     }
 
+    private checkAddrMeta(epochNumber, addrMeta) {
+        if(addrMeta !== EpochSync.CONTRACT_ADDRESS_METADATA) {
+            console.log(`checkAddrMeta epoch ${epochNumber} addrMetadata ${addrMeta} not match with config ${EpochSync.CONTRACT_ADDRESS_METADATA}`)
+            return false
+        }
+        return true
+    }
+
     // ---------------------------- address transfer ----------------------------
     public async getAddrTransferArrayDB(epochNumber,epochTimestamp,tokenTransferArray,cfxTransferArray,txArray){
         const result = [];
@@ -621,8 +645,8 @@ export class EpochSync extends SyncBase{
         return `${epochNumber}${pad(index, 6)}`;
     }
 
-    public static async getAddrTxArray(blockArray, epochTimestamp){
-        const addrTxArray = [];
+    public static async getTransactionArrayDB(blockArray, epochTimestamp){
+        const result = [];
         for(const [blockIndex, block] of blockArray.entries()){
             if(!block.transactions?.length) {
                 continue;
@@ -652,10 +676,10 @@ export class EpochSync extends SyncBase{
 
                 tx.type = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
                 tx.createdAt = epochTimestamp;
-                addrTxArray.push(lodash.defaults(tx, {txLogIndex: 0, batchIndex: 0, contractId: 0, tokenId: 0}));
+                result.push(lodash.defaults(tx, {txLogIndex: 0, batchIndex: 0, contractId: 0, tokenId: 0}));
             }
         }
-        return addrTxArray;
+        return result;
     }
 
     public async getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray) {
@@ -1214,6 +1238,66 @@ export class EpochSync extends SyncBase{
                     await AddressNfts.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx});
                 }
             }
+        }
+    }
+
+    // ----------------------------- realtime stat ------------------------------
+    public async startRealtimeStat() {
+        await this.statOnRealtime.schedule()
+    }
+
+    private realtimeStat(epoch, action, txArray?, tokenTransferCntr?) {
+        this.statOnRealtime.setGasInfo(epoch, action, txArray)
+        this.statOnRealtime.setTokenTransferInfo(epoch, action, tokenTransferCntr)
+    }
+
+    // ------------------------------ token stat --------------------------------
+    private async statByTokenTransfer(epochNumber, epochTimestamp, tokenTransfers) {
+        if(!this.statSwitch) {
+            return
+        }
+
+        let tokenAddrTransfer = {}
+        let nftAddrMint = {}
+        const transferArray = [
+            {transfers: tokenTransfers.t20, type: CONST.TRANSFER_TYPE.ERC20},
+            {transfers: tokenTransfers.t721, type: CONST.TRANSFER_TYPE.ERC721},
+            {transfers: tokenTransfers.t1155, type: CONST.TRANSFER_TYPE.ERC1155},
+        ]
+        for (const item of transferArray) {
+            const {transfers, type} = item
+            for (const transfer of transfers) {
+                const addr = transfer.address
+                tokenAddrTransfer[addr] = tokenAddrTransfer[addr] ? (tokenAddrTransfer[addr] + 1) : 1
+                if ((type === CONST.TRANSFER_TYPE.ERC721 && transfer.topics[1] === CONST.ZERO_VALUE_IN_SLOT)
+                    || (type === CONST.TRANSFER_TYPE.ERC1155 && transfer.topics[2] === CONST.ZERO_VALUE_IN_SLOT)) {
+                    nftAddrMint[addr] = nftAddrMint[addr] ? (nftAddrMint[addr] + 1) : 1
+                }
+            }
+        }
+
+        let tokenTransfer = {}
+        let nftMint = {}
+        const addrArray = Object.keys(tokenAddrTransfer)
+        for(const addr of addrArray){
+            const hex = format.hexAddress(addr)
+            const tokenId = (await makeId(hex)).id
+            tokenTransfer[tokenId] = [tokenAddrTransfer[addr]]
+            nftAddrMint[addr] && (nftMint[tokenId] = [nftAddrMint[addr]])
+        }
+
+        if(Object.keys(tokenTransfer).length > 0){
+            const msg = {epochNumber, epochTimestamp, action: 'push', tokenTransfer}
+            StatNotifier.notifyStatTokenTransfer(msg)
+                .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e))
+            StatNotifier.notifyStatDailyTokenTransfer(msg)
+                .catch(e => console.log(`epoch-sync.notifyStatDailyTokenTransfer epoch:${epochNumber}`, e))
+        }
+
+        if(Object.keys(nftMint).length > 0){
+            const msg = {epochNumber, epochTimestamp, action: 'push', nftMint}
+            StatNotifier.notifyStatNFTMint(msg)
+                .catch(e => console.log(`epoch-sync.noticeStatNFTMint epoch:${epochNumber}`, e))
         }
     }
 

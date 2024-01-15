@@ -7,12 +7,10 @@ import {TokenQuery} from "./service/TokenQuery";
 import {EpochSync} from "./service/EpochSync";
 import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {initCfxSdk, patchFormat} from "./service/common/utils";
-import {IS_EVM2, KEY_TPS_TRANSFER_NOTIFY, KV} from "./model/KV";
+import {IS_EVM2, KV} from "./model/KV";
 import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {StatApp} from "./StatApp";
-import {TransferTpsService} from "./service/TransferTpsService";
 import {ContractQuery} from "./service/ContractQuery";
-import {SyncBase} from "./service/SyncBase";
 import {checkApiLogIpField} from "./monitor/ApiLog";
 import {redirectLog} from "./config/LoggerConfig";
 import {makeIdV} from "./model/HexMap";
@@ -58,8 +56,6 @@ export class FullEpochSync{
         KV.setupSwitch().then();
 
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-        TransferTpsService.TPS_TRANSFER_NOTIFY = await KV.getSwitch(KEY_TPS_TRANSFER_NOTIFY);
-
         StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
         StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
         StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
@@ -82,8 +78,9 @@ export class FullEpochSync{
         this.zeroAddressId = await makeIdV(CONST.ZERO_ADDRESS);
         this.epochSync = new EpochSync(this);
 
-        await this.epochSync.checkAnnounceConfig()
-        await this.epochSync.run(this.config.syncEpochNumber);
+        await this.epochSync.checkContractConfig()
+        await this.epochSync.run(this.config.syncEpochNumber)
+        await this.epochSync.startRealtimeStat()
     }
 
     public async close() {

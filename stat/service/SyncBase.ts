@@ -4,32 +4,20 @@ import {batchFetchBlock} from "./common/utils";
 import {Epoch} from "../model/Epoch";
 import {StatApp} from "../StatApp";
 import {format} from "js-conflux-sdk";
-import {TransferTpsService} from "./TransferTpsService";
-import {RedisWrap, TPS_TRANSFER_Q} from "./RedisWrap";
-import {StatNotifier} from "./streamstat/StatNotifier";
-import {ethers} from "ethers";
-import {makeId, makeIdV} from "../model/HexMap";
+import {makeIdV} from "../model/HexMap";
 import {AddressTransfer} from "../model/AddrTransfer";
 
 const lodash = require('lodash');
-const TOPIC0_TRANSFER_ERC20 = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-const TOPIC0_TRANSFER_ERC1155_SINGLE = '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62';
-const TOPIC0_TRANSFER_ERC1155_BATCH = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb';
-const TOPIC0_ANNOUNCE = '0x14cb751d0950ff2788201931c45f715f7472443bc197311d9e3a7a0ba566b7e6';
-const TOPICS_TOKEN_TRANSFER = [ TOPIC0_TRANSFER_ERC20, TOPIC0_TRANSFER_ERC1155_SINGLE, TOPIC0_TRANSFER_ERC1155_BATCH,
-    TOPIC0_ANNOUNCE ];
-
-const TOPIC0_NAME_TAG_CHANGED = '0x516ccd4a0fb2b81543e6f874521a92f5db5ff281f362e243f7e99a292689211e';
-const TOPIC0_LABEL_CHANGED = '0xdf58130dfdd209d47be11d9978064ac9b114eb08c16df7855eb1d83be3f45a8c';
-const TOPICS_HOT_WALLET_NANE_TAG = [TOPIC0_NAME_TAG_CHANGED, TOPIC0_LABEL_CHANGED];
-
-const TOPICS_TO_TRACE = [[...TOPICS_TOKEN_TRANSFER, ...TOPICS_HOT_WALLET_NANE_TAG]];
+const TOPICS_TO_TRACE = [[
+    '0x14cb751d0950ff2788201931c45f715f7472443bc197311d9e3a7a0ba566b7e6', //TOPIC0_ANNOUNCE
+    '0x516ccd4a0fb2b81543e6f874521a92f5db5ff281f362e243f7e99a292689211e', // TOPIC0_NAME_TAG_CHANGED
+    '0xdf58130dfdd209d47be11d9978064ac9b114eb08c16df7855eb1d83be3f45a8c', // TOPIC0_LABEL_CHANGED
+]];
 
 export abstract class SyncBase{
     public static SYNC_BACKWARD = false;
 
     protected app: StatApp;
-    protected statSwitch = false;
     private forwardQueue: PreloadMap;
     private backwardQueue: PreloadMap;
 
@@ -286,6 +274,7 @@ export abstract class SyncBase{
             throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
         }
 
+        const transactionArray = []
         const transactionHashArray = [];
         for (const [blockIndex, block] of blockArray.entries()) {
             if (epochNumber === 0) {
@@ -303,6 +292,7 @@ export abstract class SyncBase{
                     transaction:${JSON.stringify(lodash.pick(tx.receipt, ['blockHash', 'transactionHash']))} and
                     receipt:${JSON.stringify(lodash.pick(tx, ['blockHash', 'hash']))}`);
                 }
+                transactionArray.push(tx);
                 transactionHashArray.push(tx.receipt.transactionHash);
             }
         }
@@ -312,10 +302,11 @@ export abstract class SyncBase{
             epoch: epochNumber,
             pivotHash: pivotBlock.hash.substr(2),
             parentHash: pivotBlock.parentHash.substr(2),
+            blockHeight: pivotBlock.height,
             timestamp: new Date(pivotBlock.timestamp * 1000),
         };
 
-        return {epoch, latestState, blockHashArray, blockArray, transactionHashArray, receipts};
+        return {epoch, latestState, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts};
     }
 
     //------------------------------- event log ------------------------------
@@ -327,31 +318,21 @@ export abstract class SyncBase{
         const eventLogArray = await this.getLogs({epochNumber, epochTimestamp});
         const groupedLogs = {
             epochNumber,
-            transfer20Array: [],
-            transfer721Array: [],
-            transfer1155Array: [],
             announcementArray: [],
             nameTagArray: [],
             labelArray: [],
         };
 
         for(const eventLog of eventLogArray) {
-            const [transfer20, transfer721, transfer1155, announcement, nameTag, label] = await Promise.all([
-                tokenTool.decodeERC20TransferPlus(eventLog),
-                tokenTool.decodeERC721Transfer(eventLog),
-                tokenTool.decodeERC1155TransferArrayPlus(eventLog),
+            const [announcement, nameTag, label] = await Promise.all([
                 tokenTool.decodeAnnouncePlus(eventLog),
                 tokenTool.decodeNameTagChanged(eventLog),
                 tokenTool.decodeLabelChanged(eventLog),
             ]);
-            if(transfer20) {groupedLogs.transfer20Array.push(transfer20);}
-            if(transfer721) {groupedLogs.transfer721Array.push(transfer721);}
-            if(transfer1155) {groupedLogs.transfer1155Array.push(transfer1155);}
             if(announcement) {groupedLogs.announcementArray.push(announcement);}
             if(nameTag) {groupedLogs.nameTagArray.push(nameTag);}
             if(label) {groupedLogs.labelArray.push(label);}
         }
-        groupedLogs.transfer1155Array = lodash.flatten(groupedLogs.transfer1155Array);
         return groupedLogs;
     }
 
@@ -376,14 +357,7 @@ export abstract class SyncBase{
             return [];
         });
 
-        if(this.statSwitch) {
-            await this.statByEventLog(epochNumber, epochTimestamp, eventLogArray);
-        }
-
-        return eventLogArray
-            .filter((v) => v.address !== 'CFX:TYPE.CONTRACT:ACAV5V98NP8T3M66UW7X61YER1JA1JM0DPZJ1ZYZXV'
-                && v.address !== '0x811dc7fe5B3CFCaB9c84bB3E5e846Dd00ba1561b')
-            .map((v) => SyncBase.parseEventLog(v));
+        return [...eventLogArray].map((v) => SyncBase.parseEventLog(v));
     }
 
     private static parseEventLog(eventLog) {
@@ -391,78 +365,6 @@ export abstract class SyncBase{
         eventLog.address = format.hexAddress(eventLog.address);
         eventLog.transactionLogIndex = Number(eventLog.transactionLogIndex);
         return eventLog;
-    }
-
-    private async statByEventLog(epochNumber, epochTimestamp, eventLogArray) {
-        const eventLogStat = await SyncBase.countEventLog(epochNumber, eventLogArray);
-
-        if(TransferTpsService.TPS_TRANSFER_NOTIFY){
-            RedisWrap.sendStreamMessage(lodash.defaults(eventLogStat, {action: 'push'}), TPS_TRANSFER_Q)
-                .catch(e => console.log(`epoch-sync.notifyTransferTps epoch:${epochNumber}`, e));
-        }
-
-        if(Object.keys(eventLogStat.tokenTransfer).length > 0){
-            const msg = {epochNumber, epochTimestamp, action: 'push', tokenTransfer: eventLogStat.tokenTransfer};
-            StatNotifier.notifyStatTokenTransfer(msg)
-                .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e));
-            StatNotifier.notifyStatDailyTokenTransfer(msg)
-                .catch(e => console.log(`epoch-sync.notifyStatDailyTokenTransfer epoch:${epochNumber}`, e));
-        }
-
-        if(Object.keys(eventLogStat.nftMint).length > 0){
-            const msg = {epochNumber, epochTimestamp, action: 'push', nftMint: eventLogStat.nftMint};
-            StatNotifier.notifyStatNFTMint(msg)
-                .catch(e => console.log(`epoch-sync.noticeStatNFTMint epoch:${epochNumber}`, e));
-        }
-    }
-
-    private static async countEventLog(epochNumber, eventLogArray) {
-        let erc20Cntr = 0;
-        let erc721Cntr = 0;
-        let erc1155Cntr = 0;
-        let tokenAddrTransfer = {};
-        let tokenTransfer = {};
-        let nftAddrMint = {};
-        let nftMint = {};
-
-        for (const eventLog of eventLogArray) {
-            const topic0 = eventLog.topics[0];
-            let incr = 1;
-            if(topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 3){
-                erc20Cntr++;
-            } else if(topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 4){
-                erc721Cntr++;
-            } else if(topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE){
-                erc1155Cntr++;
-            } else if(topic0 === TOPIC0_TRANSFER_ERC1155_BATCH){
-                const abiCoder = new ethers.utils.AbiCoder()
-                const decodedData = abiCoder.decode(["uint256[]","uint256[]"], eventLog.data)
-                incr = decodedData[0].length;
-                erc1155Cntr += incr;
-            } else {
-                continue;
-            }
-
-            const addr = eventLog.address;
-            tokenAddrTransfer[addr] = tokenAddrTransfer[addr] ? (tokenAddrTransfer[addr] + incr) : incr;
-
-            if ((topic0 === TOPIC0_TRANSFER_ERC20 && eventLog.topics.length === 4 &&
-                    eventLog.topics[1] === CONST.ZERO_VALUE_IN_SLOT) ||
-                ((topic0 === TOPIC0_TRANSFER_ERC1155_SINGLE || topic0 === TOPIC0_TRANSFER_ERC1155_BATCH) &&
-                    eventLog.topics[2] === CONST.ZERO_VALUE_IN_SLOT)) {
-                nftAddrMint[addr] = nftAddrMint[addr] ? (nftAddrMint[addr] + incr) : incr;
-            }
-        }
-
-        const addrArray = Object.keys(tokenAddrTransfer);
-        for(const addr of addrArray){
-            const hex = format.hexAddress(addr);
-            const tokenId = (await makeId(hex)).id;
-            tokenTransfer[tokenId] = [tokenAddrTransfer[addr]];
-            nftAddrMint[addr] && (nftMint[tokenId] = [nftAddrMint[addr]]);
-        }
-
-        return {epochNumber, erc20Cntr, erc721Cntr, erc1155Cntr, tokenTransfer, nftMint};
     }
 
     //---------------------------- token transfer ----------------------------
@@ -491,7 +393,7 @@ export abstract class SyncBase{
     }
 
     public static async buildTokenTransferArray(type, transferArray, epochTimestamp, blockHashMap, byRcpt = false){
-        const addressTransferArray = [];
+        const result = [];
         for (const item of transferArray) {
             const transfer = {} as any;
             transfer.epoch = byRcpt ? item.epoch : item.epochNumber;
@@ -513,9 +415,9 @@ export abstract class SyncBase{
 
             transfer.type = type;
             transfer.createdAt = epochTimestamp;
-            addressTransferArray.push(lodash.defaults(transfer, {batchIndex: 0, tokenId: 0, value: 1}));
+            result.push(lodash.defaults(transfer, {batchIndex: 0, tokenId: 0, value: 1}));
         }
-        return addressTransferArray;
+        return result;
     }
 
     //-------------------- methods subclass to implement ---------------------

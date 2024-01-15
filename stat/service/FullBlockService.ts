@@ -513,9 +513,6 @@ export class FullBlockService {
         StatNotifier.notifyStatAddrTransaction({epochNumber: minEpochNumber, epochTimestamp: blockTime, action: 'push',
             txnArray: executedTxArr
         }).catch(e => console.log(`epoch-sync.noticeStatAddrTransaction epoch:${minEpochNumber}`, e));
-        StatNotifier.notifyStatGas( {epochNumber: minEpochNumber, epochTimestamp: blockTime, action: 'push',
-            txnArray: executedTxArr
-        }).catch(e => console.log(`epoch-sync.notifyStatGas epoch:${minEpochNumber}`, e));
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length

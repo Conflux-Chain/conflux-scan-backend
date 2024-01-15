@@ -5,7 +5,8 @@ export interface IKV {
     value: string
 }
 export const SCAN_UTIL_CONTRACT = 'SCAN_UTIL_CONTRACT'
-export const ANNOUNCEMENT_CONTRACT = 'ANNOUNCEMENT_CONTRACT'
+export const CONTRACT_ANNOUNCEMENT = 'CONTRACT_ANNOUNCEMENT'
+export const CONTRACT_ADDRESS_METADATA = 'CONTRACT_ADDRESS_METADATA'
 export const KEY_FULL_BLOCK_COUNT = "FULL_BLOCK_COUNT"
 export const KEY_FULL_TX_COUNT = "FULL_TX_COUNT"
 export const ADDRESS_COUNT_ALL = "ADDRESS_COUNT_ALL"
@@ -28,10 +29,9 @@ export const CFX_TRANSFER_DELAY = "CFX_TRANSFER_DELAY"
 export const KEY_NFT_FROM_DB = "SWITCH_NFT_FROM_DB"
 export const NFT_META_POS_EPOCH = "NFT_META_POS_EPOCH"
 export const KEY_NFT_FROM_MINT_TABLE = "SWITCH_NFT_FROM_MINT_TABLE"
-export const KEY_TPS_TRANSFER = "KEY_TPS_TRANSFER"
+export const KEY_TOKEN_TRANSFER_PER_SECOND = "KEY_TOKEN_TRANSFER_PER_SECOND"
 export const KEY_GAS_USED_PER_SECOND = "KEY_GAS_USED_PER_SECOND"
 export const KEY_GAS_PRICE_TRACKER = "KEY_GAS_PRICE_TRACKER"
-export const KEY_TPS_TRANSFER_NOTIFY = "KEY_TPS_TRANSFER_NOTIFY"
 export const KEY_GAS_USED_PER_SECOND_NOTIFY = "KEY_GAS_USED_PER_SECOND_NOTIFY"
 export const CFX_BILL_EPOCH_3 = "CFX_BILL_EPOCH_3"
 export const CFX_BILL_POS_EPOCH_REWARD_3 = "CFX_BILL_POS_EPOCH_REWARD_3"
@@ -93,7 +93,7 @@ export class KV extends Model<IKV> implements IKV {
         }
         await KV.bulkCreate([
             {key: SCAN_UTIL_CONTRACT, value: ''},
-            {key: ANNOUNCEMENT_CONTRACT, value: ''},
+            {key: CONTRACT_ANNOUNCEMENT, value: ''},
             {key: KEY_ANNOUNCE_QUERY_RDB_SWITCH, value: 'true'},
             {key: KEY_BLOCK_QUERY_RDB_SWITCH, value: 'true'},
             {key: KEY_CONTRACT_QUERY_RDB_SWITCH, value: 'true'},
