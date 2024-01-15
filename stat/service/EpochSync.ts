@@ -25,7 +25,7 @@ import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
-import {ANNOUNCEMENT_CONTRACT, KV} from "../model/KV";
+import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KV} from "../model/KV";
 import {StatOnRealtime} from "./streamstat/StatOnRealtime";
 import {StatNotifier} from "./streamstat/StatNotifier";
 import {ethers} from "ethers";
@@ -69,7 +69,8 @@ export class EpochSync extends SyncBase{
     public static SYNC_ADDR_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT = true;
 
-    public static ANNOUNCEMENT_CONTRACT
+    public static CONTRACT_ANNOUNCEMENT
+    public static CONTRACT_ADDRESS_METADATA // Notice: Adjust config when proxy contract is changed
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
 
@@ -88,13 +89,21 @@ export class EpochSync extends SyncBase{
         this.statSwitch = true;
     }
 
-    public async checkAnnounceConfig() {
-        const announcement = await KV.getString(ANNOUNCEMENT_CONTRACT, '');
+    public async checkContractConfig() {
+        const [announcement, addressMetadata] = await Promise.all([
+            KV.getString(CONTRACT_ANNOUNCEMENT, ''),
+            KV.getString(CONTRACT_ADDRESS_METADATA, '')
+        ])
         if(!announcement) {
-            console.log(`get null announcement contract`)
+            console.log(`contract announcement not set`)
             process.exit(9)
         }
-        EpochSync.ANNOUNCEMENT_CONTRACT = format.hexAddress(announcement)
+        if(!addressMetadata) {
+            console.log(`contract addressMetadata not set`)
+            process.exit(9)
+        }
+        EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
+        EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -432,8 +441,8 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkAnnounce(epochNumber, announcement, announcer, contract) {
-        if(announcement !== EpochSync.ANNOUNCEMENT_CONTRACT) {
-            console.log(`checkAnnounce epoch ${epochNumber} announcement ${announcement} not match with config ${EpochSync.ANNOUNCEMENT_CONTRACT}`)
+        if(announcement !== EpochSync.CONTRACT_ANNOUNCEMENT) {
+            console.log(`checkAnnounce epoch ${epochNumber} announcement ${announcement} not match with config ${EpochSync.CONTRACT_ANNOUNCEMENT}`)
             return false
         }
 
@@ -529,6 +538,8 @@ export class EpochSync extends SyncBase{
 
     // --------------------- business method for name tag -----------------------
     private async getNameTagInfo(epochNumber, nameTagArray, labelArray) {
+        nameTagArray = nameTagArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
+        labelArray = labelArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
         const base32Array = [...nameTagArray, ...labelArray].map(i => format.address(i.addr, StatApp.networkId));
         if(!base32Array?.length) {
             return [];
@@ -586,6 +597,14 @@ export class EpochSync extends SyncBase{
             item['labels'] = [...item['labels']].join(EpochSync.NAME_TAG_SPLIT);
             return item;
         });
+    }
+
+    private checkAddrMeta(epochNumber, addrMeta) {
+        if(addrMeta !== EpochSync.CONTRACT_ADDRESS_METADATA) {
+            console.log(`checkAddrMeta epoch ${epochNumber} addrMetadata ${addrMeta} not match with config ${EpochSync.CONTRACT_ADDRESS_METADATA}`)
+            return false
+        }
+        return true
     }
 
     // ---------------------------- address transfer ----------------------------

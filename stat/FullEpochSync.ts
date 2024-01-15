@@ -78,7 +78,7 @@ export class FullEpochSync{
         this.zeroAddressId = await makeIdV(CONST.ZERO_ADDRESS);
         this.epochSync = new EpochSync(this);
 
-        await this.epochSync.checkAnnounceConfig()
+        await this.epochSync.checkContractConfig()
         await this.epochSync.run(this.config.syncEpochNumber)
         await this.epochSync.startRealtimeStat()
     }
