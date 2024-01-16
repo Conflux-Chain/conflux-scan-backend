@@ -226,7 +226,7 @@ export async function countNonMarkCfxTransferRows(maxOne: ICfxTransferRowMark) {
 }
 
 export async function checkCfxTransferCountKV() {
-    const cnt = await KV.getNumber(KEY_FULL_CFX_TRANSFER_COUNT)
+    const cnt = await KV.getNumber(KEY_FULL_CFX_TRANSFER_COUNT, NaN)
     if (!isNaN(cnt)) {
         // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer in KV:${cnt}`});
         return
