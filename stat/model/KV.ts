@@ -50,6 +50,7 @@ export const KEY_PRUNE_EPOCH_ADDR_TRANSFER = 'KEY_PRUNE_EPOCH_ADDR_TRANSFER'
 export const KEY_FASTEST_IPFS_GATEWAY = "KEY_FASTEST_IPFS_GATEWAY"
 export const KEY_CENSOR_CALL_COUNT = "KEY_CENSOR_CALL_COUNT"
 export const KEY_CAUTION_LABELS = "KEY_CAUTION_LABELS"
+export const KEY_EVM_VERSIONS = "KEY_EVM_VERSIONS"
 
 export class KV extends Model<IKV> implements IKV {
     key: string;

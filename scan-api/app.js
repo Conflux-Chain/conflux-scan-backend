@@ -20,7 +20,7 @@ const { initPartialModel } = require('../stat/dist/service/DBProvider');
 const ApiDef = require("../stat/dist/router/ApiDef");
 const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
 const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
-const { KV, IS_EVM2 } = require('../stat/dist/model/KV');
+const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/dist/model/KV');
 const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
 
 class ApiApp extends AppBase {
@@ -44,6 +44,13 @@ class ApiApp extends AppBase {
     setCfxRpcUrl(config.conflux.url)
     this.sequelize = ApiApp.injectedSequelize || new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
     await RedisWrap.connect(config.redis);
+
+    // check config
+    const value = await KV.getString(KEY_EVM_VERSIONS, undefined)
+    if(!value) {
+      console.log(`evm versions not set`)
+      process.exit(9)
+    }
 
     // type converter
     this.type.checksumAddress = this.type((v) => format.address(v, this.networkId, true));

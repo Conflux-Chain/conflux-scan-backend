@@ -14,6 +14,7 @@ const concurrenceControl = require('../../common/middleware/concurrenceControl')
 const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
 const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
+const { KV, KEY_EVM_VERSIONS } = require('../../stat/dist/model/KV');
 const {StatApp} = require("../../stat/dist/StatApp");
 const {sleepMs} = require("limit-map");
 const MyJsonRpcFlow = require("./MyJsonRpcFlow");
@@ -453,7 +454,8 @@ jsonrpc.method('listEVMVersion',
     cacheFlow(60 * 1000),
     concurrenceControl(500),
     async () => {
-        return CONST_TS.EVM_VERSION;
+        const value = await KV.getString(KEY_EVM_VERSIONS, '')
+        return value.split(',')
     },
 );
 
