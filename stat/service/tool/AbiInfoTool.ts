@@ -6,7 +6,7 @@ async function run() {
     let skip = 0
     do {
         const res = await superagent.get(`${host}/stat/devops/view-table?t=abi_info&skipStr=${skip}`)
-        const body = res.body
+        const body = res.body?.data
         if (!body?.list?.length) {
             break;
         }

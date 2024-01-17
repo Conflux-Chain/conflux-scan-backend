@@ -244,7 +244,7 @@ jsonrpc.method('queryTransaction',
   }).$or(null),
 );
 
-jsonrpc.method('countAndListTransaction',
+jsonrpc.countAndListTransaction = jsonrpc.method_('countAndListTransaction',
   serializeByIP(),
   buildFlow((app) => parameter({
     blockHash: { path: '0', type: type.hex64 },

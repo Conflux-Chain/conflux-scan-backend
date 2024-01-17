@@ -525,7 +525,10 @@ router.get('/transaction',
     },
   }),
 
-  jsonrpc.methodFlow('countAndListTransaction'),
+  // jsonrpc.methodFlow('countAndListTransaction'),
+  async function (arg, next, end) {
+    return jsonrpc.countAndListTransaction.call(this, [arg], next, end)
+  },
 
   async function (result) {
     let addressArray = [];
