@@ -8,6 +8,7 @@ const {StatApp} = require("../../stat/dist/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
 const moment = require("moment/moment");
 const {patchFlowError} = require("./MyJsonRpcFlow");
+const myFlow = require("./MyApiFlow");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -43,9 +44,9 @@ ${lodash.filter(error, (E) => E.code).map((E) => `${E.code} | ${E.name} | ${E.st
   ],
 });
 
+OpenAPI.flow = myFlow;
 // ----------------------------------------------------------------------------
 const router = new Koaflow.Router();
-
 router.use(async (ctx, next) => {
   const {
     app: { dingTalk },
