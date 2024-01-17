@@ -25,11 +25,11 @@ export function loadCache(path: string, expirationSeconds: number) {
             // The 'createdAt' key is deprecated, but is currently supported.
             const createdAt = new Date(json[cacheTimeProp] || json['createdAt']);
             if (createdAt.getTime() + expirationSeconds * 1000 < Date.now()) {
-                console.log(`${path} expired`)
+                // console.log(`${path} expired`)
                 return undefined
             }
         }
-        console.log(`hit cache ${path}`)
+        // console.log(`hit cache ${path}`)
         return json
     } catch (e) {
         console.log(`failed to load cache at ${path} `, e)
