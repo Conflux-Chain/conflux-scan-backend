@@ -106,7 +106,7 @@ export class KV extends Model<IKV> implements IKV {
     }
 
     static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined): Promise<[number, number]> {
-        const oldValue = await KV.getNumber(key);
+        const oldValue = await KV.getNumber(key, NaN);
         if(isNaN(oldValue)) throw new Error(`no key:${key} in KV`);
 
         const newValue = oldValue + diff;

@@ -78,7 +78,7 @@ export class FullBlockService {
     }
     public async run(always = false) : Promise<void> {
         let maxEpoch:number = await FullBlock.max('epoch')
-        if (isNaN(maxEpoch)) {
+        if (isNaN(maxEpoch) || maxEpoch === null) {
            maxEpoch = -1 // plus 1 got 0
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
@@ -125,7 +125,7 @@ export class FullBlockService {
     }
 
     public async checkTxCountKV() {
-        const cnt = await KV.getNumber(KEY_FULL_TX_COUNT)
+        const cnt = await KV.getNumber(KEY_FULL_TX_COUNT, NaN)
         if (!isNaN(cnt)) {
             console.log(`tx count in KV: ${cnt}`)
             return
@@ -140,7 +140,7 @@ export class FullBlockService {
         return KV.create({key: KEY_FULL_TX_COUNT, value: countNow.toString()})
     }
     public async checkBlockCountKV() {
-        const cnt = await KV.getNumber(KEY_FULL_BLOCK_COUNT)
+        const cnt = await KV.getNumber(KEY_FULL_BLOCK_COUNT, NaN)
         if (!isNaN(cnt)) {
             console.log(`block count in KV: ${cnt}`)
             return
@@ -525,7 +525,7 @@ export class FullBlockService {
                 transaction: dbTx})
     }
     public async fillBlockRewardByPos() {
-        let prePos = await KV.getNumber(KEY_FILL_BLOCK_REWARD_EPOCH)
+        let prePos = await KV.getNumber(KEY_FILL_BLOCK_REWARD_EPOCH, NaN)
         if (isNaN(prePos)) {
             prePos = 0 // epoch 0 does not have reward.
         }
@@ -637,7 +637,7 @@ export class FullBlockService {
         return updated.length
     }
     public static async fillPropsBatch(batchSize:number = 100) : Promise<number> {
-        let prePos = await KV.getNumber(KEY_FILL_BLOCK_PROPS_EPOCH)
+        let prePos = await KV.getNumber(KEY_FILL_BLOCK_PROPS_EPOCH, NaN)
         if (isNaN(prePos)) {
             prePos = -1
         }
