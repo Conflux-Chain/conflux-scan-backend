@@ -8,7 +8,7 @@ class MyApiFlow extends Flow {
 
             ctx.body = body; // to got ctx.status
             const picker = this.output[ctx.status] || (v => v);
-            // consider remove the picker (that is: expose what ever fields)
+            // consider removing the picker (ie: exposing all fields)
             body = picker(body);
         } catch (e) {
             ctx.methodFlowError = e;
