@@ -154,7 +154,7 @@ export async function verifySourcecode(ctx) {
     checkPresent({contractaddress, sourceCode, contractname, compilerversion/*, optimizationUsed, runs, licenseType*/},
         ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
     const libraries = checkLibrary(libMap);
-    const evmVersion = checkEVMVersion(evmversion);
+    const evmVersion = await checkEVMVersion(evmversion);
 
     if(codeformat === 'solidity-standard-json-input'){
         const sc = JSON.parse(sourceCode);

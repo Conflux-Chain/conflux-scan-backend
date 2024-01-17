@@ -2,9 +2,9 @@ import {Conflux, format as sdk_format} from "js-conflux-sdk";
 import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
-import {CONST} from "./constant"
 import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
+import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
 
 const lodash = require('lodash');
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
@@ -447,9 +447,11 @@ export function checkLibrary(libMap) {
     return libraries;
 }
 
-export function checkEVMVersion(evmVersion) {
+export async function checkEVMVersion(evmVersion) {
     evmVersion = !evmVersion ? '' : evmVersion;
-    if(evmVersion !== '' && !lodash.includes(CONST.EVM_VERSION, evmVersion)) {
+    const value = await KV.getString(KEY_EVM_VERSIONS, '')
+    const evmVersions = value.split(',')
+    if(evmVersion !== '' && !lodash.includes(evmVersions, evmVersion)) {
         throw new Error(`EVM version ${evmVersion} not supported`);
     }
     return evmVersion;

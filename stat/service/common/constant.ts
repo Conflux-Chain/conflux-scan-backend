@@ -120,7 +120,10 @@ export const CONST = {
     'petersburg',
     'istanbul',
     'berlin',
-    'london'
+    'london',
+    'paris',
+    'shanghai',
+    'cancun',
   ],
 
   TASK_STATUS: {

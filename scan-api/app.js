@@ -22,6 +22,7 @@ const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
 const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
 const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/dist/model/KV');
 const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
+const { CONST: CONST_TS }  = require('../stat/dist/service/common/constant');
 
 class ApiApp extends AppBase {
   static injectedSequelize;
@@ -45,13 +46,6 @@ class ApiApp extends AppBase {
     this.sequelize = ApiApp.injectedSequelize || new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
     await RedisWrap.connect(config.redis);
 
-    // check config
-    const value = await KV.getString(KEY_EVM_VERSIONS, undefined)
-    if(!value) {
-      console.log(`evm versions not set`)
-      process.exit(9)
-    }
-
     // type converter
     this.type.checksumAddress = this.type((v) => format.address(v, this.networkId, true));
     this.type.address = (this.type.checksumAddress.$after((v) => format.hexAddress(v))).$or(this.type.hex40);
@@ -74,6 +68,15 @@ class ApiApp extends AppBase {
         console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
       }
     }
+
+    // check config
+    const value = await KV.getString(KEY_EVM_VERSIONS, undefined)
+    if(!value) {
+      const defaultVersions = CONST_TS.EVM_VERSION.join(',')
+      await KV.create({key: KEY_EVM_VERSIONS, value: defaultVersions})
+      console.log(`evm versions not set, use default`)
+    }
+
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     await this.service.homeDashboard.schedule().catch(() => undefined);
     if (config.blacklist) {
