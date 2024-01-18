@@ -10,8 +10,8 @@ const tool = require('./tool');
 const type = require('./type');
 const TraceLog = require('./TraceLog');
 const {createLogger} = require("./utils");
-const {TokenTool} = require("../stat/dist/service/tool/TokenTool");
-const {initCfxSdk} = require("../stat/dist/service/common/utils");
+const {TokenTool} = require("../stat/service/tool/TokenTool");
+const {initCfxSdk} = require("../stat/service/common/utils");
 
 // eslint-disable-next-line no-extend-native
 BigInt.prototype.toJSON = function () {

@@ -2,8 +2,8 @@ const {ethers, ethers: {utils: {formatEther}}} = require('ethers')
 const {format, Transaction, sign: {publicKeyToAddress}} = require('js-conflux-sdk');
 const rlp = require('js-conflux-sdk/src/util/rlp');
 const cfxFormat = require('js-conflux-sdk/src/rpc/types/formatter');
-const {initCfxSdk} = require('../../stat/dist/service/common/utils');
-const {TokenTool} = require('../../stat/dist/service/tool/TokenTool')
+const {initCfxSdk} = require('../../stat/service/common/utils');
+const {TokenTool} = require('../../stat/service/tool/TokenTool')
 
 const {keccak256} = require("@ethersproject/keccak256");
 const {toUtf8Bytes} = require("@ethersproject/strings");

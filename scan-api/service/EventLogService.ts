@@ -1,7 +1,9 @@
-const lodash = require('lodash');
-// const { KV, KEY_EVENT_LOG_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+import {ScanApp} from "./index";
 
-class EventLogService {
+const lodash = require('lodash');
+
+export class EventLogService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
@@ -61,4 +63,3 @@ class EventLogService {
   }
 }
 
-module.exports = EventLogService;

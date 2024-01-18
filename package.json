@@ -7,6 +7,7 @@
     "test": "test",
     "compile": "npx tsc -p ./stat/tsconfig.json",
     "api-c": "npx tsc -b ./open-api",
+    "api-s": "npx tsc -b ./scan-api",
     "api-clean": "npx tsc -b --clean ./open-api",
     "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/dist/service/watcher/contract/",
     "api:dev": "tsc-watch -b ./open-api --onSuccess 'node --inspect=0.0.0.0:5858 ./open-api/ApiServer.js'",

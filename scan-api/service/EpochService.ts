@@ -1,12 +1,14 @@
-const lodash = require('lodash');
-// const { KV, KEY_EPOCH_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+import {ScanApp} from "./index";
 
-class EpochService {
+const lodash = require('lodash');
+
+export class EpochService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
 
-  async query({ epochNumber } = {}) {
+  async query({ epochNumber } = {} as any) {
     const {
       app: { syncSDK, ttlMap, service },
     } = this;
@@ -35,4 +37,3 @@ class EpochService {
   }
 }
 
-module.exports = EpochService;

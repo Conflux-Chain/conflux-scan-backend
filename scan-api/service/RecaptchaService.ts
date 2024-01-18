@@ -1,6 +1,9 @@
+import {ScanApp} from "./index";
+
 const superagent = require('superagent');
 
-class RecaptchaService {
+export class RecaptchaService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
@@ -32,5 +35,3 @@ class RecaptchaService {
     return { code: 0, msg: 'success' };
   }
 }
-
-module.exports = RecaptchaService;

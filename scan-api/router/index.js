@@ -1,5 +1,4 @@
 const Koaflow = require('koaflow');
-const jsonrpc = require('./jsonrpc');
 
 const router = new Koaflow.Router();
 
@@ -20,11 +19,6 @@ router.get('/switch-req-log', function () {
     enable: requestLogger.enable
   }
 })
-
-router.post('/',
-  (ctx) => ctx.request.body,
-  jsonrpc,
-);
 
 router.sub('/supply', require('./supply'));
 router.sub('/v1', require('./v1'));

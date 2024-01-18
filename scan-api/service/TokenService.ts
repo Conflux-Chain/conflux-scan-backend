@@ -1,10 +1,16 @@
+import {ScanApp} from "./index";
+
 const lodash = require('lodash');
 const BigFixed = require("bigfixed");
-const { TokenQuery } = require('../../stat/dist/service/TokenQuery');
-const { Token } = require('../../stat/dist/model/Token');
-const { KV, /*KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/dist/model/KV');
+const { TokenQuery } = require('../../stat/service/TokenQuery');
+const { Token } = require('../../stat/model/Token');
+const { KV, /*KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/model/KV');
 
-class TokenService {
+export class TokenService {
+  app: ScanApp & any;
+  private LIST_CACHE_KEY: string;
+  private zip: any;
+  private unzip: any;
   constructor(app) {
     this.app = app;
     this.LIST_CACHE_KEY = 'TokenService.token/list/address';
@@ -104,7 +110,7 @@ class TokenService {
     skip = 0,
     limit = Infinity,
     ...options
-  } = {}) {
+  } = {} as any) {
     const {
       app: { tool },
     } = this;
@@ -176,7 +182,7 @@ class TokenService {
     return lodash.defaults({}, token, { isCustodianToken });
   }
 
-  async _listByAddressArrayPlus({ addressArray, fields }) {
+  async _listByAddressArrayPlus({ addressArray, fields } = {} as any) {
     const {
       app: { service },
     } = this;
@@ -187,6 +193,7 @@ class TokenService {
   }
 
   async _listByRegisterPlus(options) {
+    const { app: {error}, } = this;
     options.orderBy = options.orderBy || 'transferCount'
     const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
     if (!order) {
@@ -239,4 +246,3 @@ class TokenService {
   }
 }
 
-module.exports = TokenService;

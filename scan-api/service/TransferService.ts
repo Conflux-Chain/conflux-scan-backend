@@ -1,11 +1,13 @@
+import {ScanApp} from "./index";
+
 const lodash = require('lodash');
 const limitMap = require('limit-map');
-const {fetchEnsMap} = require("../../stat/dist/service/ens/EnsService");
-// const { KV, KEY_TRANSFER_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+const {fetchEnsMap} = require("../../stat/service/ens/EnsService");
 
 const TOKEN_FIELDS = ['name', 'symbol', 'decimals', 'granularity'];
 
-class TransferService {
+export class TransferService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
@@ -214,7 +216,7 @@ class TransferService {
 /*    const accountAddressArray = [];
     const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
     if (rdbSwitch) {*/
-      const page = this._listAccountAddressByRdb({ transferType, address, limit: CONST.LIST_LIMIT });
+      const page = await this._listAccountAddressByRdb({ transferType, address, limit: CONST.LIST_LIMIT });
       return page?.list;
    /* }
 
@@ -308,4 +310,3 @@ class TransferService {
   }
 }
 
-module.exports = TransferService;

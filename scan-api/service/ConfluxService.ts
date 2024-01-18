@@ -1,11 +1,14 @@
-const {noVerboseAddr} = require("../../stat/dist/service/common/utils")
-const {patchPocketAddress} = require("../../stat/dist/model/HexMap")
+import {ScanApp} from "./index";
+
+const {noVerboseAddr} = require("../../stat/service/common/utils")
+const {patchPocketAddress} = require("../../stat/model/HexMap")
 
 const lodash = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
 const { withoutCfxTransferType } = require('../../common/utils');
 
-class ConfluxService {
+export class ConfluxService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
@@ -47,7 +50,7 @@ class ConfluxService {
   }
 
   // ---------------------------------- address -------------------------------
-  async getAccount(address, epochNumber) {
+  async getAccount(address, epochNumber=undefined) {
     const {
       app: { cfx, ttlMap },
     } = this;
@@ -269,7 +272,7 @@ class ConfluxService {
     );
   }
 
-  async getBlockByHash(blockHash, detail) {
+  async getBlockByHash(blockHash:string, detail=false) {
     const {
       app: { CONST, cfx, ttlMap/* , kvStore */ },
     } = this;
@@ -603,7 +606,7 @@ class ConfluxService {
           }
           if (trace?.action?.addr) addressSet.add(trace.action.addr);
         });
-        let result = {};
+        let result = {} as any;
         try {
           result.traceTree = tracesInTree(traceArray);
           result.addressArray = [...addressSet];
@@ -618,4 +621,3 @@ class ConfluxService {
   }
 }
 
-module.exports = ConfluxService;

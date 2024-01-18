@@ -1,5 +1,5 @@
 const { CONST: { EPOCH_NUMBER }, format } = require('js-conflux-sdk');
-const { KEY_BLOCK_QUERY_RDB_SWITCH, KEY_TX_QUERY_RDB_SWITCH, KEY_TRANSFER_QUERY_RDB_SWITCH } = require('../stat/dist/model/KV');
+const { KEY_BLOCK_QUERY_RDB_SWITCH, KEY_TX_QUERY_RDB_SWITCH, KEY_TRANSFER_QUERY_RDB_SWITCH } = require('../stat/model/KV');
 
 module.exports = {
   EPOCH_NUMBER,

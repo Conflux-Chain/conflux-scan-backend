@@ -1,7 +1,13 @@
-const { format } = require('js-conflux-sdk');
-const { KV, CONTRACT_ANNOUNCEMENT } = require('../../stat/dist/model/KV');
+import {ScanApp} from "./index";
+import {PrivateKeyAccount} from "js-conflux-sdk";
 
-class AnnounceService {
+const { format } = require('js-conflux-sdk');
+const { KV, CONTRACT_ANNOUNCEMENT } = require('../../stat/model/KV');
+
+export class AnnounceService {
+  app: ScanApp & any;
+  private _sendLocked: boolean;
+  private announcer: PrivateKeyAccount;
   constructor(app) {
     this.app = app;
 
@@ -129,4 +135,3 @@ class AnnounceService {
   }
 }
 
-module.exports = AnnounceService;

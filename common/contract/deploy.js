@@ -1,7 +1,7 @@
 const {sleepMs} = require('limit-map');
 const {ethers, ethers:{utils:{parseEther, formatEther}}} = require('ethers')
 const {format} = require('js-conflux-sdk');
-const {initCfxSdk} = require('../../stat/dist/service/common/utils');
+const {initCfxSdk} = require('../../stat/service/common/utils');
 const {abi: abiUtil, bytecode: bytecodeUti} = require('../contracts/build/contracts/UtilImpl.json');
 
 // 1820: 0x88887eD889e776bCBe2f0f9932EcFaBcDfCd1820

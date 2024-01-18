@@ -1,9 +1,10 @@
+import {ScanApp} from "./index";
+
 const lodash = require('lodash');
 const limitMap = require('limit-map');
-const {fetchEnsMap} = require("../../stat/dist/service/ens/EnsService");
-const {CENSOR_STATUS} = require("../../stat/dist/service/censor/CensorService");
-const {hexToUtf8, utf8ToHex} = require("../../stat/dist/service/tool/CensorTool");
-// const { KV, KEY_TX_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+const {fetchEnsMap} = require("../../stat/service/ens/EnsService");
+const {CENSOR_STATUS} = require("../../stat/service/censor/CensorService");
+const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
 
 const RECEIPT_FIELDS = [
   'gasCoveredBySponsor',
@@ -16,12 +17,13 @@ const RECEIPT_FIELDS = [
   'txExecErrorMsg',
 ];
 
-class TransactionService {
+export class TransactionService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
 
-  async query({ hash, fields, aggregate }) {
+  async query({ hash, fields, aggregate } = {} as any) {
     const {
       app: { service },
     } = this;
@@ -78,7 +80,7 @@ class TransactionService {
     return total;
   }
 
-  async countAndList({ fields, ...options } = {}) {
+  async countAndList({ fields, ...options } = {} as any) {
     const {
       app: { service, syncSDK, tool, logger },
     } = this;
@@ -121,7 +123,7 @@ class TransactionService {
     skip = 0,
     limit = Infinity,
     reverse = false,
-  } = {}) {
+  } = {} as any) {
     const {
       app: { service },
     } = this;
@@ -136,4 +138,3 @@ class TransactionService {
   }
 }
 
-module.exports = TransactionService;
