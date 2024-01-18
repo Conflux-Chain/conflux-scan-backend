@@ -221,7 +221,7 @@ jsonrpc.method('countAndListBlock',
 );
 
 // ------------------------------- Transaction ------------------------------
-export const queryTransaction = jsonrpc.method_('queryTransaction',
+jsonrpc.queryTransaction = jsonrpc.method_('queryTransaction',
   serializeByIP(),
   parameter({
     hash: { path: '0', type: type.hex64, required: true },

@@ -8,7 +8,7 @@ const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
 const moment = require("moment/moment");
 const {patchFlowError} = require("./MyJsonRpcFlow");
 const myFlow = require("./MyApiFlow");
-const {queryTransaction, jsonrpc} = require("./jsonrpc");
+const {jsonrpc} = require("./jsonrpc");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -409,7 +409,7 @@ router.get('/transaction/:hash',
 
   // jsonrpc.methodFlow('queryTransaction'),
   async function(arg, next, end) {
-    return queryTransaction.call(this, [arg], next, end)
+    return jsonrpc.queryTransaction.call(this, [arg], next, end)
   },
 
   async function (transaction) {
