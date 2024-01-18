@@ -8,7 +8,6 @@ import {EpochSync} from "./service/EpochSync";
 import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KV} from "./model/KV";
-import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {StatApp} from "./StatApp";
 import {ContractQuery} from "./service/ContractQuery";
 import {checkApiLogIpField} from "./monitor/ApiLog";
@@ -54,12 +53,7 @@ export class FullEpochSync{
 
     private async initSwitch(){
         KV.setupSwitch().then();
-
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-        StatNotifier.SWITCH_STREAM_STAT = this.config.streamStat;
-        StatNotifier.SWITCH_STAT_TOKEN_TRANSFER = this.config.statTokenTransfer;
-        StatNotifier.SWITCH_STAT_DAILY_TOKEN_TRANSFER = this.config.statDailyTokenTransfer;
-        StatNotifier.SWITCH_STAT_NFT_MINT = this.config.statNFTMint;
     }
 
     public async run() {

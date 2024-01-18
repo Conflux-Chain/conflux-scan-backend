@@ -64,11 +64,6 @@ import {
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
 import {TokenTransferStat} from "../model/TokenTransferStat";
-import {AddrTransactionStat} from "../model/AddrTransactionStat";
-import {AddrCfxTransferStat} from "../model/AddrCfxTransferStat";
-import {DailyCfxTransferStat} from "../model/DailyCfxTransferStat";
-import {DailyTokenTransferStat} from "../model/DailyTokenTransferStat";
-import {MinerBlockStat} from "../model/MinerBlockStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
@@ -85,7 +80,6 @@ import {createNftMetaPartition, NftMetaFts, NftMetaOld} from "./nftchecker/NftMe
 import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSync";
 import {AddrEvent3525, Event3525, Slot3525, SlotChanged, TaskEvent3525, TokenSlot3525} from "../T3525Sync";
 import {DailyNFTStat} from "../model/DailyNFTStat";
-import {NFTMintStat} from "../model/NFTMintStat";
 import {DailyNFTHolder} from "../model/DailyNFTHolder";
 import {CensorItem} from "../model/CensorItem";
 import {AddressNfts, createAddressNftTable} from "../model/AddrNft";
@@ -219,11 +213,6 @@ export async function initPartialModel(sequelize) {
     TokenSecurityAudit.register(sequelize);
     PruneInfo.register(sequelize);
     TokenTransferStat.register(sequelize);
-    AddrTransactionStat.register(sequelize);
-    AddrCfxTransferStat.register(sequelize);
-    DailyCfxTransferStat.register(sequelize);
-    DailyTokenTransferStat.register(sequelize);
-    MinerBlockStat.register(sequelize);
     Blacklist.register(sequelize);
     RateConfig.register(sequelize);
     HeartBeatBean.register(sequelize);
@@ -255,7 +244,6 @@ export async function initModel(sequelize: Sequelize) {
     DailyPosRewardStat.register(sequelize);
     DailyPowRewardStat.register(sequelize);
     NFTBalance.register(sequelize);
-    NFTMintStat.register(sequelize);
     EpochTask.register(sequelize);
     EpochTaskTokenTransfer.register(sequelize);
     EpochHashTokenTransfer.register(sequelize)

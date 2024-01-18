@@ -13,6 +13,7 @@ import {ApprovalRelation} from "../../stat/ApprovalSync";
 import {paginateCoreStat} from "../../stat/router/ParamChecker";
 import {polishContract} from "./OpenContractService";
 import {fixApprovalData} from "../../stat/service/tool/ApprovalTool";
+import {BlockAndMinerSync} from "../../stat/service/BlockAndMinerSync";
 
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -181,73 +182,88 @@ export async function listTokenUniqueParticipantStat(ctx) {
 }
 
 export async function listGasUsedTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().addrTransactionHandler.getStat();
-    const statInfo = statObj[spanType];
-    setBody(ctx, statInfo)
+    const {span, type} = parseTopStatParam(ctx);
+    const cache = getApiService().txnQuery.topGasUsedCache[`${span}${type}`]
+    const data = {
+        gasTotal: cache['totalGas'],
+        maxTime: cache['cacheCreatedAt'],
+        list: cache?.list.map(item => ({address: StatApp.isEVM ? item['hex'] : item['base32'], gas: item['gas']}))
+    }
+    setBody(ctx, data)
 }
 
 export async function listMinerTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().minerBlockHandler.getStat();
-    const statInfo = statObj[spanType];
-    setBody(ctx, statInfo)
+    const { span, type } = parseTopStatParam(ctx);
+    const {list,allDifficulty} = await BlockAndMinerSync.topByType(span, type, 10);
+    const timeRange = BlockAndMinerSync.calculateTimeRange(list);
+    BlockAndMinerSync.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
+    const data = {
+        maxTime: timeRange.endTime,
+        difficultyTotal: allDifficulty,
+        list: list?.map(item => ({
+            address: StatApp.isEVM ? `0x${item['miner']}` : item['base32'], value: item['value'],
+            blockCntr: item['blockCount'],
+            rewardSum: item['totalReward'],
+            txFeeSum: item['txFee'],
+            hashRate: item['hashRate'],
+        })),
+    };
+    setBody(ctx, data)
 }
 
 export async function listCfxSenderTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().addrCfxTransferHandler.getStat();
-    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.OUT}`];
-    setBody(ctx, statInfo)
+    await topCfxTransfer(ctx, 'cfxSend')
 }
 
 export async function listCfxReceiverTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().addrCfxTransferHandler.getStat();
-    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.IN}`];
-    setBody(ctx, statInfo)
+    await topCfxTransfer(ctx, 'cfxReceived')
 }
 
 export async function listTransactionSenderTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().addrTransactionHandler.getStat();
-    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.OUT}`];
-    setBody(ctx, statInfo)
+    await topCfxTransfer(ctx, 'txnSend')
 }
 
 export async function listTransactionReceiverTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().addrTransactionHandler.getStat();
-    const statInfo = statObj[`${spanType}-${CONST.TX_TYPE.IN}`];
-    setBody(ctx, statInfo)
+    await topCfxTransfer(ctx, 'txnReceived')
+}
+
+async function topCfxTransfer(ctx, statType) {
+    const { span, type } = parseTopStatParam(ctx);
+    const cache: any = await getApiService().txnSync.txTopBy(span, type, 10, statType, StatApp.networkId);
+    const data = {
+        maxTime: cache['endTime'],
+        valueTotal: cache['sum'],
+        list: cache?.list.map(item => ({address: StatApp.isEVM ? item['hex'] : item['base32'], value: item['value']})),
+    }
+    setBody(ctx, data)
 }
 
 export async function listTokenTransferTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().tokenTransferHandler.getStat();
-    const statInfo = statObj[spanType];
-    setBody(ctx, statInfo)
+    await topTokenTransfer(ctx, 'rank_contract_by_number_of_transfers_')
 }
 
 export async function listTokenSenderTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().tokenTransferHandler.getStat();
-    const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.OUT}`];
-    setBody(ctx, statInfo)
+    await topTokenTransfer(ctx, 'rank_contract_by_number_of_senders_')
 }
 
 export async function listTokenReceiverTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().tokenTransferHandler.getStat();
-    const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.IN}`];
-    setBody(ctx, statInfo)
+    await topTokenTransfer(ctx, 'rank_contract_by_number_of_receivers_')
 }
 
 export async function listTokenParticipantTopStat(ctx) {
-    let {spanType} = parseTopStatParam(ctx);
-    const statObj = await getApiService().tokenTransferHandler.getStat();
-    const statInfo = statObj[`uniqueAddr-${spanType}-${CONST.TX_TYPE.ALL}`];
-    setBody(ctx, statInfo)
+    await topTokenTransfer(ctx, 'rank_contract_by_number_of_participants_')
+}
+
+async function topTokenTransfer(ctx, statType) {
+    const { span, type } = parseTopStatParam(ctx);
+    const spanType = (span === 24 && type === 'h') ? '1d' : `${span}${type}`
+    const topType = `${statType}${spanType}`
+    const cache: any = await getApiService().rankService.top(topType, 10, StatApp.networkId)
+    const data = {
+        maxTime: cache['maxTimeStart'],
+        list: cache?.list.map(item => ({address: StatApp.isEVM ? item['hex'] : item['base32address'], transferCntr: item['valueN']})),
+    }
+    setBody(ctx, data)
 }
 
 function parseStatParam(ctx) {
@@ -263,10 +279,16 @@ function parseStatParam(ctx) {
 
 function parseTopStatParam(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'spanType', ['24h', '3d', '7d']);
-
-    let {spanType} = ctx.request.query
-    spanType = (spanType === undefined || spanType === '24h') ? '1d' : spanType;
-    return {spanType};
+    const {spanType = '24h'} = ctx.request.query
+    let span, type
+    if(spanType.endsWith('h')) {
+        type = 'h'
+        span = 24
+    } else{
+        type = 'd'
+        span = Number(spanType.substring(0, 1))
+    }
+    return {span, type};
 }
 
 async function getTokenAnalysisData(ctx){

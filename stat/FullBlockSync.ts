@@ -13,7 +13,6 @@ import {
 import {initCfxSdk} from "./service/common/utils";
 import {RedisWrap} from "./service/RedisWrap";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
-import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {checkApiLogIpField} from "./monitor/ApiLog";
 import {StatApp} from "./StatApp";
@@ -44,12 +43,6 @@ export async function run() {
         cfx2 = await initCfxSdk(config.conflux2)
     }
     const svc = new FullBlockService(cfx, cfx2)
-    StatNotifier.SWITCH_STREAM_STAT = config.streamStat;
-    StatNotifier.SWITCH_STAT_MINER_BLOCK = config.statMinerBlock;
-    StatNotifier.SWITCH_STAT_ADDR_TRANSACTION = config.statAddrTransaction;
-    StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND = await KV.getSwitch(KEY_GAS_USED_PER_SECOND_NOTIFY);
-    console.log(`StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND ----------${StatNotifier.SWITCH_STAT_GAS_USED_PER_SECOND}`)
-
     if (args[0] === 'fix') {
         // batch size 10, loop 1 time:
         // node this fix 10 1

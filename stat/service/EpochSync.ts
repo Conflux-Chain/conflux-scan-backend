@@ -26,9 +26,7 @@ import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
 import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KV} from "../model/KV";
-import {StatOnRealtime} from "./streamstat/StatOnRealtime";
-import {StatNotifier} from "./streamstat/StatNotifier";
-import {ethers} from "ethers";
+import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -1282,20 +1280,6 @@ export class EpochSync extends SyncBase{
             const tokenId = (await makeId(hex)).id
             tokenTransfer[tokenId] = [tokenAddrTransfer[addr]]
             nftAddrMint[addr] && (nftMint[tokenId] = [nftAddrMint[addr]])
-        }
-
-        if(Object.keys(tokenTransfer).length > 0){
-            const msg = {epochNumber, epochTimestamp, action: 'push', tokenTransfer}
-            StatNotifier.notifyStatTokenTransfer(msg)
-                .catch(e => console.log(`epoch-sync.noticeStatTokenTransfer epoch:${epochNumber}`, e))
-            StatNotifier.notifyStatDailyTokenTransfer(msg)
-                .catch(e => console.log(`epoch-sync.notifyStatDailyTokenTransfer epoch:${epochNumber}`, e))
-        }
-
-        if(Object.keys(nftMint).length > 0){
-            const msg = {epochNumber, epochTimestamp, action: 'push', nftMint}
-            StatNotifier.notifyStatNFTMint(msg)
-                .catch(e => console.log(`epoch-sync.noticeStatNFTMint epoch:${epochNumber}`, e))
         }
     }
 

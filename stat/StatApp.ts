@@ -36,7 +36,8 @@ import {FullBlockQuery} from "./service/FullBlockQuery";
 import {ENSCheckerQuery} from "./service/ens/ENSCheckerQuery";
 import {AccountQuery} from "./service/AccountQuery";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
-import {StatOnRealtime} from "./service/streamstat/StatOnRealtime"
+import {StatOnRealtime} from "./service/timerstat/StatOnRealtime"
+import {TxnQuery} from "./service/TxnQuery";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -73,6 +74,7 @@ export class StatApp{
     public desensitizer: Desensitizer;
     public tokenTool: TokenTool;
     public statOnRealtime: StatOnRealtime
+    public txnQuery: TxnQuery
     public static networkId = 1029
     public static readonly = false
     public static isEVM = false;
@@ -141,6 +143,7 @@ export class StatApp{
         this.ensCheckerQuery = new ENSCheckerQuery(this);
         this.accountQuery = new AccountQuery(this);
         this.statOnRealtime = new StatOnRealtime()
+        this.txnQuery = new TxnQuery()
         this.txnSync.scheduleCache()
         if (this.config?.syncQuote?.open) {
             await this.quoteSync.schedule();
@@ -158,6 +161,7 @@ export class StatApp{
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
         }
+        await this.txnQuery.scheduleCache()
         let fullStateRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
         if (fullStateRpc) {
             this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{

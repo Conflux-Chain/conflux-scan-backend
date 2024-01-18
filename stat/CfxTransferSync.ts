@@ -22,7 +22,6 @@ import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {RedisWrap} from "./service/RedisWrap";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
-import {StatNotifier} from "./service/streamstat/StatNotifier";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 
 export interface IEpochCfxTransferCount {
@@ -469,16 +468,6 @@ async function processEpoch(epoch, data, taskBegin) {
         return 10_000
     }
     await save(data, epoch, taskBegin)
-    try {
-        if(data?.result?.length){
-            const msg = {epochNumber: data.result[0].epoch, epochTimestamp: data.result[0].createdAt, action: 'push',
-                cfxTransferArray: data.result};
-            StatNotifier.notifyStatAddrCfxTransfer(msg).then();
-            StatNotifier.notifyStatDailyCfxTransfer(msg).then();
-        }
-    } catch (e) {
-        console.log(` notifyCFXTransfer fail, epoch ${ epoch} .`, e)
-    }
     return 0;
 }
 async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
@@ -591,10 +580,5 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
 }
 if (module === require.main) {
     regExitHook()
-    if (process.argv.includes('streamStat')) {
-        StatNotifier.SWITCH_STREAM_STAT = true;
-        StatNotifier.SWITCH_STAT_DAILY_CFX_TRANSFER = true;
-        StatNotifier.SWITCH_STAT_ADDR_CFX_TRANSFER = true;
-    }
     setup().then()
 }
