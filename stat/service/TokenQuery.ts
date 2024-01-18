@@ -297,34 +297,35 @@ export class TokenQuery {
         blackList = false
     }: { address: string, audit?: boolean, sponsor?: boolean, cexBinance?: string, cexHuobi?: string, cexOKEx?: string,
         dexMoonSwap?: string, trackCoinMarketCap?: string, blackList?: boolean
-    }): Promise<object> {
+    }) {
         const {
             app: {cfx},
-        } = this;
+        } = this
 
         try {
-            const base32 = toBase32(address);
-            const token = await Token.findOne({attributes: ['id', 'hex40id'], where: {base32}});
-            if(!token){
-                return Promise.resolve({code: 9999, msg: `token:${base32} not exist`});
+            const base32 = toBase32(address)
+            const token = await Token.findOne({attributes: ['id', 'hex40id'], where: {base32}})
+            const account = await cfx.getAccount(base32)
+            const destroyed = account?.codeHash === CONST.CODEHASH_NO_BYTECODE
+            if(token){
+                const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS) ? true : false
+                const verifyInfo =  await ContractVerify.findOne({where: {base32, verifyResult: true}})
+                const verify = verifyInfo?.verifyResult ? true : false
+
+                const securityCredits = await this.calSecurityCredits(base32)
+                const t = blackList ? { securityCredits, destroyed, auditResult: !blackList } : { securityCredits, destroyed }
+                await Token.update(t,{where: {id: token.id}})
+
+                const a = lodash.defaults({updatedAt: new Date()}, { hex40id: token.hex40id, base32, verify, audit, sponsor,
+                    zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
+                })
+                await TokenSecurityAudit.upsert(a)
             }
-
-            const { zeroAdmin, verify } = await this.getAuditBasic(base32);
-            const a = lodash.defaults({updatedAt: new Date()}, { hex40id: token.hex40id, base32, verify, audit, sponsor,
-                zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
-            });
-            await TokenSecurityAudit.upsert(a);
-
-            const securityCredits = await this.calSecurityCredits(base32);
-            const runtimeCode = await cfx.getCode(base32);
-            const destroyed = !runtimeCode || runtimeCode.length <= 2;
-            const t = blackList ? { securityCredits, destroyed, auditResult: !blackList } : { securityCredits, destroyed };
-            await Token.update(t,{where: {id: token.id}});
-
-            return Promise.resolve({code: 0, msg: `token:${address} audit success`});
+            destroyed && (await Contract.update({destroyed}, {where: {base32}}))
         } catch (e) {
-            // console.log(`token-audit fail, address:${address}`, e);
-            return Promise.resolve({code: 9999, msg: `token:${address} audit fail`});
+            if (!e.message?.includes('StateAvailabilityBoundary')) {
+                console.log(`token-audit fail, address:${address}`, e)
+            }
         }
     }
 
@@ -351,17 +352,6 @@ export class TokenQuery {
 
         const token = await Token.findOne({attributes: ['type', 'transfer'], where: {hex40id: addressId}});
         return {transferType: token?.type, transferCount: token?.transfer};
-    }
-
-    private async getAuditBasic(base32): Promise<{ zeroAdmin: boolean, verify: boolean }>{
-        const { cfx } = this.app;
-        const account = await cfx.getAccount(base32);
-        const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS) ? true : false;
-
-        const verifyInfo =  await ContractVerify.findOne({where: {base32, verifyResult: true}});
-        const verify = verifyInfo?.verifyResult ? true : false;
-
-        return Promise.resolve({zeroAdmin, verify});
     }
 
     private async getAuditInfo(tokenArray) {

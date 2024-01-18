@@ -2,6 +2,9 @@ import {StatApp} from "../StatApp";
 import {TokenQuery} from "./TokenQuery";
 import {Contract} from "../model/Contract";
 import {toBase32} from "./tool/AddressTool";
+import {CONST} from "./common/constant";
+import {format} from "js-conflux-sdk";
+import {Token} from "../model/Token";
 
 export class TokenSecurityAuditSync{
     private readonly app;
@@ -11,27 +14,25 @@ export class TokenSecurityAuditSync{
     }
 
     private async audit(now: Date): Promise<Boolean>{
-        const { cfx, tokenQuery, contractQuery } = this.app;
+        const { tokenQuery } = this.app
 
-        let response = await TokenQuery.listAddress();
-        let addressArray = response?.list;
-        for(const base32 of addressArray){
-            await tokenQuery.audit({address: base32});
+        const tokens = await Token.findAll({attributes: ['base32'], raw: true})
+        let addresses = tokens?.map(item => (item.base32))
+        for(const address of addresses){
+            await tokenQuery.audit({address})
         }
-        console.log(`token_security_audit_sync audit start at:${now}, end at:${new Date()}`);
+        console.log(`token_security_audit_sync audit start at:${now}, end at:${new Date()}`)
 
-        response = await contractQuery.listAddress();
-        addressArray = response?.list;
-        for(const address of addressArray){
-            const base32 = toBase32(address);
-            const runtimeCode = await cfx.getCode(base32);
-            if(!runtimeCode || runtimeCode.length <= 2) {
-                await Contract.update({destroyed: true}, {where: {base32}});
-            }
+
+        const tokenSet = new Set([...addresses])
+        const contracts = await Contract.findAll({attributes: ['base32'], raw: true})
+        addresses = contracts?.map(item => (item.base32)).filter(item => (!tokenSet.has(item)))
+        for(const address of addresses){
+            await tokenQuery.audit({address})
         }
-        console.log(`token_security_audit_sync audit contract start at:${now}, end at:${new Date()}`);
+        console.log(`token_security_audit_sync audit contract start at:${now}, end at:${new Date()}`)
 
-        return Promise.resolve(true);
+        return Promise.resolve(true)
     }
 
     private async auditToken(base32){
