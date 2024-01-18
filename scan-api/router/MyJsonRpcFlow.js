@@ -7,6 +7,11 @@ const {Errors, UnhandledErrorCode} = require("../../stat/dist/service/common/Log
  */
 let cfxRpcUrl = ''
 class MyJsonRpcFlow extends JsonRPCFlow {
+  // super function doesn't return a value, just wrap that.
+  method_(method, ...flowArray) {
+    super.method(method, ...flowArray)
+    return this.methods[method];
+  }
   methodFlow(method) {
     const jsonRPCFlow = this;
 
