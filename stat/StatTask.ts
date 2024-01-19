@@ -47,9 +47,11 @@ async function main() {
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
     //
-    const censorService = new CensorService({config, cfx, traceCreateQuery},
-        {tx: 10, token: 10, nft: 10});
-    await censorService.schedule(1000 * 3);
+    if(config.censorApiKey && config.censorSecretKey) {
+        const censorService = new CensorService({config, cfx, traceCreateQuery},
+            {tx: 10, token: 10, nft: 10});
+        await censorService.schedule(1000 * 3);
+    }
     //
     await scheduleDailyActiveAddress()
         .then(()=>{scheduleDailyTokenStat()})
