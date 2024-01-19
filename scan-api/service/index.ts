@@ -38,6 +38,8 @@ export interface ScanApp {
   ttlMap: any;
   config: any;
   error: any;
+  tool: any;
+  logger: any;
 }
 
 export class ScanServices {

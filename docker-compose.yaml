@@ -32,137 +32,73 @@ services:
     network_mode: host
     restart: always
     command: node /scan/scan-compiler
-  # deprecated
-  stat:
-    image: node:14.17.5
-    volumes:
-      - ./:/stat-root
-      - ./log/:/log
-    network_mode: host
-    environment:
-      PORT: 8087
-    restart: always
-    command: node /stat-root/stat/dist/Index.js
   block:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/FullBlockSync.js
-  stream: # not used
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/StreamSync.js
+    command: node /stat-root/stat/FullBlockSync.js
   token_transfer: # token transfer sync
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/TokenTransferSync.js useConfigRpc -1 10000
-  # deprecated
-  token_approval: # token approval sync
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/ApprovalSync.js useConfigRpc -1 10000
-  # deprecated
-  token_3525: # token 3525 sync
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/T3525Sync.js sync useConfigRpc -1 10000
-  # deprecated
-  token_misc: # token misc: holder, total supply
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/service/watcher/BatchBalanceWatcher.js useConfigRpc 500
+    command: node /stat-root/stat/TokenTransferSync.js useConfigRpc -1 10000
   token_x: # token misc: holder, total supply; T3525; approval sync;
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/TokenMiscSync.js
-  # deprecated
-  uniqueAddressStat: # UniqueAddressStat
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/service/UniqueAddressStat.js useConfigRpc -1 3000
+    command: node /stat-root/stat/TokenMiscSync.js
   cfx_transfer: # cfx transfer sync
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/CfxTransferSync.js useConfigRpc -1 10000
+    command: node /stat-root/stat/CfxTransferSync.js useConfigRpc -1 10000
   cfxCounterHolderMarker:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/CfxTransferSync.js cfxCounterHolderMarker
+    command: node /stat-root/stat/CfxTransferSync.js cfxCounterHolderMarker
   pos:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/service/pos/PosSync.js
-  bill:
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/service/watcher/DummyNode.js 1
-  pos-not-ready:
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/dist/service/pos/PosSync.js http://192.168.8.165:12537 345000
+    command: node /stat-root/stat/service/pos/PosSync.js
   epoch:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/FullEpochSync.js
+    command: node /stat-root/stat/FullEpochSync.js
   stat_task:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/StatTask.js
+    command: node /stat-root/stat/StatTask.js
   nft_meta:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/service/nftchecker/NftMetaStorage.js metadata
+    command: node /stat-root/stat/service/nftchecker/NftMetaStorage.js metadata
   prune:
     image: node:14.17.5
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/dist/service/prune/PruneService.js all
+    command: node /stat-root/stat/service/prune/PruneService.js all

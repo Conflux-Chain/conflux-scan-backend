@@ -1,7 +1,7 @@
 const superagent = require('superagent');
 const loadConfig = require('koaflow/lib/util/loadConfig');
-const App = require('./app');
-const {repeatHeartBeat, KEY_SCAN_API, doHeartBeat, KEY_COMPILER} = require("../stat/model/HeartBeat");
+const {ApiApp} = require('./app');
+const {repeatHeartBeat, KEY_SCAN_API, doHeartBeat, KEY_COMPILER, HeartBeatBean} = require("../stat/model/HeartBeat");
 
 const config = loadConfig(`${__dirname}/config`);
 
@@ -11,7 +11,11 @@ const compilerRpc = proxy[Object.keys(proxy)[0]];
 setInterval(async ()=>{
   try {
     await superagent.get(compilerRpc)
-    await doHeartBeat(`${KEY_COMPILER}_${config.machine}`)
+    if (!HeartBeatBean.sequelize) {
+      console.log(`${__filename} DB has not been initialized`)
+      return
+    }
+    await doHeartBeat(`${KEY_COMPILER}_${config.machine}`);
   } catch (e) {
     console.log(`failed to call compiler rpc ${compilerRpc}`, e)
   }
@@ -19,9 +23,8 @@ setInterval(async ()=>{
 // report scan api heart beat
 repeatHeartBeat(`${KEY_SCAN_API}_${config.machine}`)
 
-const app = new App(config);
+export const app = new ApiApp(config);
 
-module.exports = app;
 
 // ----------------------------------------------------------------------------
 if (process.mainModule.filename === __filename) {

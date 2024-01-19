@@ -1,3 +1,5 @@
+import {ScanCtx} from "../service/index";
+
 const lodash = require('lodash');
 const Koaflow = require('koaflow');
 const OpenAPI = require('koaflow/lib/OpenAPI');
@@ -415,7 +417,7 @@ router.get('/transaction/:hash',
   async function (transaction) {
     const {
       app: { tool, service, logger },
-    } = this;
+    } = this as ScanCtx;
 
     if (transaction) {
       try {

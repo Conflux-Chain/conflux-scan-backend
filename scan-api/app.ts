@@ -1,3 +1,6 @@
+import {router} from "./router";
+import {serviceLoader} from "./service";
+
 const lodash = require('lodash');
 const { address, format } = require('js-conflux-sdk');
 const { Sequelize } = require('sequelize');
@@ -7,9 +10,8 @@ const swStats = require('swagger-stats');
 const AppBase = require('../common/AppBase');
 const {parameterErrorCode} = require('../common/error')
 const JsonRPCSDK = require('../common/JsonRPCSDK');
-const countRequestByIp = require('../common/middleware/countRequestByIp');
-const {serviceLoader} = require('./service');
-const router = require('./router');
+
+
 const {jsonrpc} = require('./router/jsonrpc');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
@@ -24,7 +26,7 @@ const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/model/KV');
 const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
 const { CONST: CONST_TS }  = require('../stat/service/common/constant');
 
-class ApiApp extends AppBase {
+export class ApiApp extends AppBase {
   static injectedSequelize;
   static injectContext(seq) {
     this.injectedSequelize = seq;
@@ -84,7 +86,7 @@ class ApiApp extends AppBase {
     }
   }
 
-  listen(port) {
+  listen(port = undefined) {
     const pathArr = this.router.stack.map((layer) => {
       return layer.path.split('/').map((sec) => {
         return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
@@ -164,5 +166,3 @@ class ApiApp extends AppBase {
     process.exit(0);
   }
 }
-
-module.exports = ApiApp;

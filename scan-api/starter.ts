@@ -1,5 +1,5 @@
-const app = require('./index')
-const ApiApp = require('./app')
+const {app} = require('./index')
+const {ApiApp} = require('./app')
 const {init: initStatApp} = require('../stat/Index')
 const {KV} = require('../stat/model/KV')
 

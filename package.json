@@ -5,11 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "compile": "npx tsc -p ./stat/tsconfig.json",
+    "compile": "npx tsc -b ./scan-api",
     "api-c": "npx tsc -b ./open-api",
-    "api-s": "npx tsc -b ./scan-api",
     "api-clean": "npx tsc -b --clean ./open-api",
-    "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/dist/service/watcher/contract/",
+    "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/service/watcher/contract/",
     "api:dev": "tsc-watch -b ./open-api --onSuccess 'node --inspect=0.0.0.0:5858 ./open-api/ApiServer.js'",
     "start:dev": "tsc-watch -p ./stat --onSuccess 'node --inspect=0.0.0.0:5858 ./stat/dist/Index.js'",
     "start:dev2": "tsc-watch -p ./stat",
