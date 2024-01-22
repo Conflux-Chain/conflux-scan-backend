@@ -13,7 +13,7 @@ const Koa = require('koa');
 const app = new Koa();
 const serve = require('koa-static');
 // __dirname is conflux-scan-statistics/stat/dist
-const public_dir = __dirname + '/../../public'; // prefix 'stat' is configured through nginx and koa router.
+const public_dir = __dirname + '/../public'; // prefix 'stat' is configured through nginx and koa router.
 app.use(serve(public_dir, {maxage: 1000*10})); // maxage in ms.
 const path = require('path')
 // app.use(serve('.'));

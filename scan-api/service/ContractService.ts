@@ -1,9 +1,17 @@
-const lodash = require('lodash');
-const { ContractVerify } = require('../../stat/dist/model/ContractVerify');
-const { format, sign } = require('js-conflux-sdk');
-const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
+import {ScanApp} from "./index";
 
-class ContractService { // TODO: extends AccountService
+const lodash = require('lodash');
+const { ContractVerify } = require('../../stat/model/ContractVerify');
+const { format, sign } = require('js-conflux-sdk');
+const { CONST: CONST_TS }  = require('../../stat/service/common/constant');
+
+export class ContractService { // TODO: extends AccountService
+  app: ScanApp & any;
+  private LIST_CACHE_KEY: string;
+  private EXACT_MATCH: { matchCode: number; matchDesc: string };
+  private SIMILAR_MATCH: { matchCode: number; matchDesc: string };
+  private zip: any;
+  private unzip: any;
   constructor(app) {
     this.app = app;
     this.LIST_CACHE_KEY = 'ContractService.contract/list/address';
@@ -323,7 +331,10 @@ class ContractService { // TODO: extends AccountService
     ]);
     account.sponsor = this.convertZeroAddressToNullStr(sponsor);
 
-    let verify = {};
+    let verify = {
+      matchCode: undefined,
+      exactMatch: false
+    };
     if (verified?.verifyResult) {
       verify = lodash.defaults({ exactMatch: true, optimization: verified.optimizeFlag, runs: verified.optimizeRuns },
         lodash.pick(verified, ['name', 'compiler', 'version', 'license', 'constructorArgs', 'libraries', 'matchCode',
@@ -430,4 +441,3 @@ class ContractService { // TODO: extends AccountService
   }
 }
 
-module.exports = ContractService;

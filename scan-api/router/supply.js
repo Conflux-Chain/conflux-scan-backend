@@ -1,7 +1,7 @@
 const Koaflow = require('koaflow');
 const { Drip } = require('js-conflux-sdk');
-const jsonrpc = require('./jsonrpc');
-const { formatDecimal } = require('../../stat/dist/service/common/utils');
+const {jsonrpc} = require('./jsonrpc');
+const { formatDecimal } = require('../../stat/service/common/utils');
 
 const router = new Koaflow.Router();
 

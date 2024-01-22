@@ -1,8 +1,10 @@
+import {ScanApp} from "./index";
+
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
-// const { KV, KEY_BLOCK_DATA_STAT_RDB_SWITCH } = require('../../stat/dist/model/KV');
 
-class StatisticService {
+export class StatisticService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
@@ -35,7 +37,7 @@ class StatisticService {
       blockSize: BigFixed(0),
       difficulty: BigFixed(0),
       hashRate: BigFixed(0),
-    };
+    } as any;
 
     const array = [];
     for (let i = 0; i < list.length - 1; i += 1) {
@@ -70,7 +72,7 @@ class StatisticService {
     return array;
   }
 
-  async plot({ interval, limit = 1 } = {}) {
+  async plot({ interval, limit = 1 } = {} as any) {
     const {
       app: { /*syncSDK, */service },
     } = this;
@@ -94,7 +96,7 @@ class StatisticService {
     // return this._diff(list);
   }
 
-  async trend({ interval } = {}) {
+  async trend({ interval } = {} as any) {
     const [previous = {}, current = {}] = await this.plot({ limit: 2, interval });
 
     return lodash.mapValues(current, (value, key) => {
@@ -105,4 +107,3 @@ class StatisticService {
   }
 }
 
-module.exports = StatisticService;

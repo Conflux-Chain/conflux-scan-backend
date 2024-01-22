@@ -1,6 +1,6 @@
 const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
 const {parameterErrorCode} = require('../../common/error')
-const {Errors, UnhandledErrorCode} = require("../../stat/dist/service/common/LogicError");
+const {Errors, UnhandledErrorCode} = require("../../stat/service/common/LogicError");
 
 /**
  * lib/OpenAPI/Flow.js contains bugs, it swallows the error near line 135.

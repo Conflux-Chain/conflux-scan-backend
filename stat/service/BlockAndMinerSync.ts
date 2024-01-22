@@ -61,7 +61,7 @@ export class BlockAndMinerSync {
         }
         const maxBlock = await MinerBlock.findOne({order: [['beginTime','desc']]})
         if (maxBlock == null) {
-            return Promise.reject(`service unavailable, table is empty.`)
+            return {list: [], allDifficulty: 0}
         }
         let timeWindow:string = '1h';
         const endDt = maxBlock.endTime;

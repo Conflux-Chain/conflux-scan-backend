@@ -1,3 +1,5 @@
+import {ScanCtx} from "../service/index";
+
 const lodash = require('lodash');
 const Big = require('big.js');
 const BigFixed = require('bigfixed');
@@ -13,12 +15,12 @@ const arrayToCSVFlow = require('../../common/middleware/arrayToCSVFlow');
 const concurrenceControl = require('../../common/middleware/concurrenceControl');
 const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
-const { CONST: CONST_TS }  = require('../../stat/dist/service/common/constant');
-const { KV, KEY_EVM_VERSIONS } = require('../../stat/dist/model/KV');
-const {StatApp} = require("../../stat/dist/StatApp");
+const { CONST: CONST_TS }  = require('../../stat/service/common/constant');
+const { KV, KEY_EVM_VERSIONS } = require('../../stat/model/KV');
+const {StatApp} = require("../../stat/StatApp");
 const {sleepMs} = require("limit-map");
 const MyJsonRpcFlow = require("./MyJsonRpcFlow");
-const jsonrpc = new MyJsonRpcFlow();
+export const jsonrpc = new MyJsonRpcFlow();
 
 // dev stuff
 jsonrpc.method('testConcurrent',
@@ -38,7 +40,7 @@ jsonrpc.method('supply',
   async function () {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
     const data = await service.homeDashboard.getData();
     return data.supplyInfo;
   },
@@ -56,7 +58,7 @@ jsonrpc.method('dag',
   async function () {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
     const data = await service.homeDashboard.getData();
     return data.dagInfo;
   },
@@ -219,7 +221,7 @@ jsonrpc.method('countAndListBlock',
 );
 
 // ------------------------------- Transaction ------------------------------
-jsonrpc.method('queryTransaction',
+jsonrpc.queryTransaction = jsonrpc.method_('queryTransaction',
   serializeByIP(),
   parameter({
     hash: { path: '0', type: type.hex64, required: true },
@@ -444,7 +446,7 @@ jsonrpc.method('listLicense',
   concurrenceControl(500),
   async () => {
       const licenseArray =  {};
-      Object.values(CONST_TS.LICENSE).forEach(value => licenseArray[value.code] = value.desc);
+      Object.values(CONST_TS.LICENSE).forEach(value => licenseArray[value["code"]] = value["desc"]);
       return licenseArray;
   },
 );
@@ -1034,7 +1036,7 @@ jsonrpc.method('exportTransfer',
         each.value = 1;
         each['Value'] = 1;
       } else {
-        each['Value'] = BigFixed(each.value).div(BigInt(10) ** BigInt(each.decimals)).toString();
+        each['Value'] = BigFixed(each.value).div(BigFixed(10).pow(each.decimals)).toString();
       }
       if (accountBase32 && each.from === accountBase32) {
         each['Value_Out'] = each['Value'];
@@ -1124,4 +1126,3 @@ jsonrpc.method('exportTransfer',
   arrayToCSVFlow(),
 );
 
-module.exports = jsonrpc;

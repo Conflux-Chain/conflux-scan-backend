@@ -1,5 +1,5 @@
 const {ethers} = require('ethers')
-const {initCfxSdk} = require('../../stat/dist/service/common/utils');
+const {initCfxSdk} = require('../../stat/service/common/utils');
 
 function buildAbi(methodArr = []) {
     const iface = new ethers.utils.Interface(methodArr);

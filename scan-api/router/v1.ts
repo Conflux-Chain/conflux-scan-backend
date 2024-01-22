@@ -1,14 +1,16 @@
+import {ScanCtx} from "../service/index";
+
 const lodash = require('lodash');
 const Koaflow = require('koaflow');
 const OpenAPI = require('koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
-const jsonrpc = require('./jsonrpc');
-const {StatApp} = require("../../stat/dist/StatApp");
-const { buildCheckAddressRateFn } = require('../../stat/dist/router/RateLimiter')
+const {StatApp} = require("../../stat/StatApp");
+const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
 const moment = require("moment/moment");
 const {patchFlowError} = require("./MyJsonRpcFlow");
 const myFlow = require("./MyApiFlow");
+const {jsonrpc} = require("./jsonrpc");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -407,11 +409,15 @@ router.get('/transaction/:hash',
     },
   }),
 
-  jsonrpc.methodFlow('queryTransaction'),
+  // jsonrpc.methodFlow('queryTransaction'),
+  async function(arg, next, end) {
+    return jsonrpc.queryTransaction.call(this, [arg], next, end)
+  },
+
   async function (transaction) {
     const {
       app: { tool, service, logger },
-    } = this;
+    } = this as ScanCtx;
 
     if (transaction) {
       try {

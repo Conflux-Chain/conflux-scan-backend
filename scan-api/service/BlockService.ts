@@ -1,19 +1,21 @@
+import {ScanApp} from "./index";
+
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const BigFixed = require('bigfixed');
-const {StatApp} = require("../../stat/dist/StatApp");
-// const { KV, KEY_BLOCK_QUERY_RDB_SWITCH } = require('../../stat/dist/model/KV');
+const {StatApp} = require("../../stat/StatApp");
 
 const DETAIL_FIELDS = ['newTransactionCount', 'avgGasPrice'];
 const PIVOT_FIELDS = ['blockIndex', 'pivotHash'];
 const REWARD_FIELDS = ['baseReward', 'totalReward', 'txFee'];
 
-class BlockService {
+export class BlockService {
+  app: ScanApp & any;
   constructor(app) {
     this.app = app;
   }
 
-  async query({ hash, fields }) {
+  async query({ hash, fields } = {} as any) {
     const {
       app: { service },
     } = this;
@@ -156,7 +158,7 @@ class BlockService {
     return total;
   }
 
-  async countAndList({ fields, ...options } = {}) {
+  async countAndList({ fields, ...options } = {} as any) {
     const {
       app: { service, syncSDK, tool, type },
     } = this;
@@ -211,7 +213,7 @@ class BlockService {
     skip = 0,
     limit = Infinity,
     reverse = false,
-  } = {}) {
+  } = {} as any) {
     const {
       app: { service },
     } = this;
@@ -231,7 +233,7 @@ class BlockService {
     skip = 0,
     limit = Infinity,
     reverse = false,
-  } = {}) {
+  } = {} as any) {
     let { refereeHashes: list = [] } = await this.query({ hash: referredBy }) || {};
     const total = list.length;
 
@@ -243,4 +245,3 @@ class BlockService {
   }
 }
 
-module.exports = BlockService;

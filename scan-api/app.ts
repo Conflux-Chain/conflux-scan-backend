@@ -1,3 +1,6 @@
+import {router} from "./router";
+import {serviceLoader} from "./service";
+
 const lodash = require('lodash');
 const { address, format } = require('js-conflux-sdk');
 const { Sequelize } = require('sequelize');
@@ -7,24 +10,23 @@ const swStats = require('swagger-stats');
 const AppBase = require('../common/AppBase');
 const {parameterErrorCode} = require('../common/error')
 const JsonRPCSDK = require('../common/JsonRPCSDK');
-const countRequestByIp = require('../common/middleware/countRequestByIp');
-const serviceLoader = require('./service');
-const router = require('./router');
-const jsonrpc = require('./router/jsonrpc');
+
+
+const {jsonrpc} = require('./router/jsonrpc');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
-const { StatApp } = require('../stat/dist/StatApp');
-const { checkRate, loadRateConfig } = require("../stat/dist/router/RateLimiter");
-const { setSwStatFn } = require("../stat/dist/router/StatRouter");
-const { initPartialModel } = require('../stat/dist/service/DBProvider');
-const ApiDef = require("../stat/dist/router/ApiDef");
-const { RedisWrap, redisWrap } = require('../stat/dist/service/RedisWrap');
-const { saveApiLog } = require("../stat/dist/monitor/ApiLog");
-const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/dist/model/KV');
+const { StatApp } = require('../stat/StatApp');
+const { checkRate, loadRateConfig } = require("../stat/router/RateLimiter");
+const { setSwStatFn } = require("../stat/router/StatRouter");
+const { initPartialModel } = require('../stat/service/DBProvider');
+const ApiDef = require("../stat/router/ApiDef");
+const { RedisWrap, redisWrap } = require('../stat/service/RedisWrap');
+const { saveApiLog } = require("../stat/monitor/ApiLog");
+const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/model/KV');
 const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
-const { CONST: CONST_TS }  = require('../stat/dist/service/common/constant');
+const { CONST: CONST_TS }  = require('../stat/service/common/constant');
 
-class ApiApp extends AppBase {
+export class ApiApp extends AppBase {
   static injectedSequelize;
   static injectContext(seq) {
     this.injectedSequelize = seq;
@@ -84,7 +86,7 @@ class ApiApp extends AppBase {
     }
   }
 
-  listen(port) {
+  listen(port = undefined) {
     const pathArr = this.router.stack.map((layer) => {
       return layer.path.split('/').map((sec) => {
         return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
@@ -164,5 +166,3 @@ class ApiApp extends AppBase {
     process.exit(0);
   }
 }
-
-module.exports = ApiApp;

@@ -1,8 +1,8 @@
 const lodash = require('lodash');
 const { Conflux } = require('js-conflux-sdk');
 const NodeCache = require('node-cache');
-/*const { isCustodianToken } = require('../stat/dist/service/tool/TokenTool');*/
-const { patchHttpProvider } = require('../stat/dist/service/common/utils');
+/*const { isCustodianToken } = require('../stat/service/tool/TokenTool');*/
+const { patchHttpProvider } = require('../stat/service/common/utils');
 const tool = require('./tool');
 const abi = require('./abi');
 const CONST = require('./const');

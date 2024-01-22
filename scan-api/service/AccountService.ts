@@ -1,6 +1,9 @@
+import {ScanApp} from "./index";
+
 const lodash = require('lodash');
 
-class AccountService {
+export class AccountService {
+  app: ScanApp;
   constructor(app) {
     this.app = app;
   }
@@ -37,5 +40,3 @@ class AccountService {
     });
   }
 }
-
-module.exports = AccountService;

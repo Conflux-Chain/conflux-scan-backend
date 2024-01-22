@@ -47,7 +47,7 @@ export class HomeDashboardService{
         const maxBlock = await FullBlock.findOne({order: [['epoch', 'desc']]});
         const status = await cfx.getStatus().catch(() => undefined);
 
-        return {addressCount, transactionCount, contractCount, epochNumber: maxBlock.epoch, blockNumber: status?.blockNumber};
+        return {addressCount, transactionCount, contractCount, epochNumber: maxBlock?.epoch, blockNumber: status?.blockNumber};
     }
 
     private async supplyInfo() {
@@ -81,10 +81,13 @@ export class HomeDashboardService{
     }
 
     private async run() {
-        const blockchainInfo = await this.blockchainInfo().catch(() => undefined);
+        const blockchainInfo = await this.blockchainInfo().catch((e) => {
+            console.log(`${__filename} error`, e)
+            return {} as any
+        });
         blockchainInfo.blockNumber !== undefined && lodash.assign(this.data.blockchainInfo, blockchainInfo);
 
-        const supplyInfo = await this.supplyInfo().catch(() => undefined);
+        const supplyInfo = await this.supplyInfo().catch(e=>console.log(`${__filename} supply info error:`, e));
         supplyInfo !== undefined && lodash.assign(this.data.supplyInfo, supplyInfo);
 
         const dagInfo = await this.dagInfo().catch(() => undefined);
