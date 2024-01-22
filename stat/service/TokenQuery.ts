@@ -311,15 +311,14 @@ export class TokenQuery {
                 const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS) ? true : false
                 const verifyInfo =  await ContractVerify.findOne({where: {base32, verifyResult: true}})
                 const verify = verifyInfo?.verifyResult ? true : false
-
-                const securityCredits = await this.calSecurityCredits(base32)
-                const t = blackList ? { securityCredits, destroyed, auditResult: !blackList } : { securityCredits, destroyed }
-                await Token.update(t,{where: {id: token.id}})
-
                 const a = lodash.defaults({updatedAt: new Date()}, { hex40id: token.hex40id, base32, verify, audit, sponsor,
                     zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
                 })
                 await TokenSecurityAudit.upsert(a)
+
+                const securityCredits = await this.calSecurityCredits(base32)
+                const t = blackList ? { securityCredits, destroyed, auditResult: !blackList } : { securityCredits, destroyed }
+                await Token.update(t,{where: {id: token.id}})
             }
             destroyed && (await Contract.update({destroyed}, {where: {base32}}))
         } catch (e) {
