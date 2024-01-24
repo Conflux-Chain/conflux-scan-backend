@@ -80,7 +80,7 @@ const EPOCH_NUMBER_LABEL_ARRAY = ['latest_mined', 'latest_state', 'latest_finali
     'latest_checkpoint', 'earliest'];
 // -----------------------------------biz---------------------------------------
 // 2024.1.24 format as checksum address
-function format_hexAddress(addr: string) {
+function checksum_hexAddress(addr: string) {
     return addr ? ethers.utils.getAddress(format.hexAddress(addr)) : addr
 }
 async function gateway(ctx) {
@@ -245,15 +245,15 @@ async function listTx(ctx) {
             nonce: item.nonce,
             blockHash: '',
             transactionIndex: `${item.transactionIndex}`,
-            from: format_hexAddress(item.from),
-            to: item.to ? format.hexAddress(item.to) : '',
+            from: checksum_hexAddress(item.from),
+            to: item.to ? checksum_hexAddress(item.to) : '',
             value: item.value,
             gas: '',
             gasPrice: item.gasPrice,
             isError: item.status === 0 ? '0' : '1',
             txreceipt_status: item.status === 0 ? '1' : '0',
             input: '',
-            contractAddress: item.contractCreated? format.hexAddress(item.contractCreated) : '',
+            contractAddress: item.contractCreated? checksum_hexAddress(item.contractCreated) : '',
             cumulativeGasUsed: '',
             gasUsed: '',
             confirmations: '',
@@ -296,8 +296,8 @@ async function listTransferCfx(ctx) {
         blockNumber: `${item.epochNumber}`,
         timestamp: `${item.timestamp}`,
         hash: item.transactionHash,
-        from: format.hexAddress(item.from),
-        to: format.hexAddress(item.to),
+        from: checksum_hexAddress(item.from),
+        to: checksum_hexAddress(item.to),
         value: item.value,
         contractAddress: "",
         input:"",
@@ -323,10 +323,10 @@ async function listTransfer20(ctx) {
         blockNumber: `${item.epochNumber}`,
         hash: item.transactionHash,
         timestamp: `${item.timestamp}`,
-        from: format.hexAddress(item.from),
-        to: format.hexAddress(item.to),
+        from: checksum_hexAddress(item.from),
+        to: checksum_hexAddress(item.to),
         value: item.value,
-        contractAddress: format.hexAddress(item.address),
+        contractAddress: checksum_hexAddress(item.address),
     })) || [];
     await addTokenBasicInfo(result);
     setBody(ctx, result)
@@ -346,10 +346,10 @@ async function listTransfer721(ctx) {
         blockNumber: `${item.epochNumber}`,
         hash: item.transactionHash,
         timestamp: `${item.timestamp}`,
-        from: format.hexAddress(item.from),
-        to: format.hexAddress(item.to),
+        from: checksum_hexAddress(item.from),
+        to: checksum_hexAddress(item.to),
         tokenID: `${item.tokenId}`,
-        contractAddress: format.hexAddress(item.address),
+        contractAddress: checksum_hexAddress(item.address),
     })) || [];
     await addTokenBasicInfo(result);
     setBody(ctx, result)
@@ -558,7 +558,7 @@ function parseListTransferParam(ctx) {
 async function addTokenBasicInfo(result) {
     const addressArray = result.map(item => item.contractAddress);
     const tokenArray = await getApiService().tokenQuery.list({addressArray}).then(response => response.list);
-    const tokenMap = lodash.keyBy(tokenArray, item => format.hexAddress(item.address));
+    const tokenMap = lodash.keyBy(tokenArray, item => checksum_hexAddress(item.address));
     result.forEach(item => {
         item['tokenName'] = tokenMap[item.contractAddress]?.name;
         item['tokenSymbol'] = tokenMap[item.contractAddress]?.symbol;
