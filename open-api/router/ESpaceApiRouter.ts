@@ -72,12 +72,17 @@ import {
 } from "../../stat/service/common/utils";
 import {paginateEVM} from "../../stat/router/ParamChecker";
 import { CONST } from '../../stat/service/common/constant';
+import {ethers} from "ethers";
 
 const lodash = require('lodash');
 
 const EPOCH_NUMBER_LABEL_ARRAY = ['latest_mined', 'latest_state', 'latest_finalized', 'latest_confirmed',
     'latest_checkpoint', 'earliest'];
 // -----------------------------------biz---------------------------------------
+// 2024.1.24 format as checksum address
+function format_hexAddress(hex: string) {
+    return hex ? ethers.utils.getAddress(hex) : hex
+}
 async function gateway(ctx) {
     const {E_SPACE_OPENAPI: {ACCOUNT, CONTRACT, TRANSACTION, BLOCK, TOKEN, STATS}} = CONST;
     const {module, action} = parseGatewayParam(ctx);
@@ -240,7 +245,7 @@ async function listTx(ctx) {
             nonce: item.nonce,
             blockHash: '',
             transactionIndex: `${item.transactionIndex}`,
-            from: format.hexAddress(item.from),
+            from: format_hexAddress(item.from),
             to: item.to ? format.hexAddress(item.to) : '',
             value: item.value,
             gas: '',
