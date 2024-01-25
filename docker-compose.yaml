@@ -2,7 +2,7 @@ version: "3"
 
 services:
   api:
-    image: node:20.11.0
+    image: node:19.9.0
     volumes:
       - ./:/scan
       - ./log/api:/log
@@ -12,7 +12,7 @@ services:
 #    command: node /scan/scan-api
     command: node /scan/scan-api/starter.js
   open_api:
-    image: node:20.11.0
+    image: node:19.9.0
     volumes:
       - ./:/scan
     working_dir: /scan
@@ -20,7 +20,7 @@ services:
     restart: always
     command: node ./open-api/ApiServer.js
   compiler:
-    image: node:20.11.0
+    image: node:19.9.0
     volumes:
       - ./:/scan
       - ./log/compiler:/log
@@ -29,70 +29,70 @@ services:
     restart: always
     command: node /scan/scan-compiler
   block:
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/FullBlockSync.js
   token_transfer: # token transfer sync
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/TokenTransferSync.js useConfigRpc -1 10000
   token_x: # token misc: holder, total supply; T3525; approval sync;
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/TokenMiscSync.js
   cfx_transfer: # cfx transfer sync
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/CfxTransferSync.js useConfigRpc -1 10000
   cfxCounterHolderMarker:
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/CfxTransferSync.js cfxCounterHolderMarker
   pos:
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/service/pos/PosSync.js
   epoch:
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/FullEpochSync.js
   stat_task:
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/StatTask.js
   nft_meta:
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/service/nftchecker/NftMetaStorage.js metadata
   prune:
-    image: node:20.11.0
+    image: node:19.9.0
     network_mode: host
     restart: always
     volumes:
