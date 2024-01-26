@@ -18,9 +18,9 @@ import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
 import {QueryTypes} from "sequelize";
 import {paginateCore} from "../../stat/router/ParamChecker";
 import {formatAddr} from "../common/RestTool";
+import {decodeTxData} from "../../stat/service/tool/TxTool";
 
 const lodash = require('lodash');
-const abiDecoder = require('abi-decoder');
 const LRU = require('lru-cache');
 const CONTRACT_CACHE = new LRU({max: 500});
 
@@ -196,7 +196,7 @@ async function decodeMethod(toAddr, data) {
         return  { error: `Contract (${formatAddr(toAddr)}) not verified` };
     }
 
-    let result = decodeData(contract['abi'], data);
+    let result = decodeTxData(contract['abi'], data);
     if(!(!result['error'] && !result['decodedData'] && contract.proxy)) {
         return result;
     }
@@ -207,22 +207,6 @@ async function decodeMethod(toAddr, data) {
         return  { error: `The proxy's (${formatAddr(toAddr)}) implementation contract (${formatAddr(impl.implementation)}) not verified` };
     }
 
-    return decodeData(contract['abi'], data);
+    return decodeTxData(contract['abi'], data);
 }
 
-async function decodeData(abiString, data){
-    let abiArray;
-    let decodedData;
-
-    try{
-        abiArray = JSON.parse(abiString);
-        abiDecoder.addABI(abiArray);
-        decodedData = abiDecoder.decodeMethod(data);
-    } catch (e){
-        return { error: `Abi decode error ${e.message}` };
-    } finally {
-        abiDecoder.removeABI(abiArray);
-    }
-
-    return {decodedData}
-}

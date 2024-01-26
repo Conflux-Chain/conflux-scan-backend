@@ -56,12 +56,6 @@ module.exports = [
   },
   {
     type: 'function',
-    name: 'balanceOf',
-    inputs: [{ type: 'address' }],
-    outputs: [{ type: 'uint256' }],
-  },
-  {
-    type: 'function',
     name: 'accountCount',
     outputs: [{ type: 'uint256' }],
   }, // cXXX Token
@@ -431,4 +425,8 @@ module.exports = [
       { type: 'address', name: 'manager', indexed: true },
     ],
   }, // 1820
-];
+].map(e=>{
+  // ethers fails if this field is absent
+  e.stateMutability = e.stateMutability || 'view'
+  return e
+});

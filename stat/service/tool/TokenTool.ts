@@ -9,12 +9,13 @@ import oss = require('ali-oss');
 import {getAddrId} from "../../model/HexMap";
 import {CONST} from "../common/constant";
 import {StatApp} from "../../StatApp";
+import {ethers} from "ethers";
+import {decodeTxData} from "./TxTool";
 
 const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
 const lodash = require('lodash');
-const Web3 = require("web3");
 const NodeCache = require( "node-cache" );
 const dbCache = new NodeCache()
 const cacheTtl = 60 * 50 // 50 minutes
@@ -25,13 +26,11 @@ export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base3
 
 export class TokenTool {
     protected cfx;
-    protected web3;
     public contract;
 
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.contract = cfx.Contract({abi});
-        this.web3 = new Web3();
     }
 
     async getToken(address, epochNumber = undefined): Promise<any> {
@@ -93,7 +92,7 @@ export class TokenTool {
         const { topics = [], data = '0x' } = eventLog;
 
         if (topics[0] === this.contract.Announce.signature && topics.length === 3 && data.length > 2) {
-            const parameters = this.web3.eth.abi.decodeParameters(['bytes','bytes'], data);
+            const parameters = ethers.utils.defaultAbiCoder.decode(['bytes','bytes'], data);
             return {
                 ...eventLog,
                 announcer: `0x${topics[1].slice(-40)}`,
@@ -107,23 +106,12 @@ export class TokenTool {
     }
 
     decodeNameTagChanged(eventLog) {
+        // see contracts/AddressMetadata.sol
         const { topics = [], data = '0x' } = eventLog;
 
         if (topics[0] === this.contract.NameTagChanged.signature && topics.length === 3) {
-            const parameters = this.web3.eth.abi.decodeParameters([
-                {"NameTag": {
-                    "addr": 'address',
-                    "name": 'string',
-                    "website": 'string',
-                    "desc": 'string'
-                }},
-                {"NameTag": {
-                    "addr": 'address',
-                    "name": 'string',
-                    "website": 'string',
-                    "desc": 'string'
-                }}
-            ], data);
+            const _abi = abi.find(e=>e.name==='NameTagChanged').inputs.slice(2);
+            const parameters = ethers.utils.defaultAbiCoder.decode(_abi, eventLog.data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,
@@ -141,11 +129,11 @@ export class TokenTool {
     }
 
     decodeLabelChanged(eventLog) {
+        // see contracts/AddressMetadata.sol
         const { topics = [], data = '0x' } = eventLog;
-
         //event LabelChanged(index_topic_1 address auditor, index_topic_2 address addr, string oldLabel, string newLabel)
         if (topics[0] === this.contract.LabelChanged.signature && topics.length === 3) {
-            const parameters = this.web3.eth.abi.decodeParameters(['string','string'], data);
+            const parameters = ethers.utils.defaultAbiCoder.decode(['string','string'], data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,
@@ -293,7 +281,7 @@ export class TokenTool {
         const { topics = [], data = '0x' } = eventLog;
 
         if (topics[0] === this.contract.TransferSingle.signature && topics.length === 4 && data.length === 130) {
-            const parameters = this.web3.eth.abi.decodeParameters(['uint256','uint256'], data);
+            const parameters = ethers.utils.defaultAbiCoder.decode(['uint256','uint256'], data);
             return [{
                 ...eventLog,
                 operator: `0x${topics[1].slice(-40)}`,
@@ -309,7 +297,7 @@ export class TokenTool {
             const operator = `0x${topics[1].slice(-40)}`;
             const from = `0x${topics[2].slice(-40)}`;
             const to = `0x${topics[3].slice(-40)}`;
-            const parameters = this.web3.eth.abi.decodeParameters(['uint256[]','uint256[]'], data);
+            const parameters = ethers.utils.defaultAbiCoder.decode(['uint256[]','uint256[]'], data);
             const tokenIdArray = parameters['0'];
             const valueArray = parameters['1'];
             return lodash.zip(tokenIdArray, valueArray)
@@ -531,6 +519,45 @@ async function initTool() {
     const tool = new TokenTool(cfx)
     return tool;
 }
+
+async function testParseAnnouncement(rpcUrl:string = "http://test.confluxrpc.com") {
+    const cfx = await initCfxSdk({url: rpcUrl});
+    const tool = new TokenTool(cfx);
+    const abiStr = JSON.stringify(abi);
+    async function test(tx: string, decodeInput = false) {
+        if (decodeInput) {
+            const txRaw = await cfx.getTransactionByHash(tx)
+            console.log(`decode tx data`, decodeTxData(abiStr, txRaw.data))
+        }
+        const rcpt = await cfx.getTransactionReceipt(tx)
+        for (const eventLog of rcpt.logs) {
+            const fnArr = [
+                tool.decodeAnnouncePlus,
+                tool.decodeNameTagChanged,
+                tool.decodeLabelChanged,
+                (e) => {
+                    console.log(`unknown event`, e)
+                }
+            ]
+            for (const fn of fnArr) {
+                const parsed = fn.call(tool, eventLog)
+                if (parsed) {
+                    delete parsed['data']
+                    console.log(`ok ${fn.name}`, parsed.key?.toString('utf-8') || parsed)
+                    break
+                }
+            }
+        }
+    }
+    await test("0x50db76372727e27efa8325f51d447d5d87ec4792e7b8889eafef181fae4bfacd", true) // announce
+    await test("0x67713b6186f930a846fc12dba1aa9aadf7e1011bf59ac64445c4c07022736938");
+    await test("0x49cdf20f4dc25673546e4f025d568c8d1d873e61e09ad194302677ba951cb3f7");
+    await test("0x93ca9e1b2b502fcfef4780794b6c0f39f258caadf163e25c25fb19def6771c35");
+    await test("0xefb453b4333847fdc67f3ed7c44908169d100ce10d09ebf6adf51d53c478bece");
+    console.log(`finished`)
+    cfx.close()
+}
+
 async function testParseApproval(rpcUrl) {
     const cfx = await initCfxSdk({url: rpcUrl});
     const tool = new TokenTool(cfx);
@@ -724,6 +751,8 @@ if (module === require.main) {
         check721OwnerInDb().then()
     } else if (args[0] === 'updateTotalSupply') {
         updateTotalSupply().then()
+    } else if (args[0] === 'testParseAnnouncement') {
+        testParseAnnouncement().then()
     } else if (args[0] === 'testParseApproval') {
         testParseApproval(arg1).then()
     } else if (args[0] === 'build_images') {
