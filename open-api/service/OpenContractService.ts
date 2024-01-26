@@ -10,6 +10,8 @@ import {
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {CONST} from "../../stat/service/common/constant"
+import {toBase32} from "../../stat/service/tool/AddressTool";
+import {ContractVerify} from "../../stat/model/ContractVerify";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -87,7 +89,8 @@ export async function getABI(ctx) {
     const {address} = ctx.request.query;
     checkPresent({address}, ['address']);
 
-    const contract = await getApiService().contractQuery.queryVerify({address})
+    const base32 = toBase32(address)
+    const contract = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true})
     if(!contract){
         setBody(ctx, undefined, 1, `contract ${address} not verified` );
         return;
