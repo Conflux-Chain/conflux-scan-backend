@@ -10,6 +10,7 @@ import {getAddrId} from "../../model/HexMap";
 import {CONST} from "../common/constant";
 import {StatApp} from "../../StatApp";
 import {ethers} from "ethers";
+import {decodeTxData} from "./TxTool";
 
 const abi = require('./abi');
 const fs = require('fs');
@@ -522,9 +523,13 @@ async function initTool() {
 async function testParseAnnouncement(rpcUrl:string = "http://test.confluxrpc.com") {
     const cfx = await initCfxSdk({url: rpcUrl});
     const tool = new TokenTool(cfx);
-    async function test(tx: string) {
+    const abiStr = JSON.stringify(abi);
+    async function test(tx: string, decodeInput = false) {
+        if (decodeInput) {
+            const txRaw = await cfx.getTransactionByHash(tx)
+            console.log(`decode tx data`, decodeTxData(abiStr, txRaw.data))
+        }
         const rcpt = await cfx.getTransactionReceipt(tx)
-
         for (const eventLog of rcpt.logs) {
             const fnArr = [
                 tool.decodeAnnouncePlus,
@@ -544,7 +549,7 @@ async function testParseAnnouncement(rpcUrl:string = "http://test.confluxrpc.com
             }
         }
     }
-    await test("0x50db76372727e27efa8325f51d447d5d87ec4792e7b8889eafef181fae4bfacd")
+    await test("0x50db76372727e27efa8325f51d447d5d87ec4792e7b8889eafef181fae4bfacd", true) // announce
     await test("0x67713b6186f930a846fc12dba1aa9aadf7e1011bf59ac64445c4c07022736938");
     await test("0x49cdf20f4dc25673546e4f025d568c8d1d873e61e09ad194302677ba951cb3f7");
     await test("0x93ca9e1b2b502fcfef4780794b6c0f39f258caadf163e25c25fb19def6771c35");
