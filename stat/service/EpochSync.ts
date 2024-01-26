@@ -30,7 +30,6 @@ import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
-const abiDecoder = require('abi-decoder');
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
 const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl'];
@@ -326,8 +325,7 @@ export class EpochSync extends SyncBase{
                 const toHex = format.hexAddress(to);
                 if(toHex === INTERNAL_ADMIN_CONTROL && data.substr(0, 10) === SELECTOR_DESTROY){
                     const fromHex = format.hexAddress(from);
-                    const decodedData = this.decodeData(ABI_ADMIN_CONTROL, data);
-                    const contract = decodedData.params[0].value;
+                    const contract = this.decodeContractDestroy(data);
                     const destroyTx = {epochNumber, blockTime, txHash: hash.substr(2), admin: fromHex.substr(2),
                         contract: contract.substr(2)};
                     adminDestroyTxArray.push(destroyTx);
@@ -338,17 +336,12 @@ export class EpochSync extends SyncBase{
         return adminDestroyTxArray;
     }
 
-    public decodeData(abi, data){
-        console.log(`abi------${typeof abi}`)
-        let decodedData;
-        try{
-            abiDecoder.addABI(abi);
-            decodedData = abiDecoder.decodeMethod(data);
-        } finally {
-            abiDecoder.removeABI(abi);
-        }
-
-        return decodedData;
+    private decodeContractDestroy(data){
+        // e.g. https://testnet.confluxscan.net/transaction/0xf862048e4112a836dae6d4b4c5fcc091db5bb68470559e29db5b8982f9e44a30
+        // data : 0x00f55d9d000000000000000000000000896cf0fc19b6c045d287391969cad1477512eebf
+        // 0x  method    (bytes32     address)
+        // 2 +   8 +     (64        -  40)
+        return '0x'+data.substr(34)
     }
 
     //--------------------- business method for announce ---------------------
