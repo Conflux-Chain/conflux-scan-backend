@@ -409,10 +409,7 @@ router.get('/transaction/:hash',
     },
   }),
 
-  // jsonrpc.methodFlow('queryTransaction'),
-  async function(arg, next, end) {
-    return jsonrpc.queryTransaction.call(this, [arg], next, end)
-  },
+  jsonrpc.queryTransaction,
 
   async function (transaction) {
     const {
@@ -532,10 +529,7 @@ router.get('/transaction',
     },
   }),
 
-  // jsonrpc.methodFlow('countAndListTransaction'),
-  async function (arg, next, end) {
-    return jsonrpc.countAndListTransaction.call(this, [arg], next, end)
-  },
+  jsonrpc.countAndListTransaction,
 
   async function (result) {
     let addressArray = [];
@@ -1275,7 +1269,7 @@ router.get('/transfer',
     },
   }),
 
-  jsonrpc.methodFlow('countAndListTransfer'),
+  jsonrpc.countAndListTransfer,
 
   async function (result) {
     const {

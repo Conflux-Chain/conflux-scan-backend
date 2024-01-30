@@ -99,13 +99,7 @@ export abstract class TransferQueryBase {
             queryOptions.where[Op.and] = conditionArray;
         }
         // order
-        queryOptions.order = [['epoch', sort]];
-        if(accountAddressId !== undefined){
-            queryOptions.order.push(['blockIndex', sort], ['txIndex','desc'],['txLogIndex','desc']);
-        }
-        if(tokenAddressIdArray.length){
-            queryOptions.order.push(['createdAt', sort]);
-        }
+        queryOptions.order = [['epoch', sort], ['blockIndex', sort], ['txIndex', sort],['txLogIndex', sort]];
 
         return queryOptions;
     }

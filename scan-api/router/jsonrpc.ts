@@ -806,7 +806,7 @@ jsonrpc.method('countAndListEventLog',
 );
 
 // ------------------------------- Transfer -----------------------------------
-jsonrpc.method('countAndListTransfer',
+jsonrpc.countAndListTransfer = jsonrpc.method_('countAndListTransfer',
   serializeByIP(),
   buildFlow((app) => parameter({
     transactionHash: { path: '0', type: type.hex64 },
@@ -840,7 +840,7 @@ jsonrpc.method('countAndListTransfer',
   async function ({ listLimit, ...options }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.transfer.countAndList(options);
     return { ...result, listLimit };
