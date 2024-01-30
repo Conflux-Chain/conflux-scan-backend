@@ -60,13 +60,6 @@ services:
     volumes:
       - ./:/stat-root
     command: node /stat-root/stat/CfxTransferSync.js useConfigRpc -1 10000
-  cfxCounterHolderMarker:
-    image: node:14.17.5
-    network_mode: host
-    restart: always
-    volumes:
-      - ./:/stat-root
-    command: node /stat-root/stat/CfxTransferSync.js cfxCounterHolderMarker
   pos:
     image: node:14.17.5
     network_mode: host
