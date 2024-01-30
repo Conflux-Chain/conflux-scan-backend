@@ -218,7 +218,6 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
                     } tx ${txBean.txPosition}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
                     process.exit(8)
-                    return
                 }
                 if (type === 'internal_transfer_action') {
                     if (POCKET_ADDRESS_MAP[fromPocket]) {
@@ -263,7 +262,10 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash}
 }
 async function runCounter() {
-    await counter();
+    await counter().catch(e=>{
+        console.log(`${__filename} failed to run counter`, e)
+        return sleep(10_000)
+    });
     setTimeout(runCounter, 1)
 }
 async function setup() {
@@ -284,19 +286,13 @@ async function setup() {
         redirectLog({subPath:'.marker'})
         await runMarker();
         return;
-    } else if (cfxUrl === 'cfxCounterHolderMarker') {
-        redirectLog({subPath:'.cfxCounterHolderMarker'})
-        const cfx = await initCfxSdk(config.conflux);
-        await Promise.all([
-            runCounter(),
-            runHolder(cfx),
-            runMarker(),
-        ])
-        return
     }
     redirectLog()
     const cfx = await initCfxSdk({url: cfxUrl});
     await RedisWrap.connect(config.redis)
+    await runCounter();
+    await runHolder(cfx);
+    await runMarker();
     cfx0 = cfx;
     await makeVirtualContractInfo(cfx.networkId);
     scheduleRollupDailyCfxTxn().then();
@@ -400,7 +396,10 @@ async function holder() {
 }
 // marker, handle multiple task situation.
 async function runMarker() {
-    await marker();
+    await marker().catch(e=>{
+        console.log(`${__filename} failed to run marker`, e)
+        return sleep(10_000)
+    });
     setTimeout(runMarker, 0)
 }
 let preMarkEpoch = 0;
@@ -455,7 +454,6 @@ async function counter() {
         console.log(`EpochCfxTransferCount ${sum} epoch ${list[0].epoch}`)
     }).catch(err=>{
         console.log(err)
-        process.exit(9)
     })
     // can not do mark here. there may be a task with lower epoch and still in progress.
     // await doMark(row, epoch, undefined);
