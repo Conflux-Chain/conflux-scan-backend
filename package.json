@@ -20,8 +20,6 @@
   },
   "dependencies": {
     "@conflux-dev/conflux-address-rust": "0.1.6",
-    "@conflux-lib/cbor": "1.0.4",
-    "@conflux-lib/kvstore": "3.6.2",
     "@confluxfans/nft-utils": "^1.0.4",
     "@koa/cors": "~3.1.0",
     "@types/koa-bodyparser": "~4.3.0",

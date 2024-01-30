@@ -183,11 +183,10 @@ export class ConfluxService {
 
   async getEpochByEpochNumber(epochNumber) {
     const {
-      app: { ttlMap, tokenTool/* , kvStore */ },
+      app: { ttlMap, tokenTool },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getEpochByEpochNumber(${epochNumber})`,
-      // () => kvStore.cache(`ConfluxService.getEpochByEpochNumber(${epochNumber})`,
       () => tokenTool.getEpochByEpochNumber(epochNumber),
       //   { isSave: this._calculateIsSave(epochNumber) },
       // ),
@@ -197,11 +196,10 @@ export class ConfluxService {
 
   async getBlocksByEpochNumber(epochNumber) {
     const {
-      app: { cfx, ttlMap/* , kvStore */ },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlocksByEpochNumber(${epochNumber})`,
-      // () => kvStore.cache(`ConfluxService.getBlocksByEpochNumber(${epochNumber})`,
       () => cfx.getBlocksByEpochNumber(epochNumber),
       //   { isSave: this._calculateIsSave(epochNumber) },
       // ),
@@ -211,13 +209,12 @@ export class ConfluxService {
 
   async getBlockRewardInfo(epochNumber) {
     const {
-      app: { cfx, ttlMap/* , kvStore */ },
+      app: { cfx, ttlMap },
     } = this;
 
     let result;
     try {
       result = ttlMap.cache(`ConfluxService.getBlockRewardInfo(${epochNumber})`,
-        // () => kvStore.cache(`ConfluxService.getBlockRewardInfo(${epochNumber})`,
         () => cfx.getBlockRewardInfo(epochNumber),
         //   { isSave: this._calculateIsSave(epochNumber) },
         // ),
@@ -233,7 +230,7 @@ export class ConfluxService {
   // ---------------------------------- block ---------------------------------
   async getBlockByEpochNumber(epochNumber, detail) {
     const {
-      app: { CONST, cfx, ttlMap/* , kvStore */ },
+      app: { CONST, cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlockByEpochNumber(${epochNumber},${detail})`,
@@ -274,11 +271,10 @@ export class ConfluxService {
 
   async getBlockByHash(blockHash:string, detail=false) {
     const {
-      app: { CONST, cfx, ttlMap/* , kvStore */ },
+      app: { CONST, cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlockByHash(${blockHash},${detail})`,
-      // () => kvStore.cache(`ConfluxService.getBlockByHash(${blockHash},${detail})`,
       async () => {
         const block = await cfx.getBlockByHash(blockHash, detail);
         if (!block) {
@@ -336,11 +332,10 @@ export class ConfluxService {
   // ------------------------------- transaction ------------------------------
   async getTransactionByHash(transactionHash) {
     const {
-      app: { CONST, cfx, ttlMap/* , kvStore, logger */ },
+      app: { CONST, cfx, ttlMap/* logger */ },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionByHash(${transactionHash})`,
-      // () => kvStore.cache(`ConfluxService.getTransactionByHash(${transactionHash})`,
       async () => {
         const transaction = await cfx.getTransactionByHash(transactionHash);
         if (transaction && transaction.blockHash) {
@@ -364,11 +359,10 @@ export class ConfluxService {
 
   async getTransactionReceipt(transactionHash) {
     const {
-      app: { CONST, cfx, ttlMap/* , kvStore */ },
+      app: { CONST, cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionReceipt(${transactionHash})`,
-      // () => kvStore.cache(`ConfluxService.getTransactionReceipt(${transactionHash})`,
       async () => {
         if (transactionHash in CONST.GENESIS_TX_TO_CONTRACT) {
           return { gasUsed: 0, gasFee: 0, txExecErrorMsg: null };
@@ -482,11 +476,10 @@ export class ConfluxService {
   // ---------------------------------- trace ---------------------------------
   async getBlockTraceArray(blockHash) {
     const {
-      app: { cfx, ttlMap/* , kvStore */ },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getBlockTraceArray(${blockHash})`,
-      // () => kvStore.cache(`ConfluxService.getBlockTraceArray(${blockHash})`,
       async () => {
         const blockTrace = await cfx.traceBlock(blockHash);
         if (!blockTrace) {

@@ -32,21 +32,6 @@ module.exports = {
     },
   },
 
-  kvStore: {
-    location: './data',
-    maxFileSize: 64 * (2 ** 20), // 64M
-    writeBufferSize: 64 * (2 ** 20), // 64M
-    cacheSize: 512 * (2 ** 20), // 512M
-  },
-
-  knex: {
-    client: 'sqlite3',
-    connection: {
-      filename: './data/sqlite.db',
-    },
-    useNullAsDefault: true,
-  },
-
   requestLogger: {
     enable: false,
     level: 'info',
