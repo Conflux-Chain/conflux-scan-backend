@@ -12,7 +12,7 @@ class MyJsonRpcFlow extends JsonRPCFlow {
     super.method(method, ...flowArray)
     const thatMethod = this.methods[method];
     return async function(arg, next, end) {
-      thatMethod.call(this, [arg], next, end);
+      return thatMethod.call(this, [arg], next, end);
     }
   }
   methodFlow(method) {
