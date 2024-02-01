@@ -10,10 +10,7 @@ class MyJsonRpcFlow extends JsonRPCFlow {
   // super function doesn't return a value, just wrap that.
   method_(method, ...flowArray) {
     super.method(method, ...flowArray)
-    const thatMethod = this.methods[method];
-    return async function(arg, next, end) {
-      return thatMethod.call(this, [arg], next, end);
-    }
+    return this.methods[method];
   }
   methodFlow(method) {
     const jsonRPCFlow = this;
