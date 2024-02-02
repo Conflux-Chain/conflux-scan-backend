@@ -1277,7 +1277,7 @@ router.get('/transfer',
 
   // jsonrpc.methodFlow('countAndListTransfer'),
   async function (arg, next, end) {
-    jsonrpc.countAndListTransfer.call(this, [arg], next, end)
+    return jsonrpc.countAndListTransfer.call(this, [arg], next, end)
   },
 
   async function (result) {
@@ -1557,6 +1557,6 @@ router.get('/report/transfer',
 );
 
 // ----------------------------------------------------------------------------
-openAPI.loadRouter(router);
+// openAPI.loadRouter(router);
 
 module.exports = router;
