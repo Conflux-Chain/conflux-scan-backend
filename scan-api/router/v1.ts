@@ -1557,6 +1557,6 @@ router.get('/report/transfer',
 );
 
 // ----------------------------------------------------------------------------
-// openAPI.loadRouter(router);
+openAPI.loadRouter(router);
 
 module.exports = router;
