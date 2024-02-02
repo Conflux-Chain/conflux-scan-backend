@@ -1277,7 +1277,7 @@ router.get('/transfer',
 
   // jsonrpc.methodFlow('countAndListTransfer'),
   async function (arg, next, end) {
-    jsonrpc.countAndListTransfer.call(this, [arg], next, end)
+    return jsonrpc.countAndListTransfer.call(this, [arg], next, end)
   },
 
   async function (result) {
