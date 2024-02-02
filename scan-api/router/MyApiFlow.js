@@ -1,4 +1,4 @@
-const Flow = require("koaflow/lib/OpenAPI/Flow");
+const {Flow} = require("../../koaflow/lib/OpenAPI/Flow");
 class MyApiFlow extends Flow {
     async call(ctx, arg, next, end) {
         let body;

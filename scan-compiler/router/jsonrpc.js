@@ -1,5 +1,5 @@
-const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
-const parameter = require('koaflow/lib/parameter');
+const {JsonRPCFlow} = require('../../koaflow/lib/flow/JsonRPCFlow');
+const {parameter} = require('../../koaflow/lib/parameter');
 const type = require('../../common/type');
 
 const jsonrpc = new JsonRPCFlow();

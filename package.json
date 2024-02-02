@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "compile": "npx tsc -b ./scan-api ./open-api",
+    "compile": "npx tsc -b ./scan-api ./open-api ./koaflow",
     "api-c": "npx tsc -b ./open-api",
     "api-clean": "npx tsc -b --clean ./open-api",
     "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/service/watcher/contract/",
@@ -47,7 +47,6 @@
     "koa-router": "~10.0.0",
     "koa-static": "5.0.0",
     "koa2-swagger-ui": "5.0.5",
-    "koaflow": "0.6.4",
     "limit-map": "0.0.2",
     "lodash": "^4.17.21",
     "lru-cache": "^7.13.1",

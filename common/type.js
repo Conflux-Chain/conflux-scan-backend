@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const zlib = require('zlib');
-const type = require('koaflow/lib/type');
+const {type} = require('../koaflow/lib/type');
 const { format } = require('js-conflux-sdk');
 
 type.unsigned = type.integer.$validate((v) => v >= 0);

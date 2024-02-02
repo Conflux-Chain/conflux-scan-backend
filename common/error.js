@@ -1,4 +1,5 @@
-const LogicError = require('koaflow/lib/util/LogicError').extend({ status: 600 });
+const {LogicError: base} = require('../koaflow/lib/util/LogicError');
+const LogicError = base.extend({ status: 600 });
 const parameterErrorCode = 50101;
 module.exports = {
   parameterErrorCode,

@@ -1,6 +1,6 @@
-const Koaflow = require('koaflow');
+const {Router} = require('../../koaflow/src/router');
 
-const router = new Koaflow.Router();
+const router = new Router();
 
 router.get('/', () => ({
   project: 'scan-compiler',
