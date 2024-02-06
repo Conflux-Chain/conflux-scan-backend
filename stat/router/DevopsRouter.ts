@@ -19,10 +19,7 @@ import {
 } from "../model/FullBlock";
 import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
-import {
-    POW_EPOCH_FOR_POS_Q,
-    xLen
-} from "../service/RedisWrap";
+
 import {TxnQuery} from "../service/TxnQuery";
 import {AddressErc20Transfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
@@ -111,17 +108,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             ctx.body = {marks:arr}
         })
     })
-    router.get('/devops/stream-queue-report', async (ctx)=>{
-        const qs = [
-            POW_EPOCH_FOR_POS_Q,
-        ]
-        const arr = await Promise.all(qs.map(q=>{
-            return xLen(q).then(len=>{
-                return {q, len}
-            })
-        }))
-        ctx.body = {xLen: arr}
-    })
+
     router.get('/devops/db-partition',async (ctx) => {
         const sql = `SELECT TABLE_SCHEMA,TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
        FROM INFORMATION_SCHEMA.PARTITIONS

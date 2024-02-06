@@ -1,4 +1,4 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 
 const lodash = require('lodash');
 const BigFixed = require("bigfixed");
@@ -174,12 +174,11 @@ export class TokenService {
   async queryPlus({ address }) {
     const {
       app: { config, service },
-    } = this;
+    } = this as ScanCtx;
 
     // name, symbol, decimals, granularity, totalSupply,transferType, transferCount
     const token = await service.tokenRdb.query({ address });
-    const isCustodianToken = await service.conflux.isCustodianToken(address, config.custodianAddress);
-    return lodash.defaults({}, token, { isCustodianToken });
+    return lodash.defaults({}, token);
   }
 
   async _listByAddressArrayPlus({ addressArray, fields } = {} as any) {

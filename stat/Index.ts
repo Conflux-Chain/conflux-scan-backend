@@ -3,7 +3,6 @@ import {StatApp} from "./StatApp";
 import {loadConfig} from "./config/StatConfig";
 import {register} from "./router/StatRouter";
 import {KV} from "./model/KV";
-import {redisWrap} from "./service/RedisWrap";
 import {Server} from 'http'
 import {proxyPath} from "./router/DevopsRouter";
 import {saveApiLog} from "./monitor/ApiLog";
@@ -55,11 +54,7 @@ function exitOnSignal(server: Server) {
         console.log(`${__filename} receive ${signal}`)
         // stop service
         server.close()
-        // close db first, make sure that unfinished message will not be deleted from redis.
-        // When handling redis message, we call XDEL after all operation is finished.
         await KV.sequelize.close()
-        // close redis.
-        redisWrap.client.end(false)
         console.log(`server shutdown.`)
         process.exit(0)
     }

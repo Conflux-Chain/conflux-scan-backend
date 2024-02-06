@@ -15,7 +15,6 @@ import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
-import {redisWrap, RedisWrap, xLen} from "../RedisWrap";
 import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
 
 let configCache: StatConfig|null = null;
@@ -120,9 +119,7 @@ if (require.main === module) {
 }
 async function main() {
     const [,,cmd,arg1,arg2] = process.argv
-    init().then((cfg)=> {
-        return RedisWrap.connect(cfg.redis)
-    }).then(async ()=>{
+    init().then(async ()=>{
         if (cmd === 'participants') {
             // node stat/dist/service/tool/ participants
             return fixParticipants()
@@ -147,7 +144,6 @@ async function main() {
             await fixDate(0, arg1)
         }
     }).then(()=>{
-        redisWrap.client.end(false)
         DailyActiveAddress.sequelize.close().then()
     })
 }
