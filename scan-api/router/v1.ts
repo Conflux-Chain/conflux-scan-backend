@@ -1,8 +1,8 @@
 import {ScanCtx} from "../service/index";
 
 const lodash = require('lodash');
-const Koaflow = require('koaflow');
-const OpenAPI = require('koaflow/lib/OpenAPI');
+const {Router} = require('../../koaflow/src/router');
+const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
 const {StatApp} = require("../../stat/StatApp");
@@ -48,7 +48,7 @@ ${lodash.filter(error, (E) => E.code).map((E) => `${E.code} | ${E.name} | ${E.st
 
 OpenAPI.flow = myFlow;
 // ----------------------------------------------------------------------------
-const router = new Koaflow.Router();
+const router = new Router();
 router.use(async (ctx, next) => {
   const {
     app: { dingTalk },

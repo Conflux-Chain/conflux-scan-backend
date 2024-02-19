@@ -1,9 +1,9 @@
-const Koaflow = require('koaflow');
+const {Router} = require('../../koaflow/src/router');
 const { Drip } = require('js-conflux-sdk');
 const {jsonrpc} = require('./jsonrpc');
 const { formatDecimal } = require('../../stat/service/common/utils');
 
-const router = new Koaflow.Router();
+const router = new Router();
 
 router.get('/circulating',
   jsonrpc.methodFlow('supply'),

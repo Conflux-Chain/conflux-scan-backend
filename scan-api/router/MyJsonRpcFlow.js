@@ -1,4 +1,4 @@
-const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
+const {JsonRPCFlow} = require('../../koaflow/lib/flow/JsonRPCFlow');
 const {parameterErrorCode} = require('../../common/error')
 const {Errors, UnhandledErrorCode} = require("../../stat/service/common/LogicError");
 

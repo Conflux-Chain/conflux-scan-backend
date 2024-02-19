@@ -1,5 +1,5 @@
 const superagent = require('superagent');
-const loadConfig = require('koaflow/lib/util/loadConfig');
+const {loadConfig} = require('../koaflow/lib/util/loadConfig');
 const {ApiApp} = require('./app');
 const {repeatHeartBeat, KEY_SCAN_API, doHeartBeat, KEY_COMPILER, HeartBeatBean} = require("../stat/model/HeartBeat");
 

@@ -1,6 +1,6 @@
-const Koaflow = require('koaflow');
+const {Router} = require('../../koaflow/src/router');
 
-export const router = new Koaflow.Router();
+export const router = new Router();
 
 router.get('/', function () {
   const {

@@ -1,4 +1,4 @@
-const KoaParameter = require('koaflow/lib/parameter');
+const {parameter: KoaParameter} = require('../koaflow/lib/parameter');
 
 function parameter(schema) {
   const func = KoaParameter(schema);

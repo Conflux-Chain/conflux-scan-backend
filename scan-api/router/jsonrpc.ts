@@ -3,7 +3,6 @@ import {ScanCtx} from "../service/index";
 const lodash = require('lodash');
 const Big = require('big.js');
 const BigFixed = require('bigfixed');
-const JsonRPCFlow = require('koaflow/lib/flow/JsonRPCFlow');
 const type = require('../../common/type');
 const CONST = require('../../common/const');
 const parameter = require('../../common/parameter');
@@ -171,7 +170,7 @@ jsonrpc.method('queryBlock',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.block.query(options);
   },

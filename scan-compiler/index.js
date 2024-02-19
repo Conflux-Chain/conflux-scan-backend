@@ -1,4 +1,4 @@
-const loadConfig = require('koaflow/lib/util/loadConfig');
+const {loadConfig} = require('../koaflow/lib/util/loadConfig');
 const App = require('./app');
 
 const config = loadConfig(`${__dirname}/config`);
