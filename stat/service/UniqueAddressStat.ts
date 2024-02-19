@@ -5,7 +5,6 @@
 process.env.TZ='UTC'
 import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
-import {redisWrap,RedisWrap} from "./RedisWrap";
 import {regExitHook, sleep} from "./tool/ProcessTool";
 import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
@@ -271,28 +270,7 @@ export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:
     })
     return types as any;
 }
-export async function clean(indexBucket = '', force = false) {
-    const [,,cmd, zSetKeyArg] = process.argv
-    if (force) {
-    } else if (cmd !=='clean') {
-        return;
-    }
-    const zSetKey = indexBucket || zSetKeyArg
-    let size = await redisWrap.zcard(zSetKey);
-    console.log(`UniqueAddr ${zSetKey} size ${size}`)
-    do {
-        if (size === 0) {
-            break;
-        }
-        const [maxKey, maxTime] = await redisWrap.zrevrangebyscore(zSetKey,
-            new Date('5050').getTime(), 0, 'WITHSCORES', 'LIMIT', 0, 1)
-        await redisWrap.del(maxKey)
-        await redisWrap.zrem(zSetKey, maxKey)
-        console.log(`UniqueAddr remove ${maxKey}`)
-        size --
-    } while (true)
-    !force && process.exit(0)
-}
+
 const measure = new Measure()
 const addrMap = new Map<string, string>()
 const addrIdMap = new Map<string, number>()
@@ -505,9 +483,6 @@ async function benchmark() {
         return
     }
     const times = parseInt(timesStr || '1000' );
-    const k = 'delIt';
-    const kSet = 'delItSet';
-    await redisWrap.del(k)
     const dt = new Date()
     const start = Date.now()
     const aggregator = new Aggregator();
@@ -546,12 +521,10 @@ async function testDaily() {
 // noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
-    await RedisWrap.connect(config.redis)
     console.log(`UniqueAddr --------------------`)
     await testTop();
     await testDaily();
     await benchmark();
-    await clean();
     const confluxOption = cfxUrl === 'useConfigRpc' ? config.conflux : {url: cfxUrl}
 
     let cfx = await initCfxSdk(confluxOption);

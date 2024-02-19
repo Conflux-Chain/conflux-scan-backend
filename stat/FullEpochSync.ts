@@ -5,7 +5,6 @@ import {Conflux} from "js-conflux-sdk";
 import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {TokenQuery} from "./service/TokenQuery";
 import {EpochSync} from "./service/EpochSync";
-import {redisWrap, RedisWrap} from "./service/RedisWrap";
 import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KV} from "./model/KV";
 import {StatApp} from "./StatApp";
@@ -29,11 +28,6 @@ export class FullEpochSync{
 
     constructor(config: StatConfig) {
         this.config = config;
-    }
-
-    private async initRedis() {
-        let redisConf = this.config.redis;
-        return RedisWrap.connect(redisConf);
     }
 
     private async initDb(){
@@ -60,7 +54,6 @@ export class FullEpochSync{
         this.cfx = await initCfxSdk(this.config.conflux);
         StatApp.networkId = this.cfx.networkId;
         await Promise.all([
-            this.initRedis(),
             this.initDb(),
             initOss(this.config.oss)
         ]);
@@ -79,7 +72,6 @@ export class FullEpochSync{
 
     public async close() {
         await KV.sequelize.close();
-        await redisWrap.client.end(false);
     }
 }
 

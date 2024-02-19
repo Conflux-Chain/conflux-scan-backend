@@ -11,7 +11,6 @@ import {
     KV
 } from "./model/KV";
 import {initCfxSdk} from "./service/common/utils";
-import {RedisWrap} from "./service/RedisWrap";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {checkApiLogIpField} from "./monitor/ApiLog";
@@ -22,8 +21,6 @@ export async function run() {
 
     let cfx = await initCfxSdk(config.conflux);
     PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
-
-    await RedisWrap.connect(config.redis)
 
     let seq = createDB(config.databaseRW)
     await initModel(seq)

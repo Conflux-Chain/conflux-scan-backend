@@ -114,17 +114,6 @@ export class ConfluxService {
     return name !== undefined && symbol !== undefined;
   }
 
-  async isCustodianToken(address, custodianAddress, epochNumber) {
-    const {
-      app: { ttlMap, tokenTool },
-    } = this;
-
-    return ttlMap.cache(`ConfluxService_isCustodianToken(${address},${custodianAddress},${epochNumber})`,
-      () => tokenTool.isCustodianToken(address, custodianAddress, epochNumber),
-      { ttl: 60 * 60 * 1000 },
-    );
-  }
-
   /*async getTokenTotalSupply(address, epochNumber) {
     const {
       app: { cfx, ttlMap },

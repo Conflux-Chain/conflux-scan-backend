@@ -108,7 +108,7 @@ export class ApiServer {
         await initModel(sequelize)
         await sequelize.sync({})
 
-        await initRateLimiters(config.redis);
+        await initRateLimiters();
 
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
         apiService = new ApiService()

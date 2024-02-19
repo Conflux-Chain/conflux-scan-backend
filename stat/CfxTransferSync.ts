@@ -20,7 +20,6 @@ import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {finishTask, IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
 import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
-import {RedisWrap} from "./service/RedisWrap";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 
@@ -289,7 +288,6 @@ async function setup() {
     }
     redirectLog()
     const cfx = await initCfxSdk({url: cfxUrl});
-    await RedisWrap.connect(config.redis)
     await runCounter();
     await runHolder(cfx);
     await runMarker();

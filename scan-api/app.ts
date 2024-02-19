@@ -20,7 +20,6 @@ const { checkRate, loadRateConfig } = require("../stat/router/RateLimiter");
 const { setSwStatFn } = require("../stat/router/StatRouter");
 const { initPartialModel } = require('../stat/service/DBProvider');
 const ApiDef = require("../stat/router/ApiDef");
-const { RedisWrap, redisWrap } = require('../stat/service/RedisWrap');
 const { saveApiLog } = require("../stat/monitor/ApiLog");
 const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/model/KV');
 const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
@@ -46,7 +45,6 @@ export class ApiApp extends AppBase {
     const {config} = this;
     setCfxRpcUrl(config.conflux.url)
     this.sequelize = ApiApp.injectedSequelize || new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
-    await RedisWrap.connect(config.redis);
 
     // type converter
     this.type.checksumAddress = this.type((v) => format.address(v, this.networkId, true));
@@ -159,7 +157,6 @@ export class ApiApp extends AppBase {
     await this.syncSDK.close();
     if (!ApiApp.injectedSequelize) {
       await KV.sequelize.close();
-      redisWrap.client.end(false);
     }
     await super.close();
     console.log('================== close scan api ==================');

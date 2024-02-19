@@ -75,7 +75,7 @@ export interface SyncQuoteOption{
     },
 }
 export interface StatConfig{
-    redis: RedisConf
+    redis?: RedisConf
     influxDB?: ISingleHostConfig
     oss: OssConf
     dingTalkToken: string;

@@ -16,7 +16,6 @@ import {TokenQuery} from "./service/TokenQuery";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 import {ReportService} from "./service/ReportService";
-import {RedisWrap} from "./service/RedisWrap";
 import {QuoteSync} from "./service/QuoteSync";
 import {IPFSGatewaySync} from "./service/IPFSGatewaySync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
@@ -81,10 +80,7 @@ export class StatApp{
     constructor(config: StatConfig) {
         this.config = config;
     }
-    public async initRedis() {
-        let redisConf = this.config.redis;
-        return RedisWrap.connect(redisConf)
-    }
+
     public async init() {
         this.cfx = await initCfxSdk(this.config.conflux);
         this.eth = await initEthSdk(this.config.ether.url)
@@ -96,7 +92,6 @@ export class StatApp{
         this.sequelize = createDB(this.config.databaseRW);
         const {sequelize} = this;
         await Promise.all([
-            this.initRedis(),
             initModel(sequelize),
             initOss(this.config.oss)
         ])

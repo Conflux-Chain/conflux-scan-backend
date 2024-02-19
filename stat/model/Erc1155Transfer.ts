@@ -138,6 +138,5 @@ export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155
 }
 
 export async function batchPopErc1155Transfer(epoch) {
-    // return RedisWrap.sendStreamMessage({action:'pop', epoch}, ERC1155_TRANSFER_Q)
     return popPartition(epoch, Erc1155Transfer, AddressErc1155Transfer)
 }

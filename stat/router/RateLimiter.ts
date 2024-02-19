@@ -1,10 +1,9 @@
 import {Sequelize, Model, DataTypes} from 'sequelize'
-import {RateLimiterMemory, BurstyRateLimiter, RateLimiterRedis} from 'rate-limiter-flexible'
+import {RateLimiterMemory, BurstyRateLimiter} from 'rate-limiter-flexible'
 import {Errors} from "../service/common/LogicError";
 import {decodeApiKey} from "web3pay-sdk-js"
 import {getVipInfo, getWeb3pay} from "web3pay-sdk-js/lib/rpc";
 
-const redis = require('redis');
 const lodash = require('lodash');
 const requestIp = require('request-ip');
 
@@ -246,76 +245,59 @@ let rateLimiterAccount;
 let rateLimiterDaily10W;
 let rateLimiterDaily50W;
 
-export async function initRateLimiters(redisConf) {
-    const redisClient = redis.createClient({
-        host: redisConf.host,
-        port: redisConf.port,
-        password: redisConf.pwd,
-        db: redisConf.db,
-        enable_offline_queue: redisConf.enable_offline_queue || false,
-    });
+export async function initRateLimiters() {
     rateLimiterFree = new BurstyRateLimiter(
-        new RateLimiterRedis({
-            storeClient: redisClient,
+        new RateLimiterMemory({
             points: 5,
             duration: 1,
             keyPrefix: `api-${LEVEL_FREE}`,
         }),
-        new RateLimiterRedis({
-            storeClient: redisClient,
+        new RateLimiterMemory({
             points: 20,
             duration: 10,
             keyPrefix: `api-burst-${LEVEL_FREE}`,
         })
     );
     rateLimiterStandard = new BurstyRateLimiter(
-        new RateLimiterRedis({
-            storeClient: redisClient,
+        new RateLimiterMemory({
             points: 20,
             duration: 1,
             keyPrefix: `api-${LEVEL_STANDARD}`,
         }),
-        new RateLimiterRedis({
-            storeClient: redisClient,
+        new RateLimiterMemory({
             points: 40,
             duration: 10,
             keyPrefix: `api-burst-${LEVEL_STANDARD}`,
         })
     );
     rateLimiterEnterprise = new BurstyRateLimiter(
-        new RateLimiterRedis({
-            storeClient: redisClient,
+        new RateLimiterMemory({
             points: 6000,
             duration: 1,
             keyPrefix: `api-${LEVEL_ENTERPRISE}`,
         }),
-        new RateLimiterRedis({
-            storeClient: redisClient,
+        new RateLimiterMemory({
             points: 12000,
             duration: 10,
             keyPrefix: `api-burst-${LEVEL_ENTERPRISE}`,
         })
     );
-    rateLimiterAddress = new RateLimiterRedis({
-        storeClient: redisClient,
+    rateLimiterAddress = new RateLimiterMemory({
         points: 100,
         duration: 10,
         keyPrefix: `api-address`,
     });
-    rateLimiterAccount = new RateLimiterRedis({
-        storeClient: redisClient,
+    rateLimiterAccount = new RateLimiterMemory({
         points: 2,
         duration: 2,
         keyPrefix: `api-account`,
     });
-    rateLimiterDaily10W = new RateLimiterRedis({
-        storeClient: redisClient,
+    rateLimiterDaily10W = new RateLimiterMemory({
         points: 100000,
         duration: 86400,
         keyPrefix: `api-daily-10w`,
     });
-    rateLimiterDaily50W = new RateLimiterRedis({
-        storeClient: redisClient,
+    rateLimiterDaily50W = new RateLimiterMemory({
         points: 500000,
         duration: 86400,
         keyPrefix: `api-daily-50w`,

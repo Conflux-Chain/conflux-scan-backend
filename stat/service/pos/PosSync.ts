@@ -24,8 +24,6 @@ import {
     scheduleDailyStatMix,
     scheduleSyncPosGap
 } from "./PosStat";
-import {PowSidePosSync} from "./PowSidePosSync";
-import {RedisWrap} from "../RedisWrap";
 import {buildPosRewardRank} from "./PosRewardRank";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
@@ -697,10 +695,6 @@ async function start() {
         // cfx['pos'].getAccount('0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055').then(console.log)
         // posSync.patchCreatedAccount(0, '0x867d88952f32f19a965282d5d60f89b9bb384a1b0f414180d093c3edc3f9d055')
         redirectLog()
-
-        await RedisWrap.connect(cfg.redis)
-        const powSidePosSync = new PowSidePosSync(cfx);
-        powSidePosSync.init().then(()=>powSidePosSync.listen());
 
         await waitPosEnable(cfx)
 

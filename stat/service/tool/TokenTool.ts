@@ -3,7 +3,6 @@ import {Op} from 'sequelize'
 import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
-import {HASH_CUSTODIAN_TOKEN, RedisWrap} from "../RedisWrap";
 import {decodeUtf8} from "./StringTool";
 import oss = require('ali-oss');
 import {getAddrId} from "../../model/HexMap";
@@ -326,11 +325,6 @@ export class TokenTool {
     }
 
     async isCustodianToken(address, custodianAddress, epochNumber) {
-        const cache = await RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, address, '').then(Boolean);
-        if (cache !== null && cache !== undefined) {
-            return cache;
-        }
-
         return this.contract.isToken(address)
             .call({ to: custodianAddress }, epochNumber)
             .catch(() => undefined);
@@ -417,35 +411,8 @@ export class TokenTool {
         };
     }
 }
-export async function isCustodianToken(base32:string) {
-    return RedisWrap.hGet(HASH_CUSTODIAN_TOKEN, base32, '').then(Boolean)
-}
 // 0x890e3feac4a2c33d7594bc5be62e7970ef5481e0
 export const CUSTODIAN_PROXY_CONTRACT = 'cfx:aceu6t9m2wvpgtnzww8f13vstf2s8zeb6a4eja1756'
-async function updateCustodianTokenFlag() {
-    const tool = await initTool()
-    async function repeat() {
-        const list = await Token.findAll({where: {auditResult: true,}});
-        let trueCount = 0
-        let testOne = ''
-        for (const token of list) {
-            const is = await tool.contract.isToken(token.base32)
-                .call({to: CUSTODIAN_PROXY_CONTRACT}).catch(err => {
-                    console.log(`call proxy contract fail, token ${token.base32}`, err)
-                    return false
-                })
-            trueCount += is ? 1 : 0
-            if (is) {
-                testOne = token.base32
-            }
-            await RedisWrap.hSet(HASH_CUSTODIAN_TOKEN, token.base32, is ? '1' : '');
-        }
-        setTimeout(repeat, 10_000)
-        console.log(`set to true count ${trueCount}, test get ${testOne}, ${await isCustodianToken(testOne)}`)
-        console.log(`get all `,await RedisWrap.hGetAll(HASH_CUSTODIAN_TOKEN))
-    }
-    repeat().then()
-}
 
 
 export async function base64ToPNG(token:Token, dir: string) {
@@ -515,7 +482,6 @@ async function initTool() {
     const cfx = await initCfxSdk(config.conflux)
     console.log(`networkId ${cfx.networkId} config ${JSON.stringify(config.conflux)}`);
 
-    await RedisWrap.connect(config.redis)
     const tool = new TokenTool(cfx)
     return tool;
 }
@@ -745,9 +711,7 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
 if (module === require.main) {
     const args = process.argv.slice(2)
     const [,,cmd, arg1, arg2] = process.argv;
-    if (args[0] === 'custodian_token') {
-        updateCustodianTokenFlag().then()
-    } else if (args[0] === 'check721OwnerInDb') {
+    if (args[0] === 'check721OwnerInDb') {
         check721OwnerInDb().then()
     } else if (args[0] === 'updateTotalSupply') {
         updateTotalSupply().then()

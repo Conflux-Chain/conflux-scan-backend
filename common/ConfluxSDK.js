@@ -1,7 +1,6 @@
 const lodash = require('lodash');
 const { Conflux } = require('js-conflux-sdk');
 const NodeCache = require('node-cache');
-/*const { isCustodianToken } = require('../stat/service/tool/TokenTool');*/
 const { patchHttpProvider } = require('../stat/service/common/utils');
 const tool = require('./tool');
 const abi = require('./abi');
@@ -84,10 +83,6 @@ class ConfluxSDK extends Conflux {
       .call({ to: address }, epochNumber)
       .then(Number)
       .catch((err) => { return this.cacheErrorResult(err, key, 0); });
-  }
-
-  async isCustodianToken(address) {
-    return isCustodianToken(address); // from redis
   }
 
   async getBalances(account, contracts, utilContract) {

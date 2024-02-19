@@ -30,7 +30,6 @@ import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
-import {RedisWrap} from "./service/RedisWrap";
 import {FullBlock} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
@@ -526,7 +525,6 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     notifyError = async (msg, err)=>{
         return dingMsg(`[${config.serverTag}] TOKEN-X-SYNC ${msg}: ${err}`, config.dingTalkToken)
     }
-    await RedisWrap.connect(config.redis);
     console.log(`--------------------`)
 
     const confluxOption = cfxUrl === 'useConfigRpc' ? (config.tokenTransferRpc || config.conflux) : {url: cfxUrl}
