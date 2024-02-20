@@ -34,8 +34,11 @@ export class PowSidePosSync {
         // check it , send to mq by condition.
         for (let receipts of receipts2d) {
             for (let receipt of receipts) {
+                let logIdx = 0
                 for (let log of receipt.logs) {
+                    log.transactionLogIndex = logIdx++;
                     if (log.address === PowSidePosSync.POS_CONTRACT_VERBOSE) {
+                        log.transactionHash = receipt.transactionHash;
                         await this.sync(epoch, log, blockTime, dbTx)
                     }
                 }
