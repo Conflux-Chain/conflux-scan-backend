@@ -48,12 +48,7 @@ export interface MySqlInstance{
     username: string;
     password: string;
 }
-export interface RedisConf {
-    host:string
-    port:number,
-    db:number,
-    pwd:string
-}
+
 export interface OssConf {
     accessId: string
     accessKey: string
@@ -75,7 +70,6 @@ export interface SyncQuoteOption{
     },
 }
 export interface StatConfig{
-    redis?: RedisConf
     influxDB?: ISingleHostConfig
     oss: OssConf
     dingTalkToken: string;
