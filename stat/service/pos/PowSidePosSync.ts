@@ -4,8 +4,8 @@ import {IPosRegister, PosAccount, PosRegister} from "../../model/PoS";
 import {abi as posAbi} from "../abi/PoSRegister";
 import {initCfxSdk, removeLongData} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
-import {POW_EPOCH_FOR_POS_Q, RedisStreamMessage, RedisWrap} from "../RedisWrap";
-import {sleep} from "../tool/ProcessTool";
+import {StatApp} from "../../StatApp";
+import {Transaction} from "sequelize";
 
 export class PowSidePosSync {
     // will be set when system startup.
@@ -19,141 +19,69 @@ export class PowSidePosSync {
         this.cfx = cfx;
     }
     async init() {
+        if(StatApp.isEVM) {
+            return
+        }
         await this.cfx.updateNetworkId();
         console.log(` PowSidePosSync network id ${this.cfx['networkId']}`)
         this.posContractAddr = PowSidePosSync.POS_CONTRACT_HEX
         this.posContract = this.cfx.Contract({abi: posAbi, address: this.posContractAddr})
     }
-    static async sendMq(receipts2d:any[][], epoch) {
+    async checkPosRegister(receipts2d:any[][], epoch: number, blockTime: Date, dbTx: Transaction) {
+        if(StatApp.isEVM) {
+            return
+        }
         // check it , send to mq by condition.
         for (let receipts of receipts2d) {
             for (let receipt of receipts) {
+                let logIdx = 0
                 for (let log of receipt.logs) {
+                    log.transactionLogIndex = logIdx++;
                     if (log.address === PowSidePosSync.POS_CONTRACT_VERBOSE) {
-                        return RedisWrap.sendStreamMessage({action:'push', epoch: epoch}, POW_EPOCH_FOR_POS_Q)
+                        log.transactionHash = receipt.transactionHash;
+                        await this.sync(epoch, log, blockTime, dbTx)
                     }
                 }
             }
         }
     }
-    // XADD POW_EPOCH_FOR_POS_Q * v1 '{"action":"pop", "epoch":0}'
-    async listen() {
-        try {
-            await this.cfx.pos.getStatus()
-        } catch (e) {
-            if (e.message.includes('Method not found')) {
-                this.isPosRpc = false;
-                console.log(` not pos rpc, will drop all redis message.[A]`)
-            } else if (e.message.includes('the method pos_getStatus does not exist')) {
-                this.isPosRpc = false;
-                console.log(` not pos rpc, will drop all redis message.[B]`)
-            } else if (e.message.includes('PoS chain is not enabled')) {
-                //
-            } else {
-                console.log(` can not determine pos rpc.`, e)
-                process.exit(0)
+    async sync(epoch, log, blockTime, dbTx) {
+        const bean:IPosRegister = {
+            epoch,
+            txHash: log['transactionHash'],
+            powBase32: '', identifier: '',
+            transactionLogIndex: log.transactionLogIndex,
+        }
+        if (log["topics"][0]?.startsWith('0xf3c')) {//IncreaseStake
+            const decoded = this.posContract.IncreaseStake.decodeLog(log).toObject()
+            // console.log(' decoded:', decoded.toObject())
+            bean.identifier = decoded.identifier
+            bean.votePower = decoded.votePower
+        } else if (log["topics"][0]?.startsWith('0xfa22')) {//Register
+            const decoded = this.posContract.Register.decodeLog(log)
+            const obj = decoded.toObject();
+            bean.identifier = decoded.identifier
+            bean.blsPubKey = obj['blsPubKey'].toString('hex')
+            bean.vrfPubKey = obj['vrfPubKey'].toString('hex')
+            await PosAccount.make(decoded.identifier, blockTime)
+            // console.log(' decoded:', obj)
+        } else if (log["topics"][0]?.startsWith('0xcacdde07b9b')) {//retire
+            // 0xe13f3e895baf53075eec116787300f2ebbf62420db8a58dede6aea2d084a71b7
+            let decoded: any;
+            try {
+                decoded = this.posContract.Retire.decodeLog(log);
+            } catch (e) {
+                console.log(` decode log fail, at epoch ${epoch}`)
+                throw e;
             }
+            // const obj = decoded.toObject();
+            bean.identifier = decoded.identifier
+            bean.retire = true
+        } else {
+            throw new Error(` unexpected pos register topic, at epoch ${epoch}, topic ${log["topics"][0]}`)
         }
-        RedisWrap.listenStreamMessage(POW_EPOCH_FOR_POS_Q, (data)=>{
-            return this.listenPowEpoch(data)
-        }).then()
-        console.log(` listen on queue : ${POW_EPOCH_FOR_POS_Q}`)
-    }
-    async listenPowEpoch(data:RedisStreamMessage[]) {
-        if (!this.isPosRpc) {
-            return RedisWrap.xDel(data)
-        }
-        const list:any[] = data.map(msg=>msg.message)
-        for (const msg of list) {
-            if (msg.action === 'pop') {
-                await PosRegister.destroy({
-                    where: {epoch: msg.epoch}
-                });
-                console.log(` PosRegister pop: ${msg.epoch} `);
-            } else {
-                try {
-                    await this.sync(msg.epoch);
-                } catch (e) {
-                    console.log(`error listenPowEpoch:`, e)
-                    await sleep(20_000)
-                    return
-                }
-            }
-        }
-        return RedisWrap.xDel(data)
-    }
-    async sync(epoch) {
-        const filter = {
-            fromEpoch:epoch, toEpoch: epoch,
-            address: this.posContractAddr,
-        };
-        const [logs, block] = await Promise.all([
-            this.cfx.getLogs(filter),
-            this.cfx.getBlockByEpochNumber(epoch, false)
-        ]).catch(err=> {
-            if (err.message.includes('expected a numbers with less than largest epoch number')) {
-                return []
-            }
-            throw err;
-        })
-        if (logs === undefined) {
-            console.log(` logs is undefined, epoch ${epoch}`)
-            return;
-        }
-        if (epoch % 100 === 0) {
-            console.log(` sync pos register event, logs count ${logs.length}, pow epoch ${epoch}`);
-        }
-        const dt = new Date(block.timestamp * 1000)
-        const registerArr:IPosRegister[] = []
-        // const registerArr:IPosRegister[] = []
-        for (const log of logs) {
-            // this.posContractAddr.Register
-            const bean:IPosRegister = {
-                epoch,
-                txHash: log['transactionHash'],
-                powBase32: '', identifier: '',
-                transactionLogIndex: log.transactionLogIndex,
-            }
-            if (log["topics"][0]?.startsWith('0xf3c')) {//IncreaseStake
-                const decoded = this.posContract.IncreaseStake.decodeLog(log).toObject()
-                // console.log(' decoded:', decoded.toObject())
-                bean.identifier = decoded.identifier
-                bean.votePower = decoded.votePower
-            } else if (log["topics"][0]?.startsWith('0xfa22')) {//Register
-                const decoded = this.posContract.Register.decodeLog(log)
-                const obj = decoded.toObject();
-                bean.identifier = decoded.identifier
-                bean.blsPubKey = obj['blsPubKey'].toString('hex')
-                bean.vrfPubKey = obj['vrfPubKey'].toString('hex')
-                await PosAccount.make(decoded.identifier, dt)
-                // console.log(' decoded:', obj)
-            } else if (log["topics"][0]?.startsWith('0xcacdde07b9b')) {//retire
-                // 0xe13f3e895baf53075eec116787300f2ebbf62420db8a58dede6aea2d084a71b7
-                let decoded: any;
-                try {
-                    decoded = this.posContract.Retire.decodeLog(log);
-                } catch (e) {
-                    console.log(` decode log fail, at epoch ${epoch}`)
-                    throw e;
-                }
-                // const obj = decoded.toObject();
-                bean.identifier = decoded.identifier
-                bean.retire = true
-            } else {
-                console.log(` unexpected topic, at epoch ${epoch}, topic ${log["topics"][0]}`)
-                // continue
-                process.exit(9)
-            }
-            registerArr.push(bean)
-            // removeLongData(log)
-            // console.log(` log is `, log)
-        }
-        await PosRegister.sequelize.transaction(async tx=>{
-            await Promise.all([
-                PosRegister.bulkCreate(registerArr),
-            ])
-        })
-        console.log(` pos register, epoch ${epoch}, count ${registerArr.length}`);
+        await PosRegister.create(bean, {transaction: dbTx})
+        console.log(` pos register, epoch ${epoch}`);
     }
 
     async testRetire(account:string) {
@@ -180,15 +108,6 @@ if (module===require.main) {
                 return sync.testRetire(randomAccount.toString()).then(res=>{
                     console.log(` retire tx:`, res)
                 })
-            } else if (args.includes('listen')) {
-                return RedisWrap.connect(config.redis).then(()=>{
-                    return sync.listen()
-                }).then(()=>{
-                    // never resolve, just hangup.
-                    return new Promise(resolve => {})
-                })
-            } else if (args.includes('single')) {
-                return sync.sync(parseInt(args[1]));//131752)
             } else {
                 console.log(` supported action < retire | listen | single >`)
             }

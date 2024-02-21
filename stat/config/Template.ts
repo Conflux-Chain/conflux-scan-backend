@@ -15,7 +15,6 @@ export default {
         blockTableRowsLimit: 10_0000,
         syncSchema: false,
     },
-    redis: {host:'',port:6379,pwd:''},
     scanApiUrl: 'https://testnet-scantest.confluxnetwork.org',
     scanJsonRpcUrl: 'http://127.0.0.1:8895',
     // delay ms.

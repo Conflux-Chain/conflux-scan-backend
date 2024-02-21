@@ -30,7 +30,6 @@ import {Op} from "sequelize";
 import {CensorService} from "./service/censor/CensorService";
 import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
-import {RedisWrap} from "./service/RedisWrap";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 
 async function main() {
@@ -39,7 +38,6 @@ async function main() {
 
     const config = await init()
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
-    await RedisWrap.connect(config.redis);
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     const traceCreateQuery = new BlockTraceCreateQuery({});

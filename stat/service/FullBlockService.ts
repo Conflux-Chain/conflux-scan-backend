@@ -27,11 +27,11 @@ import {
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
 import {batchFetchBlock, noVerboseAddr} from "./common/utils";
-import {POW_EPOCH_FOR_POS_Q, RedisWrap} from "./RedisWrap";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
+import {PosRegister} from "../model/PoS";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -43,10 +43,12 @@ export class FullBlockService {
     public cfx2: Conflux;
     public debugLog:boolean = true
     preLoadMap:PreloadMap
+    private powSidePosSync: PowSidePosSync;
     constructor(cfx:Conflux, cfx2?:Conflux) {
         this.cfx = cfx;
         this.cfx2 = cfx2
         this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this))
+        this.powSidePosSync = new PowSidePosSync(cfx);
     }
     // sync metrics
     private metrics = {
@@ -83,6 +85,7 @@ export class FullBlockService {
         }
         await this.checkBlockCountKV()
         await this.checkTxCountKV()
+        await this.powSidePosSync.init()
         const that = this
         async function repeat(){
             let ret
@@ -359,7 +362,7 @@ export class FullBlockService {
             })
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
-                    FailedTx.destroy({where:{epoch:preEpoch}}),
+                    FailedTx.destroy({where:{epoch:preEpoch}, transaction: dbTx}),
                     FullBlock.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
                     FullTransaction.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
                     AddressTransactionIndex.destroy({
@@ -368,7 +371,7 @@ export class FullBlockService {
                     StatApp.isEVM ? FullBlockExt.destroy({where:{epoch: preEpoch}, transaction: dbTx}) : undefined,
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
-                    RedisWrap.sendStreamMessage({action:'pop', epoch: preEpoch}, POW_EPOCH_FOR_POS_Q)
+                    PosRegister.destroy({where: {epoch: preEpoch}, transaction: dbTx}),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -474,8 +477,7 @@ export class FullBlockService {
                 StatApp.isEVM ? FullBlockExt.create({epoch: minEpochNumber, coreBlock: preLoadResult.blocksEvm === 0}, {transaction: dbTx}) : undefined,
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
-                PowSidePosSync.sendMq(preLoadResult.receipts, minEpochNumber),
-                //RedisWrap.sendStreamMessage({action:'push', epoch: minEpochNumber}, POW_EPOCH_FOR_POS_Q),
+                this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),
             ])
         }).then(async ()=>{
             let now = Date.now()

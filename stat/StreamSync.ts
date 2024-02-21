@@ -1,6 +1,5 @@
 import {sleep} from "./service/tool/ProcessTool";
 import {StatConfig} from "./config/StatConfig";
-import {RedisWrap} from "./service/RedisWrap";
 import {Erc20Transfer} from "./model/Erc20Transfer";
 import {Erc1155Transfer} from "./model/Erc1155Transfer";
 import {Erc721Transfer} from "./model/Erc721Transfer";
@@ -259,10 +258,7 @@ async function run() {
 
     //
     tokenTool = new TokenTool(cfx)
-    RedisWrap.connect(config.redis).then(()=>{
-    }).then(()=>{
-        return scheduleTransferUpdater(config.serverTag)
-    })
+    scheduleTransferUpdater(config.serverTag)
 }
 const args = process.argv.slice(2)
 if (require.main === module) {
