@@ -2,7 +2,7 @@ import {Errors, UnhandledErrorCode} from "../../../stat/service/common/LogicErro
 
 const lodash = require('lodash');
 const { composeFlow } = require('../../src/util');
-const {parameterErrorCode} = require('../../common/error')
+const {parameterErrorCode} = require('../../../common/error')
 
 const VERSION = '2.0';
 
