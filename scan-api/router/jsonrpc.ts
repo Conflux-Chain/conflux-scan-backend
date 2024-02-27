@@ -18,8 +18,8 @@ const { CONST: CONST_TS }  = require('../../stat/service/common/constant');
 const { KV, KEY_EVM_VERSIONS } = require('../../stat/model/KV');
 const {StatApp} = require("../../stat/StatApp");
 const {sleepMs} = require("limit-map");
-const MyJsonRpcFlow = require("./MyJsonRpcFlow");
-export const jsonrpc = new MyJsonRpcFlow();
+const {JsonRPCFlow} = require("../../koaflow/lib/flow/JsonRPCFlow");
+export const jsonrpc = new JsonRPCFlow();
 
 // dev stuff
 jsonrpc.method('testConcurrent',

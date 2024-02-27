@@ -22,7 +22,7 @@ const { initPartialModel } = require('../stat/service/DBProvider');
 const ApiDef = require("../stat/router/ApiDef");
 const { saveApiLog } = require("../stat/monitor/ApiLog");
 const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/model/KV');
-const {setCfxRpcUrl} = require("./router/MyJsonRpcFlow");
+const {setCfxRpcUrl} = require("../koaflow/lib/flow/JsonRPCFlow");
 const { CONST: CONST_TS }  = require('../stat/service/common/constant');
 
 export class ApiApp extends AppBase {
