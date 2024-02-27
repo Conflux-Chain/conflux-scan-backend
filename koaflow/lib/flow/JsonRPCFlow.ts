@@ -1,5 +1,8 @@
+import {Errors, UnhandledErrorCode} from "../../../stat/service/common/LogicError";
+
 const lodash = require('lodash');
 const { composeFlow } = require('../../src/util');
+const {parameterErrorCode} = require('../../common/error')
 
 const VERSION = '2.0';
 
@@ -13,13 +16,16 @@ export class JsonRPCError extends Error {
     }
   }
 }
-
+let cfxRpcUrl = ''
 export class JsonRPCFlow {
   private methods: any;
   constructor() {
     this.methods = {};
   }
-
+  method_(method, ...flowArray) {
+    this.method(method, ...flowArray)
+    return this.methods[method];
+  }
   /**
    * @param method {string}
    * @param flowArray {function}
@@ -39,7 +45,14 @@ export class JsonRPCFlow {
         const flow = jsonRPCFlow.methods[method]; // dynamic get method
         return await flow.call(this, [arg], next, end);
       } catch (e) {
-        throw new JsonRPCError(e);
+        if (!end) { // v1.ts, directly call in code
+          throw e;
+        }
+        this.methodFlowError = e;
+        if (e.code !== parameterErrorCode) {
+          console.log(`error caught at ${__filename} \n url: ${this.originalUrl} \n`, e);
+        }
+        end(/* nothing but stop calling chain */);
       }
     };
   }
@@ -94,6 +107,31 @@ export class JsonRPCFlow {
       }
     };
   }
+}
+
+function transformError(ctx, e, msg = '', detail = '') {
+  // some error may have a string code.
+  let isNumber = typeof(e.code) === 'number';
+  ctx.body = { code: isNumber ? e.code : UnhandledErrorCode, message: (e.name)+': '+msg + ' ' + detail + (isNumber ? '' : e.code || '') };
+  ctx.status = 600;
+}
+export function patchFlowError(ctx) {
+  if (ctx.body) {
+    // console.log(`body is present, and methodFlowError is `, ctx.methodFlowError);
+  } else if (ctx.methodFlowError) {
+    const { code, method: _method, url = '', message = '' } = ctx.methodFlowError;
+    if (code === 'ABORTED' && _method === 'POST' && url.startsWith(cfxRpcUrl)) {
+      transformError(ctx, new Errors.RpcBusyError(), ' ', code);
+    } else if (message.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
+      transformError(ctx, new Errors.RpcBizError(), ' ', message);
+    } else {
+      transformError(ctx, ctx.methodFlowError, message, '');
+    }
+  }
+}
+
+export function setCfxRpcUrl(url) {
+  cfxRpcUrl = url || ''
 }
 
 // module.exports = JsonRPCFlow;
