@@ -517,7 +517,7 @@ export async function rollupDailyCfxTxn(dt:Date) {
     ])
     await DailyCfxTxn.upsert({
         txnCount: transferCount, day: dt,
-        userCount, amount
+        userCount, amount: amount ?? 0
     })
 }
 
