@@ -215,9 +215,15 @@ export async function checkVerifyStatus(ctx) {
         return;
     }
     if(!verify.verifyResult){
-        setBody(ctx, undefined, 1, !verify.errors ? 'verify fail' : verify.errors);
-        return;
+        if(verify.taskStatus === CONST.TASK_STATUS.DONE){
+            setBody(ctx, verify.errors, 1, 'NOTOK');
+            return;
+        } else{
+            setBody(ctx, 'Pending in queue', 1, 'NOTOK');
+            return;
+        }
     }
+
 
     setBody(ctx, 'Pass - Verified');
 }
