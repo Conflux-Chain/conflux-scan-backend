@@ -537,7 +537,6 @@ export class ContractQuery {
                 optimizeFlag, optimizeRuns, license, libraries, evmVersion, codeHash});
 
             const creationData = await this.getCreationData({ address })
-                /*.catch(e => {throw new Error(`name:'QueryCreationDataError', code:50403, error:${e}`)});*/
                 .catch(e => {throw new Errors.QueryCreationDataError(e)});
             const result = await jsonRpc.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
                 compiler, optimizeRuns});
@@ -604,9 +603,9 @@ export class ContractQuery {
         try {
             address = format.hexAddress(address);
             await this.queryVerify({ address }).catch(() => {throw new Errors.ContractVerifyError(`the contract already verified`)});
-            const code = await cfx.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`invalid contract's code:${code}`)});
+            const code = await cfx.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`Unable to locate ContractCode at ${address}`)});
             const creationData = await this.getCreationData({ address })
-                .catch(e => {throw new Errors.QueryCreationDataError(`get creation data error:${e}`)});
+                .catch(e => {throw new Errors.QueryCreationDataError(e)});
 
             const updateVerify = {taskStatus: CONST.TASK_STATUS.PROCESSING};
             const lockResult = await ContractVerify.update(updateVerify, {where: { id,
@@ -636,6 +635,12 @@ export class ContractQuery {
             await this.updateVerify(updateRecord);
 
         } catch (e) {
+            if(e instanceof Errors.QueryCreationDataError) {
+                await ContractVerify.update({taskStatus: CONST.TASK_STATUS.SUBMITTED},
+                    {where: { id, taskStatus: CONST.TASK_STATUS.PROCESSING}});
+                return
+            }
+
             console.log(JSON.stringify({ src: `[${address}]doVerify`, error: `${e.message}` }));
             const updateRecord = {
                 id, address,
