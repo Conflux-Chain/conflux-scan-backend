@@ -417,8 +417,19 @@ export class EpochSync extends SyncBase{
 
             const isBlob = (field === 'abi' || field === 'sourceCode' || field === 'icon');
             const item = map[hex] || {};
-            item[field] = isBlob ? Buffer.from(zlib.unzipSync(Buffer.from(announce.value, "base64"))).toString()
-                : Buffer.from(announce.value, 'base64').toString();
+            const decodedBase64 = Buffer.from(announce.value, 'base64');
+            if (isBlob) {
+                let flatZip: Buffer;
+                try {
+                    flatZip = zlib.unzipSync(decodedBase64);
+                } catch (e) {
+                    console.log(`failed to unzip`, e)
+                    return map;
+                }
+                item[field] = Buffer.from(flatZip).toString();
+            } else {
+                item[field] = decodedBase64.toString();
+            }
 
             if (field === 'name' && item[field].length >= 255) {
                 item[field] = item[field].substr(0, 255);
