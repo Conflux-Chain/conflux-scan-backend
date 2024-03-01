@@ -423,7 +423,7 @@ export class EpochSync extends SyncBase{
                 try {
                     flatZip = zlib.unzipSync(decodedBase64);
                 } catch (e) {
-                    console.log(`failed to unzip`, e)
+                    console.log(`failed to unzip, field [${field}]`, e)
                     return map;
                 }
                 item[field] = Buffer.from(flatZip).toString();
