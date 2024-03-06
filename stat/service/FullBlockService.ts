@@ -384,7 +384,10 @@ export class FullBlockService {
         // build block template out of the transaction below.
         let pos = 0
         for (const block of blockList) {
-            block.epoch = minEpochNumber
+            if (block.epochNumber !== minEpochNumber) {
+                throw new Error(`epoch in block ${block.epoch} != ${minEpochNumber} wanted!`)
+            }
+            block.epoch = minEpochNumber;
             block.pivot = false;
             const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash) || {}
             let minerBase32 = block.miner;
@@ -660,6 +663,7 @@ alter table full_block add partition (partition p5 values less than (50000000));
 alter table full_block add partition (partition p6 values less than (60000000));
 alter table full_block add partition (partition p7 values less than (70000000));
 alter table full_block add partition (partition p8 values less than (80000000));
+alter table full_block add partition (partition p8 values less than (61467868));
 
 ALTER TABLE full_tx DROP PARTITION pm;
 alter table full_tx add partition (partition p4 values less than (40000000));
