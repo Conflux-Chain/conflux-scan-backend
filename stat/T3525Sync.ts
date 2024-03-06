@@ -252,7 +252,7 @@ export interface IParsedEvent3525 {
     event, from, to, _tokenId, _oldSlot, _newSlot, _fromTokenId, toTokenId, _value
 }
 export function build3525interface() {
-    const {abi} = require('../../common/contracts/build/contracts/IERC3525.json')
+    const {abi} = require('../common/contracts/build/contracts/IERC3525.json')
     return new ethers.utils.Interface(abi);
 }
 const bigNumberProps = ["tokenId", "slot", "_oldSlot", "_newSlot", "fromTokenId", "toTokenId", "value"];
