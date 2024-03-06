@@ -70,7 +70,7 @@ export interface SyncQuoteOption{
     },
 }
 export interface StatConfig{
-    influxDB?: ISingleHostConfig
+    influxDB?: ISingleHostConfig & {measurement: string}
     oss: OssConf
     dingTalkToken: string;
     syncBlockDelay: number;

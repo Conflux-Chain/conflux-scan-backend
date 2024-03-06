@@ -14,15 +14,16 @@ const lodash = require('lodash');
 export class Reporter{
 
     private readonly app: any;
-    private readonly measurement: string;
+    private measurement: string;
     private influx: InfluxDB;
     private samplerArray: Sampler[];
 
     public constructor(app: any) {
         this.app = app;
-        this.measurement = 'scan_sync_monitor';
         this.initInflux();
-        this.registerSampler();
+        if (this.influx) {
+            this.registerSampler();
+        }
     }
 
     private initInflux() {
@@ -30,7 +31,12 @@ export class Reporter{
             app:{ config }
         } = this;
 
-        const {host, database, username, password} = config.influxDB;
+        const {host, database, username, password, disable, measurement} = config.influxDB;
+        if (disable) {
+            console.log(`influx is disabled`)
+            return;
+        }
+        this.measurement = measurement || 'scan_sync_monitor';
         this.influx = new InfluxDB({
             host, database, username, password,
             schema: [
@@ -108,6 +114,9 @@ export class Reporter{
     }
 
     public async start(delay: number = 1000 * 60) {
+        if (!this.influx) {
+            return;
+        }
         const that = this;
         async function repeat() {
             await that.sampleSyncProgress().catch(e=>{
