@@ -1,4 +1,6 @@
 import {ScanCtx} from "../service/index";
+import {Op} from "sequelize";
+import {KEY_CONFURA_URL, KEY_CORE_API_URL, KEY_CORE_OPEN_API_URL, KEY_OPEN_API_URL} from "../../stat/model/KV";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -148,6 +150,12 @@ jsonrpc.method('frontend',
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });
       frontedConfig = { networkId, networks, contracts };
+      const urls = await KV.findAll({where: {"key": {[Op.in]:
+                      [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]
+      }}})
+      urls.forEach(config=>{
+          frontedConfig[config.key] = config.value;
+      })
     } catch (e) {
       logger.error({ src: 'frontend config error', msg: e });
     }

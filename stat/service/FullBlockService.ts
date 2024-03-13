@@ -17,7 +17,7 @@ import {
 } from "../model/FullBlock";
 import {Hex40Map, makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
-import {Transaction,QueryTypes,UniqueConstraintError} from "sequelize"
+import {Transaction,QueryTypes,UniqueConstraintError, Op} from "sequelize"
 import {
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KEY_FILL_BLOCK_REWARD_EPOCH,
@@ -349,9 +349,10 @@ export class FullBlockService {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();
+            const popEpochCondition = {[Op.gte]:preEpoch}
             const [popTx,popBlockCount] = await Promise.all([
-                FullTransaction.findAll({where: {epoch: preEpoch}}),
-                FullBlock.count({where:{epoch: preEpoch}})
+                FullTransaction.findAll({where: {epoch: popEpochCondition}}),
+                FullBlock.count({where:{epoch: popEpochCondition}})
             ])
             popTx.forEach(tx=>{
                 addresses.add(tx.fromId)
@@ -362,16 +363,16 @@ export class FullBlockService {
             })
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
-                    FailedTx.destroy({where:{epoch:preEpoch}, transaction: dbTx}),
-                    FullBlock.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
-                    FullTransaction.destroy({where:{epoch: preEpoch}, transaction: dbTx}),
+                    FailedTx.destroy({where:{epoch:popEpochCondition}, transaction: dbTx}),
+                    FullBlock.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
+                    FullTransaction.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
                     AddressTransactionIndex.destroy({
-                        where:{epoch: preEpoch, addressId: [...addresses],},
+                        where:{epoch: popEpochCondition, addressId: [...addresses],},
                         transaction: dbTx}),
-                    StatApp.isEVM ? FullBlockExt.destroy({where:{epoch: preEpoch}, transaction: dbTx}) : undefined,
+                    StatApp.isEVM ? FullBlockExt.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}) : undefined,
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
-                    PosRegister.destroy({where: {epoch: preEpoch}, transaction: dbTx}),
+                    PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -384,7 +385,10 @@ export class FullBlockService {
         // build block template out of the transaction below.
         let pos = 0
         for (const block of blockList) {
-            block.epoch = minEpochNumber
+            if (block.epochNumber !== minEpochNumber) {
+                throw new Error(`epoch in block ${block.epoch} != ${minEpochNumber} wanted!`)
+            }
+            block.epoch = minEpochNumber;
             block.pivot = false;
             const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash) || {}
             let minerBase32 = block.miner;
@@ -660,6 +664,7 @@ alter table full_block add partition (partition p5 values less than (50000000));
 alter table full_block add partition (partition p6 values less than (60000000));
 alter table full_block add partition (partition p7 values less than (70000000));
 alter table full_block add partition (partition p8 values less than (80000000));
+alter table full_block add partition (partition p8 values less than (61467868));
 
 ALTER TABLE full_tx DROP PARTITION pm;
 alter table full_tx add partition (partition p4 values less than (40000000));
