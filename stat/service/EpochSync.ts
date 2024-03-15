@@ -367,10 +367,10 @@ export class EpochSync extends SyncBase{
             const key = Buffer.from(announce.key, 'base64').toString();
             const params = key.split('/');
             if(params[0] === 'token') {
-                this.parseAnnounce(epochNumber, params, announce, tokenMap);
+                await this.parseAnnounce(epochNumber, params, announce, tokenMap);
             }
             if(params[0] === 'contract') {
-                this.parseAnnounce(epochNumber, params, announce, contractMap);
+                await this.parseAnnounce(epochNumber, params, announce, contractMap);
             }
         }
 
@@ -398,9 +398,10 @@ export class EpochSync extends SyncBase{
         return {tokenArray, contractArray};
     }
 
-    private parseAnnounce(epochNumber, params, announce, map){
+    private async parseAnnounce(epochNumber, params, announce, map){
         const contract = params[1] === 'list' ? params[2] : params[1]
-        if(!this.checkAnnounce(epochNumber, announce['address'], announce['announcer'], contract)) {
+        const valid = await this.checkAnnounce(epochNumber, announce['address'], announce['announcer'], contract)
+        if(!valid) {
             return map
         }
 
@@ -447,9 +448,16 @@ export class EpochSync extends SyncBase{
             return false
         }
 
-        const creator = await Hex40Map.sequelize.query(`select hex from hex40 where id = (select \`from\`
-            from trace_create_contract where \`to\` = (select id from hex40 where hex = ?))`, {
-            type: QueryTypes.SELECT, replacements: [contract.substr(2)]
+        const creator = await Hex40Map.sequelize.query(`select hex
+        from hex40
+        where id = (
+        select fromId from full_tx
+        where hash = (
+        select CONCAT('0x', txHash) from trace_create_contract
+        where \`to\` = (select id from hex40 where hex = ?)
+        )
+        )`, {
+            type: QueryTypes.SELECT, replacements: [contract.substr(2)], logging: sql => console.log(`announce sql ${sql}`)
         }).then(array => {
             return array?.length ? array[0]['hex'] : undefined;
         });
