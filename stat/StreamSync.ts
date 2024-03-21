@@ -19,6 +19,7 @@ import {StatApp} from "./StatApp";
 import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
 import {CONST} from "./service/common/constant"
 import {doHeartBeat, KEY_TRANSFER_COUNT} from "./model/HeartBeat";
+import {TokenBalance} from "./model/Balance";
 
 const lodash = require('lodash');
 
@@ -175,6 +176,9 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                     console.log(` user ${addr} holds ${banList[i]} of ${contractHex40} cid ${contractId}`)
                 }
                 const t = BalanceWatcher.saveModel(model, addr, banList[i], false, 0)
+                console.log(`data in db is `, await TokenBalance.findOne({
+                    where: {contractId, addressId: addr }, raw: true
+                }))
                 tasks.push(t)
                 i++
             }

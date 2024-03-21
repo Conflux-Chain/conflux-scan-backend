@@ -399,6 +399,11 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
         const cfx = await initCfxSdk(cfg.conflux);
         await fix20holder(cfx);
         return
+    } else if (cfxUrl === 'testScientificNotation') {
+        const map = new Map<number, Set<number>>()
+        map.set(0, new Set<number>([0]))
+        const cfx = await initCfxSdk(cfg.conflux);
+        await handleTokenTransferWithContract(map, cfx)
     } else if (script) {
         // scripts is empty when calling from TokenMiscSync.ts
         redirectLog()
