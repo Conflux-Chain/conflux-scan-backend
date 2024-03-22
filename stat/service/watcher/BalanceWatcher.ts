@@ -44,7 +44,8 @@ export class BalanceWatcher{
         if (needScale) {
             ban = BalanceWatcher.drip2cfx(ban, fraction)
         }
-        await model.upsert({addressId:addrId, balance: ban}, {});
+        // `toString()` to avoid scientific notation, (1.23e20).
+        await model.upsert({addressId:addrId, balance: ban.toString()}, {});
     }
 
     public static drip2cfx(drip, fraction) {

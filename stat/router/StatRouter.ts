@@ -23,7 +23,7 @@ import {Epoch} from "../model/Epoch";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
 import {listNftOfAccountByContract} from "../service/NftService";
-import {BalanceService} from "../service/watcher/BalanceService";
+import {BalanceService, scientificToBigInt} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
     formatBalance, formatPercentage,
@@ -366,6 +366,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (token == null) {
             throw new Errors.ParameterError(`Token ${base32} not exists`);
         }
+        token.totalSupply = scientificToBigInt(token.totalSupply) as unknown as number
 
         const key = `top-token-holder_${limit}_${token.symbol}_${token.hex40id}`;
         let list = dbCache.get(key);

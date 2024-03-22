@@ -19,6 +19,7 @@ import {TokenQuery} from "../TokenQuery";
 import {Errors} from "../common/LogicError";
 import {formatPrice} from "../common/utils";
 import {patchSum1155amount} from "./Erc1155DataSync";
+import {ethers} from "ethers";
 
 export class BalanceService {
     private app: StatApp;
@@ -94,6 +95,7 @@ export class BalanceService {
             order:[[cast(col("balance"), 'Decimal(60)'),"desc"], ["updatedAt", "desc"], ["addressId", "asc"]],
             offset: skip, limit
         })
+        list.forEach(e=>e.balance = scientificToBigInt(e.balance))
         const elapsed = Date.now() - start;
         const hexList = await Hex40Map.findAll({where: {id: {[Op.in]:list.map(h=>h.addressId)}}})
         const map = new Map()
@@ -200,4 +202,15 @@ export class BalanceService {
         }
         return token.holder
     }
+}
+
+export function scientificToBigInt(v: string | number | undefined | null | bigint) : bigint {
+    if (! (typeof v === 'string')) {
+        return v as bigint; // cast for ts check
+    }
+    const [v0, e] = v.split('e')
+    if (!e) {
+        return v as unknown as bigint; // cast for ts check
+    }
+    return ethers.utils.parseUnits(v0, parseInt(e)).toBigInt()
 }
