@@ -75,7 +75,7 @@ async function copyAll(inf: InfluxDB) {
 class EpochMax {
     epoch: number; biz:string; createdAt: Date;
 }
-const measurement = 'sync_epoch_3';
+let measurement = 'sync_epoch_3';
 function connectInflux({host, database, username, password}) {
     const influx = new InfluxDB({
         host,        database, username, password,
@@ -126,9 +126,12 @@ async function setup() {
     // host = 'http://influxdb-luhhh4.conflux-chain.org.cn'
     const config = await init();
     console.log(`------init done-----`)
-    const {host, database, username, password} = config.influxDB
-    console.log(`influx db is ${host} ${database} user ${username}`)
-    const inf = connectInflux({host, database, username, password})
+    const {host, database, username, password, measurement: confMeasurement} = config.influxDB
+    if (confMeasurement) {
+        measurement = confMeasurement
+    }
+    console.log(`influx db is ${host} ${database} user ${username} measurement ${measurement}`)
+    const inf = connectInflux({host, database, username, password});
     // await test(inf);
     await copyAll(inf)
     setInterval(()=>{
