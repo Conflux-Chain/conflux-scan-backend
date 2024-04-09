@@ -24,6 +24,10 @@ export class ChainWatcher{
             console.log(`${__filename} subscription is null`)
             return
         }
+        subscription.on('error', async data => {
+            console.log(`error received`, data)
+            return this.watchPivotSwitch({cfxWsUrl})
+        })
         // @ts-ignore
         subscription.on('data', async data => {
             //
