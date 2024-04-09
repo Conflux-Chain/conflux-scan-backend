@@ -37,7 +37,11 @@ export function repeatHeartBeat(key: string) {
 }
 
 export async function doHeartBeat(key:string) {
-    const lastTime = lastTimeMap.get(key) || 0
+    if (!HeartBeatBean.sequelize) {
+        console.log(`${__filename} sequelize is absent`)
+        return
+    }
+    const lastTime = lastTimeMap.get(key) || 0;
     const now = Date.now();
     if (now - lastTime < minTimeSpan) {
         return
