@@ -11,15 +11,17 @@ export class ChainWatcher{
     private latest_state: number = 0;
     async watchPivotSwitch({cfxWsUrl}) {
         if (cfxWsUrl === '') {
+            console.log(`${__filename} cfx websocket not set`)
             return;
         }
         this.ws = await initCfxSdk({url: cfxWsUrl});
         // @ts-ignore
         const subscription = await this.ws.subscribeEpochs('latest_state').catch(err=>{
-            console.log(`subscribe epoch fail, from ${cfxWsUrl}:`, err)
+            console.log(`${__filename} subscribe epoch fail, from ${cfxWsUrl}:`, err)
             return null;
         })
         if (subscription === null) {
+            console.log(`${__filename} subscription is null`)
             return
         }
         // @ts-ignore
@@ -40,6 +42,9 @@ export class ChainWatcher{
                 PivotSwitch.create(bean).then()
                 bean.revertDepth > 1 && console.log(`${ fmtDtUTC(new Date()) } chain reorg of depth ${this.latest_epoch - epoch} (${this.latest_epoch} --> ${epoch})`);
                 bean.revertDepth > 3 && this.sendNotify(bean)
+            }
+            if (epoch % 100 == 0 || this.latest_epoch === 0) {
+                console.log(`${new Date().toISOString()} receive data, epoch `, epoch)
             }
             this.latest_epoch = epoch;
             this.latest_confirmed = await this.ws.getEpochNumber("latest_confirmed");
