@@ -83,6 +83,7 @@ export interface StatConfig{
     billingKey: string;
     billingApp: string;
     conflux: ConfluxOption; // chain rpc node
+    blockSyncRpc: ConfluxOption; // chain rpc node
     conflux2?: ConfluxOption; // get cross space info in eSpace, needless in coreSpace
     ether: EtherOption;
     cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
