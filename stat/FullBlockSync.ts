@@ -19,7 +19,7 @@ import {StatApp} from "./StatApp";
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
 
-    let cfx = await initCfxSdk(config.conflux);
+    let cfx = await initCfxSdk(config.blockSyncRpc);
     PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
 
     let seq = createDB(config.databaseRW)
