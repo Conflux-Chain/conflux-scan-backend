@@ -5,7 +5,7 @@ import {Epoch} from "../model/Epoch";
 import {StatApp} from "../StatApp";
 import {format} from "js-conflux-sdk";
 import {makeIdV} from "../model/HexMap";
-import {AddressTransfer} from "../model/AddrTransfer";
+import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 
 const lodash = require('lodash');
 const TOPICS_TO_TRACE = [[
@@ -21,27 +21,29 @@ export abstract class SyncBase{
     private forwardQueue: PreloadMap;
     private backwardQueue: PreloadMap;
 
-    protected debugInfos = [];
-    protected debugSwitch = true;
-    protected async dumpDebugInfos(epochNumber, data: SyncData) {
-        if(!this.debugSwitch) {
-            return
+    private metric0 = {
+        startEpoch: 0,
+        currentEpoch: 0,
+    };
+    private m0(step, startTime){
+        const runTimes = this.metric0[step];
+        const elapsedTime = this.metric0[`${step}_ms`];
+        const elapsedDelta = Date.now() - startTime;
+        this.metric0[step] = runTimes === undefined ? 1 : runTimes + 1;
+        this.metric0[`${step}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
+
+        const epochDelta = this.metric0.currentEpoch - this.metric0.startEpoch
+        if(epochDelta > 0 && epochDelta % 1000 === 0) {
+            console.log(`metrics0-----------------------------------`);
+            console.log(JSON.stringify(this.metric0));
+            console.log(`------------------------------------------`);
+            this.metric0 = {
+                startEpoch: 0,
+                currentEpoch: 0
+            };
         }
 
-        const preEpoch = await Epoch.findOne({where: {epoch: epochNumber -1 }, raw: true})
-        const epoch = await Epoch.findOne({where: {epoch: epochNumber}, raw: true})
-        const addressTransfers = await AddressTransfer.findAll({where:{epoch: epochNumber}, raw: true})
-
-        console.log(`curEpoch ${JSON.stringify(data.modelData?.epoch)}`)
-        console.log(`prevEpochDB ${JSON.stringify(preEpoch)}`)
-        console.log(`curEpochDB ${JSON.stringify(epoch)}`)
-
-        console.log(`curAddressTransfers ${JSON.stringify(data.modelData?.addrTransferArray)}`)
-        console.log(`curAddressTransfersDB ${JSON.stringify(addressTransfers)}`)
-
-        console.log(`debugInfos ${JSON.stringify(this.debugInfos)}`)
-
-        this.debugSwitch = false
+        return Date.now();
     }
 
     protected constructor(app: StatApp) {
@@ -79,13 +81,19 @@ export abstract class SyncBase{
 
     private async saveForward(epochNumber, { parentHash, modelData }: SyncData): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
+        let s = Date.now();
         const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
+        s = this.m0('EpochByNumber', s)
         const validate = await this.validate(epochNumber, modelData);
+        s = this.m0('Validate', s)
         if (prevEpoch && parentHash !== prevEpoch.pivotHash || !validate) {
             console.log(`saveForward reorg ${JSON.stringify({epochNumber, preEpochNumber, prevEpoch, validate, code: SyncCode.PIVOT_SWITCH})}`)
+            s = this.m0('PivotHash', s)
             return SyncCode.PIVOT_SWITCH;
         }
+        s = Date.now();
         await this.save(epochNumber, modelData);
+        s = this.m0('SaveBase', s)
         return SyncCode.SUCCESS;
     }
 
@@ -104,65 +112,58 @@ export abstract class SyncBase{
     private async syncForward(epochNumber) {
         let syncCode;
         let data: SyncData;
-        let step;
-        let errorMessage;
-        try{
-            try {
-                data = await this.getDataForwardWithPreload(epochNumber);
-                if(data.syncCode === SyncCode.RETRY) {
-                    console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
-                    await sleep(10_000);
-                    step = 1;
-                    return epochNumber;
-                }
-            } catch (e) {
-                console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
-                await sleep(10_000);
-                step = 2;
-                return epochNumber;
-            }
-            try {
-                syncCode = await this.saveForward(epochNumber, data);
-                step = 3;
-            } catch (e) {
-                console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
-                step = 4;
-                errorMessage = `${e}`;
-                if(errorMessage && errorMessage.includes('UniqueConstraintError')) {
-                    await this.dumpDebugInfos(epochNumber, data)
-                }
-                await sleep(10_000);
-                return epochNumber;
-            }
 
-            if(syncCode === SyncCode.SUCCESS){
-                step = 5;
-                epochNumber += 1;
-            }
-            if(syncCode === SyncCode.PIVOT_SWITCH){
-                step = 6;
-                await this.forwardQueue.clear();
-                step = 7;
-                epochNumber -= 1;
-                step = 8;
-                await this.delete(epochNumber, data.modelData).catch((e) => {
-                    step = 9;
-                    console.log(`[epoch=${epochNumber}]sync_forward del,error`, e);
-                    throw e;
-                });
-                step = 10;
-            }
-        } finally {
-            this.debugInfos.push({
-                epochNumber,
-                syncCode,
-                data,
-                step,
-            });
-            if(this.debugInfos?.length > 10) {
-                this.debugInfos?.shift();
-            }
+        if(this.metric0.startEpoch === 0) {
+            this.metric0.startEpoch = epochNumber
         }
+        let s = Date.now();
+        try {
+            data = await this.getDataForwardWithPreload(epochNumber);
+            s = this.m0('Preload', s)
+            if(data.syncCode === SyncCode.RETRY) {
+                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
+                s = Date.now();
+                await sleep(10);
+                s = this.m0('Sleep-1', s)
+                return epochNumber;
+            }
+        } catch (e) {
+            console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
+            s = Date.now();
+            await sleep(10);
+            s = this.m0('Sleep-2', s)
+            return epochNumber;
+        }
+        try {
+            s = Date.now();
+            syncCode = await this.saveForward(epochNumber, data);
+            s = this.m0('Save', s)
+        } catch (e) {
+            console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
+            s = Date.now();
+            await sleep(10);
+            s = this.m0('Sleep-3', s)
+            return epochNumber;
+        }
+
+        if(syncCode === SyncCode.SUCCESS){
+            epochNumber += 1;
+        }
+        if(syncCode === SyncCode.PIVOT_SWITCH){
+            s = Date.now();
+            await this.forwardQueue.clear();
+            s = this.m0('Clear', s)
+            epochNumber -= 1;
+            await this.delete(epochNumber, data.modelData).catch((e) => {
+                console.log(`[epoch=${epochNumber}]sync_forward del,error`, e);
+                throw e;
+            });
+            s = this.m0('Delete', s)
+        }
+        s = Date.now();
+        this.metric0.currentEpoch = epochNumber
+        s = this.m0('Dummy', s)
+
         return epochNumber;
     }
 
@@ -173,12 +174,12 @@ export abstract class SyncBase{
             data = await this.getDataBackwardWithPreload(epochNumber);
             if(data.syncCode === SyncCode.RETRY) {
                 console.log(`[epoch=${epochNumber}]sync_backward fetch,retry:${data.message}`);
-                await sleep(10_000);
+                await sleep(10);
                 return epochNumber;
             }
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_backward fetch,error:`, e);
-            await sleep(10_000);
+            await sleep(10);
             return epochNumber;
         }
 
@@ -186,7 +187,7 @@ export abstract class SyncBase{
             syncCode = await this.saveBackward(epochNumber, data);
         } catch (e) {
             console.error(`[epoch=${epochNumber}]sync_backward sync,error:`, e);
-            await sleep(10_000);
+            await sleep(10);
             return epochNumber;
         }
 
@@ -253,20 +254,20 @@ export abstract class SyncBase{
         const [latestState, blockHashArray, receipts] = await Promise.all([
             cfx.getEpochNumber('latest_state'),
             cfx.getBlocksByEpochNumber(epochNumber)
-                .catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];}),
+                /*.catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];})*/,
             cfx.getEpochReceipts(epochNumber)
-                .then(res=>{ if (epochNumber === 0) res = []; return res;})
-                .catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];}),
+                /*.then(res=>{ if (epochNumber === 0) res = []; return res;})
+                .catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];})*/,
         ]);
 
         if (latestState < epochNumber) {
-            await sleep(1_000);
+            await sleep(10);
             throw new Error(`[epoch=${epochNumber}]not ready, latestState=${latestState}`);
         }
         if (blockHashArray.length === 0) {
             throw new Error(`[epoch=${epochNumber}]no block`);
         }
-        if (receipts === null) {
+        if (epochNumber != 0 && receipts === null) {
             throw new Error(`[epoch=${epochNumber}]not ready, receipts is null`);
         }
         const blockArray = await batchFetchBlock(cfx,  blockHashArray);
@@ -310,6 +311,49 @@ export abstract class SyncBase{
     }
 
     //------------------------------- event log ------------------------------
+    public async decodeLogFromReceipts(epochNumber, receipts2d: TransactionReceipt[][], blockHashes:string[]) {
+        const {
+            app: { tokenTool },
+        } = this;
+
+        const groupedLogs = {
+            epochNumber,
+            announcementArray: [],
+            nameTagArray: [],
+            labelArray: [],
+        };
+
+        let blockIdx = -1;
+        for (let receiptsInBlock of receipts2d) {
+            blockIdx ++
+
+            for (let txReceipt of receiptsInBlock) {
+                if (txReceipt.outcomeStatus !== 0) {
+                    continue;
+                }
+
+                if (txReceipt.blockHash !== blockHashes[blockIdx]) {
+                    throw new Error(`tx receipt has mismatch block hash, epoch ${txReceipt.epochNumber
+                    }, ${txReceipt.blockHash
+                    } vs block hashes ${blockHashes[blockIdx]}`)
+                }
+
+                for (let log of txReceipt.logs) {
+                    let transfer;
+                    if ((transfer = tokenTool.decodeAnnouncePlus(log))) {
+                        groupedLogs.announcementArray.push(transfer)
+                    } else if ((transfer = tokenTool.decodeNameTagChanged(log))) {
+                        groupedLogs.nameTagArray.push(transfer)
+                    } else if ((transfer = tokenTool.decodeLabelChanged(log))) {
+                        groupedLogs.labelArray.push(transfer)
+                    }
+                }
+            }
+        }
+
+        return groupedLogs
+    }
+
     public async getLogsGrouped({epochNumber, epochTimestamp}) {
         const {
             app: { tokenTool },

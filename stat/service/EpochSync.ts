@@ -40,7 +40,6 @@ const FIELDS_CONTRACT = [...['hex40id', 'base32'], ...FIELDS_CONTRACT_REGISTER];
 
 const INTERNAL_ADMIN_CONTROL = '0x0888000000000000000000000000000000000000';
 const SELECTOR_DESTROY = '0x00f55d9d';
-const {abi: ABI_ADMIN_CONTROL} = require("./abi/AdminControl");
 const REGEX_CODE_EIP1167 = new RegExp(/^0x363d3d373d3d3d363d73[0-9a-f]{40}5af43d82803e903d91602b57fd5bf3$/);
 
 const POCKET_ARRAY = ['gas_payment', 'storage_collateral', 'sponsor_balance_for_gas', 'sponsor_balance_for_collateral',
@@ -78,6 +77,41 @@ export class EpochSync extends SyncBase{
     private NAME_TYPE_MAP;
     private readonly statSwitch
 
+    public metric = {
+        startEpoch: 0,
+        currentEpoch: 0,
+    };
+    private m(step, startTime){
+        const runTimes = this.metric[step];
+        const elapsedTime = this.metric[`${step}_ms`];
+        const elapsedDelta = Date.now() - startTime;
+        this.metric[step] = runTimes === undefined ? 1 : runTimes + 1;
+        this.metric[`${step}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
+
+        const epochDelta = this.metric.currentEpoch - this.metric.startEpoch
+        if(epochDelta > 0 && epochDelta % 1000 === 0) {
+            console.log(`metrics-----------------------------------`);
+            console.log(JSON.stringify(this.metric));
+            const keys = Object.keys(this.metric)
+            let timeS = 0
+            let cntrS = 0
+            for (const key of keys) {
+                if(key.endsWith("ms")) {
+                    timeS = timeS + this.metric[key]
+                    cntrS++
+                }
+            }
+            console.log(`save overall ------ ${timeS} ${cntrS}`);
+            console.log(`------------------------------------------`);
+            this.metric = {
+                startEpoch: 0,
+                currentEpoch: 0
+            };
+        }
+
+        return Date.now();
+    }
+
     constructor(app: StatApp | any) {
         super(app);
         this.app = app;
@@ -109,45 +143,73 @@ export class EpochSync extends SyncBase{
             app: { tokenTool },
         } = this;
 
+        if(this.metric.startEpoch === 0) {
+            this.metric.startEpoch = epochNumber
+        }
+        let s = Date.now();
         try{
             const epochData = await this.getEpochData(epochNumber);
+            s = this.m('EpochData', s)
             const {epoch, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts} = epochData;
             const epochTimestamp = epoch.timestamp;
 
             const minerBlockArray = await this.getMinerBlockArray(epochNumber, blockArray);
+            s = this.m('MinerBlock', s)
             const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
+            s = this.m('AdminDestroy', s)
 
-            const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});
+            /*const eventLogInfo = await this.getLogsGrouped({epochNumber, epochTimestamp});*/
+            const eventLogInfo = await this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray)
+            s = this.m('Logs', s)
             const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
+            s = this.m('Announce', s)
             const nameTagInfo = await this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray);
+            s = this.m('NameTag', s)
 
             const traceArray = await this.getTraceArray(epochNumber);
+            s = this.m('Trace', s)
             const createArray = await this.getTraceCreateArrayPlus(traceArray);
+            s = this.m('TraceCreate', s)
             const traceCreateArray = await this.getTraceCreateArrayDBPlus(createArray);
+            s = this.m('TraceCreateDB', s)
             const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
+            s = this.m('TraceCrossSpace', s)
             const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
+            s = this.m('TraceCrossSpaceDB', s)
 
             const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray);
+            s = this.m('Transfer', s)
             await this.statByTokenTransfer(epochNumber, epochTimestamp,{t20, t721, t1155})
+            s = this.m('statTokenTransfer', s)
             const t20Aggregated = aggregateTransfer(t20)
+            s = this.m('Aggregate', s)
             const tokenLogs = {
                 transfer20Array: t20Aggregated.filter(t => t.value && t.value > BigInt(0)),
                 transfer721Array: t721,
                 transfer1155Array: t1155.filter(t => t.value && t.value > BigInt(0)),
             };
             const tokenArray = await this.getTokensAutoDetected(tokenLogs);
+            s = this.m('TokensDetected', s)
 
             const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
+            s = this.m('TokenTransfer', s)
             const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
+            s = this.m('CFXTransfer', s)
             const txArray = await EpochSync.getTransactionArrayDB(blockArray, epochTimestamp);
+            s = this.m('Transaction', s)
             const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, tokenTransferArray,
                 cfxTransferArray, txArray);
+            s = this.m('AddrTransfer', s)
 
             const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
+            s = this.m('Nft', s)
             const nftTransferArray = await this.getNftTransferArray(epochNumber, tokenTransferArray);
+            s = this.m('NftTransfer', s)
             const addrNftTransferArray = await this.getAddrNftTransferArray(epochNumber,tokenTransferArray);
+            s = this.m('AddrNftTransfer', s)
 
             const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
+            this.m('Censor', s)
 
             return {
                 syncCode: SyncCode.SUCCESS,
@@ -164,44 +226,61 @@ export class EpochSync extends SyncBase{
     }
 
     async save(epochNumber, modelData) {
+        let s = Date.now()
+        let veryS = s
         const { tokenQuery } = this.app;
+        await this.updateCursor(modelData.epoch.timestamp)
+        s = this.m('UpdateCursor', s)
         await Epoch.sequelize.transaction(async (dbTx) => {
             EpochSync.SYNC_EPOCH && await Epoch.create(modelData.epoch, {transaction: dbTx});
+            s = this.m('Epoch-c', s)
             EpochSync.SYNC_BLOCK && await FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx});
+            s = this.m('MinerBlock-c', s)
             EpochSync.SYNC_ANNOUNCE && await EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx);
+            s = this.m('Announce-c', s)
             EpochSync.SYNC_TRACE && await TraceCreateContract.bulkCreate(modelData.traceCreateArray, {
                 updateOnDuplicate:["epochNumber","blockTime","txHash","traceIndex"],
                 transaction: dbTx
             });
+            s = this.m('Trace-c', s)
             EpochSync.SYNC_TRANSFER && await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx});
+            s = this.m('AddressTransfer-c', s)
             EpochSync.SYNC_DESTROY && await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
                 updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],
                 transaction: dbTx,
             });
+            s = this.m('ContractDestroy-c', s)
             EpochSync.SYNC_TRANSFERRED_NFT && await NftMeta.bulkCreate(modelData.transferredNftArray, {
                 updateOnDuplicate:["epochNumber"],
                 transaction: dbTx,
             });
+            s = this.m('NftMeta-c', s)
             EpochSync.SYNC_CENSOR_ITEM && await CensorItem.bulkCreate(modelData.censorItemArray, {
                 updateOnDuplicate:["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],
                 transaction: dbTx,
             });
+            s = this.m('CensorItem-c', s)
             EpochSync.SYNC_ADDR_NFT && await this.saveAddressNft(epochNumber, modelData, dbTx);
+            s = this.m('AddressNft-c', s)
             EpochSync.SYNC_NFT_TRANSFER && await NftTransfer.bulkCreate(modelData.nftTransferArray, {transaction: dbTx});
+            s = this.m('NftTransfer-c', s)
             EpochSync.SYNC_ADDR_NFT_TRANSFER && await AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray,
                 {transaction: dbTx});
+            s = this.m('AddressNftTransfer-c', s)
             const tokenArray = modelData.tokenArray;
             for(const token of tokenArray){
                 if(!EpochSync.SYNC_TOKEN_DETECT) break;
                 if(token?.name?.length > 64) token.name = token.name.substr(0, 64);
                 await Token.upsert(token);
             }
+            s = this.m('Token-c', s)
             const nameTagArray = modelData.nameTagInfo;
             for (const nameTag of nameTagArray) {
                 if(!EpochSync.SYNC_NAME_TAG) break;
                 console.log('epoch-sync.nameTag', nameTag);
                 await NameTag.upsert(nameTag);
             }
+            s = this.m('NameTag-c', s)
         });
 
         const addressArray = [
@@ -212,6 +291,7 @@ export class EpochSync extends SyncBase{
             if(!EpochSync.SYNC_TOKEN_AUDIT) break;
             await tokenQuery.audit({address}).catch(e => console.log(`epoch-sync.audit, address:${address}`, e));
         }
+        s = this.m('Audit-c', s)
 
         try{
             const {tokenArray} = modelData.announceInfo;
@@ -234,6 +314,7 @@ export class EpochSync extends SyncBase{
         } catch (e){
             console.log(`epoch-sync, createTokenIcon url fail`, e);
         }
+        s = this.m('Image-c', s)
 
         const traceCreateArray = modelData.traceCreateArray;
         for(const traceCreate of traceCreateArray){
@@ -248,6 +329,7 @@ export class EpochSync extends SyncBase{
             if(isEIP1167) continue;
             await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
         }
+        s = this.m('Verify-c', s)
 
         const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
         for(const traceCrossSpace of traceCrossSpaceArray){
@@ -261,8 +343,12 @@ export class EpochSync extends SyncBase{
                     .catch(() => undefined);
             }
         }
+        s = this.m('ESpaceHex-c', s)
 
         this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray)
+        veryS = this.m('Save-overall', veryS)
+        this.metric.currentEpoch = epochNumber
+        s = this.m('RealtimeStat-c', s)
 
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
@@ -1201,7 +1287,7 @@ export class EpochSync extends SyncBase{
             nftTypeMap[contractId] = !nftTypeMap[contractId] ? transfer.type : nftTypeMap[contractId];
         }
 
-        let cursor: number;
+        /*let cursor: number;
         async function nextCursor() {
             if(cursor === undefined) {
                 const start = Number(`${epochTimestamp.getTime().toString().substring(0, 10)}${''.padStart(6, '0')}`);
@@ -1211,7 +1297,7 @@ export class EpochSync extends SyncBase{
                 cursor = maxCursor + 1;
             }
             return cursor++;
-        }
+        }*/
 
         for (const k of Object.keys(nftChangeMap)) {
             const key = k.split('_');
@@ -1224,7 +1310,8 @@ export class EpochSync extends SyncBase{
             }
 
             const primaryKey = {addressId, contractId, tokenId};
-            const updatedCursor = await nextCursor();
+            /*const updatedCursor = await nextCursor();*/
+            const updatedCursor = ++ this.addrNftCursor
             if(pivotSwitch) {
                 await AddressNfts.update(
                     {'value': Sequelize.literal(`value - ${Number(value)}`), updatedAt: epochTimestamp, updatedCursor},
@@ -1248,6 +1335,26 @@ export class EpochSync extends SyncBase{
                 }
             }
         }
+    }
+
+    private addrNftCursor: number
+    private async updateCursor(epochTimestamp) {
+        const start = Number(`${epochTimestamp.getTime().toString().substring(0, 10)}${''.padStart(6, '0')}`)
+        const end = start + Number(`${'1'.padEnd(7, '0')}`)
+        const maxCursor: number = (
+            await AddressNfts.max('updatedCursor', {
+                    where: {
+                        [Op.and]: [
+                            {updatedCursor: {[Op.gte]: start}},
+                            {updatedCursor: {[Op.lt]: end}}
+                        ]
+                    },
+                }
+            )
+        ) || (
+            start - 1
+        );
+        this.addrNftCursor = maxCursor + 1
     }
 
     // ----------------------------- realtime stat ------------------------------
