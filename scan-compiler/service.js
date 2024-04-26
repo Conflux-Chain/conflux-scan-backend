@@ -83,7 +83,7 @@ class SolCompileService {
       settings: {
         optimizer: { enabled: Number.isInteger(optimizeRuns), runs: optimizeRuns },
         outputSelection: { '*': { '*': ['*'] } },
-        /*libraries: Object.keys(libraries).length ? { [fileName]: libraries } : undefined,*/
+        libraries: Object.keys(libraries).length ? { [fileName]: libraries } : undefined,
         evmVersion: evmVersion ? evmVersion : undefined,
       },
     };

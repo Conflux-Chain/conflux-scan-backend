@@ -134,6 +134,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = result || {};
     })
 
+    router.get('/token/sync', async (ctx)=>{
+        const {id} = ctx.request.query;
+        const r = await statApp.tokenQuery.sync({id});
+        console.log(`r ${JSON.stringify(r)}`)
+        ctx.body = r
+    })
+
     router.get('/tokens/detect', async (ctx)=>{
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
 

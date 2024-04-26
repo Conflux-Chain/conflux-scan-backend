@@ -338,7 +338,7 @@ export class ContractService { // TODO: extends AccountService
     if (verified?.verifyResult) {
       verify = lodash.defaults({ exactMatch: true, optimization: verified.optimizeFlag, runs: verified.optimizeRuns },
         lodash.pick(verified, ['name', 'compiler', 'version', 'license', 'constructorArgs', 'libraries', 'matchCode',
-        'similarMatch']));
+        'similarMatch', 'evmVersion']));
       verify = lodash.assign(verify, this.convertMatchInfo(verify.matchCode));
       if (lodash.includes(fields, 'abi')) {
         announceInfo.abi = verified.abi;
