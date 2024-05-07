@@ -70,7 +70,10 @@ export class Metrics {
             console.log(`InfluxDB is not configured, metrics won't work.`)
             return;
         }
-        const {host, database, username, password} = this.config.influxDB;
+        const {host, database, username, password, disable,} = this.config.influxDB;
+        if (disable) {
+            return;
+        }
         const dbConfig = {username, password, database, hosts: [{ host, port: 8086 }]};
 
         this.reporter = new InfluxMetricReporter({
