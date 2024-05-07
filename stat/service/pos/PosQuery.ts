@@ -13,6 +13,7 @@ import {Epoch} from "../../model/Epoch";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Errors} from "../common/LogicError";
 const lodash = require('lodash')
+const BigFixed = require('bigfixed');
 import {buildSqlLog, } from "../../../common/tool.js";
 import {StatApp} from "../../StatApp";
 import {loadCache, PATH_POS_INFO, resolveDockerPath, writeCache} from "../CacheService";
@@ -158,6 +159,38 @@ export class PosQuery {
             committeeInfo: map[identifier] || {votingPower: 0}
         }
     }
+    async listPosAccountWithCurrentCommitteeNew(query) {
+        const [page, {currentCommittee}] = await Promise.all([
+            this.listPosAccount(query),
+            this.cfx.pos.getCommittee().catch(err=>{
+                return {currentCommittee:{nodes:[]}}
+            }),
+        ])
+        const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
+        const tvp = currentCommittee.totalVotingPower
+        let index = (query?.order === 'desc') ? query.skip : (page.count - query.skip)
+        page.rows.forEach(row=>{
+            // `Rank` field, only when `query.orderBy` is `availableVotes`.
+            if(query?.orderBy === 'availableVotes') {
+                if(query?.order === 'desc') {
+                    row['rank'] = ++index
+                } else{
+                    row['rank'] = index--
+                }
+            }
+            // `Voting Power` field.
+            row['availableVotesInCfx'] = row.availableVotes * 1000
+            // `Active` field.
+            row['forceRetired'] = row['forceRetiredVotes']
+            row['forceRetiredVotes'] = undefined
+            // `Voting Share` field.
+            const ci: any = map[row.hex] || {votingPower: 0}
+            ci.totalVotingPower = tvp
+            ci.votingShare = BigFixed(ci.votingPower).div(BigFixed(tvp)).toNumber()
+            row['committeeInfo'] = ci
+        })
+        return page;
+    }
     async listPosAccountWithCurrentCommittee(query) {
         const [page, {currentCommittee}] = await Promise.all([
             this.listPosAccount(query),
@@ -171,7 +204,7 @@ export class PosQuery {
         })
         return page;
     }
-    async listPosAccount({sortBy = 'id', sort = 'DESC', skip = 0, limit = 10,
+    async listPosAccount({orderBy = 'id', order = 'desc', skip = 0, limit = 10,
                              groupByPowAddress=false}) {
         if (groupByPowAddress) {
             return Promise.all([
@@ -184,7 +217,7 @@ export class PosQuery {
                     ],
                     group: ['powBase32'],
                     offset: skip, limit, raw: true,
-                    order: [[fn('sum', col(sortBy)), sort]],
+                    order: [[fn('sum', col(orderBy)), order]],
                     // logging: console.log,
                 }),
                 PosAccount.count({col: 'powBase32',
@@ -197,7 +230,7 @@ export class PosQuery {
         return await PosAccount.findAndCountAll({
             where: {},
             offset: skip, limit, raw: true,
-            order: [[sortBy, sort]],
+            order: [[orderBy, order]],
             //logging: buildSqlLog('list pos account sql:'), benchmark: true
         })
     }
