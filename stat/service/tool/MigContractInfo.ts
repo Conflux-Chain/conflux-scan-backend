@@ -2,7 +2,7 @@ import {loadConfig} from "../../config/StatConfig";
 import {saveAbiInfo} from "../../model/ContractInfo";
 import { StatApp } from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
-import {ContractVerify} from "../../model/ContractVerify";
+import {ContractVerify, ContractVerify2} from "../../model/ContractVerify";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
@@ -585,230 +585,18 @@ Object.keys(CONST.LICENSE).forEach(k => {
     licenseMap[v.code] = k
 })
 
-async function syncVerifyFromPeer(peerUri, localAPIUri, debug = false, contractAddress) {
-    let traceArray
-    if(contractAddress) {
-        const hex = format.hexAddress(contractAddress)
-        const hexObj = await Hex40Map.findOne({where: {hex: hex.substr(2)} });
-        traceArray = await TraceCreateContract.findAll({attributes: ['id', 'to'], where: {to: hexObj.id}, raw: true, logging: console.log})
-    } else{
-        const lastTraceId = await KV.getNumber("KEY_SYNC_VERIFY_BY_PEER")
-        const options: any = { attributes: ['id', 'to'], order: [['id', 'asc']], raw: true, logging: console.log}
-        if(lastTraceId) {
-            options['where'] = {id: {[Op.gt]: lastTraceId}}
-        }
-        traceArray = await TraceCreateContract.findAll(options)
-    }
-    console.log(`traceArray ${traceArray?.length}`)
-
-    for(const trace of traceArray){
-        // raw data
-        const hexObj = await Hex40Map.findOne({where: {id: trace.to}})
-        const hex = `0x${hexObj.hex}`
-        const base32 =  format.address(hex, StatApp.networkId)
-        let cv
-        let except = 0
-        for (const uri of [peerUri, localAPIUri]) {
-            cv = await getRawVerify(uri, StatApp.isEVM ? hex : base32)
-            if(cv?.id) {
-                const verified = await ContractVerify.findOne({where: {base32, verifyResult: true}});
-                if (!verified) {
-                    cv.id = undefined
-                    await ContractVerify.create(cv)
-                }
-                except = 1
-                break
-            }
-        }
-        const verifies = await ContractVerify.findAll({attributes: ['id'], where: {base32, verifyResult: true}, order:[["id","asc"]]})
-        if(verifies?.length != except) {
-            console.log(`id ${trace.id} base32 ${base32} expect ${except} get ${verifies?.length} cv ${JSON.stringify(cv)}`)
-            break
-        }
-        console.log(`id ${trace.id} base32 ${base32} cv ${JSON.stringify(lodash.pick(cv, ['base32','name']))}`)
-        await KV.upsert({key: "KEY_SYNC_VERIFY_BY_PEER", value: `${trace.id}`})
-
-        /*// check destroy
-        const hexObj = await Hex40Map.findOne({where: {id: trace.to}})
-        const hex = `0x${hexObj.hex}`
-        const code = await cfx.getCode(hex)
-        if(code === '0x'){
-            await KV.upsert({key: "KEY_SYNC_VERIFY_BY_PEER", value: `${trace.id}`})
-            continue
-        }
-
-        // get local verify records
-        const base32 =  format.address(hex, StatApp.networkId)
-        const items = await ContractVerify.findAll({
-            attributes: ['id'], where: {base32, verifyResult: true}, order:[["id","asc"]]})
-
-        // not verify
-        let expectVerified = 1
-        let wait = false
-        if(!items.length) {
-
-            // verify mini proxy first
-            const isEIP1167 = await epochSync.verifyMinimalProxy({address: hex})
-            if(isEIP1167){
-                await KV.upsert({key: "KEY_SYNC_VERIFY_BY_PEER", value: `${trace.id}`})
-                continue
-            }
-
-            // fetch verify info from peer
-            let peerVerify
-            try{
-                peerVerify = await getVerify(peerUri, hex)
-            }catch (e){
-                const err = `${e.message}`
-                if(err.includes('Aborted')) {
-                    continue
-                }
-                console.log(`Fail to get verify from peer, id ${trace.id}`, e)
-                break
-            }
-
-            // submit verify req if peer verify result is true
-            if(peerVerify.verifyResult) {
-                let verifyUrl = `${localAPIUri}/contract/verifysourcecode`
-                if (StatApp.isEVM) {
-                    lodash.assign(peerVerify.submitReq, {module: 'contract', action: 'verifysourcecode'})
-                    verifyUrl = `${localAPIUri}/api`
-                }
-                let resp
-                try{
-                    debug && console.log(`debug ------ req ${JSON.stringify(lodash.omit(peerVerify.submitReq, ['sourceCode']))}`)
-                    resp = await superagent.post(verifyUrl).set('Content-Type', 'application/x-www-form-urlencoded').send(peerVerify.submitReq).timeout(60 * 1000)
-                    debug && console.log(`debug ------ resp ${JSON.stringify(lodash.get(resp, ['body','data']))}`)
-                }catch (e){
-                    const err = `${e.message}`
-                    if(err.includes('Aborted')) {
-                        continue
-                    }
-                    console.log(`Fail to submit verify req, id ${trace.id}`, e)
-                    break
-                }
-                if(resp?.status !== 200){
-                    console.log(`Fail to submit verify req, id ${trace.id} status ${resp?.status}`)
-                    break
-                }
-                wait = true
-            } else{
-                expectVerified = 0
-            }
-
-        // verified
-        } else{
-            if(items.length > 1) {
-                const ids = items.map(item => item.id)
-                ids.shift()
-                await ContractVerify.destroy({where: {id: {[Op.in]: ids}}})
-            }
-        }
-
-        // sleep to wait verify result
-        const maxWaitTimes= wait ? 30 : 1
-        let waitTimes = 0
-        let verifies
-        do{
-            wait && (await sleep(1_000))
-            verifies = await ContractVerify.findAll({attributes: ['id'], where: {base32, verifyResult: true}, order:[["id","asc"]]})
-        } while(waitTimes++ < maxWaitTimes && verifies?.length !== expectVerified)
-
-        // check verify result
-        if(verifies.length !== expectVerified) {
-            console.log(`Fail to check verified records, id ${trace.id} exp ${expectVerified} get ${verifies.length}`)
-            break
-        }
-
-        // save trace create id into table config
-        console.log(`Success to sync verify from peer, id ${trace.id} exp ${expectVerified} get ${verifies.length}`)
-        if(contractAddress) { // not update trace create id when specify contract address
-            break
-        } else{
-            await KV.upsert({key: "KEY_SYNC_VERIFY_BY_PEER", value: `${trace.id}`})
-        }*/
-    }
-}
-
-async function getRawVerify(uri, address) {
-    let result
-
-    while (true){
-        try{
-            const resp = await superagent.get(`${uri}/stat/contract/by-address?address=${address}`).timeout({response: 30_000, deadline: 30_000})
-            const data = StatApp.isEVM ? lodash.get(resp, ['body', 'result']) : lodash.get(resp, ['body', 'data']) // core space body: {"code":0,"message":"","data":{"code":429,"message":"Too many requests, path /stat/contract/by-address. Allow 10/s"}}
-            const code = StatApp.isEVM ? (data?.status) : (data?.code)
-            if(code && Number(code) === 429) {
-                await sleep(500)
-                continue
-            }
-            result = data
-        }catch (e){
-            const err = `${e.message}`
-            if(err.includes('Aborted')) {
-                continue
-            }
-            throw e
-        }
-        break
-    }
-
-    return result
-}
-
-// uri: https://www-stage.confluxscan.io
-// contract: cfx:ace5vf005j10u3xs1ke53ea6jyztazzkz2j5wadumv
-async function getVerify(uri, contractAddr, debug = false) {
-    const resp = await superagent.get(`${uri}/v1/contract/${contractAddr}?fields=sourceCode`).timeout({response: 3_000, deadline: 3_000})
-
-    const data = lodash.get(resp, ['body','data'])
-
-    const result = {verifyResult: data?.verify?.exactMatch}
-
-    if(result.verifyResult) {
-        const submitReq = {
-            contractaddress: format.hexAddress(data.address),
-            sourceCode: data.sourceCode,
-            codeformat: data.verify.compiler,
-            contractname: data.verify.name,
-            compilerversion: data.verify.version,
-            optimizationUsed: data.verify.optimization,
-            runs: data.verify.runs,
-            constructorArguements: data.verify.constructorArgs,
-            evmversion: data.verify.evmVersion,
-            licenseType: licenseMap[data.verify.license],
-        }
-        let index = 1
-        Array.isArray(data.verify.libraries) && data.verify.libraries.forEach(lib => {
-            submitReq[`libraryname${index}`] = lib.name
-            submitReq[`libraryaddress${index++}`] = format.hexAddress(lib.address)
-        })
-        result['submitReq'] = submitReq
-    }
-
-    debug && console.log(`result ------\n ${JSON.stringify(result)} \n`)
-
-    return result
-}
-
 // uri
 // coreSpace mainNet https://www-stage.confluxscan.io
 //           testNet https://testnet-stage.confluxscan.io
 // evmSpace  mainNet https://evm-stage.confluxscan.io
 //           testNet https://evmtestnet-stage.confluxscan.io
+const KEY_SYNC_TOKEN = "KEY_SYNC_TOKEN_BY_PEER"
 async function syncTokenFromPeer(uri, max) {
-    // debug
-    let ctrGet = 0
-    let ctrToken = 0
-    let ctrCreateToken = 0
-    let ctrCreateAudit = 0
-
     while(true) {
-        let id = await KV.getNumber("KEY_SYNC_TOKEN_BY_PEER", 0)
+        let id = await KV.getNumber(KEY_SYNC_TOKEN, 0)
+
         const r = await httpGet(`${uri}/stat/token/sync?id=${++id}`)
-        ctrGet ++
         if(r?.token) {
-            ctrToken++
             const t = r.token
             let hex = await Hex40Map.findOne({where: {hex: format.hexAddress(t.base32).substr(2)}})
             if(!hex) {
@@ -821,28 +609,47 @@ async function syncTokenFromPeer(uri, max) {
             t.icon = t.icon ? Buffer.from(t.icon).toString() : undefined
             const r1 = await Token2.create(t as Token2)
 
-
-            // debug
-            console.log(`r1 ${JSON.stringify(r1?.id)}`)
-            ctrCreateToken++
-
-
             if(r?.audit) {
                 const a = r.audit
                 a.id = undefined
                 a.hex40id = hex.id
                 await TokenSecurityAudit2.create(a as TokenSecurityAudit2)
-                ctrCreateAudit++
             }
             console.log(`Success sync ${id} ${t.base32} ${t.name} ${t.symbol}`)
-        } /*else {
-            console.log(`r --- ${id} \n ${JSON.stringify(r)}`)
-            break
-        }*/
+        }
 
-        await KV.upsert({key: "KEY_SYNC_TOKEN_BY_PEER", value: `${id}`})
+        await KV.upsert({key: KEY_SYNC_TOKEN, value: `${id}`})
         if(id >= max) {
-            console.log(`Done ctrGet ${ctrGet} ctrToken ${ctrToken} ctrCreateToken ${ctrCreateToken} ctrCreateAudit ${ctrCreateAudit} `)
+            console.log(`Done`)
+            break
+        }
+    }
+}
+
+// uri
+// coreSpace mainNet https://www-stage.confluxscan.io
+//           testNet https://testnet-stage.confluxscan.io
+// evmSpace  mainNet https://evm-stage.confluxscan.io
+//           testNet https://evmtestnet-stage.confluxscan.io
+const KEY_SYNC_VERIFY = "KEY_SYNC_VERIFY_BY_PEER"
+async function syncVerifyFromPeer(uri: string, max) {
+    const key = uri.endsWith('.io') ? `${KEY_SYNC_VERIFY}_HK` : `${KEY_SYNC_VERIFY}_BJ`
+    while(true) {
+        let id = await KV.getNumber(key, 0)
+
+        const v = await httpGet(`${uri}/stat/verify/sync?id=${++id}`)
+        if(v?.verifyResult) {
+            const cv = await ContractVerify2.findOne({where:{base32: v.base32}})
+            if(!cv) {
+                v.id = undefined
+                const r = await ContractVerify2.create(v as ContractVerify2)
+                console.log(`Success sync ${id} ${r.base32} ${r.name}`)
+            }
+        }
+
+        await KV.upsert({key: key, value: `${id}`})
+        if(id >= max) {
+            console.log(`Done`)
             break
         }
     }
@@ -856,7 +663,7 @@ async function httpGet(uri) {
             const resp = await superagent.get(uri).timeout({response: 30_000, deadline: 30_000})
             const body = lodash.get(resp, ['body'])
             if(!Object.keys(body).length) {
-                console.log(`Fail http get! null ${uri}`)
+                console.log(`Fail http get! null ${uri} http status ${resp.status}`)
                 break
             }
 
@@ -933,10 +740,10 @@ async function run() {
         await statNft(base32)
     }
     if(type === 21) {
-        await syncVerifyFromPeer(peerUri, localAPIUri, debug, contractAddress)
+        await syncTokenFromPeer(peerUri, max)
     }
     if(type === 22) {
-        await syncTokenFromPeer(peerUri, max)
+        await syncVerifyFromPeer(peerUri, max)
     }
 }
 const args = process.argv.slice(2)
@@ -958,18 +765,7 @@ if(type === 9) {
     amount = args[2];
 }
 
-// node script.js 1029 21 https://www-stage.confluxscan.io https://api-stage.confluxscan.net cfx:acdk6u4928dchdwchm12e7m5yg37czwkjeu7u10snp
-if(type === 21) {
-    peerUri = args[2]
-    localAPIUri = args[3]
-    if(args[4]) {
-        debug = args[4] === 'true'
-    }
-    if(args[5]) {
-        contractAddress = args[5]
-    }
-}
-if(type === 22) {
+if(type === 21 || type === 22) {
     peerUri = args[2]
     max = Number(args[3]);
 }

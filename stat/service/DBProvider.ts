@@ -41,7 +41,7 @@ import {DailyContractCreate} from "../model/DailyContractCreate";
 import {DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {DailyContractRegister} from "../model/DailyContractRegister";
-import {ContractVerify, ProxyVerify} from "../model/ContractVerify";
+import {ContractVerify, ContractVerify2, ProxyVerify} from "../model/ContractVerify";
 import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {TokenSecurityAudit, TokenSecurityAudit2} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
@@ -209,6 +209,7 @@ export async function initPartialModel(sequelize) {
     Epoch.register(sequelize);
     EpochNftTransfer.register(sequelize);
     ContractVerify.register(sequelize);
+    ContractVerify2.register(sequelize);
     ProxyVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
     CfxBalance.register(sequelize);

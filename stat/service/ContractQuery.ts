@@ -34,6 +34,10 @@ export class ContractQuery {
         this.app = app;
     }
 
+    public async sync({id}) {
+        return ContractVerify.findOne({where: {id}});
+    }
+
     public async count({name}) {
         return Contract.count({where: {name}});
     }

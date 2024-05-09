@@ -549,9 +549,9 @@ export class EpochSync extends SyncBase{
         }).then(array => {
             return array?.length ? array[0]['hex'] : undefined;
         });
-        const announcerAddr = announcer.substr(2)
-        if(creator !== announcerAddr) {
-            console.log(`checkAnnounce epoch ${epochNumber} announcer ${announcerAddr} not match with creator ${creator}`)
+        const hexAnnouncer = format.hexAddress(announcer).substr(2)
+        if(hexAnnouncer !== creator) {
+            console.log(`checkAnnounce epoch ${epochNumber} announcer ${hexAnnouncer} not match with creator ${creator}`)
             return false
         }
 
@@ -697,8 +697,9 @@ export class EpochSync extends SyncBase{
     }
 
     private checkAddrMeta(epochNumber, addrMeta) {
-        if(addrMeta !== EpochSync.CONTRACT_ADDRESS_METADATA) {
-            console.log(`checkAddrMeta epoch ${epochNumber} addrMetadata ${addrMeta} not match with config ${EpochSync.CONTRACT_ADDRESS_METADATA}`)
+        const hexAddrMeta = format.hexAddress(addrMeta)
+        if(hexAddrMeta !== EpochSync.CONTRACT_ADDRESS_METADATA) {
+            console.log(`checkAddrMeta epoch ${epochNumber} addrMetadata ${hexAddrMeta} not match with config ${EpochSync.CONTRACT_ADDRESS_METADATA}`)
             return false
         }
         return true
