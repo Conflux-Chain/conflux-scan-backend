@@ -454,7 +454,7 @@ export class TxnRowMark extends Model<ITxnRowMark> implements ITxnRowMark {
         },{
             sequelize: seq,
             timestamps: false,
-            tableName: 'full_tx_row_mark',
+            tableName: 'full_tx_row_mark_2',
             indexes:[
                 {name: 'idx_time', fields:[{name: 'createdAt', order: 'DESC'}]}
             ]
@@ -507,7 +507,7 @@ export async function pagingFullTx(skip:number) : Promise<TxPage> {
     return {id: nearestOne.id, epoch: nearestOne.epoch, blockPosition: nearestOne.blockPosition,
         txPosition: nearestOne.txPosition, skip: remainSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
 }
-export async function markTxPosition(count:number=1, maxEpoch:number = Infinity) {
+export async function markTxPosition(count:number=BLOCK_PAGE_MARK_SIZE, maxEpoch:number = Infinity) {
     let maxOne:ITxnRowMark = await TxnRowMark.findOne({order:[["id","desc"]], limit: 1})
     if (maxOne === null) {
         maxOne = {id:0, epoch: -1, blockPosition: -1, txPosition: -1}
@@ -560,7 +560,7 @@ export class BlockRowMark extends Model<IBlockRowMark> implements IBlockRowMark 
         },{
             sequelize: seq,
             timestamps: false,
-            tableName: 'block_row_mark',
+            tableName: 'block_row_mark_2',
             indexes:[
             ]
         })
@@ -677,7 +677,7 @@ export async function pagingFullBlock(skip:number, logger: any) : Promise<BlockP
     };
 }
 
-export async function markBlockPosition(count:number=1, maxEpoch:number=Infinity) {
+export async function markBlockPosition(count:number=BLOCK_PAGE_MARK_SIZE, maxEpoch:number=Infinity) {
     let maxOne:IBlockRowMark = await BlockRowMark.findOne({order:[["id","desc"]], limit: 1})
     if (maxOne === null) {
        maxOne = {id:0, epoch: -1, position: -1}
