@@ -454,7 +454,7 @@ export class TxnRowMark extends Model<ITxnRowMark> implements ITxnRowMark {
         },{
             sequelize: seq,
             timestamps: false,
-            tableName: 'full_tx_row_mark_2',
+            tableName: 'full_tx_row_mark',
             indexes:[
                 {name: 'idx_time', fields:[{name: 'createdAt', order: 'DESC'}]}
             ]
@@ -560,7 +560,7 @@ export class BlockRowMark extends Model<IBlockRowMark> implements IBlockRowMark 
         },{
             sequelize: seq,
             timestamps: false,
-            tableName: 'block_row_mark_2',
+            tableName: 'block_row_mark',
             indexes:[
             ]
         })
