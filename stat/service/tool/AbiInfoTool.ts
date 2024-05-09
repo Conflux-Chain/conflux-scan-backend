@@ -2,7 +2,8 @@ import {init} from "./FixDailyTokenStat";
 import {AbiInfo} from "../../model/ContractInfo";
 const superagent = require('superagent')
 async function run() {
-    let host = 'https://testnet.confluxscan.io'
+    const [,,host_] = process.argv
+    let host = host_ || 'https://testnet.confluxscan.io'
     let skip = 0
     do {
         const res = await superagent.get(`${host}/stat/devops/view-table?t=abi_info&skipStr=${skip}`)
