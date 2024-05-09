@@ -13,7 +13,7 @@ import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {CfxBalance, createTokenBalanceTable, NFTBalance,} from "../model/Balance";
-import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
+import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token, Token2} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {
     BakCfxTransfer,
@@ -41,9 +41,9 @@ import {DailyContractCreate} from "../model/DailyContractCreate";
 import {DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {DailyContractRegister} from "../model/DailyContractRegister";
-import {ContractVerify, ProxyVerify} from "../model/ContractVerify";
+import {ContractVerify, ContractVerify2, ProxyVerify} from "../model/ContractVerify";
 import {TokenAutoDetect} from "../model/TokenAutoDetect";
-import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
+import {TokenSecurityAudit, TokenSecurityAudit2} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
@@ -198,6 +198,8 @@ export async function initPartialModel(sequelize) {
     TraceCreateContract.register(sequelize)
     ContractDestroy.register(sequelize)
     Token.register(sequelize);
+    Token2.register(sequelize);
+    TokenSecurityAudit2.register(sequelize);
     NftMint.register(sequelize)
     NftMetaOld.register(sequelize);
     NftMetaFts.register(sequelize);
@@ -207,6 +209,7 @@ export async function initPartialModel(sequelize) {
     Epoch.register(sequelize);
     EpochNftTransfer.register(sequelize);
     ContractVerify.register(sequelize);
+    ContractVerify2.register(sequelize);
     ProxyVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
     CfxBalance.register(sequelize);

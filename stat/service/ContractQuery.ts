@@ -34,6 +34,10 @@ export class ContractQuery {
         this.app = app;
     }
 
+    public async sync({id}) {
+        return ContractVerify.findOne({where: {id}});
+    }
+
     public async count({name}) {
         return Contract.count({where: {name}});
     }
@@ -792,6 +796,16 @@ export class ContractQuery {
             evmversion: verify.evmVersion,
             licenseType: lodash.findKey(CONST.LICENSE, (v) => v.code === verify.license),
         };
+
+        if(verify.libraries?.length > 2) {
+            const libs = JSON.parse(verify.libraries)
+            lodash.forEach(Object.keys(libs), (libName: string, index: number) => {
+                const idx = ++index // The index starts at 1
+                verifyRequest[`libraryname${idx}`] = libName
+                verifyRequest[`libraryaddress${idx}`] = libs[libName]
+            });
+        }
+
         let verifyUrl = `${config.syncAcrossRegionHost}/contract/verifysourcecode`;
         if (StatApp.isEVM) {
             lodash.assign(verifyRequest, {module: 'contract', action: 'verifysourcecode'});

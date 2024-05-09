@@ -38,6 +38,15 @@ export class TokenQuery {
         }
     }
 
+    public async sync({id}) {
+        const t = await Token.findOne({where: {id}});
+        if(t) {
+            const a = await TokenSecurityAudit.findOne({where:{base32: t.base32}})
+            return {token: t, audit: a}
+        }
+        return {}
+    }
+
     public async query({address}) {
         const response = await this.list({addressArray: [address]});
         const token = (response.list)[0] || {};

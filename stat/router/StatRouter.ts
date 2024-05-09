@@ -134,6 +134,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = result || {};
     })
 
+    /*router.get('/token/sync', async (ctx)=>{
+        const {id} = ctx.request.query
+        ctx.body = await statApp.tokenQuery.sync({id})
+    })*/
+
     router.get('/tokens/detect', async (ctx)=>{
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
 
@@ -158,6 +163,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const total = await statApp.contractQuery.count({name});
         ctx.body = {name, registered: total} || {};
     })
+
+    /*router.get('/verify/sync', async (ctx)=>{
+        const {id} = ctx.request.query
+        ctx.body = await statApp.contractQuery.sync({id})
+    })*/
 
     router.get('/tokens/list', async (ctx)=>{
         mustBeEnumParamIfPresent(ctx.request.query, 'transferType', ['ERC20', 'ERC721', 'ERC1155']);

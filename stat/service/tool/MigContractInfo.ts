@@ -2,23 +2,24 @@ import {loadConfig} from "../../config/StatConfig";
 import {saveAbiInfo} from "../../model/ContractInfo";
 import { StatApp } from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
-import {ContractVerify} from "../../model/ContractVerify";
+import {ContractVerify, ContractVerify2} from "../../model/ContractVerify";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {Hex40Map} from "../../model/HexMap";
+import {Hex40Map, makeId} from "../../model/HexMap";
 import {literal, Op, QueryTypes} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
 import {AddressNft, AddressNfts} from "../../model/AddrNft";
-import {KV} from "../../model/KV";
-import {Erc1155Data, NftMint, Token} from "../../model/Token";
+import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../../model/KV";
+import {Erc1155Data, NftMint, Token, Token2} from "../../model/Token";
 import {sleep} from "./ProcessTool";
 import {MetaStatus, NftMeta} from "../nftchecker/NftMetaStorage";
 
 const fs = require('fs');
 const lodash = require('lodash');
 const { format, sign } = require('js-conflux-sdk');
+const superagent = require('superagent');
 
 let type: number;
 let cfx:Conflux;
@@ -28,6 +29,11 @@ let epochSync;
 let times;
 let rows;
 let amount;
+let peerUri
+let localAPIUri
+let debug
+let contractAddress
+let max
 
 async function init() {
     const config = loadConfig('Prod')
@@ -40,6 +46,8 @@ async function init() {
 
     contractQuery = new ContractQuery({cfx});
     epochSync = new EpochSync({cfx});
+
+    StatApp.isEVM = await KV.getSwitch(IS_EVM2);
 }
 
 async function parseVerified(base32) {
@@ -567,6 +575,125 @@ async function searchBeaconContract() {
     }
 }
 
+import {CONST} from "../common/constant"
+import {u} from "@web3identity/address-encoder/lib/groestl-hash-js/op";
+import zlib from "zlib";
+import {TokenSecurityAudit, TokenSecurityAudit2} from "../../model/TokenSecurityAudit";
+const licenseMap = {}
+Object.keys(CONST.LICENSE).forEach(k => {
+    const v = CONST.LICENSE[k]
+    licenseMap[v.code] = k
+})
+
+// uri
+// coreSpace mainNet https://www-stage.confluxscan.io
+//           testNet https://testnet-stage.confluxscan.io
+// evmSpace  mainNet https://evm-stage.confluxscan.io
+//           testNet https://evmtestnet-stage.confluxscan.io
+const KEY_SYNC_TOKEN = "KEY_SYNC_TOKEN_BY_PEER"
+async function syncTokenFromPeer(uri, max) {
+    while(true) {
+        let id = await KV.getNumber(KEY_SYNC_TOKEN, 0)
+
+        const r = await httpGet(`${uri}/stat/token/sync?id=${++id}`)
+        if(r?.token) {
+            const t = r.token
+            let hex = await Hex40Map.findOne({where: {hex: format.hexAddress(t.base32).substr(2)}})
+            if(!hex) {
+                hex = {} as Hex40Map
+                hex.id = (await makeId(format.hexAddress(t.base32))).id;
+            }
+
+            t.id = undefined
+            t.hex40id = hex.id
+            t.icon = t.icon ? Buffer.from(t.icon).toString() : undefined
+            const r1 = await Token2.create(t as Token2)
+
+            if(r?.audit) {
+                const a = r.audit
+                a.id = undefined
+                a.hex40id = hex.id
+                await TokenSecurityAudit2.create(a as TokenSecurityAudit2)
+            }
+            console.log(`Success sync ${id} ${t.base32} ${t.name} ${t.symbol}`)
+        }
+
+        await KV.upsert({key: KEY_SYNC_TOKEN, value: `${id}`})
+        if(id >= max) {
+            console.log(`Done`)
+            break
+        }
+    }
+}
+
+// uri
+// coreSpace mainNet https://www-stage.confluxscan.io
+//           testNet https://testnet-stage.confluxscan.io
+// evmSpace  mainNet https://evm-stage.confluxscan.io
+//           testNet https://evmtestnet-stage.confluxscan.io
+const KEY_SYNC_VERIFY = "KEY_SYNC_VERIFY_BY_PEER"
+async function syncVerifyFromPeer(uri: string, max) {
+    const key = uri.endsWith('.io') ? `${KEY_SYNC_VERIFY}_HK` : `${KEY_SYNC_VERIFY}_BJ`
+    while(true) {
+        let id = await KV.getNumber(key, 0)
+
+        const v = await httpGet(`${uri}/stat/verify/sync?id=${++id}`)
+        if(v?.verifyResult) {
+            const cv = await ContractVerify2.findOne({where:{base32: v.base32}})
+            if(!cv) {
+                v.id = undefined
+                const r = await ContractVerify2.create(v as ContractVerify2)
+                console.log(`Success sync ${id} ${r.base32} ${r.name}`)
+            }
+        }
+
+        await KV.upsert({key: key, value: `${id}`})
+        if(id >= max) {
+            console.log(`Done`)
+            break
+        }
+    }
+}
+
+async function httpGet(uri) {
+    let result
+
+    while (true){
+        try{
+            const resp = await superagent.get(uri).timeout({response: 30_000, deadline: 30_000})
+            const body = lodash.get(resp, ['body'])
+            if(!Object.keys(body).length) {
+                console.log(`Fail http get! null ${uri} http status ${resp.status}`)
+                break
+            }
+
+            const success = StatApp.isEVM ? (body?.status === '1') : (body?.code === 0)
+            if(!success) {
+                console.log(`Fail http get! ${uri}`)
+                break
+            }
+
+            const data = StatApp.isEVM ? lodash.get(resp, ['body', 'result']) : lodash.get(resp, ['body', 'data']) // core space body: {"code":0,"message":"","data":{"code":429,"message":"Too many requests, path /stat/contract/by-address. Allow 10/s"}}
+            const code = data?.code
+            if(code && Number(code) === 429) {
+                await sleep(500)
+                continue
+            }
+
+            result = data
+        }catch (e){
+            const err = `${e.message}`
+            if(err.includes('Aborted')) {
+                continue
+            }
+            throw e
+        }
+        break
+    }
+
+    return result
+}
+
 async function run() {
     await init();
     if(type === 1){
@@ -612,20 +739,35 @@ async function run() {
     if(type === 20) {
         await statNft(base32)
     }
+    if(type === 21) {
+        await syncTokenFromPeer(peerUri, max)
+    }
+    if(type === 22) {
+        await syncVerifyFromPeer(peerUri, max)
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
 type = Number(args[1]);
+
 if(type === 6 || type === 20) {
  base32 = args[2];
 }
+
 if(type === 7 || type === 8 || type === 11 || type === 12) {
     times = Number(args[2]);
     if(args[3]) {
         rows = Number(args[3]);
     }
 }
+
 if(type === 9) {
     amount = args[2];
 }
+
+if(type === 21 || type === 22) {
+    peerUri = args[2]
+    max = Number(args[3]);
+}
+
 run().then();

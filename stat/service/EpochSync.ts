@@ -27,6 +27,7 @@ import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
 import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KV} from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
+import {hexAddress} from "js-conflux-sdk/dist/types/util/format";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -529,7 +530,8 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkAnnounce(epochNumber, announcement, announcer, contract) {
-        if(announcement !== EpochSync.CONTRACT_ANNOUNCEMENT) {
+        const hexAnnouncement = format.hexAddress(announcement)
+        if(hexAnnouncement !== EpochSync.CONTRACT_ANNOUNCEMENT) {
             console.log(`checkAnnounce epoch ${epochNumber} announcement ${announcement} not match with config ${EpochSync.CONTRACT_ANNOUNCEMENT}`)
             return false
         }
@@ -547,9 +549,9 @@ export class EpochSync extends SyncBase{
         }).then(array => {
             return array?.length ? array[0]['hex'] : undefined;
         });
-        const announcerAddr = announcer.substr(2)
-        if(creator !== announcerAddr) {
-            console.log(`checkAnnounce epoch ${epochNumber} announcer ${announcerAddr} not match with creator ${creator}`)
+        const hexAnnouncer = format.hexAddress(announcer).substr(2)
+        if(hexAnnouncer !== creator) {
+            console.log(`checkAnnounce epoch ${epochNumber} announcer ${hexAnnouncer} not match with creator ${creator}`)
             return false
         }
 
@@ -695,8 +697,9 @@ export class EpochSync extends SyncBase{
     }
 
     private checkAddrMeta(epochNumber, addrMeta) {
-        if(addrMeta !== EpochSync.CONTRACT_ADDRESS_METADATA) {
-            console.log(`checkAddrMeta epoch ${epochNumber} addrMetadata ${addrMeta} not match with config ${EpochSync.CONTRACT_ADDRESS_METADATA}`)
+        const hexAddrMeta = format.hexAddress(addrMeta)
+        if(hexAddrMeta !== EpochSync.CONTRACT_ADDRESS_METADATA) {
+            console.log(`checkAddrMeta epoch ${epochNumber} addrMetadata ${hexAddrMeta} not match with config ${EpochSync.CONTRACT_ADDRESS_METADATA}`)
             return false
         }
         return true
@@ -1208,11 +1211,11 @@ export class EpochSync extends SyncBase{
 
         let proxyVerify;
         if(!implVerify) {
-            proxyVerify = lodash.assign(verify, {name: '__MinimalProxy__'});
+            proxyVerify = lodash.assign(verify, {name: '__MinimalProxy__', version: '__version__'});
         } else{
             proxyVerify = lodash.assign(implVerify, verify, {id: undefined, similarMatch: undefined, guid: undefined});
         }
-        await ContractVerify.create(proxyVerify).catch(() => undefined);
+        await ContractVerify.create(proxyVerify);
 
         return isEIP1167;
     }
