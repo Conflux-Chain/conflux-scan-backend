@@ -83,8 +83,8 @@ export class FullBlockService {
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }
-        await this.checkBlockCountKV()
-        await this.checkTxCountKV()
+        await FullBlockService.checkBlockCountKV()
+        await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
         const that = this
         async function repeat(){
@@ -125,9 +125,9 @@ export class FullBlockService {
         return repeat()
     }
 
-    public async checkTxCountKV() {
+    public static async checkTxCountKV(update = false) {
         const cnt = await KV.getNumber(KEY_FULL_TX_COUNT, NaN)
-        if (!isNaN(cnt)) {
+        if (!isNaN(cnt) && !update) {
             console.log(`tx count in KV: ${cnt}`)
             return
         }
@@ -138,11 +138,14 @@ export class FullBlockService {
         const nonMarkRows = await countNonMarkTxRows(maxOne)
         const countNow = nonMarkRows + maxOne.id;
         console.log(`create full txn count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
-        return KV.create({key: KEY_FULL_TX_COUNT, value: countNow.toString()})
+        if (update) {
+            return KV.saveNumber(KEY_FULL_TX_COUNT, countNow, undefined)
+        }
+        return KV.create({key: KEY_FULL_TX_COUNT, value: countNow.toString()});
     }
-    public async checkBlockCountKV() {
+    public static async checkBlockCountKV(update = false) {
         const cnt = await KV.getNumber(KEY_FULL_BLOCK_COUNT, NaN)
-        if (!isNaN(cnt)) {
+        if (!isNaN(cnt) && !update) {
             console.log(`block count in KV: ${cnt}`)
             return
         }
@@ -163,7 +166,10 @@ export class FullBlockService {
         const nonMarkRows = await countNonMarkBlockRows(maxOne)
         const countNow = nonMarkRows + maxOne.id;
         console.log(`create full block count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
-        return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()})
+        if (update) {
+            return KV.saveNumber(KEY_FULL_BLOCK_COUNT, countNow, undefined)
+        }
+        return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
     private async loadEpochData(minEpochNumber: number) {
         const [rewardList, hashes, latest_state, receipts] = await Promise.all([
