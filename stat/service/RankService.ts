@@ -142,7 +142,7 @@ export class RankService{
     async rankByCfx(order:string, limit, networkId) {
         const list = await this.rankCfxBalance(order, limit)
         const isEvm = await KV.getString(IS_EVM, '')
-        const totalCfx = isEvm ? (await this.app.cfx.getSupplyInfo().then(res=>res.totalEspaceTokens)) :
+        const totalCfx = isEvm ? (await this.app.cfx.getSupplyInfo().then(res=>Number(res.totalEspaceTokens/BigInt(1e18)))) :
             networkId === 1029 ? 50_0000_0000 : 5000000000000000*2
         list.forEach((b,idx)=>{
             b['rank'] = idx+1
