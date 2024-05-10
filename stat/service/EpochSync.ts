@@ -164,7 +164,8 @@ export class EpochSync extends SyncBase{
             s = this.m('Logs', s)
             const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
             s = this.m('Announce', s)
-            const nameTagInfo = await this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray);
+            const nameTagInfo = await this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray)
+            const bytes32NameTagInfo = await this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray)
             s = this.m('NameTag', s)
 
             const traceArray = await this.getTraceArray(epochNumber);
@@ -218,7 +219,7 @@ export class EpochSync extends SyncBase{
                 pivotHash: epoch.pivotHash,
                 modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
                     traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray,
-                    nftTransferArray, addrNftTransferArray, transactionArray
+                    nftTransferArray, addrNftTransferArray, transactionArray, bytes32NameTagInfo
                 },
             };
         }catch(error) {
@@ -275,7 +276,7 @@ export class EpochSync extends SyncBase{
                 await Token.upsert(token);
             }
             s = this.m('Token-c', s)
-            const nameTagArray = modelData.nameTagInfo;
+            const nameTagArray = [...modelData.nameTagInfo, ...modelData.bytes32NameTagInfo]
             for (const nameTag of nameTagArray) {
                 if(!EpochSync.SYNC_NAME_TAG) break;
                 console.log('epoch-sync.nameTag', nameTag);
@@ -694,6 +695,35 @@ export class EpochSync extends SyncBase{
             item['labels'] = [...item['labels']].join(EpochSync.NAME_TAG_SPLIT);
             return item;
         });
+    }
+
+    private async getBytes32NameTagInfo(epochNumber, nameTagArray) {
+        nameTagArray = nameTagArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
+        if(!nameTagArray?.length) {
+            return []
+        }
+
+        const hex64Array = nameTagArray.map(item => item.hex64.substr(2))
+        const nameTagDbArray = await NameTag.findAll({where: {base32: {[Op.in]: hex64Array}}, raw: true})
+        const nameTagMap = lodash.keyBy(nameTagDbArray, 'base32')
+
+        for(const item of nameTagArray) {
+            const {auditor, hex64: prefixedHex64, newNameTag, newWebsite, newDesc} = item
+            const hex64 = prefixedHex64.substr(2)
+            if(!nameTagMap[hex64]) {
+                nameTagMap[hex64] = {base32: hex64, auditor, epoch: epochNumber}
+            }
+            nameTagMap[hex64].nameTag = newNameTag
+            nameTagMap[hex64].website = newWebsite
+            nameTagMap[hex64].desc = newDesc
+        }
+
+        return Object.values(nameTagMap).map(item => {
+            item['hex40id'] = 0
+            item['eoa'] = false
+            item['auditor'] = format.address(item['auditor'], StatApp.networkId)
+            return item
+        })
     }
 
     private checkAddrMeta(epochNumber, addrMeta) {

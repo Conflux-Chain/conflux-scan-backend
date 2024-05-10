@@ -311,6 +311,81 @@ module.exports = [
     ],
     "name": "NameTagChanged",
     "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "auditor",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "hex64",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "key",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "website",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "desc",
+            "type": "string"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct AddressMetadata.Bytes32NameTag",
+        "name": "oldNameTag",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "key",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "website",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "desc",
+            "type": "string"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct AddressMetadata.Bytes32NameTag",
+        "name": "newNameTag",
+        "type": "tuple"
+      }
+    ],
+    "name": "Bytes32NameTagChanged",
+    "type": "event"
   }, // address metadata
   // --------------------------------- Event ----------------------------------
   {

@@ -27,7 +27,7 @@ import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
-import {Contract} from "../model/Contract";
+import {Contract, Contract2} from "../model/Contract";
 import {
     BlockRowMark,
     createAddressTxTable,
@@ -194,6 +194,7 @@ export async function initPartialModel(sequelize) {
     AddressStat.register(sequelize)
     ContractInfo.register(sequelize)
     Contract.register(sequelize)
+    Contract2.register(sequelize)
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
     ContractDestroy.register(sequelize)

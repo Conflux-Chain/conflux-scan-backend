@@ -145,6 +145,29 @@ export class TokenTool {
         return undefined;
     }
 
+    decodeBytes32NameTagChanged(eventLog) {
+        // see contracts/AddressMetadata.sol
+        const { topics = [], data = '0x' } = eventLog;
+        // event Bytes32NameTagChanged(address indexed auditor, bytes32 indexed hex64, Bytes32NameTag oldNameTag, Bytes32NameTag newNameTag)
+        if (topics[0] === this.contract.Bytes32NameTagChanged.signature && topics.length === 3) {
+            const _abi = abi.find(e=>e.name==='Bytes32NameTagChanged').inputs.slice(2);
+            const parameters = ethers.utils.defaultAbiCoder.decode(_abi, eventLog.data);
+            return {
+                ...eventLog,
+                auditor: `0x${topics[1].slice(-40)}`,
+                hex64: topics[2],
+                oldNameTag: parameters['0']['1'],
+                oldWebsite: parameters['0']['2'],
+                oldDesc: parameters['0']['3'],
+                newNameTag: parameters['1']['1'],
+                newWebsite: parameters['1']['2'],
+                newDesc: parameters['1']['3'],
+            };
+        }
+
+        return undefined;
+    }
+
     decodeERC20Transfer(eventLog = {}) {
         try {
             const tuple = this.contract.Transfer.decodeLog(eventLog);

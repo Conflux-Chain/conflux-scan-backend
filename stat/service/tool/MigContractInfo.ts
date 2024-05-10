@@ -579,6 +579,7 @@ import {CONST} from "../common/constant"
 import {u} from "@web3identity/address-encoder/lib/groestl-hash-js/op";
 import zlib from "zlib";
 import {TokenSecurityAudit, TokenSecurityAudit2} from "../../model/TokenSecurityAudit";
+import {Contract, Contract2} from "../../model/Contract";
 const licenseMap = {}
 Object.keys(CONST.LICENSE).forEach(k => {
     const v = CONST.LICENSE[k]
@@ -655,6 +656,43 @@ async function syncVerifyFromPeer(uri: string, max) {
     }
 }
 
+// uri
+// coreSpace mainNet https://www-stage.confluxscan.io
+//           testNet https://testnet-stage.confluxscan.io
+// evmSpace  mainNet https://evm-stage.confluxscan.io
+//           testNet https://evmtestnet-stage.confluxscan.io
+const KEY_SYNC_CONTRACT = "KEY_SYNC_CONTRACT_BY_PEER"
+async function syncContractFromPeer(uri: string, max) {
+    const key = uri.endsWith('.io') ? `${KEY_SYNC_CONTRACT}_HK` : `${KEY_SYNC_CONTRACT}_BJ`
+    while(true) {
+        let id = await KV.getNumber(key, 0)
+
+        const v = await httpGet(`${uri}/stat/contract/sync?id=${++id}`)
+        if(v) {
+            const c = await Contract2.findOne({where:{base32: v.base32}})
+            if(!c) {
+                let hex = await Hex40Map.findOne({where: {hex: format.hexAddress(v.base32).substr(2)}})
+                if(!hex) {
+                    hex = {} as Hex40Map
+                    hex.id = (await makeId(format.hexAddress(v.base32))).id;
+                }
+
+                v.id = undefined
+                v.hex40id = hex.id
+                v.icon = v.icon ? Buffer.from(v.icon).toString() : undefined
+                await Contract2.create(v as Contract2)
+            }
+            console.log(`Success sync ${id} ${v.base32} ${v.name}`)
+        }
+
+        await KV.upsert({key: key, value: `${id}`})
+        if(id >= max) {
+            console.log(`Done`)
+            break
+        }
+    }
+}
+
 async function httpGet(uri) {
     let result
 
@@ -669,8 +707,8 @@ async function httpGet(uri) {
 
             const success = StatApp.isEVM ? (body?.status === '1') : (body?.code === 0)
             if(!success) {
-                console.log(`Fail http get! ${uri}`)
-                break
+                console.error(`Fail http get! ${uri}`)
+                throw new Error(`Fail http get! ${uri}`)
             }
 
             const data = StatApp.isEVM ? lodash.get(resp, ['body', 'result']) : lodash.get(resp, ['body', 'data']) // core space body: {"code":0,"message":"","data":{"code":429,"message":"Too many requests, path /stat/contract/by-address. Allow 10/s"}}
@@ -745,6 +783,9 @@ async function run() {
     if(type === 22) {
         await syncVerifyFromPeer(peerUri, max)
     }
+    if(type === 23) {
+        await syncContractFromPeer(peerUri, max)
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
@@ -765,7 +806,7 @@ if(type === 9) {
     amount = args[2];
 }
 
-if(type === 21 || type === 22) {
+if(type === 21 || type === 22 || type === 23) {
     peerUri = args[2]
     max = Number(args[3]);
 }

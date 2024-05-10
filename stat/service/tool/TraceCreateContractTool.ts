@@ -59,8 +59,7 @@ async function init() {
     seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
-    await getSlaveStatus(seq)
-
+    // await getSlaveStatus(seq)
 
     cfx = await initCfxSdk(config.conflux)
     StatApp.networkId = cfx.networkId;
@@ -540,10 +539,19 @@ async function adminDestroyContract(startEpochNumber, endEpochNumber){
 }
 
 async function getDataByEpochNumber(epochNumber){
-    await epochSync.getTraceArray(epochNumber);
-    /*const epochData = await epochSync.getEpochData(epochNumber);
+    await epochSync.checkContractConfig()
+
+    const epochData = await epochSync.getEpochData(epochNumber);
     const {epoch, blockHashArray, blockArray, receipts} = epochData;
-    const epochTimestamp = epoch.timestamp;
+    const eventLogInfo = await epochSync.decodeLogFromReceipts(epochNumber, receipts, blockHashArray)
+    console.log(`eventLogInfo ------ \n ${JSON.stringify(eventLogInfo)}`)
+
+    const nameTagInfo = await epochSync.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray)
+    console.log(`nameTagInfo ------ \n ${JSON.stringify(nameTagInfo)}`)
+    const bytes32NameTagInfo = await epochSync.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray)
+    console.log(`bytes32NameTagInfo ------ \n ${JSON.stringify(bytes32NameTagInfo)}`)
+
+    /*const epochTimestamp = epoch.timestamp;
 
     const traceArray = await epochSync.getTraceArray(epochNumber);
 

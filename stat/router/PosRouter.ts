@@ -41,6 +41,11 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
             {skip, limit, orderBy, order: reverse === 'true' ? 'desc' : 'asc', groupByPowAddress: Boolean(groupByPowAddress)}
         )
 
+        // `Name tag` field
+        const hex64Array = page.rows.map(row => row.hex)
+        const {map} = await statApp.accountQuery.listBytes32NameTagInfo(hex64Array)
+        page.rows.forEach(row => row[`byte32NameTagInfo`] = map[row.hex]?.byte32NameTag || {})
+
         ctx.body = {
             list: page.rows,
             total: page.count,
