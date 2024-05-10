@@ -1,29 +1,29 @@
-import {BlockRowMark, markBlockPosition, markTxPosition} from "../../model/FullBlock";
+import {BlockRowMark, FullBlock, markBlockPosition, markTxPosition} from "../../model/FullBlock";
 import {init} from "./FixDailyTokenStat";
 import {CfxTransferRowMark, markCfxTransferPosition} from "../../model/CfxTransfer";
+import {FullBlockService} from "../FullBlockService";
 
-async function markBloc() {
+async function main() {
+    const args = process.argv.slice(2)
+    await init()
+    let maxEpoch:number = await FullBlock.max('epoch')
+    maxEpoch -= 1000;
+    if ('block' === args[0]) {
+        await markBlockPosition(Infinity, maxEpoch);
+        if (args[1]) {
+            await FullBlockService.checkBlockCountKV(true)
+        }
+    } else if ('tx' === args[0]) {
+        await markTxPosition(Infinity, maxEpoch)
+        if (args[1]) {
+            await FullBlockService.checkTxCountKV(true)
+        }
+    } else if ('cfx_transfer' === args[0]) {
+        await markCfxTransferPosition(Infinity, maxEpoch)
+    } else {
+        console.log(`what ? [block | tx | cfx_transfer]`)
+    }
+    await CfxTransferRowMark.sequelize.close()
+}
 
-}
-const args = process.argv.slice(2)
-if ('block' === args[0]) {
-    init().then(() =>
-        markBlockPosition(Number(args[1] || 1))
-    ).then(() => {
-        return BlockRowMark.sequelize.close()
-    }).then()
-} else if ('tx' === args[0]) {
-    init().then(() =>
-        markTxPosition(Number(args[1] || 1))
-    ).then(() => {
-        return BlockRowMark.sequelize.close()
-    }).then()
-} else if ('cfx_transfer' === args[0]) {
-    init().then(() =>
-        markCfxTransferPosition(Number(args[1] || 1))
-    ).then(() => {
-        return CfxTransferRowMark.sequelize.close()
-    }).then()
-} else {
-    console.log(`what ? [block | tx | cfx_transfer]`)
-}
+main().then()
