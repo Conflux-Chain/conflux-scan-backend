@@ -586,9 +586,10 @@ export class FullBlockService {
                 return res;
             }),
             this.cfx.getEpochNumber('latest_confirmed'),
-            FullBlock.max('epoch', {
-                benchmark: true, logging: console.log
-            })
+            FullBlock.findOne({order: [["epoch", "desc"]]}),
+            // FullBlock.max('epoch', { // slow sql ??
+            //     benchmark: true, logging: console.log
+            // })
         ])
         if (epoch > latestConfirm) {
             return {code: CODE_CONTINUE, message:`not confirmed, want ${epoch} > ${latestConfirm} confirmed.`}
