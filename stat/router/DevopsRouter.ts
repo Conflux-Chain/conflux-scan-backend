@@ -236,7 +236,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         }
     })
     router.get("/devops/countMiner", async function(ctx) {
-        new BlockAndMinerSync().rollupStatPerHour().then()
+        new BlockAndMinerSync().rollupStatPerHour(true).then()
         ctx.body = await countRecentMiner(-1)
     })
     console.log('devops router registered.')
