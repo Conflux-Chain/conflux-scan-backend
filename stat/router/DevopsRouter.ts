@@ -31,6 +31,7 @@ import {Epoch} from "../model/Epoch";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {pickNumber} from "../model/Utils";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 
 async function checkLocal(ctx: Context, next) {
     const ip = ctx.request.ip
@@ -231,7 +232,12 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {
             "headers": ctx.headers,
             "ip": ctx.request.ip,
+            "time": new Date().toISOString(),
         }
+    })
+    router.get("/devops/countMiner", async function(ctx) {
+        new BlockAndMinerSync().rollupStatPerHour().then()
+        ctx.body = await countRecentMiner(-1)
     })
     console.log('devops router registered.')
 }
