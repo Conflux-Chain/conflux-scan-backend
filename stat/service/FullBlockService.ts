@@ -537,7 +537,6 @@ export class FullBlockService {
             prePos = 0 // epoch 0 does not have reward.
         }
         console.log(`begin fill block reward at epoch ${prePos+1}`)
-        let goOn = true
         do {
             const fillRet = await this.fillBlockReward(prePos+1).catch(err=>{
                 console.log(`fill block reward fail, epoch ${prePos+1}`, err)
@@ -549,7 +548,8 @@ export class FullBlockService {
             }
             switch (fillRet.code) {
                 case CODE_CONTINUE:
-                    await new Promise(r=>setTimeout(r, 5000))
+                    console.log(`wait filling reward ${fillRet.message}`)
+                    await sleep(5_000)
                     break;
                 case CODE_OK:
                     prePos += 1
@@ -560,10 +560,9 @@ export class FullBlockService {
                     break;
                 default:
                     console.log(`fill block reward return invalid result:`, fillRet)
-                    goOn = false
                     break;
             }
-        } while (goOn)
+        } while (true)
     }
     public async fillBlockReward(epoch) : Promise<{code:number, message:string}>{
         const [reward, latestConfirm, maxEpochOfBlock] = await Promise.all([
