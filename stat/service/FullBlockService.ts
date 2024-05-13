@@ -538,12 +538,12 @@ export class FullBlockService {
         }
         console.log(`begin fill block reward at epoch ${prePos+1}`)
         do {
-            console.log(`fill reward A `, new Date().toISOString())
+            // console.log(`fill reward A `, new Date().toISOString())
             const fillRet = await this.fillBlockReward(prePos+1).catch(err=>{
                 console.log(`fill block reward fail, epoch ${prePos+1}`, err)
                 return {code:CODE_CONTINUE, message:'error'}
             })
-            console.log(`fill reward B `, new Date().toISOString())
+            // console.log(`fill reward B `, new Date().toISOString())
             if (prePos + 1 % 100 === 0) {
                 console.log(`fill block reward at epoch ${prePos + 1} return ${
                     fillRet.code}, ${fillRet.message}`)
@@ -582,7 +582,7 @@ export class FullBlockService {
                 }
                 return [];
             }).then(res=>{
-                console.log(`get reward info `, new Date().toISOString())
+                // console.log(`get reward info `, new Date().toISOString())
                 return res;
             }),
             this.cfx.getEpochNumber('latest_confirmed'),
