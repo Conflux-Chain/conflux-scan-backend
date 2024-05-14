@@ -501,7 +501,7 @@ export class FullBlockService {
             // console.log(`====`, blockList[0])
             const epochPerStat = 100
             if((minEpochNumber % epochPerStat) === 0) {
-                console.info(`\r\u001b[2K${fmtDtUTC(new Date())} block ${metrics.blockCount
+                console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
                 }, time ${blockTime.toISOString()}, cost ${metrics.ms}ms (full node ${metrics.queryFullNodeTime
