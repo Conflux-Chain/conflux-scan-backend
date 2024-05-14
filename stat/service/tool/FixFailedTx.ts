@@ -2,7 +2,7 @@ import {Op} from 'sequelize'
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
 import {init} from "./FixDailyTokenStat";
-import {AddressTransactionIndex, FullTransaction} from "../../model/FullBlock";
+import {AddressTransactionIndex, FullTransaction, loadMaxTxEpoch} from "../../model/FullBlock";
 
 const pLimit = require('p-limit');
 
@@ -85,7 +85,7 @@ async function patch(list:FullTransaction[]) {
 
 }
 async function iterAllTx(from) {
-    const stop = await FullTransaction.max('epoch')
+    const stop = await loadMaxTxEpoch()
     const batch = 3000
     while(from <= stop) {
         const list_all = await listFailedTx(from, batch)

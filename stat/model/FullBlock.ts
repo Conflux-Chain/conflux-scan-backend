@@ -62,6 +62,9 @@ export async function createFullBlockTable(seq:Sequelize) {
 export async function loadMaxBlockEpoch(): Promise<number> {
     return FullBlock.findOne({order: [["epoch", "desc"]]}).then(res=>res?.epoch || 0)
 }
+export async function loadMaxTxEpoch(): Promise<number> {
+    return FullTransaction.findOne({order: [["epoch", "desc"]]}).then(res=>res?.epoch || 0)
+}
 export class FullBlock extends Model<IFullBlock> implements IFullBlock {
     epoch: number;
     createdAt: Date;
