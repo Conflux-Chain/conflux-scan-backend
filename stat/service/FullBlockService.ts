@@ -580,9 +580,7 @@ export class FullBlockService {
             await sleep(5_000)
             this.latestConfirmEpoch = await this.cfx.getEpochNumber('latest_confirmed')
         }
-        const reward = await
-            // @ts-ignore
-            this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
+        const reward = await this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
@@ -599,10 +597,6 @@ export class FullBlockService {
                 return res || [];
             })
         if ((reward||[]).length === 0) {
-            // if (this.latestConfirmEpoch - epoch > 1_000_000) {
-            //     console.log(`skip empty reward epoch ${epoch} 0x${epoch.toString(16)}`)
-            //     return {code: CODE_OK, message: 'ok'}
-            // }
             return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} 0x${epoch.toString(16)} , ${this.latestConfirmEpoch} confirmed.`}
         }
 
