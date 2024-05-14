@@ -10,7 +10,7 @@ import {
     KEY_PRUNE_SLEEP_MS_PER_LOOP,
     KV
 } from "../../model/KV"
-import {AddressTransactionIndex, FullBlock, FullTransaction} from "../../model/FullBlock"
+import {AddressTransactionIndex, FullBlock, FullTransaction, loadMaxBlockEpoch} from "../../model/FullBlock"
 import {EpochHashTokenTransfer} from "../../TokenTransferSync"
 import {EpochHashCfxTransfer} from "../../CfxTransferSync"
 import {Epoch} from "../../model/Epoch"
@@ -144,7 +144,7 @@ export class PruneService {
 
     private async pruneAddrBlkTx() {
         const epochs = await this.getEpochsToPrune(KEY_PRUNE_EPOCH_BLOCK)
-        const epochBlock: number = await FullBlock.max('epoch')
+        const epochBlock: number = await loadMaxBlockEpoch()
 
         if(epochs.maxEpoch <= epochBlock - this.pruneCfg.delayEpochsAgainstLatest){
             const sql = `select distinct(minerId) as id from ${FullBlock.getTableName()} where epoch >= :minEpoch and epoch <= :maxEpoch`
@@ -178,7 +178,7 @@ export class PruneService {
 
     private async pruneAddrTs() {
         const epochs = await this.getEpochsToPrune(KEY_PRUNE_EPOCH_ADDR_TRANSFER)
-        const epochBlock: number = await FullBlock.max('epoch')
+        const epochBlock: number = await loadMaxBlockEpoch()
         const epochCfxTs: number = await EpochHashCfxTransfer.max('epoch')
         const epochTokenTs: number = await EpochHashTokenTransfer.max('epoch')
         const epochMisc: number = await Epoch.max('epoch')

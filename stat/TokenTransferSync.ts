@@ -30,7 +30,7 @@ import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
-import {FullBlock} from "./model/FullBlock";
+import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 const lodash = require('lodash');
@@ -294,7 +294,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     // should not higher than block/tx sync, otherwise the transaction hash may not be found.
     let maxEpochOfBlock = 0;
     async function updateMaxDbEpoch() {
-        const maxE = await FullBlock.max('epoch')
+        const maxE = await loadMaxBlockEpoch()
         if (typeof maxE !== 'number') {
             console.log(` FullTransaction is empty. ${new Date().toISOString()}`)
             return;

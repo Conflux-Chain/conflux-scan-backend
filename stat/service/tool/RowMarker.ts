@@ -1,4 +1,4 @@
-import {BlockRowMark, FullBlock, markBlockPosition, markTxPosition} from "../../model/FullBlock";
+import {loadMaxBlockEpoch, markBlockPosition, markTxPosition} from "../../model/FullBlock";
 import {init} from "./FixDailyTokenStat";
 import {CfxTransferRowMark, markCfxTransferPosition} from "../../model/CfxTransfer";
 import {FullBlockService} from "../FullBlockService";
@@ -6,7 +6,7 @@ import {FullBlockService} from "../FullBlockService";
 async function main() {
     const args = process.argv.slice(2)
     await init()
-    let maxEpoch:number = await FullBlock.max('epoch')
+    let maxEpoch:number = await loadMaxBlockEpoch()
     maxEpoch -= 1000;
     if ('block' === args[0]) {
         await markBlockPosition(Infinity, maxEpoch);

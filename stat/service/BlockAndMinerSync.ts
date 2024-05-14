@@ -106,14 +106,15 @@ export class BlockAndMinerSync {
     /**
      * rollup per hour, calculate current hour and previous hour blocks(in case pivot switched).
      */
-    async rollupStatPerHour() {
+    async rollupStatPerHour(showLog=false) {
         const now = new Date()
-        await this.rollupByHour(now)
+        showLog && console.log(`rollupStatPerHour by date `, now.toISOString())
+        await this.rollupByHour(now, showLog)
         // previous hour.
         now.setHours(now.getHours() - 1)
-        await this.rollupByHour(now)
+        await this.rollupByHour(now, showLog)
     }
-    async rollupByHour(timePoint:Date) {
+    async rollupByHour(timePoint:Date, showLog = false) {
         timePoint.setMinutes(0,0,0);
         const beginDt = timePoint;
         // find the epoch with time >= time point
@@ -122,10 +123,10 @@ export class BlockAndMinerSync {
         // find the epoch with time <= endDt
         const [startEpoch, endEpoch] = await Promise.all([
             Epoch.findOne({where: {timestamp:{[Op.gte]:beginDt}}, order:[['timestamp','asc']],
-                // logging: console.log,
+                logging: showLog ? console.log : false,
             }),
             Epoch.findOne({where: {timestamp:{[Op.lte]:endDt}}, order:[['timestamp','desc']],
-                // logging: console.log,
+                logging: showLog ? console.log : false,
             })
         ])
         if (startEpoch === null || endEpoch === null) {
@@ -168,10 +169,15 @@ export class BlockAndMinerSync {
     }
 }
 
-export async function countRecentMiner(days: number) {
+export async function countRecentMiner(days: number, showLog=false) {
     return MinerBlock.count({
         where: { 'beginTime': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}, timeWindow:'1h'},
-        distinct: true, col: 'minerId'
-        // benchmark: true, logging: console.log
+        distinct: true, col: 'minerId',
+        // benchmark: true,
+        logging: showLog ? console.log : false
     })
+}
+
+if (module === require.main) {
+    new BlockAndMinerSync().rollupStatPerHour().then()
 }

@@ -10,7 +10,7 @@ import {
     FullTransaction,
     IBlockRowMark, IFailedTx,
     IFullBlock,
-    ITxnRowMark, LEN_txExecErrorMsg,
+    ITxnRowMark, LEN_txExecErrorMsg, loadMaxBlockEpoch,
     markBlockPosition,
     markTxPosition,
     TxnRowMark
@@ -40,6 +40,8 @@ const CODE_CONTINUE = 2020102903
 const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
+    public latestConfirmEpoch = 0;
+    public maxEpochOfBlock = 0
     public cfx2: Conflux;
     public debugLog:boolean = true
     preLoadMap:PreloadMap
@@ -77,7 +79,7 @@ export class FullBlockService {
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) : Promise<void> {
-        let maxEpoch:number = await FullBlock.max('epoch')
+        let maxEpoch:number = await loadMaxBlockEpoch()
         if (isNaN(maxEpoch) || maxEpoch === null) {
            maxEpoch = -1 // plus 1 got 0
         } else {
@@ -499,7 +501,7 @@ export class FullBlockService {
             // console.log(`====`, blockList[0])
             const epochPerStat = 100
             if((minEpochNumber % epochPerStat) === 0) {
-                console.info(`\r\u001b[2K${fmtDtUTC(new Date())} block ${metrics.blockCount
+                console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
                 }, time ${blockTime.toISOString()}, cost ${metrics.ms}ms (full node ${metrics.queryFullNodeTime
@@ -537,19 +539,21 @@ export class FullBlockService {
             prePos = 0 // epoch 0 does not have reward.
         }
         console.log(`begin fill block reward at epoch ${prePos+1}`)
-        let goOn = true
         do {
+            // console.log(`fill reward A `, new Date().toISOString())
             const fillRet = await this.fillBlockReward(prePos+1).catch(err=>{
                 console.log(`fill block reward fail, epoch ${prePos+1}`, err)
                 return {code:CODE_CONTINUE, message:'error'}
             })
+            // console.log(`fill reward B `, new Date().toISOString())
             if (prePos + 1 % 100 === 0) {
                 console.log(`fill block reward at epoch ${prePos + 1} return ${
                     fillRet.code}, ${fillRet.message}`)
             }
             switch (fillRet.code) {
                 case CODE_CONTINUE:
-                    await new Promise(r=>setTimeout(r, 5000))
+                    console.log(`wait filling reward : ${fillRet.message}`)
+                    await sleep(5_000)
                     break;
                 case CODE_OK:
                     prePos += 1
@@ -560,15 +564,23 @@ export class FullBlockService {
                     break;
                 default:
                     console.log(`fill block reward return invalid result:`, fillRet)
-                    goOn = false
                     break;
             }
-        } while (goOn)
+        } while (true)
     }
-    public async fillBlockReward(epoch) : Promise<{code:number, message:string}>{
-        const [reward, latestConfirm, maxEpochOfBlock] = await Promise.all([
-            // @ts-ignore
-            this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
+    public async fillBlockReward(epoch: number) : Promise<{code:number, message:string}>{
+        while (epoch > this.maxEpochOfBlock) {
+            console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
+            this.maxEpochOfBlock > 0 && await sleep(5_000)
+            // max function on desc index is very slow.
+            this.maxEpochOfBlock = await loadMaxBlockEpoch()
+        }
+        while (epoch > this.latestConfirmEpoch) {
+            console.log(`not confirmed, want ${epoch} > ${this.latestConfirmEpoch} confirmed.`)
+            this.latestConfirmEpoch > 0 && await sleep(5_000)
+            this.latestConfirmEpoch = await this.cfx.getEpochNumber('latest_confirmed')
+        }
+        const reward = await this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
@@ -580,18 +592,12 @@ export class FullBlockService {
                     console.log(`fillBlockReward get reward info fail at epoch ${epoch}: ${msg}`)
                 }
                 return [];
-            }),
-            this.cfx.getEpochNumber('latest_confirmed'),
-            FullBlock.max('epoch')
-        ])
-        if (epoch > latestConfirm) {
-            return {code: CODE_CONTINUE, message:`not confirmed, want ${epoch} > ${latestConfirm} confirmed.`}
-        }
-        if (epoch > maxEpochOfBlock) {
-            return {code: CODE_CONTINUE, message: `max epoch in full block table is ${maxEpochOfBlock}, less than ${epoch}`}
-        }
-        if (reward.length === 0) {
-            return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${latestConfirm} confirmed.`}
+            }).then(res=>{
+                // console.log(`get reward info `, new Date().toISOString())
+                return res || [];
+            })
+        if ((reward||[]).length === 0) {
+            return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} 0x${epoch.toString(16)} , ${this.latestConfirmEpoch} confirmed.`}
         }
 
         const blockStatArray = [];

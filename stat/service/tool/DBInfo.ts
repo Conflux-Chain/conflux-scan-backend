@@ -1,7 +1,7 @@
 import {AddressErc20Transfer, Erc20Transfer} from "../../model/Erc20Transfer";
 import {init} from "./FixDailyTokenStat";
 import {AddressCfxTransfer, CfxTransfer} from "../../model/CfxTransfer";
-import {FullBlock, FullTransaction} from "../../model/FullBlock";
+import {loadMaxBlockEpoch, loadMaxTxEpoch} from "../../model/FullBlock";
 import {StatConfig} from "../../config/StatConfig";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
@@ -16,8 +16,8 @@ async function repeat(cfg:StatConfig, cfx:Conflux) {
         AddressErc20Transfer.max('epoch').then(epoch=>{return {epoch, t:'AddressErc20Transfer'}}),
         CfxTransfer.max('epoch').then(epoch=>{return {epoch, t:'CfxTransfer'}}),
         AddressCfxTransfer.max('epoch').then(epoch=>{return {epoch, t:'AddressCfxTransfer'}}),
-        FullTransaction.max('epoch').then(epoch=>{return {epoch, t:'FullTransaction'}}),
-        FullBlock.max('epoch').then(epoch=>{return {epoch, t:'FullBlock'}}),
+        loadMaxTxEpoch().then(epoch=>{return {epoch, t:'FullTransaction'}}),
+        loadMaxBlockEpoch().then(epoch=>{return {epoch, t:'FullBlock'}}),
         cfx.getEpochNumber('latest_state').then(epoch=>{return {epoch, t:'conflux'}}),
     ])
     const epochOnChain = maxList[maxList.length-1].epoch
