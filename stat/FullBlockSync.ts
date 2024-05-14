@@ -55,7 +55,10 @@ export async function run() {
     } else if(args[0] === 'reward') {
         await svc.fillBlockRewardByPos()
     } else {
-        svc.fillBlockRewardByPos().then();
+        if (!StatApp.isEVM) {
+            // evm doesn't care miner and reward
+            svc.fillBlockRewardByPos().then();
+        }
         await syncFullBlock(svc)
     }
     // seq.close().then()

@@ -571,13 +571,13 @@ export class FullBlockService {
     public async fillBlockReward(epoch: number) : Promise<{code:number, message:string}>{
         while (epoch > this.maxEpochOfBlock) {
             console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
-            await sleep(5_000)
+            this.maxEpochOfBlock > 0 && await sleep(5_000)
             // max function on desc index is very slow.
             this.maxEpochOfBlock = await loadMaxBlockEpoch()
         }
         while (epoch > this.latestConfirmEpoch) {
             console.log(`not confirmed, want ${epoch} > ${this.latestConfirmEpoch} confirmed.`)
-            await sleep(5_000)
+            this.latestConfirmEpoch > 0 && await sleep(5_000)
             this.latestConfirmEpoch = await this.cfx.getEpochNumber('latest_confirmed')
         }
         const reward = await this.cfx.getBlockRewardInfo(epoch).catch(async err=>{

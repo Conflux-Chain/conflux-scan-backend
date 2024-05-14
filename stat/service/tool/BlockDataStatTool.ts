@@ -35,7 +35,7 @@ async function fixBlockTxFee(config: StatConfig) {
     console.log(`-----  networkId ${cfx.networkId} ------`)
 
     const svc = new FullBlockService(cfx)
-    let epoch = await loadMaxBlockEpoch()
+    let epoch = await cfx.getEpochNumber('latest_confirmed')
     const date = new Date();
     date.setDate(date.getDate()-8) // latest 8 days
     console.log(`will stop at ${date.toISOString()}`)
