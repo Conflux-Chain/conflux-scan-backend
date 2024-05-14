@@ -596,9 +596,13 @@ export class FullBlockService {
                 return [];
             }).then(res=>{
                 // console.log(`get reward info `, new Date().toISOString())
-                return res;
+                return res || [];
             })
         if (reward.length === 0) {
+            if (this.latestConfirmEpoch - epoch > 1_000_000) {
+                console.log(`skip empty reward epoch ${epoch}`)
+                return {code: CODE_OK, message: 'ok'}
+            }
             return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${this.latestConfirmEpoch} confirmed.`}
         }
 
