@@ -6,7 +6,7 @@ import {batchTraceBlock, initCfxSdk, isNewFormatTrace, removeLongData} from "./s
 import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
 import {fetchTask} from "./TokenTransferSync";
-import {FullBlock, FullTransaction} from "./model/FullBlock";
+import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
     AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
@@ -481,7 +481,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     let epoch = fromEpoch;
     let maxEpochOfBlock = 0;
     async function updateMaxDbEpoch() {
-        const maxE = await FullBlock.max('epoch')
+        const maxE = await loadMaxBlockEpoch()
         if (typeof maxE !== 'number') {
             return;
         }

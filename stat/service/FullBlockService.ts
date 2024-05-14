@@ -10,7 +10,7 @@ import {
     FullTransaction,
     IBlockRowMark, IFailedTx,
     IFullBlock,
-    ITxnRowMark, LEN_txExecErrorMsg,
+    ITxnRowMark, LEN_txExecErrorMsg, loadMaxBlockEpoch,
     markBlockPosition,
     markTxPosition,
     TxnRowMark
@@ -40,6 +40,8 @@ const CODE_CONTINUE = 2020102903
 const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
+    public latestConfirmEpoch = 0;
+    public maxEpochOfBlock = 0
     public cfx2: Conflux;
     public debugLog:boolean = true
     preLoadMap:PreloadMap
@@ -77,7 +79,7 @@ export class FullBlockService {
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) : Promise<void> {
-        let maxEpoch:number = await FullBlock.max('epoch')
+        let maxEpoch:number = await loadMaxBlockEpoch()
         if (isNaN(maxEpoch) || maxEpoch === null) {
            maxEpoch = -1 // plus 1 got 0
         } else {
@@ -566,8 +568,19 @@ export class FullBlockService {
             }
         } while (true)
     }
-    public async fillBlockReward(epoch) : Promise<{code:number, message:string}>{
-        const [reward, latestConfirm, maxEpochOfBlock] = await Promise.all([
+    public async fillBlockReward(epoch: number) : Promise<{code:number, message:string}>{
+        while (epoch > this.maxEpochOfBlock) {
+            console.log(`not confirmed, want ${epoch} > ${this.latestConfirmEpoch} confirmed.`)
+            await sleep(5_000)
+            // max function on desc index is very slow.
+            this.maxEpochOfBlock = await loadMaxBlockEpoch()
+        }
+        while (epoch > this.latestConfirmEpoch) {
+            console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
+            await sleep(5_000)
+            this.latestConfirmEpoch = await this.cfx.getEpochNumber('latest_confirmed')
+        }
+        const reward = await
             // @ts-ignore
             this.cfx.getBlockRewardInfo(epoch).catch(async err=>{
                 const msg = `${err}`
@@ -584,21 +597,9 @@ export class FullBlockService {
             }).then(res=>{
                 // console.log(`get reward info `, new Date().toISOString())
                 return res;
-            }),
-            this.cfx.getEpochNumber('latest_confirmed'),
-            FullBlock.findOne({order: [["epoch", "desc"]]}),
-            // FullBlock.max('epoch', { // slow sql ??
-            //     benchmark: true, logging: console.log
-            // })
-        ])
-        if (epoch > latestConfirm) {
-            return {code: CODE_CONTINUE, message:`not confirmed, want ${epoch} > ${latestConfirm} confirmed.`}
-        }
-        if (epoch > maxEpochOfBlock) {
-            return {code: CODE_CONTINUE, message: `max epoch in full block table is ${maxEpochOfBlock}, less than ${epoch}`}
-        }
+            })
         if (reward.length === 0) {
-            return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${latestConfirm} confirmed.`}
+            return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${this.latestConfirmEpoch} confirmed.`}
         }
 
         const blockStatArray = [];

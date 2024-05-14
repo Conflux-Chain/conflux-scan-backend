@@ -27,7 +27,7 @@ import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {Token} from "./model/Token";
-import {FullBlock, FullTransaction} from "./model/FullBlock";
+import {FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, waitParentHashDB} from "./TokenTransferSync";
 import {buildHexSet, getAddrId, idHex40Map, makeIdV, mapProp} from "./model/HexMap";
@@ -415,7 +415,7 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
     // should not higher than block/tx sync, otherwise the transaction hash may not be found.
     let maxEpochOfBlock = 0;
     async function updateMaxDbEpoch() {
-        const maxE = await FullBlock.max('epoch')
+        const maxE = await loadMaxBlockEpoch()
         if (typeof maxE !== 'number') {
             console.log(`Approval-SYNC  FullTransaction is empty. ${new Date().toISOString()}`)
             return;

@@ -29,10 +29,8 @@ import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./mode
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
-import {regExitHook, sleep} from "./service/tool/ProcessTool";
-import {NftMint, Token} from "./model/Token";
-import {FullBlock, FullTransaction} from "./model/FullBlock";
-import {updateTransferCountReal} from "./StreamSync";
+import {sleep} from "./service/tool/ProcessTool";
+import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
 
@@ -182,7 +180,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
             console.log(`use on chain epoch number ${maxEpochOfBlock}`)
             return;
         }
-        const maxE = await FullBlock.max('epoch')
+        const maxE = await loadMaxBlockEpoch()
         if (typeof maxE !== 'number') {
             console.log(`${handler.name()}  FullTransaction is empty. ${new Date().toISOString()}`)
             return;

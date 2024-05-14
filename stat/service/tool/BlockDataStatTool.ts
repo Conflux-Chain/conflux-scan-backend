@@ -5,7 +5,7 @@ import {MinerBlock} from "../../model/MinerBlock";
 import {Epoch} from "../../model/Epoch";
 import {initCfxSdk} from "../common/utils";
 import {FullBlockService} from "../FullBlockService";
-import {FullBlock} from "../../model/FullBlock";
+import {loadMaxBlockEpoch} from "../../model/FullBlock";
 async function run(startDay, endDay) {
     const config = await init();
     if (args.includes('miner')) {
@@ -35,8 +35,11 @@ async function fixBlockTxFee(config: StatConfig) {
     console.log(`-----  networkId ${cfx.networkId} ------`)
 
     const svc = new FullBlockService(cfx)
-    let epoch = await FullBlock.max('epoch') as any
-    const stop = new Date('2021-11-29').getTime()
+    let epoch = await loadMaxBlockEpoch()
+    const date = new Date();
+    date.setDate(date.getDate()-8) // latest 8 days
+    console.log(`will stop at ${date.toISOString()}`)
+    const stop = date.getTime()
     do {
         await svc.fillBlockReward(epoch)
         const ep = await Epoch.findByPk(epoch)
