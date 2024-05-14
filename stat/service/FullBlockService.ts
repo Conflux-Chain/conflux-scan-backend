@@ -552,7 +552,7 @@ export class FullBlockService {
             }
             switch (fillRet.code) {
                 case CODE_CONTINUE:
-                    console.log(`wait filling reward ${fillRet.message}`)
+                    console.log(`wait filling reward : ${fillRet.message}`)
                     await sleep(5_000)
                     break;
                 case CODE_OK:
@@ -599,11 +599,11 @@ export class FullBlockService {
                 return res || [];
             })
         if ((reward||[]).length === 0) {
-            if (this.latestConfirmEpoch - epoch > 1_000_000) {
-                console.log(`skip empty reward epoch ${epoch}`)
-                return {code: CODE_OK, message: 'ok'}
-            }
-            return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} , ${this.latestConfirmEpoch} confirmed.`}
+            // if (this.latestConfirmEpoch - epoch > 1_000_000) {
+            //     console.log(`skip empty reward epoch ${epoch} 0x${epoch.toString(16)}`)
+            //     return {code: CODE_OK, message: 'ok'}
+            // }
+            return {code: CODE_CONTINUE, message:`Reward not ready,  epoch ${epoch} 0x${epoch.toString(16)} , ${this.latestConfirmEpoch} confirmed.`}
         }
 
         const blockStatArray = [];
