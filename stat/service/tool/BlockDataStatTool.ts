@@ -4,7 +4,7 @@ import {BlockAndMinerSync} from "../BlockAndMinerSync";
 import {MinerBlock} from "../../model/MinerBlock";
 import {Epoch} from "../../model/Epoch";
 import {initCfxSdk} from "../common/utils";
-import {FullBlockService} from "../FullBlockService";
+import {CODE_OK, FullBlockService} from "../FullBlockService";
 import {sleep} from "./ProcessTool";
 async function run(startDay, endDay) {
     const config = await init();
@@ -44,9 +44,17 @@ async function fixBlockTxFeeNewer(config: StatConfig) {
             await sleep(5_000)
             epoch = await cfx.getEpochNumber('latest_confirmed').catch(()=>epoch)
         }
-        await svc.fillBlockReward(epoch).catch(console.log);
+        const fillRet = await svc.fillBlockReward(epoch).catch(e=>{
+            console.log(e)
+            return {code: 1}
+        });
+        if (fillRet?.code !== CODE_OK) {
+            await sleep(5_000)
+            setTimeout(repeat, 0)
+            return
+        }
         if (epoch % 10 === 0) {
-            console.log(` fix epoch ${epoch} , confirmed ${epochConfirmed}`)
+            console.log(` fix epoch ${epoch} , confirmed ${epochConfirmed}`);
         }
         epoch ++;
         setTimeout(repeat, 0)
