@@ -321,6 +321,7 @@ export abstract class SyncBase{
             announcementArray: [],
             nameTagArray: [],
             labelArray: [],
+            byte32NameTagArray: [],
         };
 
         let blockIdx = -1;
@@ -346,6 +347,8 @@ export abstract class SyncBase{
                         groupedLogs.nameTagArray.push(transfer)
                     } else if ((transfer = tokenTool.decodeLabelChanged(log))) {
                         groupedLogs.labelArray.push(transfer)
+                    } else if ((transfer = tokenTool.decodeBytes32NameTagChanged(log))) {
+                        groupedLogs.byte32NameTagArray.push(transfer)
                     }
                 }
             }

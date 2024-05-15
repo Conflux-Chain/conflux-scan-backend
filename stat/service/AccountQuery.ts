@@ -198,6 +198,27 @@ export class AccountQuery {
         return {total: Object.keys(map).length, map};
     }
 
+    public async listBytes32NameTagInfo(hex64Array) {
+        const hex64List = [...hex64Array].filter(Boolean).map(hex => hex.startsWith('0x') ? hex.substr(2) : hex)
+        if (!hex64List?.length) {
+            return {total: 0, map: {}}
+        }
+
+        // query name tag
+        const nameTagArray = await NameTag.findAll({
+            attributes: ['base32', 'nameTag', 'website', 'desc'],
+            where: {base32: {[Op.in]: hex64List}}, raw: true
+        });
+
+        // build map
+        const map = {};
+        nameTagArray.forEach(item => {
+            map[`0x${item.base32}`] = {byte32NameTag: lodash.pick(item, ['nameTag', 'website', 'desc'])}
+        });
+
+        return {total: Object.keys(map).length, map};
+    }
+
     public async getBasicInfo(addr) {
         const addrId = await getAddrId(addr);
         if(!addrId) {

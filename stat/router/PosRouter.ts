@@ -23,7 +23,7 @@ import {paginateCore} from "./ParamChecker";
 
 export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-pos-account-by-reward', async (ctx)=>{
-        const page = await statApp.posQuery.listPosAccount({sortBy: 'totalReward', limit: 100})
+        const page = await statApp.posQuery.listPosAccount({orderBy: 'totalReward', limit: 100})
         ctx.body = {
             /*code: 0, message: 'ok',*/
             list: page.rows, total: page.count,
@@ -31,18 +31,22 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/list-pos-account', async (ctx)=>{
-        mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['createdAt']);
+        mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['createdAt', 'availableVotes']);
+        mustBeEnumParamIfPresent(ctx.request.query, 'reverse', ['true', 'false']);
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
+        const {groupByPowAddress, orderBy, reverse} = ctx.request.query
 
-        const p = {...ctx.request.query, skip, limit,
-            groupByPowAddress: Boolean(ctx.request.query.groupByPowAddress),
-            sortBy: ctx.request.query.orderBy,
-        }
-        const page = await statApp.posQuery.listPosAccountWithCurrentCommittee(p)
+        const page = await statApp.posQuery.listPosAccountWithCurrentCommitteeNew(
+            {skip, limit, orderBy, order: reverse === 'true' ? 'desc' : 'asc', groupByPowAddress: Boolean(groupByPowAddress)}
+        )
+
+        // `Name tag` field
+        const hex64Array = page.rows.map(row => row.hex)
+        const {map} = await statApp.accountQuery.listBytes32NameTagInfo(hex64Array)
+        page.rows.forEach(row => row[`byte32NameTagInfo`] = map[row.hex]?.byte32NameTag || {})
 
         ctx.body = {
-            /*code: 0, message: 'ok',*/
             list: page.rows,
             total: page.count,
         }

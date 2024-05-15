@@ -164,9 +164,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {name, registered: total} || {};
     })
 
-    /*router.get('/verify/sync', async (ctx)=>{
+    /*router.get('/contract/sync', async (ctx)=>{
         const {id} = ctx.request.query
         ctx.body = await statApp.contractQuery.sync({id})
+    })*/
+
+    /*router.get('/verify/sync', async (ctx)=>{
+        const {id} = ctx.request.query
+        ctx.body = await statApp.contractQuery.syncVerify({id})
     })*/
 
     router.get('/tokens/list', async (ctx)=>{
