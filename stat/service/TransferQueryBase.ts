@@ -187,19 +187,23 @@ export abstract class TransferQueryBase {
         const list = [];
         if(page?.rows){
             const hex40IdSet = new Set<number>();
-            const txHashQueryCondition = []
+            // const txHashQueryCondition = []
             const mapTx = new Map<string, FullTransaction>()
             const txTasks = []
             page.rows.forEach( row => {
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['address']);
-                txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
-                        blockPosition:row['blockIndex'], txPosition:row['txIndex']
-                    }]})
+                // txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
+                //         blockPosition:row['blockIndex'], txPosition:row['txIndex']
+                //     }]})
                 txTasks.push(
                     FullTransaction.findOne({
                         attributes: ['epoch', 'blockPosition', 'txPosition', 'hash', 'nonce', 'method', 'status', 'gas'],
+                        where: {epoch: row['epochNumber'],
+                            blockPosition:row['blockIndex'], txPosition:row['txIndex']
+                        },
+                        raw: true,
                     }).then(tx=>{
                         tx && mapTx.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx)
                     })
