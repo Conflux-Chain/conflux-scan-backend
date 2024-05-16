@@ -222,7 +222,6 @@ export abstract class TransferQueryBase {
                 // })
                 Promise.resolve(mapTx)
             ]);
-            console.log(`${__filename} ${new Date().toISOString()}`)
 
             // fields mapping
             list.forEach(row=>{
