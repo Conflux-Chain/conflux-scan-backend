@@ -1021,7 +1021,7 @@ jsonrpc.method('exportTransfer',
   async function ({ transferType, ...options }) {
     const {
       app: { tool, service, logger, tokenTool },
-    } = this;
+    } = this;// as ScanCtx;
 
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
@@ -1034,7 +1034,7 @@ jsonrpc.method('exportTransfer',
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
         each.decimals = 18;
       } else {
-        const token = await tokenTool.getToken(each.address) || {};
+        const token = await tokenTool.getToken(each.address, undefined, true) || {};
         each.name = token.name;
         each.symbol = token.symbol;
         each.decimals = token.decimals || 0;

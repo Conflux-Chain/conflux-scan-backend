@@ -32,7 +32,13 @@ export class TokenTool {
         this.contract = cfx.Contract({abi});
     }
 
-    async getToken(address, epochNumber = undefined): Promise<any> {
+    async getToken(address, epochNumber = undefined, useCache = false): Promise<any> {
+        if (useCache) {
+            const cache = dbCache.get(address);
+            if (cache) {
+                return cache
+            }
+        }
         return this.awaitObject({
             address,
             name: this.contract.name()
