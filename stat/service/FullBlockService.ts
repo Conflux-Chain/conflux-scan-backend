@@ -35,7 +35,7 @@ import {PosRegister} from "../model/PoS";
 
 // Do not care the value
 const CODE_REWIND = 20201029
-const CODE_OK = 0
+export const CODE_OK = 0
 const CODE_CONTINUE = 2020102903
 const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {

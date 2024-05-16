@@ -187,24 +187,40 @@ export abstract class TransferQueryBase {
         const list = [];
         if(page?.rows){
             const hex40IdSet = new Set<number>();
-            const txHashQueryCondition = []
+            // const txHashQueryCondition = []
+            const mapTx = new Map<string, FullTransaction>()
+            const txTasks = []
             page.rows.forEach( row => {
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['address']);
-                txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
-                        blockPosition:row['blockIndex'], txPosition:row['txIndex']
-                    }]})
+                // txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
+                //         blockPosition:row['blockIndex'], txPosition:row['txIndex']
+                //     }]})
+                txTasks.push(
+                    FullTransaction.findOne({
+                        attributes: ['epoch', 'blockPosition', 'txPosition', 'hash', 'nonce', 'method', 'status', 'gas'],
+                        where: {epoch: row['epochNumber'],
+                            blockPosition:row['blockIndex'], txPosition:row['txIndex']
+                        },
+                        raw: true,
+                    }).then(tx=>{
+                        tx && mapTx.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx)
+                    })
+                )
                 list.push(row);
             });
+            await Promise.all(txTasks)
             const [hex40Map, txMap] = await Promise.all([
                 idHex40Map(Array.from(hex40IdSet)),
-                FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash', 'nonce', 'method', 'status', 'gas'],
-                    where: {[Op.or]: txHashQueryCondition}}).then(list=>{
-                    const map = new Map<string, FullTransaction>()
-                    list.forEach(tx=>map.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx))
-                    return map
-                })
+                // this query is very slow if there are more than 1K rows
+                // FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash', 'nonce', 'method', 'status', 'gas'],
+                //     where: {[Op.or]: txHashQueryCondition}}).then(list=>{
+                //     const map = new Map<string, FullTransaction>()
+                //     list.forEach(tx=>map.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx))
+                //     return map
+                // })
+                Promise.resolve(mapTx)
             ]);
 
             // fields mapping
