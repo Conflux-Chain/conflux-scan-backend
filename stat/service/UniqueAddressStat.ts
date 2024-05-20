@@ -168,14 +168,15 @@ export class Aggregator<K,V> {
     }
 }
 
+const MINUTES_SPAN = 10
 export async function calcDailyUniqueAddrSchedule() {
     setTimeout(()=>calcDailyUniqueAddr(), 10_000); // delay when startup.
-    setTimeout(()=>calcDailyUniqueAddrSchedule(), 3600_000)// per hour.
+    setTimeout(()=>calcDailyUniqueAddrSchedule(), MINUTES_SPAN*60_000)//
 }
 export async function calcDailyUniqueAddr() {
     const dt = new Date();
     const hour = dt.getHours();
-    if (hour === 1) {
+    if (hour === 1 && dt.getMinutes() < MINUTES_SPAN * 2) {
         //
         const preDay = new Date(dt);
         preDay.setDate(preDay.getDate() - 1)

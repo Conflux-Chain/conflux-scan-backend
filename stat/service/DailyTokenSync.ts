@@ -10,8 +10,10 @@ import {CONST} from "./common/constant"
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
     showDebugLog = false
-    return calcAllRegisteredTokenDailyStat(new Date())
-        .then(()=>setTimeout(scheduleDailyTokenStat, 1000*3600*4))
+    await calcAllRegisteredTokenDailyStat(new Date()).catch(e=>{
+        console.log(`failed to calcAllRegisteredTokenDailyStat`, e)
+    })
+    setTimeout(scheduleDailyTokenStat, 1000*3600*4) //
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     const tokenList = await Token.findAll({
