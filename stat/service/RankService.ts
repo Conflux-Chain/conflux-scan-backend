@@ -1,14 +1,8 @@
-import {STATE_OK, T_TOP_BATCH_INDEX, T_TOP_RECORD, TopBatchIndex, TopRecord} from "../model/TopRecord";
-import {Sequelize, QueryTypes, or} from "sequelize";
-import {pickNumber} from "../model/Utils";
+import {QueryTypes} from "sequelize";
 import {
     ADDR_INFO_STATE_OK,
     buildHexSet,
-    fillHexId,
-    Hex64Map,
     idHex40Map, mapProp,
-    T_ADDRESS,
-    T_ADDRESS_INFO
 } from "../model/HexMap";
 // @ts-ignore
 import {format} from 'js-conflux-sdk'

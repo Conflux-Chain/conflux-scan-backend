@@ -2,6 +2,8 @@
  * Unique address for each token.
  */
 
+import {adjustTodayEndTime} from "../model/Utils";
+
 process.env.TZ='UTC'
 import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
@@ -207,6 +209,7 @@ export async function calcDailyTokenOnChain(dt: Date) {
 export async function calcOneDayUniqueArr(dt:Date) {
     const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
     const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+    adjustTodayEndTime(timeEnd)
     const showSql = false;
     const list = await UniqueAddress.findAll(({
         attributes: [
@@ -226,6 +229,7 @@ export async function calcOneDayUniqueArr(dt:Date) {
             uniqueSender: uniqueCount['sender'],
             uniqueReceiver: uniqueCount['receiver'],
             participants: uniqueCount['all'],
+            createdAt: timeEnd,
         }
         await DailyToken.bulkCreate([bean], {
             updateOnDuplicate: ['uniqueSender','uniqueReceiver', 'participants'],

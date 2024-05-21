@@ -10,6 +10,21 @@ export function fmtDtUTC(dt: Date) : string {
         .concat(' +00:00')
 }
 
+export function adjustTodayEndTime(end: Date) {
+    const today = new Date()
+    if (end.getTime() > today.getTime()) {
+        // half day
+        const minutes = today.getMinutes()
+        // uniform time range
+        if (minutes < 40) { // do not use <30> , in case  the data is behind 10 minutes
+            end.setHours(today.getHours(), 0, 0, 0)
+        } else {
+            end.setHours(today.getHours(),30, 0, 0)
+        }
+        console.log(`half day, set end time to ${end.toISOString()} now ${today.toISOString()}`)
+    }
+}
+
 export function pickNumber(v, defaultV) {
     return isNaN(v) ? defaultV : parseInt(v)
 }
