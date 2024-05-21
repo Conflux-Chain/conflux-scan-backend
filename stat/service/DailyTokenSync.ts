@@ -139,6 +139,8 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         adjustTodayEndTime(end)
         const [startE, endE] = await getEpochRange(start, end)
+    console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
+    console.log(` epoch range ${startE}  ${endE}`)
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
             count(distinct(toId)) uniqueSender from ${model.getTableName()} where contractId=?
             and epoch between ? and ?`
@@ -169,7 +171,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
     // holder count
     const banModel = BalanceWatcher.mapModel('', true, tokenBean.hex40id)
     if (banModel) {
-        banModel.count().then(cnt => {
+        await banModel.count().then(cnt => {
             return DailyToken.update({holderCount: cnt}, {where: {hexId: tokenHexId, day: start}})
         }).catch(err => {
             console.log(`update daily token holder fail ${tokenBean.hex40id}:`, err)
