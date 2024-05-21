@@ -1,8 +1,9 @@
 // @ts-ignore
-import {Hex40Map} from "../model/HexMap";
+import {hex40IdMap} from "../model/HexMap";
 import {ADDRESS_COUNT_ALL, CONTRACT_COUNT_ALL, KEY_FULL_TX_COUNT, KEY_GAS_USED_PER_SECOND, KV} from "../model/KV";
-import {FullBlock} from "../model/FullBlock";
+import {AddressTransactionIndex, FullBlock} from "../model/FullBlock";
 import {CONST} from "./common/constant"
+import {PruneInfo, PruneType} from "../model/PruneInfo";
 
 const lodash = require('lodash');
 
@@ -12,6 +13,7 @@ export class HomeDashboardService{
         blockchainInfo: {},
         supplyInfo: {},
         dagInfo: {},
+        internalContractInfo: {},
     };
 
     constructor(app: any) {
@@ -80,6 +82,21 @@ export class HomeDashboardService{
         return {total: epochNumber, list: matrix};
     }
 
+    async internalContractInfo({ limit = 10 } = {}) {
+        const hexIdMap = await hex40IdMap(CONST.INTERNAL_CONTRACT)
+        const idHexMap = {};
+        hexIdMap.forEach((hexId,hex) => (idHexMap[hexId] = hex));
+
+        const internalContractInfo = {}
+        for (const addressId of Object.keys(idHexMap)) {
+            const count = await AddressTransactionIndex.count({where: {addressId}})
+            const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}})
+            internalContractInfo[`0x${idHexMap[addressId]}`] = count + (pruneInfo?.pruned || 0)
+        }
+
+        return internalContractInfo
+    }
+
     private async run() {
         const blockchainInfo = await this.blockchainInfo().catch((e) => {
             console.log(`${__filename} error`, e)
@@ -92,6 +109,9 @@ export class HomeDashboardService{
 
         const dagInfo = await this.dagInfo().catch(() => undefined);
         dagInfo !== undefined && lodash.assign(this.data.dagInfo, dagInfo);
+
+        const internalContractInfo = await this.internalContractInfo().catch(() => undefined)
+        internalContractInfo !== undefined && lodash.assign(this.data.internalContractInfo, internalContractInfo)
 
         const gasUsedInfo = await KV.findOne({where: {key: KEY_GAS_USED_PER_SECOND}})
         if(gasUsedInfo !== undefined) {

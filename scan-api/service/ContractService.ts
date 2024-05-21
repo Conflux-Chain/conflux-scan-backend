@@ -1,4 +1,5 @@
 import {ScanApp} from "./index";
+import {isNumber} from "lodash";
 
 const lodash = require('lodash');
 const { ContractVerify } = require('../../stat/model/ContractVerify');
@@ -393,6 +394,7 @@ export class ContractService { // TODO: extends AccountService
     const base32Array = traceResponse?.list.map((item) => item.address);
     const announceResponse = await service.contractRdb.list({ addressArray: base32Array, fields });
     const announceMap = lodash.keyBy(announceResponse.list, 'address');
+    const data = await service.homeDashboard.getData()
 
     await Promise.all(traceResponse.list.map(async (createInfo) => {
       createInfo.name = announceMap[createInfo.address]?.name;
@@ -400,7 +402,13 @@ export class ContractService { // TODO: extends AccountService
       createInfo.abi = announceMap[createInfo.address]?.abi;
       createInfo.sourceCode = announceMap[createInfo.address]?.sourceCode;
       createInfo.admin = (await service.conflux.getAccount(createInfo.address)).admin;
-      createInfo.transactionCount = await service.transaction.count({ accountAddress: createInfo.address });
+      const txCount = data?.internalContractInfo[format.hexAddress(createInfo.address)]
+      if(lodash.isNumber(txCount)) {
+        console.log(`address ${createInfo.address} txCount ${txCount}`)
+        createInfo.transactionCount = txCount
+      } else{
+        createInfo.transactionCount = await service.transaction.count({ accountAddress: createInfo.address });
+      }
     }));
     return traceResponse;
   }
