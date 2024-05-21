@@ -9,6 +9,7 @@ import {batchFetchBlock} from "./common/utils";
 import {sleep} from "./tool/ProcessTool";
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
+import {init} from "./tool/FixDailyTokenStat";
 
 const BigFixed = require('bigfixed');
 
@@ -170,6 +171,7 @@ export async function countRecentMiner(days: number, showLog=false) {
 }
 
 async function main() {
+    await init();
     const [,,dtStr] = process.argv
     const now = Date.now()
     const dt = new Date(dtStr)
