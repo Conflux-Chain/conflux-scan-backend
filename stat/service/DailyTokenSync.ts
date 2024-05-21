@@ -6,6 +6,7 @@ import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
 import {CONST} from "./common/constant"
+import {adjustTodayEndTime} from "../model/Utils";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
@@ -93,6 +94,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     }
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
     let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+    adjustTodayEndTime(end)
     let dailyTokenWhere = {where: {hexId: tokenHexId, day: start}};
     const dailyToken = DailyToken.findOne(dailyTokenWhere)
     if (dailyToken == null) {
@@ -136,6 +138,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
     //
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+        adjustTodayEndTime(end)
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
             count(distinct(toId)) uniqueSender from ${model.getTableName()} where contractId=?
             and createdAt between ? and ?`
@@ -143,6 +146,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
             replacements:[tokenHexId, start, end],
             // logging: console.log
         }))[0] as DailyToken
+        stat.createdAt = end;
         if (stat.hexId === null) {
             stat.hexId = tokenHexId
             showDebugLog && console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol
