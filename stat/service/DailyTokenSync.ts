@@ -91,9 +91,14 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     if (model === null) {
         return;
     }
+    console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
     let end = new Date(dt);   end.setUTCHours(23,59,59,999)
     adjustTodayEndTime(end)
+    const [startE, endE] = await getEpochRange(start, end)
+    console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
+    console.log(` epoch range ${startE}  ${endE}`)
+
     let dailyTokenWhere = {where: {hexId: tokenHexId, day: start}};
     const dailyToken = DailyToken.findOne(dailyTokenWhere)
     if (dailyToken == null) {
@@ -102,12 +107,13 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     }
     let preId = 0;
     const sql = `select id,\`value\` from ${model.getTableName()} where contractId=?
-            and createdAt between ? and ? and id > ? order by id asc limit ?`
+            and epoch between ? and ? and id > ? order by id asc limit ?`
     const pageSize = 1000;
     let sum = BigInt(0)
     do {
         await model.sequelize.query(sql,{type:QueryTypes.SELECT,
-            replacements:[tokenHexId, start, end, preId, pageSize]}).then(list=>{
+            logging: showDebugLog ? console.log:false,
+            replacements:[tokenHexId, startE, endE, preId, pageSize]}).then(list=>{
                 list.forEach(row=>{
                     sum += BigInt(row.value)
                 })
