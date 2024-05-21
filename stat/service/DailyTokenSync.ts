@@ -127,7 +127,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     } while (preId > 0)
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
         .then(([cnt])=>{
-            // process.stdout.write(`\r${CONST.CL}update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
+            // console.log(` update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
         })
 }
 export async  function calcDailyToken(dt:Date, tokenHexId:number) {
@@ -157,9 +157,9 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         const [updatedCnt] = await DailyToken.update(stat, {where: {hexId: tokenHexId, day: start}})
         if (updatedCnt === 0) {
             await DailyToken.create(stat as DailyToken)
-            showDebugLog && process.stdout.write(`\r ${CONST.CL} create daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && console.log(` create daily token stat : ${tokenBean.symbol}`)
         } else {
-            showDebugLog && process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && console.log(` update daily token stat : ${tokenBean.symbol}`)
         }
         if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
              await calcDailyTokenAmount(dt, tokenHexId).catch(err=>{
