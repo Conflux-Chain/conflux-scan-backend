@@ -503,9 +503,21 @@ export async function calcUniqueUser(start:Date, end:Date, model: any) : Promise
     })
 }
 export async function rollupDailyCfxTxn(dt:Date) {
+    const today = new Date()
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
     end.setHours(23,59,59,999)
+    if (end.getTime() > today.getTime()) {
+        // half day
+        const minutes = today.getMinutes()
+        // uniform time range
+        if (minutes < 40) { // do not use <30> , in case  the data is behind 10 minutes
+            end.setHours(today.getHours(), 0, 0, 0)
+        } else {
+            end.setHours(today.getHours(),30, 0, 0)
+        }
+        console.log(`half day, set end time to ${end.toISOString()} now ${today.toISOString()}`)
+    }
     let [transferCount, userCount, amount] = await Promise.all([
         CfxTransfer.count({        where:{
             createdAt: {[Op.between]:[dt, end]}
