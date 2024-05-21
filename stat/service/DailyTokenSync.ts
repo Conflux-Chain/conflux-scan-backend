@@ -145,8 +145,8 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         adjustTodayEndTime(end)
         const [startE, endE] = await getEpochRange(start, end)
-    console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
-    console.log(` epoch range ${startE}  ${endE}`)
+        console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
+        console.log(` epoch range ${startE}  ${endE}`)
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
             count(distinct(toId)) uniqueSender from ${model.getTableName()} where contractId=?
             and epoch between ? and ?`

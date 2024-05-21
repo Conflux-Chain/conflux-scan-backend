@@ -385,6 +385,8 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
             sequelize: seq,
             indexes:[{
                 name: 'uk_hexId_day', fields:[{name:'hexId'},{name:'day'}], unique: true,
+            }, {
+                name: 'idx_day', fields:[{name:'day'}],
             }]
         })
     }
