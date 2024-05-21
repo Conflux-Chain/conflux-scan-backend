@@ -190,6 +190,7 @@ export async function calcDailyTokenOnChain(dt: Date) {
     // console.log(`calcDailyTokenOnChain ${dt.toISOString()}`)
     const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
     const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+    adjustTodayEndTime(timeEnd)
     const transferCount = await DailyToken.sum('transferCount',{
         where: {day: dt}, raw: true,
         logging: console.log,
@@ -203,7 +204,8 @@ export async function calcDailyTokenOnChain(dt: Date) {
     )
     await DailyTokenTxn.upsert({
         day: dt, txnCount: transferCount,
-        userCount, type: TOKEN_TYPE_ALL_4
+        userCount, type: TOKEN_TYPE_ALL_4,
+        createdAt: timeEnd,
     })
 }
 export async function calcOneDayUniqueArr(dt:Date) {
