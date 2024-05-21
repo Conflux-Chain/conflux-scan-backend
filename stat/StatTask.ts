@@ -51,9 +51,9 @@ async function main() {
         await censorService.schedule(1000 * 3);
     }
     //
+    scheduleDailyTokenStat().then()
     await scheduleDailyActiveAddress()
-        .then(()=>{scheduleDailyTokenStat()})
-    await calcDailyUniqueAddrSchedule().then()
+    calcDailyUniqueAddrSchedule().then()
     //
     const reporter = new Reporter({config, cfx});
     await reporter.start();

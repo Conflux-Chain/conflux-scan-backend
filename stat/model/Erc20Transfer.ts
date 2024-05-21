@@ -248,6 +248,7 @@ export interface IDailyTokenTxn {
     userCount:number
     day:Date
     type: string // erc20 erc721 erc777 erc1155
+    createdAt: Date
 }
 export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenTxn{
     id?:number
@@ -255,6 +256,7 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
     userCount:number
     day:Date
     type: string
+    createdAt: Date
     static register(seq){
         DailyTokenTxn.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -262,6 +264,7 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
             userCount: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             day: {type: DataTypes.DATEONLY, allowNull: false},
             type: {type: DataTypes.STRING(8), allowNull: false},
+            createdAt: {type: DataTypes.DATE},
         },{
             tableName: T_DAILY_TOKEN_TXN,
             sequelize: seq,

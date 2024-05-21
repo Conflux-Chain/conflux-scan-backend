@@ -2,6 +2,8 @@
  * Unique address for each token.
  */
 
+import {adjustTodayEndTime} from "../model/Utils";
+
 process.env.TZ='UTC'
 import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
@@ -168,14 +170,15 @@ export class Aggregator<K,V> {
     }
 }
 
+const MINUTES_SPAN = 10
 export async function calcDailyUniqueAddrSchedule() {
     setTimeout(()=>calcDailyUniqueAddr(), 10_000); // delay when startup.
-    setTimeout(()=>calcDailyUniqueAddrSchedule(), 3600_000)// per hour.
+    setTimeout(()=>calcDailyUniqueAddrSchedule(), MINUTES_SPAN*60_000)//
 }
 export async function calcDailyUniqueAddr() {
     const dt = new Date();
     const hour = dt.getHours();
-    if (hour === 1) {
+    if (hour === 1 && dt.getMinutes() < MINUTES_SPAN * 2) {
         //
         const preDay = new Date(dt);
         preDay.setDate(preDay.getDate() - 1)
@@ -187,6 +190,7 @@ export async function calcDailyTokenOnChain(dt: Date) {
     // console.log(`calcDailyTokenOnChain ${dt.toISOString()}`)
     const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
     const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+    adjustTodayEndTime(timeEnd)
     const transferCount = await DailyToken.sum('transferCount',{
         where: {day: dt}, raw: true,
         logging: console.log,
@@ -200,12 +204,14 @@ export async function calcDailyTokenOnChain(dt: Date) {
     )
     await DailyTokenTxn.upsert({
         day: dt, txnCount: transferCount,
-        userCount, type: TOKEN_TYPE_ALL_4
+        userCount, type: TOKEN_TYPE_ALL_4,
+        createdAt: timeEnd,
     })
 }
 export async function calcOneDayUniqueArr(dt:Date) {
     const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
     const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+    adjustTodayEndTime(timeEnd)
     const showSql = false;
     const list = await UniqueAddress.findAll(({
         attributes: [
@@ -225,6 +231,7 @@ export async function calcOneDayUniqueArr(dt:Date) {
             uniqueSender: uniqueCount['sender'],
             uniqueReceiver: uniqueCount['receiver'],
             participants: uniqueCount['all'],
+            createdAt: timeEnd,
         }
         await DailyToken.bulkCreate([bean], {
             updateOnDuplicate: ['uniqueSender','uniqueReceiver', 'participants'],

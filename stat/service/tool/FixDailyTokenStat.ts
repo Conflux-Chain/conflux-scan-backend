@@ -139,7 +139,7 @@ async function main() {
             return fixDate(Number(arg1))
         } else if (cmd === 'fix-dt-hex') {
             // node this '2021-04-29' 123
-            return calcDailyToken(new Date(arg1), Number(arg2))
+            return calcDailyToken(new Date(arg1), Number(arg2), true)
         } else if (cmd ==='fix-dt'){
             await fixDate(0, arg1)
         }

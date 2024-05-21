@@ -5,13 +5,15 @@ import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
-import {CONST} from "./common/constant"
+import {adjustTodayEndTime, getEpochRange} from "../model/Utils";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
     showDebugLog = false
-    return calcAllRegisteredTokenDailyStat(new Date())
-        .then(()=>setTimeout(scheduleDailyTokenStat, 1000*3600*4))
+    await calcAllRegisteredTokenDailyStat(new Date()).catch(e=>{
+        console.log(`failed to calcAllRegisteredTokenDailyStat`, e)
+    })
+    setTimeout(scheduleDailyTokenStat, 1000*3600*4) //
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     const tokenList = await Token.findAll({
@@ -20,7 +22,7 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     })
     console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
     for(const token of tokenList) {
-        await calcDailyToken(dt, token.hex40id)
+        await calcDailyToken(dt, token.hex40id, showDebugLog)
         showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
     }
     console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
@@ -89,8 +91,14 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     if (model === null) {
         return;
     }
+    console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
     let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+    adjustTodayEndTime(end)
+    const [startE, endE] = await getEpochRange(start, end)
+    console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
+    console.log(` epoch range ${startE}  ${endE}`)
+
     let dailyTokenWhere = {where: {hexId: tokenHexId, day: start}};
     const dailyToken = DailyToken.findOne(dailyTokenWhere)
     if (dailyToken == null) {
@@ -99,12 +107,13 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     }
     let preId = 0;
     const sql = `select id,\`value\` from ${model.getTableName()} where contractId=?
-            and createdAt between ? and ? and id > ? order by id asc limit ?`
+            and epoch between ? and ? and id > ? order by id asc limit ?`
     const pageSize = 1000;
     let sum = BigInt(0)
     do {
         await model.sequelize.query(sql,{type:QueryTypes.SELECT,
-            replacements:[tokenHexId, start, end, preId, pageSize]}).then(list=>{
+            logging: showDebugLog ? console.log:false,
+            replacements:[tokenHexId, startE, endE, preId, pageSize]}).then(list=>{
                 list.forEach(row=>{
                     sum += BigInt(row.value)
                 })
@@ -123,10 +132,10 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     } while (preId > 0)
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
         .then(([cnt])=>{
-            // process.stdout.write(`\r${CONST.CL}update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
+            // console.log(` update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
         })
 }
-export async  function calcDailyToken(dt:Date, tokenHexId:number) {
+export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = false) {
     const [model, tokenBean] = await getTokenModel(tokenHexId)
     if (model === null) {
         return;
@@ -134,13 +143,18 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
     //
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+        adjustTodayEndTime(end)
+        const [startE, endE] = await getEpochRange(start, end)
+        console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
+        console.log(` epoch range ${startE}  ${endE}`)
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
             count(distinct(toId)) uniqueSender from ${model.getTableName()} where contractId=?
-            and createdAt between ? and ?`
+            and epoch between ? and ?`
         const stat:DailyToken = (await model/*Erc20Transfer*/.sequelize.query(sql, {type:QueryTypes.SELECT,
-            replacements:[tokenHexId, start, end],
-            // logging: console.log
+            replacements:[tokenHexId, startE, endE],
+            logging: showLog ? console.log : false,
         }))[0] as DailyToken
+        stat.createdAt = end;
         if (stat.hexId === null) {
             stat.hexId = tokenHexId
             showDebugLog && console.log(`\nStat is empty for  ${tokenBean.type}, ${tokenBean.base32}, ${tokenBean.symbol
@@ -151,9 +165,9 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         const [updatedCnt] = await DailyToken.update(stat, {where: {hexId: tokenHexId, day: start}})
         if (updatedCnt === 0) {
             await DailyToken.create(stat as DailyToken)
-            showDebugLog && process.stdout.write(`\r ${CONST.CL} create daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && console.log(` create daily token stat : ${tokenBean.symbol}`)
         } else {
-            showDebugLog && process.stdout.write(`\r ${CONST.CL} update daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && console.log(` update daily token stat : ${tokenBean.symbol}`)
         }
         if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
              await calcDailyTokenAmount(dt, tokenHexId).catch(err=>{
@@ -163,7 +177,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
     // holder count
     const banModel = BalanceWatcher.mapModel('', true, tokenBean.hex40id)
     if (banModel) {
-        banModel.count().then(cnt => {
+        await banModel.count().then(cnt => {
             return DailyToken.update({holderCount: cnt}, {where: {hexId: tokenHexId, day: start}})
         }).catch(err => {
             console.log(`update daily token holder fail ${tokenBean.hex40id}:`, err)
