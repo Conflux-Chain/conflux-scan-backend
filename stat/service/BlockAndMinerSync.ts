@@ -1,6 +1,6 @@
 import {col, Sequelize, QueryTypes, Op, fn} from "sequelize";
 import {IMinerBlock, MinerBlock} from "../model/MinerBlock";
-import {calculateBeginTime, fmtDtUTC} from "../model/Utils";
+import {adjustTodayEndTime, calculateBeginTime, fmtDtUTC, getEpochRange} from "../model/Utils";
 // @ts-ignore
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {getDBConf, getSumFunction} from "./DBProvider";
@@ -120,23 +120,14 @@ export class BlockAndMinerSync {
         // find the epoch with time >= time point
         const endDt = new Date(beginDt.getTime())
         endDt.setMinutes(59,59,999)
+        adjustTodayEndTime(endDt)
         // find the epoch with time <= endDt
-        const [startEpoch, endEpoch] = await Promise.all([
-            Epoch.findOne({where: {timestamp:{[Op.gte]:beginDt}}, order:[['timestamp','asc']],
-                logging: showLog ? console.log : false,
-            }),
-            Epoch.findOne({where: {timestamp:{[Op.lte]:endDt}}, order:[['timestamp','desc']],
-                logging: showLog ? console.log : false,
-            })
-        ])
-        if (startEpoch === null || endEpoch === null) {
-            console.log(` start epoch or end epoch is missing, ${startEpoch?.epoch}, ${endEpoch?.epoch
-            }, ${beginDt.toISOString()} ${endDt.toISOString()}`)
-            return;
-        }
+        const [startEpoch, endEpoch] = await getEpochRange(beginDt, endDt);
 
         const statByMinerIdList = (await FullBlock.findAll({
-            where: {epoch:{[Op.between]:[startEpoch.epoch, endEpoch.epoch]}, totalReward:{[Op.gt]: 0}},
+            where: {epoch:{[Op.between]:[startEpoch, endEpoch]},
+                // totalReward:{[Op.gt]: 0} // it depends on filling reward progress, unstable
+            },
             attributes: [
                 'minerId',
                 [fn('sum', col('difficulty')), 'difficultySum'],
@@ -149,7 +140,7 @@ export class BlockAndMinerSync {
         })) as any[]
         if (statByMinerIdList.length === 0) {
             console.info(`rollup hourly, no stats between ${beginDt.toISOString()} - ${endDt.toISOString()
-            }, that is, epoch between ${startEpoch.epoch}, ${endEpoch.epoch}`)
+            }, that is, epoch between ${startEpoch}, ${endEpoch}`)
             return;
         }
         statByMinerIdList.forEach(r=>{
@@ -162,7 +153,7 @@ export class BlockAndMinerSync {
             updateOnDuplicate: ['difficultySum','blockCount','totalReward', 'txFee']
             // logging: console.log
         }).then(()=>{
-            console.log(`miner block stat, rollup hourly insert count ${statByMinerIdList.length}`)
+            console.log(`miner block stat, rollup hourly epoch ${startEpoch} insert count ${statByMinerIdList.length}`)
         }).catch(err=>{
             console.error(`rollup by hour fail : ${err}`)
         })
@@ -178,6 +169,18 @@ export async function countRecentMiner(days: number, showLog=false) {
     })
 }
 
+async function main() {
+    const [,,dtStr] = process.argv
+    const now = Date.now()
+    const dt = new Date(dtStr)
+    const svc = new BlockAndMinerSync()
+    while (dt.getTime() < now) {
+        await svc.rollupByHour(dt, true)
+        dt.setHours(dt.getHours() + 1)
+    }
+    console.log(`done`)
+}
+
 if (module === require.main) {
-    new BlockAndMinerSync().rollupStatPerHour().then()
+    main().then()
 }
