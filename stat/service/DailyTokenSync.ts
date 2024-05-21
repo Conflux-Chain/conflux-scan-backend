@@ -5,8 +5,7 @@ import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
-import {CONST} from "./common/constant"
-import {adjustTodayEndTime} from "../model/Utils";
+import {adjustTodayEndTime, getEpochRange} from "../model/Utils";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
@@ -23,7 +22,7 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     })
     console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
     for(const token of tokenList) {
-        await calcDailyToken(dt, token.hex40id)
+        await calcDailyToken(dt, token.hex40id, showDebugLog)
         showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
     }
     console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
@@ -130,7 +129,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
             // console.log(` update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
         })
 }
-export async  function calcDailyToken(dt:Date, tokenHexId:number) {
+export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = false) {
     const [model, tokenBean] = await getTokenModel(tokenHexId)
     if (model === null) {
         return;
@@ -139,12 +138,13 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number) {
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         adjustTodayEndTime(end)
+        const [startE, endE] = await getEpochRange(start, end)
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
             count(distinct(toId)) uniqueSender from ${model.getTableName()} where contractId=?
-            and createdAt between ? and ?`
+            and epoch between ? and ?`
         const stat:DailyToken = (await model/*Erc20Transfer*/.sequelize.query(sql, {type:QueryTypes.SELECT,
-            replacements:[tokenHexId, start, end],
-            // logging: console.log
+            replacements:[tokenHexId, startE, endE],
+            logging: showLog ? console.log : false,
         }))[0] as DailyToken
         stat.createdAt = end;
         if (stat.hexId === null) {

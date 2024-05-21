@@ -1,3 +1,6 @@
+import {Epoch} from "./Epoch";
+import {Op} from "sequelize";
+
 /**
  * When using raw query, there is an issue about timezone, under sqlite3.
  * Avoid passing date directly, convert it to utc string.
@@ -8,6 +11,20 @@ export function fmtDtUTC(dt: Date) : string {
         .replace('T', ' ')
         .replace('Z', '')
         .concat(' +00:00')
+}
+
+export async function getEpochRange(beginDt: Date, endDt: Date, showLog = false) {
+    const [startEpoch, endEpoch] = await Promise.all([
+        Epoch.findOne({where: {timestamp:{[Op.gte]:beginDt}}, order:[['timestamp','asc']],
+            logging: showLog ? console.log : false,
+        }),
+        Epoch.findOne({where: {timestamp:{[Op.lte]:endDt}}, order:[['timestamp','desc']],
+            logging: showLog ? console.log : false,
+        })
+    ])
+    return [startEpoch, endEpoch].map(e=>{
+        return e?.epoch || 0
+    })
 }
 
 export function adjustTodayEndTime(end: Date) {
