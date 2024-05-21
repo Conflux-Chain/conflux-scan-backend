@@ -466,6 +466,7 @@ export interface IDailyCfxTxn {
     userCount:number
     amount:number
     day:Date
+    createdAt: Date
 }
 export class DailyCfxTxn extends Model<IDailyCfxTxn> implements IDailyCfxTxn{
     id?:number
@@ -473,6 +474,7 @@ export class DailyCfxTxn extends Model<IDailyCfxTxn> implements IDailyCfxTxn{
     userCount:number
     amount:number
     day:Date
+    createdAt: Date
     static register(seq){
         DailyCfxTxn.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
@@ -480,6 +482,7 @@ export class DailyCfxTxn extends Model<IDailyCfxTxn> implements IDailyCfxTxn{
             userCount: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
             amount: {type: DataTypes.DECIMAL(56,0), allowNull: false, defaultValue: 0},
             day: {type: DataTypes.DATEONLY, allowNull: false, unique: true},
+            createdAt: {type: DataTypes.DATE},
         },{
             tableName: T_DAILY_CFX_TXN,
             sequelize: seq,
@@ -529,7 +532,7 @@ export async function rollupDailyCfxTxn(dt:Date) {
     ])
     await DailyCfxTxn.upsert({
         txnCount: transferCount, day: dt,
-        userCount, amount: amount ?? 0
+        userCount, amount: amount ?? 0, createdAt: end
     })
 }
 
