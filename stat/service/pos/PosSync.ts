@@ -702,6 +702,7 @@ async function start() {
         scheduleSyncPosGap().then()
         scheduleDailyStakingDepositWithdraw().then()
         scheduleDailyParticipation().then()
+        setInterval(()=>posSync.updateAllAccountVotes(), 1000*60*10)
         return Promise.all([
             // posSync.test(),
             posSync.repeatSyncBlock(),
