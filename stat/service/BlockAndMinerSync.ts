@@ -12,7 +12,7 @@ import {FullBlock} from "../model/FullBlock";
 import {init} from "./tool/FixDailyTokenStat";
 
 const BigFixed = require('bigfixed');
-
+let _showLog = false
 export class BlockAndMinerSync {
     static CODE_REWARD_NOT_READY = 125;
     static cacheSavedTxLength = 100;
@@ -72,7 +72,7 @@ export class BlockAndMinerSync {
         } catch (err) {
             return Promise.reject(`${err}`)
         }
-        adjustTodayEndTime(endDt)
+        adjustTodayEndTime(endDt, !useCache)
         const v = BlockAndMinerSync.topByTime(beginDt, endDt, timeWindow, limit);
         BlockAndMinerSync.rankCache.set(cacheKey, v)
         return v
@@ -92,7 +92,7 @@ export class BlockAndMinerSync {
             replacements: [beginDt, endDt, timeWindow, limit],
             type: QueryTypes.SELECT,
                 // benchmark: true,
-                // logging: console.log
+                logging: _showLog ? console.log : false,
         })
         list.forEach(item=>{
             // @ts-ignore
@@ -176,16 +176,31 @@ export async function countRecentMiner(days: number, showLog=false) {
 }
 
 async function main() {
+    _showLog = true
     await init();
     const [,,dtStr] = process.argv
-    const now = Date.now()
-    const dt = new Date(dtStr)
     const svc = new BlockAndMinerSync()
-    while (dt.getTime() < now) {
-        await svc.rollupByHour(dt, true)
-        dt.setHours(dt.getHours() + 1)
+
+    if (dtStr === "top") {
+        const {list} = await BlockAndMinerSync.topByType(24, 'h', 10, false)
+        list.forEach(row=>{
+            console.log(`${row["base32"]} block ${row.blockCount} `)
+        })
+    } else {
+        const now = Date.now()
+        const dt = new Date(dtStr)
+
+        StatApp.networkId = 1
+
+        while (dt.getTime() < now) {
+            console.log()
+            await svc.rollupByHour(dt, true)
+            dt.setHours(dt.getHours() + 1)
+        }
     }
+
     console.log(`done`)
+    MinerBlock.sequelize.close().then()
 }
 
 if (module === require.main) {
