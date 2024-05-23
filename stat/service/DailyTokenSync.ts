@@ -96,8 +96,10 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     let end = new Date(dt);   end.setUTCHours(23,59,59,999)
     adjustTodayEndTime(end)
     const [startE, endE] = await getEpochRange(start, end)
-    console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
-    console.log(` epoch range ${startE}  ${endE}`)
+    if (showDebugLog) {
+        console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
+        console.log(` epoch range ${startE}  ${endE}`)
+    }
 
     let dailyTokenWhere = {where: {hexId: tokenHexId, day: start}};
     const dailyToken = DailyToken.findOne(dailyTokenWhere)

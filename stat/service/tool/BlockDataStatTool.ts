@@ -42,7 +42,7 @@ async function fixBlockTxFeeNewer(config: StatConfig) {
     async function repeat() {
         if (epoch >= epochConfirmed) {
             await sleep(5_000)
-            epoch = await cfx.getEpochNumber('latest_confirmed').catch(()=>epoch)
+            epochConfirmed = await cfx.getEpochNumber('latest_confirmed').catch(()=>epoch)
         }
         const fillRet = await svc.fillBlockReward(epoch).catch(e=>{
             console.log(e)
