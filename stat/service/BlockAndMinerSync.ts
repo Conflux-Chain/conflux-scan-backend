@@ -72,6 +72,7 @@ export class BlockAndMinerSync {
         } catch (err) {
             return Promise.reject(`${err}`)
         }
+        adjustTodayEndTime(endDt)
         const v = BlockAndMinerSync.topByTime(beginDt, endDt, timeWindow, limit);
         BlockAndMinerSync.rankCache.set(cacheKey, v)
         return v
@@ -121,12 +122,16 @@ export class BlockAndMinerSync {
         // find the epoch with time >= time point
         const endDt = new Date(beginDt.getTime())
         endDt.setMinutes(59,59,999)
-        adjustTodayEndTime(endDt)
+        adjustTodayEndTime(endDt, showLog)
         // find the epoch with time <= endDt
         const [startEpoch, endEpoch] = await getEpochRange(beginDt, endDt);
-
+        if (showLog) {
+            console.log(` time range ${beginDt.toISOString()}  ${endDt.toISOString()}`)
+            console.log(` epoch range ${startEpoch}  ${endEpoch}`)
+        }
         const statByMinerIdList = (await FullBlock.findAll({
-            where: {epoch:{[Op.between]:[startEpoch, endEpoch]},
+            where: {
+                epoch:{[Op.between]:[startEpoch, endEpoch]},
                 // totalReward:{[Op.gt]: 0} // it depends on filling reward progress, unstable
             },
             attributes: [
@@ -137,8 +142,8 @@ export class BlockAndMinerSync {
                 [fn('sum', col('txFee')), 'txFee'],
             ],
             group: ['minerId'], raw: true,
-            // logging: console.log,
-        })) as any[]
+            logging: showLog ? console.log : false,
+        })) as any[];
         if (statByMinerIdList.length === 0) {
             console.info(`rollup hourly, no stats between ${beginDt.toISOString()} - ${endDt.toISOString()
             }, that is, epoch between ${startEpoch}, ${endEpoch}`)
@@ -151,8 +156,8 @@ export class BlockAndMinerSync {
             r.timeWindow = '1h'
         })
         return MinerBlock.bulkCreate(statByMinerIdList,{
-            updateOnDuplicate: ['difficultySum','blockCount','totalReward', 'txFee']
-            // logging: console.log
+            updateOnDuplicate: ['difficultySum','blockCount','totalReward', 'txFee'],
+            logging: showLog ? console.log : false
         }).then(()=>{
             console.log(`miner block stat, rollup hourly epoch ${startEpoch} insert count ${statByMinerIdList.length}`)
         }).catch(err=>{
@@ -186,3 +191,4 @@ async function main() {
 if (module === require.main) {
     main().then()
 }
+// node stat/service/BlockAndMinerSync.js 2024-05-21
