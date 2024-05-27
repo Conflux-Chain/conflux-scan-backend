@@ -326,9 +326,10 @@ export function getTokenTool(cfx:Conflux) {
     }
     return toolInfo;
 }
+let maxDbTransferEpoch = 0;
 async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
     const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
-        return ` select contractId, fromId, toId from ${t.getTableName()} where epoch=? `
+        return ` select contractId, fromId as \`from\`, toId as \`to\` from ${t.getTableName()} where epoch=? `
     }).join(" union ");
     console.log(` sql is `, sql)
     const aggregator = new Aggregator<number,string>();
@@ -348,7 +349,6 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     let timeStart, timeEnd;
     const loader = new PreLoader(cfx, getLogs, 10000, stopBeforeEpoch);
     loader.preLoadSize = 5
-    let maxDbTransferEpoch = 0;
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     async function repeat() {
         while (epoch >= maxDbTransferEpoch) {
