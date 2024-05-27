@@ -328,7 +328,7 @@ export function getTokenTool(cfx:Conflux) {
 }
 async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
     const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
-        ` select contractId, fromId, toId from ${t.getTableName()} where epoch=? `
+        return ` select contractId, fromId, toId from ${t.getTableName()} where epoch=? `
     }).join(" union ");
     console.log(` sql is `, sql)
     const aggregator = new Aggregator<number,string>();
