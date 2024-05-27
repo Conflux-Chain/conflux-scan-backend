@@ -13,7 +13,7 @@ export async  function scheduleDailyTokenStat() {
     await calcAllRegisteredTokenDailyStat(new Date()).catch(e=>{
         console.log(`failed to calcAllRegisteredTokenDailyStat`, e)
     })
-    setTimeout(scheduleDailyTokenStat, 1000*3600*4) //
+    setTimeout(scheduleDailyTokenStat, 1000*60*10) //
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     const tokenList = await Token.findAll({

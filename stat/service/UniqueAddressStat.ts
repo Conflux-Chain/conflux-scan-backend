@@ -492,7 +492,7 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
 }
 
 export async function startUniqueAddrStat() {
-    return setup("useConfigRpc", "-1", "3000")
+    return setup("useConfigRpc", "-1", "300")
 }
 
 if (module === require.main) {
