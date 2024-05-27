@@ -87,16 +87,16 @@ export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
         return [model, tokenBean]
 }
 export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
-    const [model, tokenBean] = await getTokenModel(tokenHexId)
+    const [model, tokenBean] = await getTokenModel(tokenHexId);
     if (model === null) {
         return;
     }
-    console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
     let end = new Date(dt);   end.setUTCHours(23,59,59,999)
     adjustTodayEndTime(end)
     const [startE, endE] = await getEpochRange(start, end)
     if (showDebugLog) {
+        console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
         console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
         console.log(` epoch range ${startE}  ${endE}`)
     }
