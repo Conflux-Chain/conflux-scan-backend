@@ -12,7 +12,7 @@ import {
     calcDailyToken,
     calcDailyTokenAmount,
 } from "../DailyTokenSync";
-import {Op, Sequelize, Options} from "sequelize"
+import {Op, Sequelize, Options, QueryTypes} from "sequelize"
 import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
@@ -47,7 +47,8 @@ export async function fixDate(hexId=0, dtStr = '2020-10-28') {
         }
     ).join(" union ")
     const contractArr = await Erc20Transfer.sequelize.query(sql, {
-        logging: console.log, benchmark: true, raw: true
+        logging: console.log, benchmark: true, raw: true,
+        type: QueryTypes.SELECT,
     })
     console.log(`recent contracts : ${contractArr.map(c=>c["cid"]).join(',')}`)
     while( dt < now) {
