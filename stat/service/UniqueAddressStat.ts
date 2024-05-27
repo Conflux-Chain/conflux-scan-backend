@@ -19,6 +19,7 @@ import {Measure} from "./common/Measure";
 import {Epoch} from "../model/Epoch";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
+import {EpochHashTokenTransfer} from "../TokenTransferSync";
 
 process.env.TZ='UTC'
 
@@ -345,9 +346,14 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     let timeStart, timeEnd;
     const loader = new PreLoader(cfx, getLogs, 10000, stopBeforeEpoch);
     loader.preLoadSize = 50
+    let maxDbTransferEpoch = 0;
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     async function repeat() {
-        const {action, data} = await loader.get(epoch)
+        while (epoch >= maxDbTransferEpoch) {
+            await sleep(2_000)
+            maxDbTransferEpoch = await EpochHashTokenTransfer.findOne({order: ['epoch', 'desc']}).then(res=>res?.epoch - 100)
+        }
+        const {action, data} = await loader.get(epoch);
         let delay = 0
         const epochMeasureKey = 'perEpoch';
         switch (action) {
