@@ -351,7 +351,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     async function repeat() {
         while (epoch >= maxDbTransferEpoch) {
             await sleep(2_000)
-            maxDbTransferEpoch = await EpochHashTokenTransfer.findOne({order: ['epoch', 'desc']}).then(res=>res?.epoch - 100)
+            maxDbTransferEpoch = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]}).then(res=>res?.epoch - 100)
         }
         const {action, data} = await loader.get(epoch);
         let delay = 0
