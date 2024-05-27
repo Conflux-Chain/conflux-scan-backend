@@ -3,12 +3,10 @@
  */
 
 import {adjustTodayEndTime} from "../model/Utils";
-
-process.env.TZ='UTC'
 import {redirectLog} from "../config/LoggerConfig";
-import {DailyTokenTxn, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
+import {DailyTokenTxn, Erc20Transfer, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {regExitHook, sleep} from "./tool/ProcessTool";
-import {Op, fn, col, Model, Sequelize, DataTypes, literal} from 'sequelize'
+import {col, DataTypes, literal, Model, Op, QueryTypes, Sequelize} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux, format} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
@@ -18,6 +16,12 @@ import {Log as CfxLog} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./tool/TokenTool";
 import {makeIdV} from "../model/HexMap";
 import {Measure} from "./common/Measure";
+import {Epoch} from "../model/Epoch";
+import {Erc721Transfer} from "../model/Erc721Transfer";
+import {Erc1155Transfer} from "../model/Erc1155Transfer";
+
+process.env.TZ='UTC'
+
 //
 export interface IUniqueAddress {
     id?:number
@@ -282,80 +286,6 @@ const measure = new Measure()
 const addrMap = new Map<string, string>()
 const addrIdMap = new Map<string, number>()
 const ADDR_LEN = 8 // 40. only save the tail of an address.
-async function polishLogs(logs:CfxLog[], epoch:number, tokenTool: TokenTool, epochTime:Date) {
-    // console.log(` epoch ${epoch} logs length ${logs.length}`)
-    if (logs.length === 0) {
-        return []
-    }
-    const filtered = []
-    const addrLen = -ADDR_LEN
-    for (let log of logs) {
-        if (log.topics.length < 3) {
-            // at least, topic contains [ topic, from, to]
-            continue;
-        }
-        const {address, topics: [t, t1, t2, t3]} = log
-        // console.log(`${address} ${t}`)
-        if (t1 === undefined || t2 === undefined) {
-            console.log(`UniqueAddr invalid topics at epoch ${epoch
-            }, block ${log.blockHash} tx ${log.transactionHash
-            }, tx log index ${log.transactionLogIndex} `, log.topics)
-            continue
-        }
-        let from, to;
-        const sliceAddr = ()=> {
-            if (t === tokenTool.contract.TransferSingle.signature
-                || t === tokenTool.contract.TransferBatch.signature) {
-                if (t3) { // t2 has been checked above.
-                    from = t2.slice(addrLen)
-                    to = t3.slice(addrLen)
-                }
-            } else {
-                from = t1.slice(addrLen)
-                to = t2.slice(addrLen)
-            }
-        }
-        measure.execute('parseLog', sliceAddr);
-        // console.log(log)
-        const contractHex = measure.execute('fmtAddr', ()=>{
-            let hex = addrMap.get(address)
-            if (hex) {
-                return hex;
-            }
-            hex = format.hexAddress(address);
-            addrMap.set(address, hex)
-            return hex;
-        });
-        const addr2id = async (hex)=>{
-            const id = measure.execute('getCacheId', ()=>addrIdMap.get(hex))
-            if (id) {
-                return id;
-            }
-            return measure.call('makeId', ()=>makeIdV(hex, undefined, epochTime).then(id=>{
-                addrIdMap.set(hex, id)
-                return id;
-            }));
-        }
-        const [contractId] = await measure.call('loadId',
-            ()=> Promise.all([
-                addr2id(contractHex),
-                // addr2id(from),
-                // addr2id(to),
-                ])
-        )
-        if (!contractId) {
-            console.log(`UniqueAddr contract id is not set !, contract ${address} ${contractHex}`)
-        }
-        measure.execute('set prop', ()=>{
-            log['contractId'] = contractId;
-            log['from'] = from
-            log['to'] = to
-            // log['createdAt'] = epochTime
-            filtered.push(log)
-        });
-    }
-    return filtered;
-}
 async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
     epoch
 }) {
@@ -396,20 +326,17 @@ export function getTokenTool(cfx:Conflux) {
     return toolInfo;
 }
 async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
-    const {tokenTool, topics} = getTokenTool(cfx)
     const aggregator = new Aggregator<number,string>();
-    async function getLogs(epochNumber) : Promise<any>{
+    async function getLogs(epochNumber: number) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
-            measure.call(false, ()=>cfx.getBlockByEpochNumber(epochNumber, false)),
-            measure.call(false, ()=>cfx.getLogs({
-                fromEpoch: epochNumber, toEpoch: epochNumber, topics
-            })).then(arr=>{
-                return arr;
-            }),
+            Epoch.findOne({where: {epoch: epochNumber}}),
+            Epoch.sequelize.query([Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
+                ` select contractId, fromId, toId from ${t.getTableName()} where epoch=${epochNumber}`
+            }).join(" union "), {type: QueryTypes.SELECT, raw: true})
         ]))
-        const dt = new Date(block.timestamp * 1000)
+        const dt = block.timestamp;
         // return {arr:[{createdAt:dt}]};
-        return measure.call('polishLogs',()=>polishLogs(logs, epochNumber, tokenTool, dt)).then(logs=>{
+        return measure.call('polishLogs',()=>Promise.reject(logs)).then(logs=>{
             return measure.execute('buildMap', ()=>aggregator.buildMap(logs as any, epochNumber, dt))
         }).then(()=>{
             return {arr:logs, epochTime: dt};
