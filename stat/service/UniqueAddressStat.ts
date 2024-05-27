@@ -327,13 +327,15 @@ export function getTokenTool(cfx:Conflux) {
     return toolInfo;
 }
 async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+    const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
+        ` select contractId, fromId, toId from ${t.getTableName()} where epoch=? `
+    }).join(" union ");
+    console.log(` sql is `, sql)
     const aggregator = new Aggregator<number,string>();
     async function getLogs(epochNumber: number) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
             Epoch.findOne({where: {epoch: epochNumber}}),
-            Epoch.sequelize.query([Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
-                ` select contractId, fromId, toId from ${t.getTableName()} where epoch=${epochNumber}`
-            }).join(" union "), {type: QueryTypes.SELECT, raw: true})
+            Epoch.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true, replacements: [epochNumber, epochNumber, epochNumber]})
         ]))
         const dt = block.timestamp;
         // return {arr:[{createdAt:dt}]};
@@ -345,7 +347,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     }
     let timeStart, timeEnd;
     const loader = new PreLoader(cfx, getLogs, 10000, stopBeforeEpoch);
-    loader.preLoadSize = 50
+    loader.preLoadSize = 5
     let maxDbTransferEpoch = 0;
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     async function repeat() {
