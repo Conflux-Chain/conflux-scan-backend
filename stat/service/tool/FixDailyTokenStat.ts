@@ -40,18 +40,22 @@ export async function init() {
 export async function fixDate(hexId=0, dtStr = '2020-10-28') {
     let dt = new Date(dtStr)
     let now = new Date()
-    const [epS, epE] = await getEpochRange(dt, now, true)
-    const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(
-        t=>{
-            return `select distinct(contractId) as cid from ${t.getTableName()} where epoch between ${epS} and ${epE}`
-        }
-    ).join(" union ")
-    const contractArr = await Erc20Transfer.sequelize.query(sql, {
-        logging: console.log, benchmark: true, raw: true,
-        type: QueryTypes.SELECT,
-    })
-    console.log(`recent contracts : ${contractArr.map(c=>c["cid"]).join(',')}`)
+
     while( dt < now) {
+        let endDt = new Date(dt);
+        endDt.setDate(endDt.getDate()+1)
+        const [epS, epE] = await getEpochRange(dt, endDt, true)
+        const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(
+            t=>{
+                return `select distinct(contractId) as cid from ${t.getTableName()} where epoch between ${epS} and ${epE}`
+            }
+        ).join(" union ")
+        const contractArr = await Erc20Transfer.sequelize.query(sql, {
+            logging: console.log, benchmark: true, raw: true,
+            type: QueryTypes.SELECT,
+        })
+        console.log(`recent contracts : ${contractArr.map(c=>c["cid"]).join(',')}`)
+        // ==
         if (hexId) {
             await calcDailyToken(dt, hexId)
         } else {
@@ -59,6 +63,7 @@ export async function fixDate(hexId=0, dtStr = '2020-10-28') {
                 await calcDailyToken(dt, row['cid'])
             }
             // await calcAllRegisteredTokenDailyStat(dt)
+            await calcDailyTokenOnChain(dt)
         }
         console.log(`fixed ${dt.toISOString()}`)
         dt.setDate(dt.getDate()+1)
