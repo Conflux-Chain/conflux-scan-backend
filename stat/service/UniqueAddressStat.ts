@@ -339,7 +339,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         ]))
         const dt = block.timestamp;
         // return {arr:[{createdAt:dt}]};
-        return measure.call('polishLogs',()=>Promise.reject(logs)).then(logs=>{
+        return measure.call('polishLogs',()=>Promise.resolve(logs)).then(logs=>{
             return measure.execute('buildMap', ()=>aggregator.buildMap(logs as any, epochNumber, dt))
         }).then(()=>{
             return {arr:logs, epochTime: dt};
