@@ -1,3 +1,5 @@
+import {Erc20Transfer} from "../../model/Erc20Transfer";
+
 process.env.TZ = 'UTC'
 
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
@@ -10,12 +12,15 @@ import {
     calcDailyToken,
     calcDailyTokenAmount,
 } from "../DailyTokenSync";
-import {Op, Sequelize, Options} from "sequelize"
+import {Op, Sequelize, Options, QueryTypes} from "sequelize"
 import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
 import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
+import {getEpochRange} from "../../model/Utils";
 
 let configCache: StatConfig|null = null;
 
@@ -35,11 +40,30 @@ export async function init() {
 export async function fixDate(hexId=0, dtStr = '2020-10-28') {
     let dt = new Date(dtStr)
     let now = new Date()
+
     while( dt < now) {
+        let endDt = new Date(dt);
+        endDt.setDate(endDt.getDate()+1)
+        const [epS, epE] = await getEpochRange(dt, endDt, true)
+        const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(
+            t=>{
+                return `select distinct(contractId) as cid from ${t.getTableName()} where epoch between ${epS} and ${epE}`
+            }
+        ).join(" union ")
+        const contractArr = await Erc20Transfer.sequelize.query(sql, {
+            logging: console.log, benchmark: true, raw: true,
+            type: QueryTypes.SELECT,
+        })
+        console.log(`recent contracts : ${contractArr.map(c=>c["cid"]).join(',')}`)
+        // ==
         if (hexId) {
             await calcDailyToken(dt, hexId)
         } else {
-            await calcAllRegisteredTokenDailyStat(dt)
+            for(const row of contractArr) {
+                await calcDailyToken(dt, row['cid'])
+            }
+            // await calcAllRegisteredTokenDailyStat(dt)
+            await calcDailyTokenOnChain(dt)
         }
         console.log(`fixed ${dt.toISOString()}`)
         dt.setDate(dt.getDate()+1)

@@ -253,10 +253,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             countRecentMiner(-days).then((res)=>timeCost(res,'countRecentMiner')),
         ]).then((arr)=>{
             console.log(` time cost for overview stat :, ${JSON.stringify(timeCosts)}`)
-            const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer = 0, userCount:tokenAccount = 0} , minerCount] = arr
+            const [cfxAmount ,{gasFee:gasUsed, txCount} , {txnCount:tokenTransfer, userCount:tokenAccount} , minerCount] = arr
             ctx.body = {
                 stat: {
-                    cfxTxn:txCount, cfxAmount, gasUsed, tokenTransfer, tokenAccount, minerCount
+                    cfxTxn:txCount||0, cfxAmount, gasUsed:gasUsed||0, tokenTransfer: tokenTransfer||0, tokenAccount:tokenAccount||0, minerCount
                 }, days
             }
             dbCache.set(ctx.request.url, ctx.body, cacheTtl)
@@ -466,8 +466,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeEnumParamIfPresent(ctx.request.query, 'rows', ['10']);
         mustBeEnumParamIfPresent(ctx.request.query, 'type', ['d', 'h']);
 
-        const { span, type, rows } = ctx.request.query;
-        const {list,allDifficulty} = await BlockAndMinerSync.topByType(parseInt(span), type, parseInt(rows || 10));
+        const { span, type, rows, useCache = true } = ctx.request.query;
+        const {list,allDifficulty} = await BlockAndMinerSync.topByType(parseInt(span), type, parseInt(rows || 10), useCache);
         const timeRange = BlockAndMinerSync.calculateTimeRange(list);
         const seconds = BlockAndMinerSync.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {

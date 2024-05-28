@@ -13,7 +13,7 @@ export async  function scheduleDailyTokenStat() {
     await calcAllRegisteredTokenDailyStat(new Date()).catch(e=>{
         console.log(`failed to calcAllRegisteredTokenDailyStat`, e)
     })
-    setTimeout(scheduleDailyTokenStat, 1000*3600*4) //
+    setTimeout(scheduleDailyTokenStat, 1000*60*10) //
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     const tokenList = await Token.findAll({
@@ -87,16 +87,16 @@ export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
         return [model, tokenBean]
 }
 export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
-    const [model, tokenBean] = await getTokenModel(tokenHexId)
+    const [model, tokenBean] = await getTokenModel(tokenHexId);
     if (model === null) {
         return;
     }
-    console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
     let end = new Date(dt);   end.setUTCHours(23,59,59,999)
     adjustTodayEndTime(end)
     const [startE, endE] = await getEpochRange(start, end)
     if (showDebugLog) {
+        console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
         console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
         console.log(` epoch range ${startE}  ${endE}`)
     }
@@ -147,8 +147,10 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
         let end = new Date(dt);   end.setUTCHours(23,59,59,999)
         adjustTodayEndTime(end)
         const [startE, endE] = await getEpochRange(start, end)
-        console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
-        console.log(` epoch range ${startE}  ${endE}`)
+        if (showLog) {
+            console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
+            console.log(` epoch range ${startE}  ${endE}`)
+        }
         const sql = `select contractId as hexId, count(*) as transferCount, count(distinct(fromId)) as uniqueReceiver,
             count(distinct(toId)) uniqueSender from ${model.getTableName()} where contractId=?
             and epoch between ? and ?`
