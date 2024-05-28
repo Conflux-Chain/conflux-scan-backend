@@ -161,16 +161,16 @@ export class FullBlockQuery {
         const epochCrossSpaceTxMap = {}
         const epochCoreBlockMap = {}
         const epochBlockExtMap = {}
-        if(StatApp.isEVM && rawList?.length) {
-            const [txCounts, blockExts] = await Promise.all([
-                FullTransaction.sequelize.query(
+        if(rawList?.length) {
+            if(StatApp.isEVM) {
+                const txCounts = await FullTransaction.sequelize.query(
                     `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
-                    { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]}),
-                FullBlockExt.sequelize.query(
-                    `select * from full_block_ext where epoch>=? and epoch<=?`,
                     { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
-            ])
-            txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr']),
+                txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
+            }
+            const blockExts = await FullBlockExt.sequelize.query(
+                `select * from full_block_ext where epoch>=? and epoch<=?`,
+                { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
             blockExts.forEach(blockExt => {
                 epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock']
                 let position = 0
@@ -210,6 +210,9 @@ export class FullBlockQuery {
                     row['transactionCount'] = row['transactionCount']
                     row['executedTransactionCount'] = row['executedTransactionCount']
                     row['coreBlock'] = epochCoreBlockMap[row['epochNumber']];
+                }
+                if(row['epochNumber'] >= StatApp.cip1559BlkHeight) {
+                    row['gasLimit'] = StatApp.isEVM ? 0.5 * row['gasLimit'] : 0.9 * row['gasLimit']
                 }
             })
         }

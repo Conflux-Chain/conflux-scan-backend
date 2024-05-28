@@ -27,7 +27,7 @@ import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
-import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KEY_FULL_STATE_RPC, KV} from "./model/KV";
+import {IS_EVM2, KEY_CIP1559_BLOCK_HEIGHT, KEY_FASTEST_IPFS_GATEWAY, KEY_FULL_STATE_RPC, KV} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {Desensitizer} from "./service/Desensitizer";
@@ -77,6 +77,7 @@ export class StatApp{
     public static networkId = 1029
     public static readonly = false
     public static isEVM = false;
+    public static cip1559BlkHeight
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -103,6 +104,7 @@ export class StatApp{
         }
         KV.setupSwitch().then()
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+        StatApp.cip1559BlkHeight = await KV.getNumber(KEY_CIP1559_BLOCK_HEIGHT)
         this.txnSync = new TxnSync(this);
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
