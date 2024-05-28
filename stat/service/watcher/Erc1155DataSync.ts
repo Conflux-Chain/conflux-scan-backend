@@ -1,4 +1,4 @@
-import {Erc1155Amount, Erc1155Data} from "../../model/Token";
+import {Erc1155Amount, Erc1155Data, Token} from "../../model/Token";
 import {QueryTypes, Sequelize, Op} from "sequelize";
 import {KEY_1155data_EPOCH, KEY_history1155amount_EPOCH, KV} from "../../model/KV";
 import {Conflux, Contract} from "js-conflux-sdk";
@@ -129,9 +129,15 @@ export async function rewind() {
     } while (true)
 }
 
-export async function fix1155data(cfx:Conflux) {
+export async function fix1155data(cfx:Conflux, base32: string) {
     await cfx.updateNetworkId();
-    const list = await Erc1155Transfer.findAll({limit: 10_000})
+    const list = base32 ? await Token.findOne({
+        where: {base32}
+    }).then(token=>{
+        return token?.hex40id
+    }).then(hexId=>{
+        return Erc1155Transfer.findAll({where: {contractId: hexId}, limit: 10_000})
+    }) : await Erc1155Transfer.findAll({limit: 10_000})
     if (list.length === 10_000) {
         console.log(`too many records.`)
         process.exit(8)

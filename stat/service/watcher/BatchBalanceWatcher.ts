@@ -393,7 +393,7 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
         return
     } else if (cfxUrl === 'fix1155data') {
         const cfx = await initCfxSdk(cfg.conflux);
-        await fix1155data(cfx);
+        await fix1155data(cfx, limitStr);
         return;
     } else if (cfxUrl === 'fix20holder') {
         const cfx = await initCfxSdk(cfg.conflux);
