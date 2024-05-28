@@ -160,6 +160,7 @@ export class FullBlockQuery {
         // cross space tx
         const epochCrossSpaceTxMap = {}
         const epochCoreBlockMap = {}
+        const epochBlockExtMap = {}
         if(StatApp.isEVM && rawList?.length) {
             const [txCounts, blockExts] = await Promise.all([
                 FullTransaction.sequelize.query(
@@ -170,7 +171,17 @@ export class FullBlockQuery {
                     { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
             ])
             txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr']),
-            blockExts.forEach(blockExt => epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock'])
+            blockExts.forEach(blockExt => {
+                epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock']
+                let position = 0
+                if(blockExt['extra']) {
+                    const extra = JSON.parse(blockExt['extra'])
+                    extra.bgf.forEach(burntFee => {
+                            epochBlockExtMap[`${blockExt['epoch']}-${position++}`] = burntFee
+                        }
+                    )
+                }
+            })
         }
         // fields mapping
         const list = [];
@@ -193,6 +204,7 @@ export class FullBlockQuery {
                 if(row['totalReward'] === '0'){
                     row['totalReward'] = undefined;
                 }
+                row['burntFee'] = epochBlockExtMap[`${row['epochNumber']}-${row['blockIndex']}`]
                 if(StatApp.isEVM) {
                     row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0;
                     row['transactionCount'] = row['transactionCount']

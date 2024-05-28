@@ -3,7 +3,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {
     AddressTransactionIndex,
     BLOCK_PAGE_MARK_SIZE,
-    BlockRowMark,
+    BlockRowMark, buildBlockExt,
     countNonMarkBlockRows,
     countNonMarkTxRows, FailedTx,
     FullBlock, FullBlockExt,
@@ -428,9 +428,11 @@ export class FullBlockService {
         const executedTxArr = []
         const txByAddressArr = []
         const failedTxArr = []
+        const burntGasFeeArr = []
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let sumGasLimit = BigInt(0)
+            let sumBurntGasFee = BigInt(0)
             let pos = 0
             for (const txInfo of block.transactions) {
                 // status has value, fail (!0) or success (0) or genesis epoch.
@@ -471,6 +473,7 @@ export class FullBlockService {
                     }
                     sumGasPrice += txInfo.gasPrice
                     sumGasLimit += txInfo.gasLimit
+                    sumBurntGasFee += (txInfo.receipt?.burntGasFee || 0)
                 }
                 if (st == 1) { // has value and is not zero: failed.
                     failedTxArr.push(FullBlockService.syncFailedTx(minEpochNumber, txInfo))
@@ -478,10 +481,12 @@ export class FullBlockService {
             }
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
+            burntGasFeeArr.push(sumBurntGasFee)
             StatApp.isEVM && (block.gasLimit = preLoadResult.blocksEvm * 15_000_000)
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         const failedBeans = failedTxArr
+        const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, burntGasFeeArr)
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
@@ -490,7 +495,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
-                StatApp.isEVM ? FullBlockExt.create({epoch: minEpochNumber, coreBlock: preLoadResult.blocksEvm === 0}, {transaction: dbTx}) : undefined,
+                StatApp.isEVM ? FullBlockExt.create(blockExt, {transaction: dbTx}) : undefined,
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),

@@ -4,6 +4,7 @@
 
 import {Op, Sequelize, DataTypes, Model} from "sequelize";
 import {createTable} from "../service/DBProvider";
+import {StatApp} from "../StatApp";
 
 export interface IFullBlock {
     epoch: number;
@@ -133,13 +134,16 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
         })
     }
 }
+
 export interface IFullBlockExt {
     epoch: number;
     coreBlock: boolean;
+    extra: string;
 }
 const FULL_BLOCK_EXT_SQL = `CREATE TABLE if not exists \`full_block_ext\` (
                               \`epoch\` bigint unsigned NOT NULL,
                               \`coreBlock\` tinyint(1) NOT NULL DEFAULT '1',
+                              \`extra\` varchar(256) NOT NULL DEFAULT '',  
                               primary key  (\`epoch\` desc)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4
 partition by range (epoch) (
@@ -174,11 +178,13 @@ export async function createFullBlockExtTable(seq:Sequelize) {
 export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt {
     epoch: number;
     coreBlock: boolean;
+    extra: string;
 
     static register(sequelize) {
         FullBlockExt.init({
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             coreBlock: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: 1},
+            extra: {type: DataTypes.STRING(256), allowNull: false, defaultValue: ''},
         }, {
             tableName: 'full_block_ext',
             sequelize,
@@ -187,6 +193,18 @@ export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt 
             ],
         })
     }
+}
+export function buildBlockExt(epoch: number, evmBlk: number, burntGasFee: any[]): FullBlockExt {
+    // fields in extra:
+    // {
+    //     evmBlk: 3,               // has evm block, added on 20240528
+    //     bgf: ["111","222","333","444"], // burntGasFee, added on 20240528
+    // }
+    const extra: any = {
+        evmBlk,
+        bgf: burntGasFee
+    }
+    return {epoch, coreBlock: evmBlk === 0, extra: JSON.stringify(extra)} as FullBlockExt
 }
 export interface IFailedTx {
     id?:number
