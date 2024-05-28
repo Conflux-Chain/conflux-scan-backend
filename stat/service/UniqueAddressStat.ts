@@ -338,6 +338,9 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
             Epoch.findOne({where: {epoch: epochNumber}}),
             Epoch.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true, replacements: [epochNumber, epochNumber, epochNumber]})
         ]))
+        if (!block) {
+            return Promise.reject("epoch not ready")
+        }
         const dt = block.timestamp;
         // return {arr:[{createdAt:dt}]};
         return measure.call('polishLogs',()=>Promise.resolve(logs)).then(logs=>{
@@ -350,13 +353,14 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     const loader = new PreLoader(cfx, getLogs, 10000, stopBeforeEpoch);
     loader.preLoadSize = 5
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
-    async function repeat() {
+    let delay = 0
+    async function biz() {
         while (epoch >= maxDbTransferEpoch) {
             await sleep(2_000)
-            maxDbTransferEpoch = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]}).then(res=>res?.epoch - 100)
+            maxDbTransferEpoch = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]}).then(res => res?.epoch - 100)
         }
         const {action, data} = await loader.get(epoch);
-        let delay = 0
+        delay = 0;
         const epochMeasureKey = 'perEpoch';
         switch (action) {
             case "ok":
@@ -374,7 +378,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                     break;
                 }
                 const log = epoch % 100 === 0
-                const {arr:[sample], epochTime} = transfers
+                const {arr: [sample], epochTime} = transfers
                 if (timeStart) {
                     timeEnd = epochTime
                 } else {
@@ -393,28 +397,36 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                     console.log(`UniqueAddr no transfer at ${epoch}`)
                 }
                 if (epoch % 100 === 0) {
-                    measure.dump(`\n UniqueAddr --`, undefined,epochMeasureKey, 'rpc', 'polishLogs','buildMap', 'idLength');
+                    measure.dump(`\n UniqueAddr --`, undefined, epochMeasureKey, 'rpc', 'polishLogs', 'buildMap', 'idLength');
                     loader.dumpMetrics(` --------------- get logs metrics , addr count ${addrIdMap.size}`)
                 }
                 epoch++
                 break;
             case "pop":
                 console.log(`UniqueAddr pop ${epoch}`);
-                epoch --
+                epoch--
                 break;
             case "wait":
                 console.log(`UniqueAddr wait for ${epoch}`)
                 delay = 5000
                 break;
         }
-        if (epoch < stopBeforeEpoch) {
-            setTimeout(repeat, delay)
-        } else {
-            console.log(`UniqueAddr round end, [${fromEpoch}, ${stopBeforeEpoch})`)
-            await saveUniqueAddrToDb(aggregator, {
-                epoch: fromEpoch
-            })
-            endFn()
+    }
+    async function repeat() {
+        try {
+            await biz();
+            if (epoch < stopBeforeEpoch) {
+                setTimeout(repeat, delay)
+            } else {
+                console.log(`UniqueAddr round end, [${fromEpoch}, ${stopBeforeEpoch})`)
+                await saveUniqueAddrToDb(aggregator, {
+                    epoch: fromEpoch
+                })
+                endFn()
+            }
+        } catch (e) {
+            console.log(`${__filename} failed to repeat:`, e)
+            setTimeout(repeat, 5_000)
         }
     }
     repeat().then()
