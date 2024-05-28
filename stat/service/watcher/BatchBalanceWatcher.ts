@@ -71,7 +71,9 @@ export class BatchBalanceWatcher {
 }
 // ---
 async function fixAllNftHolder(byMintTable:boolean, type: string) {
-    const tokenList = await Token.findAll({attributes:['id','hex40id','type',],where: {type}})
+    const tokenList = await Token.findAll({attributes:['id','hex40id','type',],
+        where: {type, name: {[Op.ne]: null}}
+    })
     console.log(`1155 count ${tokenList.length}`)
     for (let i = 0; i < tokenList.length; i++) {
         await fixHolderForContract(tokenList[i].hex40id, byMintTable)
