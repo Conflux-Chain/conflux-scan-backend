@@ -80,6 +80,7 @@ export class BlockAndMinerSync {
         adjustTodayEndTime(endDt, !useCache)
         const v = BlockAndMinerSync.topByTime(beginDt, endDt, timeWindow, limit);
         BlockAndMinerSync.rankCache.set(cacheKey, v)
+        console.log(`${__filename} ${cacheKey}`)
         return v
     }
 
