@@ -13,6 +13,7 @@ import {init} from "./tool/FixDailyTokenStat";
 
 const BigFixed = require('bigfixed');
 let _showLog = false
+let STAT_SPAN_MINUTES = 10
 export class BlockAndMinerSync {
     static CODE_REWARD_NOT_READY = 125;
     static cacheSavedTxLength = 100;
@@ -21,10 +22,13 @@ export class BlockAndMinerSync {
     constructor() {
     }
 
-    public async schedule(delay:number = 3600_000) {
+    public async schedule() {
+        const delay:number = 60_000 * STAT_SPAN_MINUTES;
         const that = this;
         async function repeat() {
-            await that.rollupStatPerHour()
+            await that.rollupStatPerHour().catch(e=>{
+                console.log(`${__filename} rollupStatPerHour error `, e)
+            })
             setTimeout(repeat, delay);
         }
         repeat().then()
@@ -113,7 +117,9 @@ export class BlockAndMinerSync {
         showLog && console.log(`rollupStatPerHour by date `, now.toISOString())
         await this.rollupByHour(now, showLog)
         // previous hour.
-        now.setHours(now.getHours() - 1)
+        if (now.getMinutes() < STAT_SPAN_MINUTES * 1.5) {
+            now.setHours(now.getHours() - 1)
+        }
         await this.rollupByHour(now, showLog)
     }
     async rollupByHour(timePoint:Date, showLog = false) {
