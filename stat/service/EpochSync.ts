@@ -347,7 +347,7 @@ export class EpochSync extends SyncBase{
         }
         s = this.m('ESpaceHex-c', s)
 
-        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray)
+        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
         veryS = this.m('Save-overall', veryS)
         this.metric.currentEpoch = epochNumber
         s = this.m('RealtimeStat-c', s)
@@ -1395,8 +1395,8 @@ export class EpochSync extends SyncBase{
         await this.statOnRealtime.schedule()
     }
 
-    private realtimeStat(epoch, action, txArray?) {
-        this.statOnRealtime.setGasInfo(epoch, action, txArray)
+    private realtimeStat(epoch, action, txArray?, pivotBlock?) {
+        this.statOnRealtime.setGasInfo(epoch, action, txArray, pivotBlock)
     }
 
     // ------------------------------ token stat --------------------------------
