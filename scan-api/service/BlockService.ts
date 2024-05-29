@@ -4,6 +4,7 @@ const lodash = require('lodash');
 const limitMap = require('limit-map');
 const BigFixed = require('bigfixed');
 const {StatApp} = require("../../stat/StatApp");
+const {FullBlock, FullBlockExt} = require( "../../stat/model/FullBlock")
 
 const DETAIL_FIELDS = ['newTransactionCount', 'avgGasPrice'];
 const PIVOT_FIELDS = ['blockIndex', 'pivotHash'];
@@ -58,14 +59,44 @@ export class BlockService {
     }
 
     let reward = {};
+    let rewardDetail = {}
     if (lodash.intersection(fields, REWARD_FIELDS).length) {
       reward = await this._getReward(block);
       reward = lodash.pick(reward, REWARD_FIELDS);
+      rewardDetail['baseReward'] = reward['baseReward']
+      rewardDetail['txFee'] = reward['txFee']
+      rewardDetail['storageCollateralInterest'] = reward['totalReward'] - rewardDetail['baseReward'] - rewardDetail['txFee']
     }
+
+    let baseFeePerGasRef
+    if(block.epochNumber > 0) {
+      const refEpoch = StatApp.isEVM ? block.epochNumber - (block.epochNumber % 5) : block.epochNumber
+      const preEpoch = StatApp.isEVM ? refEpoch - 5 : refEpoch - 1
+      const blk = await service.conflux.getBlockByEpochNumber(preEpoch, true)
+      const prePivot = lodash.pick(blk, ['height', 'baseFeePerGas'])
+      baseFeePerGasRef = {
+        height: refEpoch,
+        prePivot
+      }
+    }
+
+    let burntGasFee
+    const [blk, bltExt] = await Promise.all([
+      FullBlock.findOne({where: {hash: block.hash}, raw: true}),
+      FullBlockExt.findOne({where: {epoch: block.epochNumber}, raw: true})
+    ])
+    if(bltExt?.extra) {
+      const extra = JSON.parse(bltExt?.extra)
+      burntGasFee = extra.bgf[blk.position]
+    }
+    lodash.assign(block, {burntGasFee})
+    rewardDetail['burntGasFee'] = burntGasFee
 
     const epoch = await service.epoch.query({ epochNumber: block.epochNumber }) || {};
     return lodash.defaults(detailInfo, block, pivotInfo, detailInfo, reward, {
       risk,
+      rewardDetail,
+      baseFeePerGasRef,
       syncTimestamp: epoch.timestamp,
       transactionCount: block.transactions.length,
     });
@@ -96,13 +127,9 @@ export class BlockService {
       avgGasPrice: newTransactionCount ? BigFixed(gasPriceCount).div(newTransactionCount) : BigFixed(0),
     };
     result['gasUsed'] = gasUsed;
-    if(StatApp.isEVM) {
-      result['crossSpaceTransactionCount'] = crossSpaceTransactionCount;
-      const blockList = await service.fullBlock.listBlock({blockHash: hash});
-      if(blockList?.list?.length){
-        result['gasLimit'] = blockList.list[0]['gasLimit']
-      }
-    }
+    const block = await FullBlock.findOne({where:{hash}})
+    block && (result['gasLimit'] = block['gasLimit'])
+    StatApp.isEVM && (result['crossSpaceTransactionCount'] = crossSpaceTransactionCount)
 
     return result;
   }

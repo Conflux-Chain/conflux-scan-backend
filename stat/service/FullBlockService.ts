@@ -32,6 +32,7 @@ import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
+import {CONST} from "./common/constant";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -482,7 +483,10 @@ export class FullBlockService {
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
             burntGasFeeArr.push(sumBurntGasFee)
-            StatApp.isEVM && (block.gasLimit = preLoadResult.blocksEvm * 15_000_000)
+            const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
+                (minEpochNumber >= StatApp.cip1559BlkHeight ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+            const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
+            block.gasLimit = block.gasLimit * proportion * times
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
         }
         const failedBeans = failedTxArr

@@ -211,4 +211,9 @@ export const CONST = {
     ADMIN_DESTROYED: {status: 2, message: 'admin destroyed'},
     SELF_DESTRUCTED: {status: 3, message: 'self destructed'},
   },
+
+  GAS_LIMIT_PROPORTION: {
+    core: 0.9,
+    evm: 0.5,
+  }
 };

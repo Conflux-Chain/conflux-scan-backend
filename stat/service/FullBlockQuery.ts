@@ -206,13 +206,10 @@ export class FullBlockQuery {
                 }
                 row['burntFee'] = epochBlockExtMap[`${row['epochNumber']}-${row['blockIndex']}`]
                 if(StatApp.isEVM) {
-                    row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0;
+                    row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0
                     row['transactionCount'] = row['transactionCount']
                     row['executedTransactionCount'] = row['executedTransactionCount']
                     row['coreBlock'] = epochCoreBlockMap[row['epochNumber']];
-                }
-                if(row['epochNumber'] >= StatApp.cip1559BlkHeight) {
-                    row['gasLimit'] = StatApp.isEVM ? 0.5 * row['gasLimit'] : 0.9 * row['gasLimit']
                 }
             })
         }
