@@ -169,7 +169,7 @@ export class BlockAndMinerSync {
         })
         return MinerBlock.bulkCreate(statByMinerIdList,{
             updateOnDuplicate: ['difficultySum','blockCount','totalReward', 'txFee'],
-            logging: showLog ? console.log : false
+            // logging: showLog ? console.log : false // should not log insert sql, it's massive.
         }).then(()=>{
             console.log(`miner block stat, rollup hourly epoch ${startEpoch} insert count ${statByMinerIdList.length}`)
         }).catch(err=>{

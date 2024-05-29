@@ -119,6 +119,10 @@ export class FullBlockService {
                     markTxPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg),
                     markBlockPosition(BLOCK_PAGE_MARK_SIZE, maxEpoch - avoidReOrg)
                 ]).then()
+                // adjust tx count cache
+                await  FullBlockService.checkTxCountKV(true).catch(e=>{
+                    console.log(`check tx count kv:`, e)
+                });
             }
             if (always) {
                 setTimeout(repeat, 0)
@@ -139,7 +143,7 @@ export class FullBlockService {
         }
         const nonMarkRows = await countNonMarkTxRows(maxOne)
         const countNow = nonMarkRows + maxOne.id;
-        console.log(`create full txn count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
+        console.log(`upsert full txn count KV: ${countNow}, non mark rows: ${nonMarkRows}`)
         if (update) {
             return KV.saveNumber(KEY_FULL_TX_COUNT, countNow, undefined)
         }
