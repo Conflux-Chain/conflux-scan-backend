@@ -103,4 +103,10 @@ module.exports = {
     CODE_NOT_FOUND: {matchCode: 401, matchDesc: 'code-not-found'},
     ERROR: {matchCode: 501, matchDesc: 'error'},
   },
+
+  TX_EIP_TYPE: {
+    0: 'Legacy',
+    1: 'EIP-2930',
+    2: 'EIP-1559',
+  },
 };
