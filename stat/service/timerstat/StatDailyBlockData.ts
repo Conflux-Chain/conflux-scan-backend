@@ -57,7 +57,7 @@ export class StatDailyBlockData extends TimerStat{
                 /*logging: msg => console.log(`[${this.bizAlias()}]bulkCreate ${msg}`),*/
             });
         });
-        console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray)}`);
+        this.debug && console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray[0])}`);
     }
 
     // ------------------------------- biz -----------------------------------

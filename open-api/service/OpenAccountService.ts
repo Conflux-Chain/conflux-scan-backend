@@ -59,9 +59,9 @@ async function polishAssertList(account, page, tokenType) {
                 symbol: 'CFX',
                 decimals: 18,
                 type: TAG_NATIVE,
-                iconUrl: TokenQuery.wrappedCFX.iconUrl,
-                priceInUSDT: wrappedCfx?.price || formatPrice(TokenQuery.wrappedCFX.price),
-                quoteUrl: TokenQuery.wrappedCFX.quoteUrl,
+                iconUrl: TokenQuery.wrappedCFX?.iconUrl,
+                priceInUSDT: wrappedCfx?.price || formatPrice(TokenQuery.wrappedCFX?.price),
+                quoteUrl: TokenQuery.wrappedCFX?.quoteUrl,
                 amount: acc.balance,
                 stakingAmount: StatApp.isEVM ? undefined : acc.stakingBalance,
             };

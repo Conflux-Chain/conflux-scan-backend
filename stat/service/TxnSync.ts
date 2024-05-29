@@ -15,6 +15,7 @@ const BigFixed = require('bigfixed');
 export class TxnSync {
     private app: StatApp;
     private cfx: Conflux;
+    // refreshed in TxnSync.scheduleCache()
     private rankCache: Map<string, Object>
     constructor(app:any) {
         this.app = app;
@@ -114,7 +115,7 @@ export class TxnSync {
         return format.address(hex, networkId)
     }
 
-    public scheduleCache(delay:number = 3600_000) {
+    public scheduleCache(delay:number = 600_000) {
         const that = this
 
         async function refreshAction(action: string) {
@@ -137,11 +138,11 @@ export class TxnSync {
         async function refreshCache(){
             console.log(`${fmtDtUTC(new Date())} refresh cache`)
             let action = 'cfxSend';
-            await refreshAction(action);
-            await refreshAction('cfxReceived');
-            await refreshAction('txnSend');
-            await refreshAction('txnReceived');
-            await refreshMinerRank()
+            await refreshAction(action).catch(e=>console.log(`refreshAction failed ${action}`, e));
+            await refreshAction('cfxReceived').catch(e=>console.log(`refreshAction failed 'cfxReceived'`, e));
+            await refreshAction('txnSend').catch(e=>console.log(`refreshAction failed txnSend`, e));
+            await refreshAction('txnReceived').catch(e=>console.log(`refreshAction failed txnReceived`, e));
+            await refreshMinerRank().catch(e=>console.log(`refreshAction failed minerRank`, e))
             setTimeout(refreshCache, delay)
         }
         refreshCache().then()

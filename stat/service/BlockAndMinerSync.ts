@@ -13,6 +13,7 @@ import {init} from "./tool/FixDailyTokenStat";
 
 const BigFixed = require('bigfixed');
 let _showLog = false
+let STAT_SPAN_MINUTES = 10
 export class BlockAndMinerSync {
     static CODE_REWARD_NOT_READY = 125;
     static cacheSavedTxLength = 100;
@@ -21,10 +22,13 @@ export class BlockAndMinerSync {
     constructor() {
     }
 
-    public async schedule(delay:number = 3600_000) {
+    public async schedule() {
+        const delay:number = 60_000 * STAT_SPAN_MINUTES;
         const that = this;
         async function repeat() {
-            await that.rollupStatPerHour()
+            await that.rollupStatPerHour().catch(e=>{
+                console.log(`${__filename} rollupStatPerHour error `, e)
+            })
             setTimeout(repeat, delay);
         }
         repeat().then()
@@ -48,6 +52,7 @@ export class BlockAndMinerSync {
         })
         return seconds
     }
+    // refreshed in TxnSync.scheduleCache()
     static rankCache = new Map<string, Object>()
     static async topByType(n: number, type: string, limit: number = 10, useCache = true): Promise<{list:IMinerBlock[], allDifficulty:number}>{
         // console.log(`miner top by type : ${n} ${type} limit ${limit}`)
@@ -75,6 +80,7 @@ export class BlockAndMinerSync {
         adjustTodayEndTime(endDt, !useCache)
         const v = BlockAndMinerSync.topByTime(beginDt, endDt, timeWindow, limit);
         BlockAndMinerSync.rankCache.set(cacheKey, v)
+        console.log(`${__filename} ${cacheKey}`)
         return v
     }
 
@@ -102,7 +108,11 @@ export class BlockAndMinerSync {
             where: {beginTime: {[Op.gte]:beginDt}, endTime:{[Op.lte]:endDt}, timeWindow: timeWindow},
             // benchmark: true, logging: console.log
         })
-        return Promise.resolve({allDifficulty,list})
+        return Promise.resolve({allDifficulty,list,
+            updatedAt: new Date().toISOString(),
+            sqlBeginTime: beginDt.toISOString(),
+            sqlEndTime: endDt.toISOString(),
+        })
     }
 
     /**
@@ -113,7 +123,9 @@ export class BlockAndMinerSync {
         showLog && console.log(`rollupStatPerHour by date `, now.toISOString())
         await this.rollupByHour(now, showLog)
         // previous hour.
-        now.setHours(now.getHours() - 1)
+        if (now.getMinutes() < STAT_SPAN_MINUTES * 1.5) {
+            now.setHours(now.getHours() - 1)
+        }
         await this.rollupByHour(now, showLog)
     }
     async rollupByHour(timePoint:Date, showLog = false) {
@@ -157,7 +169,7 @@ export class BlockAndMinerSync {
         })
         return MinerBlock.bulkCreate(statByMinerIdList,{
             updateOnDuplicate: ['difficultySum','blockCount','totalReward', 'txFee'],
-            logging: showLog ? console.log : false
+            // logging: showLog ? console.log : false // should not log insert sql, it's massive.
         }).then(()=>{
             console.log(`miner block stat, rollup hourly epoch ${startEpoch} insert count ${statByMinerIdList.length}`)
         }).catch(err=>{

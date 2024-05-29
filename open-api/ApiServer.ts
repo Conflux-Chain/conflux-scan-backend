@@ -111,6 +111,10 @@ export class ApiServer {
         await initRateLimiters();
 
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+        if (StatApp.isEVM) {
+            // evm open api will access wrapped cfx in token list
+            this.config.asyncWrappedToken = true
+        }
         apiService = new ApiService()
         const apiApp = {networkId: this.cfx.networkId, cfx: this.cfx, service: apiService, config: this.config};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)

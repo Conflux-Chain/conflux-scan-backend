@@ -3,7 +3,7 @@ import {QueryTypes, Sequelize, Op} from "sequelize";
 import {KEY_1155data_EPOCH, KEY_history1155amount_EPOCH, KV} from "../../model/KV";
 import {Conflux, Contract} from "js-conflux-sdk";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
-import {Hex40Map} from "../../model/HexMap";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 
 export const destroyedContracts = new Set<string>()
@@ -129,9 +129,11 @@ export async function rewind() {
     } while (true)
 }
 
-export async function fix1155data(cfx:Conflux) {
+export async function fix1155data(cfx:Conflux, base32: string) {
     await cfx.updateNetworkId();
-    const list = await Erc1155Transfer.findAll({limit: 10_000})
+    const list = base32 ? await getAddrId(base32).then(hexId=>{
+        return Erc1155Transfer.findAll({where: {contractId: hexId}, limit: 10_000})
+    }) : await Erc1155Transfer.findAll({limit: 10_000})
     if (list.length === 10_000) {
         console.log(`too many records.`)
         process.exit(8)

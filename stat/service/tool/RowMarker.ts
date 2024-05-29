@@ -27,3 +27,4 @@ async function main() {
 }
 
 main().then()
+// node stat/service/tool/RowMarker tx 1
