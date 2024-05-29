@@ -108,7 +108,7 @@ export class BlockAndMinerSync {
             where: {beginTime: {[Op.gte]:beginDt}, endTime:{[Op.lte]:endDt}, timeWindow: timeWindow},
             // benchmark: true, logging: console.log
         })
-        return Promise.resolve({allDifficulty,list})
+        return Promise.resolve({allDifficulty,list,updatedAt: new Date().toISOString()})
     }
 
     /**
