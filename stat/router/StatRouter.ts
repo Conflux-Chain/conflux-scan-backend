@@ -467,11 +467,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeEnumParamIfPresent(ctx.request.query, 'type', ['d', 'h']);
 
         const { span, type, rows, useCache = true } = ctx.request.query;
-        const {list,allDifficulty} = await BlockAndMinerSync.topByType(parseInt(span), type, parseInt(rows || 10), useCache);
+        const originData = await BlockAndMinerSync.topByType(parseInt(span), type, parseInt(rows || 10), useCache);
+        const {list,allDifficulty} = originData;
         const timeRange = BlockAndMinerSync.calculateTimeRange(list);
         const seconds = BlockAndMinerSync.calculateHashRate(list, timeRange.beginTime, timeRange.endTime);
         ctx.body = {
-            list,
+            ...originData,
             allDifficulty,
             ...timeRange,
             seconds,
