@@ -30,6 +30,10 @@ export class TokenQuery {
 
     constructor(app: any) {
         this.app = app;
+        if (StatApp.isEVM) {
+            // evm open api will access wrapped cfx in token list
+            this.app.config.asyncWrappedToken = true
+        }
         if(this.app.config.asyncWrappedToken) {
             if(!this.app.config.wrappedCFX) {
                 throw new Error(`Wrapped CFX should be config!`);
