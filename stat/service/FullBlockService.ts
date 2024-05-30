@@ -79,8 +79,8 @@ export class FullBlockService {
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) : Promise<void> {
-        let maxEpoch:number = await loadMaxBlockEpoch()
-        if (isNaN(maxEpoch) || maxEpoch === null) {
+        let maxEpoch:number = await loadMaxBlockEpoch(NaN)
+        if (isNaN(maxEpoch)) {
            maxEpoch = -1 // plus 1 got 0
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
@@ -575,7 +575,7 @@ export class FullBlockService {
     public async fillBlockReward(epoch: number) : Promise<{code:number, message:string}>{
         while (epoch > this.maxEpochOfBlock) {
             console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
-            this.maxEpochOfBlock > 0 && await sleep(5_000)
+            await sleep(5_000)
             // max function on desc index is very slow.
             this.maxEpochOfBlock = await loadMaxBlockEpoch()
         }
