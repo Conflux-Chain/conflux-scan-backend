@@ -13,6 +13,7 @@ export interface ConfluxOption {
     defaultGasRatio?: number,
     defaultStorageRatio?: number,
     consortiumMode?: boolean, // true: consortium chain; false: public chain
+    keepAlive?: boolean,
 }
 export interface EtherOption {
     url: string,

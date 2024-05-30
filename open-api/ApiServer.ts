@@ -16,7 +16,7 @@ import {TokenTool} from "../stat/service/tool/TokenTool";
 import {CfxTransferQuery} from "../stat/service/CfxTransferQuery";
 import {DailyBlockDataStatQuery} from "../stat/service/DailyBlockDataStatQuery";
 import {MarketDataQuery} from "../stat/service/MarketDataQuery";
-import {DailyContractCreateQuery} from "../stat/service/DailyContractCreateQuery";
+import {DailyContractStatQuery} from "../stat/service/DailyContractStatQuery";
 import {CfxHolderQuery} from "../stat/service/CfxHolderQuery";
 import {DailyTxnQuery} from "../stat/service/DailyTxnQuery";
 import {RankService} from "../stat/service/RankService";
@@ -34,8 +34,7 @@ import {redirectLog} from "../stat/config/LoggerConfig";
 import {regExitHook} from "../stat/service/tool/ProcessTool";
 import {initRateLimiters} from "../stat/router/RateLimiter";
 import {checkTest} from "./test/TestCase";
-import {DailyNFTStatQuery} from "../stat/service/DailyNFTStatQuery";
-import {DailyRewardStatQuery} from "../stat/service/DailyRewardStatQuery";
+import {DailyStatQuery} from "../stat/service/DailyStatQuery";
 import {KEY_OPEN_API, repeatHeartBeat} from "../stat/model/HeartBeat";
 import {TxnQuery} from "../stat/service/TxnQuery";
 import {TxnSync} from "../stat/service/TxnSync";
@@ -60,13 +59,12 @@ export class ApiService {
     crc3525transferQuery: Crc3525TransferQuery
     addrTransferQuery: AddrTransferQuery
     dailyBlockDataStatQuery: DailyBlockDataStatQuery
-    dailyNFTStatQuery: DailyNFTStatQuery
-    dailyRewardStatQuery: DailyRewardStatQuery
+    dailyStatQuery: DailyStatQuery
     rankService: RankService;
     tokenTool: TokenTool;
     tokenQuery: TokenQuery;
     marketDataQuery: MarketDataQuery;
-    contractCreateQuery: DailyContractCreateQuery;
+    contractStatQuery: DailyContractStatQuery;
     cfxHolderQuery: CfxHolderQuery;
     dailyTxnQuery: DailyTxnQuery;
     nftCheckerService: NFTCheckerService;
@@ -125,11 +123,10 @@ export class ApiServer {
         apiService.crc3525transferQuery = new Crc3525TransferQuery(apiApp)
         apiService.addrTransferQuery = new AddrTransferQuery(apiApp)
         apiService.dailyBlockDataStatQuery = new DailyBlockDataStatQuery(apiApp)
-        apiService.dailyNFTStatQuery = new DailyNFTStatQuery(apiApp)
-        apiService.dailyRewardStatQuery = new DailyRewardStatQuery(apiApp)
+        apiService.dailyStatQuery = new DailyStatQuery(apiApp)
         apiService.rankService = new RankService(apiApp)
         apiService.marketDataQuery = new MarketDataQuery(apiApp);
-        apiService.contractCreateQuery = new DailyContractCreateQuery();
+        apiService.contractStatQuery = new DailyContractStatQuery();
         apiService.cfxHolderQuery = new CfxHolderQuery();
         apiService.dailyTxnQuery = new DailyTxnQuery();
         apiService.nftCheckerService = new NFTCheckerService(apiApp);

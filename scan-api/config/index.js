@@ -46,3 +46,15 @@ module.exports = {
     secret: '',
   },
 };
+
+const epochFinalized = 100
+const epochFirst = 66
+const minEpochNumber = undefined || 0
+const maxEpochNumber = 110
+
+const minEpoch = Math.max(epochFirst, minEpochNumber)
+const maxEpoch = Math.min(epochFinalized, maxEpochNumber)
+
+
+console.log(minEpoch)
+console.log(maxEpoch)

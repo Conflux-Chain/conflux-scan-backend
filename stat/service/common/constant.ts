@@ -215,5 +215,10 @@ export const CONST = {
   GAS_LIMIT_PROPORTION: {
     core: 0.9,
     evm: 0.5,
+  },
+
+  VOTE_PARAMS: {
+    'storagePointProp': {EPOCH_MAINNET: 79016145, EPOCH_TESTNET: 129134779}, // CIP-107
+    'baseFeeShareProp': {EPOCH_MAINNET: 100, EPOCH_TESTNET: 100}, //// CIP-137 TODO - to be determined
   }
 };

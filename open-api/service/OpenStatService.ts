@@ -30,7 +30,7 @@ export async function listNFTAssetStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTAssetStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTAssetStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -40,7 +40,7 @@ export async function listNFTContractStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTContractStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTContractStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -50,7 +50,7 @@ export async function listNFTTransferStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTTransferStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTTransferStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -59,7 +59,7 @@ export async function listNFTHolderStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTHolderStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTHolderStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -81,7 +81,7 @@ export async function listTpsStat(ctx) {
 
 export async function listContractStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
-    const page = await getApiService().contractCreateQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
+    const page = await getApiService().contractStatQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
         sort, skip, limit});
     setBody(ctx, page)
 }
@@ -309,7 +309,7 @@ export async function listPowRewardStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
 
-    const page = await getApiService().dailyRewardStatQuery.listPowRewardStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listPowRewardStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -319,7 +319,31 @@ export async function listPosRewardStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
 
-    const page = await getApiService().dailyRewardStatQuery.listPosRewardStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listPosRewardStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
+    setBody(ctx, page)
+}
+
+export async function listBurntFeeStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day']);
+
+    const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
+
+    const page = await getApiService().dailyStatQuery.listBurntFeeStat({minTimestamp,  maxTimestamp, intervalType,
+        sort, skip, limit})
+    setBody(ctx, page)
+}
+
+export async function listBurntRateStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber', 'maxEpochNumber')
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
+    const {minEpochNumber, maxEpochNumber} = ctx.request.query;
+    console.log(`listBurntRateStat ---req--- ${JSON.stringify({minEpochNumber, maxEpochNumber, sort, skip, limit})}`)
+
+    const page = await getApiService().dailyStatQuery.listBurntRateStat({
+        minEpochNumber, maxEpochNumber,
+        sort, skip, limit
+    })
     setBody(ctx, page)
 }

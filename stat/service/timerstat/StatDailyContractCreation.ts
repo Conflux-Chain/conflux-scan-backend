@@ -1,5 +1,5 @@
 import {Op, QueryTypes} from 'sequelize'
-import {DailyContractCreate} from "../../model/DailyContractCreate";
+import {DailyContractCreate} from "../../model/DailyContractStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Epoch} from "../../model/Epoch";
 import {fmtDtUTC} from "../../model/Utils";

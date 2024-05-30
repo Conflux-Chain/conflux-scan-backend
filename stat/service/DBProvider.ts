@@ -1,6 +1,6 @@
 import {QueryTypes, Sequelize} from "sequelize";
 import {Address, AddressInfo, ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
-import {Epoch, EpochNftTransfer} from "../model/Epoch";
+import {Epoch, EpochNftTransfer, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV, Position} from "../model/KV";
@@ -37,10 +37,8 @@ import {
     FailedTx,
     TxnRowMark
 } from "../model/FullBlock";
-import {DailyContractCreate} from "../model/DailyContractCreate";
-import {DailyContractStat} from "../model/DailyContractStat";
+import {DailyContractCreate, DailyContractRegister, DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
-import {DailyContractRegister} from "../model/DailyContractRegister";
 import {ContractVerify, ContractVerify2, ProxyVerify} from "../model/ContractVerify";
 import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {TokenSecurityAudit, TokenSecurityAudit2} from "../model/TokenSecurityAudit";
@@ -79,13 +77,11 @@ import {createAddressTransferTable} from "../model/AddrTransfer";
 import {createNftMetaPartition, NftMetaFts, NftMetaOld} from "./nftchecker/NftMetaStorage";
 import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSync";
 import {AddrEvent3525, Event3525, Slot3525, SlotChanged, TaskEvent3525, TokenSlot3525} from "../T3525Sync";
-import {DailyNFTStat} from "../model/DailyNFTStat";
-import {DailyNFTHolder} from "../model/DailyNFTHolder";
+import {DailyNFTHolder, DailyNFTStat} from "../model/DailyNFTStat";
 import {CensorItem} from "../model/CensorItem";
 import {AddressNfts, createAddressNftTable} from "../model/AddrNft";
 import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
-import {DailyPosRewardStat} from "../model/DailyPosReward";
-import {DailyPowRewardStat} from "../model/DailyPowReward";
+import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
 import {NameTag} from "../model/NameTag";
 import {HeartBeatBean} from "../model/HeartBeat";
 
@@ -225,6 +221,7 @@ export async function initPartialModel(sequelize) {
     ESpaceHex40Map.register(sequelize)
     CensorItem.register(sequelize)
     NameTag.register(sequelize)
+    VoteParams.register(sequelize)
 }
 export async function initModel(sequelize: Sequelize) {
     console.log(`init models ...`)

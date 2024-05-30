@@ -73,3 +73,36 @@ export class EpochNftTransfer extends Model<IEpoch> implements IEpoch {
 //  PARTITION p11 VALUES LESS THAN (110000000) ENGINE = InnoDB,
 //  PARTITION p12 VALUES LESS THAN (120000000) ENGINE = InnoDB,
 //  PARTITION p13 VALUES LESS THAN (130000000) ENGINE = InnoDB) */
+
+export interface IVoteParams{
+    epoch: number,
+    storagePointProp: number,
+    baseFeeShareProp: number,
+}
+
+export class VoteParams extends Model<IVoteParams> implements IVoteParams{
+    epoch: number
+    storagePointProp: number
+    baseFeeShareProp: number
+    static register(sequelize) {
+        VoteParams.init({
+            epoch: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false},
+            storagePointProp: {type: DataTypes.DECIMAL(65,0), allowNull: true},
+            baseFeeShareProp: {type: DataTypes.DECIMAL(65,0), allowNull: true},
+        },{
+            sequelize: sequelize,
+            tableName: 'vote_params',
+            indexes: []
+        })
+    }
+
+    static async add(record: VoteParams, dbTx = undefined): Promise<IVoteParams> {
+        return await VoteParams.create({
+            epoch: record.epoch,
+            storagePointProp: record.storagePointProp,
+            baseFeeShareProp: record.baseFeeShareProp,
+        }, {
+            transaction: dbTx
+        })
+    }
+}

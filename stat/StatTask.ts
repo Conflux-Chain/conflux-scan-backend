@@ -11,7 +11,7 @@ import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
     CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
-    IS_EVM2,
+    IS_EVM2, KEY_CONFURA_URL,
     KV
 } from "./model/KV";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -31,6 +31,7 @@ import {CensorService} from "./service/censor/CensorService";
 import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
+import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
 
 async function main() {
     redirectLog()
@@ -39,6 +40,8 @@ async function main() {
     const config = await init()
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
+    const url = await KV.getString(KEY_CONFURA_URL, '')
+    const confura = await initCfxSdk({ url, keepAlive: true }, 'StatTask-confura')
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     const traceCreateQuery = new BlockTraceCreateQuery({});
     //
@@ -87,6 +90,9 @@ async function main() {
     //
     const statDailyPowReward = new StatDailyPowReward({cfx});
     await statDailyPowReward.schedule(1000 * 1);
+    //
+    const statDailyBurntFee = new StatDailyBurntFee({cfx: confura});
+    await statDailyBurntFee.schedule(1000 * 60);
     //
     setInterval(countTable, 60_000)
     //

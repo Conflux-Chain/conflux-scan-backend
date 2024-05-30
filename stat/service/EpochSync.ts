@@ -1,4 +1,4 @@
-import {Epoch} from "../model/Epoch";
+import {Epoch, VoteParams} from "../model/Epoch";
 import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
@@ -61,7 +61,6 @@ export class EpochSync extends SyncBase{
     public static SYNC_TRANSFERRED_NFT = true;
     public static SYNC_CENSOR_ITEM = true;
     public static SYNC_NAME_TAG = true;
-
     public static SYNC_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT = true;
@@ -70,13 +69,15 @@ export class EpochSync extends SyncBase{
     public static CONTRACT_ADDRESS_METADATA // Notice: Adjust config when proxy contract is changed
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
-
     public static NAME_TAG_SPLIT = "__,__";
+    public static PARAM_STORAGE_POINT = 'storagePointProp'
+    public static PARAM_BASE_FEE_SHARE = 'baseFeeShareProp'
 
     protected app;
     private statOnRealtime: StatOnRealtime
     private NAME_TYPE_MAP;
     private readonly statSwitch
+    private latestVoteParams: VoteParams
 
     public metric = {
         startEpoch: 0,
@@ -121,10 +122,15 @@ export class EpochSync extends SyncBase{
         this.statSwitch = true;
     }
 
-    public async checkContractConfig() {
+    public async mustInit() {
+        await this.checkContractConfig()
+        await this.loadLatestVoteParam()
+    }
+
+    private async checkContractConfig() {
         const [announcement, addressMetadata] = await Promise.all([
             KV.getString(CONTRACT_ANNOUNCEMENT, ''),
-            KV.getString(CONTRACT_ADDRESS_METADATA, '')
+            KV.getString(CONTRACT_ADDRESS_METADATA, ''),
         ])
         if(!announcement) {
             console.log(`contract announcement not set`)
@@ -136,6 +142,10 @@ export class EpochSync extends SyncBase{
         }
         EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
+    }
+
+    private async loadLatestVoteParam() {
+        this.latestVoteParams = await VoteParams.findOne({order: [['epoch', 'desc']]})
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -212,6 +222,7 @@ export class EpochSync extends SyncBase{
 
             const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
             this.m('Censor', s)
+            const voteParams = StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber)
 
             return {
                 syncCode: SyncCode.SUCCESS,
@@ -219,7 +230,7 @@ export class EpochSync extends SyncBase{
                 pivotHash: epoch.pivotHash,
                 modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
                     traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray,
-                    nftTransferArray, addrNftTransferArray, transactionArray, bytes32NameTagInfo
+                    nftTransferArray, addrNftTransferArray, transactionArray, bytes32NameTagInfo, voteParams
                 },
             };
         }catch(error) {
@@ -352,6 +363,16 @@ export class EpochSync extends SyncBase{
         this.metric.currentEpoch = epochNumber
         s = this.m('RealtimeStat-c', s)
 
+        if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
+            const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams
+            if ((!this.latestVoteParams
+                    && (lodash.isNumber(s) || lodash.isNumber(b))) ||
+                (this.latestVoteParams
+                    && (this.latestVoteParams.storagePointProp !== s || this.latestVoteParams.baseFeeShareProp !== b))) {
+                await VoteParams.create({epoch: epochNumber, storagePointProp: s, baseFeeShareProp: b})
+            }
+        }
+
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
         }
@@ -369,10 +390,11 @@ export class EpochSync extends SyncBase{
             const addrNftDel = await this.deleteAddressNft(epochNumber, modelData, dbTx);
             const nftTransferDel = await NftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const addrNftTransferDel = await AddressNftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+            const voteParamsDel = await VoteParams.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             console.log(`epoch-sync.delete epoch ${epochNumber} epochDel ${epochDel} minerBlockDel ${minerBlockDel}
                 traceCreateDel ${traceCreateDel} addrTransferDel ${addrTransferDel} contractDestroyDel ${contractDestroyDel}
                 censorItemDel ${censorItemDel} addrNftDel ${addrNftDel} nftTransferDel ${nftTransferDel} 
-                addrNftTransferDel ${addrNftTransferDel}`);
+                addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
         });
 
         this.realtimeStat(modelData.epoch, 'pop')
@@ -1469,5 +1491,14 @@ export class EpochSync extends SyncBase{
             parentHash: pivotBlock.parentHash.substr(2),
             timestamp: new Date(timestamp * 1000),
         };
+    }
+
+    // ------------------------------ vote params -------------------------------
+    private async getVoteParams(epochNumber) {
+        const {
+            app: { cfx }
+        } = this
+
+        return cfx.getVoteParams(epochNumber)
     }
 }

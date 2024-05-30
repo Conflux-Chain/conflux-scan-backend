@@ -73,7 +73,7 @@ import {
     listNFTHolderStat,
     listPowRewardStat,
     listPosRewardStat,
-    listTransactionSenderStat,
+    listTransactionSenderStat, listBurntFeeStat, listBurntRateStat,
 } from "../service/OpenStatService";
 import {
     mustBeAddressParamIfPresent,
@@ -222,4 +222,7 @@ function registerRouter(router: Router) {
     router.get('/statistics/nft/holder', listNFTHolderStat);
     router.get('/statistics/reward/pow', listPowRewardStat);
     router.get('/statistics/reward/pos', listPosRewardStat);
+
+    router.get('/statistics/burnt/fee', listBurntFeeStat);
+    router.get('/statistics/burnt/rate', listBurntRateStat);
 }
