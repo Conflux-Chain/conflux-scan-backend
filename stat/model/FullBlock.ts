@@ -59,8 +59,8 @@ export async function createFullBlockTable(seq:Sequelize) {
             process.exit(9)
         })
 }
-export async function loadMaxBlockEpoch(): Promise<number> {
-    return FullBlock.findOne({order: [["epoch", "desc"]]}).then(res=>res?.epoch || 0)
+export async function loadMaxBlockEpoch(defaultV = 0): Promise<number> {
+    return FullBlock.findOne({order: [["epoch", "desc"]]}).then(res=>res?.epoch ?? defaultV)
 }
 export async function loadMaxTxEpoch(): Promise<number> {
     return FullTransaction.findOne({order: [["epoch", "desc"]]}).then(res=>res?.epoch || 0)
