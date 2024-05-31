@@ -306,11 +306,11 @@ async function setup() {
     w.start("initCfxSdk")
     const cfx = await initCfxSdk({url: cfxUrl});
     w.start("runCounter")
-    await runCounter();
+    runCounter().then();
     w.start("runHolder")
-    await runHolder(cfx);
+    runHolder(cfx).then();
     w.start("runMarker")
-    await runMarker();
+    runMarker().then();
     cfx0 = cfx;
     w.start("makeVirtualContractInfo")
     await makeVirtualContractInfo(cfx.networkId);
