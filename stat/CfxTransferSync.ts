@@ -22,6 +22,7 @@ import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
+import {Stopwatch} from "./service/Stopwatch";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -301,19 +302,29 @@ async function setup() {
         return;
     }
     redirectLog()
+    const w = new Stopwatch()
+    w.start("initCfxSdk")
     const cfx = await initCfxSdk({url: cfxUrl});
+    w.start("runCounter")
     await runCounter();
+    w.start("runHolder")
     await runHolder(cfx);
+    w.start("runMarker")
     await runMarker();
     cfx0 = cfx;
+    w.start("makeVirtualContractInfo")
     await makeVirtualContractInfo(cfx.networkId);
+    w.start("scheduleRollupDailyCfxTxn")
     scheduleRollupDailyCfxTxn().then();
     console.log(`---------- ${cfxUrl} ${cfx.networkId} ---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))
         process.exit(0)
     } else {
+        w.start("scheduleCrossSpaceStat")
         scheduleCrossSpaceStat(cfx).then()
+        w.stop()
+        w.dump("before run task")
         return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
     }
 }
@@ -568,7 +579,11 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
 const measure = new Measure()
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
+    const w = new Stopwatch()
+    w.start("fetchTask")
     const task = await fetchTask(len, fromEpoch, cfx, TaskCfxTransfer)
+    w.stop();
+    w.dump(" fetchTask end  ")
     console.log(` start cfx transfer task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
     }, cursor/first epoch ${task.cursor + 1}`)
     if (fromEpoch === -1) {
