@@ -115,7 +115,7 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     : Promise<{result?:ICfxTransfer[], code?: number, addrBeans?:any[], pivotHash?:string, parentHash?:string}>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
-    const [txMapByHash, maxBlock] = await Promise.all([FullTransaction.findAll({
+    const [txMapByHash, blockArrDb, pivotBlock] = await Promise.all([FullTransaction.findAll({
             where: {epoch}, order: [['blockPosition', 'asc'],['txPosition', 'asc']]
         }).then(list=>{
             const txMap = new Map<string, FullTransaction>()
@@ -124,24 +124,23 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
             })
             return txMap
         }),
-        FullBlock.findOne({order:[['epoch','desc']]}),
-        ])
-    if (maxBlock === null || epoch > maxBlock.epoch) {
-        console.log(`epoch violates max block in db. ${epoch} > ${maxBlock?.epoch || NaN}`)
+        FullBlock.findAll({where: {epoch}, order:[['position','asc']], raw: true}),
+        cfx.getBlockByEpochNumber(epoch),
+    ])
+    if (blockArrDb.length == 0) {
+        console.log(`no block in db, epoch ${epoch} }`)
         return {code: 404}
     }
     if (txMapByHash.size === 0 && !checkPivot) {
         // catchup mode, shortcut when tx in db was empty.
         return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-'};
     }
-    const [hashes, pivotBlock] = await Promise.all([
-        cfx.getBlocksByEpochNumber(epoch),
-        cfx.getBlockByEpochNumber(epoch, false)
-    ])
-    // even tx in db is empty, still go through, in benefit of checking consistency.
-    // if (txMapByHash.size === 0) {
-    //     return {result: [], addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash};
-    // }
+    const hashes = blockArrDb.map(blk=>blk.hash);
+    if (pivotBlock.hash != hashes[hashes.length - 1]) {
+        console.log(`rpc pivotBlock.hash ${pivotBlock.hash}`)
+        console.log(`db  pivot has ${hashes[hashes.length - 1]} mismatch , epoch ${epoch}`)
+        return {code: 404}
+    }
 
     const result:ICfxTransfer[] = [];
     const addrBeans = []
@@ -152,10 +151,25 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
         if (traceOfBlock === null) {
             continue
         }
-        const {blockHash, transactionTraces} = traceOfBlock;
-        const txArr = (transactionTraces || []) as any[]
+        const {blockHash, transactionTraces, epochHash, epochNumber} = traceOfBlock;
+        if (epochNumber != epochNumber) {
+            console.log(`epoch number in trace ${epochNumber}`)
+            console.log(`mismatch! want epoch ${epoch}`)
+            return {code : 404} // try again
+        }
+        if (epochHash != pivotBlock.hash) {
+            console.log(`epoch hash in trace ${epochHash}`)
+            console.log(`pivot block hash ${pivotBlock.hash} , mismatch! epoch ${epoch}`)
+            return {code : 404} // try again
+        }
+        if (blockHash !== blockArrDb[blkIdx].hash) {
+            console.log(`block hash in trace ${blockHash}`)
+            console.log(`block hash in DB    ${blockArrDb[blkIdx].hash} , mismatch! epoch ${epoch}`)
+            return {code : 404} // try again
+        }
+        const txArr = (transactionTraces || []) as any[];
         for (let txIdx = 0; txIdx < txArr.length; txIdx++) {
-            // there are skipped txs. it's traces is empty.
+            // there are skipped txs. its trace is empty.
             const {traces, transactionHash, transactionPosition} = txArr[txIdx];
             if (traces.length === 0) {
                 // failed tx (lack of gas) may have zero trace, too.
