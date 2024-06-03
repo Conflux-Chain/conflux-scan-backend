@@ -226,23 +226,25 @@ export async function countNonMarkCfxTransferRows(maxOne: ICfxTransferRowMark) {
     return nonMarkRows;
 }
 
-export async function checkCfxTransferCountKV() {
-    const cnt = await KV.getNumber(KEY_FULL_CFX_TRANSFER_COUNT, NaN)
-    if (!isNaN(cnt)) {
-        // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer in KV:${cnt}`});
-        return
+export async function checkCfxTransferCountKV(update=false) {
+    if (!update) {
+        const cnt = await KV.getNumber(KEY_FULL_CFX_TRANSFER_COUNT, NaN)
+        if (!isNaN(cnt)) {
+            // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer in KV:${cnt}`});
+            return
+        }
     }
 
     const maxCfxTransfer = await CfxTransfer.findOne({order:[['id','desc']], limit: 1})
     if (maxCfxTransfer === null) {
         // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer:0, as no value in KV`});
-        return KV.create({key: KEY_FULL_CFX_TRANSFER_COUNT, value: '0'})
+        return KV.saveNumber(KEY_FULL_CFX_TRANSFER_COUNT, '0', undefined)
     }
 
     if (maxCfxTransfer.id < CFX_TRANSFER_PAGE_MARK_SIZE) {
         let countNow = (await CfxTransfer.count()).toString();
         // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer:${countNow}, as system just starts.`});
-        return KV.create({key: KEY_FULL_CFX_TRANSFER_COUNT, value: countNow});
+        return KV.saveNumber(KEY_FULL_CFX_TRANSFER_COUNT, countNow, undefined);
     }
 
     let maxOne:ICfxTransferRowMark = await CfxTransferRowMark.findOne({order: [["id", "desc"]], limit: 1});
@@ -252,7 +254,7 @@ export async function checkCfxTransferCountKV() {
     const nonMarkRows = await countNonMarkCfxTransferRows(maxOne);
     const countNow = nonMarkRows + maxOne.id;
     // logger?.info({src: `checkCfxTransferCountKV------------`, msg: `count cfx-transfer:${countNow}, non-mark rows:${nonMarkRows}, mark-rows:${maxOne.id}`});
-    return KV.create({key: KEY_FULL_CFX_TRANSFER_COUNT, value: countNow.toString()});
+    return KV.saveNumber(KEY_FULL_CFX_TRANSFER_COUNT, countNow.toString(), undefined);
 }
 
 // ============= full table ==============
