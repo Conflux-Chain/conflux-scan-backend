@@ -131,12 +131,18 @@ async function checkAllTokenHolderTop() {
     }
 
 }
+
 async function dailyTokenTxn() {
-    const [,,cmd,dt] = process.argv;
-    await calcDailyTokenOnChain(new Date(dt)).then(()=>{
-        console.log(`ok.`)
-        process.exit(0)
-    })
+    const [,,cmd,dtStr] = process.argv;
+    const dt = new Date(dtStr)
+    let now = new Date()
+    while( dt < now) {
+        console.log(` that is ${dt.toISOString()}`)
+        await calcDailyTokenOnChain(dt)
+        dt.setDate(dt.getDate()+1)
+    }
+    console.log(`ok.`)
+    await Erc721Transfer.sequelize.close()
 }
 if (require.main === module) {
     main().then()
