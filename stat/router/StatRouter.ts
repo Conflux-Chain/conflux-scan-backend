@@ -1,4 +1,5 @@
 // @ts-ignore
+const superagent = require('superagent');
 import {Conflux, format} from "js-conflux-sdk"
 import {StatApp} from "../StatApp";
 import * as Koa from 'koa'
@@ -275,6 +276,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const useRemote = await KV.getString(USE_REMOTE_STAT, "");
         if (useRemote) {
             ctx.body = await superagent.post(`${useRemote}${ctx.request.originalUrl}`).then(res=>res.body)
+            ctx.set('useRemote', useRemote)
             return
         }
         mustBeEnumParamIfPresent(ctx.request.query, 'type', [
