@@ -277,7 +277,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (useRemote) {
             const remoteUrl = `${useRemote}${ctx.request.originalUrl}`;
             ctx.set('remoteUrl', remoteUrl)
-            ctx.body = await superagent.post(remoteUrl).then(res=>res.body)
+            ctx.body = await superagent.get(remoteUrl).then(res=>res.body)
             return
         }
         mustBeEnumParamIfPresent(ctx.request.query, 'type', [
