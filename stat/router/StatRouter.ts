@@ -275,8 +275,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/top-cfx-holder', async (ctx)=>{
         const useRemote = await KV.getString(USE_REMOTE_STAT, "");
         if (useRemote) {
-            ctx.body = await superagent.post(`${useRemote}${ctx.request.originalUrl}`).then(res=>res.body)
-            ctx.set('useRemote', useRemote)
+            const remoteUrl = `${useRemote}${ctx.request.originalUrl}`;
+            ctx.set('remoteUrl', remoteUrl)
+            ctx.body = await superagent.post(remoteUrl).then(res=>res.body)
             return
         }
         mustBeEnumParamIfPresent(ctx.request.query, 'type', [
