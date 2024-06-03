@@ -120,36 +120,24 @@ export class DailyStatQuery {
         } = this
 
         const paramsArray: VoteParams[] = await VoteParams.findAll({order: [['epoch', 'asc']] })
-        console.log(`listBurntRateStat ---1--- paramsArray ${JSON.stringify({paramsArray})}`)
         if(!paramsArray?.length) {
-            console.log(`listBurntRateStat ---2--- ${JSON.stringify({total: 0, list: []})}`)
             return {total: 0, list: []}
         }
 
-        const paramsMap = lodash.keyBy(paramsArray, 'epoch')
         const epochFirst = paramsArray[0]['epoch']
         const epochFinalized = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-
         const epochStart = Math.max(epochFirst, minEpochNumber || 0)
         const epochEnd = Math.min(epochFinalized, maxEpochNumber || Number.MAX_VALUE)
-        let epochRange = epochEnd - epochStart + 1
-        console.log(`listBurntRateStat ---3--- ${JSON.stringify({epochRange})}`)
-        if(lodash.isNumber(skip)) {
-            epochRange -= Math.min(skip, epochRange)
-            console.log(`listBurntRateStat ---4--- skip ${skip} epochRange ${epochRange}`)
-        }
-        if(lodash.isNumber(limit)) {
-            epochRange = Math.min(limit, epochRange)
-            console.log(`listBurntRateStat ---5--- skip ${limit} epochRange ${epochRange}`)
-        }
-        console.log(`listBurntRateStat ---6--- epochFirst ${epochFirst} epochFinalized ${epochFinalized} epochRange ${epochRange}`)
+        const total = epochEnd - epochStart + 1
+        const effectSkip = Math.min(skip, total)
+        const effectRange = Math.min(limit, total - effectSkip)
 
         const list = []
         let lastParams: any = {}
-        lodash.range(epochRange).forEach(i => {
-            const epoch = sort === 'asc' ? epochStart + i : epochEnd - i
+        const paramsMap = lodash.keyBy(paramsArray, 'epoch')
+        lodash.range(effectRange).forEach(i => {
+            const epoch = sort === 'asc' ? epochStart + effectSkip + i : epochEnd - effectSkip - i
             const params = paramsMap[epoch]
-            console.log(`listBurntRateStat[${epoch}] ---7--- params ${JSON.stringify(params)}`)
 
             const burntRate = {epoch} as any
             const namesMapping = [{prop: 'storagePointProp', rate: 'storagePointRate'}, {prop: 'baseFeeShareProp', rate: 'baseFeeShareRate'}]
@@ -157,30 +145,21 @@ export class DailyStatQuery {
                 if(params && params[names.prop]  ) {
                     burntRate[names.rate] = BigFixed(params[names.prop]).div(BigFixed(params[names.prop]).add(BigFixed(10**18)))
                     lastParams = {}
-                    console.log(`listBurntRateStat[${epoch}][${names.prop}] ---8.1--- burntRate ${JSON.stringify(burntRate)}`)
                 } else{
-                    console.log(`listBurntRateStat[${epoch}][${names.prop}] ---8.2.1--- lastParamsObj ${JSON.stringify(lastParams)}`)
-                    if(lastParams[names.prop] === undefined) { // TODO
+                    if(lastParams[names.prop] === undefined) {
                         const target = lodash.findLast(paramsArray, params => params.epoch < epoch && params[names.prop])
-                        console.log(`listBurntRateStat[${epoch}][${names.prop}] ---8.2.2--- target ${JSON.stringify(target)}`)
                         if (target) {
                             lastParams[names.prop] = target[names.prop]
-                            console.log(`listBurntRateStat[${epoch}][${names.prop}] ---8.2.3--- lastParamsObj ${JSON.stringify(lastParams)}`)
                         }
-                        console.log(`listBurntRateStat[${epoch}][${names.prop}] ---8.2.4--- lastParamsObj ${JSON.stringify(lastParams)}`)
                     }
                     if(lastParams[names.prop]) {
                         burntRate[names.rate] = BigFixed(lastParams[names.prop]).div(BigFixed(lastParams[names.prop]).add(BigFixed(10**18)))
-                        console.log(`listBurntRateStat[${epoch}][${names.prop}] ---8.2.5--- burntRate ${JSON.stringify(burntRate)}`)
                     }
-                    console.log(`listBurntRateStat[${epoch}][${names.prop}] ---8.2.6--- burntRate ${JSON.stringify(burntRate)}`)
                 }
             })
-            console.log(`listBurntRateStat[${epoch}] ---8.3--- ${JSON.stringify(burntRate)}`)
             list.push(burntRate)
         })
-        console.log(`listBurntRateStat ---9--- ${JSON.stringify({total: (epochFinalized - epochFirst + 1), list})}`)
 
-        return {total: (epochFinalized - epochFirst + 1), list}
+        return {total, list}
     }
 }

@@ -256,8 +256,8 @@ export abstract class SyncBase{
             cfx.getBlocksByEpochNumber(epochNumber)
                 /*.catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];})*/,
             cfx.getEpochReceipts(epochNumber)
-                /*.then(res=>{ if (epochNumber === 0) res = []; return res;})
-                .catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];})*/,
+                .then(res=>{ if (epochNumber === 0) res = []; return res;})
+                /*.catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];})*/,
         ]);
 
         if (latestState < epochNumber) {
