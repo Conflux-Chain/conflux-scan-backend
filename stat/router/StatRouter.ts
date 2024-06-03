@@ -277,8 +277,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (useRemote) {
             const remoteUrl = `${useRemote}${ctx.request.originalUrl}`;
             ctx.set('remoteUrl', remoteUrl)
-            ctx.body = await superagent.get(remoteUrl).then(res=>res.body)
-            return
+            ctx.body = await superagent.get(remoteUrl).then(res=>res.body?.result || res.body?.data)
+            if (ctx.body) {
+                return;
+            }
         }
         mustBeEnumParamIfPresent(ctx.request.query, 'type', [
             'rank_address_by_total_cfx',
