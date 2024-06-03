@@ -5,7 +5,7 @@ import * as Koa from 'koa'
 import {Context} from 'koa'
 import * as Router from 'koa-router'
 import bodyParser = require("koa-bodyparser");
-import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV} from "../model/KV";
+import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV, USE_REMOTE_STAT} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
@@ -272,6 +272,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/top-cfx-holder', async (ctx)=>{
+        const useRemote = await KV.getString(USE_REMOTE_STAT, "");
+        if (useRemote) {
+            ctx.body = await superagent.post(`${useRemote}${ctx.request.originalUrl}`).then(res=>res.body)
+            return
+        }
         mustBeEnumParamIfPresent(ctx.request.query, 'type', [
             'rank_address_by_total_cfx',
             'rank_address_by_cfx',
