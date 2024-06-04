@@ -1,4 +1,5 @@
 import {ScanApp} from "./index";
+import {QueryTypes} from "sequelize";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -80,17 +81,13 @@ export class BlockService {
       }
     }
 
-    let burntGasFee
-    const [blk, bltExt] = await Promise.all([
-      FullBlock.findOne({where: {hash: block.hash}, raw: true}),
-      FullBlockExt.findOne({where: {epoch: block.epochNumber}, raw: true})
-    ])
-    if(bltExt?.extra) {
-      const extra = JSON.parse(bltExt?.extra)
-      burntGasFee = extra.bgf[blk.position]
-    }
-    lodash.assign(block, {burntGasFee})
-    rewardDetail['burntGasFee'] = burntGasFee
+    const blkExt = await FullBlockExt.sequelize.query(`select * from full_block_ext where epoch = ? and position = 
+         (select position from full_block where hash = ?)`,
+        { type: QueryTypes.SELECT, replacements: [block.epochNumber, block.hash]})
+        .then(arr => {return arr?.length ? arr[0] : null})
+    let extra = blkExt?.extra ? JSON.parse(blkExt.extra) : undefined
+    lodash.assign(block, {burntGasFee: extra?.burntFee})
+    rewardDetail['burntGasFee'] = extra?.burntFee
 
     const epoch = await service.epoch.query({ epochNumber: block.epochNumber }) || {};
     return lodash.defaults(detailInfo, block, pivotInfo, detailInfo, reward, {

@@ -168,18 +168,13 @@ export class FullBlockQuery {
                     { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
                 txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
             }
-            const blockExts = await FullBlockExt.sequelize.query(
+            const blockExts: FullBlockExt[] = await FullBlockExt.sequelize.query(
                 `select * from full_block_ext where epoch>=? and epoch<=?`,
                 { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
             blockExts.forEach(blockExt => {
                 epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock']
-                let position = 0
-                if(blockExt['extra']) {
-                    const extra = JSON.parse(blockExt['extra'])
-                    extra.bgf.forEach(burntFee => {
-                            epochBlockExtMap[`${blockExt['epoch']}-${position++}`] = burntFee
-                        }
-                    )
+                if(blockExt?.extra) {
+                    epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra)
                 }
             })
         }
@@ -204,7 +199,7 @@ export class FullBlockQuery {
                 if(row['totalReward'] === '0'){
                     row['totalReward'] = undefined;
                 }
-                row['burntFee'] = epochBlockExtMap[`${row['epochNumber']}-${row['blockIndex']}`]
+                row['burntGasFee'] = epochBlockExtMap[`${row['epochNumber']}-${row['blockIndex']}`]?.burntFee
                 if(StatApp.isEVM) {
                     row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0
                     row['transactionCount'] = row['transactionCount']

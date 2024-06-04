@@ -137,13 +137,18 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
 
 export interface IFullBlockExt {
     epoch: number;
+    position: number;
     coreBlock: boolean;
     extra: string;
 }
+// alter table full_block_ext add column `position` smallint(6) NOT NULL DEFAULT '0' after `epoch`;
+// alter table full_block_ext add column `extra` varchar(256) default NULL after `coreBlock`;
+// alter table full_block_ext drop primary key, add primary key(`epoch`, `position`);
 const FULL_BLOCK_EXT_SQL = `CREATE TABLE if not exists \`full_block_ext\` (
                               \`epoch\` bigint unsigned NOT NULL,
+                              \`position\` smallint NOT NULL DEFAULT '0',
                               \`coreBlock\` tinyint(1) NOT NULL DEFAULT '1',
-                              \`extra\` varchar(256) NOT NULL DEFAULT '',  
+                              \`extra\` varchar(256) DEFAULT NULL,  
                               primary key  (\`epoch\` desc)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4
 partition by range (epoch) (
@@ -177,12 +182,14 @@ export async function createFullBlockExtTable(seq:Sequelize) {
 }
 export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt {
     epoch: number;
+    position: number;
     coreBlock: boolean;
     extra: string;
 
     static register(sequelize) {
         FullBlockExt.init({
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            position: {type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0},
             coreBlock: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: 1},
             extra: {type: DataTypes.STRING(256), allowNull: false, defaultValue: ''},
         }, {
@@ -194,17 +201,20 @@ export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt 
         })
     }
 }
-export function buildBlockExt(epoch: number, evmBlk: number, burntGasFee: any[]): FullBlockExt {
-    // fields in extra:
-    // {
-    //     evmBlk: 3,               // has evm block, added on 20240528
-    //     bgf: ["111","222","333","444"], // burntGasFee, added on 20240528
-    // }
+export function buildBlockExt(epoch: number, evmBlocks: number, block: any): FullBlockExt {
     const extra: any = {
-        evmBlk,
-        bgf: burntGasFee
+        burntFee: block.burntGasFee,
+        baseFee: block.baseFee,
+        avgTip: block.avgTip
     }
-    return {epoch, coreBlock: evmBlk === 0, extra: JSON.stringify(extra)} as FullBlockExt
+    if(block.txsInType.find(v => v > 0)) { // Only store when the block has txs.
+        extra.txsInType = block.txsInType
+    }
+    if(StatApp.isEVM) { // Only store in evm space.
+        extra.evmBlocks = evmBlocks
+    }
+
+    return {epoch, position: block.position, coreBlock: evmBlocks === 0, extra: JSON.stringify(extra)} as FullBlockExt
 }
 export interface IFailedTx {
     id?:number

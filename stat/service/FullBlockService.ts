@@ -382,7 +382,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: popEpochCondition, addressId: [...addresses],},
                         transaction: dbTx}),
-                    StatApp.isEVM ? FullBlockExt.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}) : undefined,
+                    FullBlockExt.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
@@ -429,11 +429,13 @@ export class FullBlockService {
         const executedTxArr = []
         const txByAddressArr = []
         const failedTxArr = []
-        const burntGasFeeArr = []
+        const blockExtArr = []
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let sumGasLimit = BigInt(0)
             let sumBurntGasFee = BigInt(0)
+            let sumTip = BigInt(0)
+            let txsInType = [0, 0, 0]
             let pos = 0
             for (const txInfo of block.transactions) {
                 // status has value, fail (!0) or success (0) or genesis epoch.
@@ -474,7 +476,9 @@ export class FullBlockService {
                     }
                     sumGasPrice += txInfo.gasPrice
                     sumGasLimit += txInfo.gasLimit
-                    sumBurntGasFee += (txInfo.receipt?.burntGasFee || 0)
+                    sumBurntGasFee += BigInt(txInfo.receipt?.burntGasFee || 0)
+                    sumTip += BigInt(txInfo?.maxPriorityFeePerGas || 0)
+                    txsInType[Number(txInfo?.type || 0)] ++
                 }
                 if (st == 1) { // has value and is not zero: failed.
                     failedTxArr.push(FullBlockService.syncFailedTx(minEpochNumber, txInfo))
@@ -482,15 +486,20 @@ export class FullBlockService {
             }
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
-            burntGasFeeArr.push(sumBurntGasFee)
             const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
                 (minEpochNumber >= StatApp.cip1559BlkHeight ? CONST.GAS_LIMIT_PROPORTION.core : 1)
             const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
-            block.gasLimit = block.gasLimit * proportion * times
+            block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
+
+            block.burntGasFee = sumBurntGasFee
+            block.baseFee = BigInt(block?.baseFeePerGas || 0)
+            pos && (block.avgTip = sumTip / BigInt(pos))
+            block.txsInType = txsInType
+            const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, block)
+            blockExtArr.push(blockExt)
         }
         const failedBeans = failedTxArr
-        const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, burntGasFeeArr)
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
@@ -499,7 +508,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
-                StatApp.isEVM ? FullBlockExt.create(blockExt, {transaction: dbTx}) : undefined,
+                FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),
