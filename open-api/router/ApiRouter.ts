@@ -73,7 +73,10 @@ import {
     listNFTHolderStat,
     listPowRewardStat,
     listPosRewardStat,
-    listTransactionSenderStat, listBurntFeeStat, listBurntRateStat,
+    listTransactionSenderStat,
+    listBurntFeeStat,
+    listBurntRateStat,
+    listCIP1559Stat,
 } from "../service/OpenStatService";
 import {
     mustBeAddressParamIfPresent,
@@ -85,6 +88,7 @@ import {
     loadRateConfig,
     loadRateKeyConfig
 } from "../../stat/router/RateLimiter";
+import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
 
 const path = require('path');
 const cors = require('@koa/cors');
@@ -225,4 +229,8 @@ function registerRouter(router: Router) {
 
     router.get('/statistics/burnt/fee', listBurntFeeStat);
     router.get('/statistics/burnt/rate', listBurntRateStat);
+    router.get('/statistics/block/base-fee', listCIP1559Stat(CIP1559StatType.BASE_FEE));
+    router.get('/statistics/block/avg-priority-fee', listCIP1559Stat(CIP1559StatType.PRIORITY_FEE));
+    router.get('/statistics/block/gas-used', listCIP1559Stat(CIP1559StatType.GAS_USED));
+    router.get('/statistics/block/txs-by-type', listCIP1559Stat(CIP1559StatType.TXS_BY_TYPE));
 }

@@ -14,6 +14,7 @@ import {paginateCoreStat} from "../../stat/router/ParamChecker";
 import {polishContract} from "./OpenContractService";
 import {fixApprovalData} from "../../stat/service/tool/ApprovalTool";
 import {BlockAndMinerSync} from "../../stat/service/BlockAndMinerSync";
+import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
 
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -339,11 +340,23 @@ export async function listBurntRateStat(ctx) {
 
     const {minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
     const {minEpochNumber, maxEpochNumber} = ctx.request.query;
-    console.log(`listBurntRateStat ---req--- ${JSON.stringify({minEpochNumber, maxEpochNumber, sort, skip, limit})}`)
 
     const page = await getApiService().dailyStatQuery.listBurntRateStat({
         minEpochNumber, maxEpochNumber,
         sort, skip, limit
     })
     setBody(ctx, page)
+}
+
+export function listCIP1559Stat(statType: CIP1559StatType) {
+    return async (ctx) => {
+        mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber', 'maxEpochNumber')
+
+        const {minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
+        const {minEpochNumber, maxEpochNumber} = ctx.request.query;
+
+        const page = await getApiService().dailyBlockDataStatQuery.listCIP1559Stat({
+            statType, minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber, sort, skip, limit})
+        setBody(ctx, page)
+    }
 }

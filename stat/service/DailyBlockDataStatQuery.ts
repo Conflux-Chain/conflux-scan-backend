@@ -1,9 +1,10 @@
 import {QueryTypes, Op, fn, col} from "sequelize";
-import {FullBlock, FullTransaction} from "../model/FullBlock";
+import {FullBlock, FullBlockExt, FullTransaction} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import { getTimeByInterval } from "./tool/DateTool";
 import {calCount} from "./common/utils";
+import {LIMIT_MAX_STAT} from "../router/ParamChecker";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -147,4 +148,109 @@ export class DailyBlockDataStatQuery {
         });
         return partialMap;
     }
+
+    async listCIP1559Stat({statType, skip, limit, sort, minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber}) {
+        const pivot = statType === CIP1559StatType.BASE_FEE
+        const result = await this.listBlocks(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber, sort, skip, limit, pivot)
+        result.list = result.list.map(block => {
+            const stat = lodash.pick(block, ['epoch', 'position', 'time'])
+            switch (statType) {
+                case CIP1559StatType.BASE_FEE:
+                    lodash.assign(stat, {baseFee: block?.extra?.baseFee || 0})
+                    break
+                case CIP1559StatType.PRIORITY_FEE:
+                    lodash.assign(stat, {avgPriorityFee: block?.extra?.avgTip || 0})
+                    break
+                case CIP1559StatType.GAS_USED:
+                    lodash.assign(stat, {gasUsed: block?.gasUsed || 0})
+                    break
+                case CIP1559StatType.TXS_BY_TYPE:
+                    let txsInType = {legacy: 0, cip2930: 0, cip1559: 0}
+                    if(block?.extra?.txsInType) {
+                        const typedTxsArr = block?.extra?.txsInType
+                        txsInType = {legacy: typedTxsArr[0], cip2930: typedTxsArr[1], cip1559: typedTxsArr[2]}
+                    }
+                    lodash.assign(stat, {txsInType})
+                    break
+                default:
+                    throw new Error(`The stat type ${statType} not supported!`);
+            }
+            return stat
+        })
+        return result
+    }
+
+    private async listBlocks(minTimestamp: number, maxTimestamp: number, minEpochNumber: number,
+        maxEpochNumber: number, sort: string, skip: number, limit: number, pivot: boolean = undefined) {
+        const queryOptions: any = {
+            attributes: ['epoch', 'position', 'createdAt', 'gasUsed'],
+            offset: skip,
+            limit,
+            order: [['epoch', sort], ['position', sort]],
+            raw: true,
+        }
+
+        const conditionArray = []
+        if (minTimestamp !== undefined) {
+            conditionArray.push({createdAt: {[Op.gte]: new Date(minTimestamp * 1000)}})
+        }
+        if (maxTimestamp !== undefined) {
+            conditionArray.push({createdAt: {[Op.lte]: new Date(maxTimestamp * 1000)}})
+        }
+        if(minEpochNumber !== undefined) {
+            conditionArray.push({epoch: { [Op.gte]: minEpochNumber}})
+        }
+        if(maxEpochNumber !== undefined) {
+            conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}})
+        }
+        if(pivot) {
+            conditionArray.push({pivot: true})
+        }
+        if (conditionArray.length === 1) {
+            queryOptions.where = conditionArray[0]
+        }
+        if (conditionArray.length > 1) {
+            queryOptions.where = {[Op.and]: conditionArray}
+        }
+
+        let result
+        const maxLimitOpt = lodash.assign({...queryOptions}, {offset: LIMIT_MAX_STAT, limit: 1})
+        const maxLimitBlk = await FullBlock.findOne(maxLimitOpt)
+        if(maxLimitBlk) {
+            if((skip + limit) > LIMIT_MAX_STAT) {
+                limit = skip < LIMIT_MAX_STAT  ? LIMIT_MAX_STAT - skip : 0
+            }
+            const rows = limit === 0 ? [] : (await FullBlock.findAll(lodash.assign(queryOptions, {limit})))
+            result = {total: LIMIT_MAX_STAT, list: rows || []}
+        } else{
+            const page = await FullBlock.findAndCountAll(queryOptions)
+            result = {total: page?.count, list: page?.rows || []}
+        }
+
+        let blkExtMap
+        if(result.list.length) {
+            const [epochFirst, epochLast] = [result.list[0].epoch, result.list[result.list.length - 1].epoch]
+            const [minEpoch, maxEpoch] = epochFirst <= epochLast ? [epochFirst, epochLast] : [epochLast, epochFirst]
+            const blkExts = await FullBlockExt.findAll({where: {[Op.and]: [
+                        {epoch: { [Op.gte]: minEpoch}}, {epoch: { [Op.lte]: maxEpoch}}]}})
+            blkExtMap = lodash.keyBy(blkExts, blk => `${blk.epoch}-${blk.position}`)
+        }
+
+        result.list.forEach(blk => {
+            // @ts-ignore
+            blk['time'] = blk['createdAt'].toISOString().replace('T', ' ').substr(0, 19)
+            if(blkExtMap && blkExtMap[`${blk.epoch}-${blk.position}`]?.extra) {
+                blk['extra'] = JSON.parse(blkExtMap[`${blk.epoch}-${blk.position}`]?.extra)
+            }
+        });
+
+        return result
+    }
+}
+
+export enum CIP1559StatType {
+    BASE_FEE,
+    PRIORITY_FEE,
+    GAS_USED,
+    TXS_BY_TYPE
 }

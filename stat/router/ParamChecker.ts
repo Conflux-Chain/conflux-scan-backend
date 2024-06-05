@@ -2,10 +2,13 @@ import {Errors} from "../service/common/LogicError";
 
 const lodash = require('lodash');
 
-const optCore = {skip: 0, skipMax: 10000, limit: 10, limitMax: 100};
-const optCoreStat = {skip: 0, skipMax: 10000, limit: 10, limitMax: 2000};
-const optEVM = {skip: 1, skipMax: 10000, limit: 100, limitMax: 100};
-const optEVMStat = {skip: 1, skipMax: 10000, limit: 100, limitMax: 2000};
+export const LIMIT_MAX = 100
+export const LIMIT_MAX_STAT = 2000
+
+const optCore = {skip: 0, skipMax: 10000, limit: 10, limitMax: LIMIT_MAX};
+const optCoreStat = {skip: 0, skipMax: 10000, limit: 10, limitMax: LIMIT_MAX_STAT};
+const optEVM = {skip: 1, skipMax: 10000, limit: 100, limitMax: LIMIT_MAX};
+const optEVMStat = {skip: 1, skipMax: 10000, limit: 100, limitMax: LIMIT_MAX_STAT};
 
 export function paginateCore(reqObj: object, options?: any) {
     return paginate(reqObj, 'skip', 'limit', lodash.assign({...optCore}, options));
