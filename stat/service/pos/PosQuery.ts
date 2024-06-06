@@ -21,6 +21,17 @@ import {loadCache, PATH_POS_INFO, resolveDockerPath, writeCache} from "../CacheS
 export class PosQuery {
     private cfx: Conflux;
     private cachedData: Object
+    private whereCondForValidators: any = {
+        [Op.or]: [
+            {availableVotes: {[Op.gt]: 0}}, // active
+            {
+                [Op.and]: [                 // inactive
+                    {availableVotes: 0},
+                    {forceRetiredVotes: {[Op.gt]: 0}},
+                ]
+            }
+        ],
+    }
 
     constructor(cfx:Conflux) {
         this.cfx = cfx
@@ -51,7 +62,7 @@ export class PosQuery {
         const [st, posAccountCount, posEconomics, totalPosRewardDrip, {apy, totalCirculating}] = await Promise.all([
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx.pos.getStatus(),
-            PosAccount.count({}),
+            PosAccount.count({where: this.whereCondForValidators}),
             this.cfx.getPoSEconomics(),
             KV.getString(TOTAL_POS_REWARD, "0"),
             this.calculateApy(),
@@ -215,6 +226,7 @@ export class PosQuery {
                         [fn('sum', col('signCount')), 'signCount'],
                         [fn('sum', col('mineCount')), 'mineCount'],
                     ],
+                    where: this.whereCondForValidators,
                     group: ['powBase32'],
                     offset: skip, limit, raw: true,
                     order: [[fn('sum', col(orderBy)), order]],
@@ -228,7 +240,7 @@ export class PosQuery {
             })
         }
         return await PosAccount.findAndCountAll({
-            where: {},
+            where: this.whereCondForValidators,
             offset: skip, limit, raw: true,
             order: [[orderBy, order]],
             //logging: buildSqlLog('list pos account sql:'), benchmark: true
