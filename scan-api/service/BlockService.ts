@@ -84,8 +84,8 @@ export class BlockService {
       if (transaction.blockHash === hash) {
         newTransactionCount += 1;
         gasPriceCount += BigInt(transaction.gasPrice);
+        gasUsed += BigInt(transaction.gas)
       }
-      gasUsed += BigInt(transaction.gas)
       if(!transaction.gasPrice){
         crossSpaceTransactionCount++
       }
