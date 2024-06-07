@@ -84,6 +84,7 @@ import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
 import {NameTag} from "../model/NameTag";
 import {HeartBeatBean} from "../model/HeartBeat";
+import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 
 let conf
 export function createDB(config) {
@@ -222,6 +223,7 @@ export async function initPartialModel(sequelize) {
     CensorItem.register(sequelize)
     NameTag.register(sequelize)
     VoteParams.register(sequelize)
+    DailyBurntFeeStat.register(sequelize)
 }
 export async function initModel(sequelize: Sequelize) {
     console.log(`init models ...`)

@@ -11,7 +11,7 @@ import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
     CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
-    IS_EVM2, KEY_CONFURA_URL,
+    IS_EVM2, KEY_CIP1559_BLOCK_HEIGHT, KEY_FULL_STATE_RPC,
     KV
 } from "./model/KV";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -40,9 +40,10 @@ async function main() {
     const config = await init()
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
-    const url = await KV.getString(KEY_CONFURA_URL, '')
-    const confura = await initCfxSdk({ url, keepAlive: true }, 'StatTask-confura')
+    const url = await KV.getString(KEY_FULL_STATE_RPC, '')
+    const fullStatCfx = await initCfxSdk({ url, keepAlive: true }, 'StatTask-fullStatRpc')
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+    StatApp.cip1559BlkHeight = await KV.getNumber(KEY_CIP1559_BLOCK_HEIGHT)
     const traceCreateQuery = new BlockTraceCreateQuery({});
     //
     const blockAndMinerSync = new BlockAndMinerSync();
@@ -91,7 +92,7 @@ async function main() {
     const statDailyPowReward = new StatDailyPowReward({cfx});
     await statDailyPowReward.schedule(1000 * 1);
     //
-    const statDailyBurntFee = new StatDailyBurntFee({cfx: confura});
+    const statDailyBurntFee = new StatDailyBurntFee({cfx: fullStatCfx});
     await statDailyBurntFee.schedule(1000 * 60);
     //
     setInterval(countTable, 60_000)

@@ -1,7 +1,8 @@
-import {col, fn, Op} from 'sequelize'
+import {Op} from 'sequelize'
 import {IntervalType, TimerStat} from "./TimerStat";
 import {DailyBurntFeeStat} from "../../model/DailyBurntFeeStat";
 import {Epoch} from "../../model/Epoch";
+import {StatApp} from "../../StatApp";
 
 const BigFixed = require('bigfixed');
 
@@ -22,6 +23,16 @@ export class StatDailyBurntFee extends TimerStat{
             order:[["statTime","desc"]],
             limit: 1
         });
+        if(!lastStat) {
+            // const epoch = await Epoch.findOne({where: {epoch: StatApp.cip1559BlkHeight}, raw: true}) // TODO remove comment when launch new feature
+            const epoch = await Epoch.findOne({order: [['epoch', 'desc']], offset: 5168, limit: 1, raw: true})
+            if(!epoch) {
+                throw new Error(`Failed to load block height at ${StatApp.cip1559BlkHeight}`)
+            }
+            const lastStat = {statTime: new Date(epoch.timestamp)}
+            lastStat.statTime.setHours(lastStat.statTime.getHours() - 1, 0, 0, 0)
+            return this.getStatRangeMin(lastStat, 60)
+        }
         return this.getStatRangeMin(lastStat, 60);
     }
 
@@ -64,41 +75,32 @@ export class StatDailyBurntFee extends TimerStat{
 
     private async statBurntFee(statType: string, beginTime: Date, endTime: Date) {
         const {
-            app: { cfx }
+            app: { cfx: sdk }
         } = this
 
-        const epochRange = await Epoch.findOne({
-            attributes:[
-                [fn('min', col('epoch')), 'minEpoch'],
-                [fn('max', col('epoch')), 'maxEpoch']
-            ],
-            where: {[Op.and]: [
-                    {timestamp: {[Op.gte]: beginTime}},
-                    {timestamp: {[Op.lt]: endTime}}]
-            },
-            raw: true
-        })
-
-        const[collateralOld, feeOld, collateralInfoNew, feeNew] = await Promise.all([
-            cfx.getCollateralInfo(epochRange["minEpoch"]),
-            cfx.getFeeBurnt(epochRange["minEpoch"]),
-            cfx.getCollateralInfo(epochRange["maxEpoch"]),
-            cfx.getFeeBurnt(epochRange["maxEpoch"])
+        const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lt]: endTime}}, order: [['timestamp', 'desc']]})
+        const[collateralInfoNew, feeNew] = await Promise.all([
+            sdk.cfx.getCollateralInfo(maxEpoch.epoch),
+            sdk.cfx.getFeeBurnt(`0x${maxEpoch.epoch.toString(16)}`)
         ])
 
-        const burntStorageFee = BigFixed(collateralInfoNew.convertedStoragePoints)
-            .sub(BigFixed(collateralOld.convertedStoragePoints)).divide(BigFixed(1024)).toNumber()
-        const burntGasFee = BigFixed(feeNew).sub(BigFixed(feeOld)).toNumber()
-        const burntStorageFeeTotal = BigFixed(collateralInfoNew.convertedStoragePoints).divide(BigFixed(1024)).toNumber()
-        const burntGasFeeTotal = BigFixed(feeNew).toNumber()
+        const statTime = this.getRangeBegin(beginTime, statType as IntervalType);
+        const lastStat = await DailyBurntFeeStat.findOne({where: {statType, statTime}})
+        const collateralOld = lastStat?.burntStorageFeeTotal || 0
+        const feeOld = lastStat?.burntGasFeeTotal || 0
+
+        const storageFeeTotal = BigFixed(collateralInfoNew.convertedStoragePoints).div(BigFixed(1024))
+        const gasFeeTotal = BigFixed(feeNew)
+        const storageFee = storageFeeTotal.sub(BigFixed(collateralOld))
+        const gasFee = gasFeeTotal.sub(BigFixed(feeOld))
 
         return {
             statType: statType,
             statTime: beginTime,
-            burntStorageFee,
-            burntGasFee,
-            burntStorageFeeTotal,
-            burntGasFeeTotal
+            burntStorageFeeTotal: storageFeeTotal.toNumber(),
+            burntGasFeeTotal: gasFeeTotal.toNumber(),
+            burntStorageFee: storageFee.toNumber(),
+            burntGasFee: gasFee.toNumber(),
         } as DailyBurntFeeStat
     }
 }
