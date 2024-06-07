@@ -24,12 +24,7 @@ export class PosQuery {
     private whereCondForValidators: any = {
         [Op.or]: [
             {availableVotes: {[Op.gt]: 0}}, // active
-            {
-                [Op.and]: [                 // inactive
-                    {availableVotes: 0},
-                    {forceRetiredVotes: {[Op.gt]: 0}},
-                ]
-            }
+            {forceRetiredVotes: {[Op.gt]: 0}}, // inactive
         ],
     }
 
