@@ -10,7 +10,6 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {makeId} from "../../model/HexMap";
 import {CONST} from "../common/constant"
 import {IntervalType, TimerStat} from "./TimerStat";
-import {TokenQuery} from "../TokenQuery";
 
 export class StatDailyContractAnalysis extends TimerStat{
 
@@ -42,7 +41,7 @@ export class StatDailyContractAnalysis extends TimerStat{
 
     public async stat(rangeBegin: Date, rangeEnd: Date){
         const [minEpoch, maxEpoch] = await Promise.all([
-            Epoch.findOne({where: {timestamp: {[Op.lt]: rangeBegin}}, order: [['timestamp', 'DESC']]}).then(epoch => {return epoch.epoch + 1}),
+            Epoch.findOne({where: {timestamp: {[Op.lt]: rangeBegin}}, order: [['timestamp', 'DESC']]}).then(epoch => {return epoch ? epoch.epoch + 1 : 0}),
             Epoch.findOne({where: {timestamp: {[Op.lt]: rangeEnd}}, order: [['timestamp', 'DESC']]}).then(epoch => {return epoch.epoch}),
         ])
 
