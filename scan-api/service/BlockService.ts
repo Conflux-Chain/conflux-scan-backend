@@ -191,16 +191,8 @@ export class BlockService {
     if (options.referredBy !== undefined) {
       result = await this._countAndListRefereeByHash(options);
     } else {
-      // const rdbSwitch = await KV.getSwitch(KEY_BLOCK_QUERY_RDB_SWITCH);
-      // if (rdbSwitch) {
-        result = service.fullBlock.listBlock(options);
+        result = await service.fullBlock.listBlock(options);
         return result;
-      // }
-      // tool.checkExist(options, {
-      //   epochNumber: false, referredBy: false, miner: undefined,
-      //   minTimestamp: undefined, maxTimestamp: undefined, minEpochNumber: undefined, maxEpochNumber: undefined,
-      // });
-      // result = await syncSDK.countAndListBlock(options);
     }
 
     let list = await limitMap(result.list,

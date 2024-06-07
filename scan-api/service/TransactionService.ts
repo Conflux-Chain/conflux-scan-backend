@@ -16,6 +16,7 @@ const RECEIPT_FIELDS = [
   'storageCoveredBySponsor',
   'storageReleased',
   'txExecErrorMsg',
+  'burntGasFee',
 ];
 
 export class TransactionService {
@@ -59,7 +60,7 @@ export class TransactionService {
       txInputData = `0x${utf8ToHex(mosaicData).data}`;
     }
 
-    const block = await service.conflux.getBlockByEpochNumber(transaction.blockHash, false)
+    const block = await service.conflux.getBlockByEpochNumber(transaction.epochNumber, false)
     const baseFeePerGas = block?.baseFeePerGas
 
     let typeDesc = CONST.TX_EIP_TYPE[transaction.type]

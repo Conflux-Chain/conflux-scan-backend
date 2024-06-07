@@ -74,11 +74,11 @@ export class StatOnRealtime {
         for (const tx of txArray) {
             if(this.CIP1559_ACTIVATED) {
                 gasPrices.add({
-                    base: pivotBlock?.baseFeePerGas || tx?.gasPrice || 0,
-                    priority: tx?.maxPriorityFeePerGas || 0
+                    base: Number(pivotBlock?.baseFeePerGas || tx?.gasPrice || 0),
+                    priority: Number(tx?.maxPriorityFeePerGas || 0)
                 })
             } else{
-                gasPrices.add(tx.gasPrice)
+                gasPrices.add(Number(tx.gasPrice))
             }
             gasLimit = gasLimit + tx.gas
         }
@@ -111,7 +111,9 @@ export class StatOnRealtime {
         return config?.value ? JSON.parse(config?.value) : {tps: 0}
     }
 
+    private zero = {base: 0, priority: 0, gasPrice: 0}
     private async statGasPriceTracker(){
+        const {zero} = this
         let statArray: any[] = Object.values(this.GAS_PRICE_COUNTER)
         statArray = lodash.orderBy(statArray, 'epoch', 'desc')
 
@@ -119,8 +121,8 @@ export class StatOnRealtime {
         const len = statArray.length
         if( len === 0 ){
             result = {
-                gasPriceInfo: {min: 0, tp50: 0, max: 0},
-                gasPriceMarket: {min: 0, tp25: 0, tp50: 0, tp75: 0, max: 0},
+                gasPriceInfo: {min: zero, tp50: zero, max: zero},
+                gasPriceMarket: {min: zero, tp25: zero, tp50: zero, tp75: zero, max: zero},
                 maxEpoch: null,
                 minEpoch: null,
                 maxTime: null,
@@ -206,6 +208,9 @@ export class StatOnRealtime {
 
     private async statTokenTransferPerSecond(){
         const maxEpoch: number = await EpochHashTokenTransfer.max('epoch')
+        if(maxEpoch === null) {
+            return
+        }
         const minEpoch = Math.max(maxEpoch - this.STAT_EPOCHS_AGAINST_LATEST_STATE, 0)
 
         const sql = `
@@ -246,10 +251,10 @@ export class StatOnRealtime {
     private getPriceInTopPercentile(gasPriceArray) {
         gasPriceArray = gasPriceArray.map(priceDetail => {
             if(this.CIP1559_ACTIVATED) {
-                priceDetail['gasPrice'] = Number(priceDetail.base) + Number(priceDetail.priority)
+                priceDetail['gasPrice'] = priceDetail.base + priceDetail.priority
                 return priceDetail
             } else{
-                return Number(priceDetail)
+                return priceDetail
             }
         })
         const orderedGasPriceArray = gasPriceArray.sort((a, b) => {

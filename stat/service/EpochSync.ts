@@ -7,7 +7,7 @@ import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Op, QueryTypes, Sequelize, Transaction} from "sequelize";
-import {batchBlockDetail} from "./common/utils";
+import {batchBlockDetail, initCfxSdk} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
@@ -25,7 +25,7 @@ import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
-import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KV} from "../model/KV";
+import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KEY_FULL_STATE_RPC, KV} from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 import {hexAddress} from "js-conflux-sdk/dist/types/util/format";
 const { format, sign } = require('js-conflux-sdk');
@@ -78,6 +78,7 @@ export class EpochSync extends SyncBase{
     private NAME_TYPE_MAP;
     private readonly statSwitch
     private latestVoteParams: VoteParams
+    private fullStateCfx
 
     public metric = {
         startEpoch: 0,
@@ -128,20 +129,29 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkContractConfig() {
-        const [announcement, addressMetadata] = await Promise.all([
+        const [announcement, addressMetadata, fullStateRpc] = await Promise.all([
             KV.getString(CONTRACT_ANNOUNCEMENT, ''),
             KV.getString(CONTRACT_ADDRESS_METADATA, ''),
+            KV.getString(KEY_FULL_STATE_RPC, ''),
         ])
         if(!announcement) {
-            console.log(`contract announcement not set`)
+            console.log(`Failed to load config for Announcement contract!`)
             process.exit(9)
         }
         if(!addressMetadata) {
-            console.log(`contract addressMetadata not set`)
+            console.log(`Failed to load config for AddressMetadata contract!`)
+            process.exit(9)
+        }
+        if(!fullStateRpc) {
+            console.log(`Failed to load config for full state RPC!`)
             process.exit(9)
         }
         EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
+        this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{
+            console.log(`Failed to init full state RPC`, e)
+            process.exit(9)
+        });
     }
 
     private async loadLatestVoteParam() {
@@ -1499,6 +1509,6 @@ export class EpochSync extends SyncBase{
             app: { cfx }
         } = this
 
-        return cfx.getVoteParams(epochNumber)
+        return this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
     }
 }
