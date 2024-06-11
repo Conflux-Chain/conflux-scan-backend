@@ -3,9 +3,9 @@ import {calCount, INTERVAL_TYPE} from "./common/utils";
 import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
 import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 import {DailyNFTHolder, DailyNFTStat} from "../model/DailyNFTStat";
-import {VoteParams} from "../model/Epoch";
+import {Epoch, VoteParams} from "../model/Epoch";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
-import {u} from "@web3identity/address-encoder/lib/groestl-hash-js/op";
+import {IntervalType} from "./timerstat/TimerStat";
 
 const lodash = require('lodash')
 const BigFixed = require('bigfixed');
@@ -48,9 +48,14 @@ export class DailyStatQuery {
             intervalType, minTimestamp, maxTimestamp, sort, skip, limit);
     }
 
-    public async listBurntFeeStat({intervalType = 'day', skip, limit, sort, minTimestamp = undefined, maxTimestamp = undefined}) {
+    public async listBurntFeeStat({skip, limit, sort, minTimestamp = undefined, maxTimestamp = undefined}) {
+        const firstStat = await DailyBurntFeeStat.findOne({
+            where: {statType: IntervalType.DAY}, order: [['statTime', 'asc']], limit: 1, raw: true})
+        if(minTimestamp === undefined || minTimestamp <= (firstStat.statTime.getTime() / 1000)) {
+            minTimestamp = firstStat.statTime.getTime() / 1000
+        }
         return this.listStatByAttributeArray(DailyBurntFeeStat, ['statTime', 'burntStorageFee', 'burntGasFee', 'burntStorageFeeTotal', 'burntGasFeeTotal'],
-            intervalType, minTimestamp, maxTimestamp, sort, skip, limit);
+            INTERVAL_TYPE.day, minTimestamp, maxTimestamp, sort, skip, limit);
     }
 
     private async listStatByAttributeArray(model, attributeArray: any[], intervalType: string, minTimestamp: number,
@@ -114,7 +119,7 @@ export class DailyStatQuery {
         return {total: count, list: rows, intervalType};
     }
 
-    public async listBurntRateStat({skip, limit, sort, minEpochNumber, maxEpochNumber}) {
+    public async listBurntRateStat({skip, limit, sort, minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber}) {
         const {
             app: {cfx},
         } = this
@@ -122,6 +127,25 @@ export class DailyStatQuery {
         const paramsArray: VoteParams[] = await VoteParams.findAll({order: [['epoch', 'asc']] })
         if(!paramsArray?.length) {
             return {total: 0, list: []}
+        }
+
+        if (minTimestamp !== undefined) {
+            const minEpoch = await Epoch.findOne({
+                where: {timestamp:{[Op.gte]: new Date(minTimestamp*1000)}},
+                order: [['timestamp', 'asc']]
+            })
+            if(minEpoch) {
+                minEpochNumber = minEpochNumber === undefined ? minEpoch.epoch : Math.max(minEpoch.epoch, minEpochNumber)
+            }
+        }
+        if (maxTimestamp !== undefined) {
+            const maxEpoch = await Epoch.findOne({
+                where: {timestamp:{[Op.lte]: new Date(maxTimestamp*1000)}},
+                order: [['timestamp', 'desc']]
+            })
+            if(maxEpoch) {
+                maxEpochNumber = maxEpochNumber === undefined ? maxEpoch.epoch : Math.min(maxEpoch.epoch, maxEpochNumber)
+            }
         }
 
         const epochFirst = paramsArray[0]['epoch']
@@ -142,22 +166,31 @@ export class DailyStatQuery {
             const burntRate = {epoch} as any
             const namesMapping = [{prop: 'storagePointProp', rate: 'storagePointRate'}, {prop: 'baseFeeShareProp', rate: 'baseFeeShareRate'}]
             namesMapping.forEach(names => {
-                if(params && params[names.prop]  ) {
+                if(params && params[names.prop] >= 0) {
                     burntRate[names.rate] = BigFixed(params[names.prop]).div(BigFixed(params[names.prop]).add(BigFixed(10**18)))
                     lastParams = {}
                 } else{
                     if(lastParams[names.prop] === undefined) {
-                        const target = lodash.findLast(paramsArray, params => params.epoch < epoch && params[names.prop])
+                        const target = lodash.findLast(paramsArray, params => params.epoch < epoch && params[names.prop] >= 0)
                         if (target) {
                             lastParams[names.prop] = target[names.prop]
                         }
                     }
-                    if(lastParams[names.prop]) {
+                    if(lastParams[names.prop] >= 0) {
                         burntRate[names.rate] = BigFixed(lastParams[names.prop]).div(BigFixed(lastParams[names.prop]).add(BigFixed(10**18)))
                     }
                 }
             })
             list.push(burntRate)
+        })
+
+        const [minEpoch, maxEpoch] = sort === 'asc' ? [list[0].epoch, list[list.length - 1].epoch] : [list[list.length - 1].epoch, list[0].epoch]
+        const epochs = await Epoch.findAll({where: {epoch: {[Op.between]: [minEpoch, maxEpoch]}}})
+        const epochMap = lodash.keyBy(epochs, 'epoch')
+        list.forEach(burntRate => {
+            burntRate['blockHeight'] = burntRate['epoch']
+            burntRate['timestamp'] = epochMap[burntRate.epoch]?.timestamp.toISOString().replace('T', ' ').substr(0, 19)
+            delete burntRate['epoch']
         })
 
         return {total, list}

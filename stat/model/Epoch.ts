@@ -78,20 +78,24 @@ export interface IVoteParams{
     epoch: number,
     storagePointProp: number,
     baseFeeShareProp: number,
+    timestamp: Date,
 }
 
 export class VoteParams extends Model<IVoteParams> implements IVoteParams{
     epoch: number
     storagePointProp: number
     baseFeeShareProp: number
+    timestamp: Date
     static register(sequelize) {
         VoteParams.init({
             epoch: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false},
             storagePointProp: {type: DataTypes.DECIMAL(65,0), allowNull: true},
             baseFeeShareProp: {type: DataTypes.DECIMAL(65,0), allowNull: true},
+            timestamp: {type: DataTypes.DATE, allowNull: false},
         },{
             sequelize: sequelize,
             tableName: 'vote_params',
+            timestamps: false,
             indexes: []
         })
     }
@@ -101,6 +105,7 @@ export class VoteParams extends Model<IVoteParams> implements IVoteParams{
             epoch: record.epoch,
             storagePointProp: record.storagePointProp,
             baseFeeShareProp: record.baseFeeShareProp,
+            timestamp: record.timestamp,
         }, {
             transaction: dbTx
         })

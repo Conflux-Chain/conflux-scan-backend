@@ -375,11 +375,9 @@ export class EpochSync extends SyncBase{
 
         if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
             const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams
-            if ((!this.latestVoteParams
-                    && (lodash.isNumber(s) || lodash.isNumber(b))) ||
-                (this.latestVoteParams
-                    && (this.latestVoteParams.storagePointProp !== s || this.latestVoteParams.baseFeeShareProp !== b))) {
-                await VoteParams.create({epoch: epochNumber, storagePointProp: s, baseFeeShareProp: b})
+            if ((!this.latestVoteParams && (s >= 0 || b >= 0)) ||
+                (this.latestVoteParams && (this.latestVoteParams.storagePointProp != s || this.latestVoteParams.baseFeeShareProp != b))) {
+                await VoteParams.create({epoch: epochNumber, storagePointProp: s, baseFeeShareProp: b, timestamp: modelData.epoch.timestamp})
             }
         }
 
@@ -1505,10 +1503,8 @@ export class EpochSync extends SyncBase{
 
     // ------------------------------ vote params -------------------------------
     private async getVoteParams(epochNumber) {
-        const {
-            app: { cfx }
-        } = this
-
-        return this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
+        const vp = await this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
+        // console.log(`getVoteParams ---1--- epochNumber ${epochNumber} votePrams ${JSON.stringify(vp)}`)
+        return vp
     }
 }

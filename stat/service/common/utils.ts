@@ -464,8 +464,8 @@ export function emptyField(data) {
 
 export const INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day', month: 'month'};
 export function calCount(minTimestamp, maxTimestamp, intervalType) {
-    const start = minTimestamp !== undefined ? minTimestamp : (new Date('2020-10-28 16:00:00')).getTime();
-    const end = maxTimestamp !== undefined ? maxTimestamp : Date.now();
+    const start = minTimestamp !== undefined ? minTimestamp : ((new Date('2020-10-28 16:00:00')).getTime() / 1000);
+    const end = maxTimestamp !== undefined ? maxTimestamp : (Date.now() / 1000);
     const elapsed = end - start;
 
     let count;

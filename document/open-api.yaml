@@ -1185,6 +1185,42 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/RewardStat"
+  /statistics/burnt/fee:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of burnt fee within ${limit}."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BurntFeeStat"
+  /statistics/burnt/rate:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of burnt rate within ${limit}."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BurntRateStat"
 components:
   schemas:
     Version:
@@ -2740,6 +2776,65 @@ components:
                   statTime:
                     type: string
                     description: 'Statistics time, UTC.'
+    BurntFeeStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  burntStorageFee:
+                    type: string
+                    description: 'daily burnt storage fee.'
+                  burntGasFee:
+                    type: string
+                    description: 'daily burnt gas fee.'
+                  burntStorageFeeTotal:
+                    type: string
+                    description: 'total burnt storage fee.'
+                  burntGasFeeTotal:
+                    type: string
+                    description: 'total burnt gas fee.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    BurntRateStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  blockHeight:
+                    type: string
+                    description: 'block height.'
+                  storagePointRate:
+                    type: string
+                    description: 'storage point rate.'
+                  baseFeeShareRate:
+                    type: string
+                    description: 'base fee share rate.'
+                  timestamp:
+                    type: string
+                    description: 'block timestamp, UTC.'
     NFTHolderStat:
       type: object
       properties:
