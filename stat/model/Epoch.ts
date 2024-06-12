@@ -1,4 +1,4 @@
-import {DataTypes, Model} from "sequelize";
+import {DataTypes, Model, Op} from "sequelize";
 
 export interface IEpoch {
     epoch: number;
@@ -50,6 +50,32 @@ export class EpochNftTransfer extends Model<IEpoch> implements IEpoch {
             ]
         })
     }
+}
+
+export async function getEpochRange(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber) {
+    let epochBegin: number, epochEnd: number
+
+    if (minTimestamp !== undefined) {
+        const minEpoch = await Epoch.findOne({
+            where: {timestamp:{[Op.gte]: new Date(minTimestamp*1000)}},
+            order: [['timestamp', 'asc']]
+        })
+        if(minEpoch) {
+            epochBegin = minEpochNumber === undefined ? minEpoch.epoch : Math.max(minEpoch.epoch, minEpochNumber)
+        }
+    }
+
+    if (maxTimestamp !== undefined) {
+        const maxEpoch = await Epoch.findOne({
+            where: {timestamp:{[Op.lte]: new Date(maxTimestamp*1000)}},
+            order: [['timestamp', 'desc']]
+        })
+        if(maxEpoch) {
+            epochEnd = maxEpochNumber === undefined ? maxEpoch.epoch : Math.min(maxEpoch.epoch, maxEpochNumber)
+        }
+    }
+
+    return {epochBegin, epochEnd}
 }
 
 // CREATE TABLE `epoch_nft_transfer` (

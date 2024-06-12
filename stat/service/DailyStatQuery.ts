@@ -3,7 +3,7 @@ import {calCount, INTERVAL_TYPE} from "./common/utils";
 import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
 import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 import {DailyNFTHolder, DailyNFTStat} from "../model/DailyNFTStat";
-import {Epoch, VoteParams} from "../model/Epoch";
+import {Epoch, getEpochRange, VoteParams} from "../model/Epoch";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
 import {IntervalType} from "./timerstat/TimerStat";
 
@@ -129,29 +129,11 @@ export class DailyStatQuery {
             return {total: 0, list: []}
         }
 
-        if (minTimestamp !== undefined) {
-            const minEpoch = await Epoch.findOne({
-                where: {timestamp:{[Op.gte]: new Date(minTimestamp*1000)}},
-                order: [['timestamp', 'asc']]
-            })
-            if(minEpoch) {
-                minEpochNumber = minEpochNumber === undefined ? minEpoch.epoch : Math.max(minEpoch.epoch, minEpochNumber)
-            }
-        }
-        if (maxTimestamp !== undefined) {
-            const maxEpoch = await Epoch.findOne({
-                where: {timestamp:{[Op.lte]: new Date(maxTimestamp*1000)}},
-                order: [['timestamp', 'desc']]
-            })
-            if(maxEpoch) {
-                maxEpochNumber = maxEpochNumber === undefined ? maxEpoch.epoch : Math.min(maxEpoch.epoch, maxEpochNumber)
-            }
-        }
-
+        const epochRange = await getEpochRange(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber)
         const epochFirst = paramsArray[0]['epoch']
         const epochFinalized = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-        const epochStart = Math.max(epochFirst, minEpochNumber || 0)
-        const epochEnd = Math.min(epochFinalized, maxEpochNumber || Number.MAX_VALUE)
+        const epochStart = Math.max(epochFirst, epochRange?.epochBegin ?? 0)
+        const epochEnd = Math.min(epochFinalized, epochRange?.epochEnd ?? Number.MAX_VALUE)
         const total = epochEnd - epochStart + 1
         const effectSkip = Math.min(skip, total)
         const effectRange = Math.min(limit, total - effectSkip)
@@ -188,8 +170,8 @@ export class DailyStatQuery {
         const epochs = await Epoch.findAll({where: {epoch: {[Op.between]: [minEpoch, maxEpoch]}}})
         const epochMap = lodash.keyBy(epochs, 'epoch')
         list.forEach(burntRate => {
-            burntRate['blockHeight'] = burntRate['epoch']
-            burntRate['timestamp'] = epochMap[burntRate.epoch]?.timestamp.toISOString().replace('T', ' ').substr(0, 19)
+            burntRate['epochNumber'] = burntRate['epoch']
+            burntRate['timestamp'] = epochMap[burntRate.epoch]?.timestamp.getTime() / 1000
             delete burntRate['epoch']
         })
 

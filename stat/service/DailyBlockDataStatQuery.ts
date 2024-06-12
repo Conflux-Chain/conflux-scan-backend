@@ -1,10 +1,12 @@
 import {QueryTypes, Op, fn, col} from "sequelize";
-import {FullBlock, FullBlockExt, FullTransaction} from "../model/FullBlock";
+import {FullBlock, FullBlockExt, FullTransaction, loadMaxBlockEpoch, loadMinBlockEpoch} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import { getTimeByInterval } from "./tool/DateTool";
 import {calCount} from "./common/utils";
 import {LIMIT_MAX_STAT} from "../router/ParamChecker";
+import {getEpochRange} from "../model/Epoch";
+import {epoch} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -153,7 +155,11 @@ export class DailyBlockDataStatQuery {
         const pivot = statType === CIP1559StatType.BASE_FEE
         const result = await this.listBlocks(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber, sort, skip, limit, pivot)
         result.list = result.list.map(block => {
-            const stat = lodash.pick(block, ['epoch', 'position', 'time'])
+            const stat = {
+                epochNumber: block.epoch,
+                blockIndex: block.position,
+                timestamp: block.createdAt.getTime() / 1000,
+            }
             switch (statType) {
                 case CIP1559StatType.BASE_FEE:
                     lodash.assign(stat, {baseFee: block?.extra?.baseFee || 0})
@@ -181,6 +187,66 @@ export class DailyBlockDataStatQuery {
     }
 
     private async listBlocks(minTimestamp: number, maxTimestamp: number, minEpochNumber: number,
+        maxEpochNumber: number, sort: string, skip: number, limit: number, pivot: boolean = undefined) {
+        const {app: {cfx}} = this
+        const queryOptions: any = {
+            attributes: ['epoch', 'position', 'createdAt', 'gasUsed'],
+            offset: skip,
+            limit,
+            order: [['epoch', sort], ['position', sort]],
+            raw: true,
+            logging: console.log
+        }
+
+        const conditionArray = []
+        if (minTimestamp !== undefined) {
+            conditionArray.push({createdAt: {[Op.gte]: new Date(minTimestamp * 1000)}})
+        }
+        if (maxTimestamp !== undefined) {
+            conditionArray.push({createdAt: {[Op.lte]: new Date(maxTimestamp * 1000)}})
+        }
+        if(minEpochNumber !== undefined) {
+            conditionArray.push({epoch: { [Op.gte]: minEpochNumber}})
+        }
+        if(maxEpochNumber !== undefined) {
+            conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}})
+        }
+        if(pivot) {
+            conditionArray.push({pivot: true})
+        }
+        if (conditionArray.length === 1) {
+            queryOptions.where = conditionArray[0]
+        }
+        if (conditionArray.length > 1) {
+            queryOptions.where = {[Op.and]: conditionArray}
+        }
+
+        const epochRange = await getEpochRange(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber)
+        const [minBlkEpoch, maxBlkEpoch] = await Promise.all([loadMinBlockEpoch(), loadMaxBlockEpoch()])
+        const epochBegin = epochRange?.epochBegin ?? minBlkEpoch
+        const epochEnd = epochRange?.epochEnd ?? maxBlkEpoch
+        const [minBlk, maxBlk] = await Promise.all([cfx.getBlockByEpochNumber(epochBegin),cfx.getBlockByEpochNumber(epochEnd)])
+        const total = maxBlk.blockNumber - minBlk.blockNumber
+
+        const list  = await FullBlock.findAll(queryOptions) as any[]
+        if(!list?.length) {
+            return {total, list: []}
+        }
+
+        const [epochFirst, epochLast] = [list[0].epoch, list[list.length - 1].epoch]
+        const [minEpoch, maxEpoch] = epochFirst <= epochLast ? [epochFirst, epochLast] : [epochLast, epochFirst]
+        const blkExts = await FullBlockExt.findAll({where: {[Op.and]: [
+                    {epoch: { [Op.gte]: minEpoch}}, {epoch: { [Op.lte]: maxEpoch}}]}})
+        const blkExtMap = lodash.keyBy(blkExts, blk => `${blk.epoch}-${blk.position}`)
+        list.forEach(blk => {
+            if(blkExtMap && blkExtMap[`${blk.epoch}-${blk.position}`]?.extra) {
+                blk['extra'] = JSON.parse(blkExtMap[`${blk.epoch}-${blk.position}`]?.extra)
+            }
+        });
+        return {total, list}
+    }
+
+    private async listBlocks0(minTimestamp: number, maxTimestamp: number, minEpochNumber: number,
         maxEpochNumber: number, sort: string, skip: number, limit: number, pivot: boolean = undefined) {
         const queryOptions: any = {
             attributes: ['epoch', 'position', 'createdAt', 'gasUsed'],

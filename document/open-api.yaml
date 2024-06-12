@@ -1221,6 +1221,78 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/BurntRateStat"
+  /statistics/block/base-fee:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of base fee within ${limit}."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BaseFeeStat"
+  /statistics/block/avg-priority-fee:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of base fee within ${limit}."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AvgPriorityFeeStat"
+  /statistics/block/gas-used:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of base fee within ${limit}."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/GasUsedStat"
+  /statistics/block/txs-by-type:
+    get:
+      tags:
+        - 'Statistics'
+      description: "Get statistics of base fee within ${limit}."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TxsByTypeStat"
 components:
   schemas:
     Version:
@@ -2794,16 +2866,16 @@ components:
                 properties:
                   burntStorageFee:
                     type: string
-                    description: 'daily burnt storage fee.'
+                    description: 'Daily burnt storage fee.'
                   burntGasFee:
                     type: string
-                    description: 'daily burnt gas fee.'
+                    description: 'Daily burnt gas fee.'
                   burntStorageFeeTotal:
                     type: string
-                    description: 'total burnt storage fee.'
+                    description: 'Total burnt storage fee.'
                   burntGasFeeTotal:
                     type: string
-                    description: 'total burnt gas fee.'
+                    description: 'Total burnt gas fee.'
                   statTime:
                     type: string
                     description: 'Statistics time, UTC.'
@@ -2823,18 +2895,140 @@ components:
               type: array
               items:
                 properties:
-                  blockHeight:
-                    type: string
-                    description: 'block height.'
                   storagePointRate:
                     type: string
-                    description: 'storage point rate.'
+                    description: 'Storage point rate.'
                   baseFeeShareRate:
                     type: string
-                    description: 'base fee share rate.'
+                    description: 'Base fee share rate.'
+                  epochNumber:
+                    type: number
+                    description: 'Epoch number.'
                   timestamp:
+                    type: number
+                    description: 'Block timestamp, UTC.'
+    BaseFeeStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  baseFee:
                     type: string
-                    description: 'block timestamp, UTC.'
+                    description: 'Base fee per gas.'
+                  epochNumber:
+                    type: number
+                    description: 'Epoch Number.'
+                  blockIndex:
+                    type: number
+                    description: 'Block index in the epoch.'
+                  timestamp:
+                    type: number
+                    description: 'Block timestamp, UTC.'
+    AvgPriorityFeeStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  avgPriorityFee:
+                    type: string
+                    description: 'Average priority fee per gas.'
+                  epochNumber:
+                    type: number
+                    description: 'Epoch Number.'
+                  blockIndex:
+                    type: number
+                    description: 'Block index in the epoch.'
+                  timestamp:
+                    type: number
+                    description: 'Block timestamp, UTC.'
+    GasUsedStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  gasUsed:
+                    type: string
+                    description: 'Gas used.'
+                  epochNumber:
+                    type: number
+                    description: 'Epoch Number.'
+                  blockIndex:
+                    type: number
+                    description: 'Block index in the epoch.'
+                  timestamp:
+                    type: number
+                    description: 'Block timestamp, UTC.'
+    TxsByTypeStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  txsByType:
+                    type: object
+                    description: 'Transactions by type.'
+                    properties:
+                      legacy:
+                        type: number
+                        description: 'Number of transactions of type legacy.'
+                      cip2930:
+                        type: number
+                        description: 'Number of transactions of type CIP2930.'
+                      cip1559:
+                        type: number
+                        description: 'Number of transactions of type CIP1559.'
+                  epochNumber:
+                    type: number
+                    description: 'Epoch Number.'
+                  blockIndex:
+                    type: number
+                    description: 'Block index in the epoch.'
+                  timestamp:
+                    type: number
+                    description: 'Block timestamp, UTC.'
     NFTHolderStat:
       type: object
       properties:
