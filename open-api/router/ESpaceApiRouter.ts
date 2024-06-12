@@ -48,7 +48,7 @@ import {
     listCfxHolderStat,
     listCfxReceiverTopStat,
     listCfxSenderTopStat,
-    listCfxTransferStat,
+    listCfxTransferStat, listCIP1559Stat,
     listContractStat,
     listGasUsedTopStat,
     listMinerTopStat,
@@ -73,6 +73,7 @@ import {
 import {paginateEVM} from "../../stat/router/ParamChecker";
 import { CONST } from '../../stat/service/common/constant';
 import {ethers} from "ethers";
+import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
 
 const lodash = require('lodash');
 
@@ -609,6 +610,10 @@ export function registerRouter(router: Router) {
     router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
     router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
     router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
+    router.get('/statistics/block/base-fee', listCIP1559Stat(CIP1559StatType.BASE_FEE));
+    router.get('/statistics/block/avg-priority-fee', listCIP1559Stat(CIP1559StatType.PRIORITY_FEE));
+    router.get('/statistics/block/gas-used', listCIP1559Stat(CIP1559StatType.GAS_USED));
+    router.get('/statistics/block/txs-by-type', listCIP1559Stat(CIP1559StatType.TXS_BY_TYPE));
 
     // account(deprecated)
     router.get('/account/transactions', listAccountTransaction)

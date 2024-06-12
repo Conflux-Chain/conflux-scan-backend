@@ -1,6 +1,5 @@
 import {router} from "./router";
 import {serviceLoader} from "./service";
-import {KEY_CIP1559_BLOCK_HEIGHT} from "../stat/model/KV";
 
 const lodash = require('lodash');
 const { address, format } = require('js-conflux-sdk');
@@ -79,7 +78,6 @@ export class ApiApp extends AppBase {
     }
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    StatApp.cip1559BlkHeight = await KV.getNumber(KEY_CIP1559_BLOCK_HEIGHT)
     await this.service.homeDashboard.schedule().catch(() => undefined);
     if (config.blacklist) {
       await this.service.desensitizer.scheduleRefreshBlacklist();

@@ -6,6 +6,7 @@ import {DailyNFTHolder, DailyNFTStat} from "../model/DailyNFTStat";
 import {Epoch, getEpochRange, VoteParams} from "../model/Epoch";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
 import {IntervalType} from "./timerstat/TimerStat";
+import {StatApp} from "../StatApp";
 
 const lodash = require('lodash')
 const BigFixed = require('bigfixed');
@@ -120,10 +121,7 @@ export class DailyStatQuery {
     }
 
     public async listBurntRateStat({skip, limit, sort, minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber}) {
-        const {
-            app: {cfx},
-        } = this
-
+        const {app: {cfx}} = this
         const paramsArray: VoteParams[] = await VoteParams.findAll({order: [['epoch', 'asc']] })
         if(!paramsArray?.length) {
             return {total: 0, list: []}
@@ -170,11 +168,14 @@ export class DailyStatQuery {
         const epochs = await Epoch.findAll({where: {epoch: {[Op.between]: [minEpoch, maxEpoch]}}})
         const epochMap = lodash.keyBy(epochs, 'epoch')
         list.forEach(burntRate => {
-            burntRate['epochNumber'] = burntRate['epoch']
+            if(StatApp.isEVM) {
+                burntRate['blockNumber'] = burntRate['epoch']
+            } else {
+                burntRate['epochNumber'] = burntRate['epoch']
+            }
             burntRate['timestamp'] = epochMap[burntRate.epoch]?.timestamp.getTime() / 1000
             delete burntRate['epoch']
         })
-
         return {total, list}
     }
 }

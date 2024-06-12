@@ -111,9 +111,8 @@ export class StatOnRealtime {
         return config?.value ? JSON.parse(config?.value) : {tps: 0}
     }
 
-    private zero = {base: 0, priority: 0, gasPrice: 0}
     private async statGasPriceTracker(){
-        const {zero} = this
+        const zero = this.CIP1559_ACTIVATED ? 0 : {base: 0, priority: 0, gasPrice: 0}
         let statArray: any[] = Object.values(this.GAS_PRICE_COUNTER)
         statArray = lodash.orderBy(statArray, 'epoch', 'desc')
 

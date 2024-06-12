@@ -2848,6 +2848,28 @@ components:
                   statTime:
                     type: string
                     description: 'Statistics time, UTC.'
+    NFTHolderStat:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  total:
+                    type: string
+                    description: 'total NFT holders count by daily'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
     BurntFeeStat:
       type: object
       properties:
@@ -3029,28 +3051,6 @@ components:
                   timestamp:
                     type: number
                     description: 'Block timestamp, UTC.'
-    NFTHolderStat:
-      type: object
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-        data:
-          type: object
-          properties:
-            total:
-              type: integer
-            list:
-              type: array
-              items:
-                properties:
-                  total:
-                    type: string
-                    description: 'total NFT holders count by daily'
-                  statTime:
-                    type: string
-                    description: 'Statistics time, UTC.'
   parameters:
     account:
       name: account

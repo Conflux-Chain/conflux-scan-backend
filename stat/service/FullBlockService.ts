@@ -496,6 +496,9 @@ export class FullBlockService {
             block.baseFee = BigInt(block?.baseFeePerGas || 0)
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType
+            if(block?.transactions?.length) {
+                console.log(`[${minEpochNumber}]sync blk ---1--- ${JSON.stringify(block)}`)
+            }
             const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, block)
             blockExtArr.push(blockExt)
         }

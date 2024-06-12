@@ -7,6 +7,7 @@ import {calCount} from "./common/utils";
 import {LIMIT_MAX_STAT} from "../router/ParamChecker";
 import {getEpochRange} from "../model/Epoch";
 import {epoch} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {StatApp} from "../StatApp";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -155,11 +156,9 @@ export class DailyBlockDataStatQuery {
         const pivot = statType === CIP1559StatType.BASE_FEE
         const result = await this.listBlocks(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber, sort, skip, limit, pivot)
         result.list = result.list.map(block => {
-            const stat = {
-                epochNumber: block.epoch,
-                blockIndex: block.position,
-                timestamp: block.createdAt.getTime() / 1000,
-            }
+            const stat = StatApp.isEVM ? {blockNumber: block.epoch} :
+                {epochNumber: block.epoch, blockIndex: block.position}
+            lodash.assign(stat, {timestamp: block.createdAt.getTime() / 1000})
             switch (statType) {
                 case CIP1559StatType.BASE_FEE:
                     lodash.assign(stat, {baseFee: block?.extra?.baseFee || 0})
@@ -225,8 +224,13 @@ export class DailyBlockDataStatQuery {
         const [minBlkEpoch, maxBlkEpoch] = await Promise.all([loadMinBlockEpoch(), loadMaxBlockEpoch()])
         const epochBegin = epochRange?.epochBegin ?? minBlkEpoch
         const epochEnd = epochRange?.epochEnd ?? maxBlkEpoch
-        const [minBlk, maxBlk] = await Promise.all([cfx.getBlockByEpochNumber(epochBegin),cfx.getBlockByEpochNumber(epochEnd)])
-        const total = maxBlk.blockNumber - minBlk.blockNumber
+        let total
+        if(pivot) {
+            total = epochEnd - epochBegin + 1
+        } else{
+            const [minBlk, maxBlk] = await Promise.all([cfx.getBlockByEpochNumber(epochBegin),cfx.getBlockByEpochNumber(epochEnd)])
+            total = maxBlk.blockNumber - minBlk.blockNumber + 1
+        }
 
         const list  = await FullBlock.findAll(queryOptions) as any[]
         if(!list?.length) {
@@ -244,73 +248,6 @@ export class DailyBlockDataStatQuery {
             }
         });
         return {total, list}
-    }
-
-    private async listBlocks0(minTimestamp: number, maxTimestamp: number, minEpochNumber: number,
-        maxEpochNumber: number, sort: string, skip: number, limit: number, pivot: boolean = undefined) {
-        const queryOptions: any = {
-            attributes: ['epoch', 'position', 'createdAt', 'gasUsed'],
-            offset: skip,
-            limit,
-            order: [['epoch', sort], ['position', sort]],
-            raw: true,
-        }
-
-        const conditionArray = []
-        if (minTimestamp !== undefined) {
-            conditionArray.push({createdAt: {[Op.gte]: new Date(minTimestamp * 1000)}})
-        }
-        if (maxTimestamp !== undefined) {
-            conditionArray.push({createdAt: {[Op.lte]: new Date(maxTimestamp * 1000)}})
-        }
-        if(minEpochNumber !== undefined) {
-            conditionArray.push({epoch: { [Op.gte]: minEpochNumber}})
-        }
-        if(maxEpochNumber !== undefined) {
-            conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}})
-        }
-        if(pivot) {
-            conditionArray.push({pivot: true})
-        }
-        if (conditionArray.length === 1) {
-            queryOptions.where = conditionArray[0]
-        }
-        if (conditionArray.length > 1) {
-            queryOptions.where = {[Op.and]: conditionArray}
-        }
-
-        let result
-        const maxLimitOpt = lodash.assign({...queryOptions}, {offset: LIMIT_MAX_STAT, limit: 1})
-        const maxLimitBlk = await FullBlock.findOne(maxLimitOpt)
-        if(maxLimitBlk) {
-            if((skip + limit) > LIMIT_MAX_STAT) {
-                limit = skip < LIMIT_MAX_STAT  ? LIMIT_MAX_STAT - skip : 0
-            }
-            const rows = limit === 0 ? [] : (await FullBlock.findAll(lodash.assign(queryOptions, {limit})))
-            result = {total: LIMIT_MAX_STAT, list: rows || []}
-        } else{
-            const page = await FullBlock.findAndCountAll(queryOptions)
-            result = {total: page?.count, list: page?.rows || []}
-        }
-
-        let blkExtMap
-        if(result.list.length) {
-            const [epochFirst, epochLast] = [result.list[0].epoch, result.list[result.list.length - 1].epoch]
-            const [minEpoch, maxEpoch] = epochFirst <= epochLast ? [epochFirst, epochLast] : [epochLast, epochFirst]
-            const blkExts = await FullBlockExt.findAll({where: {[Op.and]: [
-                        {epoch: { [Op.gte]: minEpoch}}, {epoch: { [Op.lte]: maxEpoch}}]}})
-            blkExtMap = lodash.keyBy(blkExts, blk => `${blk.epoch}-${blk.position}`)
-        }
-
-        result.list.forEach(blk => {
-            // @ts-ignore
-            blk['time'] = blk['createdAt'].toISOString().replace('T', ' ').substr(0, 19)
-            if(blkExtMap && blkExtMap[`${blk.epoch}-${blk.position}`]?.extra) {
-                blk['extra'] = JSON.parse(blkExtMap[`${blk.epoch}-${blk.position}`]?.extra)
-            }
-        });
-
-        return result
     }
 }
 

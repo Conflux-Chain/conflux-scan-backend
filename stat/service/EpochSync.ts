@@ -1503,8 +1503,6 @@ export class EpochSync extends SyncBase{
 
     // ------------------------------ vote params -------------------------------
     private async getVoteParams(epochNumber) {
-        const vp = await this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
-        // console.log(`getVoteParams ---1--- epochNumber ${epochNumber} votePrams ${JSON.stringify(vp)}`)
-        return vp
+        return this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
     }
 }
