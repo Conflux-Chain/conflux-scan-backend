@@ -25,7 +25,13 @@ import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
-import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KEY_FULL_STATE_RPC, KV} from "../model/KV";
+import {
+    CONTRACT_ADDRESS_METADATA,
+    CONTRACT_ANNOUNCEMENT,
+    KEY_BN_CIP1559_ENABLED,
+    KEY_FULL_STATE_RPC,
+    KV
+} from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 import {hexAddress} from "js-conflux-sdk/dist/types/util/format";
 const { format, sign } = require('js-conflux-sdk');
@@ -124,15 +130,16 @@ export class EpochSync extends SyncBase{
     }
 
     public async mustInit() {
-        await this.checkContractConfig()
+        await this.checkConfig()
         await this.loadLatestVoteParam()
     }
 
-    private async checkContractConfig() {
-        const [announcement, addressMetadata, fullStateRpc] = await Promise.all([
+    private async checkConfig() {
+        const [announcement, addressMetadata, fullStateRpc, bnCIP1559Enabled] = await Promise.all([
             KV.getString(CONTRACT_ANNOUNCEMENT, ''),
             KV.getString(CONTRACT_ADDRESS_METADATA, ''),
             KV.getString(KEY_FULL_STATE_RPC, ''),
+            KV.getNumber(KEY_BN_CIP1559_ENABLED),
         ])
         if(!announcement) {
             console.log(`Failed to load config for Announcement contract!`)
@@ -146,12 +153,17 @@ export class EpochSync extends SyncBase{
             console.log(`Failed to load config for full state RPC!`)
             process.exit(9)
         }
+        if(!bnCIP1559Enabled) {
+            console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+            process.exit(9)
+        }
         EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
         this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{
             console.log(`Failed to init full state RPC`, e)
             process.exit(9)
         });
+        StatApp.bnCIP1559Enabled = bnCIP1559Enabled
     }
 
     private async loadLatestVoteParam() {

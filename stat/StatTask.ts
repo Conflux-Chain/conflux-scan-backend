@@ -33,22 +33,20 @@ import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
 
+let fullStateCfx
 async function main() {
     redirectLog()
     regExitHook()
-
     const config = await init()
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
-    const url = await KV.getString(KEY_FULL_STATE_RPC, '')
-    const fullStatCfx = await initCfxSdk({ url, keepAlive: true }, 'StatTask-fullStatRpc')
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
-    const traceCreateQuery = new BlockTraceCreateQuery({});
+    await mustInit()
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
     //
+    const traceCreateQuery = new BlockTraceCreateQuery({});
     if(config.censorApiKey && config.censorSecretKey) {
         const censorService = new CensorService({config, cfx, traceCreateQuery},
             {tx: 10, token: 10, nft: 10});
@@ -93,7 +91,7 @@ async function main() {
     await statDailyPowReward.schedule(1000 * 1);
     //
     if(!StatApp.isEVM) {
-        const statDailyBurntFee = new StatDailyBurntFee({cfx: fullStatCfx});
+        const statDailyBurntFee = new StatDailyBurntFee({cfx: fullStateCfx});
         await statDailyBurntFee.schedule(1000 * 60);
     }
     //
@@ -128,6 +126,27 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
         await KV.upsert({key: keyCountAll, value: `${count + delta}`}, {transaction: dbTx});
         await KV.upsert({key: keyCountId, value: `${latestId}`}, {transaction: dbTx});
     });
+}
+
+async function mustInit() {
+    const [fullStateRpc, bnCIP1559Enabled] = await Promise.all([
+        KV.getString(KEY_FULL_STATE_RPC, ''),
+        KV.getNumber(KEY_BN_CIP1559_ENABLED),
+    ])
+    if(!fullStateRpc) {
+        console.log(`Failed to load config for full state RPC!`)
+        process.exit(9)
+    }
+    if(!bnCIP1559Enabled) {
+        console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+        process.exit(9)
+    }
+    fullStateCfx = await initCfxSdk({url: fullStateRpc, keepAlive: true}, 'StatTask-fullStatRpc')
+        .catch(e => {
+            console.log(`Failed to init full state RPC`, e)
+            process.exit(9)
+        });
+    StatApp.bnCIP1559Enabled = bnCIP1559Enabled
 }
 
 main().then().catch(err=>{

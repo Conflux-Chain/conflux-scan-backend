@@ -6,7 +6,7 @@ import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
     IS_EVM2, KEY_BN_CIP1559_ENABLED,
-    KEY_FILL_BLOCK_PROPS_EPOCH,
+    KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FULL_STATE_RPC,
     KV
 } from "./model/KV";
 import {initCfxSdk} from "./service/common/utils";
@@ -34,11 +34,13 @@ export async function run() {
     await checkApiLogIpField()
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
     let cfx2
     if(StatApp.isEVM) {
         cfx2 = await initCfxSdk(config.conflux2)
     }
+
+    await mustInit()
+
     const svc = new FullBlockService(cfx, cfx2)
     if (args[0] === 'fix') {
         // batch size 10, loop 1 time:
@@ -62,6 +64,15 @@ export async function run() {
         await syncFullBlock(svc)
     }
     // seq.close().then()
+}
+
+async function mustInit() {
+    const bnCIP1559Enabled= await KV.getNumber(KEY_BN_CIP1559_ENABLED)
+    if(!bnCIP1559Enabled) {
+        console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+        process.exit(9)
+    }
+    StatApp.bnCIP1559Enabled = bnCIP1559Enabled
 }
 
 async function syncFullBlock(fullBlockService:FullBlockService) {

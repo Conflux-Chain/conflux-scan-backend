@@ -48,7 +48,6 @@ export class FullEpochSync{
     private async initSwitch(){
         KV.setupSwitch().then();
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-        StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
     }
 
     public async run() {
