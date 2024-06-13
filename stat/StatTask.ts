@@ -11,7 +11,7 @@ import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
     CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
-    IS_EVM2, KEY_CIP1559_BLOCK_HEIGHT, KEY_FULL_STATE_RPC,
+    IS_EVM2, KEY_BN_CIP1559_ENABLED, KEY_FULL_STATE_RPC,
     KV
 } from "./model/KV";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -43,7 +43,7 @@ async function main() {
     const url = await KV.getString(KEY_FULL_STATE_RPC, '')
     const fullStatCfx = await initCfxSdk({ url, keepAlive: true }, 'StatTask-fullStatRpc')
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    StatApp.cip1559BlkHeight = await KV.getNumber(KEY_CIP1559_BLOCK_HEIGHT)
+    StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
     const traceCreateQuery = new BlockTraceCreateQuery({});
     //
     const blockAndMinerSync = new BlockAndMinerSync();
@@ -92,8 +92,10 @@ async function main() {
     const statDailyPowReward = new StatDailyPowReward({cfx});
     await statDailyPowReward.schedule(1000 * 1);
     //
-    const statDailyBurntFee = new StatDailyBurntFee({cfx: fullStatCfx});
-    await statDailyBurntFee.schedule(1000 * 60);
+    if(!StatApp.isEVM) {
+        const statDailyBurntFee = new StatDailyBurntFee({cfx: fullStatCfx});
+        await statDailyBurntFee.schedule(1000 * 60);
+    }
     //
     setInterval(countTable, 60_000)
     //

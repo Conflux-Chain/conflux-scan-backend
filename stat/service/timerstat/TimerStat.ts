@@ -50,7 +50,7 @@ export abstract class TimerStat {
         const { cfx } = this.app;
 
         const {rangeBegin, rangeEnd} = await this.nextStatRange();
-        this.debug && console.log(`debug-1,rangeBegin:${rangeBegin},rangeEnd:${rangeEnd}`);
+        this.debug && console.log(`debug-1,rangeBegin:${rangeBegin},rangeEnd:${rangeEnd}, data:${new Date()}`);
         if(new Date() < rangeEnd) {
             return {status: StatStatus.TIME_NOT_REACH};
         }

@@ -11,6 +11,7 @@ export class StatDailyBurntFee extends TimerStat{
     constructor(app: any) {
         super(app);
         this.baseInterval = IntervalType.HOUR;
+        this.debug = true
     }
 
     public bizAlias(): string {
@@ -18,18 +19,18 @@ export class StatDailyBurntFee extends TimerStat{
     }
 
     public async nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date}> {
+        const {app: {cfx}} = this
         const lastStat = await DailyBurntFeeStat.findOne({
             where: {statType: this.baseInterval},
             order:[["statTime","desc"]],
             limit: 1
         });
         if(!lastStat) {
-            // const epoch = await Epoch.findOne({where: {epoch: StatApp.cip1559BlkHeight}, raw: true}) // TODO remove comment when launch new feature
-            const epoch = await Epoch.findOne({order: [['epoch', 'desc']], offset: 5168, limit: 1, raw: true})
-            if(!epoch) {
-                throw new Error(`Failed to load block height at ${StatApp.cip1559BlkHeight}`)
+            const block = await cfx.getBlockByBlockNumber(StatApp.bnCIP1559Enabled)
+            if(!block) {
+                throw new Error(`CIP1559 not Enabled.`)
             }
-            const lastStat = {statTime: new Date(epoch.timestamp)}
+            const lastStat = {statTime: new Date(block.timestamp * 1000)}
             lastStat.statTime.setHours(lastStat.statTime.getHours() - 1, 0, 0, 0)
             return this.getStatRangeMin(lastStat, 60)
         }

@@ -487,7 +487,7 @@ export class FullBlockService {
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
             const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
-                (minEpochNumber >= StatApp.cip1559BlkHeight ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+                (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
             const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
             block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
@@ -497,7 +497,8 @@ export class FullBlockService {
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType
             if(block?.transactions?.length) {
-                console.log(`[${minEpochNumber}]sync blk ---1--- ${JSON.stringify(block)}`)
+                console.log(`[${minEpochNumber}]sync blk ---1--- blockNumber ${typeof block.blockNumber} bnCIP1559Enabled ${typeof StatApp.bnCIP1559Enabled} flag ${block.blockNumber >= StatApp.bnCIP1559Enabled}`)
+                console.log(`[${minEpochNumber}]sync blk ---2--- ${JSON.stringify(block)}`)
             }
             const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, block)
             blockExtArr.push(blockExt)

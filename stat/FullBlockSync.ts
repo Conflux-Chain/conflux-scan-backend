@@ -5,9 +5,8 @@ import {format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
-    IS_EVM2, KEY_CIP1559_BLOCK_HEIGHT,
+    IS_EVM2, KEY_BN_CIP1559_ENABLED,
     KEY_FILL_BLOCK_PROPS_EPOCH,
-    KEY_GAS_USED_PER_SECOND_NOTIFY,
     KV
 } from "./model/KV";
 import {initCfxSdk} from "./service/common/utils";
@@ -35,7 +34,7 @@ export async function run() {
     await checkApiLogIpField()
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    StatApp.cip1559BlkHeight = await KV.getNumber(KEY_CIP1559_BLOCK_HEIGHT)
+    StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
     let cfx2
     if(StatApp.isEVM) {
         cfx2 = await initCfxSdk(config.conflux2)

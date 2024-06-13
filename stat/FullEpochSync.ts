@@ -6,7 +6,7 @@ import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {TokenQuery} from "./service/TokenQuery";
 import {EpochSync} from "./service/EpochSync";
 import {initCfxSdk, patchFormat} from "./service/common/utils";
-import {IS_EVM2, KEY_CIP1559_BLOCK_HEIGHT, KV} from "./model/KV";
+import {IS_EVM2, KEY_BN_CIP1559_ENABLED, KV} from "./model/KV";
 import {StatApp} from "./StatApp";
 import {ContractQuery} from "./service/ContractQuery";
 import {checkApiLogIpField} from "./monitor/ApiLog";
@@ -48,7 +48,7 @@ export class FullEpochSync{
     private async initSwitch(){
         KV.setupSwitch().then();
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-        StatApp.cip1559BlkHeight = await KV.getNumber(KEY_CIP1559_BLOCK_HEIGHT)
+        StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
     }
 
     public async run() {
