@@ -85,12 +85,17 @@ export class EpochSync extends SyncBase{
     private readonly statSwitch
     private latestVoteParams: VoteParams
     private fullStateCfx
+    private debug: boolean
 
     public metric = {
         startEpoch: 0,
         currentEpoch: 0,
     };
     private m(step, startTime){
+        if(!this.debug) {
+            return
+        }
+
         const runTimes = this.metric[step];
         const elapsedTime = this.metric[`${step}_ms`];
         const elapsedDelta = Date.now() - startTime;
@@ -1515,6 +1520,14 @@ export class EpochSync extends SyncBase{
 
     // ------------------------------ vote params -------------------------------
     private async getVoteParams(epochNumber) {
-        return this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
+        try{
+            return this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
+        }catch (err){
+            const msg = `${err}`
+            if (msg.includes('Invalid parameters: epoch_num')) {
+                throw new Error(`[epoch=${epochNumber}]vote params not ready`);
+            }
+            throw err
+        }
     }
 }

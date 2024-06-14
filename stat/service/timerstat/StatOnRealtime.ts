@@ -62,7 +62,8 @@ export class StatOnRealtime {
         }
 
         if(!this.CIP1559_ENABLED) {
-            this.CIP1559_ENABLED = pivotBlock.blockNumber >= StatApp.bnCIP1559Enabled
+            // TODO remove comment when launch api service supporting CIP1559.
+            // this.CIP1559_ENABLED = pivotBlock.blockNumber >= StatApp.bnCIP1559Enabled
         }
 
         if(!txArray?.length){

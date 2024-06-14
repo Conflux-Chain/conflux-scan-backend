@@ -123,14 +123,14 @@ export abstract class SyncBase{
             if(data.syncCode === SyncCode.RETRY) {
                 console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
                 s = Date.now();
-                await sleep(10);
+                await sleep(10_000);
                 s = this.m0('Sleep-1', s)
                 return epochNumber;
             }
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
             s = Date.now();
-            await sleep(10);
+            await sleep(10_000);
             s = this.m0('Sleep-2', s)
             return epochNumber;
         }
@@ -141,7 +141,7 @@ export abstract class SyncBase{
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
             s = Date.now();
-            await sleep(10);
+            await sleep(10_000);
             s = this.m0('Sleep-3', s)
             return epochNumber;
         }
@@ -174,12 +174,12 @@ export abstract class SyncBase{
             data = await this.getDataBackwardWithPreload(epochNumber);
             if(data.syncCode === SyncCode.RETRY) {
                 console.log(`[epoch=${epochNumber}]sync_backward fetch,retry:${data.message}`);
-                await sleep(10);
+                await sleep(10_000);
                 return epochNumber;
             }
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_backward fetch,error:`, e);
-            await sleep(10);
+            await sleep(10_000);
             return epochNumber;
         }
 
@@ -187,7 +187,7 @@ export abstract class SyncBase{
             syncCode = await this.saveBackward(epochNumber, data);
         } catch (e) {
             console.error(`[epoch=${epochNumber}]sync_backward sync,error:`, e);
-            await sleep(10);
+            await sleep(10_000);
             return epochNumber;
         }
 
@@ -261,7 +261,7 @@ export abstract class SyncBase{
         ]);
 
         if (latestState < epochNumber) {
-            await sleep(10);
+            await sleep(1000);
             throw new Error(`[epoch=${epochNumber}]not ready, latestState=${latestState}`);
         }
         if (blockHashArray.length === 0) {
