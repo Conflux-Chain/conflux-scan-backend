@@ -219,6 +219,6 @@ export const CONST = {
 
   VOTE_PARAMS: {
     'storagePointProp': {EPOCH_MAINNET: 79016145, EPOCH_TESTNET: 129134779}, // CIP-107
-    'baseFeeShareProp': {EPOCH_MAINNET: 100, EPOCH_TESTNET: 100}, //// CIP-137 TODO - to be determined
+    'baseFeeShareProp': {EPOCH_MAINNET: 100, EPOCH_TESTNET: 175671909}, //// CIP-137 TODO - to be determined
   }
 };

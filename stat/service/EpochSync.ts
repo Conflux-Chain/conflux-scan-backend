@@ -76,8 +76,6 @@ export class EpochSync extends SyncBase{
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
     public static NAME_TAG_SPLIT = "__,__";
-    public static PARAM_STORAGE_POINT = 'storagePointProp'
-    public static PARAM_BASE_FEE_SHARE = 'baseFeeShareProp'
 
     protected app;
     private statOnRealtime: StatOnRealtime
@@ -85,7 +83,6 @@ export class EpochSync extends SyncBase{
     private readonly statSwitch
     private latestVoteParams: VoteParams
     private fullStateCfx
-    private debug: boolean
 
     public metric = {
         startEpoch: 0,

@@ -178,7 +178,7 @@ export class FullBlockService {
         }
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
-    private async loadEpochData(minEpochNumber: number) {
+    public async loadEpochData(minEpochNumber: number) {
         const [rewardList, hashes, latest_state, receipts] = await Promise.all([
             // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
@@ -496,10 +496,6 @@ export class FullBlockService {
             block.baseFee = BigInt(block?.baseFeePerGas || 0)
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType
-            if(block?.transactions?.length) {
-                console.log(`[${minEpochNumber}]sync blk ---1--- blockNumber ${typeof block.blockNumber} bnCIP1559Enabled ${typeof StatApp.bnCIP1559Enabled} flag ${block.blockNumber >= StatApp.bnCIP1559Enabled}`)
-                console.log(`[${minEpochNumber}]sync blk ---2--- ${JSON.stringify(block)}`)
-            }
             const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, block)
             blockExtArr.push(blockExt)
         }

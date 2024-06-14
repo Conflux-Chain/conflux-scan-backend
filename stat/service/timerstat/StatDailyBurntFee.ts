@@ -11,7 +11,6 @@ export class StatDailyBurntFee extends TimerStat{
     constructor(app: any) {
         super(app);
         this.baseInterval = IntervalType.HOUR;
-        this.debug = true
     }
 
     public bizAlias(): string {

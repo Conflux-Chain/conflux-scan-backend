@@ -1,24 +1,24 @@
-import {loadConfig} from "../../config/StatConfig";
+import {loadConfig, StatConfig} from "../../config/StatConfig";
 import {saveAbiInfo} from "../../model/ContractInfo";
-import { StatApp } from "../../StatApp";
+import {StatApp} from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
 import {ContractVerify, ContractVerify2} from "../../model/ContractVerify";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Hex40Map, makeId} from "../../model/HexMap";
-import {literal, Op, QueryTypes} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
 import {AddressNft, AddressNfts} from "../../model/AddrNft";
-import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../../model/KV";
+import {IS_EVM2, KEY_BN_CIP1559_ENABLED, KV} from "../../model/KV";
 import {Erc1155Data, NftMint, Token, Token2} from "../../model/Token";
 import {sleep} from "./ProcessTool";
-import {MetaStatus, NftMeta} from "../nftchecker/NftMetaStorage";
+import {NftMeta} from "../nftchecker/NftMetaStorage";
 
 const fs = require('fs');
 const lodash = require('lodash');
-const { format, sign } = require('js-conflux-sdk');
+const {format, sign} = require('js-conflux-sdk');
 const superagent = require('superagent');
 
 let type: number;
@@ -34,6 +34,7 @@ let localAPIUri
 let debug
 let contractAddress
 let max
+let minEpoch, maxEpoch
 
 async function init() {
     const config = loadConfig('Prod')
@@ -580,6 +581,11 @@ import {u} from "@web3identity/address-encoder/lib/groestl-hash-js/op";
 import zlib from "zlib";
 import {TokenSecurityAudit, TokenSecurityAudit2} from "../../model/TokenSecurityAudit";
 import {Contract, Contract2} from "../../model/Contract";
+import {buildBlockExt, FullBlock, FullBlockExt} from "../../model/FullBlock";
+import {FullBlockService} from "../FullBlockService";
+import {PosAccount, PosBlock} from "../../model/PoS";
+import {PosDailyStatMix} from "../pos/PosStat";
+import {TokenApproval} from "../../ApprovalSync";
 const licenseMap = {}
 Object.keys(CONST.LICENSE).forEach(k => {
     const v = CONST.LICENSE[k]
@@ -732,6 +738,155 @@ async function httpGet(uri) {
     return result
 }
 
+let fullBlockService: FullBlockService
+async function initFullBlockSyncer() {
+    const config:StatConfig = loadConfig('Prod')
+    let cfx = await initCfxSdk(config.blockSyncRpc);
+
+    StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+    let cfx2
+    if(StatApp.isEVM) {
+        cfx2 = await initCfxSdk(config.conflux2)
+    }
+
+    StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
+
+    fullBlockService = new FullBlockService(cfx, cfx2)
+}
+
+async function syncBlockExt(epoch: number) {
+    const epochData = await fullBlockService.loadEpochData(epoch)
+    const {code, message, blockList, blocksEvm} = epochData
+    if(code != 0) {
+        console.log(`epoch ${blockList} code ${code} err ${message}`)
+        process.exit(9)
+    }
+
+    let blkPos = 0
+    const blockExtArr = []
+    const blockArr = []
+    for (const block of blockList) {
+        let sumGasPrice = BigInt(0)
+        let sumGasLimit = BigInt(0)
+        let sumBurntGasFee = BigInt(0)
+        let sumTip = BigInt(0)
+        let txsInType = [0, 0, 0]
+        let pos = 0
+
+        for (const txInfo of block.transactions) {
+            const st = txInfo.receipt?.outcomeStatus
+            if (st == 0 || st == 1 || epoch === 0) {
+                pos++
+                txInfo.gasLimit = txInfo.gas
+                sumGasLimit += txInfo.gasLimit
+                sumGasPrice += txInfo.gasPrice
+                sumBurntGasFee += BigInt(txInfo.receipt?.burntGasFee || 0)
+                sumTip += BigInt(txInfo?.maxPriorityFeePerGas || 0)
+                txsInType[Number(txInfo?.type || 0)] ++
+            }
+        }
+
+        block.epoch = epoch
+        block.position = blkPos ++
+        block.gasUsed = sumGasLimit
+        const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
+            (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+        const times = StatApp.isEVM ? blocksEvm : 1
+        block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
+        pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
+
+        block.burntGasFee = sumBurntGasFee
+        block.baseFee = BigInt(block?.baseFeePerGas || 0)
+        pos && (block.avgTip = sumTip / BigInt(pos))
+        block.txsInType = txsInType
+
+        blockArr.push(lodash.pick(block, ['hash', 'gasLimit']))
+        const blockExt = buildBlockExt(epoch, blocksEvm, block)
+        blockExtArr.push(blockExt)
+    }
+
+    console.log(`epoch ${epoch} blockArr ${JSON.stringify(blockArr)} blockExtArr ${JSON.stringify(blockExtArr)}`)
+    for (const block of blockArr) {
+        await FullBlock.update({gasLimit: block.gasLimit}, {where: {hash: block.hash}})
+    }
+    for (const blockExt of blockExtArr) {
+        await FullBlockExt.upsert(blockExt)
+    }
+    console.log(`done`)
+}
+
+async function fixBlockExt(minEpoch: number, maxEpoch: number) {
+    await initFullBlockSyncer()
+
+    const loop = maxEpoch - minEpoch + 1
+    for (let i = 0; i < loop; i++) {
+        await syncBlockExt(minEpoch + i)
+    }
+}
+
+const POS_ACC_CNTR_DAY = 'POS_ACC_CNTR_DAY'
+const POS_ACC_CNTR_BN = 'POS_ACC_CNTR_BN'
+async function statValidator() {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    now.setDate(now.getDate() + 1)
+    console.log(`now ------ ${now.toISOString()}`)
+
+    const nextStatDay = await KV.getString(POS_ACC_CNTR_DAY, '')
+    const startDay = nextStatDay ? new Date(nextStatDay) : new Date('2022-02-22')
+    const nextMinBlkNumber = await KV.getNumber(POS_ACC_CNTR_BN, null)
+    let minBlkNumber = nextMinBlkNumber ? nextMinBlkNumber : 0
+    console.log(`startDay ------ ${startDay.toISOString()} minBlkNumber ------ ${minBlkNumber}`)
+
+    let statDayEnd = new Date(startDay)
+    statDayEnd.setDate(statDayEnd.getDate() + 1)
+
+    while (true){
+        if(statDayEnd > now) {
+            console.log(`done!`)
+            return
+        }
+
+        const page = await PosAccount.findAndCountAll({where: {createdAt: {[Op.lt]: statDayEnd}}})
+        const posAccountAddrArray = []
+        page.rows.forEach(row => posAccountAddrArray.push(row.hex))
+
+        const lastBlk = await PosBlock.findOne({where: {createdAt: {[Op.lt]: statDayEnd}}, order: [['createdAt', 'desc']], limit: 1})
+        const maxBlkNumber = lastBlk.height
+
+        let accountCntr = 0
+        for (const addr of posAccountAddrArray) {
+            for (let i = minBlkNumber; i <= maxBlkNumber ; i++) { // try every block number in range between minBlkNumber and maxBlkNumber.
+                let accInfo
+                try {
+                    accInfo = await cfx.pos.getAccount(addr, i)
+                }catch (e) {
+                    const msg = `${e}`
+                    if (!msg.includes(`PoS state of ${i} not found`)) {
+                        throw e
+                    }
+                }
+                if(accInfo && accInfo?.status?.availableVotes) {
+                    accountCntr++
+                    break
+                }
+            }
+        }
+
+        const statDay = new Date(statDayEnd)
+        statDay.setDate(statDay.getDate() - 1)
+        await PosDailyStatMix.sequelize.transaction(async (dbTx)=>{
+            // await PosDailyStatMix.upsert({v: accountCntr, day: statDay, biz: "account_count"}, {transaction: dbTx})
+            await KV.upsert({key: POS_ACC_CNTR_DAY, value: statDayEnd.toISOString().substr(0, 10)}, {transaction: dbTx})
+            await KV.upsert({key: POS_ACC_CNTR_BN, value: `${maxBlkNumber + 1}`}, {transaction: dbTx})
+        })
+        console.log(`time [${statDay.toISOString().substr(0, 10)}, ${statDayEnd.toISOString().substr(0, 10)}] bn [${minBlkNumber}, ${maxBlkNumber}] accounts ${accountCntr}/${posAccountAddrArray.length}`)
+
+        minBlkNumber = maxBlkNumber + 1
+        statDayEnd.setDate(statDayEnd.getDate() + 1)
+    }
+}
+
 async function run() {
     await init();
     if(type === 1){
@@ -786,6 +941,12 @@ async function run() {
     if(type === 23) {
         await syncContractFromPeer(peerUri, max)
     }
+    if(type === 25) {
+        await fixBlockExt(minEpoch, maxEpoch)
+    }
+    if(type === 26) {
+        await statValidator()
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
@@ -809,6 +970,11 @@ if(type === 9) {
 if(type === 21 || type === 22 || type === 23) {
     peerUri = args[2]
     max = Number(args[3]);
+}
+
+if(type === 25) {
+    minEpoch = Number(args[2]);
+    maxEpoch = Number(args[3]);
 }
 
 run().then();

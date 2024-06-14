@@ -20,12 +20,17 @@ export abstract class SyncBase{
     protected app: StatApp;
     private forwardQueue: PreloadMap;
     private backwardQueue: PreloadMap;
+    protected debug: boolean
 
     private metric0 = {
         startEpoch: 0,
         currentEpoch: 0,
     };
     private m0(step, startTime){
+        if(!this.debug) {
+            return
+        }
+
         const runTimes = this.metric0[step];
         const elapsedTime = this.metric0[`${step}_ms`];
         const elapsedDelta = Date.now() - startTime;
