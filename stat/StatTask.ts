@@ -11,7 +11,7 @@ import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
     CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
-    IS_EVM2, KEY_BN_CIP1559_ENABLED, KEY_FULL_STATE_RPC,
+    IS_EVM2, KEY_BN_CIP1559_ENABLED,
     KV
 } from "./model/KV";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -33,7 +33,6 @@ import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
 
-let fullStateCfx
 async function main() {
     redirectLog()
     regExitHook()
@@ -91,7 +90,7 @@ async function main() {
     await statDailyPowReward.schedule(1000 * 1);
     //
     if(!StatApp.isEVM) {
-        const statDailyBurntFee = new StatDailyBurntFee({cfx: fullStateCfx});
+        const statDailyBurntFee = new StatDailyBurntFee({cfx});
         await statDailyBurntFee.schedule(1000 * 60);
     }
     //
@@ -129,23 +128,11 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
 }
 
 async function mustInit() {
-    const [fullStateRpc, bnCIP1559Enabled] = await Promise.all([
-        KV.getString(KEY_FULL_STATE_RPC, ''),
-        KV.getNumber(KEY_BN_CIP1559_ENABLED),
-    ])
-    if(!fullStateRpc) {
-        console.log(`Failed to load config for full state RPC!`)
-        process.exit(9)
-    }
+    const bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
     if(!bnCIP1559Enabled) {
         console.log(`Failed to load config for block number at which CIP1559 enabled!`)
         process.exit(9)
     }
-    fullStateCfx = await initCfxSdk({url: fullStateRpc, keepAlive: true}, 'StatTask-fullStatRpc')
-        .catch(e => {
-            console.log(`Failed to init full state RPC`, e)
-            process.exit(9)
-        });
     StatApp.bnCIP1559Enabled = bnCIP1559Enabled
 }
 

@@ -29,11 +29,9 @@ import {
     CONTRACT_ADDRESS_METADATA,
     CONTRACT_ANNOUNCEMENT,
     KEY_BN_CIP1559_ENABLED,
-    KEY_FULL_STATE_RPC,
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
-import {hexAddress} from "js-conflux-sdk/dist/types/util/format";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -82,7 +80,6 @@ export class EpochSync extends SyncBase{
     private NAME_TYPE_MAP;
     private readonly statSwitch
     private latestVoteParams: VoteParams
-    private fullStateCfx
 
     public metric = {
         startEpoch: 0,
@@ -137,10 +134,9 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkConfig() {
-        const [announcement, addressMetadata, fullStateRpc, bnCIP1559Enabled] = await Promise.all([
+        const [announcement, addressMetadata, bnCIP1559Enabled] = await Promise.all([
             KV.getString(CONTRACT_ANNOUNCEMENT, ''),
             KV.getString(CONTRACT_ADDRESS_METADATA, ''),
-            KV.getString(KEY_FULL_STATE_RPC, ''),
             KV.getNumber(KEY_BN_CIP1559_ENABLED),
         ])
         if(!announcement) {
@@ -151,20 +147,12 @@ export class EpochSync extends SyncBase{
             console.log(`Failed to load config for AddressMetadata contract!`)
             process.exit(9)
         }
-        if(!fullStateRpc) {
-            console.log(`Failed to load config for full state RPC!`)
-            process.exit(9)
-        }
         if(!bnCIP1559Enabled) {
             console.log(`Failed to load config for block number at which CIP1559 enabled!`)
             process.exit(9)
         }
         EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
-        this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{
-            console.log(`Failed to init full state RPC`, e)
-            process.exit(9)
-        });
         StatApp.bnCIP1559Enabled = bnCIP1559Enabled
     }
 
@@ -1517,8 +1505,12 @@ export class EpochSync extends SyncBase{
 
     // ------------------------------ vote params -------------------------------
     private async getVoteParams(epochNumber) {
+        const {
+            app: { cfx: sdk },
+        } = this;
+
         try{
-            return this.fullStateCfx.cfx.getParamsFromVote(epochNumber)
+            return sdk.cfx.getParamsFromVote(epochNumber)
         }catch (err){
             const msg = `${err}`
             if (msg.includes('Invalid parameters: epoch_num')) {

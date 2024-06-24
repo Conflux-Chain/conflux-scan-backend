@@ -6,7 +6,7 @@ import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
     IS_EVM2, KEY_BN_CIP1559_ENABLED,
-    KEY_FILL_BLOCK_PROPS_EPOCH, KEY_FULL_STATE_RPC,
+    KEY_FILL_BLOCK_PROPS_EPOCH,
     KV
 } from "./model/KV";
 import {initCfxSdk} from "./service/common/utils";

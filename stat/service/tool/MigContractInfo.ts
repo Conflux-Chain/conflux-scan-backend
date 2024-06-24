@@ -876,7 +876,7 @@ async function statValidator() {
         const statDay = new Date(statDayEnd)
         statDay.setDate(statDay.getDate() - 1)
         await PosDailyStatMix.sequelize.transaction(async (dbTx)=>{
-            // await PosDailyStatMix.upsert({v: accountCntr, day: statDay, biz: "account_count"}, {transaction: dbTx})
+            await PosDailyStatMix.upsert({v: accountCntr, day: statDay, biz: "account_count"}, {transaction: dbTx})
             await KV.upsert({key: POS_ACC_CNTR_DAY, value: statDayEnd.toISOString().substr(0, 10)}, {transaction: dbTx})
             await KV.upsert({key: POS_ACC_CNTR_BN, value: `${maxBlkNumber + 1}`}, {transaction: dbTx})
         })
