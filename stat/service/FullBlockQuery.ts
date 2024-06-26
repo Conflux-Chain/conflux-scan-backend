@@ -252,11 +252,9 @@ export class FullBlockQuery {
             ['gas', 'gasFee'],
             ['createdAt', 'timestamp'],
             'status',
+            'method',
             ['contractCreatedId', 'contractCreated'],
         ];
-        if(accountAddressId === undefined){
-            options.attributes.push('method');
-        }
         // where
         const conditionArray = [];
         let txPage:any | TxPage = {}
@@ -400,17 +398,6 @@ export class FullBlockQuery {
                 hex40Map.set(hex40.id, hex40.hex)
             })
 
-            // prepare method map
-            const methodMap = new Map<string,FullTransaction>()
-            if (accountAddressId) {
-                // fetch method, consider save it.
-                /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
-                    attributes:['hash','method']})*/
-                const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
-                    where: {[Op.or]: txHashQueryCondition}});
-                methodList.forEach(row=>methodMap.set(row.hash, row))
-            }
-
             // fields mapping
             list.forEach(row=>{
                 row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
@@ -420,9 +407,6 @@ export class FullBlockQuery {
                 }
                 if(row['contractCreated'] === 0){
                     row['contractCreated'] = null;
-                }
-                if (accountAddressId) {
-                    row['method'] = methodMap.get(row['hash'])?.method
                 }
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
