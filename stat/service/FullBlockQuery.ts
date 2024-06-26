@@ -422,7 +422,7 @@ export class FullBlockQuery {
                     attributes:['hash','method']})*/
                 // const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
                 //     where: {[Op.or]: txHashQueryCondition}});
-                methodList.forEach(row=>methodMap.set(row.hash, row))
+                methodList.forEach(row=>methodMap.set(row?.hash, row))
             }
 
             // fields mapping
