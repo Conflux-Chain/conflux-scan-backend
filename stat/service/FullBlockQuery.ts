@@ -2,13 +2,17 @@
 import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op, QueryTypes} from "sequelize"
 import {
-    FullBlock,
-    FullTransaction,
     AddressTransactionIndex,
+    BlockPage,
+    FailedTx,
+    FullBlock,
+    FullBlockExt,
+    FullTransaction,
     pagingFullBlock,
     pagingFullTx,
-    BlockPage, TxPage, FailedTx, FullBlockExt
+    TxPage
 } from "../model/FullBlock";
+const limitMap = require('limit-map');
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map, idHex40Map} from "../model/HexMap";
@@ -255,6 +259,7 @@ export class FullBlockQuery {
             ['contractCreatedId', 'contractCreated'],
         ];
         if(accountAddressId === undefined){
+            // address tx table doesn't have this field
             options.attributes.push('method');
         }
         // where
@@ -403,11 +408,20 @@ export class FullBlockQuery {
             // prepare method map
             const methodMap = new Map<string,FullTransaction>()
             if (accountAddressId) {
-                // fetch method, consider save it.
+                // fetch method, consider save it on table address tx.
+                const methodList = await limitMap(txHashQueryCondition,
+                    async (object) => {
+                        return FullTransaction.findOne({
+                            attributes: ['hash', 'method'],
+                            where: object,
+                        })
+                    },
+                    { limit: 100 },
+                )
                 /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
                     attributes:['hash','method']})*/
-                const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
-                    where: {[Op.or]: txHashQueryCondition}});
+                // const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
+                //     where: {[Op.or]: txHashQueryCondition}});
                 methodList.forEach(row=>methodMap.set(row.hash, row))
             }
 
