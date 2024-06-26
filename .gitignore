@@ -33,7 +33,6 @@ scan-compiler/config/local.js
 **/*.d.ts
 **/*.d.ts.map
 node_modules/
-package-lock.json
 stat/config/Prod-mainnet-back.ts
 stat/config/Prod-mainnet-main.ts
 stat/config/Prod-testnet-main.ts
