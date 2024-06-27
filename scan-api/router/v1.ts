@@ -1233,6 +1233,7 @@ router.get('/transfer',
       200: {
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
+        addressInfo: 'object',
         list: [
           {
             epochNumber: 'integer',
