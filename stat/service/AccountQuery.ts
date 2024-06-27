@@ -51,11 +51,10 @@ export class AccountQuery {
             resp => {
                 if(!resp?.total) return;
                 Object.keys(resp.map).forEach(address => {
-                    if(!map[address]) map[address] = {
-                        hex: StatApp.isEVM ? format.hexAddress(address) : address,
-                        test: "1"
-                    };
-                    map[address] = lodash.defaults(map[address], resp.map[address]);
+                    if(!map[address]) map[address] = {};
+                    map[address] = lodash.defaults(map[address], resp.map[address], {
+                        address: StatApp.isEVM ? format.hexAddress(address) : address,
+                    });
                 });
             }
         )

@@ -1309,6 +1309,7 @@ router.get('/transfer',
       transfer.transferENSInfo = accountBasic.map[transfer.address]?.ens;
       transfer.transferNameTagInfo = accountBasic.map[transfer.address]?.nameTag;
     });
+    result['addressInfo'] = accountBasic
     return result;
   },
 );
