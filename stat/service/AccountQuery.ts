@@ -51,11 +51,18 @@ export class AccountQuery {
             resp => {
                 if(!resp?.total) return;
                 Object.keys(resp.map).forEach(address => {
-                    if(!map[address]) map[address] = {};
+                    const newObj = resp.map[address];
+                    let preObj = map[address] || {};
                     if (StatApp.isEVM) {
-                        resp.map[address].address = format.hexAddress(address)
+                        // translate each key and value.address
+                        address = format.hexAddress(address)
+                        Object.keys(newObj).forEach(p=>{
+                            if (newObj[p].address) {
+                                newObj[p].address = address
+                            }
+                        })
                     }
-                    map[address] = lodash.defaults(map[address], resp.map[address]);
+                    map[address] = lodash.defaults(preObj, newObj);
                 });
             }
         )

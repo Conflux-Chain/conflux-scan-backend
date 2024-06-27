@@ -131,7 +131,7 @@ export class BalanceService {
             item.account.address = item.hex
         });
 
-        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed}
+        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed, accountBasic}
     }
 
     zeros = '00000000000000000000000'
