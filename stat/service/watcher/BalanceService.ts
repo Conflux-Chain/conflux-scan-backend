@@ -13,7 +13,7 @@ import {Op, cast, col} from "sequelize";
 import {ContractService} from "../contract/ContractService";
 import {base32toVerbose} from "../tool/AddressTool";
 const BigFixed = require('bigfixed');
-import {StatApp} from "../../StatApp";
+import {fmtAddr, StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {TokenQuery} from "../TokenQuery";
 import {Errors} from "../common/LogicError";
@@ -104,7 +104,7 @@ export class BalanceService {
 
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
-            const address = addr ? format.address(addr, this.networkId): holder.addressId
+            const address = addr ? fmtAddr(addr, this.networkId): holder.addressId
             // console.log(`balance type is : ${typeof  holder.balance}`)
             return {
                 // holder.balance is string
@@ -113,7 +113,6 @@ export class BalanceService {
                     address,
                     name: addr ? ContractService.instance.getName(address) : undefined,
                 },
-                hex: addr,
                 hexId: holder.addressId,
                 updatedAt: holder['updatedAt'],
                 // addr,
@@ -128,7 +127,6 @@ export class BalanceService {
             item['contractInfo'] = accountBasic.map[item.account.address]?.contract;
             item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
             item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
-            item.account.address = item.hex
         });
 
         return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed, accountBasic}
