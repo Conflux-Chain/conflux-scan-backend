@@ -11,7 +11,7 @@ import {
     ESpaceHex40Map, Hex64Map
 } from "../model/HexMap";
 import {json, Op, QueryTypes} from "sequelize";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
 import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
@@ -511,8 +511,8 @@ export class ContractQuery {
         const hex40 = await Hex40Map.findOne({where: {hex: implHex40}, raw: true});
         if (!hex40) return result;
 
-        const beaconAddress = beaconHex40 ? format.address(beaconHex40, StatApp.networkId) : null;
-        const implAddress = format.address(`0x${hex40.hex}`, StatApp.networkId);
+        const beaconAddress = beaconHex40 ? fmtAddr(beaconHex40, StatApp.networkId) : null;
+        const implAddress = fmtAddr(`0x${hex40.hex}`, StatApp.networkId);
         return lodash.assign(result, {
             proxy: true,
             beacon: beaconAddress,

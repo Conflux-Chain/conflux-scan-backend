@@ -113,6 +113,7 @@ export class BalanceService {
                     address,
                     name: addr ? ContractService.instance.getName(address) : undefined,
                 },
+                hex: addr,
                 hexId: holder.addressId,
                 updatedAt: holder['updatedAt'],
                 // addr,
@@ -127,6 +128,7 @@ export class BalanceService {
             item['contractInfo'] = accountBasic.map[item.account.address]?.contract;
             item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
             item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
+            item.account.address = item.hex
         });
 
         return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed}

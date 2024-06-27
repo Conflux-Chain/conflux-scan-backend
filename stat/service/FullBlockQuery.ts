@@ -184,7 +184,7 @@ export class FullBlockQuery {
             list.forEach(row=>{
                 const minerId = row['miner'];
                 if(minerId && hex40Map.get(minerId)){
-                    row['miner'] = format.address(`0x${hex40Map.get(minerId)}`, this.app?.networkId);
+                    row['miner'] = fmtAddr(`0x${hex40Map.get(minerId)}`, this.app?.networkId);
                 }
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
