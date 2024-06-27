@@ -283,7 +283,7 @@ jsonrpc.countAndListTransaction = jsonrpc.method_('countAndListTransaction',
   async function ({ listLimit, ...options }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.transaction.countAndList(options);
     return { ...result, listLimit };
@@ -927,7 +927,7 @@ jsonrpc.method('exportTransaction',
   async function (options) {
     const {
       app: { service, tool },
-    } = this;
+    } = this as ScanCtx;
 
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;

@@ -171,3 +171,10 @@ export class StatApp{
         // registerProcessEvents(logger, this.sequelize)
     }
 }
+
+export function fmtAddr(hex: string, netId: number, verbose = false) {
+    if (StatApp.isEVM) {
+        return hex
+    }
+    return format.address(hex, netId, verbose)
+}
