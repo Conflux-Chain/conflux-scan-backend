@@ -1281,8 +1281,8 @@ router.get('/transfer',
 
   async function (result) {
     const {
-      app: { type },
-    } = this;
+      app: { service: {accountQuery} },
+    } = this as ScanCtx;
 
     let addressArray = [];
     result.list.forEach((transfer) => {
@@ -1291,7 +1291,8 @@ router.get('/transfer',
       if (transfer.address !== undefined) addressArray.push(transfer.address.toString());
     });
     addressArray = addressArray.filter((e) => e?.length > 40); // filter 0xundefined.
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const accountBasic = await accountQuery.listPatchInfo(addressArray)
     result.list.forEach((transfer) => {
       transfer.fromContractInfo = accountBasic.map[transfer.from]?.contract;
       transfer.fromTokenInfo = accountBasic.map[transfer.from]?.token;
