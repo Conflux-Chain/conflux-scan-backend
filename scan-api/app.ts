@@ -50,7 +50,7 @@ export class ApiApp extends AppBase {
     // type converter
     this.type.checksumAddress = this.type((v) => format.address(v, this.networkId, true));
     this.type.address = (this.type.checksumAddress.$after((v) => format.hexAddress(v))).$or(this.type.hex40);
-    this.type.simpleAddress = this.type.checksumAddress.$after((v) => fmtAddr(v, StatApp.networkId));
+    this.type.simpleAddress = this.type((v) => fmtAddr(v, StatApp.networkId));
     this.router = router;
 
     // 2024.1.9, it only calls to compiler.
