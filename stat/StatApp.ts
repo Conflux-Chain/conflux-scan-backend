@@ -175,6 +175,9 @@ export class StatApp{
 
 export function fmtAddr(hex: string, netId: number, verbose = false) {
     if (StatApp.isEVM) {
+        if (hex.includes(":")) {
+            hex = format.hexAddress(hex)
+        }
         return ethers.utils.getAddress(hex)
     }
     return format.address(hex, netId, verbose)
