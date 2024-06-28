@@ -1,6 +1,7 @@
 import {ScanCtx} from "../service/index";
 import {Op} from "sequelize";
 import {KEY_CONFURA_URL, KEY_CORE_API_URL, KEY_CORE_OPEN_API_URL, KEY_OPEN_API_URL} from "../../stat/model/KV";
+import {fmtAddr} from "../../stat/StatApp";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -244,7 +245,15 @@ jsonrpc.queryTransaction = jsonrpc.method_('queryTransaction',
       app: { service },
     } = this;
 
-    return service.transaction.query(options);
+    return service.transaction.query(options).then(res=>{
+        if (res?.from) {
+            res.from = fmtAddr(res.from, StatApp.networkId)
+        }
+        if (res?.to) {
+            res.to = fmtAddr(res.to, StatApp.networkId)
+        }
+        return res;
+    });
   },
 
   type({
