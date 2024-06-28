@@ -26,7 +26,7 @@ import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
 import {
-    IS_EVM2, KEY_BN_CIP1559_ENABLED,
+    IS_EVM2,
     KEY_FASTEST_IPFS_GATEWAY,
     KEY_FULL_STATE_RPC,
     KV
@@ -105,7 +105,6 @@ export class StatApp{
         }
         KV.setupSwitch().then()
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-        StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
         this.txnSync = new TxnSync(this);
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {

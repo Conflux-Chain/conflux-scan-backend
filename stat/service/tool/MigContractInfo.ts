@@ -755,7 +755,7 @@ async function initFullBlockSyncer() {
 }
 
 async function syncBlockExt(epoch: number) {
-    const epochData = await fullBlockService.loadEpochData(epoch)
+    const epochData = undefined // await fullBlockService.loadEpochData(epoch)
     const {code, message, blockList, blocksEvm} = epochData
     if(code != 0) {
         console.log(`epoch ${blockList} code ${code} err ${message}`)

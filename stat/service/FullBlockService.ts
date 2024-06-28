@@ -178,7 +178,7 @@ export class FullBlockService {
         }
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
-    public async loadEpochData(minEpochNumber: number) {
+    private async loadEpochData(minEpochNumber: number) {
         const [rewardList, hashes, latest_state, receipts] = await Promise.all([
             // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{

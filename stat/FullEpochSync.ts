@@ -6,7 +6,7 @@ import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {TokenQuery} from "./service/TokenQuery";
 import {EpochSync} from "./service/EpochSync";
 import {initCfxSdk, patchFormat} from "./service/common/utils";
-import {IS_EVM2, KEY_BN_CIP1559_ENABLED, KV} from "./model/KV";
+import {IS_EVM2, KV} from "./model/KV";
 import {StatApp} from "./StatApp";
 import {ContractQuery} from "./service/ContractQuery";
 import {checkApiLogIpField} from "./monitor/ApiLog";

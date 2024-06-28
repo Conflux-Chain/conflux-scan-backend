@@ -3,6 +3,7 @@ import {IntervalType, TimerStat} from "./TimerStat";
 import {DailyBurntFeeStat} from "../../model/DailyBurntFeeStat";
 import {Epoch} from "../../model/Epoch";
 import {StatApp} from "../../StatApp";
+import {CONST} from "../common/constant";
 
 const BigFixed = require('bigfixed');
 
@@ -25,9 +26,9 @@ export class StatDailyBurntFee extends TimerStat{
             limit: 1
         });
         if(!lastStat) {
-            const block = await cfx.getBlockByBlockNumber(StatApp.bnCIP1559Enabled)
+            const block = await cfx.getBlockByBlockNumber(CONST.VOTE_PARAMS.storagePointProp[StatApp.networkId])
             if(!block) {
-                throw new Error(`CIP1559 not Enabled.`)
+                throw new Error(`CIP107 not Enabled.`)
             }
             const lastStat = {statTime: new Date(block.timestamp * 1000)}
             lastStat.statTime.setHours(lastStat.statTime.getHours() - 1, 0, 0, 0)
@@ -37,7 +38,7 @@ export class StatDailyBurntFee extends TimerStat{
     }
 
     /*
-    total storage fee: convertedStoragePoints/1024 from cfx_cfx_getCollateralInfo
+    total storage fee: convertedStoragePoints/1024 from cfx_getCollateralInfo
     total gas fee: result from cfx_getFeeBurnt
     */
     public async firstEpochAfterRangeEnd(rangeEnd): Promise<number> {
@@ -81,7 +82,7 @@ export class StatDailyBurntFee extends TimerStat{
         const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lt]: endTime}}, order: [['timestamp', 'desc']]})
         const[collateralInfoNew, feeNew] = await Promise.all([
             sdk.cfx.getCollateralInfo(maxEpoch.epoch),
-            sdk.cfx.getFeeBurnt(`0x${maxEpoch.epoch.toString(16)}`)
+            sdk.cfx.getFeeBurnt(maxEpoch.epoch)
         ])
 
         const statTime = this.getRangeBegin(beginTime, statType as IntervalType);

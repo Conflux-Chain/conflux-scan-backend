@@ -11,7 +11,7 @@ import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
     CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
-    IS_EVM2, KEY_BN_CIP1559_ENABLED,
+    IS_EVM2,
     KV
 } from "./model/KV";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -40,7 +40,6 @@ async function main() {
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    await mustInit()
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
@@ -125,15 +124,6 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
         await KV.upsert({key: keyCountAll, value: `${count + delta}`}, {transaction: dbTx});
         await KV.upsert({key: keyCountId, value: `${latestId}`}, {transaction: dbTx});
     });
-}
-
-async function mustInit() {
-    const bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
-    if(!bnCIP1559Enabled) {
-        console.log(`Failed to load config for block number at which CIP1559 enabled!`)
-        process.exit(9)
-    }
-    StatApp.bnCIP1559Enabled = bnCIP1559Enabled
 }
 
 main().then().catch(err=>{

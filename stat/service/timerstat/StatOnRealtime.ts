@@ -62,7 +62,6 @@ export class StatOnRealtime {
         }
 
         if(!this.CIP1559_ENABLED) {
-            // TODO remove comment when launch api service supporting CIP1559.
             this.CIP1559_ENABLED = pivotBlock.blockNumber >= StatApp.bnCIP1559Enabled
         }
 
@@ -96,10 +95,7 @@ export class StatOnRealtime {
 
     public async getGasPriceTracker(){
         const config = await KV.findOne({where: {key: KEY_GAS_PRICE_TRACKER}})
-        return config?.value ? JSON.parse(config?.value) :{
-            gasPriceInfo: {min: 0, tp50: 0, max: 0},
-            gasPriceMarket: {min: 0, tp25: 0, tp50: 0, tp75: 0, max: 0},
-        }
+        return config?.value ? JSON.parse(config?.value) : {}
     }
 
     public async getGasUsedPerSecond(){
