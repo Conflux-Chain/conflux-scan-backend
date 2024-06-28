@@ -37,6 +37,7 @@ import {AccountQuery} from "./service/AccountQuery";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {StatOnRealtime} from "./service/timerstat/StatOnRealtime"
 import {TxnQuery} from "./service/TxnQuery";
+import {ethers} from "ethers";
 patchFormat();
 export class StatApp{
     public config: StatConfig;
@@ -174,7 +175,7 @@ export class StatApp{
 
 export function fmtAddr(hex: string, netId: number, verbose = false) {
     if (StatApp.isEVM) {
-        return hex
+        return ethers.utils.getAddress(hex)
     }
     return format.address(hex, netId, verbose)
 }
