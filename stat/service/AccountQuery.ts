@@ -15,6 +15,7 @@ import {Erc1155Data, NftMint} from "../model/Token";
 import {NameTag} from "../model/NameTag";
 import {KEY_CAUTION_LABELS, KV} from "../model/KV";
 import {EpochSync} from "./EpochSync";
+import {ethers} from "ethers";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -55,7 +56,7 @@ export class AccountQuery {
                     let preObj = map[address] || {};
                     if (StatApp.isEVM) {
                         // translate each key and value.address
-                        address = format.hexAddress(address)
+                        address = ethers.utils.getAddress(format.hexAddress(address))
                         Object.keys(newObj).forEach(p=>{
                             if (newObj[p].address) {
                                 newObj[p].address = address
