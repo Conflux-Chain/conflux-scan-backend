@@ -472,6 +472,18 @@ export class ContractQuery {
             map[address].eSpace = {address: eSpaceBase32Hex40Map[address]};
         });
 
+        if (StatApp.isEVM) {
+            Object.keys(map).forEach(base32=>{
+                const obj = map[base32];
+                // delete map[base32]; // do not delete, keep both, others may query map by base32.
+                const hex = fmtAddr(base32, StatApp.networkId);
+                map[hex] = obj;
+                Object.keys(obj).forEach(k=>{
+                    obj[k].address = hex;
+                })
+            })
+        }
+
         return {total: addressArray.length, map};
     }
 

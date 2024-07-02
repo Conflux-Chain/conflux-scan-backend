@@ -987,7 +987,8 @@ router.get('/contract-and-token',
   }),
 
   async function (options) {
-    return jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray: options.address });
+    const {app: {service: {contractRdb}}} = this as ScanCtx
+    return contractRdb.listBasic({ addressArray: options.address });
   },
 );
 

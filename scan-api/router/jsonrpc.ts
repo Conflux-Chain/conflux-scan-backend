@@ -588,22 +588,22 @@ jsonrpc.method('listContractVerified',
   })),
 );
 
-jsonrpc.method('queryContractBasic',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
-  })),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
-  async function ({ addressArray }) {
-    const {
-      app: { service },
-    } = this;
-    return await service.contractRdb.listBasic({ addressArray });
-  },
-);
+// jsonrpc.method('queryContractBasic',
+//   serializeByIP(),
+//   buildFlow((app) => parameter({
+//     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
+//   })),
+//
+//   cacheFlow(5 * 1000),
+//   concurrenceControl(500),
+//   durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
+//   async function ({ addressArray }) {
+//     const {
+//       app: { service },
+//     } = this;
+//     return await service.contractRdb.listBasic({ addressArray });
+//   },
+// );
 
 // ---------------------------------- Token ---------------------------------
 jsonrpc.method('registerToken',
