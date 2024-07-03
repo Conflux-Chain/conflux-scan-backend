@@ -219,6 +219,5 @@ export const CONST = {
 
   VOTE_PARAMS: {
     storagePointProp: {1029: 79016145, 1: 129134779}, // CIP-107
-    baseFeeShareProp: {1029: 100, 1: 175671909},      // CIP-137 TODO - to be determined
   }
 };
