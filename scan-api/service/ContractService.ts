@@ -1,5 +1,6 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 import {isNumber} from "lodash";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 
 const lodash = require('lodash');
 const { ContractVerify } = require('../../stat/model/ContractVerify');
@@ -378,7 +379,7 @@ export class ContractService { // TODO: extends AccountService
   }) {
     const {
       app: { CONST, service },
-    } = this;
+    } = this as ScanCtx;
 
     const traceResponse = await service.traceCreate.list({ addressArray, from, minTimestamp, maxTimestamp,
       minEpochNumber, maxEpochNumber, skip, limit });
