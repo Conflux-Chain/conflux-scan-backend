@@ -147,7 +147,10 @@ export class DailyStatQuery {
             const namesMapping = [{prop: 'storagePointProp', rate: 'storagePointRate'}, {prop: 'baseFeeShareProp', rate: 'baseFeeShareRate'}]
             namesMapping.forEach(names => {
                 if(params && params[names.prop] >= 0) {
-                    burntRate[names.rate] =  BigFixed(1).sub(BigFixed(params[names.prop]).div(BigFixed(params[names.prop]).add(BigFixed(10**18))))
+                    burntRate[names.rate] = BigFixed(params[names.prop]).div(BigFixed(params[names.prop]).add(BigFixed(10**18)))
+                    if(names.prop === 'baseFeeShareRate') {
+                        burntRate[names.rate] = BigFixed(1).sub(BigFixed(burntRate[names.rate]))
+                    }
                     lastParams = {}
                 } else{
                     if(lastParams[names.prop] === undefined) {
@@ -158,6 +161,9 @@ export class DailyStatQuery {
                     }
                     if(lastParams[names.prop] >= 0) {
                         burntRate[names.rate] = BigFixed(lastParams[names.prop]).div(BigFixed(lastParams[names.prop]).add(BigFixed(10**18)))
+                        if(names.prop === 'baseFeeShareRate') {
+                            burntRate[names.rate] = BigFixed(1).sub(BigFixed(burntRate[names.rate]))
+                        }
                     }
                 }
             })

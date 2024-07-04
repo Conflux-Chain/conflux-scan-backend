@@ -471,13 +471,13 @@ export function calCount(minTimestamp, maxTimestamp, intervalType) {
     let count;
     switch (intervalType) {
         case INTERVAL_TYPE.day:
-            count = elapsed / (1000 * 60 * 60 * 24);
+            count = elapsed / (60 * 60 * 24);
             break;
         case INTERVAL_TYPE.hour:
-            count = elapsed / (1000 * 60 * 60);
+            count = elapsed / (60 * 60);
             break;
         case INTERVAL_TYPE.min:
-            count = elapsed / (1000 * 60);
+            count = elapsed / 60;
             break;
         default:
             throw new Error(`intervalType:${intervalType} not supported`);
