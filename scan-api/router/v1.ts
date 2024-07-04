@@ -10,44 +10,16 @@ const {StatApp} = require("../../stat/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
 const moment = require("moment/moment");
 const {patchFlowError} = require("../../koaflow/lib/flow/JsonRPCFlow");
-const myFlow = require("./MyApiFlow");
 const {jsonrpc} = require("./jsonrpc");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
     title: 'conflux-scan',
-    description: `
-## ErrorCode:
-code | name | status
------|------|--------
-${lodash.filter(error, (E) => E.code).map((E) => `${E.code} | ${E.name} | ${E.status}`).join('\n')}
-`,
+    description: ``,
   },
-  servers: [
-    {
-      url: 'http://scan-dev-service.conflux-chain.org:8895/v1',
-      description: 'DEV-NET',
-    },
-    {
-      url: 'https://testnet.confluxscan.io/v1',
-      description: 'TEST-NET',
-    },
-    {
-      url: 'https://testnet-scantest.confluxnetwork.org/v1',
-      description: 'TEST-NET(staging)',
-    },
-    {
-      url: 'https://confluxscan.io/v1',
-      description: 'MAIN-NET',
-    },
-    {
-      url: 'https://scantest.confluxnetwork.org/v1',
-      description: 'MAIN-NET(staging)',
-    },
-  ],
+  servers: [],
 });
 
-OpenAPI.flow = myFlow;
 // ----------------------------------------------------------------------------
 const router = new Router();
 router.use(async (ctx, next) => {
