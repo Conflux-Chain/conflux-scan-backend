@@ -7,9 +7,9 @@ class MyApiFlow extends Flow {
             body = await next(this.input(arg));
 
             ctx.body = body; // to got ctx.status
-            const picker = this.output[ctx.status] || (v => v);
+            // const picker = this.output[ctx.status] || (v => v);
             // consider removing the picker (ie: exposing all fields)
-            body = picker(body);
+            // body = picker(body);
         } catch (e) {
             ctx.methodFlowError = e;
             console.log(`${__filename} catches unknown error \n url: ${ctx.originalUrl} \n`, e)
