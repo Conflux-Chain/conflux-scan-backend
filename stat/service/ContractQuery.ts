@@ -279,14 +279,14 @@ export class ContractQuery {
 
         // extra info
         if(verified?.beacon){
-            let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.beacon,
+            let verifiedInfo = await ContractVerify.findOne({where: {base32: toBase32(verified.beacon),
                     verifyResult: true}, raw: true});
-            verified.beaconVerified = verifiedInfo != null ? true : false;
+            verified.beaconVerified = verifiedInfo != null;
         }
         if(verified?.implementation){
-            let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.implementation,
+            let verifiedInfo = await ContractVerify.findOne({where: {base32: toBase32(verified.implementation),
                     verifyResult: true}, raw: true});
-            verified.implementationVerified = verifiedInfo != null ? true : false;
+            verified.implementationVerified = verifiedInfo != null;
         }
         if(verified?.libraries && verified?.libraries?.length > 2){
             const json = JSON.parse(verified.libraries);
@@ -295,7 +295,7 @@ export class ContractQuery {
             const verifyArray = await ContractVerify.findAll({ attributes: ['base32'],
                 where: {base32: {[Op.in]: libs.map(item => item.address)}, verifyResult: true}, raw: true});
             verifyArray?.forEach(item => verifyMap[item.base32] = true);
-            libs.forEach(item => ( item['exactMatch'] = verifyMap[item.address] ? true : false));
+            libs.forEach(item => ( item['exactMatch'] = !!verifyMap[item.address]));
             verified.libraries = libs;
         } else{
             verified && (verified.libraries = {});
