@@ -1,4 +1,5 @@
 import {ScanCtx} from "../service/index";
+import {toArray} from "../../stat/router/ParamChecker";
 
 const lodash = require('lodash');
 const {Router} = require('../../koaflow/src/router');
@@ -999,8 +1000,8 @@ router.get('/contract-and-token',
   async function (options) {
     const {app: {service: {contractRdb}}} = this as ScanCtx
     // address is a string, will be converted to an array in jsonrpc . be careful .
-    // return contractRdb.listBasic({ addressArray: options.address });
-    return jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray: options.address });
+    return contractRdb.listBasic({ addressArray: toArray(options.address) });
+    // return jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray: options.address });
   },
 );
 
@@ -1439,7 +1440,7 @@ router.get('/ens/reverse/match',
 
     async function (options) {
       const {app: { service: {accountQuery} },} = this as ScanCtx;
-      const accountBasic = await accountQuery.listPatchInfo(options.address);
+      const accountBasic = await accountQuery.listPatchInfo(toArray(options.address));
       // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
       const map = {};
       Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.ens));
@@ -1468,7 +1469,7 @@ router.get('/nametag',
 
     async function (options) {
       const {app: { service: {accountQuery} },} = this as ScanCtx;
-      const accountBasic = await accountQuery.listPatchInfo(options.address);
+      const accountBasic = await accountQuery.listPatchInfo(toArray(options.address));
       // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
       const map = {};
       Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.nameTag));
