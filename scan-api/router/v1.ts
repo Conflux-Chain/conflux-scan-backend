@@ -217,8 +217,10 @@ router.get('/frontend',
   jsonrpc.methodFlow('frontend'),
 
   async function (result) {
+    const {app: { service: {accountQuery} },} = this as ScanCtx;
     const addressArray = result.contracts.filter(item => item.address).map(item => item.address);
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const accountBasic = await accountQuery.listPatchInfo(addressArray)
     result.contracts.forEach((item) => {
       item.ensInfo = accountBasic.map[item.address]?.ens;
       item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
@@ -334,11 +336,13 @@ router.get('/block',
   jsonrpc.methodFlow('countAndListBlock'),
 
   async function (result) {
+    const {app: { service: {accountQuery} },} = this as ScanCtx;
     let addressArray = [];
     result.list.forEach((block) => {
       addressArray.push(block.miner.toString());
     });
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const accountBasic = await accountQuery.listPatchInfo(addressArray)
     result.list.forEach((block) => {
       block.minerContractInfo = accountBasic.map[block.miner]?.contract;
       block.minerTokenInfo = accountBasic.map[block.miner]?.token;
@@ -447,7 +451,9 @@ router.get('/transaction/:hash',
             addressArray.push(transfer.to.toString());
             if (transfer.address !== undefined) addressArray.push(transfer.address.toString());
           });
-          const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+          const {app: { service: {accountQuery} },} = this as ScanCtx;
+          const accountBasic = await accountQuery.listPatchInfo(addressArray);
+          // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
           const contractAddressArray = Object.keys(accountBasic.map);
           transaction.tokenTransferContractInfo = {};
           transaction.tokenTransferTokenInfo = {};
@@ -543,7 +549,9 @@ router.get('/transaction',
       addressArray.push(tx.from.toString());
       tx.to && (addressArray.push(tx.to.toString()));
     });
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const {app: { service: {accountQuery} },} = this as ScanCtx;
+    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.list.forEach((tx) => {
       tx.fromENSInfo = accountBasic.map[tx.from]?.ens;
       tx.fromNameTagInfo = accountBasic.map[tx.from]?.nameTag;
@@ -916,14 +924,16 @@ router.get('/contract/:address',
     addressArray.push(sponsorForGas);
     addressArray.push(sponsorForCollateral);
     addressArray = addressArray.filter((item) => item !== '');
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const {app: { service: {accountQuery} },} = this as ScanCtx;
+    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.sponsor.sponsorForGasContractInfo = accountBasic.map[sponsorForGas]?.contract;
     result.sponsor.sponsorForCollateralContractInfo = accountBasic.map[sponsorForCollateral]?.contract;
     result.sponsor.sponsorForGasENSInfo = accountBasic.map[sponsorForGas]?.ens;
     result.sponsor.sponsorForCollateralENSInfo = accountBasic.map[sponsorForCollateral]?.ens;
     result.sponsor.sponsorForGasNameTagInfo = accountBasic.map[sponsorForGas]?.nameTag;
     result.sponsor.sponsorForCollateralNameTagInfo = accountBasic.map[sponsorForCollateral]?.nameTag;
-
+    result.accountInfo = accountBasic;
     return result;
   },
 );
@@ -1168,7 +1178,9 @@ router.get('/token',
 
   async function (result) {
     const addressArray = result.list.map(token => token.address);
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const {app: { service: {accountQuery} },} = this as ScanCtx;
+    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.list.forEach((token) => {
       token.contractName = accountBasic.map[token.address]?.contract?.name;
       token.ensInfo = accountBasic.map[token.address]?.ens;
@@ -1339,7 +1351,9 @@ router.get('/transferTree/:transactionHash',
     result.addressArray.forEach((address) => {
       addressArray.push(address.toString());
     });
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const {app: { service: {accountQuery} },} = this as ScanCtx;
+    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     const contractAddressArray = Object.keys(accountBasic.map);
     result.contractMap = {};
     result.tokenMap = {};
@@ -1393,7 +1407,9 @@ router.get('/eventLog',
     result.list.forEach(item => item.address = type.simpleAddress(item.address));
 
     const addressArray = result.list.map(item => item.address);
-    const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
+    const {app: { service: {accountQuery} },} = this as ScanCtx;
+    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     result.list.forEach(item => {
       item.ensInfo = accountBasic.map[item.address]?.ens;
       item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
@@ -1420,7 +1436,9 @@ router.get('/ens/reverse/match',
     }),
 
     async function (options) {
-      const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
+      const {app: { service: {accountQuery} },} = this as ScanCtx;
+      const accountBasic = await accountQuery.listPatchInfo(options.address);
+      // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
       const map = {};
       Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.ens));
       return {
@@ -1447,7 +1465,9 @@ router.get('/nametag',
     }),
 
     async function (options) {
-      const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
+      const {app: { service: {accountQuery} },} = this as ScanCtx;
+      const accountBasic = await accountQuery.listPatchInfo(options.address);
+      // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray: options.address });
       const map = {};
       Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.nameTag));
       return {

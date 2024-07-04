@@ -131,8 +131,8 @@ export class Flow {
       body = await next(this.input(arg));
 
       ctx.body = body; // to got ctx.status
-      const picker = this.output[ctx.status] || (v => v);
-      body = picker(body);
+      // const picker = this.output[ctx.status] || (v => v);
+      // body = picker(body);
     } catch (e) {
       ctx.status = e.status || 500;
       const picker = this.output[ctx.status] || (() => undefined);
