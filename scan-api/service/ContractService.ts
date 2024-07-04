@@ -347,6 +347,7 @@ export class ContractService { // TODO: extends AccountService
       if (lodash.includes(fields, 'sourceCode')) {
         announceInfo.sourceCode = verified.sourceCode;
       }
+      verify['similarMatch'] = fmtAddr(verify['similarMatch'], StatApp.networkId)
     }
 
     let proxy = {};
