@@ -998,7 +998,9 @@ router.get('/contract-and-token',
 
   async function (options) {
     const {app: {service: {contractRdb}}} = this as ScanCtx
-    return contractRdb.listBasic({ addressArray: options.address });
+    // address is a string, will be converted to an array in jsonrpc . be careful .
+    // return contractRdb.listBasic({ addressArray: options.address });
+    return jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray: options.address });
   },
 );
 

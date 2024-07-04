@@ -414,11 +414,11 @@ jsonrpc.method('queryContract',
   async function ({ address, fields }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.contract.queryPlus({ address, fields });
     if (lodash.includes(fields, 'token')) {
-      result.token = await service.token.queryPlus({ address, fields: ['icon'] });
+      result.token = await service.token.queryPlus({ address });
     }
 
     return { ...result, isRegistered: result?.name !== undefined };
