@@ -1,5 +1,6 @@
 import {ScanCtx} from "../service/index";
 import {toArray} from "../../stat/router/ParamChecker";
+import {jsonrpc_countAndListTransfer} from "./jsonrpc";
 
 const lodash = require('lodash');
 const {Router} = require('../../koaflow/src/router');
@@ -1264,9 +1265,10 @@ router.get('/transfer',
   }),
 
   // jsonrpc.methodFlow('countAndListTransfer'),
-  async function (arg, next, end) {
-    return jsonrpc.countAndListTransfer.call(this, [arg], next, end)
-  },
+  // async function (arg, next, end) {
+  //   return jsonrpc_countAndListTransfer.call(this, [arg], next, end)
+  // },
+  argToArray, jsonrpc_countAndListTransfer,
 
   async function (result) {
     const {
@@ -1553,6 +1555,10 @@ router.get('/report/transfer',
     return Buffer.from(csvContent);
   },
 );
+
+function argToArray(arg: any) {
+  return [arg]
+}
 
 // ----------------------------------------------------------------------------
 openAPI.loadRouter(router);

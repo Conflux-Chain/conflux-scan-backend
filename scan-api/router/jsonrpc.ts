@@ -822,7 +822,7 @@ jsonrpc.method('countAndListEventLog',
 );
 
 // ------------------------------- Transfer -----------------------------------
-jsonrpc.countAndListTransfer = jsonrpc.method_('countAndListTransfer',
+export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfer',
   serializeByIP(),
   buildFlow((app) => parameter({
     transactionHash: { path: '0', type: type.hex64 },
