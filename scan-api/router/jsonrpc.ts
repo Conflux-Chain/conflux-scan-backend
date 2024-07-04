@@ -675,7 +675,7 @@ jsonrpc.method('queryToken',
   })),
 );
 
-jsonrpc.method('countAndListToken',
+export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   serializeByIP(),
   buildFlow((app) => parameter({
     transferType: { path: '0', type: type.string, enum: Object.values(CONST.TRANSFER_TYPE) },

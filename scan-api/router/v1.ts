@@ -1,6 +1,6 @@
 import {ScanCtx} from "../service/index";
 import {toArray} from "../../stat/router/ParamChecker";
-import {jsonrpc_countAndListTransfer} from "./jsonrpc";
+import {jsonrpc_countAndListToken, jsonrpc_countAndListTransfer} from "./jsonrpc";
 
 const lodash = require('lodash');
 const {Router} = require('../../koaflow/src/router');
@@ -1150,7 +1150,8 @@ router.get('/token',
     },
   }),
 
-  jsonrpc.methodFlow('countAndListToken'),
+  // jsonrpc.methodFlow('countAndListToken'),
+  argToArray, jsonrpc_countAndListToken,
 
   async function (result) {
     const addressArray = result.list.map(token => token.address);
