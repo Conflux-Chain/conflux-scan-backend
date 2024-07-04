@@ -26,9 +26,15 @@ export class StatDailyBurntFee extends TimerStat{
             limit: 1
         });
         if(!lastStat) {
-            const block = await cfx.getBlockByBlockNumber(CONST.VOTE_PARAMS.storagePointProp[StatApp.networkId])
-            if(!block) {
-                throw new Error(`CIP107 not Enabled.`)
+            let block
+            try {
+                block = await cfx.getBlockByEpochNumber(CONST.VOTE_PARAMS.storagePointProp[StatApp.networkId] - 1)
+            } catch (err) {
+                const msg = `${err}`
+                if (msg.includes('expected a numbers with less than largest epoch number.')) {
+                    throw new Error(`Epoch at which CIP107 enabled has not reached.`)
+                }
+                throw  err
             }
             const lastStat = {statTime: new Date(block.timestamp * 1000)}
             lastStat.statTime.setHours(lastStat.statTime.getHours() - 1, 0, 0, 0)
@@ -90,7 +96,7 @@ export class StatDailyBurntFee extends TimerStat{
         const collateralOld = lastStat?.burntStorageFeeTotal || 0
         const feeOld = lastStat?.burntGasFeeTotal || 0
 
-        const storageFeeTotal = BigFixed(collateralInfoNew.convertedStoragePoints).div(BigFixed(1024))
+        const storageFeeTotal = BigFixed(collateralInfoNew.convertedStoragePoints).div(BigFixed(1024)).mul(BigFixed(1e18))
         const gasFeeTotal = BigFixed(feeNew)
         const storageFee = storageFeeTotal.sub(BigFixed(collateralOld))
         const gasFee = gasFeeTotal.sub(BigFixed(feeOld))

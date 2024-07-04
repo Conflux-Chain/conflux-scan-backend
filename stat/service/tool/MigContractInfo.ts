@@ -1,4 +1,4 @@
-import {loadConfig, StatConfig} from "../../config/StatConfig";
+import {ConfluxOption, loadConfig, StatConfig} from "../../config/StatConfig";
 import {saveAbiInfo} from "../../model/ContractInfo";
 import {StatApp} from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
@@ -35,6 +35,7 @@ let debug
 let contractAddress
 let max
 let minEpoch, maxEpoch
+let url
 
 async function init() {
     const config = loadConfig('Prod')
@@ -586,6 +587,7 @@ import {FullBlockService} from "../FullBlockService";
 import {PosAccount, PosBlock} from "../../model/PoS";
 import {PosDailyStatMix} from "../pos/PosStat";
 import {TokenApproval} from "../../ApprovalSync";
+import {StatDailyBurntFee} from "../timerstat/StatDailyBurntFee";
 const licenseMap = {}
 Object.keys(CONST.LICENSE).forEach(k => {
     const v = CONST.LICENSE[k]
@@ -887,6 +889,13 @@ async function statValidator() {
     }
 }
 
+async function statDailyBurntFee(url: string) {
+    const opt = {url, keepAlive: true}
+    const fullStateRPC = await initCfxSdk(opt as ConfluxOption)
+    const statDailyBurntFee = new StatDailyBurntFee({cfx: fullStateRPC})
+    await statDailyBurntFee.schedule(3)
+}
+
 async function run() {
     await init();
     if(type === 1){
@@ -947,6 +956,9 @@ async function run() {
     if(type === 26) {
         await statValidator()
     }
+    if(type === 27) {
+        await statDailyBurntFee(url)
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
@@ -975,6 +987,10 @@ if(type === 21 || type === 22 || type === 23) {
 if(type === 25) {
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
+}
+
+if(type === 27) {
+    url = args[2]
 }
 
 run().then();
