@@ -219,5 +219,7 @@ export const CONST = {
 
   VOTE_PARAMS: {
     storagePointProp: {1029: 79016145, 1: 129134779}, // CIP-107
-  }
+  },
+
+  NETWORKS_CIP1559_ENABLED: [1029, 1030, 1, 71],
 };

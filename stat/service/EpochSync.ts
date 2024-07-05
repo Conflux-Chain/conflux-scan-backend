@@ -139,6 +139,7 @@ export class EpochSync extends SyncBase{
             KV.getString(CONTRACT_ADDRESS_METADATA, ''),
             KV.getNumber(KEY_BN_CIP1559_ENABLED),
         ])
+
         if(!announcement) {
             console.log(`Failed to load config for Announcement contract!`)
             process.exit(9)
@@ -147,13 +148,18 @@ export class EpochSync extends SyncBase{
             console.log(`Failed to load config for AddressMetadata contract!`)
             process.exit(9)
         }
-        if(!bnCIP1559Enabled) {
-            console.log(`Failed to load config for block number at which CIP1559 enabled!`)
-            process.exit(9)
-        }
         EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
-        StatApp.bnCIP1559Enabled = bnCIP1559Enabled
+
+        if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
+            StatApp.bnCIP1559Enabled = 0
+        } else{
+            if(!bnCIP1559Enabled) {
+                console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+                process.exit(9)
+            }
+            StatApp.bnCIP1559Enabled = bnCIP1559Enabled
+        }
     }
 
     private async loadLatestVoteParam() {

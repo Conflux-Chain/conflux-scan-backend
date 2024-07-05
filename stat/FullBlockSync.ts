@@ -14,11 +14,13 @@ import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {checkApiLogIpField} from "./monitor/ApiLog";
 import {StatApp} from "./StatApp";
+import {CONST} from "./service/common/constant";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
 
     let cfx = await initCfxSdk(config.blockSyncRpc);
+    StatApp.networkId = cfx.networkId
     PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
 
     let seq = createDB(config.databaseRW)
@@ -67,12 +69,16 @@ export async function run() {
 }
 
 async function mustInit() {
-    const bnCIP1559Enabled= await KV.getNumber(KEY_BN_CIP1559_ENABLED)
-    if(!bnCIP1559Enabled) {
-        console.log(`Failed to load config for block number at which CIP1559 enabled!`)
-        process.exit(9)
+    if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
+        StatApp.bnCIP1559Enabled = 0
+    } else{
+        const bnCIP1559Enabled= await KV.getNumber(KEY_BN_CIP1559_ENABLED)
+        if(!bnCIP1559Enabled) {
+            console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+            process.exit(9)
+        }
+        StatApp.bnCIP1559Enabled = bnCIP1559Enabled
     }
-    StatApp.bnCIP1559Enabled = bnCIP1559Enabled
 }
 
 async function syncFullBlock(fullBlockService:FullBlockService) {
