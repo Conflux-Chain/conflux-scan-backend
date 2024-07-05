@@ -20,12 +20,17 @@ export abstract class SyncBase{
     protected app: StatApp;
     private forwardQueue: PreloadMap;
     private backwardQueue: PreloadMap;
+    protected debug: boolean
 
     private metric0 = {
         startEpoch: 0,
         currentEpoch: 0,
     };
     private m0(step, startTime){
+        if(!this.debug) {
+            return
+        }
+
         const runTimes = this.metric0[step];
         const elapsedTime = this.metric0[`${step}_ms`];
         const elapsedDelta = Date.now() - startTime;
@@ -123,14 +128,14 @@ export abstract class SyncBase{
             if(data.syncCode === SyncCode.RETRY) {
                 console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
                 s = Date.now();
-                await sleep(10);
+                await sleep(10_000);
                 s = this.m0('Sleep-1', s)
                 return epochNumber;
             }
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
             s = Date.now();
-            await sleep(10);
+            await sleep(10_000);
             s = this.m0('Sleep-2', s)
             return epochNumber;
         }
@@ -141,7 +146,7 @@ export abstract class SyncBase{
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
             s = Date.now();
-            await sleep(10);
+            await sleep(10_000);
             s = this.m0('Sleep-3', s)
             return epochNumber;
         }
@@ -174,12 +179,12 @@ export abstract class SyncBase{
             data = await this.getDataBackwardWithPreload(epochNumber);
             if(data.syncCode === SyncCode.RETRY) {
                 console.log(`[epoch=${epochNumber}]sync_backward fetch,retry:${data.message}`);
-                await sleep(10);
+                await sleep(10_000);
                 return epochNumber;
             }
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_backward fetch,error:`, e);
-            await sleep(10);
+            await sleep(10_000);
             return epochNumber;
         }
 
@@ -187,7 +192,7 @@ export abstract class SyncBase{
             syncCode = await this.saveBackward(epochNumber, data);
         } catch (e) {
             console.error(`[epoch=${epochNumber}]sync_backward sync,error:`, e);
-            await sleep(10);
+            await sleep(10_000);
             return epochNumber;
         }
 
@@ -256,12 +261,12 @@ export abstract class SyncBase{
             cfx.getBlocksByEpochNumber(epochNumber)
                 /*.catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];})*/,
             cfx.getEpochReceipts(epochNumber)
-                /*.then(res=>{ if (epochNumber === 0) res = []; return res;})
-                .catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];})*/,
+                .then(res=>{ if (epochNumber === 0) res = []; return res;})
+                /*.catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];})*/,
         ]);
 
         if (latestState < epochNumber) {
-            await sleep(10);
+            await sleep(1000);
             throw new Error(`[epoch=${epochNumber}]not ready, latestState=${latestState}`);
         }
         if (blockHashArray.length === 0) {

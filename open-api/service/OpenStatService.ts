@@ -14,6 +14,7 @@ import {paginateCoreStat} from "../../stat/router/ParamChecker";
 import {polishContract} from "./OpenContractService";
 import {fixApprovalData} from "../../stat/service/tool/ApprovalTool";
 import {BlockAndMinerSync} from "../../stat/service/BlockAndMinerSync";
+import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
 
 export async function listMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -30,7 +31,7 @@ export async function listNFTAssetStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTAssetStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTAssetStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -40,7 +41,7 @@ export async function listNFTContractStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTContractStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTContractStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -50,7 +51,7 @@ export async function listNFTTransferStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTTransferStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTTransferStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -59,7 +60,7 @@ export async function listNFTHolderStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit} = parseStatParam(ctx);
 
-    const page = await getApiService().dailyNFTStatQuery.listNFTHolderStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listNFTHolderStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -81,7 +82,7 @@ export async function listTpsStat(ctx) {
 
 export async function listContractStat(ctx) {
     const {skip, limit, minTimestamp, maxTimestamp, sort} = parseStatParam(ctx);
-    const page = await getApiService().contractCreateQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
+    const page = await getApiService().contractStatQuery.listDeployedContractStat({minTimestamp, maxTimestamp,
         sort, skip, limit});
     setBody(ctx, page)
 }
@@ -309,7 +310,7 @@ export async function listPowRewardStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
 
-    const page = await getApiService().dailyRewardStatQuery.listPowRewardStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listPowRewardStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
 }
@@ -319,7 +320,41 @@ export async function listPosRewardStat(ctx) {
 
     const {minTimestamp, maxTimestamp, intervalType, sort, skip, limit, } = parseStatParam(ctx);
 
-    const page = await getApiService().dailyRewardStatQuery.listPosRewardStat({minTimestamp,  maxTimestamp, intervalType,
+    const page = await getApiService().dailyStatQuery.listPosRewardStat({minTimestamp,  maxTimestamp, intervalType,
         sort, skip, limit})
     setBody(ctx, page)
+}
+
+export async function listBurntFeeStat(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day']);
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit, } = parseStatParam(ctx);
+
+    const page = await getApiService().dailyStatQuery.listBurntFeeStat({minTimestamp,  maxTimestamp,
+        sort, skip, limit})
+    setBody(ctx, page)
+}
+
+export async function listBurntRateStat(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'minBlockHeight', 'maxBlockHeight')
+
+    const {minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
+    const {minBlockHeight: minEpochNumber, maxBlockHeight: maxEpochNumber} = ctx.request.query;
+
+    const page = await getApiService().dailyStatQuery.listBurntRateStat({minTimestamp, maxTimestamp,
+        minEpochNumber, maxEpochNumber, sort, skip, limit})
+    setBody(ctx, page)
+}
+
+export function listCIP1559Stat(statType: CIP1559StatType) {
+    return async (ctx) => {
+        mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber', 'maxEpochNumber')
+
+        const {minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
+        const {minEpochNumber, maxEpochNumber} = ctx.request.query;
+
+        const page = await getApiService().dailyBlockDataStatQuery.listCIP1559Stat({
+            statType, minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber, sort, skip, limit})
+        setBody(ctx, page)
+    }
 }

@@ -211,4 +211,15 @@ export const CONST = {
     ADMIN_DESTROYED: {status: 2, message: 'admin destroyed'},
     SELF_DESTRUCTED: {status: 3, message: 'self destructed'},
   },
+
+  GAS_LIMIT_PROPORTION: {
+    core: 0.9,
+    evm: 0.5,
+  },
+
+  VOTE_PARAMS: {
+    storagePointProp: {1029: 79016145, 1: 129134779}, // CIP-107
+  },
+
+  NETWORKS_CIP1559_ENABLED: [1029, 1030, 1, 71],
 };

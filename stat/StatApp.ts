@@ -14,20 +14,23 @@ import {DailyTxnQuery} from "./service/DailyTxnQuery";
 import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenQuery} from "./service/TokenQuery";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
-import {DailyContractCreateQuery} from "./service/DailyContractCreateQuery";
 import {ReportService} from "./service/ReportService";
 import {QuoteSync} from "./service/QuoteSync";
 import {IPFSGatewaySync} from "./service/IPFSGatewaySync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
 import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
-import {DailyContractRegisterQuery} from "./service/DailyContractRegisterQuery";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
-import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KEY_FULL_STATE_RPC, KV} from "./model/KV";
+import {
+    IS_EVM2,
+    KEY_FASTEST_IPFS_GATEWAY,
+    KEY_FULL_STATE_RPC,
+    KV
+} from "./model/KV";
 import {PosQuery} from "./service/pos/PosQuery";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {Desensitizer} from "./service/Desensitizer";
@@ -55,14 +58,12 @@ export class StatApp{
     public cfxHolderQuery: CfxHolderQuery;
     public tokenQuery: TokenQuery;
     public traceCreateQuery: BlockTraceCreateQuery;
-    public contractCreateQuery: DailyContractCreateQuery;
     public siteVerify: ReportService;
     public quoteSync: QuoteSync;
     public ipfsGatewaySync: IPFSGatewaySync;
     public homeDashboardService: HomeDashboardService;
     public contractQuery: ContractQuery;
     public contractStatQuery: DailyContractStatQuery;
-    public contractRegisterQuery: DailyContractRegisterQuery;
     public blockDataStatQuery: DailyBlockDataStatQuery;
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
@@ -77,6 +78,7 @@ export class StatApp{
     public static networkId = 1029
     public static readonly = false
     public static isEVM = false;
+    public static bnCIP1559Enabled // Block number at which CIP1559 is enabled.
     constructor(config: StatConfig) {
         this.config = config;
     }
@@ -120,14 +122,12 @@ export class StatApp{
         this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
-        this.contractCreateQuery = new DailyContractCreateQuery();
         this.siteVerify = new ReportService(this);
         this.quoteSync = new QuoteSync(this);
         this.ipfsGatewaySync = new IPFSGatewaySync(this);
         this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
         this.contractStatQuery = new DailyContractStatQuery();
-        this.contractRegisterQuery = new DailyContractRegisterQuery();
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);

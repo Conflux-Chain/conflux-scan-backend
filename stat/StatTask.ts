@@ -31,20 +31,20 @@ import {CensorService} from "./service/censor/CensorService";
 import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
+import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
 
 async function main() {
     redirectLog()
     regExitHook()
-
     const config = await init()
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    const traceCreateQuery = new BlockTraceCreateQuery({});
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
     //
+    const traceCreateQuery = new BlockTraceCreateQuery({});
     if(config.censorApiKey && config.censorSecretKey) {
         const censorService = new CensorService({config, cfx, traceCreateQuery},
             {tx: 10, token: 10, nft: 10});
@@ -87,6 +87,11 @@ async function main() {
     //
     const statDailyPowReward = new StatDailyPowReward({cfx});
     await statDailyPowReward.schedule(1000 * 1);
+    //
+    if(!StatApp.isEVM) {
+        const statDailyBurntFee = new StatDailyBurntFee({cfx});
+        await statDailyBurntFee.schedule(1000 * 60);
+    }
     //
     setInterval(countTable, 60_000)
     //

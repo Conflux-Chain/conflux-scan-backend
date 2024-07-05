@@ -1,11 +1,9 @@
 import {Op, QueryTypes} from 'sequelize'
-import {DailyContractRegister} from "../../model/DailyContractRegister";
+import {DailyContractRegister} from "../../model/DailyContractStat";
 import {Contract} from "../../model/Contract";
-import {DailyTransaction} from "../../model/DailyTransaction";
 import {Epoch} from "../../model/Epoch";
 import {fmtDtUTC} from "../../model/Utils";
 import {IntervalType, TimerStat} from "./TimerStat";
-import {DailyContractCreate} from "../../model/DailyContractCreate";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');

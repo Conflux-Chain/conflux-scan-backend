@@ -1,7 +1,7 @@
 import {Op} from 'sequelize'
 import {NFTBalance} from "../../model/Balance";
 import {IntervalType, TimerStat} from "./TimerStat";
-import {DailyNFTHolder} from "../../model/DailyNFTHolder";
+import {DailyNFTHolder} from "../../model/DailyNFTStat";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {makeIdV} from "../../model/HexMap";

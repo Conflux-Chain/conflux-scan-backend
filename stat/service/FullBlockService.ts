@@ -3,7 +3,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {
     AddressTransactionIndex,
     BLOCK_PAGE_MARK_SIZE,
-    BlockRowMark,
+    BlockRowMark, buildBlockExt,
     countNonMarkBlockRows,
     countNonMarkTxRows, FailedTx,
     FullBlock, FullBlockExt,
@@ -19,6 +19,7 @@ import {Hex40Map, makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {Transaction,QueryTypes,UniqueConstraintError, Op} from "sequelize"
 import {
+    KEY_BN_CIP1559_ENABLED,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KEY_FILL_BLOCK_REWARD_EPOCH,
     KEY_FULL_BLOCK_COUNT,
@@ -32,6 +33,7 @@ import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
+import {CONST} from "./common/constant";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -244,11 +246,17 @@ export class FullBlockService {
             }
             const blockList2 = await batchFetchBlock(this.cfx2, hashes, true, true,
                 { check: true, epochNumber: minEpochNumber })
+            let cip1559Enabled: boolean
             blockList2.forEach(blk => {
                 if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
                     blocksEvm++
                 }
+                cip1559Enabled = cip1559Enabled || blk.blockNumber === StatApp.bnCIP1559Enabled
             })
+            if(cip1559Enabled) { // convert blockNumber to epochNumber at which cip1559 is enabled in evm space
+                await KV.upsert({key: KEY_BN_CIP1559_ENABLED, value: `${minEpochNumber}`})
+                StatApp.bnCIP1559Enabled = minEpochNumber
+            }
         }
         // fill tx receipts to block-> tx
         if (blockList.length !== receipts.length && minEpochNumber !== 0) {
@@ -381,7 +389,7 @@ export class FullBlockService {
                     AddressTransactionIndex.destroy({
                         where:{epoch: popEpochCondition, addressId: [...addresses],},
                         transaction: dbTx}),
-                    StatApp.isEVM ? FullBlockExt.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}) : undefined,
+                    FullBlockExt.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
                     this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
@@ -428,9 +436,13 @@ export class FullBlockService {
         const executedTxArr = []
         const txByAddressArr = []
         const failedTxArr = []
+        const blockExtArr = []
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let sumGasLimit = BigInt(0)
+            let sumBurntGasFee = BigInt(0)
+            let sumTip = BigInt(0)
+            let txsInType = [0, 0, 0]
             let pos = 0
             for (const txInfo of block.transactions) {
                 // status has value, fail (!0) or success (0) or genesis epoch.
@@ -471,6 +483,9 @@ export class FullBlockService {
                     }
                     sumGasPrice += txInfo.gasPrice
                     sumGasLimit += txInfo.gasLimit
+                    sumBurntGasFee += BigInt(txInfo.receipt?.burntGasFee || 0)
+                    sumTip += BigInt(txInfo?.maxPriorityFeePerGas || 0)
+                    txsInType[Number(txInfo?.type || 0)] ++
                 }
                 if (st == 1) { // has value and is not zero: failed.
                     failedTxArr.push(FullBlockService.syncFailedTx(minEpochNumber, txInfo))
@@ -478,8 +493,18 @@ export class FullBlockService {
             }
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
-            StatApp.isEVM && (block.gasLimit = preLoadResult.blocksEvm * 15_000_000)
+            const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
+                (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+            const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
+            block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
+
+            block.burntGasFee = sumBurntGasFee
+            block.baseFee = BigInt(block?.baseFeePerGas || 0)
+            pos && (block.avgTip = sumTip / BigInt(pos))
+            block.txsInType = txsInType
+            const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, block)
+            blockExtArr.push(blockExt)
         }
         const failedBeans = failedTxArr
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
@@ -490,7 +515,7 @@ export class FullBlockService {
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
-                StatApp.isEVM ? FullBlockExt.create({epoch: minEpochNumber, coreBlock: preLoadResult.blocksEvm === 0}, {transaction: dbTx}) : undefined,
+                FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),

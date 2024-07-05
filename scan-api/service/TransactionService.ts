@@ -1,4 +1,5 @@
 import {ScanApp} from "./index";
+import {StatApp} from "../../stat/StatApp";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -15,6 +16,7 @@ const RECEIPT_FIELDS = [
   'storageCoveredBySponsor',
   'storageReleased',
   'txExecErrorMsg',
+  'burntGasFee',
 ];
 
 export class TransactionService {
@@ -25,7 +27,7 @@ export class TransactionService {
 
   async query({ hash, fields, aggregate } = {} as any) {
     const {
-      app: { service },
+      app: { CONST, service },
     } = this;
 
     if (!hash) {
@@ -58,10 +60,18 @@ export class TransactionService {
       txInputData = `0x${utf8ToHex(mosaicData).data}`;
     }
 
+    const block = await service.conflux.getBlockByEpochNumber(transaction.epochNumber, false)
+    const baseFeePerGas = block?.baseFeePerGas
+
+    let typeDesc = CONST.TX_EIP_TYPE[transaction.type]
+    !StatApp.isEVM && (typeDesc = typeDesc?.replace('EIP', 'CIP'))
+
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
     return lodash.defaults({ aggregate, data: txInputData }, transaction, receipt, {
       risk,
+      typeDesc,
+      baseFeePerGas,
       timestamp: epoch.timestamp,
       syncTimestamp: epoch.timestamp,
     });

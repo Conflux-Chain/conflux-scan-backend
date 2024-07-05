@@ -1,7 +1,7 @@
 import {Op, QueryTypes} from 'sequelize'
 import {fmtDtUTC} from "../../model/Utils";
 import {IntervalType, TimerStat} from "./TimerStat";
-import {DailyPowRewardStat} from "../../model/DailyPowReward";
+import {DailyPowRewardStat} from "../../model/DailyReward";
 import {Drip} from "js-conflux-sdk";
 import {FullBlock} from "../../model/FullBlock";
 

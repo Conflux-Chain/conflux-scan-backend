@@ -1,4 +1,4 @@
-import {Epoch} from "../model/Epoch";
+import {Epoch, VoteParams} from "../model/Epoch";
 import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
@@ -7,7 +7,7 @@ import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Op, QueryTypes, Sequelize, Transaction} from "sequelize";
-import {batchBlockDetail} from "./common/utils";
+import {batchBlockDetail, initCfxSdk} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
@@ -25,9 +25,13 @@ import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts} from "../model/AddrNft";
-import {CONTRACT_ADDRESS_METADATA, CONTRACT_ANNOUNCEMENT, KV} from "../model/KV";
+import {
+    CONTRACT_ADDRESS_METADATA,
+    CONTRACT_ANNOUNCEMENT,
+    KEY_BN_CIP1559_ENABLED,
+    KV
+} from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
-import {hexAddress} from "js-conflux-sdk/dist/types/util/format";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -61,7 +65,6 @@ export class EpochSync extends SyncBase{
     public static SYNC_TRANSFERRED_NFT = true;
     public static SYNC_CENSOR_ITEM = true;
     public static SYNC_NAME_TAG = true;
-
     public static SYNC_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT = true;
@@ -70,19 +73,23 @@ export class EpochSync extends SyncBase{
     public static CONTRACT_ADDRESS_METADATA // Notice: Adjust config when proxy contract is changed
     public static erc721Interface = [0x80, 0xac, 0x58, 0xcd];
     public static erc1155Interface = [0xd9, 0xb6, 0x7a, 0x26];
-
     public static NAME_TAG_SPLIT = "__,__";
 
     protected app;
     private statOnRealtime: StatOnRealtime
     private NAME_TYPE_MAP;
     private readonly statSwitch
+    private latestVoteParams: VoteParams
 
     public metric = {
         startEpoch: 0,
         currentEpoch: 0,
     };
     private m(step, startTime){
+        if(!this.debug) {
+            return
+        }
+
         const runTimes = this.metric[step];
         const elapsedTime = this.metric[`${step}_ms`];
         const elapsedDelta = Date.now() - startTime;
@@ -121,21 +128,42 @@ export class EpochSync extends SyncBase{
         this.statSwitch = true;
     }
 
-    public async checkContractConfig() {
-        const [announcement, addressMetadata] = await Promise.all([
+    public async mustInit() {
+        await this.checkConfig()
+        await this.loadLatestVoteParam()
+    }
+
+    private async checkConfig() {
+        const [announcement, addressMetadata, bnCIP1559Enabled] = await Promise.all([
             KV.getString(CONTRACT_ANNOUNCEMENT, ''),
-            KV.getString(CONTRACT_ADDRESS_METADATA, '')
+            KV.getString(CONTRACT_ADDRESS_METADATA, ''),
+            KV.getNumber(KEY_BN_CIP1559_ENABLED),
         ])
+
         if(!announcement) {
-            console.log(`contract announcement not set`)
+            console.log(`Failed to load config for Announcement contract!`)
             process.exit(9)
         }
         if(!addressMetadata) {
-            console.log(`contract addressMetadata not set`)
+            console.log(`Failed to load config for AddressMetadata contract!`)
             process.exit(9)
         }
         EpochSync.CONTRACT_ANNOUNCEMENT = format.hexAddress(announcement)
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
+
+        if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
+            StatApp.bnCIP1559Enabled = 0
+        } else{
+            if(!bnCIP1559Enabled) {
+                console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+                process.exit(9)
+            }
+            StatApp.bnCIP1559Enabled = bnCIP1559Enabled
+        }
+    }
+
+    private async loadLatestVoteParam() {
+        this.latestVoteParams = await VoteParams.findOne({order: [['epoch', 'desc']]})
     }
 
     //----------------- implementation method from SyncBase -----------------
@@ -212,6 +240,7 @@ export class EpochSync extends SyncBase{
 
             const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
             this.m('Censor', s)
+            const voteParams = StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber)
 
             return {
                 syncCode: SyncCode.SUCCESS,
@@ -219,7 +248,7 @@ export class EpochSync extends SyncBase{
                 pivotHash: epoch.pivotHash,
                 modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
                     traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray,
-                    nftTransferArray, addrNftTransferArray, transactionArray, bytes32NameTagInfo
+                    nftTransferArray, addrNftTransferArray, transactionArray, bytes32NameTagInfo, voteParams
                 },
             };
         }catch(error) {
@@ -347,10 +376,18 @@ export class EpochSync extends SyncBase{
         }
         s = this.m('ESpaceHex-c', s)
 
-        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray)
+        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
         veryS = this.m('Save-overall', veryS)
         this.metric.currentEpoch = epochNumber
         s = this.m('RealtimeStat-c', s)
+
+        if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
+            const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams
+            if ((!this.latestVoteParams && (s >= 0 || b >= 0)) ||
+                (this.latestVoteParams && (this.latestVoteParams.storagePointProp != s || this.latestVoteParams.baseFeeShareProp != b))) {
+                await VoteParams.create({epoch: epochNumber, storagePointProp: s, baseFeeShareProp: b, timestamp: modelData.epoch.timestamp})
+            }
+        }
 
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
@@ -369,10 +406,11 @@ export class EpochSync extends SyncBase{
             const addrNftDel = await this.deleteAddressNft(epochNumber, modelData, dbTx);
             const nftTransferDel = await NftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const addrNftTransferDel = await AddressNftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+            const voteParamsDel = await VoteParams.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             console.log(`epoch-sync.delete epoch ${epochNumber} epochDel ${epochDel} minerBlockDel ${minerBlockDel}
                 traceCreateDel ${traceCreateDel} addrTransferDel ${addrTransferDel} contractDestroyDel ${contractDestroyDel}
                 censorItemDel ${censorItemDel} addrNftDel ${addrNftDel} nftTransferDel ${nftTransferDel} 
-                addrNftTransferDel ${addrNftTransferDel}`);
+                addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
         });
 
         this.realtimeStat(modelData.epoch, 'pop')
@@ -1395,8 +1433,8 @@ export class EpochSync extends SyncBase{
         await this.statOnRealtime.schedule()
     }
 
-    private realtimeStat(epoch, action, txArray?) {
-        this.statOnRealtime.setGasInfo(epoch, action, txArray)
+    private realtimeStat(epoch, action, txArray?, pivotBlock?) {
+        this.statOnRealtime.setGasInfo(epoch, action, txArray, pivotBlock)
     }
 
     // ------------------------------ token stat --------------------------------
@@ -1469,5 +1507,22 @@ export class EpochSync extends SyncBase{
             parentHash: pivotBlock.parentHash.substr(2),
             timestamp: new Date(timestamp * 1000),
         };
+    }
+
+    // ------------------------------ vote params -------------------------------
+    private async getVoteParams(epochNumber) {
+        const {
+            app: { cfx: sdk },
+        } = this;
+
+        try{
+            return sdk.cfx.getParamsFromVote(epochNumber)
+        }catch (err){
+            const msg = `${err}`
+            if (msg.includes('Invalid parameters: epoch_num')) {
+                throw new Error(`[epoch=${epochNumber}]vote params not ready`);
+            }
+            throw err
+        }
     }
 }

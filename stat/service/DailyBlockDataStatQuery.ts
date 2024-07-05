@@ -1,9 +1,13 @@
 import {QueryTypes, Op, fn, col} from "sequelize";
-import {FullBlock, FullTransaction} from "../model/FullBlock";
+import {FullBlock, FullBlockExt, FullTransaction, loadMaxBlockEpoch, loadMinBlockEpoch} from "../model/FullBlock";
 import {fmtDtUTC} from "../model/Utils";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import { getTimeByInterval } from "./tool/DateTool";
 import {calCount} from "./common/utils";
+import {LIMIT_MAX_STAT} from "../router/ParamChecker";
+import {getEpochRange} from "../model/Epoch";
+import {epoch} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {StatApp} from "../StatApp";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -147,4 +151,109 @@ export class DailyBlockDataStatQuery {
         });
         return partialMap;
     }
+
+    async listCIP1559Stat({statType, skip, limit, sort, minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber}) {
+        const pivot = statType === CIP1559StatType.BASE_FEE
+        const result = await this.listBlocks(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber, sort, skip, limit, pivot)
+        result.list = result.list.map(block => {
+            const stat = StatApp.isEVM ? {blockNumber: block.epoch} :
+                {epochNumber: block.epoch, blockIndex: block.position}
+            lodash.assign(stat, {timestamp: block.createdAt.getTime() / 1000})
+            switch (statType) {
+                case CIP1559StatType.BASE_FEE:
+                    lodash.assign(stat, {baseFee: block?.extra?.baseFee || 0})
+                    break
+                case CIP1559StatType.PRIORITY_FEE:
+                    lodash.assign(stat, {avgPriorityFee: block?.extra?.avgTip || 0})
+                    break
+                case CIP1559StatType.GAS_USED:
+                    lodash.assign(stat, {gasUsed: block?.gasUsed || 0})
+                    break
+                case CIP1559StatType.TXS_BY_TYPE:
+                    let txsInType = {legacy: 0, cip2930: 0, cip1559: 0}
+                    if(block?.extra?.txsInType) {
+                        const typedTxsArr = block?.extra?.txsInType
+                        txsInType = {legacy: typedTxsArr[0], cip2930: typedTxsArr[1], cip1559: typedTxsArr[2]}
+                    }
+                    lodash.assign(stat, {txsInType})
+                    break
+                default:
+                    throw new Error(`The stat type ${statType} not supported!`);
+            }
+            return stat
+        })
+        return result
+    }
+
+    private async listBlocks(minTimestamp: number, maxTimestamp: number, minEpochNumber: number,
+        maxEpochNumber: number, sort: string, skip: number, limit: number, pivot: boolean = undefined) {
+        const {app: {cfx}} = this
+        const queryOptions: any = {
+            attributes: ['epoch', 'position', 'createdAt', 'gasUsed'],
+            offset: skip,
+            limit,
+            order: [['epoch', sort], ['position', sort]],
+            raw: true,
+            logging: console.log
+        }
+
+        const conditionArray = []
+        if (minTimestamp !== undefined) {
+            conditionArray.push({createdAt: {[Op.gte]: new Date(minTimestamp * 1000)}})
+        }
+        if (maxTimestamp !== undefined) {
+            conditionArray.push({createdAt: {[Op.lte]: new Date(maxTimestamp * 1000)}})
+        }
+        if(minEpochNumber !== undefined) {
+            conditionArray.push({epoch: { [Op.gte]: minEpochNumber}})
+        }
+        if(maxEpochNumber !== undefined) {
+            conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}})
+        }
+        if(pivot) {
+            conditionArray.push({pivot: true})
+        }
+        if (conditionArray.length === 1) {
+            queryOptions.where = conditionArray[0]
+        }
+        if (conditionArray.length > 1) {
+            queryOptions.where = {[Op.and]: conditionArray}
+        }
+
+        const epochRange = await getEpochRange(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber)
+        const [minBlkEpoch, maxBlkEpoch] = await Promise.all([loadMinBlockEpoch(), loadMaxBlockEpoch()])
+        const epochBegin = epochRange?.epochBegin ?? minBlkEpoch
+        const epochEnd = epochRange?.epochEnd ?? maxBlkEpoch
+        let total
+        if(pivot) {
+            total = epochEnd - epochBegin + 1
+        } else{
+            const [minBlk, maxBlk] = await Promise.all([cfx.getBlockByEpochNumber(epochBegin),cfx.getBlockByEpochNumber(epochEnd)])
+            total = maxBlk.blockNumber - minBlk.blockNumber + 1
+        }
+
+        const list  = await FullBlock.findAll(queryOptions) as any[]
+        if(!list?.length) {
+            return {total, list: []}
+        }
+
+        const [epochFirst, epochLast] = [list[0].epoch, list[list.length - 1].epoch]
+        const [minEpoch, maxEpoch] = epochFirst <= epochLast ? [epochFirst, epochLast] : [epochLast, epochFirst]
+        const blkExts = await FullBlockExt.findAll({where: {[Op.and]: [
+                    {epoch: { [Op.gte]: minEpoch}}, {epoch: { [Op.lte]: maxEpoch}}]}})
+        const blkExtMap = lodash.keyBy(blkExts, blk => `${blk.epoch}-${blk.position}`)
+        list.forEach(blk => {
+            if(blkExtMap && blkExtMap[`${blk.epoch}-${blk.position}`]?.extra) {
+                blk['extra'] = JSON.parse(blkExtMap[`${blk.epoch}-${blk.position}`]?.extra)
+            }
+        });
+        return {total, list}
+    }
+}
+
+export enum CIP1559StatType {
+    BASE_FEE,
+    PRIORITY_FEE,
+    GAS_USED,
+    TXS_BY_TYPE
 }

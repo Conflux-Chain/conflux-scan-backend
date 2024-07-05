@@ -464,20 +464,20 @@ export function emptyField(data) {
 
 export const INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day', month: 'month'};
 export function calCount(minTimestamp, maxTimestamp, intervalType) {
-    const start = minTimestamp !== undefined ? minTimestamp : (new Date('2020-10-28 16:00:00')).getTime();
-    const end = maxTimestamp !== undefined ? maxTimestamp : Date.now();
+    const start = minTimestamp !== undefined ? minTimestamp : ((new Date('2020-10-28 16:00:00')).getTime() / 1000);
+    const end = maxTimestamp !== undefined ? maxTimestamp : (Date.now() / 1000);
     const elapsed = end - start;
 
     let count;
     switch (intervalType) {
         case INTERVAL_TYPE.day:
-            count = elapsed / (1000 * 60 * 60 * 24);
+            count = elapsed / (60 * 60 * 24);
             break;
         case INTERVAL_TYPE.hour:
-            count = elapsed / (1000 * 60 * 60);
+            count = elapsed / (60 * 60);
             break;
         case INTERVAL_TYPE.min:
-            count = elapsed / (1000 * 60);
+            count = elapsed / 60;
             break;
         default:
             throw new Error(`intervalType:${intervalType} not supported`);

@@ -581,7 +581,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
-        const page = await statApp.contractCreateQuery.listContractCreateDaily(skip, limit);
+        const page = await statApp.contractStatQuery.listContractCreateDaily(skip, limit);
         ctx.body = page;
     });
 
@@ -590,7 +590,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
-        const page = await statApp.contractCreateQuery.listContractCreateDaily(skip, limit);
+        const page = await statApp.contractStatQuery.listContractCreateDaily(skip, limit);
         let yesterdayTotal = 0;
         if(page?.rows){
             const len = page.rows.length;
@@ -614,7 +614,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
-        const page = await statApp.contractCreateQuery.listContractCreateDaily(skip, limit);
+        const page = await statApp.contractStatQuery.listContractCreateDaily(skip, limit);
 
         ctx.body = page;
     });
@@ -623,7 +623,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
-        const page = await statApp.contractRegisterQuery.listContractRegisterDaily(skip, limit);
+        const page = await statApp.contractStatQuery.listContractRegisterDaily(skip, limit);
 
         let totalContract = 0;
         if(page?.rows){

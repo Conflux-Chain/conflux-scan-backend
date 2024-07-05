@@ -8,9 +8,8 @@ import {Op, QueryTypes} from "sequelize";
 import {Epoch} from "../../model/Epoch";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {sleep} from "./ProcessTool";
-import {DailyNFTStat} from "../../model/DailyNFTStat";
+import {DailyNFTHolder, DailyNFTStat} from "../../model/DailyNFTStat";
 import {fmtDtUTC} from "../../model/Utils";
-import {DailyNFTHolder} from "../../model/DailyNFTHolder";
 const fs = require('fs');
 
 let cfx:Conflux;

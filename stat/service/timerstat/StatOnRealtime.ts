@@ -4,6 +4,7 @@ import {Op, QueryTypes} from "sequelize";
 import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {StatApp} from "../../StatApp";
 
 const lodash = require('lodash')
 
@@ -11,6 +12,7 @@ export class StatOnRealtime {
     private STAT_EPOCHS_AGAINST_LATEST_STATE = 60
     private GAS_USED_COUNTER: any = {}
     private GAS_PRICE_COUNTER: any = {}
+    private CIP1559_ENABLED: boolean = false
 
     constructor() {}
 
@@ -41,7 +43,8 @@ export class StatOnRealtime {
         epoch: 8888,
         timestamp: 123456,
         blockHeight: 222222
-        gasPrice: [111, 222],
+        gasPrice: [111, 222], // pre cip-1559
+        gasPrice: [{base: 111, priority: 3},{base: 100, priority: 5},{base: 150, priority: 6}], // post cip-1559
     }
     2. gas used
     {
@@ -50,11 +53,16 @@ export class StatOnRealtime {
         gasLimit: "90819949",
     }
     */
-    public setGasInfo(epochInfo, action, txArray?) {
+    public setGasInfo(epochInfo, action, txArray?, pivotBlock?) {
         const {epoch, blockHeight, timestamp} = epochInfo
         if(action === 'pop'){
             delete this.GAS_PRICE_COUNTER[epoch]
             delete this.GAS_USED_COUNTER[epoch]
+            return
+        }
+
+        if(!this.CIP1559_ENABLED) {
+            this.CIP1559_ENABLED = pivotBlock.blockNumber >= StatApp.bnCIP1559Enabled
         }
 
         if(!txArray?.length){
@@ -64,7 +72,14 @@ export class StatOnRealtime {
         const gasPrices = new Set()
         let gasLimit = BigInt(0)
         for (const tx of txArray) {
-            gasPrices.add(tx.gasPrice)
+            if(this.CIP1559_ENABLED) {
+                gasPrices.add({
+                    base: Number(pivotBlock?.baseFeePerGas || tx?.gasPrice || 0),
+                    priority: Number(tx?.maxPriorityFeePerGas || 0)
+                })
+            } else{
+                gasPrices.add(Number(tx.gasPrice))
+            }
             gasLimit = gasLimit + tx.gas
         }
 
@@ -80,10 +95,7 @@ export class StatOnRealtime {
 
     public async getGasPriceTracker(){
         const config = await KV.findOne({where: {key: KEY_GAS_PRICE_TRACKER}})
-        return config?.value ? JSON.parse(config?.value) :{
-            gasPriceInfo: {min: 0, tp50: 0, max: 0},
-            gasPriceMarket: {min: 0, tp25: 0, tp50: 0, tp75: 0, max: 0},
-        }
+        return config?.value ? JSON.parse(config?.value) : {}
     }
 
     public async getGasUsedPerSecond(){
@@ -97,6 +109,7 @@ export class StatOnRealtime {
     }
 
     private async statGasPriceTracker(){
+        const zero = this.CIP1559_ENABLED ? 0 : {base: 0, priority: 0, gasPrice: 0}
         let statArray: any[] = Object.values(this.GAS_PRICE_COUNTER)
         statArray = lodash.orderBy(statArray, 'epoch', 'desc')
 
@@ -104,8 +117,8 @@ export class StatOnRealtime {
         const len = statArray.length
         if( len === 0 ){
             result = {
-                gasPriceInfo: {min: 0, tp50: 0, max: 0},
-                gasPriceMarket: {min: 0, tp25: 0, tp50: 0, tp75: 0, max: 0},
+                gasPriceInfo: {min: zero, tp50: zero, max: zero},
+                gasPriceMarket: {min: zero, tp25: zero, tp50: zero, tp75: zero, max: zero},
                 maxEpoch: null,
                 minEpoch: null,
                 maxTime: null,
@@ -125,10 +138,13 @@ export class StatOnRealtime {
                 blockHeight: stat.blockHeight,
             }
         } else {
-            const latest: any = statArray.find(item => {return item.gasPrice.find(price => price !== '0')}) // find first none-zero gas price
+            const latest: any = statArray.find(stat => stat.gasPrice.find(
+                priceDetail => this.CIP1559_ENABLED ? Number(priceDetail.base) > 0 : Number(priceDetail) > 0
+            ))
+            if(!latest) return
             const oldest: any = statArray[statArray.length - 1]
             const gasPriceSet = new Set()
-            statArray.forEach(stat => stat.gasPrice.forEach(gasPrice => gasPriceSet.add(gasPrice)))
+            statArray.forEach(stat => stat.gasPrice.forEach(priceDetail => gasPriceSet.add(priceDetail)))
             result = {
                 gasPriceInfo: {... lodash.pick(this.getPriceInTopPercentile(latest.gasPrice), ['min', 'tp50', 'max'])},
                 gasPriceMarket: {... this.getPriceInTopPercentile([...gasPriceSet])},
@@ -188,6 +204,9 @@ export class StatOnRealtime {
 
     private async statTokenTransferPerSecond(){
         const maxEpoch: number = await EpochHashTokenTransfer.max('epoch')
+        if(maxEpoch === null) {
+            return
+        }
         const minEpoch = Math.max(maxEpoch - this.STAT_EPOCHS_AGAINST_LATEST_STATE, 0)
 
         const sql = `
@@ -226,18 +245,31 @@ export class StatOnRealtime {
     }
 
     private getPriceInTopPercentile(gasPriceArray) {
-        const gasPriceNumberArray = gasPriceArray.map(gasPrice => Number(gasPrice))
-        const orderedGasPriceArray = gasPriceNumberArray.sort((a, b) => a - b)
+        gasPriceArray = gasPriceArray.map(priceDetail => {
+            if(this.CIP1559_ENABLED) {
+                priceDetail['gasPrice'] = priceDetail.base + priceDetail.priority
+                return priceDetail
+            } else{
+                return priceDetail
+            }
+        })
+        const orderedGasPriceArray = gasPriceArray.sort((a, b) => {
+            if(this.CIP1559_ENABLED) {
+                return a.gasPrice - b.gasPrice
+            } else{
+                return a - b
+            }
+        })
         const p = orderedGasPriceArray[0]
         if(gasPriceArray.length === 1) {
             return { min: p, tp25: p, tp50: p, tp75: p, max: p }
         }
 
-        if(p === 0) {
+        if(p.gasPrice === 0) {
             orderedGasPriceArray.shift()
         }
 
-        const size = gasPriceNumberArray.length
+        const size = gasPriceArray.length
         const tp25Index = Math.ceil(size * 0.25) -1
         const tp50Index = Math.ceil(size * 0.5) -1
         const tp75Index = Math.ceil(size * 0.75) -1

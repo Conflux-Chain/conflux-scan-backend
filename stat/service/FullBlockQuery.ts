@@ -160,17 +160,23 @@ export class FullBlockQuery {
         // cross space tx
         const epochCrossSpaceTxMap = {}
         const epochCoreBlockMap = {}
-        if(StatApp.isEVM && rawList?.length) {
-            const [txCounts, blockExts] = await Promise.all([
-                FullTransaction.sequelize.query(
+        const epochBlockExtMap = {}
+        if(rawList?.length) {
+            if(StatApp.isEVM) {
+                const txCounts = await FullTransaction.sequelize.query(
                     `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
-                    { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]}),
-                FullBlockExt.sequelize.query(
-                    `select * from full_block_ext where epoch>=? and epoch<=?`,
                     { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
-            ])
-            txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr']),
-            blockExts.forEach(blockExt => epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock'])
+                txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
+            }
+            const blockExts: FullBlockExt[] = await FullBlockExt.sequelize.query(
+                `select * from full_block_ext where epoch>=? and epoch<=?`,
+                { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
+            blockExts.forEach(blockExt => {
+                epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock']
+                if(blockExt?.extra) {
+                    epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra)
+                }
+            })
         }
         // fields mapping
         const list = [];
@@ -193,8 +199,9 @@ export class FullBlockQuery {
                 if(row['totalReward'] === '0'){
                     row['totalReward'] = undefined;
                 }
+                row['burntGasFee'] = epochBlockExtMap[`${row['epochNumber']}-${row['blockIndex']}`]?.burntFee
                 if(StatApp.isEVM) {
-                    row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0;
+                    row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0
                     row['transactionCount'] = row['transactionCount']
                     row['executedTransactionCount'] = row['executedTransactionCount']
                     row['coreBlock'] = epochCoreBlockMap[row['epochNumber']];
