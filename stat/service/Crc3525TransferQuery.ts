@@ -2,7 +2,7 @@
 import {Conflux, format} from "js-conflux-sdk";
 import {TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {Token} from "../model/Token";
 import {CONST} from "./common/constant"
 import {FullTransaction} from "../model/FullBlock";
@@ -86,10 +86,10 @@ export class Crc3525TransferQuery extends TransferQueryBase{
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
         txMap: Map<string, FullTransaction>): Promise<any>{
-        row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC3525;
         if (row['from'] === '' && row['fromId'] == 0) {
-            row['from'] = format.address('0x0000000000000000000000000000000000000000', this.app?.networkId)
+            row['from'] = fmtAddr('0x0000000000000000000000000000000000000000', this.app?.networkId)
         }
         delete row['fromId'];
         return row;

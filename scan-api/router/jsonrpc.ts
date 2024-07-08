@@ -1,6 +1,7 @@
 import {ScanCtx} from "../service/index";
 import {Op} from "sequelize";
 import {KEY_CONFURA_URL, KEY_CORE_API_URL, KEY_CORE_OPEN_API_URL, KEY_OPEN_API_URL} from "../../stat/model/KV";
+import {fmtAddr} from "../../stat/StatApp";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -244,7 +245,15 @@ jsonrpc.queryTransaction = jsonrpc.method_('queryTransaction',
       app: { service },
     } = this;
 
-    return service.transaction.query(options);
+    return service.transaction.query(options).then(res=>{
+        if (res?.from) {
+            res.from = fmtAddr(res.from, StatApp.networkId)
+        }
+        if (res?.to) {
+            res.to = fmtAddr(res.to, StatApp.networkId)
+        }
+        return res;
+    });
   },
 
   type({
@@ -283,7 +292,7 @@ jsonrpc.countAndListTransaction = jsonrpc.method_('countAndListTransaction',
   async function ({ listLimit, ...options }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.transaction.countAndList(options);
     return { ...result, listLimit };
@@ -405,11 +414,11 @@ jsonrpc.method('queryContract',
   async function ({ address, fields }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.contract.queryPlus({ address, fields });
     if (lodash.includes(fields, 'token')) {
-      result.token = await service.token.queryPlus({ address, fields: ['icon'] });
+      result.token = await service.token.queryPlus({ address });
     }
 
     return { ...result, isRegistered: result?.name !== undefined };
@@ -579,22 +588,22 @@ jsonrpc.method('listContractVerified',
   })),
 );
 
-jsonrpc.method('queryContractBasic',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
-  })),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
-  async function ({ addressArray }) {
-    const {
-      app: { service },
-    } = this;
-    return await service.contractRdb.listBasic({ addressArray });
-  },
-);
+// jsonrpc.method('queryContractBasic',
+//   serializeByIP(),
+//   buildFlow((app) => parameter({
+//     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
+//   })),
+//
+//   cacheFlow(5 * 1000),
+//   concurrenceControl(500),
+//   durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
+//   async function ({ addressArray }) {
+//     const {
+//       app: { service },
+//     } = this;
+//     return await service.contractRdb.listBasic({ addressArray });
+//   },
+// );
 
 // ---------------------------------- Token ---------------------------------
 jsonrpc.method('registerToken',
@@ -666,7 +675,7 @@ jsonrpc.method('queryToken',
   })),
 );
 
-jsonrpc.method('countAndListToken',
+export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   serializeByIP(),
   buildFlow((app) => parameter({
     transferType: { path: '0', type: type.string, enum: Object.values(CONST.TRANSFER_TYPE) },
@@ -813,7 +822,7 @@ jsonrpc.method('countAndListEventLog',
 );
 
 // ------------------------------- Transfer -----------------------------------
-jsonrpc.countAndListTransfer = jsonrpc.method_('countAndListTransfer',
+export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfer',
   serializeByIP(),
   buildFlow((app) => parameter({
     transactionHash: { path: '0', type: type.hex64 },
@@ -927,7 +936,7 @@ jsonrpc.method('exportTransaction',
   async function (options) {
     const {
       app: { service, tool },
-    } = this;
+    } = this as ScanCtx;
 
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;

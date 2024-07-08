@@ -8,6 +8,7 @@ import {CONST} from "./common/constant"
 import {fillMethodInfo} from "../model/ContractInfo";
 import {Errors} from "./common/LogicError";
 import {TransferCount} from "../model/TransferCount";
+import {fmtAddr} from "../StatApp";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -229,8 +230,8 @@ export abstract class TransferQueryBase {
                 row['transactionHash'] = txMap.get(key)?.hash
                     || `0x${row['transactionHash']}`
                     || '';
-                row['from'] = hex40Map.get(row['from']) ? format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId) : '';
-                row['to'] = hex40Map.get(row['to']) ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : '';
+                row['from'] = hex40Map.get(row['from']) ? fmtAddr(`0x${hex40Map.get(row['from'])}`, this.app?.networkId) : '';
+                row['to'] = hex40Map.get(row['to']) ? fmtAddr(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : '';
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
                     : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];

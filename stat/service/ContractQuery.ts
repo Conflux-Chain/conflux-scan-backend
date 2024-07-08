@@ -11,7 +11,7 @@ import {
     ESpaceHex40Map, Hex64Map
 } from "../model/HexMap";
 import {json, Op, QueryTypes} from "sequelize";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
 import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
@@ -279,14 +279,14 @@ export class ContractQuery {
 
         // extra info
         if(verified?.beacon){
-            let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.beacon,
+            let verifiedInfo = await ContractVerify.findOne({where: {base32: toBase32(verified.beacon),
                     verifyResult: true}, raw: true});
-            verified.beaconVerified = verifiedInfo != null ? true : false;
+            verified.beaconVerified = verifiedInfo != null;
         }
         if(verified?.implementation){
-            let verifiedInfo = await ContractVerify.findOne({where: {base32: verified.implementation,
+            let verifiedInfo = await ContractVerify.findOne({where: {base32: toBase32(verified.implementation),
                     verifyResult: true}, raw: true});
-            verified.implementationVerified = verifiedInfo != null ? true : false;
+            verified.implementationVerified = verifiedInfo != null;
         }
         if(verified?.libraries && verified?.libraries?.length > 2){
             const json = JSON.parse(verified.libraries);
@@ -295,7 +295,7 @@ export class ContractQuery {
             const verifyArray = await ContractVerify.findAll({ attributes: ['base32'],
                 where: {base32: {[Op.in]: libs.map(item => item.address)}, verifyResult: true}, raw: true});
             verifyArray?.forEach(item => verifyMap[item.base32] = true);
-            libs.forEach(item => ( item['exactMatch'] = verifyMap[item.address] ? true : false));
+            libs.forEach(item => ( item['exactMatch'] = !!verifyMap[item.address]));
             verified.libraries = libs;
         } else{
             verified && (verified.libraries = {});
@@ -472,6 +472,18 @@ export class ContractQuery {
             map[address].eSpace = {address: eSpaceBase32Hex40Map[address]};
         });
 
+        if (StatApp.isEVM) {
+            Object.keys(map).forEach(base32=>{
+                const obj = map[base32];
+                // delete map[base32]; // do not delete, keep both, others may query map by base32.
+                const hex = fmtAddr(base32, StatApp.networkId);
+                map[hex] = obj;
+                Object.keys(obj).forEach(k=>{
+                    obj[k].address = hex;
+                })
+            })
+        }
+
         return {total: addressArray.length, map};
     }
 
@@ -511,8 +523,8 @@ export class ContractQuery {
         const hex40 = await Hex40Map.findOne({where: {hex: implHex40}, raw: true});
         if (!hex40) return result;
 
-        const beaconAddress = beaconHex40 ? format.address(beaconHex40, StatApp.networkId) : null;
-        const implAddress = format.address(`0x${hex40.hex}`, StatApp.networkId);
+        const beaconAddress = beaconHex40 ? fmtAddr(beaconHex40, StatApp.networkId) : null;
+        const implAddress = fmtAddr(`0x${hex40.hex}`, StatApp.networkId);
         return lodash.assign(result, {
             proxy: true,
             beacon: beaconAddress,
