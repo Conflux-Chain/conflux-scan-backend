@@ -117,8 +117,7 @@ router.get('/dag',
     },
   }),
 
-  // jsonrpc.methodFlow('dag'),
-    jsonrpc_dag
+  toArray,  jsonrpc_dag
 );
 
 router.get('/plot',
@@ -145,7 +144,7 @@ router.get('/plot',
     },
   }),
 
-  jsonrpc_plot,
+    toArray, jsonrpc_plot,
 );
 
 router.get('/trend',
@@ -166,7 +165,7 @@ router.get('/trend',
     },
   }),
 
-  jsonrpc_trend,
+    toArray, jsonrpc_trend,
 );
 
 router.get('/homeDashboard',
@@ -203,7 +202,7 @@ router.get('/frontend',
     },
   }),
 
-  jsonrpc_frontend,
+    toArray, jsonrpc_frontend,
 
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
@@ -268,7 +267,7 @@ router.get('/block/:hash',
     },
   }),
 
-  jsonrpc_queryBlock,
+    toArray, jsonrpc_queryBlock,
   (block) => block || {}, // XXX: null => {}, cause http json can not handle null good
 );
 
@@ -327,7 +326,7 @@ router.get('/block',
     },
   }),
 
-  jsonrpc_listBlock,
+    toArray, jsonrpc_listBlock,
 
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
@@ -413,7 +412,7 @@ router.get('/transaction/:hash',
     },
   }),
 
-  jsonrpc_queryTransaction,
+    toArray, jsonrpc_queryTransaction,
 
   async function (transaction) {
     const {
@@ -535,7 +534,7 @@ router.get('/transaction',
     },
   }),
 
-  jsonrpc_countAndListTransaction,
+    toArray, jsonrpc_countAndListTransaction,
 
   async function (result) {
     let addressArray = [];
