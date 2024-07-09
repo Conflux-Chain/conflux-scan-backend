@@ -223,7 +223,7 @@ export const jsonrpc_queryTransaction = jsonrpc.method_('queryTransaction',
   }).$or(null),
 );
 
-jsonrpc.countAndListTransaction = jsonrpc.method_('countAndListTransaction',
+export const jsonrpc_countAndListTransaction = jsonrpc.method_('countAndListTransaction',
   buildFlow((app) => parameter({
     blockHash: { path: '0', type: type.hex64 },
     accountAddress: { path: '0', type: app.type.address },

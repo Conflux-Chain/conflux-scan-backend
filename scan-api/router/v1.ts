@@ -1,7 +1,7 @@
 import {ScanCtx} from "../service/index";
 import {toArray} from "../../stat/router/ParamChecker";
 import {
-  jsonrpc_countAndListToken,
+  jsonrpc_countAndListToken, jsonrpc_countAndListTransaction,
   jsonrpc_countAndListTransfer,
   jsonrpc_dag, jsonrpc_frontend, jsonrpc_listBlock,
   jsonrpc_plot, jsonrpc_queryBlock, jsonrpc_queryTransaction,
@@ -535,10 +535,7 @@ router.get('/transaction',
     },
   }),
 
-  // jsonrpc.methodFlow('countAndListTransaction'),
-  async function (arg, next, end) {
-    return jsonrpc.countAndListTransaction.call(this, [arg], next, end)
-  },
+  jsonrpc_countAndListTransaction,
 
   async function (result) {
     let addressArray = [];
