@@ -336,13 +336,10 @@ export async function listBurntFeeStat(ctx) {
 }
 
 export async function listBurntRateStat(ctx) {
-    mustBeIntParamIfPresent(ctx.request.query, 'minBlockHeight', 'maxBlockHeight')
-
     const {minTimestamp, maxTimestamp, sort, skip, limit} = parseStatParam(ctx);
-    const {minBlockHeight: minEpochNumber, maxBlockHeight: maxEpochNumber} = ctx.request.query;
 
     const page = await getApiService().dailyStatQuery.listBurntRateStat({minTimestamp, maxTimestamp,
-        minEpochNumber, maxEpochNumber, sort, skip, limit})
+        sort, skip, limit})
     setBody(ctx, page)
 }
 
