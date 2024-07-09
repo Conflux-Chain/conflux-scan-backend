@@ -35,7 +35,7 @@ jsonrpc.method('testConcurrent',
 );
 
 // ------------------------------- Dashboard --------------------------------
-jsonrpc.method('supply',
+export const jsonrpc_supply = jsonrpc.method_('supply',
   parameter({}),
 
   durationAlarmFlow(5 * 1000, { method: 'supply' }),
@@ -43,8 +43,8 @@ jsonrpc.method('supply',
     const {
       app: { service },
     } = this as ScanCtx;
-    const data = await service.homeDashboard.getData();
-    return data.supplyInfo;
+    const data = service.homeDashboard.getData();
+    return data?.supplyInfo;
   },
 );
 
