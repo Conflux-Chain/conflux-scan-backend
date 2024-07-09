@@ -1170,7 +1170,7 @@ router.get('/token',
   }),
 
   // jsonrpc.methodFlow('countAndListToken'),
-  argToArray, jsonrpc_countAndListToken,
+  toArray, jsonrpc_countAndListToken,
 
   async function (result) {
     const addressArray = result.list.map(token => token.address);
@@ -1288,7 +1288,7 @@ router.get('/transfer',
   // async function (arg, next, end) {
   //   return jsonrpc_countAndListTransfer.call(this, [arg], next, end)
   // },
-  argToArray, jsonrpc_countAndListTransfer,
+  toArray, jsonrpc_countAndListTransfer,
 
   async function (result) {
     const {
@@ -1576,9 +1576,6 @@ router.get('/report/transfer',
   },
 );
 
-function argToArray(arg: any) {
-  return [arg]
-}
 
 // ----------------------------------------------------------------------------
 openAPI.loadRouter(router);
