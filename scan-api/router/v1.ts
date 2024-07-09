@@ -1,6 +1,12 @@
 import {ScanCtx} from "../service/index";
 import {toArray} from "../../stat/router/ParamChecker";
-import {jsonrpc_countAndListToken, jsonrpc_countAndListTransfer, jsonrpc_supply} from "./jsonrpc";
+import {
+  jsonrpc_countAndListToken,
+  jsonrpc_countAndListTransfer,
+  jsonrpc_dag, jsonrpc_frontend, jsonrpc_listBlock,
+  jsonrpc_plot, jsonrpc_queryBlock, jsonrpc_queryTransaction,
+  jsonrpc_trend
+} from "./jsonrpc";
 
 const lodash = require('lodash');
 const {Router} = require('../../koaflow/src/router');
@@ -78,9 +84,12 @@ router.get('/supply',
       600: { code: 'integer', message: 'string' },
     },
   }),
+  async function () {
+    const { app: { service }, } = this as ScanCtx;
+    const data = service.homeDashboard.getData();
+    return data?.supplyInfo;
+  }
 
-  // jsonrpc.methodFlow('supply'),
-  jsonrpc_supply
 );
 
 router.get('/dag',
@@ -108,7 +117,8 @@ router.get('/dag',
     },
   }),
 
-  jsonrpc.methodFlow('dag'),
+  // jsonrpc.methodFlow('dag'),
+    jsonrpc_dag
 );
 
 router.get('/plot',
@@ -135,7 +145,7 @@ router.get('/plot',
     },
   }),
 
-  jsonrpc.methodFlow('plot'),
+  jsonrpc_plot,
 );
 
 router.get('/trend',
@@ -156,7 +166,7 @@ router.get('/trend',
     },
   }),
 
-  jsonrpc.methodFlow('trend'),
+  jsonrpc_trend,
 );
 
 router.get('/homeDashboard',
@@ -176,7 +186,11 @@ router.get('/homeDashboard',
     },
   }),
 
-  jsonrpc.methodFlow('homeDashboard'),
+    async function () {
+      const { app: { service }, } = this as ScanCtx;
+      const data = service.homeDashboard.getData();
+      return data?.blockchainInfo;
+    },
 );
 
 router.get('/frontend',
@@ -189,7 +203,7 @@ router.get('/frontend',
     },
   }),
 
-  jsonrpc.methodFlow('frontend'),
+  jsonrpc_frontend,
 
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
@@ -254,7 +268,7 @@ router.get('/block/:hash',
     },
   }),
 
-  jsonrpc.methodFlow('queryBlock'),
+  jsonrpc_queryBlock,
   (block) => block || {}, // XXX: null => {}, cause http json can not handle null good
 );
 
@@ -313,7 +327,7 @@ router.get('/block',
     },
   }),
 
-  jsonrpc.methodFlow('countAndListBlock'),
+  jsonrpc_listBlock,
 
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
@@ -399,10 +413,7 @@ router.get('/transaction/:hash',
     },
   }),
 
-  // jsonrpc.methodFlow('queryTransaction'),
-  async function(arg, next, end) {
-    return jsonrpc.queryTransaction.call(this, [arg], next, end)
-  },
+  jsonrpc_queryTransaction,
 
   async function (transaction) {
     const {
