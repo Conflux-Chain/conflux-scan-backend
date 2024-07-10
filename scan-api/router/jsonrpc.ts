@@ -154,6 +154,7 @@ jsonrpc.method('frontend',
                       [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]
       }}})
       urls.forEach(kv=>{
+          // use local config prior to shared DB config.
           frontedConfig[kv.key] = config[kv.key] ?? kv.value;
       })
     } catch (e) {
