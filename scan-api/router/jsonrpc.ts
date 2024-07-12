@@ -153,8 +153,9 @@ jsonrpc.method('frontend',
       const urls = await KV.findAll({where: {"key": {[Op.in]:
                       [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]
       }}})
-      urls.forEach(config=>{
-          frontedConfig[config.key] = config.value;
+      urls.forEach(kv=>{
+          // use local config prior to shared DB config.
+          frontedConfig[kv.key] = config[kv.key] ?? kv.value;
       })
     } catch (e) {
       logger.error({ src: 'frontend config error', msg: e });
