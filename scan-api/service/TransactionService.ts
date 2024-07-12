@@ -17,6 +17,7 @@ const RECEIPT_FIELDS = [
   'storageReleased',
   'txExecErrorMsg',
   'burntGasFee',
+  'effectiveGasPrice',
 ];
 
 export class TransactionService {
@@ -45,7 +46,7 @@ export class TransactionService {
       risk = await service.conflux.getConfirmationRiskByHash(transaction.blockHash).catch(() => null);
     }
 
-    let receipt = {};
+    let receipt = {} as any
     if (lodash.intersection(fields, RECEIPT_FIELDS).length) {
       // old tx might not have receipt
       receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
@@ -60,21 +61,25 @@ export class TransactionService {
       txInputData = `0x${utf8ToHex(mosaicData).data}`;
     }
 
-    const block = await service.conflux.getBlockByEpochNumber(transaction.epochNumber, false)
-    const baseFeePerGas = block?.baseFeePerGas
+    let baseFeePerGas
+    if(transaction?.blockHash) {
+      const block = await service.conflux.getBlockByEpochNumber(transaction.epochNumber, false)
+      baseFeePerGas = block?.baseFeePerGas
+    }
 
     let typeDesc = CONST.TX_EIP_TYPE[transaction.type]
     !StatApp.isEVM && (typeDesc = typeDesc?.replace('EIP', 'CIP'))
 
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
-    return lodash.defaults({ aggregate, data: txInputData }, transaction, receipt, {
-      risk,
-      typeDesc,
-      baseFeePerGas,
-      timestamp: epoch.timestamp,
-      syncTimestamp: epoch.timestamp,
-    });
+    return lodash.defaults({aggregate, data: txInputData, gasPrice: receipt?.effectiveGasPrice ?? transaction.gasPrice},
+        transaction, receipt, {
+          risk,
+          typeDesc,
+          baseFeePerGas,
+          timestamp: epoch.timestamp,
+          syncTimestamp: epoch.timestamp,
+        });
   }
 
   // --------------------------------------------------------------------------

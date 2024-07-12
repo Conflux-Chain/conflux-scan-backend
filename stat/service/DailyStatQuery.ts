@@ -120,68 +120,43 @@ export class DailyStatQuery {
         return {total: count, list: rows, intervalType};
     }
 
-    public async listBurntRateStat({skip, limit, sort, minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber}) {
-        const {app: {cfx}} = this
-        const paramsArray: VoteParams[] = await VoteParams.findAll({order: [['epoch', 'asc']] })
-        if(!paramsArray?.length) {
-            return {total: 0, list: []}
+    public async listBurntRateStat({skip, limit, sort, minTimestamp, maxTimestamp}) {
+        const queryOptions: any = {
+            order: [['epoch', sort]],
+            offset: skip,
+            limit: limit,
+            raw: true,
+        }
+        const conditionArray = [];
+        if (minTimestamp !== undefined) {
+            conditionArray.push({timestamp: {[Op.gte]: new Date(minTimestamp * 1000)}});
+        }
+        if (maxTimestamp !== undefined) {
+            conditionArray.push({timestamp: {[Op.lte]: new Date(maxTimestamp * 1000)}});
+        }
+        if (conditionArray.length === 1) {
+            queryOptions.where = conditionArray[0];
+        }
+        if (conditionArray.length > 1) {
+            queryOptions.where = {[Op.and]: conditionArray};
         }
 
-        const epochRange = await getEpochRange(minTimestamp, maxTimestamp, minEpochNumber, maxEpochNumber)
-        const epochFirst = paramsArray[0]['epoch']
-        const epochFinalized = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-        const epochStart = Math.max(epochFirst, epochRange?.epochBegin ?? 0)
-        const epochEnd = Math.min(epochFinalized, epochRange?.epochEnd ?? Number.MAX_VALUE)
-        const total = epochEnd - epochStart + 1
-        const effectSkip = Math.min(skip, total)
-        const effectRange = Math.min(limit, total - effectSkip)
+        const page = await VoteParams.findAndCountAll(queryOptions)
 
-        const list = []
-        let lastParams: any = {}
-        const paramsMap = lodash.keyBy(paramsArray, 'epoch')
-        lodash.range(effectRange).forEach(i => {
-            const epoch = sort === 'asc' ? epochStart + effectSkip + i : epochEnd - effectSkip - i
-            const params = paramsMap[epoch]
-
-            const burntRate = {epoch} as any
-            const namesMapping = [{prop: 'storagePointProp', rate: 'storagePointRate'}, {prop: 'baseFeeShareProp', rate: 'baseFeeShareRate'}]
-            namesMapping.forEach(names => {
-                if(params && params[names.prop] >= 0) {
-                    burntRate[names.rate] = BigFixed(params[names.prop]).div(BigFixed(params[names.prop]).add(BigFixed(10**18)))
-                    if(names.prop === 'baseFeeShareRate') {
-                        burntRate[names.rate] = BigFixed(1).sub(BigFixed(burntRate[names.rate]))
-                    }
-                    lastParams = {}
-                } else{
-                    if(lastParams[names.prop] === undefined) {
-                        const target = lodash.findLast(paramsArray, params => params.epoch < epoch && params[names.prop] >= 0)
-                        if (target) {
-                            lastParams[names.prop] = target[names.prop]
-                        }
-                    }
-                    if(lastParams[names.prop] >= 0) {
-                        burntRate[names.rate] = BigFixed(lastParams[names.prop]).div(BigFixed(lastParams[names.prop]).add(BigFixed(10**18)))
-                        if(names.prop === 'baseFeeShareRate') {
-                            burntRate[names.rate] = BigFixed(1).sub(BigFixed(burntRate[names.rate]))
-                        }
-                    }
-                }
-            })
-            list.push(burntRate)
-        })
-
-        const [minEpoch, maxEpoch] = sort === 'asc' ? [list[0].epoch, list[list.length - 1].epoch] : [list[list.length - 1].epoch, list[0].epoch]
-        const epochs = await Epoch.findAll({where: {epoch: {[Op.between]: [minEpoch, maxEpoch]}}})
-        const epochMap = lodash.keyBy(epochs, 'epoch')
-        list.forEach(burntRate => {
+        page.rows.forEach((param: any) => {
             if(StatApp.isEVM) {
-                burntRate['blockNumber'] = burntRate['epoch']
+                param['blockNumber'] = param['epoch']
             } else {
-                burntRate['epochNumber'] = burntRate['epoch']
+                param['epochNumber'] = param['epoch']
             }
-            burntRate['timestamp'] = epochMap[burntRate.epoch]?.timestamp.getTime() / 1000
-            delete burntRate['epoch']
+            param['storagePointRate'] = BigFixed(param.storagePointProp).div(BigFixed(param.storagePointProp).add(BigFixed(10**18)))
+            param['baseFeeShareRate'] = BigFixed(1).sub(BigFixed(param.baseFeeShareProp).div(BigFixed(param.baseFeeShareProp).add(BigFixed(10**18))))
+            param['timestamp'] = param.timestamp.getTime() / 1000
+            delete param.epoch
+            delete param.storagePointProp
+            delete param.baseFeeShareProp
         })
-        return {total, list}
+
+        return {total: page.count, list: page.rows}
     }
 }

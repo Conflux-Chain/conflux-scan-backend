@@ -36,6 +36,7 @@ let contractAddress
 let max
 let minEpoch, maxEpoch
 let url
+let once: boolean
 
 async function init() {
     const config = loadConfig('Prod')
@@ -582,7 +583,7 @@ import {u} from "@web3identity/address-encoder/lib/groestl-hash-js/op";
 import zlib from "zlib";
 import {TokenSecurityAudit, TokenSecurityAudit2} from "../../model/TokenSecurityAudit";
 import {Contract, Contract2} from "../../model/Contract";
-import {buildBlockExt, FullBlock, FullBlockExt} from "../../model/FullBlock";
+import {buildBlockExt, FullBlock, FullBlockExt, FullTransaction} from "../../model/FullBlock";
 import {FullBlockService} from "../FullBlockService";
 import {PosAccount, PosBlock} from "../../model/PoS";
 import {PosDailyStatMix} from "../pos/PosStat";
@@ -896,6 +897,99 @@ async function statDailyBurntFee(url: string) {
     await statDailyBurntFee.schedule(3)
 }
 
+async function fixEffectiveGasPrice(minEpoch: number, maxEpoch: number, once: boolean) {
+    let lastEpoch = minEpoch
+
+    const pageSize = 1000
+    let pageNo = 1
+    do{
+        const txs = await FullTransaction.findAll({
+            where:{
+                [Op.and]: [
+                    {epoch: {[Op.gte]: lastEpoch}},
+                    {epoch: {[Op.lte]: maxEpoch}},
+                ]
+            },
+            order: [['epoch', 'asc']],
+            offset: (pageNo++ - 1) * pageSize,
+            limit: pageSize,
+            logging: sql => once && console.log(`query txs: ${sql}`)
+        })
+        if(!txs?.length) {
+            break
+        }
+        console.log(`txs ${txs.length} epoch [${txs[0].epoch}, ${txs[txs.length-1].epoch}]`)
+
+        let blockHashWithGasPriceChanged = undefined
+        for (const tx of txs) {
+            // check need process
+            const txn = await cfx.getTransactionByHash(tx.hash)
+            const rcpt = await cfx.getTransactionReceipt(tx.hash)
+            lastEpoch = rcpt.epochNumber
+            if(txn.gasPrice === rcpt.effectiveGasPrice) { // needn't process
+                continue
+            }
+            if(rcpt.blockHash === blockHashWithGasPriceChanged) { // already processed in last tx
+                continue
+            } else{
+                blockHashWithGasPriceChanged = rcpt.blockHash // new tx to process
+            }
+
+            // get all tx receipts in a block
+            const blkRcptMap = {}
+            const epochRcpt = await cfx.getEpochReceipts(rcpt.epochNumber)
+            for (const blkRcpt of epochRcpt) {
+                if(blkRcpt?.length) {
+                    blkRcptMap[blkRcpt[0].blockHash] = blkRcpt
+                }
+            }
+            const blkRcpt = blkRcptMap[rcpt.blockHash]
+
+            // update gas price by using effective gas price for all tx in a block
+            let txCount = 0
+            let txUpdates = []
+            let sumGasPrice = BigInt(0)
+            for (const txRcpt of blkRcpt) {
+                if(txRcpt?.outcomeStatus === 0 || txRcpt?.outcomeStatus === 1) {
+                    txCount++
+                    txUpdates.push(FullTransaction.update({
+                            gasPrice: txRcpt.effectiveGasPrice
+                        },
+                        {
+                            where: {hash: txRcpt.transactionHash},
+                            logging: sql => once && console.log(`update tx: ${sql}`)
+                        }))
+                    sumGasPrice += txRcpt.effectiveGasPrice
+                }
+            }
+            await Promise.all(txUpdates)
+
+            // update avg gas price of block
+            if(txCount) {
+                const avgGasPrice = sumGasPrice / BigInt(txCount)
+                await FullBlock.update({
+                    avgGasPrice
+                }, {
+                    where: {hash: rcpt.blockHash},
+                    logging: sql => once && console.log(`update blk: ${sql}`)
+                })
+            }
+            console.log(`tx ${tx.hash} blk ${rcpt.blockHash} fixed`)
+
+            // run only once
+            if(once) {
+                return
+            }
+        }
+
+        // last batch
+        if(txs?.length < pageSize) {
+            break
+        }
+    }while (true)
+    console.log(`done!`)
+}
+
 async function run() {
     await init();
     if(type === 1){
@@ -959,6 +1053,9 @@ async function run() {
     if(type === 27) {
         await statDailyBurntFee(url)
     }
+    if(type === 28) {
+        await fixEffectiveGasPrice(minEpoch, maxEpoch, once)
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
@@ -984,13 +1081,17 @@ if(type === 21 || type === 22 || type === 23) {
     max = Number(args[3]);
 }
 
-if(type === 25) {
+if(type === 25 || type === 28) {
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
 }
 
 if(type === 27) {
     url = args[2]
+}
+
+if(type === 28) {
+    once = Boolean(args[4])
 }
 
 run().then();

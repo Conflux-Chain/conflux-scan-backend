@@ -73,9 +73,10 @@ export class StatOnRealtime {
         let gasLimit = BigInt(0)
         for (const tx of txArray) {
             if(this.CIP1559_ENABLED) {
+                const priority = (tx?.receipt?.effectiveGasPrice - pivotBlock?.baseFeePerGas) || 0
                 gasPrices.add({
                     base: Number(pivotBlock?.baseFeePerGas || tx?.gasPrice || 0),
-                    priority: Number(tx?.maxPriorityFeePerGas || 0)
+                    priority: Number(priority)
                 })
             } else{
                 gasPrices.add(Number(tx.gasPrice))
