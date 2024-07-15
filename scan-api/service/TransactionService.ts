@@ -50,7 +50,8 @@ export class TransactionService {
     if (lodash.intersection(fields, RECEIPT_FIELDS).length) {
       // old tx might not have receipt
       receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
-      receipt = lodash.pick(receipt, RECEIPT_FIELDS);
+      // do not pick, expose all fields
+      // receipt = lodash.pick(receipt, RECEIPT_FIELDS);
     }
 
     let txInputData = transaction.data;
@@ -70,6 +71,7 @@ export class TransactionService {
     let typeDesc = CONST.TX_EIP_TYPE[transaction.type]
     !StatApp.isEVM && (typeDesc = typeDesc?.replace('EIP', 'CIP'))
 
+    transaction.status = transaction.status ?? receipt.outcomeStatus
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
     return lodash.defaults({aggregate, data: txInputData, gasPrice: receipt?.effectiveGasPrice ?? transaction.gasPrice},

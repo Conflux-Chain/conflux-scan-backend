@@ -53,9 +53,11 @@ export class HomeDashboardService{
     }
 
     private async supplyInfo() {
-        const {
-            app: {cfx},
-        } = this;
+        const {app: {cfx},} = this;
+        if (this.app.config.supplyNotAvailable) {
+            return {}
+        }
+
 
         const supplyInfo = await cfx.getSupplyInfo();
         const nullAddressBalance = await cfx.getBalance(CONST.ZERO_ADDRESS);

@@ -87,7 +87,8 @@ export abstract class SyncBase{
     private async saveForward(epochNumber, { parentHash, modelData }: SyncData): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
         let s = Date.now();
-        const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
+        // do not check pivot for epoch 0 and 1.
+        const prevEpoch = epochNumber <= 1 ? null : await this.getEpochByEpochNumber(preEpochNumber);
         s = this.m0('EpochByNumber', s)
         const validate = await this.validate(epochNumber, modelData);
         s = this.m0('Validate', s)

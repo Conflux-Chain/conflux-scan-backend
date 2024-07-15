@@ -512,7 +512,7 @@ export class FullBlockService {
         //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
-                FailedTx.bulkCreate(failedBeans, {transaction: dbTx}),
+                FailedTx.bulkCreate(failedBeans, {transaction: dbTx, ignoreDuplicates: true}),
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),

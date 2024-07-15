@@ -9,8 +9,10 @@ const { withoutCfxTransferType } = require('../../common/utils');
 
 export class ConfluxService {
   app: ScanApp & any;
+  traceNotAvailable: boolean
   constructor(app) {
     this.app = app;
+    this.traceNotAvailable = false;
   }
 
   async _calculateTTL(
@@ -558,6 +560,9 @@ export class ConfluxService {
   }
 
   async getTransactionCFXTransferTree(transactionHash) {
+    if (this.traceNotAvailable) {
+      return {}
+    }
     const {
       app: { cfx, error, ttlMap },
     } = this;
@@ -568,6 +573,11 @@ export class ConfluxService {
         try {
           traceArray = await cfx.traceTransaction(transactionHash);
         } catch (err) {
+          const eStr = `${err}`;
+          if (eStr.endsWith("does not exist/is not available")) {
+            this.traceNotAvailable = true;
+            return {}
+          }
           throw new error.ResponseDataParsingError(`fail to traceTransaction by sdk: ${err}`);
         }
         if (!traceArray || traceArray.length === 0) {
