@@ -364,7 +364,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         const epochMeasureKey = 'perEpoch';
         switch (action) {
             case "ok":
-                if (data instanceof Error) {
+                if (data instanceof Error || !data?.arr) {
                     console.log(`UniqueAddr error data, epoch ${epoch}. `, data)
                     delay = 10_000 // retry.
                     break;

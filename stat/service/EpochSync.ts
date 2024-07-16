@@ -1085,9 +1085,10 @@ export class EpochSync extends SyncBase{
     }
 
     public async getTraceArray(epochNumber, detail = false) {
-        const {
-            app: { tokenTool },
-        } = this;
+        const { app: { tokenTool }, } = this;
+        if (this.app.config?.traceNotAvailable) {
+            return []
+        }
 
         let traceArray = [];
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);

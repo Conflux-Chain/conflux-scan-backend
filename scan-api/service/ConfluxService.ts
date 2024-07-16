@@ -558,6 +558,9 @@ export class ConfluxService {
   }
 
   async getTransactionCFXTransferTree(transactionHash) {
+    if (this.app.config?.traceNotAvailable) {
+      return {}
+    }
     const {
       app: { cfx, error, ttlMap },
     } = this;

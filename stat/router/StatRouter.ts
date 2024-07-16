@@ -881,6 +881,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     });
 
     router.get('/transaction/pending', async function (ctx) {
+        if (statApp.config.pendingTxNotAvailable) {
+            ctx.body = []
+            return;
+        }
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
 
         const {accountAddress} = ctx.request.query

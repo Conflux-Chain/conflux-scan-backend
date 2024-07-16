@@ -73,6 +73,8 @@ export interface SyncQuoteOption{
 export interface StatConfig{
     influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
     oss: OssConf
+    pendingTxNotAvailable: boolean
+    traceNotAvailable: boolean,
     dingTalkToken: string;
     syncBlockDelay: number;
     syncTxnDelay: number;
