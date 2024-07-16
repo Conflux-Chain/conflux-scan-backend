@@ -27,7 +27,10 @@ export abstract class TimerStat {
         const that = this;
 
         async function repeat() {
-            await that.doStat().catch(e => { console.log(`[${that.bizAlias()}]stat error: `, e) });
+            let hit = false;
+            do {
+                hit = await that.doStat().catch(e => { console.log(`[${that.bizAlias()}]stat error: `, e); return false });
+            } while(hit)
             setTimeout(repeat, delay);
         }
 
@@ -40,10 +43,11 @@ export abstract class TimerStat {
         const {status, rangeBegin, rangeEnd} = await this.checkPivotBlockTime();
         this.debug && console.log(`debug-4,status:${status},rangeBegin:${rangeBegin},rangeEnd:${rangeEnd}`);
         if(status !== StatStatus.STAT_ABLE) {
-            return;
+            return false;
         }
 
         await this.stat(rangeBegin, rangeEnd);
+        return true
     }
 
     protected async checkPivotBlockTime(): Promise<{status: StatStatus, rangeBegin?: Date, rangeEnd?: Date}> {
