@@ -73,10 +73,15 @@ export class BlockService {
     if(block.epochNumber > 0) {
       const refEpoch = StatApp.isEVM ? block.epochNumber - (block.epochNumber % 5) : block.epochNumber
       const preEpoch = StatApp.isEVM ? refEpoch - 5 : refEpoch - 1
-      const blk = await service.conflux.getBlockByEpochNumber(preEpoch, true)
-      const prePivot = lodash.pick(blk, ['height', 'baseFeePerGas'])
+      const [refBlk, preBlk] = await Promise.all([
+        StatApp.isEVM ? service.conflux.getBlockByEpochNumber(refEpoch, true) : block,
+        service.conflux.getBlockByEpochNumber(preEpoch, false),
+      ])
+      const refBlkDetail: any = StatApp.isEVM ? await this._getDetail(refBlk) : detailInfo
+      const prePivot = lodash.pick(preBlk, ['height', 'baseFeePerGas'])
       baseFeePerGasRef = {
         height: refEpoch,
+        gasUsed: refBlkDetail.gasUsed,
         prePivot
       }
     }
@@ -86,7 +91,7 @@ export class BlockService {
         { type: QueryTypes.SELECT, replacements: [block.epochNumber, block.hash]})
         .then(arr => {return arr?.length ? arr[0] : null})
     let extra = blkExt?.extra ? JSON.parse(blkExt.extra) : undefined
-    lodash.assign(block, {burntGasFee: extra?.burntFee})
+    lodash.assign(block, {burntGasFee: extra?.burntFee, coreBlock: blkExt?.coreBlock??0})
     rewardDetail['burntGasFee'] = extra?.burntFee
 
     const epoch = await service.epoch.query({ epochNumber: block.epochNumber }) || {};
