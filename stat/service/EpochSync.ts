@@ -32,7 +32,6 @@ import {
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
-import {FullEpochSync} from "../FullEpochSync";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -1087,7 +1086,7 @@ export class EpochSync extends SyncBase{
 
     public async getTraceArray(epochNumber, detail = false) {
         const { app: { tokenTool }, } = this;
-        if ((this.app as FullEpochSync).config?.traceNotAvailable) {
+        if (this.app.config?.traceNotAvailable) {
             return []
         }
 
