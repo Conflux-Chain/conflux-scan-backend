@@ -83,7 +83,7 @@ export class Token extends Model<IToken> implements IToken{
             symbol: {type: DataTypes.CHAR(64), allowNull: true },
             decimals: {type: DataTypes.BIGINT, allowNull: true, },
             granularity: {type: DataTypes.BIGINT, allowNull: true, },
-            totalSupply: {type: DataTypes.DECIMAL(36, 0), allowNull: true, },
+            totalSupply: {type: DataTypes.STRING({length: 78}), allowNull: true, },
             // advance info
             type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
             transfer: {type: DataTypes.BIGINT, allowNull: true, },
