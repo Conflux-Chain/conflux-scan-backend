@@ -366,7 +366,7 @@ export class FullBlockService {
         let message = "ok";
         // the last one is pivot block.
         let pivotBlock = blockList[blockList.length-1];
-        if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0 && this.checkReOrg) {
+        if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > FirstBlockNo && this.checkReOrg) {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();
