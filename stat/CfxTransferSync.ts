@@ -577,8 +577,6 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
         // -1 means 'continue unfinished task',
         // switch to normal(support multiple) after the first task is picked up.
         fromEpoch = 1
-    } else if (fromEpoch < FirstBlockNo) {
-        fromEpoch = FirstBlockNo
     }
     await new Promise(r=>{
         run(cfx, task, ()=>{

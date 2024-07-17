@@ -473,7 +473,7 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
                 console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}, checkPivot ${maxOne.checkPivot}`)
                 return maxOne; // continue unfinished task.
             } else {
-                fromEpoch = 0;
+                fromEpoch = FirstBlockNo;
             }
         }
         let preEnd = fromEpoch;
@@ -574,8 +574,6 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
         // -1 means 'continue unfinished task',
         // switch to normal(support multiple) after the first task is picked up.
         fromEpoch = 1
-    } else if (fromEpoch < FirstBlockNo) {
-        fromEpoch = FirstBlockNo
     }
     await new Promise(r=>{
         run(cfx, task, ()=>{
