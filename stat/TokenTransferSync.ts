@@ -33,6 +33,7 @@ import {NftMint, Token} from "./model/Token";
 import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
+import {FirstBlockNo} from "./config/StatConfig";
 const lodash = require('lodash');
 
 export interface IEpochHashTokenTransfer {
@@ -573,6 +574,8 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
         // -1 means 'continue unfinished task',
         // switch to normal(support multiple) after the first task is picked up.
         fromEpoch = 1
+    } else if (fromEpoch < FirstBlockNo) {
+        fromEpoch = FirstBlockNo
     }
     await new Promise(r=>{
         run(cfx, task, ()=>{

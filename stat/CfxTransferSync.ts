@@ -23,6 +23,7 @@ import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 import {Stopwatch} from "./service/Stopwatch";
+import {FirstBlockNo} from "./config/StatConfig";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -576,6 +577,8 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
         // -1 means 'continue unfinished task',
         // switch to normal(support multiple) after the first task is picked up.
         fromEpoch = 1
+    } else if (fromEpoch < FirstBlockNo) {
+        fromEpoch = FirstBlockNo
     }
     await new Promise(r=>{
         run(cfx, task, ()=>{

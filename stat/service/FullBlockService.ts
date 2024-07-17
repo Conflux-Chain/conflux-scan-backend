@@ -34,6 +34,7 @@ import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
+import {FirstBlockNo} from "../config/StatConfig";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -83,7 +84,7 @@ export class FullBlockService {
     public async run(always = false) : Promise<void> {
         let maxEpoch:number = await loadMaxBlockEpoch(NaN)
         if (isNaN(maxEpoch)) {
-           maxEpoch = -1 // plus 1 got 0
+           maxEpoch = FirstBlockNo - 1 // will +1 below
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }

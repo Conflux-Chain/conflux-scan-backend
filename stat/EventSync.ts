@@ -33,6 +33,7 @@ import {sleep} from "./service/tool/ProcessTool";
 import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
+import {FirstBlockNo} from "./config/StatConfig";
 
 function decodeFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[], handler:SyncHandler) {
@@ -325,6 +326,8 @@ async function runTask(cfx:Conflux, taskClz,
         // -1 means 'continue unfinished task',
         // switch to normal(support multiple) after the first task is picked up.
         fromEpoch = 1
+    } else if (fromEpoch < FirstBlockNo) {
+        fromEpoch = FirstBlockNo
     }
     await new Promise(r=>{
         run(cfx, task, taskClz,()=>{
