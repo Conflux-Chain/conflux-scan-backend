@@ -1,4 +1,3 @@
-import {redirectLog} from "./config/LoggerConfig";
 import {
     getTokenTool,
     IEpochTask,
@@ -19,21 +18,12 @@ import {initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
-import {
-    AddressErc20Transfer,
-    aggregateTransfer,
-    buildErc20Transfer, buildTransferList2address, ContractUser,
-    Erc20Transfer, IErc20Transfer, T_ERC20_TRANSFER,
-} from "./model/Erc20Transfer";
-import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
-import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
-import {KV} from "./model/KV";
+
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {sleep} from "./service/tool/ProcessTool";
 import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {dingMsg} from "./monitor/Monitor";
 import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
-import {FirstBlockNo} from "./config/StatConfig";
 
 function decodeFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[], handler:SyncHandler) {
@@ -326,8 +316,6 @@ async function runTask(cfx:Conflux, taskClz,
         // -1 means 'continue unfinished task',
         // switch to normal(support multiple) after the first task is picked up.
         fromEpoch = 1
-    } else if (fromEpoch < FirstBlockNo) {
-        fromEpoch = FirstBlockNo
     }
     await new Promise(r=>{
         run(cfx, task, taskClz,()=>{
