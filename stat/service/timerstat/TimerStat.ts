@@ -3,6 +3,8 @@ import {CONST as SDK_CONST} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {EpochTaskTokenTransfer} from "../../TokenTransferSync";
 import {StatApp} from "../../StatApp";
+import {FirstBlockNo} from "../../config/StatConfig";
+import {sleep} from "../tool/ProcessTool";
 
 const moment = require('moment');
 
@@ -10,6 +12,7 @@ export abstract class TimerStat {
     protected app: any;
     protected baseInterval: IntervalType;
     protected debug = false;
+    birthday: Date
 
     protected constructor(app: any) {
         this.app = app;
@@ -25,7 +28,14 @@ export abstract class TimerStat {
 
     public async schedule(delay = 1000 * 60 * 10) {
         const that = this;
-
+        while(true) {
+            this.birthday = await Epoch.findOne({where: {epoch: FirstBlockNo}, order: [['epoch', 'asc']]}).then(res => res?.timestamp)
+            if (this.birthday) {
+                break
+            }
+            console.log(`${__filename} first epoch not found`)
+            await sleep(5_000)
+        }
         async function repeat() {
             let hit = false;
             do {
@@ -129,8 +139,7 @@ export abstract class TimerStat {
 
     protected getStatRangeMin(lastStat, minutes: number, withinPos: boolean = false): {rangeBegin: Date, rangeEnd: Date}{
         if(!lastStat){
-            const rangeBegin = StatApp.isEVM ? new Date('2022-02-20 22:00:00')
-                : (withinPos ? new Date('2022-02-27 00:00:00') : new Date('2020-10-28 16:00:00'));
+            const rangeBegin = withinPos ? new Date('2022-02-27 00:00:00') : this.birthday;
             const rangeEnd = new Date(rangeBegin);
             rangeEnd.setMinutes(rangeEnd.getMinutes() + minutes);
             return { rangeBegin, rangeEnd };
