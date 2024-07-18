@@ -5,6 +5,7 @@ import {EpochTaskTokenTransfer} from "../../TokenTransferSync";
 import {StatApp} from "../../StatApp";
 import {FirstBlockNo} from "../../config/StatConfig";
 import {sleep} from "../tool/ProcessTool";
+import {FullBlock} from "../../model/FullBlock";
 
 const moment = require('moment');
 
@@ -12,7 +13,7 @@ export abstract class TimerStat {
     protected app: any;
     protected baseInterval: IntervalType;
     protected debug = false;
-    birthday: Date
+    minDbTime: Date
 
     protected constructor(app: any) {
         this.app = app;
@@ -29,11 +30,11 @@ export abstract class TimerStat {
     public async schedule(delay = 1000 * 60 * 10) {
         const that = this;
         while(true) {
-            this.birthday = await Epoch.findOne({where: {epoch: FirstBlockNo}, order: [['epoch', 'asc']]}).then(res => res?.timestamp)
-            if (this.birthday) {
+            this.minDbTime = await FullBlock.findOne({order: [['epoch', 'asc']]}).then(res => res?.createdAt)
+            if (this.minDbTime) {
                 break
             }
-            console.log(`${__filename} first epoch not found`)
+            console.log(`${__filename} first block not found`)
             await sleep(5_000)
         }
         async function repeat() {
@@ -139,7 +140,7 @@ export abstract class TimerStat {
 
     protected getStatRangeMin(lastStat, minutes: number, withinPos: boolean = false): {rangeBegin: Date, rangeEnd: Date}{
         if(!lastStat){
-            const rangeBegin = withinPos ? new Date('2022-02-27 00:00:00') : this.birthday;
+            const rangeBegin = withinPos ? new Date('2022-02-27 00:00:00') : this.minDbTime;
             const rangeEnd = new Date(rangeBegin);
             rangeEnd.setMinutes(rangeEnd.getMinutes() + minutes);
             return { rangeBegin, rangeEnd };
