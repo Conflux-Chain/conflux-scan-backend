@@ -185,7 +185,7 @@ export async function waitParentHashDB(task: IEpochTokenTransfer, parentEpoch:nu
         const formerOne = await model.findByPk(parentEpoch);
         if (formerOne === null) {
             console.log(` current task with epoch ${task.epoch
-            } says: former task not finished yet, want epoch ${parentEpoch} be finished.`)
+            } says: former task not finished yet, want epoch ${parentEpoch} be finished. ${model.getTableName()}`)
             await sleep(5_000)
             continue
         }

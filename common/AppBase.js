@@ -38,8 +38,8 @@ class AppBase extends Koaflow {
     if (config.conflux) {
       // compiler app doesn't need it
       this.cfx = await initCfxSdk(config.conflux, 'common-conflux-sdk');
+      this.tokenTool = new TokenTool(this.cfx);
     }
-    this.tokenTool = new TokenTool(this.cfx);
     this.dingTalk = new DingTalkRobot(lodash.defaults(config.dingTalk, {
       machine: config.machine,
       service: process.env.SERVICE,
@@ -48,12 +48,6 @@ class AppBase extends Koaflow {
     // traceLog
     this.traceLog = new TraceLog(this.logger);
     this.traceLog.traceModule(this, { level: 'info' });
-    this.traceLog.traceModule(this.cfx, { level: 'debug' });
-    this.traceLog.traceMethod(this.cfx.provider, 'call', {
-      level: 'debug',
-      params: (...args) => args,
-      error: (e) => e.message,
-    });
   }
 
   listen(port) {
