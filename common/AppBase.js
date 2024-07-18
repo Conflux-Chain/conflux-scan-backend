@@ -35,7 +35,10 @@ class AppBase extends Koaflow {
     // console.log(`cwd`, process.cwd()) // it's '/'
     // In docker container, '/log' is bind to ./log/<api|compiler>
     this.logger = createLogger('scan', config.SERVICE, `${process.cwd()}/log`, 'info', true);
-    this.cfx = await initCfxSdk(config.conflux, 'common-conflux-sdk');
+    if (config.conflux) {
+      // compiler app doesn't need it
+      this.cfx = await initCfxSdk(config.conflux, 'common-conflux-sdk');
+    }
     this.tokenTool = new TokenTool(this.cfx);
     this.dingTalk = new DingTalkRobot(lodash.defaults(config.dingTalk, {
       machine: config.machine,

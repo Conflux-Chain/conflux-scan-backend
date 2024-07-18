@@ -13,10 +13,6 @@ class App extends AppBase {
   async init() {
     await super.init();
 
-    // networkId
-    this.networkId = this.cfx.networkId;
-    console.log(`================== start compiler, networkId ${this.cfx.networkId} ==================`);
-
     // backend service
     const {config} = this;
     this.fileMap = new FileMap(config.fileMap);
