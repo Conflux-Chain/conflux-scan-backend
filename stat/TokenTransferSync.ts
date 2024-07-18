@@ -33,6 +33,7 @@ import {NftMint, Token} from "./model/Token";
 import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
+import {FirstBlockNo} from "./config/StatConfig";
 const lodash = require('lodash');
 
 export interface IEpochHashTokenTransfer {
@@ -472,7 +473,7 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
                 console.log(` continue unfinished task, epoch ${maxOne.epoch}, cursor ${maxOne.cursor}, checkPivot ${maxOne.checkPivot}`)
                 return maxOne; // continue unfinished task.
             } else {
-                fromEpoch = 0;
+                fromEpoch = FirstBlockNo;
             }
         }
         let preEnd = fromEpoch;

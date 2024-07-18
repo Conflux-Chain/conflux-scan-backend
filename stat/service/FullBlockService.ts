@@ -34,6 +34,7 @@ import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
+import {FirstBlockNo} from "../config/StatConfig";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -83,7 +84,7 @@ export class FullBlockService {
     public async run(always = false) : Promise<void> {
         let maxEpoch:number = await loadMaxBlockEpoch(NaN)
         if (isNaN(maxEpoch)) {
-           maxEpoch = -1 // plus 1 got 0
+           maxEpoch = FirstBlockNo - 1 // will +1 below
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }
@@ -365,7 +366,7 @@ export class FullBlockService {
         let message = "ok";
         // the last one is pivot block.
         let pivotBlock = blockList[blockList.length-1];
-        if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > 0 && this.checkReOrg) {
+        if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > FirstBlockNo && this.checkReOrg) {
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();

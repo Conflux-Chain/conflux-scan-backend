@@ -73,6 +73,7 @@ export interface SyncQuoteOption{
 export interface StatConfig{
     influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
     oss: OssConf
+    firstBlockNo: number
     pendingTxNotAvailable: boolean
     traceNotAvailable: boolean,
     dingTalkToken: string;
@@ -181,12 +182,14 @@ export interface Erc20WatchList{
     tokenType:string // erc1155 needs a token type
 }
 
+export var FirstBlockNo = 0
+
 /**
  *  Priority from low to high: template.js -> local.js -> specified.js
  */
 export function loadConfig(specified:string = undefined): StatConfig {
     let path = `${__dirname}/Local.js`;
-    let defaultConf = {default:{}}
+    let defaultConf = {default:{firstBlockNo: 0}}
     if (fs.existsSync(path)){
         defaultConf = require('./Local')
     }
@@ -195,6 +198,7 @@ export function loadConfig(specified:string = undefined): StatConfig {
     // console.log(`template is 0 `, templateConf.default)
     // console.log(`specific is `, specific)
     const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
+    FirstBlockNo = conf.firstBlockNo
     if(conf?.consortiumBridge) {
         console.log(`web port [${conf.consortiumBridge.port}] rpc [`, conf.consortiumBridge.rpc, `]`)
         return conf;

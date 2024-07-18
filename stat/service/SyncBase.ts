@@ -6,6 +6,7 @@ import {StatApp} from "../StatApp";
 import {format} from "js-conflux-sdk";
 import {makeIdV} from "../model/HexMap";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {FirstBlockNo} from "../config/StatConfig";
 
 const lodash = require('lodash');
 const TOPICS_TO_TRACE = [[
@@ -87,8 +88,7 @@ export abstract class SyncBase{
     private async saveForward(epochNumber, { parentHash, modelData }: SyncData): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1;
         let s = Date.now();
-        // do not check pivot for epoch 0 and 1.
-        const prevEpoch = epochNumber <= 1 ? null : await this.getEpochByEpochNumber(preEpochNumber);
+        const prevEpoch = await this.getEpochByEpochNumber(preEpochNumber);
         s = this.m0('EpochByNumber', s)
         const validate = await this.validate(epochNumber, modelData);
         s = this.m0('Validate', s)
@@ -482,7 +482,7 @@ export abstract class SyncBase{
 
     public async getNextEpochNumber(){
         let maxEpochNumber:number = await Epoch.max('epoch')
-        return maxEpochNumber ? (maxEpochNumber + 1) : 0;
+        return maxEpochNumber ? (maxEpochNumber + 1) : FirstBlockNo;
     }
 
     public async getEpochByEpochNumber(epochNumber){
