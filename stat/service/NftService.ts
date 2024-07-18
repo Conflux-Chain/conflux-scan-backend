@@ -17,7 +17,7 @@ import {format} from "js-conflux-sdk";
 import {list2map, reverseMap} from "./common/utils";
 import {StatApp} from "../StatApp";
 const lodash = require('lodash');
-import {IS_EVM, IS_EVM2, KEY_NFT_FROM_DB, KEY_NFT_FROM_MINT_TABLE, KV} from "../model/KV";
+import {KEY_NFT_FROM_DB, KEY_NFT_FROM_MINT_TABLE, KV} from "../model/KV";
 
 export class NftService {
     zeroAddrId:number

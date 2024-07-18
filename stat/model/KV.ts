@@ -14,7 +14,6 @@ export const ADDRESS_COUNT_ID = "ADDRESS_COUNT_ID"
 export const CONTRACT_COUNT_ALL = "CONTRACT_COUNT_ALL"
 export const CONTRACT_COUNT_ID = "CONTRACT_COUNT_ID"
 export const TOTAL_POS_REWARD = "TOTAL_POS_REWARD"
-export const IS_EVM = "IS_EVM"
 export const IS_EVM2 = "IS_EVM2"
 export const API_LOG_RT_LIMIT = 'API_LOG_RT_LIMIT';
 export const USE_REMOTE_STAT = 'USE_REMOTE_STAT';

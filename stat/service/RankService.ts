@@ -14,7 +14,7 @@ import {init} from "./tool/FixDailyTokenStat";
 import {DailyToken} from "../model/Token";
 import {PruneInfo} from "../model/PruneInfo";
 import {topUnique} from "./UniqueAddressStat";
-import {IS_EVM, KV} from "../model/KV";
+import {IS_EVM2, KV} from "../model/KV";
 import {Errors} from "./common/LogicError";
 
 export class RankService{
@@ -135,7 +135,7 @@ export class RankService{
     // 9999895641981116/5000000000000000*2
     async rankByCfx(order:string, limit, networkId) {
         const list = await this.rankCfxBalance(order, limit)
-        const isEvm = await KV.getString(IS_EVM, '')
+        const isEvm = await KV.getSwitch(IS_EVM2)
         const totalCfx = isEvm ? (await this.app.cfx.getSupplyInfo().then(res=>Number(res.totalEspaceTokens/BigInt(1e18)))) :
             networkId === 1029 ? 50_0000_0000 : 5000000000000000*2
         list.forEach((b,idx)=>{
