@@ -378,7 +378,7 @@ function formatTrace(arr: (object | Error)[]) {
     arr.forEach((t, idx) => {
         const isError = t instanceof Error;
         if (isError) {
-            console.log('trace error:', t)
+            throw t;
         }
         // @ts-ignore
         arr[idx] = sdk_format.blockTraces(t);

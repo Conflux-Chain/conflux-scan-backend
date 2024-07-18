@@ -23,6 +23,7 @@ import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 import {Stopwatch} from "./service/Stopwatch";
+import {FirstBlockNo} from "./config/StatConfig";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
