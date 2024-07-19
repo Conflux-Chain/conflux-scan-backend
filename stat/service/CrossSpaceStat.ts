@@ -4,7 +4,7 @@ import {Conflux, Drip} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
 import {Hex40Map, makeIdV} from "../model/HexMap";
 import {FullTransaction} from "../model/FullBlock";
-import {IS_EVM, IS_EVM2, KV} from "../model/KV";
+import {IS_EVM2, KV} from "../model/KV";
 import {scheduleDaily} from "./pos/PosStat";
 import {initCfxSdk} from "./common/utils";
 
@@ -116,7 +116,7 @@ async function setup(cfx:Conflux) {
 }
 export async function scheduleCrossSpaceStat(cfx:Conflux) {
     await setup(cfx)
-    const isEvm = await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
+    const isEvm = await KV.getSwitch(IS_EVM2)
     if (isEvm) {
         return;
     }

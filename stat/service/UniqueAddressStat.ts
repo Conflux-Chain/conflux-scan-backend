@@ -20,6 +20,7 @@ import {Epoch} from "../model/Epoch";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {EpochHashTokenTransfer} from "../TokenTransferSync";
+import {FirstBlockNo} from "../config/StatConfig";
 
 process.env.TZ='UTC'
 
@@ -111,7 +112,7 @@ export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : 
                 console.log(`UniqueAddr resume running task ${runningOne.epoch}`)
                 return runningOne;
             }else {
-                fromEpoch = 0
+                fromEpoch = FirstBlockNo
             }
         }
         let preEnd = fromEpoch;

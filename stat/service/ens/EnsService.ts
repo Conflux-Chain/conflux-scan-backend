@@ -1,5 +1,5 @@
 import {DataTypes, Model, QueryTypes, Sequelize, Op, fn, col, literal} from 'sequelize'
-import {ENS_SEARCH_TEXT_CURSOR, IS_EVM, IS_EVM2, KV} from "../../model/KV";
+import {ENS_SEARCH_TEXT_CURSOR, IS_EVM2, KV} from "../../model/KV";
 import {sleep} from "../tool/ProcessTool";
 import {queryEnsOfName} from "./ENS";
 import {list2map} from "../common/utils";
@@ -53,7 +53,7 @@ let ens = '0xC7b7224F76dD98bE23b717668d55cB40E9B3DF7f' // net71
 let reverse = '0x03eD9a24B0c38D1903E34d7787B1EB69B4F8ccfA' //net71
 let chainId;
 export async function setupEnsChecker(cfx:Conflux, forceEvm = false) {
-    isEvm = forceEvm || await KV.getSwitch(IS_EVM) || await KV.getSwitch(IS_EVM2)
+    isEvm = forceEvm || await KV.getSwitch(IS_EVM2)
     chainId = await cfx.getStatus()
     if (!isEvm || chainId != 71) {
         return
