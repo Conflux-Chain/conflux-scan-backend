@@ -2917,12 +2917,12 @@ components:
               type: array
               items:
                 properties:
-                  storagePointRate:
+                  storageBurntRate:
                     type: string
-                    description: 'Storage point rate.'
-                  baseFeeShareRate:
+                    description: 'Storage burnt rate.'
+                  baseFeeBurntRate:
                     type: string
-                    description: 'Base fee share rate.'
+                    description: 'Base fee burnt rate.'
                   epochNumber:
                     type: number
                     description: 'Epoch number.'
