@@ -41,6 +41,7 @@ export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
 }
 // main table
+// it was merged into token transfer sync.
 export class TokenApproval extends Model<ITokenApproval> implements ITokenApproval {
     id?: number
     epoch: number
@@ -316,7 +317,7 @@ function decodeApprovalFromReceipts(receipts2d:TransactionReceipt[][],tokenTool:
     }
     return result;
 }
-async function batchSaveApproval(mainModel,
+export async function batchSaveApproval(mainModel,
                                  // addrModel,
                                  arr,
                                  // dataForAddr,
@@ -329,6 +330,12 @@ async function batchSaveApproval(mainModel,
 
 const measure = new Measure()
 const dumpPerRound = parseInt(process.env.ROUND || '1000')
+export function buildRelation(list, arr) {
+	list.forEach(t=>{
+		t.updatedAt = t.createdAt
+		arr.push(t)
+	})
+}
 async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
     const fromEpoch = task.cursor+1;
     const stopBeforeEpoch = task.epoch + task.range
@@ -347,12 +354,7 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
         }
         return {contractIds: [...contractIds], addrIds: [...addrIds]}
     }
-    function buildRelation(list, arr) {
-        list.forEach(t=>{
-            t.updatedAt = t.createdAt
-            arr.push(t)
-        })
-    }
+
     async function fetchAndBuild(epoch: number) {
         const [receipts, blockHashes, block] = await Promise.all([
             cfx.getEpochReceipts(epoch).then(res=>{
