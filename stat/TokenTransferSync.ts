@@ -30,10 +30,11 @@ import {KV} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
-import {loadMaxBlockEpoch} from "./model/FullBlock";
+import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 import {FirstBlockNo} from "./config/StatConfig";
+import {loadBlocksByEpoch, loadTxsByEpoch} from "./service/FullBlockService";
 const lodash = require('lodash');
 
 export interface IEpochHashTokenTransfer {
@@ -105,11 +106,7 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
             } else { // null: not executed; 2: skipped.
                 continue;
             }
-            if (txReceipt.blockHash !== blockHashes[blockIdx]) {
-                throw new Error(`tx receipt has mismatch block hash, epoch ${txReceipt.epochNumber
-                }, ${txReceipt.blockHash
-                } vs block hashes ${blockHashes[blockIdx]}`)
-            }
+
             let txLogIndex = -1;
             for (let log of txReceipt.logs) {
                 txLogIndex ++
@@ -135,36 +132,40 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
     }
     return result;
 }
-async function validate(cfx, epoch, blockHashArray, receipts) {
-    if (epoch !== 0 && receipts === null) {
+async function validate(epoch:number, dbBlocks:FullBlock[], receipts:TransactionReceipt[][], dbTxArr: FullTransaction[]) {
+    if (epoch === 0) {
+        return;
+    }
+    if (receipts === null) {
         throw new Error(`[epoch=${epoch}]validate, null receipts`);
     }
-
-    const blockArray = await batchFetchBlock(cfx,  blockHashArray);
-    const revertBlockArray = blockArray.filter(block => block.epochNumber !== epoch);
-    if(revertBlockArray.length && epoch !== 0){
-        throw new Error(`[epoch=${epoch}]validate, mismatch epoch (blockArray:${JSON.stringify(blockArray)})`);
-    }
-
-    if (blockArray.length !== receipts.length && epoch !== 0) {
+    if (dbBlocks.length !== receipts.length) {
         throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks, receipts)`);
     }
-
-    for (const [blockIndex, block] of blockArray.entries()) {
-        if (epoch === 0) {
-            return;
-        }
-        if (block.transactions.length !== receipts[blockIndex].length) {
-            throw new Error(`[epoch=${epoch}]validate, mismatch length (transactions, receipts)`);
-        }
-        for (const [txIndex, tx] of block.transactions.entries()) {
-            tx.receipt = receipts[blockIndex][txIndex];
-            const receiptStatus = tx.receipt?.outcomeStatus;
-            if((receiptStatus === 0 || receiptStatus === 1) &&
-                (tx.receipt.blockHash !== tx.blockHash || tx.receipt.transactionHash !== tx.hash)){
-                throw new Error(`[epoch=${epoch}]validate, mismatch hash (transaction:${JSON.stringify(lodash.pick(tx.receipt, ['blockHash', 'transactionHash']))} receipt:${JSON.stringify(lodash.pick(tx, ['blockHash', 'hash']))})`);
+    let dbTxPos = 0
+    for (const [blockIndex, block] of dbBlocks.entries()) {
+        const rcptOfBlock = receipts[blockIndex];
+        for (const [txIndex, tx] of rcptOfBlock.entries()) {
+            if (tx.outcomeStatus != 0 && tx.outcomeStatus != 1) {
+                continue
+            }
+            if (tx.blockHash != block.hash) {
+                throw new Error(`epoch ${epoch}, db block hash ${block.hash} != receipt block hash ${tx.blockHash}`)
+            }
+            const dbTx = dbTxArr[dbTxPos ++];
+            if (!dbTx) {
+                throw new Error(`epoch ${epoch} , miss db tx ${tx.transactionHash}`)
+            }
+            if (dbTx.hash != tx.transactionHash) {
+                throw new Error(`epoch ${epoch} , db tx hash ${dbTx.hash} != receipt tx hash ${tx.transactionHash}`)
+            }
+            if (tx.epochNumber != epoch) {
+                throw new Error(`epoch ${epoch} != receipt ${tx.epochNumber} `)
             }
         }
+    }
+    if (dbTxPos != dbTxArr.length) {
+        throw new Error(`epoch ${epoch} , db has more tx than epochReceipt , ${dbTxPos} / ${dbTxArr.length}  `)
     }
 }
 async function batchSaveTransfer(mainModel, addrModel, arr, dataForAddr, dbTx) {
@@ -230,24 +231,30 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         })
     }
     async function fetchAndBuild(epoch: number) {
-        const [receipts, blockHashes, block] = await Promise.all([
+        const [receipts, [dbBlocks, dbTxArr, parentDbBlock]] = await Promise.all([
             cfx.getEpochReceipts(epoch).then(res=>{
                 if (res === null && epoch === 0) {
                     res = []
                 }
                 return res as TransactionReceipt[][];
             }),
-            cfx.getBlocksByEpochNumber(epoch),
-            cfx.getBlockByEpochNumber(epoch),
+            // load blocks and txs from db instead of rpc
+            FullBlock.sequelize.transaction(tx=>{
+                return Promise.all([
+                      loadBlocksByEpoch(epoch, tx),
+                      loadTxsByEpoch(epoch, tx),
+                      FullBlock.findOne({where: {epoch: epoch-1}, transaction: tx})
+                  ])
+            }),
+
         ])
-        await validate(cfx, epoch, blockHashes, receipts);
+        const blockHashes = dbBlocks.map(b=>b.hash);
+        await validate(epoch, dbBlocks, receipts, dbTxArr);
+        const block = dbBlocks[dbBlocks.length-1];
         const pivotHash = block.hash;
-        if (pivotHash !== blockHashes[blockHashes.length - 1]) {
-            throw new CheckPivotHashError(` epoch ${epoch}, block hash mismatch at epoch ${epoch
-            }, from pivot block ${pivotHash}, from block hashes ${blockHashes[blockHashes.length - 1]}`)
-        }
+
         // simulatePivotSwitch(epoch, 3)
-        const dt = new Date(block.timestamp * 1000);
+        const dt = dbBlocks[dbBlocks.length-1].createdAt;
         const {t20:t20raw, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, dt, blockHashes);
         const t20 = aggregateTransfer(t20raw)
         // after all id is cached, it's almost cpu computation.
@@ -259,7 +266,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
         buildNfts(t1155, nfts)
         // build data out of transaction, reduce tx time.
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
-        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, ids20, ids721, ids1155, dt, pivotHash, parentHash: block.parentHash}
+        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, ids20, ids721, ids1155, dt, pivotHash, parentHash: parentDbBlock?.hash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {

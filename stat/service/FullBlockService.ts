@@ -44,6 +44,7 @@ const CODE_EMPTY_BLOCK = 2020102907
 export class FullBlockService {
     public cfx: Conflux;
     public latestConfirmEpoch = 0;
+    public latestStateEpoch = -1
     public maxEpochOfBlock = 0
     public cfx2: Conflux;
     public debugLog:boolean = true
@@ -181,7 +182,14 @@ export class FullBlockService {
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
     private async loadEpochData(minEpochNumber: number) {
-        const [rewardList, hashes, latest_state, receipts] = await Promise.all([
+        while (minEpochNumber >= this.latestStateEpoch) {
+            if (this.latestStateEpoch > 0) {
+                console.log(`block not ready, want ${minEpochNumber} > ${this.latestStateEpoch} latest_state`)
+                await sleep(2_000)
+            }
+            this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
+        }
+        const [rewardList, hashes, receipts] = await Promise.all([
             // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
@@ -205,7 +213,6 @@ export class FullBlockService {
                 }
                 return []
             }),
-            this.cfx.getEpochNumber('latest_state'),
             // @ts-ignore
             this.cfx.getEpochReceipts(minEpochNumber).then(res=>{
                 if (res === null && minEpochNumber === 0) {
@@ -220,10 +227,7 @@ export class FullBlockService {
                 return []
             }),
         ])
-        if (latest_state < minEpochNumber) {
-            await sleep(2_000);
-            return {code:CODE_CONTINUE, message: `block not ready, want ${minEpochNumber} > ${latest_state} latest_state`}
-        }
+
         if (hashes.length === 0) {
             return {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
@@ -264,7 +268,7 @@ export class FullBlockService {
             const msg = `block list length ${blockList.length} mismatch receipts length ${receipts.length
             } at epoch ${minEpochNumber}`;
             console.log(msg)
-            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state}
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
         }
         let code = 0
         let message = 'ok'
@@ -303,7 +307,7 @@ export class FullBlockService {
                 break;
             }
         }
-        return {code, message, blockList, rewardList, latest_state, receipts, blocksEvm}
+        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blocksEvm}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -695,6 +699,23 @@ export class FullBlockService {
             return 0
         })
     }
+}
+
+export async function loadBlocksByEpoch(no: number, dbTx:Transaction) {
+    return FullBlock.findAll({
+        attributes: ["epoch", "hash", "position", "createdAt"],
+        where: {epoch: no}, raw: true,
+        order:[["position", "asc"]],
+        transaction: dbTx,
+    })
+}
+export async function loadTxsByEpoch(no: number, dbTx:Transaction) {
+    return FullTransaction.findAll({
+        attributes: ["epoch","hash","blockPosition", "txPosition"],
+        where: {epoch: no}, raw: true,
+        order: [["blockPosition", "asc"], ["txPosition", "asc"]],
+        transaction: dbTx,
+    })
 }
 /*
 SELECT TABLE_SCHEMA,TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
