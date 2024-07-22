@@ -23,7 +23,7 @@ import {
     buildErc20Transfer,
     IErc20Transfer,
 } from "./model/Erc20Transfer";
-import {KV} from "./model/KV";
+import {KV, UNIFORM_APPROVAL_EPOCH} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {Token} from "./model/Token";
@@ -438,6 +438,12 @@ async function run(cfx:Conflux, task:IEpochApproval, endFn:()=>void) {
             await updateMaxDbEpoch();
             setTimeout(repeat, 5_000)
             return;
+        }
+			  const stopEpoch = await KV.getNumber(UNIFORM_APPROVAL_EPOCH, NaN);
+        if (epoch >= stopEpoch) {
+					console.log(`${__filename} stop at uniformed epoch `, stopEpoch)
+					setTimeout(repeat, 5_000)
+          return
         }
         let {action, data} = await measure.call('epoch', ()=>loader.get(epoch));
         let delay = 0

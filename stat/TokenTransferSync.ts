@@ -551,6 +551,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     let cfx = await initCfxSdk(confluxOption);
     console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} --------`)
 
+    await makeUniformApprovalEpoch()
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {
