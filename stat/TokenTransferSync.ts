@@ -26,7 +26,7 @@ import {
 } from "./model/Erc20Transfer";
 import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
-import {KV} from "./model/KV";
+import {KV, UNIFORM_APPROVAL_EPOCH} from "./model/KV";
 import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
@@ -35,6 +35,7 @@ import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
 import {FirstBlockNo} from "./config/StatConfig";
 import {loadBlocksByEpoch, loadTxsByEpoch} from "./service/FullBlockService";
+import {ApprovalRelation, batchSaveApproval, buildRelation, TaskEpochApproval, TokenApproval} from "./ApprovalSync";
 const lodash = require('lodash');
 
 export interface IEpochHashTokenTransfer {
@@ -84,7 +85,7 @@ export class EpochTaskTokenTransfer extends Model<IEpochTokenTransfer> implement
 
 export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[]) {
-    const result = {t20:[],t721:[],t1155:[]}
+    const result = {t20:[],t721:[],t1155:[], approvals:[]}
     function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex, txPos) {
         transfer['epoch'] = tx.epochNumber;
         transfer['transactionIndex'] = txPos;//tx.index;
@@ -122,10 +123,14 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
                     push(result.t20, transfer, blockIdx, txReceipt, txLogIndex, txPos)
                 } else if ((transfer = tokenTool.decodeERC721Transfer(log, false))) {
                     push(result.t721, transfer, blockIdx, txReceipt, txLogIndex, txPos);
-                } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log))) {
+                } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log)) && transfer.length) {
                     transfer.forEach(e=>{
                         push(result.t1155, e, blockIdx, txReceipt, txLogIndex, txPos);
                     })
+                } else if ((transfer = tokenTool.decode721_1155_ApprovalForAll(log, false))) {
+                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos)
+                } else if ((transfer = tokenTool.decodeERC721_ERC20Approval(log, false))) {
+                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos);
                 }
             }
         }
@@ -214,15 +219,9 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
     // parentHash, also indicates whether checking parent hash.
     let parentHash = await waitParentHashDB(task, task.cursor, EpochHashTokenTransfer)
     async function buildTransfer(arr:any[], fn, dt) {
-        const contractIds = new Set<number>()
-        const addrIds = new Set<number>()
         for (let e of arr) {
             await fn(e, dt)
-            contractIds.add(e.contractId)
-            addrIds.add(e.fromId)
-            addrIds.add(e.toId)
         }
-        return {contractIds: [...contractIds], addrIds: [...addrIds]}
     }
     function buildNfts(list, arr) {
         list.forEach(t=>{
@@ -255,18 +254,22 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
 
         // simulatePivotSwitch(epoch, 3)
         const dt = dbBlocks[dbBlocks.length-1].createdAt;
-        const {t20:t20raw, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, dt, blockHashes);
+        let {t20:t20raw, t721, t1155, approvals} = decodeTransferFromReceipts(receipts, tokenTool, dt, blockHashes);
         const t20 = aggregateTransfer(t20raw)
+        approvals = aggregateTransfer(approvals, true);
+        const relations = []
+        buildRelation(approvals, relations)
         // after all id is cached, it's almost cpu computation.
-        const ids20 = await buildTransfer(t20, buildErc20Transfer, dt);
-        const ids721 = await buildTransfer(t721, buildErc721Transfer, dt);
-        const ids1155 = await buildTransfer(t1155, buildErc721Transfer, dt);
+        await buildTransfer(t20, buildErc20Transfer, dt);
+        await buildTransfer(t721, buildErc721Transfer, dt);
+        await buildTransfer(t1155, buildErc721Transfer, dt);
+        await buildTransfer(approvals, buildErc20Transfer, dt);
         const nfts = []
         buildNfts(t721, nfts)
         buildNfts(t1155, nfts)
         // build data out of transaction, reduce tx time.
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
-        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, ids20, ids721, ids1155, dt, pivotHash, parentHash: parentDbBlock?.hash}
+        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, approvals, relations, dt, pivotHash, parentHash: parentDbBlock?.hash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
@@ -391,7 +394,7 @@ export async function finishTask(epoch, model) {
     await model.update({finished: true}, {where: {epoch}})
     console.log(` ---- finish task ${epoch} ---- ${model.getTableName()}`)
 }
-async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155addr, pivotHash, nfts}, taskBegin:number) {
+async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155addr, approvals, relations, pivotHash, nfts}, taskBegin:number) {
     return KV.sequelize.transaction(dbTx=>{
         return Promise.all([
             batchSaveTransfer(Erc20Transfer, AddressErc20Transfer, t20, t20addr, dbTx),
@@ -403,12 +406,21 @@ async function save(epoch:number, {t20, t20addr, t721, t721addr, t1155, t1155add
             EpochHashTokenTransfer.create({epoch, hash: pivotHash},{transaction: dbTx}),
             EpochTaskTokenTransfer.update(
                 {cursor: epoch, },
-                {where:{epoch:taskBegin}, transaction:dbTx})
-                // .then(res=>{
-                //     console.log(` update cursor, epoch ${epoch} result `, res)
-                // })
+                {where:{epoch:taskBegin}, transaction:dbTx}),
+            saveApprovals(epoch, approvals, relations, dbTx)
         ])
     })
+}
+async function saveApprovals(epoch: number, approvals, relations, dbTx) {
+    if (epoch < uniformApprovalEpoch) {
+        return
+    }
+    return Promise.all([
+        batchSaveApproval(TokenApproval, approvals, dbTx),
+        ApprovalRelation.bulkCreate(relations, {transaction: dbTx,
+                      updateOnDuplicate:["updatedAt","epoch","blockIndex","txIndex", "value"],
+                  })
+    ])
 }
 const MAIN_TRANSFER_MODELS = [Erc20Transfer, Erc721Transfer, Erc1155Transfer]
 async function pop(epoch:number, taskBegin: number) {
@@ -539,6 +551,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
     let cfx = await initCfxSdk(confluxOption);
     console.log(` ${process.argv[1]} \n ------- network ${cfx.networkId} --------`)
 
+    await makeUniformApprovalEpoch()
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, model) {
@@ -571,6 +584,31 @@ export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, mo
     console.log(` quit this worker. former task from epoch ${formerOne.epoch} with cursor ${
         formerOne.cursor}, latest_state epoch ${stateEpoch}`)
     process.exit(0)
+}
+let uniformApprovalEpoch = -1
+async function makeUniformApprovalEpoch() {
+    let n = await KV.getNumber(UNIFORM_APPROVAL_EPOCH, -1)
+    if (n >= 0) {
+        uniformApprovalEpoch = n;
+        return
+    }
+    const [tokenTr, apprTask] = await Promise.all([
+      EpochTaskTokenTransfer.findOne({order:[['epoch', 'desc']]}),
+      TaskEpochApproval.findOne({order:[['epoch', 'desc']]})
+    ])
+    if (!apprTask) {
+        // approval sync has not been started
+        uniformApprovalEpoch = FirstBlockNo
+        return
+    }
+    const gap = 60;
+    let laterEpoch = apprTask.cursor + gap;
+    if (tokenTr?.cursor + gap > laterEpoch) {
+        laterEpoch = tokenTr.cursor + gap
+    }
+    await KV.saveNumber(UNIFORM_APPROVAL_EPOCH, laterEpoch, undefined)
+    uniformApprovalEpoch = laterEpoch;
+    console.log(` make new uniformApprovalEpoch `, uniformApprovalEpoch)
 }
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
