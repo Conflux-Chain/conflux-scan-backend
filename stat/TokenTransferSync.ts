@@ -123,7 +123,7 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
                     push(result.t20, transfer, blockIdx, txReceipt, txLogIndex, txPos)
                 } else if ((transfer = tokenTool.decodeERC721Transfer(log, false))) {
                     push(result.t721, transfer, blockIdx, txReceipt, txLogIndex, txPos);
-                } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log))) {
+                } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log)) && transfer.length) {
                     transfer.forEach(e=>{
                         push(result.t1155, e, blockIdx, txReceipt, txLogIndex, txPos);
                     })
