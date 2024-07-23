@@ -26,8 +26,8 @@ async function run() {
         await AbiInfo.bulkCreate(body.list, {
             updateOnDuplicate: ['type']
         })
-        console.log(`create count ${body.list.length}`)
         skip += 10
+        console.log(`create count ${body.list.length} , ${skip} / ${body.total}`)
     } while (true)
 }
 
