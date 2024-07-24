@@ -5,6 +5,7 @@ import {Erc20Transfer} from "../../model/Erc20Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {StatApp} from "../../StatApp";
+import {CONST} from "../common/constant";
 
 const lodash = require('lodash')
 
@@ -61,7 +62,7 @@ export class StatOnRealtime {
             return
         }
 
-        if(!this.CIP1559_ENABLED) {
+        if(CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId) && !this.CIP1559_ENABLED) {
             this.CIP1559_ENABLED = pivotBlock.blockNumber >= StatApp.bnCIP1559Enabled
         }
 
