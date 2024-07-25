@@ -13,6 +13,7 @@ export interface IContract{
     icon?:number
     destroyed?:boolean
     censorStatus?: number
+    createdAt?: Date
 }
 
 export class Contract extends Model<IContract> implements IContract{
@@ -27,6 +28,7 @@ export class Contract extends Model<IContract> implements IContract{
     icon?:number
     destroyed?:boolean
     censorStatus?: number
+    createdAt?: Date
 
     static register(seq:Sequelize) {
         Contract.init({

@@ -74,6 +74,7 @@ export interface StatConfig{
     influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
     oss: OssConf
     firstBlockNo: number
+    noCoreSpace: boolean
     pendingTxNotAvailable: boolean
     traceNotAvailable: boolean,
     dingTalkToken: string;
@@ -183,13 +184,15 @@ export interface Erc20WatchList{
 }
 
 export var FirstBlockNo = 0
+// for chains without core space
+export var NoCoreSpace = false
 
 /**
  *  Priority from low to high: template.js -> local.js -> specified.js
  */
 export function loadConfig(specified:string = undefined): StatConfig {
     let path = `${__dirname}/Local.js`;
-    let defaultConf = {default:{firstBlockNo: 0}}
+    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false}}
     if (fs.existsSync(path)){
         defaultConf = require('./Local')
     }
@@ -199,6 +202,7 @@ export function loadConfig(specified:string = undefined): StatConfig {
     // console.log(`specific is `, specific)
     const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
     FirstBlockNo = conf.firstBlockNo
+    NoCoreSpace = conf.noCoreSpace
     if(conf?.consortiumBridge) {
         console.log(`web port [${conf.consortiumBridge.port}] rpc [`, conf.consortiumBridge.rpc, `]`)
         return conf;

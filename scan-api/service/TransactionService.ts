@@ -71,7 +71,7 @@ export class TransactionService {
     let typeDesc = CONST.TX_EIP_TYPE[transaction.type]
     !StatApp.isEVM && (typeDesc = typeDesc?.replace('EIP', 'CIP'))
 
-    transaction.status = transaction.status ?? receipt.outcomeStatus
+    transaction.status = transaction.status ?? receipt?.outcomeStatus
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
     return lodash.defaults({aggregate, data: txInputData, gasPrice: receipt?.effectiveGasPrice ?? transaction.gasPrice},

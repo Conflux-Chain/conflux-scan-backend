@@ -34,7 +34,7 @@ import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
-import {FirstBlockNo} from "../config/StatConfig";
+import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -235,8 +235,10 @@ export class FullBlockService {
         }
         let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
 
-        let blocksEvm: number = 0
-        if(StatApp.isEVM) {
+        let blocksEvm: number = 0;
+        if (NoCoreSpace) {
+            blocksEvm = hashes.length;
+        } else if(StatApp.isEVM) {
             const hashes = await this.cfx2.getBlocksByEpochNumber(minEpochNumber).catch(err => {
                 console.log(`fetch core blocks fail at epoch ${minEpochNumber}`, err)
                 return []
@@ -408,8 +410,7 @@ export class FullBlockService {
         }
         let blockTime = new Date(pivotBlock.timestamp*1000);
         // build block template out of the transaction below.
-        let pos = 0
-        for (const block of blockList) {
+        for (const [blockIdx, block] of blockList.entries()) {
             if (block.epochNumber !== minEpochNumber) {
                 throw new Error(`epoch in block ${block.epoch} != ${minEpochNumber} wanted!`)
             }
@@ -424,7 +425,7 @@ export class FullBlockService {
             block.totalReward = reward.totalReward || 0;
             block.txFee = reward.txFee || 0;
             block.avgGasPrice = 0
-            block.position = pos ++
+            block.position = blockIdx;
             block.txCount = block.transactions.length // all txn, include packed but not executed
             if (minEpochNumber === 0) {
                 block.gasUsed = 0
@@ -462,6 +463,7 @@ export class FullBlockService {
                         const contractBean = {
                             hex40id: txInfo.contractCreatedId, epoch: minEpochNumber,
                             base32:  noVerboseAddr(txInfo.receipt.contractCreated),
+                            createdAt: blockTime,
                         }
                         await Contract.create(contractBean)
                             .catch(err=>console.log(` save contract addr fail: tx ${txInfo.hash
@@ -475,8 +477,8 @@ export class FullBlockService {
                     txInfo.status = minEpochNumber === 0 ? 0 : st
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
-                    txInfo.gas = txInfo.receipt?.gasFee || 0// save gasFee.
-                    txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice ?? txInfo.gasPrice
+                    txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice || txInfo.gasPrice
+                    txInfo.gas = txInfo.receipt?.gasFee || (txInfo.receipt?.gasUsed || 0) * txInfo.gasPrice// save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId
@@ -499,10 +501,12 @@ export class FullBlockService {
             }
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
-            const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
-                (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
-            const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
-            block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
+            if (!NoCoreSpace) { // !NoCoreSpace => hasCoreSpace, share gasLimit
+                const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
+                    (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+                const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
+                block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
+            }
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
 
             block.burntGasFee = sumBurntGasFee
