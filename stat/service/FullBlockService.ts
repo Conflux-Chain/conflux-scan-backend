@@ -462,6 +462,7 @@ export class FullBlockService {
                         const contractBean = {
                             hex40id: txInfo.contractCreatedId, epoch: minEpochNumber,
                             base32:  noVerboseAddr(txInfo.receipt.contractCreated),
+                            createdAt: blockTime,
                         }
                         await Contract.create(contractBean)
                             .catch(err=>console.log(` save contract addr fail: tx ${txInfo.hash
