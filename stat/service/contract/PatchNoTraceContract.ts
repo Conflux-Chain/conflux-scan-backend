@@ -19,7 +19,7 @@ async function check() {
 	let maxTrace = await TraceCreateContract.findOne({
 		order: [['id', 'desc']],
 	})
-	let maxTraceId = maxTrace?.id ?? 263796;
+	let maxTraceId = maxTrace?.id ?? 0;
 	let round = 0
 	do {
 		const c = await Contract.findOne({
