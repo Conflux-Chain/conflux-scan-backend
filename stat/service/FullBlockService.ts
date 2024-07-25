@@ -34,7 +34,7 @@ import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
-import {FirstBlockNo} from "../config/StatConfig";
+import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -235,8 +235,10 @@ export class FullBlockService {
         }
         let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
 
-        let blocksEvm: number = 0
-        if(StatApp.isEVM) {
+        let blocksEvm: number = 0;
+        if (NoCoreSpace) {
+            blocksEvm = hashes.length;
+        } else if(StatApp.isEVM) {
             const hashes = await this.cfx2.getBlocksByEpochNumber(minEpochNumber).catch(err => {
                 console.log(`fetch core blocks fail at epoch ${minEpochNumber}`, err)
                 return []
