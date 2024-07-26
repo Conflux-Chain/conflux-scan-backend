@@ -8,6 +8,7 @@ import {FullTransaction} from "../model/FullBlock";
 import {Errors} from "./common/LogicError";
 import {Epoch} from "../model/Epoch";
 import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./CacheService";
+import {ethers} from "ethers";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
@@ -76,7 +77,7 @@ export class TxnQuery{
         const sumGas = list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b);
         const hexMap = await idHex40Map(list.map(row=>row['fromId']));
         list.forEach(row=>{
-            row['hex'] = `0x${hexMap.get(row['fromId'])}`
+            row['hex'] = ethers.utils.getAddress(`0x${hexMap.get(row['fromId'])}`)
             row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
         })
         let result = {/*code: 0,*/ totalGas: sumGas, list};

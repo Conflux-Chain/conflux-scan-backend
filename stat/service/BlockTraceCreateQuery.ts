@@ -4,6 +4,7 @@ import {Hex40Map, Hex64Map, idHex40Map, idHex64Map, hex40IdMap, formatToHex} fro
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {Op} from "sequelize";
 import {FullTransaction} from "../model/FullBlock";
+import {fmtAddr} from "../StatApp";
 const lodash = require('lodash');
 
 export class BlockTraceCreateQuery{
@@ -122,8 +123,8 @@ export class BlockTraceCreateQuery{
             // fields mapping
             list.forEach(row=>{
                 row['transactionHash'] = `0x${row['transactionHash']}`;
-                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
-                row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+                row['from'] = fmtAddr(`0x${hex40Map.get(row['from'])}`, this.app?.networkId);
+                row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
             })
         }
         return {total: page?.count || 0, list};

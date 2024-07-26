@@ -5,7 +5,7 @@ import {TransferQueryBase} from "./TransferQueryBase";
 import {CONST} from "./common/constant"
 /*const CONST = require('./common/constant');*/
 import {Token} from "../model/Token";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {IndexHints} from "sequelize";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {FullTransaction} from "../model/FullBlock";
@@ -72,7 +72,7 @@ export class Crc20TransferQuery extends TransferQueryBase{
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
         txMap: Map<string, FullTransaction>): Promise<any>{
-        row['address'] = format.address(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC20;
         return row;
     }

@@ -3,7 +3,7 @@ import {format} from "js-conflux-sdk";
 import {gql, GraphQLClient} from "graphql-request";
 import { AbortController } from "node-abort-controller";
 import { formatsByCoinType } from '@web3identity/address-encoder';
-import {StatApp} from "../../StatApp";
+import {fmtAddr, StatApp} from "../../StatApp";
 import {abi as abiENSChecker} from "../abi/ENSChecker";
 import {abi as abiENS} from "../abi/ENS";
 import {abi as abiReverseRegistrar} from "../abi/ReverseRegistrar";
@@ -114,7 +114,7 @@ export class ENSCheckerQuery {
         const coinTypeInstance = formatsByCoinType[CFX_COIN_TYPE]
         const net1029AddressBytes = await resolver.addr(nameHash, coinTypeInstance.coinType);
         const net1029Address = coinTypeInstance.encoder(net1029AddressBytes);
-        const resolvedAddress = format.address(format.hexAddress(net1029Address), StatApp.networkId);
+        const resolvedAddress = fmtAddr(format.hexAddress(net1029Address), StatApp.networkId);
 
         return {
             resolvedAddress,
