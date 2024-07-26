@@ -46,13 +46,7 @@ export class TransactionService {
       risk = await service.conflux.getConfirmationRiskByHash(transaction.blockHash).catch(() => null);
     }
 
-    let receipt = {} as any
-    if (lodash.intersection(fields, RECEIPT_FIELDS).length) {
-      // old tx might not have receipt
-      receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
-      // do not pick, expose all fields
-      // receipt = lodash.pick(receipt, RECEIPT_FIELDS);
-    }
+    let receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
 
     let txInputData = transaction.data;
     const censorResult = await service.censor.getCensorResult(hash);
