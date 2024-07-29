@@ -418,7 +418,7 @@ jsonrpc.method('queryContract',
 
   buildFlow((app) => type({
     address: app.type.simpleAddress,
-    from: app.type.simpleAddress,
+    from: app.type.simpleAddress.$or(type.any),
     admin: app.type.simpleAddress,
     token: {
       address: app.type.simpleAddress,

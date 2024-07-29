@@ -30,21 +30,23 @@ export class BlockTraceCreateQuery{
         // use EOA from as contract creator, not the trace caller.
         let from = undefined
         let hash = '0x'+trace.txHash;
-        const localTx = await FullTransaction.findOne({where:{hash: hash}});
-        if (localTx) {
-            const fromHex40Bean = await Hex40Map.findOne({where: {id: localTx.fromId}});
-            from = fromHex40Bean ? `0x${fromHex40Bean.hex}` : undefined
-        } else {
-            const rpcTx = await cfx.getTransactionByHash(hash);
-            if (rpcTx) {
-                from = formatToHex(rpcTx.from)
+        if (trace.txHash) { // mocked trace (such as token contract on zg) do not have tx hash
+            const localTx = await FullTransaction.findOne({where: {hash: hash}});
+            if (localTx) {
+                const fromHex40Bean = await Hex40Map.findOne({where: {id: localTx.fromId}});
+                from = fromHex40Bean ? `0x${fromHex40Bean.hex}` : undefined
+            } else {
+                const rpcTx = await cfx.getTransactionByHash(hash);
+                if (rpcTx) {
+                    from = formatToHex(rpcTx.from)
+                }
             }
         }
 
 
         return {
             epochNumber: trace.epochNumber,
-            transactionHash: `0x${trace.txHash}`,
+            transactionHash: trace.txHash ? `0x${trace.txHash}` : "",
             from,
             address,
         };

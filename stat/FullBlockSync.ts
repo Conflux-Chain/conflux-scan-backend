@@ -15,6 +15,7 @@ import {regExitHook} from "./service/tool/ProcessTool";
 import {checkApiLogIpField} from "./monitor/ApiLog";
 import {StatApp} from "./StatApp";
 import {CONST} from "./service/common/constant";
+import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -63,7 +64,11 @@ export async function run() {
             // evm doesn't care miner and reward
             svc.fillBlockRewardByPos().then();
         }
+        if (config.traceNotAvailable) {
+            startMonitorContractCreated().then()
+        }
         await syncFullBlock(svc)
+
     }
     // seq.close().then()
 }
