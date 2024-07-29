@@ -156,7 +156,13 @@ export abstract class TimerStat {
 
     protected getStatRangeDay(lastStat, days: number, withinPos: boolean = false): {rangeBegin: Date, rangeEnd: Date}{
         if(!lastStat){
-            const rangeBegin = withinPos ? new Date('2022-02-27 00:00:00') : this.minDbTime;
+            let rangeBegin: Date;
+            if (withinPos) {
+                rangeBegin = new Date('2022-02-27 00:00:00');
+            } else {
+                rangeBegin = new Date(this.minDbTime);
+                rangeBegin.setHours(0, 0, 0, 0)
+            }
             const rangeEnd = new Date(rangeBegin);
             rangeEnd.setDate(rangeEnd.getDate() + days);
             return { rangeBegin, rangeEnd };
