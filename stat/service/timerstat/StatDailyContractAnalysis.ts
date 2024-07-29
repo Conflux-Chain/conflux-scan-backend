@@ -10,6 +10,7 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {makeId} from "../../model/HexMap";
 import {CONST} from "../common/constant"
 import {IntervalType, TimerStat} from "./TimerStat";
+import {NoCoreSpace} from "../../config/StatConfig";
 
 export class StatDailyContractAnalysis extends TimerStat{
 
@@ -56,7 +57,9 @@ export class StatDailyContractAnalysis extends TimerStat{
         )
 
         const contractArray = await TraceCreateContract.findAll({attributes: ['to', 'blockTime'], raw: true}) || [];
-        await this.addInternalContract(contractArray);
+        if (!NoCoreSpace) {
+            await this.addInternalContract(contractArray);
+        }
         const statInfo = {txMap, cfxTransferMap, erc20TransferMap, erc721TransferMap, erc1155TransferMap}
         for (const [index, contract] of contractArray.entries()) {
             const contractStatDb = await DailyContractStat.findOne({where: {hex40id: contract.to, statTime: rangeBegin}});
