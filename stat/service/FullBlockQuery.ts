@@ -394,6 +394,10 @@ export class FullBlockQuery {
                         }}).then(ft=>{
                             if (ft) {
                                 row['txExecErrorMsg'] = ft.txExecErrorMsg;
+                                // rpc return un-zero gasUsed when NotEnoughCash error occurs
+                                if(StatApp.isEVM && ft.txExecErrorMsg?.indexOf('actual_gas_cost: 0')) {
+                                    row['gasFee'] = '0'
+                                }
                             } else {
                                 row['txExecErrorMsg'] = 'txExecErrorMsgNotFound'
                             }
