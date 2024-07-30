@@ -1,8 +1,7 @@
 /** Save all block. Another model `Block` only saves recent blocks (miner stat)*/
 
 
-
-import {Op, Sequelize, DataTypes, Model} from "sequelize";
+import {DataTypes, Model, Op, Sequelize} from "sequelize";
 import {createTable} from "../service/DBProvider";
 import {StatApp} from "../StatApp";
 
@@ -613,38 +612,43 @@ export class BlockPage {
     calcTotal:number //nonMarkRow+id
 }
 export async function countNonMarkBlockRows(maxOne: IBlockRowMark) {
-    const nonMarkRows = await FullBlock.count({
+    return FullBlock.count({
         where: {
-            [Op.or]: {
-                epoch: {[Op.gt]: maxOne.epoch},
-                [Op.and]: {
-                    epoch: {[Op.eq]: maxOne.epoch},
-                    position: {[Op.gt]: maxOne.position},
+            [Op.or]: [
+                {epoch: {[Op.gt]: maxOne.epoch}},
+                {
+                    [Op.and]: {
+                        epoch: {[Op.eq]: maxOne.epoch},
+                        position: {[Op.gt]: maxOne.position},
+                    }
                 }
-            }
+            ]
         },
         // logging: console.log
-    })
-    return nonMarkRows;
+    });
 }
 
 export function buildTxHigherCondition(maxOne: ITxnRowMark) : any {
     return {
-        [Op.or]: {
+        [Op.or]: [
             // epoch > ?
-            epoch: {[Op.gt]: maxOne.epoch},
+            {epoch: {[Op.gt]: maxOne.epoch}},
             // or ( epoch = ? and blockPosition > ?)
-            [Op.and]: [
-                {epoch: maxOne.epoch},
-                {blockPosition: {[Op.gt]: maxOne.blockPosition}},
-            ],
+            {
+                [Op.and]: [
+                    {epoch: maxOne.epoch},
+                    {blockPosition: {[Op.gt]: maxOne.blockPosition}},
+                ]
+            },
             // or ( epoch = ? and blockPosition = ? and txPosition > ?)
-            [Op.and]: {
-                epoch: maxOne.epoch,
-                blockPosition: maxOne.blockPosition,
-                txPosition: {[Op.gt]: maxOne.txPosition},
-            }
-        }
+            {
+                [Op.and]: {
+                    epoch: maxOne.epoch,
+                    blockPosition: maxOne.blockPosition,
+                    txPosition: {[Op.gt]: maxOne.txPosition},
+                }
+            },
+        ]
     };
 }
 

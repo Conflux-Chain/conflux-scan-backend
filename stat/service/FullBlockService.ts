@@ -478,7 +478,7 @@ export class FullBlockService {
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
                     txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice || txInfo.gasPrice
-                    txInfo.gas = txInfo.receipt?.gasFee || (txInfo.receipt?.gasUsed || 0) * txInfo.gasPrice// save gasFee.
+                    txInfo.gas = txInfo.receipt?.gasFee || (txInfo.receipt?.gasUsed || BigInt(0)) * txInfo.gasPrice// save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId
