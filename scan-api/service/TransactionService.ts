@@ -68,14 +68,17 @@ export class TransactionService {
     transaction.status = transaction.status ?? receipt?.outcomeStatus
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
-    return lodash.defaults({aggregate, data: txInputData, gasPrice: receipt?.effectiveGasPrice ?? transaction.gasPrice},
-        transaction, receipt, {
-          risk,
-          typeDesc,
-          baseFeePerGas,
-          timestamp: epoch.timestamp,
-          syncTimestamp: epoch.timestamp,
-        });
+    const gasPrice = receipt?.effectiveGasPrice || transaction.gasPrice || BigInt(0);
+    const gasFee = receipt?.gasFee || gasPrice * (receipt?.gasUsed || BigInt(0))
+    // zg rpc do not return contract address on transaction
+    const contractCreated = receipt?.contractCreated ?? transaction.contractCreated
+    return lodash.defaults({aggregate, data: txInputData, gasPrice, gasFee, contractCreated},transaction, receipt, {
+      risk,
+      typeDesc,
+      baseFeePerGas,
+      timestamp: epoch.timestamp,
+      syncTimestamp: epoch.timestamp,
+    });
   }
 
   // --------------------------------------------------------------------------

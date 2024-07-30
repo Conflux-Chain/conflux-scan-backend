@@ -208,13 +208,15 @@ export async function pagingFullCfxTransfer(skip:number, logger: any = undefined
 
 function buildHigherCfxTransferRowCondition(maxOne: ICfxTransferRowMark) {
     return {
-        [Op.or]: {
-            epoch: {[Op.gt]: maxOne.epoch},
-            [Op.and]: {
-                epoch: {[Op.eq]: maxOne.epoch},
-                id: {[Op.gt]: maxOne.dataId},
+        [Op.or]: [
+            {epoch: {[Op.gt]: maxOne.epoch}},
+            {
+                [Op.and]: {
+                    epoch: {[Op.eq]: maxOne.epoch},
+                    id: {[Op.gt]: maxOne.dataId},
+                }
             }
-        }
+        ]
     };
 }
 
