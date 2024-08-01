@@ -7,6 +7,7 @@ import {ConsortiumConflux} from "./ConsortiumConflux";
 import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
 
 const lodash = require('lodash');
+const BigFixed = require('bigfixed');
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 
@@ -535,4 +536,23 @@ export function formatPercentage(numStr, decimal) {
 
     const percentage = formatDecimal(numStr, decimal)
     return `${percentage}%`
+}
+
+export function extractActualGasCost(msg) {
+    if (!msg) {
+        return
+    }
+
+    const index = msg.indexOf('actual_gas_cost:')
+    if (index < 0) {
+        return
+    }
+
+    const start = index + 'actual_gas_cost:'.length
+    let end = start
+    while (end < msg.length && msg[end] !== ',' && msg[end] !== '}') {
+        end++
+    }
+
+    return parseInt(msg.substring(start, end))
 }

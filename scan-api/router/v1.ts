@@ -438,10 +438,6 @@ router.get('/transaction/:hash',
         transaction.txExecErrorInfo = transaction.txExecErrorMsg
           ? tool.parseTransactionMessage(transaction.txExecErrorMsg)
           : undefined;
-        // rpc return un-zero gasUsed when NotEnoughCash error occurs
-        if(StatApp.isEVM && transaction?.txExecErrorMsg?.indexOf('actual_gas_cost: 0')>=0) {
-          transaction.gasFee = '0'
-        }
         // aggregate log info
         const eventLog = await jsonrpc.methodFlow('listEventLogByTransactionHash')
           .call(this, { transactionHash: transaction?.hash || 0 });

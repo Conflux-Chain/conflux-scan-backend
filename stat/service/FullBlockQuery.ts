@@ -23,8 +23,10 @@ import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
 import {BigNumber} from "ethers";
 import {StatApp} from "../StatApp";
+import {extractActualGasCost} from "./common/utils";
 
 const lodash = require('lodash');
+const BigFixed = require('bigfixed');
 
 export class FullBlockQuery {
     protected app;
@@ -394,9 +396,10 @@ export class FullBlockQuery {
                         }}).then(ft=>{
                             if (ft) {
                                 row['txExecErrorMsg'] = ft.txExecErrorMsg;
-                                // rpc return un-zero gasUsed when NotEnoughCash error occurs
-                                if(StatApp.isEVM && ft.txExecErrorMsg?.indexOf('actual_gas_cost: 0')>=0) {
-                                    row['gasFee'] = '0'
+                                // using actualGasCost as gasFee when NotEnoughCash error occurs
+                                const actualGasCost = extractActualGasCost(ft.txExecErrorMsg)
+                                if(lodash.isNumber(actualGasCost)) {
+                                    row['gasFee'] = BigFixed(actualGasCost)
                                 }
                             } else {
                                 row['txExecErrorMsg'] = 'txExecErrorMsgNotFound'
