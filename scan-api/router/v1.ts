@@ -393,6 +393,7 @@ router.get('/transaction/:hash',
         syncTimestamp: 'integer',
         gasUsed: 'string',
         gasFee: 'string',
+        gasCharged: 'string',
         storageCollateralized: 'string',
         gasCoveredBySponsor: 'boolean',
         storageCoveredBySponsor: 'boolean',
@@ -438,7 +439,7 @@ router.get('/transaction/:hash',
           ? tool.parseTransactionMessage(transaction.txExecErrorMsg)
           : undefined;
         // rpc return un-zero gasUsed when NotEnoughCash error occurs
-        if(StatApp.isEVM && transaction?.txExecErrorMsg?.indexOf('actual_gas_cost: 0')) {
+        if(StatApp.isEVM && transaction?.txExecErrorMsg?.indexOf('actual_gas_cost: 0')>=0) {
           transaction.gasFee = '0'
         }
         // aggregate log info
