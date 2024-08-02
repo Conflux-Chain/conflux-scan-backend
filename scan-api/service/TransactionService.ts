@@ -6,6 +6,7 @@ const limitMap = require('limit-map');
 const {fetchEnsMap} = require("../../stat/service/ens/EnsService");
 const {CENSOR_STATUS} = require("../../stat/service/censor/CensorService");
 const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
+const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');
 
 const RECEIPT_FIELDS = [
@@ -70,20 +71,14 @@ export class TransactionService {
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
     const gasPrice = receipt?.effectiveGasPrice || transaction.gasPrice || BigInt(0);
-    const gasFee = receipt?.gasFee || gasPrice * (receipt?.gasUsed || BigInt(0))
+    let gasFee = receipt?.gasFee || gasPrice * (receipt?.gasUsed || BigInt(0))
 
-    // GasCharged is actual_gas_cost/gasPrice when txExecErrorMsg is `NotEnoughCash`.
+    // using actualGasCost as gasFee when NotEnoughCash error occurs
     // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
     let gasCharged = BigInt(Math.max(Number(receipt?.gasUsed || 0), (Number(transaction.gas) * 3) / 4))
-    const index = receipt?.txExecErrorMsg?.indexOf('actual_gas_cost:')
-    if(index>=0) {
-      const msg = receipt?.txExecErrorMsg
-      const start = index + 'actual_gas_cost:'.length
-      let end = start
-      while(end < msg.length && msg[end] !== ',' && msg[end] !== '}') {
-        end ++
-      }
-      const actualGasCost = parseInt(msg.substring(start, end))
+    const actualGasCost = extractActualGasCost(receipt?.txExecErrorMsg)
+    if(lodash.isNumber(actualGasCost)) {
+      gasFee = BigFixed(actualGasCost)
       gasCharged = Number(gasPrice) === 0 ? '0' : BigFixed(actualGasCost).div(BigFixed(gasPrice))
     }
 
@@ -98,10 +93,6 @@ export class TransactionService {
           syncTimestamp: epoch.timestamp,
         }
     );
-  }
-
-  getGasCharmed() {
-
   }
 
   // --------------------------------------------------------------------------
