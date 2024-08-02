@@ -18,7 +18,6 @@ import {initCfxSdk, removeLongData} from "../common/utils";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {
     calcDailyPosReward,
-    fixDailyPosAccountCount,
     PosStat, scheduleDailyParticipation,
     scheduleDailyStakingDepositWithdraw,
     scheduleDailyStatMix,
@@ -675,9 +674,6 @@ async function start() {
                 process.exit(0)
             })
             return;
-        } else if (cmd === 'fixAccCnt') {
-            await fixDailyPosAccountCount()
-            return
         } else if (cmd === 'testDailyStatMix') {
             const svc = new PosStat(cfx)
             await svc.update()
