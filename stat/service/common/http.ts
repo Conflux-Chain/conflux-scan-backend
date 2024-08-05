@@ -5,7 +5,7 @@ import {RequestOptions} from "http";
 // use this one to access the original text.
 export async function post({hostname, port, protocol, headers}: RequestOptions, data: any) : Promise<string> {
 	const postData = JSON.stringify(data);
-	const forkOpt = {hostname, port, protocol, headers: {...headers}}
+	const forkOpt = {method: 'POST', hostname, port, protocol, headers: {...headers}}
 	forkOpt.headers['Content-Length'] = Buffer.byteLength(postData);
 
 	return new Promise((resolve, reject) => {
