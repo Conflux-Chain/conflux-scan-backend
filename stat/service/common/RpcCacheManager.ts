@@ -1,6 +1,7 @@
 import {FullBlock, loadMaxBlockEpoch} from "../../model/FullBlock";
 import {CLEAN_CACHE_CURSOR, KV} from "../../model/KV";
 import * as fs from "fs";
+import {init} from "../tool/FixDailyTokenStat";
 
 export async function evictCache(keepEpochs: number, cacheDir: string) {
 	const maxBlockEpoch = await loadMaxBlockEpoch(NaN)
@@ -62,6 +63,7 @@ async function startEvictCache(
 
 async function main() {
 	const [,,cmd] = process.argv;
+	await init();
 	await startEvictCache()
 }
 
