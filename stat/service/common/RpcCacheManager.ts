@@ -34,7 +34,7 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 			try {
 				await fs.promises.rm(path)
 			} catch (e) {
-				console.log(`failed to remove ${path} , ${e}`)
+				showLog && console.log(`failed to remove ${path} , ${e}`)
 			}
 		}
 		if (showLog) {

@@ -7,6 +7,7 @@ import {format} from "js-conflux-sdk";
 import {makeIdV} from "../model/HexMap";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {FirstBlockNo} from "../config/StatConfig";
+import {loadMaxBlockEpoch} from "../model/FullBlock";
 
 const lodash = require('lodash');
 const TOPICS_TO_TRACE = [[
@@ -258,7 +259,8 @@ export abstract class SyncBase{
         } = this;
 
         const [latestState, blockHashArray, receipts] = await Promise.all([
-            cfx.getEpochNumber('latest_state'),
+            loadMaxBlockEpoch(0), // query db, cache data was made by full block sync
+            // cfx.getEpochNumber('latest_state'),
             cfx.getBlocksByEpochNumber(epochNumber)
                 /*.catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];})*/,
             cfx.getEpochReceipts(epochNumber)
