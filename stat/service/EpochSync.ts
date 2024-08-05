@@ -196,11 +196,19 @@ export class EpochSync extends SyncBase{
             const bytes32NameTagInfo = await this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray)
             s = this.m('NameTag', s)
 
-            const traceArray = await this.getTraceArray(epochNumber);
+            let traceArray = [];
+            if (!this.app.config?.traceNotAvailable){
+                const traces = await Promise.all(blockHashArray.map(hash=>{
+                    return this.app.cfx.traceBlock(hash)
+                }));
+                traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
+                // This function will repeatedly fetch the block hashes and details.
+                // await this.getTraceArray(epochNumber);
+            }
             s = this.m('Trace', s)
             const createArray = await this.getTraceCreateArrayPlus(traceArray);
             s = this.m('TraceCreate', s)
-            const traceCreateArray = await this.getTraceCreateArrayDBPlus(createArray);
+            const traceCreateArray = await this.buildTraceCreateArray(createArray);
             s = this.m('TraceCreateDB', s)
             const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
             s = this.m('TraceCrossSpace', s)
@@ -1001,7 +1009,7 @@ export class EpochSync extends SyncBase{
         return createTraceArray;
     }
 
-    public async getTraceCreateArrayDBPlus(traceCreateArray) {
+    public async buildTraceCreateArray(traceCreateArray) {
         const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined;
 
         const traceCreateArrayDB = []
@@ -1085,13 +1093,19 @@ export class EpochSync extends SyncBase{
     }
 
     public async getTraceArray(epochNumber, detail = false) {
-        const { app: { tokenTool }, } = this;
         if (this.app.config?.traceNotAvailable) {
             return []
         }
 
-        let traceArray = [];
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
+        return this.composeTraceAndBock(epochNumber, blockArray, traceArray2d, detail);
+    }
+    public composeTraceAndBock(epochNumber, blockArray, traceArray2d, detail = false) {
+        if (this.app.config?.traceNotAvailable) {
+            return []
+        }
+        const {app: {tokenTool},} = this;
+        let traceArray = [];
         blockArray.forEach((block, idx) => {
             if (!block.transactions.length) {
                 return;
