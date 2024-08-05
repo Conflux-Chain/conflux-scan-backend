@@ -72,7 +72,7 @@ export class ScanHttpProvider extends HttpProvider {
     }
 }
 
-function cacheRes(text : string, data: any, cacheDir: string) {
+async function cacheRes(text : string, data: any, cacheDir: string) {
     let body: any;
     try {
         body = JSON.parse(text);
@@ -84,44 +84,36 @@ function cacheRes(text : string, data: any, cacheDir: string) {
     const parseParamFn = CacheConfig[data.method];
     if (parseParamFn && body.result) {
         const path = `${cacheDir}/${data.method}_${parseParamFn(data.params)}.json.tmp`;
-        const writePromise= fs.promises.writeFile(path, text)
-        body.result[TempCachePathProp] = path;
-        body.result[WriteCachePromise] = writePromise;
+        await fs.promises.writeFile(path, text).then(()=>{
+            return onlineCache(body.result, path);
+        }).catch(e=>{
+            console.log(`failed to write/online cache file ${path}`, e)
+        })
     }
     return body
 }
 
 export const CacheConfig = {
-    cfx_getBlocksByEpoch: ([no])=>{
-        return BigInt(no); // NO is a hex str
-    },
-    cfx_getBlockByHash: ([hash, detail])=>{
-        return `${hash}_${detail}`
-    },
+    // cfx_getBlocksByEpoch: ([no])=>{
+    //     return BigInt(no); // NO is a hex str
+    // },
+    // cfx_getBlockByHash: ([hash, detail])=>{
+    //     return `${hash}_${detail}`
+    // },
     cfx_getEpochReceipts: ([no])=>{
         return BigInt(no);
     }
 }
 
-export const TempCachePathProp = "tempCachePath"
-export const WriteCachePromise = "writeCachePromise"
-
-export async function onlineCache(obj: any) {
-    const path = obj[TempCachePathProp];
+export async function onlineCache(obj: any, path: string ) {
     if (!path) {
         // console.log(`${__filename} path is empty`, path)
         return
     }
-    try {
-        await obj[WriteCachePromise];
-    } catch (e) {
-        console.log(`write cache promise failed`, e)
-        return
-    }
-    fs.renameSync(path, path.slice(0, path.length - 4));
+    fs.renameSync(path, path.slice(0, path.length - 4)); // 4 is ".tmp".length
     // console.log(`online cache ${path}`)
 }
-
+let hitCaches = 0
 function readCache(method, params, cacheDir: string) : any {
     const parseParamFn = CacheConfig[method];
     if (parseParamFn) {
@@ -134,7 +126,12 @@ function readCache(method, params, cacheDir: string) : any {
             return undefined
         }
         try {
-            return JSON.parse(text)
+            const parsed = JSON.parse(text);
+            hitCaches += 1;
+            if (hitCaches % 100 == 1) {
+                console.log(`hit caches ${hitCaches} . current path ${path}`)
+            }
+            return parsed;
         } catch (e) {
             console.log(`failed to parse cache at ${path} \n content [ ${text} ]\n`, e)
         }

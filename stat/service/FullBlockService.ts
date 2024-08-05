@@ -519,8 +519,7 @@ export class FullBlockService {
         }
         const failedBeans = failedTxArr
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
-        // must make cache before saving db
-        await makeCaches(preLoadResult);
+        //
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 FailedTx.bulkCreate(failedBeans, {transaction: dbTx, ignoreDuplicates: true}),
@@ -704,14 +703,6 @@ export class FullBlockService {
             console.log(`${new Date().toISOString()} fillPropsAfterConfirmedByConfig, error:`, err)
             return 0
         })
-    }
-}
-
-async function makeCaches({blockList, receipts, blockHashes}) {
-    await onlineCache(receipts);
-    await onlineCache(blockHashes);
-    for(const block of blockList) {
-        await onlineCache(block);
     }
 }
 
