@@ -290,6 +290,7 @@ export abstract class SyncBase{
             if (block.transactions.length !== receipts[blockIndex].length) {
                 throw new Error(`[epoch=${epochNumber}]mismatch between transactions and receipts`);
             }
+            // @ts-ignore
             for (const [txIndex, tx] of block.transactions.entries()) {
                 tx.receipt = receipts[blockIndex][txIndex];
                 const receiptStatus = tx.receipt?.outcomeStatus;

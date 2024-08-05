@@ -27,7 +27,7 @@ import {
     KV
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
-import {batchFetchBlock, noVerboseAddr} from "./common/utils";
+import {batchFetchBlock, batchFetchBlockSdk, noVerboseAddr} from "./common/utils";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
@@ -234,7 +234,7 @@ export class FullBlockService {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
             }
         }
-        let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
+        let blockList: any[] = await batchFetchBlock(this.cfx, hashes);
 
         let blocksEvm: number = 0;
         if (NoCoreSpace) {
@@ -252,7 +252,7 @@ export class FullBlockService {
             if(blockList[0].hash !== hashes[hashes.length - 1]) {
                 return {code: CODE_CONTINUE, message: 'pivot block not match between core and evm space'}
             }
-            const blockList2 = await batchFetchBlock(this.cfx2, hashes, true, true,
+            const blockList2 = await batchFetchBlockSdk(this.cfx2, hashes, true, true,
                 { check: true, epochNumber: minEpochNumber })
             let cip1559Enabled: boolean
             blockList2.forEach(blk => {
