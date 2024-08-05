@@ -94,12 +94,12 @@ async function cacheRes(text : string, data: any, cacheDir: string) {
 }
 
 export const CacheConfig = {
-    // cfx_getBlocksByEpoch: ([no])=>{
-    //     return BigInt(no); // NO is a hex str
-    // },
-    // cfx_getBlockByHash: ([hash, detail])=>{
-    //     return `${hash}_${detail}`
-    // },
+    cfx_getBlocksByEpoch: ([no])=>{
+        return BigInt(no); // NO is a hex str
+    },
+    cfx_getBlockByHash: ([hash, detail])=>{
+        return `${hash}_${detail}`
+    },
     cfx_getEpochReceipts: ([no])=>{
         return BigInt(no);
     }
