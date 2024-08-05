@@ -64,7 +64,7 @@ export abstract class SyncBase{
             app: { cfx, config },
         } = this;
 
-        const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
+        const stateEpochNumber = await loadMaxBlockEpoch(0);
         lodash.range(config.preload).forEach((i) => {
             if (epochNumber + i < stateEpochNumber) {
                 this.forwardQueue.start(epochNumber + i);
