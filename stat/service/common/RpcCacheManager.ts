@@ -14,31 +14,34 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 		return;
 	}
 	cursor ++;
+	let round = 0;
 	while (cursor < bottomEpoch) {
+		const showLog = round % 100 == 0;
 		for (const method of ['cfx_getBlocksByEpoch', 'cfx_getEpochReceipts_']) {
 			const path = `${cacheDir}/${method}_${cursor}.json`;
 			try {
 				await fs.promises.rm(path)
 			} catch (e) {
-				console.log(`failed to remove ${path} , ${e}`)
+				showLog && console.log(`failed to remove ${path} , ${e}`)
 			}
 		}
 
 		const blockList = await FullBlock.findAll({attributes: ['hash'], where: {epoch: cursor}, raw: true})
 		let method = "cfx_getBlockByHash"
 		for(const {hash} of blockList) {
-			const path = `${cacheDir}/${method}_${hash}.json`;
+			const path = `${cacheDir}/${method}_${hash}_true.json`;
 			try {
 				await fs.promises.rm(path)
 			} catch (e) {
 				console.log(`failed to remove ${path} , ${e}`)
 			}
 		}
-		if (cursor % 100 == 0) {
+		if (showLog) {
 			console.log(`clear cache at epoch ${cursor}`);
 		}
 		await KV.saveNumber(CLEAN_CACHE_CURSOR, cursor, undefined)
 		cursor ++;
+		round ++;
 	}
 }
 
