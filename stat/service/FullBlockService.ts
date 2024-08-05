@@ -35,6 +35,7 @@ import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
 import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
+import {onlineCache} from "./common/ScanHttpProvider";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -531,6 +532,7 @@ export class FullBlockService {
                 this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),
             ])
         }).then(async ()=>{
+            await makeCaches(preLoadResult);
             let now = Date.now()
             metrics.ms += now - veryBegin
             this.previousPivotHash = pivotBlock.hash
@@ -702,6 +704,14 @@ export class FullBlockService {
             console.log(`${new Date().toISOString()} fillPropsAfterConfirmedByConfig, error:`, err)
             return 0
         })
+    }
+}
+
+async function makeCaches({blockList, receipts, hashes}) {
+    await onlineCache(receipts);
+    await onlineCache(hashes);
+    for(const block of blockList) {
+        await onlineCache(block);
     }
 }
 
