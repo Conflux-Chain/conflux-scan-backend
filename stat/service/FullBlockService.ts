@@ -310,7 +310,7 @@ export class FullBlockService {
                 break;
             }
         }
-        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blocksEvm}
+        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blocksEvm, blockHashes: hashes}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -707,9 +707,9 @@ export class FullBlockService {
     }
 }
 
-async function makeCaches({blockList, receipts, hashes}) {
+async function makeCaches({blockList, receipts, blockHashes}) {
     await onlineCache(receipts);
-    await onlineCache(hashes);
+    await onlineCache(blockHashes);
     for(const block of blockList) {
         await onlineCache(block);
     }
