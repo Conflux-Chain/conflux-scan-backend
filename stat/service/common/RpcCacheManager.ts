@@ -18,10 +18,11 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 	let round = 0;
 	while (cursor < bottomEpoch) {
 		const showLog = round % 100 == 0;
-		for (const method of ['cfx_getBlocksByEpoch', 'cfx_getEpochReceipts_']) {
+		for (const method of ['cfx_getBlocksByEpoch', 'cfx_getEpochReceipts']) {
 			const path = `${cacheDir}/${method}_${cursor}.json`;
 			try {
 				await fs.promises.rm(path)
+				showLog && console.log(`rm cache ${path}`)
 			} catch (e) {
 				showLog && console.log(`failed to remove ${path} , ${e}`)
 			}
@@ -33,6 +34,7 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 			const path = `${cacheDir}/${method}_${hash}_true.json`;
 			try {
 				await fs.promises.rm(path)
+				showLog && console.log(`rm cache ${path}`)
 			} catch (e) {
 				showLog && console.log(`failed to remove ${path} , ${e}`)
 			}
