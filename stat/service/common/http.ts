@@ -3,9 +3,9 @@ import {RequestOptions} from "http";
 
 // superagent doesn't expose an interface to intercept response,
 // use this one to access the original text.
-export async function post({host, port, protocol, headers}: RequestOptions, data: any) : Promise<string> {
+export async function post({hostname, port, protocol, headers}: RequestOptions, data: any) : Promise<string> {
 	const postData = JSON.stringify(data);
-	const forkOpt = {host, port, protocol, headers: {...headers}}
+	const forkOpt = {hostname, port, protocol, headers: {...headers}}
 	forkOpt.headers['Content-Length'] = Buffer.byteLength(postData);
 
 	return new Promise((resolve, reject) => {
