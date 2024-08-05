@@ -519,7 +519,8 @@ export class FullBlockService {
         }
         const failedBeans = failedTxArr
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
-        //
+        // must make cache before saving db
+        await makeCaches(preLoadResult);
         await FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 FailedTx.bulkCreate(failedBeans, {transaction: dbTx, ignoreDuplicates: true}),
@@ -532,7 +533,6 @@ export class FullBlockService {
                 this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),
             ])
         }).then(async ()=>{
-            await makeCaches(preLoadResult);
             let now = Date.now()
             metrics.ms += now - veryBegin
             this.previousPivotHash = pivotBlock.hash
