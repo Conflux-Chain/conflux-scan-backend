@@ -70,6 +70,7 @@ export async function run() {
         }
         if (cfxOpt.writeCache) {
             DefaultCacheConf.logPeriod = 10_000;
+            DefaultCacheConf.delaySec = 30_000;
             DefaultCacheConf.cacheDir = cfxOpt.cachePath
             startEvictCache().then();
         }
