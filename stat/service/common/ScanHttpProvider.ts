@@ -2,6 +2,7 @@ import * as fs from "fs";
 import {URL} from "url";
 import {post} from "./http";
 import {readFileSync} from "fs";
+import {ConfluxOption, RpcCacheOption} from "../../config/StatConfig";
 
 const HttpProvider = require("js-conflux-sdk/src/provider/HttpProvider")
 const superagent = require('superagent');
@@ -12,9 +13,9 @@ export class ScanHttpProvider extends HttpProvider {
     tag: string
     times = 0
     agent = new Agent({maxSockets: 100, timeout:73000})
-    conf: {readCache: boolean, writeCache: boolean, cachePath: string}
+    conf: ConfluxOption & RpcCacheOption
     methodTimes = {}
-    constructor(conf, tag) {
+    constructor(conf: ConfluxOption & RpcCacheOption, tag: string) {
         super(conf);
         // this.headers = {Connection: "keep-alive"}
         this.tag = tag

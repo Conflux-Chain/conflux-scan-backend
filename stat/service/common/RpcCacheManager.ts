@@ -17,7 +17,7 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 	cursor ++;
 	let round = 0;
 	while (cursor < bottomEpoch) {
-		const showLog = round % 100 == 0;
+		const showLog = round % DefaultCacheConf.logPeriod == 0;
 		for (const method of ['cfx_getBlocksByEpoch', 'cfx_getEpochReceipts']) {
 			const path = `${cacheDir}/${method}_${cursor}.json`;
 			try {
@@ -47,10 +47,16 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 		round ++;
 	}
 }
+export const DefaultCacheConf = {
+	keepEpochs: 10_000,
+	cacheDir: "./cache/rpc",
+	delaySec: 10,
+	logPeriod: 100,
+}
 
-async function startEvictCache(
+export async function startEvictCache(
 	{keepEpochs, cacheDir, delaySec}
-		= {keepEpochs: 10_000, cacheDir: "./cache/rpc", delaySec: 10}
+		= DefaultCacheConf
 ) {
 	async function repeat() {
 		try {
