@@ -129,7 +129,7 @@ function readCache(method, params, cacheDir: string) : any {
         try {
             const parsed = JSON.parse(text);
             hitCaches += 1;
-            if (hitCaches % 100 == 1) {
+            if (hitCaches % 1000 == 1) {
                 console.log(`hit caches ${hitCaches} . current path ${path}`)
             }
             return parsed;
