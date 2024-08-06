@@ -15,6 +15,11 @@ export interface ConfluxOption {
     consortiumMode?: boolean, // true: consortium chain; false: public chain
     keepAlive?: boolean,
 }
+export interface RpcCacheOption {
+    writeCache?: boolean
+    readCache?: boolean
+    cachePath?: string
+}
 export interface EtherOption {
     url: string,
 }
@@ -87,12 +92,12 @@ export interface StatConfig{
     billingUrl: string;
     billingKey: string;
     billingApp: string;
-    conflux: ConfluxOption; // chain rpc node
-    blockSyncRpc: ConfluxOption; // chain rpc node
+    conflux: ConfluxOption & RpcCacheOption; // chain rpc node
+    blockSyncRpc: ConfluxOption & RpcCacheOption; // chain rpc node
     conflux2?: ConfluxOption; // get cross space info in eSpace, needless in coreSpace
     ether: EtherOption;
-    cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
-    tokenTransferRpc?: ConfluxOption; // for token transfer sync
+    cfxTransferRpc?: ConfluxOption & RpcCacheOption; // for cfx transfer sync
+    tokenTransferRpc?: ConfluxOption & RpcCacheOption; // for token transfer sync
     consortiumBridge?: ConsortiumBridgeOption;
     cfxWsUrl: string
     preload: number,

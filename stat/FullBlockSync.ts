@@ -16,11 +16,13 @@ import {checkApiLogIpField} from "./monitor/ApiLog";
 import {StatApp} from "./StatApp";
 import {CONST} from "./service/common/constant";
 import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
+import {DefaultCacheConf, startEvictCache} from "./service/common/RpcCacheManager";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
 
-    let cfx = await initCfxSdk(config.blockSyncRpc);
+    const cfxOpt = config.blockSyncRpc;
+    let cfx = await initCfxSdk(cfxOpt);
     StatApp.networkId = cfx.networkId
     PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
 
@@ -34,7 +36,6 @@ export async function run() {
         console.log(`skip sync db schema.`);
     }
     setInterval(()=>autoAddPartition(seq), 600_000)
-    await checkApiLogIpField()
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     let cfx2
@@ -66,6 +67,12 @@ export async function run() {
         }
         if (config.traceNotAvailable) {
             startMonitorContractCreated().then()
+        }
+        if (cfxOpt.writeCache) {
+            DefaultCacheConf.logPeriod = 10_000;
+            DefaultCacheConf.delaySec = 30_000;
+            DefaultCacheConf.cacheDir = cfxOpt.cachePath
+            startEvictCache().then();
         }
         await syncFullBlock(svc)
 
