@@ -78,7 +78,7 @@ export class StatApp{
     public static networkId = 1029
     public static readonly = false
     public static isEVM = false;
-    public static bnCIP1559Enabled // Block number at which CIP1559 is enabled.
+    public static epochCIP1559Enabled // Epoch number at which CIP1559 is enabled.
     constructor(config: StatConfig) {
         this.config = config;
     }

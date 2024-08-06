@@ -63,7 +63,7 @@ export class StatOnRealtime {
         }
 
         if(CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId) && !this.CIP1559_ENABLED) {
-            this.CIP1559_ENABLED = pivotBlock.blockNumber >= StatApp.bnCIP1559Enabled
+            this.CIP1559_ENABLED = pivotBlock.epochNumber >= StatApp.epochCIP1559Enabled
         }
 
         if(!txArray?.length){

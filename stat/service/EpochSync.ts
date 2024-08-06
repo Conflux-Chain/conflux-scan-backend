@@ -28,7 +28,7 @@ import {AddressNfts} from "../model/AddrNft";
 import {
     CONTRACT_ADDRESS_METADATA,
     CONTRACT_ANNOUNCEMENT,
-    KEY_BN_CIP1559_ENABLED,
+    KEY_EPOCH_CIP1559_ENABLED,
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
@@ -134,10 +134,10 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkConfig() {
-        const [announcement, addressMetadata, bnCIP1559Enabled] = await Promise.all([
+        const [announcement, addressMetadata, epochCIP1559Enabled] = await Promise.all([
             KV.getString(CONTRACT_ANNOUNCEMENT, ''),
             KV.getString(CONTRACT_ADDRESS_METADATA, ''),
-            KV.getNumber(KEY_BN_CIP1559_ENABLED),
+            KV.getNumber(KEY_EPOCH_CIP1559_ENABLED),
         ])
 
         if(!announcement) {
@@ -152,13 +152,13 @@ export class EpochSync extends SyncBase{
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
 
         if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
-            StatApp.bnCIP1559Enabled = 0
+            StatApp.epochCIP1559Enabled = 0
         } else{
-            if(!bnCIP1559Enabled) {
-                console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+            if(!epochCIP1559Enabled) {
+                console.log(`Failed to load config for epoch number at which CIP1559 enabled!`)
                 process.exit(9)
             }
-            StatApp.bnCIP1559Enabled = bnCIP1559Enabled
+            StatApp.epochCIP1559Enabled = epochCIP1559Enabled
         }
     }
 

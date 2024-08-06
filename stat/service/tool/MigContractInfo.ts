@@ -11,7 +11,7 @@ import {Op, QueryTypes} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
 import {AddressNft, AddressNfts} from "../../model/AddrNft";
-import {IS_EVM2, KEY_BN_CIP1559_ENABLED, KV} from "../../model/KV";
+import {IS_EVM2, KEY_EPOCH_CIP1559_ENABLED, KV} from "../../model/KV";
 import {Erc1155Data, NftMint, Token, Token2} from "../../model/Token";
 import {sleep} from "./ProcessTool";
 import {NftMeta} from "../nftchecker/NftMetaStorage";
@@ -752,7 +752,7 @@ async function initFullBlockSyncer() {
         cfx2 = await initCfxSdk(config.conflux2)
     }
 
-    StatApp.bnCIP1559Enabled = await KV.getNumber(KEY_BN_CIP1559_ENABLED)
+    StatApp.epochCIP1559Enabled = await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED)
 
     fullBlockService = new FullBlockService(cfx, cfx2)
 }
@@ -793,7 +793,7 @@ async function syncBlockExt(epoch: number) {
         block.position = blkPos ++
         block.gasUsed = sumGasLimit
         const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
-            (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+            (block.epochNumber >= StatApp.epochCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
         const times = StatApp.isEVM ? blocksEvm : 1
         block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
         pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))

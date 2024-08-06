@@ -7,7 +7,7 @@ import {VoteParams} from "../model/Epoch";
 import {IntervalType} from "./timerstat/TimerStat";
 import {StatApp} from "../StatApp";
 import {CONST} from "./common/constant";
-import {KEY_BN_CIP1559_ENABLED, KV} from "../model/KV";
+import {KEY_EPOCH_CIP1559_ENABLED, KV} from "../model/KV";
 
 const BigFixed = require('bigfixed');
 
@@ -120,7 +120,6 @@ export class DailyStatQuery {
         return {total: count, list: rows, intervalType};
     }
 
-    protected epochCIP1559Enabled
     public async listBurntRateStat({skip, limit, sort, minTimestamp, maxTimestamp}) {
         const {app: {
             cfx
@@ -129,17 +128,8 @@ export class DailyStatQuery {
         if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
             return {total: 0, list: []}
         }
-
-        if(!this.epochCIP1559Enabled) {
-            const bnCIP1559Enabled= await KV.getNumber(KEY_BN_CIP1559_ENABLED)
-            if(!bnCIP1559Enabled) {
-                throw new Error(`Failed to load config for block number at which CIP1559 enabled!`)
-            }
-            const block = await cfx.getBlockByBlockNumber(bnCIP1559Enabled)
-            if(!bnCIP1559Enabled) {
-                throw new Error(`Failed to get block at which CIP1559 enabled!`)
-            }
-            this.epochCIP1559Enabled = block.epochNumber
+        if(!StatApp.epochCIP1559Enabled) {
+            StatApp.epochCIP1559Enabled = await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED)
         }
 
         const queryOptions: any = {
@@ -171,7 +161,7 @@ export class DailyStatQuery {
                 param['epochNumber'] = param['epoch']
             }
             param['storageBurntRate'] = BigFixed(param.storagePointProp).div(BigFixed(param.storagePointProp).add(BigFixed(10**18)))
-            if(param.epoch >= this.epochCIP1559Enabled) {
+            if(param.epoch >= StatApp.epochCIP1559Enabled) {
                 param['baseFeeBurntRate'] = BigFixed(1).sub(BigFixed(param.baseFeeShareProp).div(BigFixed(param.baseFeeShareProp).add(BigFixed(10**18))))
             } else{
                 param['baseFeeBurntRate'] = BigFixed(0)
