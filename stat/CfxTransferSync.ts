@@ -147,7 +147,6 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
-    const isNewTraceFormat = true;//isNewFormatTrace(traceArray2d)
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
@@ -220,11 +219,8 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     || (fromPocket && fromPocket !== 'balance' && toPocket && toPocket !== 'balance')
                     ||
                     (
-                        isNewTraceFormat &&
-                        (
-                            // scan doesn't save gas/storage payment as cfx transfer records.
-                            fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
-                        )
+                        // scan doesn't save gas/storage payment as cfx transfer records.
+                        fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
                     )
                 ) {
                     continue
@@ -247,7 +243,6 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     console.log(`unknown trace type ${type}, epoch ${epoch} block ${blockHash
                     } tx ${txBean.txPosition}, trace ${traceIdx}, tx hash ${transactionHash}`)
                     process.exit(8)
-                    return
                 }
                 const fromId = await makeIdV(from)
                 const toId = await makeIdV(to)

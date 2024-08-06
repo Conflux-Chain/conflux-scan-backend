@@ -15,33 +15,29 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 		return;
 	}
 	cursor ++;
+	function rmFile(path: string, showLog: boolean) {
+		try {
+			fs.rmSync(path)
+			showLog && console.log(`rm cache ${path}`)
+		} catch (e) {
+			showLog && console.log(`failed to remove ${path} , ${e}`)
+		}
+	}
 	let round = 0;
 	while (cursor < bottomEpoch) {
 		const showLog = round % DefaultCacheConf.logPeriod == 0;
 		for (const method of ['cfx_getBlocksByEpoch', 'cfx_getEpochReceipts']) {
 			const path = `${cacheDir}/${method}_${cursor}.json`;
-			try {
-				await fs.promises.rm(path)
-				showLog && console.log(`rm cache ${path}`)
-			} catch (e) {
-				showLog && console.log(`failed to remove ${path} , ${e}`)
-			}
+			rmFile(path, showLog)
 		}
 
 		const blockList = await FullBlock.findAll({attributes: ['hash'], where: {epoch: cursor}, raw: true})
-		let method = "cfx_getBlockByHash"
 		for(const {hash} of blockList) {
-			const path = `${cacheDir}/${method}_${hash}_true.json`;
-			try {
-				await fs.promises.rm(path)
-				showLog && console.log(`rm cache ${path}`)
-			} catch (e) {
-				showLog && console.log(`failed to remove ${path} , ${e}`)
-			}
+			const path = `${cacheDir}/cfx_getBlockByHash_${hash}_true.json`;
+			rmFile(path, showLog)
+			rmFile(`${cacheDir}/trace_block_${hash}.json`, showLog)
 		}
-		if (showLog) {
-			console.log(`clear cache at epoch ${cursor}`);
-		}
+
 		await KV.saveNumber(CLEAN_CACHE_CURSOR, cursor, undefined)
 		cursor ++;
 		round ++;

@@ -17,6 +17,7 @@ export interface ConfluxOption {
 }
 export interface RpcCacheOption {
     writeCache?: boolean
+    writeTraceCache?: boolean
     readCache?: boolean
     cachePath?: string
 }
