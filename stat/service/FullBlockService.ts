@@ -34,7 +34,6 @@ import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
 import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
-import {onlineCache} from "./common/ScanHttpProvider";
 
 // Do not care the value
 const CODE_REWIND = 20201029
