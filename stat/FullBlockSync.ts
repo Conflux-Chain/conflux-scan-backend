@@ -5,7 +5,7 @@ import {format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
-    IS_EVM2, KEY_BN_CIP1559_ENABLED,
+    IS_EVM2, KEY_EPOCH_CIP1559_ENABLED,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KV
 } from "./model/KV";
@@ -75,14 +75,14 @@ export async function run() {
 
 async function mustInit() {
     if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
-        StatApp.bnCIP1559Enabled = 0
+        StatApp.epochCIP1559Enabled = 0
     } else{
-        const bnCIP1559Enabled= await KV.getNumber(KEY_BN_CIP1559_ENABLED)
-        if(!bnCIP1559Enabled) {
-            console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+        const epochCIP1559Enabled= await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED)
+        if(!epochCIP1559Enabled) {
+            console.log(`Failed to load config for epoch number at which CIP1559 enabled!`)
             process.exit(9)
         }
-        StatApp.bnCIP1559Enabled = bnCIP1559Enabled
+        StatApp.epochCIP1559Enabled = epochCIP1559Enabled
     }
 }
 

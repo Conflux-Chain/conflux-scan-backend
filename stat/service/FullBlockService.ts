@@ -19,7 +19,6 @@ import {Hex40Map, makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {Transaction,QueryTypes,UniqueConstraintError, Op} from "sequelize"
 import {
-    KEY_BN_CIP1559_ENABLED,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KEY_FILL_BLOCK_REWARD_EPOCH,
     KEY_FULL_BLOCK_COUNT,
@@ -258,12 +257,7 @@ export class FullBlockService {
                 if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
                     blocksEvm++
                 }
-                cip1559Enabled = cip1559Enabled || blk.blockNumber === StatApp.bnCIP1559Enabled
             })
-            if(cip1559Enabled) { // convert blockNumber to epochNumber at which cip1559 is enabled in evm space
-                await KV.upsert({key: KEY_BN_CIP1559_ENABLED, value: `${minEpochNumber}`})
-                StatApp.bnCIP1559Enabled = minEpochNumber
-            }
         }
         // fill tx receipts to block-> tx
         if (blockList.length !== receipts.length && minEpochNumber !== 0) {
@@ -503,7 +497,7 @@ export class FullBlockService {
             block.gasUsed = sumGasLimit
             if (!NoCoreSpace) { // !NoCoreSpace => hasCoreSpace, share gasLimit
                 const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
-                    (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+                    (block.epochNumber >= StatApp.epochCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
                 const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
                 block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
             }
