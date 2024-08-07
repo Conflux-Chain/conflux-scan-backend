@@ -16,9 +16,14 @@ export interface ConfluxOption {
     keepAlive?: boolean,
 }
 export interface RpcCacheOption {
+    // write cache , exclude trace_block ; full block sync sets it.
     writeCache?: boolean
+    // only write trace block cache ; cfx transfer sync could set it to true
     writeTraceCache?: boolean
+    // read cache , exclude trace_block
     readCache?: boolean
+    // read trace_block cache ; epoch sync could set it to true
+    readTraceCache?: boolean
     cachePath?: string
 }
 export interface EtherOption {

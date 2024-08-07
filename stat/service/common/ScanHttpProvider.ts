@@ -49,7 +49,8 @@ export class ScanHttpProvider extends HttpProvider {
         return cacheRes(text, data, this.conf.cachePath);
     }
     async request0(data) {
-        if (this.conf.readCache) {
+        const shouldReadCache = data.method === 'trace_block' ? this.conf.readTraceCache : this.conf.readCache;
+        if (shouldReadCache) {
             const cache = readCache(data.method, data.params, this.conf.cachePath)
             if (cache) {
                 // console.log(`hit cache`)
