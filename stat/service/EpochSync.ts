@@ -202,7 +202,7 @@ export class EpochSync extends SyncBase{
                     return this.app.cfx.traceBlock(hash)
                 }));
                 traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
-                // This function will repeatedly fetch the block hashes and details.
+                // This function will repeatedly fetch block hashes and details.
                 // await this.getTraceArray(epochNumber);
             }
             s = this.m('Trace', s)

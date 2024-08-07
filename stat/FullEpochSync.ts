@@ -9,7 +9,6 @@ import {initCfxSdk, patchFormat} from "./service/common/utils";
 import {IS_EVM2, KV} from "./model/KV";
 import {StatApp} from "./StatApp";
 import {ContractQuery} from "./service/ContractQuery";
-import {checkApiLogIpField} from "./monitor/ApiLog";
 import {redirectLog} from "./config/LoggerConfig";
 import {makeIdV} from "./model/HexMap";
 import {CONST} from "./service/common/constant";
@@ -42,7 +41,6 @@ export class FullEpochSync{
         } else {
             console.log(`skip sync db schema.`);
         }
-        await checkApiLogIpField()
     }
 
     private async initSwitch(){
@@ -79,8 +77,8 @@ async function start() {
     const config = loadConfig('Prod');
     redirectLog({mainPath: 'EpochSync'});
     const server = new FullEpochSync(config);
-    await server.run();
     registerProcessHook(server);
+    await server.run();
 }
 
 function registerProcessHook(server: FullEpochSync) {

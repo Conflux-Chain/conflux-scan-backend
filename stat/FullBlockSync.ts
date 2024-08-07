@@ -12,7 +12,6 @@ import {
 import {initCfxSdk} from "./service/common/utils";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {regExitHook} from "./service/tool/ProcessTool";
-import {checkApiLogIpField} from "./monitor/ApiLog";
 import {StatApp} from "./StatApp";
 import {CONST} from "./service/common/constant";
 import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";

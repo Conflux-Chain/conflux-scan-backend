@@ -25,7 +25,7 @@ export class ScanHttpProvider extends HttpProvider {
             'Content-type': 'application/json'
         }
         this.conf = conf;
-        if ((conf.writeCache || conf.readCache) ) {
+        if ((conf.writeCache || conf.readCache || conf.writeTraceCache) ) {
             if (!conf.cachePath) {
                 console.log(`${__filename} must set cache path`)
                 process.exit(9)
@@ -41,14 +41,16 @@ export class ScanHttpProvider extends HttpProvider {
     }
 
     async _doRequest(data) {
-        return limit(()=>this.conf.writeCache ? this.requestAndCache(data) : this.request0(data))
+        const shouldWriteCache = this.conf.writeCache || (this.conf.writeTraceCache && data.method == 'trace_block');
+        return limit(()=>shouldWriteCache ? this.requestAndCache(data) : this.request0(data))
     }
     async requestAndCache(data) {
         const text = await post(this.url, data)
         return cacheRes(text, data, this.conf.cachePath);
     }
     async request0(data) {
-        if (this.conf.readCache) {
+        const shouldReadCache = data.method === 'trace_block' ? this.conf.readTraceCache : this.conf.readCache;
+        if (shouldReadCache) {
             const cache = readCache(data.method, data.params, this.conf.cachePath)
             if (cache) {
                 // console.log(`hit cache`)
@@ -103,6 +105,9 @@ export const CacheConfig = {
     },
     cfx_getEpochReceipts: ([no])=>{
         return BigInt(no);
+    },
+    trace_block:([hash])=>{
+        return hash;
     }
 }
 

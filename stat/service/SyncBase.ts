@@ -3,11 +3,12 @@ import {CONST} from "./common/constant"
 import {batchFetchBlock} from "./common/utils";
 import {Epoch} from "../model/Epoch";
 import {StatApp} from "../StatApp";
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {makeIdV} from "../model/HexMap";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
-import {FirstBlockNo} from "../config/StatConfig";
+import {FirstBlockNo, RpcCacheOption} from "../config/StatConfig";
 import {loadMaxBlockEpoch} from "../model/FullBlock";
+import {EpochHashCfxTransfer} from "../CfxTransferSync";
 
 const lodash = require('lodash');
 const TOPICS_TO_TRACE = [[
@@ -64,7 +65,7 @@ export abstract class SyncBase{
             app: { cfx, config },
         } = this;
 
-        const stateEpochNumber = await loadMaxBlockEpoch(0);
+        const stateEpochNumber = await loadMaxRefEpoch(cfx);
         lodash.range(config.preload).forEach((i) => {
             if (epochNumber + i < stateEpochNumber) {
                 this.forwardQueue.start(epochNumber + i);
@@ -232,7 +233,7 @@ export abstract class SyncBase{
             traceEpochNumber = next;
         }
 
-        let stateEpochNumber = await loadMaxBlockEpoch(0).catch(e => {
+        let stateEpochNumber = await loadMaxRefEpoch(cfx).catch(e => {
             console.log(` SyncBase getEpochNumber error:${e}`);
             return 0;
         });
@@ -242,7 +243,7 @@ export abstract class SyncBase{
                 traceEpochNumber = await that.syncForward(traceEpochNumber);
                 setTimeout(repeat, 0)
             } else {
-                stateEpochNumber = await loadMaxBlockEpoch(0).catch(e => {
+                stateEpochNumber = await loadMaxRefEpoch(cfx).catch(e => {
                     console.log(` SyncBase getEpochNumber error:${e}`);
                     return 0;
                 });
@@ -259,7 +260,7 @@ export abstract class SyncBase{
         } = this;
 
         const [latestState, blockHashArray, receipts] = await Promise.all([
-            loadMaxBlockEpoch(0), // query db, cache data was made by full block sync
+            loadMaxRefEpoch(cfx), // query db, cache data was made by full block sync
             // cfx.getEpochNumber('latest_state'),
             cfx.getBlocksByEpochNumber(epochNumber)
                 /*.catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];})*/,
@@ -541,6 +542,20 @@ export class PreloadMap extends Map {
         }
         return value;
     }
+}
+
+async function loadMaxRefEpoch(cfx: Conflux) {
+    const conf: RpcCacheOption = cfx.provider.conf;
+    if (conf?.readTraceCache) {
+        // trace cache was make by cfx transfer sync
+        return EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']]}).then(res=>{
+            return res?.epoch || 0
+        })
+    } else if (conf?.readCache) {
+        return loadMaxBlockEpoch(0)
+    }
+    // do not depend on any cache, fetch from rpc.
+    return cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
 }
 
 export enum SyncCode {
