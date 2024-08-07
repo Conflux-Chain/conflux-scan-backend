@@ -5,7 +5,7 @@ import {getAddrTransferCount} from "../model/TransferCount";
 import {AddressTransfer} from "../model/AddrTransfer";
 import {CONST} from "./common/constant";
 import {FullTransaction} from "../model/FullBlock";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {PruneType} from "../model/PruneInfo";
 const lodash = require('lodash');
 
@@ -66,7 +66,7 @@ export class AddrTransferQuery extends TransferQueryBase{
         const isTx = row['type'] === TX.code;
         const isToken = row['type'] === ERC20.code || row['type'] === ERC721.code || row['type'] === ERC1155.code;
         const addr = hex40Map.get(row['address']);
-        row['address'] = !isToken && !isTx ? undefined : (addr ? format.address(`0x${addr}`, this.app?.networkId) : undefined);
+        row['address'] = !isToken && !isTx ? undefined : (addr ? fmtAddr(`0x${addr}`, this.app?.networkId) : undefined);
         row['tokenId'] = !isToken ? undefined : row['tokenId'];
         row['type'] = this.CODE_TYPE_MAP[row['type']].name;
 

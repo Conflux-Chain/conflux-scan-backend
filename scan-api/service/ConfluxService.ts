@@ -1,4 +1,5 @@
 import {ScanApp} from "./index";
+import {fmtAddr} from "../../stat/StatApp";
 
 const {noVerboseAddr} = require("../../stat/service/common/utils")
 const {patchPocketAddress} = require("../../stat/model/HexMap")
@@ -583,13 +584,18 @@ export class ConfluxService {
           if (trace?.action?.input) trace.action.input = undefined;
           if (trace?.action?.from) {
             trace.action.from = patchPocketAddress(fromPocket, noVerboseAddr(trace.action.from), cfx.networkId)
+            trace.action.from = fmtAddr(trace.action.from, cfx.networkId);
             addressSet.add(trace.action.from);
           }
           if (trace?.action?.to) {
             trace.action.to = patchPocketAddress(toPocket, noVerboseAddr(trace.action.to),  cfx.networkId)
+            trace.action.to = fmtAddr(trace.action.to, cfx.networkId);
             addressSet.add(trace.action.to);
           }
-          if (trace?.action?.addr) addressSet.add(trace.action.addr);
+          if (trace?.action?.addr) {
+            trace.action.addr = fmtAddr(trace.action.addr, cfx.networkId);
+            addressSet.add(trace.action.addr);
+          }
         });
         let result = {} as any;
         try {

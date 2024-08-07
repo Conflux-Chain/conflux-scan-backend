@@ -21,6 +21,7 @@ import {toBase32} from "../tool/AddressTool";
 import {emptyField} from "../common/utils";
 import {getNFTOwnerCount} from "../../model/TransferCount";
 import {AddressNfts} from "../../model/AddrNft";
+import {fmtAddr} from "../../StatApp";
 
 const lodash = require('lodash');
 const {abi} = require('../abi/ScanUtilitiesProxy');
@@ -254,7 +255,7 @@ export class NFTCheckerService {
             list.forEach(row => hex40IdSet.add(Number(row.contractId)));
             const hex40Map = await idHex40Map([...hex40IdSet]);
             list.forEach(row=>{
-                row.contract = format.address(`0x${hex40Map.get(Number(row.contractId))}`, this.app?.networkId);
+                row.contract = fmtAddr(`0x${hex40Map.get(Number(row.contractId))}`, this.app?.networkId);
                 delete row.contractId;
             })
         }

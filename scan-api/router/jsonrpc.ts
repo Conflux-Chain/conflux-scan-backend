@@ -1,6 +1,7 @@
 import {ScanCtx} from "../service/index";
 import {Op} from "sequelize";
 import {KEY_CONFURA_URL, KEY_CORE_API_URL, KEY_CORE_OPEN_API_URL, KEY_OPEN_API_URL} from "../../stat/model/KV";
+import {fmtAddr} from "../../stat/StatApp";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -34,34 +35,20 @@ jsonrpc.method('testConcurrent',
 );
 
 // ------------------------------- Dashboard --------------------------------
-jsonrpc.method('supply',
-  parameter({}),
 
-  durationAlarmFlow(5 * 1000, { method: 'supply' }),
-  async function () {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-    const data = await service.homeDashboard.getData();
-    return data.supplyInfo;
-  },
-);
-
-jsonrpc.method('dag',
-  serializeByIP(),
+export const jsonrpc_dag = jsonrpc.method_('dag',
   parameter({
     limit: { path: '0', type: type.uint, default: 10, '<=10': (v) => v <= 10 },
   }),
 
   cacheFlow(1000),
-  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'dag' }),
   async function () {
     const {
       app: { service },
     } = this as ScanCtx;
-    const data = await service.homeDashboard.getData();
-    return data.dagInfo;
+    const data = service.homeDashboard.getData();
+    return data?.dagInfo;
   },
 
   type({
@@ -80,8 +67,7 @@ jsonrpc.method('dag',
   }, { pick: true }),
 );
 
-jsonrpc.method('plot',
-  serializeByIP(),
+export const jsonrpc_plot = jsonrpc.method_('plot',
   parameter({
     interval: { path: '0', type: type.uint },
     limit: { path: '0', type: type.uint, default: 2, 'limit<=100': (v) => v <= 100 },
@@ -100,7 +86,7 @@ jsonrpc.method('plot',
   },
 );
 
-jsonrpc.method('trend',
+export const jsonrpc_trend = jsonrpc.method_('trend',
   serializeByIP(),
   parameter({
     interval: { path: '0', type: type.uint, default: 60 },
@@ -112,28 +98,13 @@ jsonrpc.method('trend',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.statistic.trend(options);
   },
 );
 
-jsonrpc.method('homeDashboard',
-  parameter({}),
-  cacheFlow(5 * 1000),
-  durationAlarmFlow(5 * 1000, { method: 'homeDashboard' }),
-  async function () {
-    const {
-      app: { service },
-    } = this;
-    const data = await service.homeDashboard.getData();
-    return data.blockchainInfo;
-  },
-);
-
-jsonrpc.method('frontend',
-  parameter({}),
-
+export const jsonrpc_frontend = jsonrpc.method_('frontend',
   cacheFlow(60 * 1000),
   durationAlarmFlow(5 * 1000, { method: 'frontend' }),
   async function () {
@@ -166,21 +137,16 @@ jsonrpc.method('frontend',
 );
 
 // --------------------------------- Block ----------------------------------
-jsonrpc.method('queryBlock',
-  serializeByIP(),
+export const jsonrpc_queryBlock = jsonrpc.method_('queryBlock',
   parameter({
     hash: { path: '0', type: type.string, required: true },
     fields: { path: '0', type: type([type.string]).$parse(type.arr) },
   }),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'queryBlock' }),
   async function (options) {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-
+    const { app: { service }, } = this as ScanCtx;
     return service.block.query(options);
   },
 
@@ -190,8 +156,7 @@ jsonrpc.method('queryBlock',
   }).$or(null)),
 );
 
-jsonrpc.method('countAndListBlock',
-  serializeByIP(),
+export const jsonrpc_listBlock = jsonrpc.method_('countAndListBlock',
   buildFlow((app) => parameter({
     epochNumber: { path: '0', type: type.uint },
     blockHash: { path: '0', type: type.hex64 },
@@ -210,12 +175,9 @@ jsonrpc.method('countAndListBlock',
 
   listLimitBy(['miner', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
-  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { level: 'warning', method: 'countAndListBlock' }),
   async function ({ listLimit, ...options }) {
-    const {
-      app: { service },
-    } = this;
+    const { app: { service }, } = this as ScanCtx;
 
     const result = await service.block.countAndList(options);
     return { ...result, listLimit };
@@ -229,7 +191,7 @@ jsonrpc.method('countAndListBlock',
 );
 
 // ------------------------------- Transaction ------------------------------
-jsonrpc.queryTransaction = jsonrpc.method_('queryTransaction',
+export const jsonrpc_queryTransaction = jsonrpc.method_('queryTransaction',
   serializeByIP(),
   parameter({
     hash: { path: '0', type: type.hex64, required: true },
@@ -245,7 +207,15 @@ jsonrpc.queryTransaction = jsonrpc.method_('queryTransaction',
       app: { service },
     } = this;
 
-    return service.transaction.query(options);
+    return service.transaction.query(options).then(res=>{
+        if (res?.from) {
+            res.from = fmtAddr(res.from, StatApp.networkId)
+        }
+        if (res?.to) {
+            res.to = fmtAddr(res.to, StatApp.networkId)
+        }
+        return res;
+    });
   },
 
   type({
@@ -254,8 +224,7 @@ jsonrpc.queryTransaction = jsonrpc.method_('queryTransaction',
   }).$or(null),
 );
 
-jsonrpc.countAndListTransaction = jsonrpc.method_('countAndListTransaction',
-  serializeByIP(),
+export const jsonrpc_countAndListTransaction = jsonrpc.method_('countAndListTransaction',
   buildFlow((app) => parameter({
     blockHash: { path: '0', type: type.hex64 },
     accountAddress: { path: '0', type: app.type.address },
@@ -279,12 +248,11 @@ jsonrpc.countAndListTransaction = jsonrpc.method_('countAndListTransaction',
 
   listLimitBy(['accountAddress', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
-  concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { level: 'warning', method: 'countAndListTransaction' }),
   async function ({ listLimit, ...options }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.transaction.countAndList(options);
     return { ...result, listLimit };
@@ -406,11 +374,11 @@ jsonrpc.method('queryContract',
   async function ({ address, fields }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.contract.queryPlus({ address, fields });
     if (lodash.includes(fields, 'token')) {
-      result.token = await service.token.queryPlus({ address, fields: ['icon'] });
+      result.token = await service.token.queryPlus({ address });
     }
 
     return { ...result, isRegistered: result?.name !== undefined };
@@ -580,22 +548,22 @@ jsonrpc.method('listContractVerified',
   })),
 );
 
-jsonrpc.method('queryContractBasic',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
-  })),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
-  async function ({ addressArray }) {
-    const {
-      app: { service },
-    } = this;
-    return await service.contractRdb.listBasic({ addressArray });
-  },
-);
+// jsonrpc.method('queryContractBasic',
+//   serializeByIP(),
+//   buildFlow((app) => parameter({
+//     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
+//   })),
+//
+//   cacheFlow(5 * 1000),
+//   concurrenceControl(500),
+//   durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
+//   async function ({ addressArray }) {
+//     const {
+//       app: { service },
+//     } = this;
+//     return await service.contractRdb.listBasic({ addressArray });
+//   },
+// );
 
 // ---------------------------------- Token ---------------------------------
 jsonrpc.method('registerToken',
@@ -667,7 +635,7 @@ jsonrpc.method('queryToken',
   })),
 );
 
-jsonrpc.method('countAndListToken',
+export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   serializeByIP(),
   buildFlow((app) => parameter({
     transferType: { path: '0', type: type.string, enum: Object.values(CONST.TRANSFER_TYPE) },
@@ -814,7 +782,7 @@ jsonrpc.method('countAndListEventLog',
 );
 
 // ------------------------------- Transfer -----------------------------------
-jsonrpc.countAndListTransfer = jsonrpc.method_('countAndListTransfer',
+export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfer',
   serializeByIP(),
   buildFlow((app) => parameter({
     transactionHash: { path: '0', type: type.hex64 },
@@ -928,7 +896,7 @@ jsonrpc.method('exportTransaction',
   async function (options) {
     const {
       app: { service, tool },
-    } = this;
+    } = this as ScanCtx;
 
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;

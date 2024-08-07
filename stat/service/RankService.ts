@@ -16,6 +16,7 @@ import {PruneInfo} from "../model/PruneInfo";
 import {topUnique} from "./UniqueAddressStat";
 import {IS_EVM2, KV} from "../model/KV";
 import {Errors} from "./common/LogicError";
+import { ethers } from "ethers";
 
 export class RankService{
     private app: any;
@@ -183,7 +184,7 @@ export class RankService{
 
         list.forEach(r=>{
             r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null
-            r.hex = `0x${r.hex}`
+            r.hex = r.hex ? ethers.utils.getAddress(r.hex) : `0x${r.hex}`
             r.base32address = format.address(r.hex, networkId)
         })
 
@@ -191,14 +192,15 @@ export class RankService{
         const accountService = accountQuery || service.accountQuery;
         const accountBasic = await accountService.listPatchInfo(addressArray);
         list.forEach(item => {
-            item.tokenInfo = accountBasic.map[item.base32address]?.token;
-            item.contractInfo = accountBasic.map[item.base32address]?.contract;
-            item.ensInfo = accountBasic.map[item.base32address]?.ens;
-            item.nameTagInfo = accountBasic.map[item.base32address]?.nameTag;
+            const mapRefKey = StatApp.isEVM ? item.hex : item.base32address;
+            item.tokenInfo = accountBasic.map[mapRefKey]?.token;
+            item.contractInfo = accountBasic.map[mapRefKey]?.contract;
+            item.ensInfo = accountBasic.map[mapRefKey]?.ens;
+            item.nameTagInfo = accountBasic.map[mapRefKey]?.nameTag;
             item.name = item.contractInfo?.name || item.tokenInfo?.name;
         });
 
-        return {/*code: 0,*/ total: list.length, list, msg:'v2'};
+        return {/*code: 0,*/ total: list.length, list, accountMap: accountBasic};
     }
 }
 

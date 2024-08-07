@@ -15,7 +15,7 @@ import {NftService} from "./service/NftService";
 import {DynamicBalanceModel} from "./service/watcher/DynamicBalanceModel";
 import {BalanceWatcher} from "./service/watcher/BalanceWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
-import {StatApp} from "./StatApp";
+import {fmtAddr, StatApp} from "./StatApp";
 import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
 import {CONST} from "./service/common/constant"
 import {doHeartBeat, KEY_TRANSFER_COUNT} from "./model/HeartBeat";
@@ -214,8 +214,8 @@ async function fetchAll(addressArr, contractHex40, result:any[], cfx:Conflux) {
                     throw  networkFail;
                 }
                 console.log(` call balance utils contract fail, batch size ${size}, \n [${
-                    addressArr.map(addr => format.address(addr, StatApp.networkId)).map(s => `"${s}"`).join('\n')
-                }] \n contract ${format.address(contractHex40, StatApp.networkId)}`, e)
+                    addressArr.map(addr => fmtAddr(addr, StatApp.networkId)).map(s => `"${s}"`).join('\n')
+                }] \n contract ${fmtAddr(contractHex40, StatApp.networkId)}`, e)
                 size = Math.floor(size / 2)
                 result.length = 0 // reset
                 finished = false

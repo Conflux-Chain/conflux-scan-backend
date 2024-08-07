@@ -22,7 +22,7 @@ import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
 import {BigNumber} from "ethers";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {extractActualGasCost} from "./common/utils";
 
 const lodash = require('lodash');
@@ -192,7 +192,7 @@ export class FullBlockQuery {
             list.forEach(row=>{
                 const minerId = row['miner'];
                 if(minerId && hex40Map.get(minerId)){
-                    row['miner'] = format.address(`0x${hex40Map.get(minerId)}`, this.app?.networkId);
+                    row['miner'] = fmtAddr(`0x${hex40Map.get(minerId)}`, this.app?.networkId);
                 }
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
@@ -441,10 +441,10 @@ export class FullBlockQuery {
 
             // fields mapping
             list.forEach(row=>{
-                row['from'] = format.address(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
-                row['to'] = row['to'] ? format.address(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, verboseAddress) : null;
+                row['from'] = fmtAddr(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
+                row['to'] = row['to'] ? fmtAddr(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, verboseAddress) : null;
                 if(hex40Map.get(row['contractCreated'])){
-                    row['contractCreated'] = format.address(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId);
+                    row['contractCreated'] = fmtAddr(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId);
                 }
                 if(row['contractCreated'] === 0){
                     row['contractCreated'] = null;
