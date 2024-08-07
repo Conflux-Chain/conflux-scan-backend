@@ -391,6 +391,11 @@ function formatTrace(arr: (object | Error)[]) {
 }
 
 export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
+    return Promise.all(hashes.map(hash=>{
+        return cfx.traceBlock(hash)
+    }))
+}
+export function batchTraceBlockSdk(cfx:Conflux, hashes:string[]) {
     return cfx.provider.batch(
         hashes.map(hash=>{
             return {"method": "trace_block",
