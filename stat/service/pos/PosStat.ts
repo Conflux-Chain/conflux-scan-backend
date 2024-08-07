@@ -73,7 +73,12 @@ export class PosStat {
         })
     }
     async updateAccountCount() {
-        const cnt = await PosAccount.count({})
+        const cnt = await PosAccount.count({where: {
+            [Op.or]: [
+                {availableVotes: {[Op.gt]: 0}}, // active
+                {forceRetiredVotes: {[Op.gt]: 0}}, // inactive
+            ],
+        }})
         await PosDailyStatMix.upsert({
             day: new Date(), v: cnt, biz: "account_count"
         })
@@ -196,25 +201,6 @@ export async function scheduleSyncPosGap() {
         setTimeout(repeat, have ? 0 : 50_000)
     }
     repeat().then()
-}
-export async function fixDailyPosAccountCount() {
-    const startAtDay = await PosAccount.findOne({order:[['id','asc']]})
-    if (!startAtDay) {
-        console.log(`base block not found`)
-        return
-    }
-    const {createdAt} = startAtDay
-    let begin = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate()
-        ,23,59,59)
-    while (begin.getTime() < Date.now()) {
-        const cnt = await PosAccount.count({where: {
-            createdAt: {[Op.lte]: begin}
-            }})
-        await PosDailyStatMix.upsert({v: cnt, day: begin, biz: "account_count"})
-        console.log(`${begin.toISOString()} account count`, cnt)
-        begin.setDate(begin.getDate()+1)
-    }
-    console.log(`done`)
 }
 
 //======

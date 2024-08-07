@@ -19,7 +19,6 @@ import {Hex40Map, makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {Transaction,QueryTypes,UniqueConstraintError, Op} from "sequelize"
 import {
-    KEY_BN_CIP1559_ENABLED,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KEY_FILL_BLOCK_REWARD_EPOCH,
     KEY_FULL_BLOCK_COUNT,
@@ -27,7 +26,7 @@ import {
     KV
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
-import {batchFetchBlock, noVerboseAddr} from "./common/utils";
+import {batchFetchBlock, batchFetchBlockSdk, noVerboseAddr} from "./common/utils";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
@@ -35,6 +34,7 @@ import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
 import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
+import {onlineCache} from "./common/ScanHttpProvider";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -233,7 +233,7 @@ export class FullBlockService {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
             }
         }
-        let blockList: any/*IFullBlock*/[] = (await batchFetchBlock(this.cfx, hashes))as IFullBlock[]
+        let blockList: any[] = await batchFetchBlock(this.cfx, hashes);
 
         let blocksEvm: number = 0;
         if (NoCoreSpace) {
@@ -251,19 +251,14 @@ export class FullBlockService {
             if(blockList[0].hash !== hashes[hashes.length - 1]) {
                 return {code: CODE_CONTINUE, message: 'pivot block not match between core and evm space'}
             }
-            const blockList2 = await batchFetchBlock(this.cfx2, hashes, true, true,
+            const blockList2 = await batchFetchBlockSdk(this.cfx2, hashes, true, true,
                 { check: true, epochNumber: minEpochNumber })
             let cip1559Enabled: boolean
             blockList2.forEach(blk => {
                 if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
                     blocksEvm++
                 }
-                cip1559Enabled = cip1559Enabled || blk.blockNumber === StatApp.bnCIP1559Enabled
             })
-            if(cip1559Enabled) { // convert blockNumber to epochNumber at which cip1559 is enabled in evm space
-                await KV.upsert({key: KEY_BN_CIP1559_ENABLED, value: `${minEpochNumber}`})
-                StatApp.bnCIP1559Enabled = minEpochNumber
-            }
         }
         // fill tx receipts to block-> tx
         if (blockList.length !== receipts.length && minEpochNumber !== 0) {
@@ -309,7 +304,7 @@ export class FullBlockService {
                 break;
             }
         }
-        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blocksEvm}
+        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blocksEvm, blockHashes: hashes}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -478,7 +473,7 @@ export class FullBlockService {
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
                     txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice || txInfo.gasPrice
-                    txInfo.gas = txInfo.receipt?.gasFee || (txInfo.receipt?.gasUsed || 0) * txInfo.gasPrice// save gasFee.
+                    txInfo.gas = txInfo.receipt?.gasFee || (txInfo.receipt?.gasUsed || BigInt(0)) * txInfo.gasPrice// save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId
@@ -503,7 +498,7 @@ export class FullBlockService {
             block.gasUsed = sumGasLimit
             if (!NoCoreSpace) { // !NoCoreSpace => hasCoreSpace, share gasLimit
                 const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
-                    (block.blockNumber >= StatApp.bnCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
+                    (block.epochNumber >= StatApp.epochCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
                 const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
                 block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
             }

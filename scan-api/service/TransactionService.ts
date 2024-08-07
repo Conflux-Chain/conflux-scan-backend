@@ -6,6 +6,8 @@ const limitMap = require('limit-map');
 const {fetchEnsMap} = require("../../stat/service/ens/EnsService");
 const {CENSOR_STATUS} = require("../../stat/service/censor/CensorService");
 const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
+const {extractActualGasCost} = require("../../stat/service/common/utils");
+const BigFixed = require('bigfixed');
 
 const RECEIPT_FIELDS = [
   'gasCoveredBySponsor',
@@ -46,13 +48,7 @@ export class TransactionService {
       risk = await service.conflux.getConfirmationRiskByHash(transaction.blockHash).catch(() => null);
     }
 
-    let receipt = {} as any
-    if (lodash.intersection(fields, RECEIPT_FIELDS).length) {
-      // old tx might not have receipt
-      receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
-      // do not pick, expose all fields
-      // receipt = lodash.pick(receipt, RECEIPT_FIELDS);
-    }
+    let receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
 
     let txInputData = transaction.data;
     const censorResult = await service.censor.getCensorResult(hash);
@@ -74,14 +70,29 @@ export class TransactionService {
     transaction.status = transaction.status ?? receipt?.outcomeStatus
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
-    return lodash.defaults({aggregate, data: txInputData, gasPrice: receipt?.effectiveGasPrice ?? transaction.gasPrice},
+    const gasPrice = receipt?.effectiveGasPrice || transaction.gasPrice || BigInt(0);
+    let gasFee = receipt?.gasFee || gasPrice * (receipt?.gasUsed || BigInt(0))
+
+    // using actualGasCost as gasFee when NotEnoughCash error occurs
+    // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
+    let gasCharged = `${Math.max(Number(receipt?.gasUsed || 0), (Number(transaction.gas) * 3) / 4)}`
+    const actualGasCost = extractActualGasCost(receipt?.txExecErrorMsg)
+    if(lodash.isNumber(actualGasCost)) {
+      gasFee = BigFixed(actualGasCost)
+      gasCharged = Number(gasPrice) === 0 ? '0' : BigFixed(actualGasCost).div(BigFixed(gasPrice))
+    }
+
+    // zg rpc do not return contract address on transaction
+    const contractCreated = receipt?.contractCreated ?? transaction.contractCreated
+    return lodash.defaults({aggregate, data: txInputData, gasPrice, gasFee, gasCharged, contractCreated},
         transaction, receipt, {
           risk,
           typeDesc,
           baseFeePerGas,
           timestamp: epoch.timestamp,
           syncTimestamp: epoch.timestamp,
-        });
+        }
+    );
   }
 
   // --------------------------------------------------------------------------

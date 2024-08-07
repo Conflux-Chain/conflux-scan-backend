@@ -7,6 +7,7 @@ import {format} from "js-conflux-sdk";
 import {makeIdV} from "../model/HexMap";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {FirstBlockNo} from "../config/StatConfig";
+import {loadMaxBlockEpoch} from "../model/FullBlock";
 
 const lodash = require('lodash');
 const TOPICS_TO_TRACE = [[
@@ -63,7 +64,7 @@ export abstract class SyncBase{
             app: { cfx, config },
         } = this;
 
-        const stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
+        const stateEpochNumber = await loadMaxBlockEpoch(0);
         lodash.range(config.preload).forEach((i) => {
             if (epochNumber + i < stateEpochNumber) {
                 this.forwardQueue.start(epochNumber + i);
@@ -231,7 +232,7 @@ export abstract class SyncBase{
             traceEpochNumber = next;
         }
 
-        let stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e => {
+        let stateEpochNumber = await loadMaxBlockEpoch(0).catch(e => {
             console.log(` SyncBase getEpochNumber error:${e}`);
             return 0;
         });
@@ -241,11 +242,11 @@ export abstract class SyncBase{
                 traceEpochNumber = await that.syncForward(traceEpochNumber);
                 setTimeout(repeat, 0)
             } else {
-                stateEpochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e => {
+                stateEpochNumber = await loadMaxBlockEpoch(0).catch(e => {
                     console.log(` SyncBase getEpochNumber error:${e}`);
                     return 0;
                 });
-                setTimeout(repeat, 1000)
+                setTimeout(repeat, 5_000)
             }
         }
         return repeat()
@@ -258,7 +259,8 @@ export abstract class SyncBase{
         } = this;
 
         const [latestState, blockHashArray, receipts] = await Promise.all([
-            cfx.getEpochNumber('latest_state'),
+            loadMaxBlockEpoch(0), // query db, cache data was made by full block sync
+            // cfx.getEpochNumber('latest_state'),
             cfx.getBlocksByEpochNumber(epochNumber)
                 /*.catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];})*/,
             cfx.getEpochReceipts(epochNumber)
@@ -290,6 +292,7 @@ export abstract class SyncBase{
             if (block.transactions.length !== receipts[blockIndex].length) {
                 throw new Error(`[epoch=${epochNumber}]mismatch between transactions and receipts`);
             }
+            // @ts-ignore
             for (const [txIndex, tx] of block.transactions.entries()) {
                 tx.receipt = receipts[blockIndex][txIndex];
                 const receiptStatus = tx.receipt?.outcomeStatus;

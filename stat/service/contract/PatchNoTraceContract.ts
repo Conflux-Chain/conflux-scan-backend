@@ -5,16 +5,54 @@
 
 import {ITraceCreateContract, TraceCreateContract} from "../../model/TraceCreateContract";
 import {Contract} from "../../model/Contract";
-import {Op} from "sequelize";
-import {FullTransaction} from "../../model/FullBlock";
+import {Op, QueryTypes} from "sequelize";
+import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {init} from "../tool/FixDailyTokenStat";
 import {format} from "js-conflux-sdk";
+import {Token} from "../../model/Token";
+
+let tokenContracts = {
+
+} as {[key:number]: boolean}
 
 export async function startMonitorContractCreated() {
+	await checkToken();
 	await check();
 	setInterval(check, 10_000);
 }
-
+/*
+select token.hex40id, token.base32, token.createdAt from token left join contract on token.hex40id=contract.hex40id
+where contract.id is null
+ */
+async function checkToken() {
+	// token contract created by in-direct tx.
+	// fix them.
+	const sql = `
+	select token.name, token.hex40id, token.base32, token.createdAt from token left join contract on token.hex40id=contract.hex40id
+where contract.id is null
+	`
+	const list:Token[] = await Token.sequelize.query(sql, {
+		type: QueryTypes.SELECT, raw: true
+	})
+	console.log(`token contract count ${list.length}`)
+	const maxBlock = await FullBlock.findOne({order:[['epoch', 'desc']]});
+	if (maxBlock == null) {
+		console.log(`no block`)
+		return
+	}
+	for (let i = 0; i < list.length; i++){
+		const token = list[i];
+		if (maxBlock.createdAt.getTime() < token["createdAt"].getTime()) {
+			console.log(` token is too fresh. ${token.name} ${format.hexAddress(token.base32)}`)
+			continue
+		}
+		await Contract.create(
+			{base32: token.base32, hex40id: token.hex40id, epoch: 0}
+		)
+		tokenContracts[token.hex40id] = true
+		console.log(`${i} create mock contract for token ${token.name} ${format.hexAddress(token.base32)}`)
+	}
+}
 async function check() {
 	let maxTrace = await TraceCreateContract.findOne({
 		order: [['id', 'desc']],
@@ -32,13 +70,13 @@ async function check() {
 		maxTraceId = c.id;
 		const dbTx = await FullTransaction.findOne({where: {epoch: c.epoch, contractCreatedId: c.hex40id}});
 
-		if (!dbTx) {
-			if (ignoreNotFound) {
-				continue
-			}
+		if (!dbTx && !tokenContracts[c.hex40id]) {
 			if (c.epoch == 0) {
 				console.log(`skip contract with epoch 0, ${c.base32}`);
 				continue;
+			}
+			if (ignoreNotFound) {
+				continue
 			}
 			console.log(`db tx not found, epoch ${c.epoch} , hex40id ${c.hex40id} hex ${format.hexAddress(c.base32)}`)
 			if (!dryRun) {
@@ -50,8 +88,8 @@ async function check() {
 			epochNumber: c.epoch,
 			txHashId: 0,
 			txHash: dbTx?.hash.slice(2) || "",
-			blockTime: dbTx?.createdAt.getTime(),
-			from: dbTx?.fromId,
+			blockTime: dbTx ? dbTx.createdAt.getTime() / 1000 : 0,
+			from: dbTx?.fromId || 0,
 			to: c.hex40id,
 			traceIndex: 0,
 			value: 0,

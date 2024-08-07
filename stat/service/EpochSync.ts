@@ -28,7 +28,7 @@ import {AddressNfts} from "../model/AddrNft";
 import {
     CONTRACT_ADDRESS_METADATA,
     CONTRACT_ANNOUNCEMENT,
-    KEY_BN_CIP1559_ENABLED,
+    KEY_EPOCH_CIP1559_ENABLED,
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
@@ -134,10 +134,10 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkConfig() {
-        const [announcement, addressMetadata, bnCIP1559Enabled] = await Promise.all([
+        const [announcement, addressMetadata, epochCIP1559Enabled] = await Promise.all([
             KV.getString(CONTRACT_ANNOUNCEMENT, ''),
             KV.getString(CONTRACT_ADDRESS_METADATA, ''),
-            KV.getNumber(KEY_BN_CIP1559_ENABLED),
+            KV.getNumber(KEY_EPOCH_CIP1559_ENABLED),
         ])
 
         if(!announcement) {
@@ -152,13 +152,13 @@ export class EpochSync extends SyncBase{
         EpochSync.CONTRACT_ADDRESS_METADATA = format.hexAddress(addressMetadata)
 
         if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
-            StatApp.bnCIP1559Enabled = 0
+            StatApp.epochCIP1559Enabled = 0
         } else{
-            if(!bnCIP1559Enabled) {
-                console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+            if(!epochCIP1559Enabled) {
+                console.log(`Failed to load config for epoch number at which CIP1559 enabled!`)
                 process.exit(9)
             }
-            StatApp.bnCIP1559Enabled = bnCIP1559Enabled
+            StatApp.epochCIP1559Enabled = epochCIP1559Enabled
         }
     }
 
@@ -196,11 +196,19 @@ export class EpochSync extends SyncBase{
             const bytes32NameTagInfo = await this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray)
             s = this.m('NameTag', s)
 
-            const traceArray = await this.getTraceArray(epochNumber);
+            let traceArray = [];
+            if (!this.app.config?.traceNotAvailable){
+                const traces = await Promise.all(blockHashArray.map(hash=>{
+                    return this.app.cfx.traceBlock(hash)
+                }));
+                traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
+                // This function will repeatedly fetch the block hashes and details.
+                // await this.getTraceArray(epochNumber);
+            }
             s = this.m('Trace', s)
             const createArray = await this.getTraceCreateArrayPlus(traceArray);
             s = this.m('TraceCreate', s)
-            const traceCreateArray = await this.getTraceCreateArrayDBPlus(createArray);
+            const traceCreateArray = await this.buildTraceCreateArray(createArray);
             s = this.m('TraceCreateDB', s)
             const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
             s = this.m('TraceCrossSpace', s)
@@ -1001,7 +1009,7 @@ export class EpochSync extends SyncBase{
         return createTraceArray;
     }
 
-    public async getTraceCreateArrayDBPlus(traceCreateArray) {
+    public async buildTraceCreateArray(traceCreateArray) {
         const blockDt = traceCreateArray.length > 0 ? new Date(traceCreateArray[0].blockTime*1000) : undefined;
 
         const traceCreateArrayDB = []
@@ -1085,13 +1093,19 @@ export class EpochSync extends SyncBase{
     }
 
     public async getTraceArray(epochNumber, detail = false) {
-        const { app: { tokenTool }, } = this;
         if (this.app.config?.traceNotAvailable) {
             return []
         }
 
-        let traceArray = [];
         const [blockArray, traceArray2d] = await this.getBlockArray(epochNumber);
+        return this.composeTraceAndBock(epochNumber, blockArray, traceArray2d, detail);
+    }
+    public composeTraceAndBock(epochNumber, blockArray, traceArray2d, detail = false) {
+        if (this.app.config?.traceNotAvailable) {
+            return []
+        }
+        const {app: {tokenTool},} = this;
+        let traceArray = [];
         blockArray.forEach((block, idx) => {
             if (!block.transactions.length) {
                 return;

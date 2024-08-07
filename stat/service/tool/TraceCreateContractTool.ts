@@ -256,6 +256,7 @@ async function getNotExecutedTransaction(epochNumber) {
     for (const block of blockArray) {
         const transactionArray = block?.transactions || [];
         for (const transaction of transactionArray) {
+            // @ts-ignore
             if(transaction?.status === null) {
                 return blockArray;
             }

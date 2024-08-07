@@ -5,7 +5,7 @@ import {format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
-    IS_EVM2, KEY_BN_CIP1559_ENABLED,
+    IS_EVM2, KEY_EPOCH_CIP1559_ENABLED,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KV
 } from "./model/KV";
@@ -15,11 +15,14 @@ import {regExitHook} from "./service/tool/ProcessTool";
 import {checkApiLogIpField} from "./monitor/ApiLog";
 import {StatApp} from "./StatApp";
 import {CONST} from "./service/common/constant";
+import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
+import {DefaultCacheConf, startEvictCache} from "./service/common/RpcCacheManager";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
 
-    let cfx = await initCfxSdk(config.blockSyncRpc);
+    const cfxOpt = config.blockSyncRpc;
+    let cfx = await initCfxSdk(cfxOpt);
     StatApp.networkId = cfx.networkId
     PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
 
@@ -33,7 +36,6 @@ export async function run() {
         console.log(`skip sync db schema.`);
     }
     setInterval(()=>autoAddPartition(seq), 600_000)
-    await checkApiLogIpField()
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     let cfx2
@@ -63,21 +65,31 @@ export async function run() {
             // evm doesn't care miner and reward
             svc.fillBlockRewardByPos().then();
         }
+        if (config.traceNotAvailable) {
+            startMonitorContractCreated().then()
+        }
+        if (cfxOpt.writeCache) {
+            DefaultCacheConf.logPeriod = 10_000;
+            DefaultCacheConf.delaySec = 30_000;
+            DefaultCacheConf.cacheDir = cfxOpt.cachePath
+            startEvictCache().then();
+        }
         await syncFullBlock(svc)
+
     }
     // seq.close().then()
 }
 
 async function mustInit() {
     if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
-        StatApp.bnCIP1559Enabled = 0
+        StatApp.epochCIP1559Enabled = 0
     } else{
-        const bnCIP1559Enabled= await KV.getNumber(KEY_BN_CIP1559_ENABLED)
-        if(!bnCIP1559Enabled) {
-            console.log(`Failed to load config for block number at which CIP1559 enabled!`)
+        const epochCIP1559Enabled= await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED)
+        if(!epochCIP1559Enabled) {
+            console.log(`Failed to load config for epoch number at which CIP1559 enabled!`)
             process.exit(9)
         }
-        StatApp.bnCIP1559Enabled = bnCIP1559Enabled
+        StatApp.epochCIP1559Enabled = epochCIP1559Enabled
     }
 }
 

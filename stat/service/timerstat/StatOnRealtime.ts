@@ -63,7 +63,7 @@ export class StatOnRealtime {
         }
 
         if(CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId) && !this.CIP1559_ENABLED) {
-            this.CIP1559_ENABLED = pivotBlock.blockNumber >= StatApp.bnCIP1559Enabled
+            this.CIP1559_ENABLED = pivotBlock.epochNumber >= StatApp.epochCIP1559Enabled
         }
 
         if(!txArray?.length){
@@ -74,7 +74,8 @@ export class StatOnRealtime {
         let gasLimit = BigInt(0)
         for (const tx of txArray) {
             if(this.CIP1559_ENABLED) {
-                const priority = (tx?.receipt?.effectiveGasPrice - pivotBlock?.baseFeePerGas) || 0
+                const priority = Math.max(Number(tx?.receipt?.effectiveGasPrice??0)
+                    - Number(pivotBlock?.baseFeePerGas??0), 0)
                 gasPrices.add({
                     base: Number(pivotBlock?.baseFeePerGas || tx?.gasPrice || 0),
                     priority: Number(priority)

@@ -23,7 +23,13 @@ import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
 import {sleep} from "./service/tool/ProcessTool";
 import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {dingMsg} from "./monitor/Monitor";
-import {EpochHashTokenTransfer, fetchTask, finishTask, joinTask, waitParentHashDB} from "./TokenTransferSync";
+import {
+	EpochHashTokenTransfer,
+	fetchTask,
+	finishTask,
+	loadEpoch,
+	waitParentHashDB
+} from "./TokenTransferSync";
 
 function decodeFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[], handler:SyncHandler) {
@@ -108,29 +114,10 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
     // parentHash, also indicates whether checking parent hash.
     let parentHash = await waitParentHashDB(task, task.cursor, EpochHashTokenTransfer) // reuse token transfer's epoch hash
     async function fetchAndBuild(epoch: number) {
-        const [receipts, blockHashes, block] = await Promise.all([
-            cfx.getEpochReceipts(epoch).then(res=>{
-                if (res === null && epoch === 0) {
-                    res = []
-                }
-                return res as TransactionReceipt[][];
-            }),
-            cfx.getBlocksByEpochNumber(epoch),
-            cfx.getBlockByEpochNumber(epoch),
-        ])
-        const pivotHash = block.hash;
-        if (pivotHash !== blockHashes[blockHashes.length - 1]) {
-            throw new CheckPivotHashError(` epoch ${epoch}, block hash mismatch at epoch ${epoch
-            }, from pivot block ${pivotHash}, from block hashes ${blockHashes[blockHashes.length - 1]}`)
-        }
-        // simulatePivotSwitch(epoch, 3)
-        const dt = new Date(block.timestamp * 1000);
-        if (!receipts) {
-            throw new Error(`no receipts [${receipts}] , epoch ${epoch}`)
-        }
+			const {pivotTime: dt, receipts, blockHashes, parentDbBlock, pivotHash} = await loadEpoch(epoch, cfx);
         let parsedResult = decodeFromReceipts(receipts, tokenTool, dt, blockHashes, handler);
         let postProcessedResult = await handler.postProcess(parsedResult, dt, epoch);
-        return {...postProcessedResult, dt, pivotHash, parentHash: block.parentHash}
+        return {...postProcessedResult, dt, pivotHash, parentHash: parentDbBlock?.hash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
