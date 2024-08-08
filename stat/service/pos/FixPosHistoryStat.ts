@@ -52,6 +52,7 @@ async function fixDailyStaking(cfx: Conflux) {
             })
         }
         console.log(`reach date`, dt.toISOString(), info.totalPosStakingTokens)
+        dt.setDate(dt.getDate()+1)
     }
     console.log(`done`)
 }
