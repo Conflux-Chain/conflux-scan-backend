@@ -24,12 +24,16 @@ async function fixDailyPosReward() {
     process.exit(0)
 }
 async function fixDailyStaking(cfx: Conflux) {
-    const pb = await PosBlock.findOne({order:[['height','asc']], raw: true});
+    const pb = await PosBlock.findOne({order:[['height','asc']], raw: true, offset: 1});
+    console.log(`pos block`, pb);
     const firstStat = await PosDailyStat.findOne({order: [['statDay', 'asc']], raw: true})
+    console.log(`first stat`, firstStat)
+
     let dt = pb.createdAt;
-    const endT = firstStat.statDay.getTime();
+    const endT = new Date(firstStat.statDay).getTime();
+
     while (dt.getTime() < endT) {
-        const dtStr = moment(dt).format('YYYY.MM.DD');
+        const dtStr = dt.toISOString().slice(0, 10);
         const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lt]: dt}}, order: [['timestamp', 'desc']]})
         const info = await cfx.getPoSEconomics(maxEpoch.epoch);
         const bean = await PosDailyStat.findOne({where: {statDay: dtStr}});
