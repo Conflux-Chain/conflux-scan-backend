@@ -102,6 +102,7 @@ async function main() {
 }
 
 // node stat/service/pos/FixPosHistoryStat.js fixDailyStaking
+// node stat/service/pos/FixPosHistoryStat.js fixDailyApy
 if (module === require.main) {
     main().then()
 }
