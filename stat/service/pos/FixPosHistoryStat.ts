@@ -85,14 +85,18 @@ async function main() {
     const cfg = await init();
     if (cmd === 'fixDailyPosReward') {
         await fixDailyPosReward()
-    } else if (cmd === 'fixDailyStaking') {
+    } else if (cmd === 'fixDailyStaking' || cmd === 'fixDailyApy') {
         cfg.conflux.url = "http://main.confluxrpc.com";
         if (param1 === "net1") {
             cfg.conflux.url = "http://test.confluxrpc.com";
         }
         console.log(`use rpc url`, cfg.conflux.url)
         const cfx = new Conflux(cfg.conflux);
-        await fixDailyStaking(cfx)
+        if (cmd === 'fixDailyApy') {
+            await fixDailyApy(cfx);
+        } else {
+            await fixDailyStaking(cfx)
+        }
     }
     console.log(`done`);
 }
