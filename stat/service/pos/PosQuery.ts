@@ -58,7 +58,7 @@ export class PosQuery {
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx.pos.getStatus(),
             PosAccount.count({where: this.whereCondForValidators}),
-            this.cfx.getPoSEconomics(),
+            this.cfx.getPoSEconomics('latest_confirmed'),
             KV.getString(TOTAL_POS_REWARD, "0"),
             this.calculateApy(),
         ]).catch(err=>{

@@ -319,7 +319,7 @@ export class PosSync {
     async updateDailyStat(epoch:number) {
         const dt = new Date();
         const [{totalPosStakingTokens}, lockedVotes, {reward = 0, accountId:count}] = await Promise.all([
-            this.cfx.getPoSEconomics(),
+            this.cfx.getPoSEconomics('latest_confirmed'),
             PosAccount.sum('lockedVotes'),
             calcDailyPosReward(dt),
         ])

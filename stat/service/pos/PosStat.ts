@@ -66,7 +66,7 @@ export class PosStat {
         })
     }
     async updatePosStaking() {
-        const posE = await this.cfx.getPoSEconomics()
+        const posE = await this.cfx.getPoSEconomics('latest_confirmed')
         console.log(`posE`, posE)
         await PosDailyStatMix.upsert({
             day: new Date(), v: parseFloat(new Drip(posE.totalPosStakingTokens.toString()).toCFX()), biz: 'pos_staking'
