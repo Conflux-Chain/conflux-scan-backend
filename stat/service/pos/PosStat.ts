@@ -59,7 +59,7 @@ export class PosStat {
         })
     }
     async updateApy() {
-        const {apy} = await this.posQuery.calculateApy()
+        const {apy} = await PosQuery.calculateApy(this.posQuery.cfx)
         console.log('apy',apy)
         await PosDailyStatMix.upsert({
             day: new Date(), v: apy, biz: 'pos_apy'

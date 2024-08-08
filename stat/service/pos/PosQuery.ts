@@ -19,7 +19,7 @@ import {StatApp} from "../../StatApp";
 import {loadCache, PATH_POS_INFO, resolveDockerPath, writeCache} from "../CacheService";
 // noinspection CommaExpressionJS
 export class PosQuery {
-    private cfx: Conflux;
+    public cfx: Conflux;
     private cachedData: Object
     private whereCondForValidators: any = {
         [Op.or]: [
@@ -60,7 +60,7 @@ export class PosQuery {
             PosAccount.count({where: this.whereCondForValidators}),
             this.cfx.getPoSEconomics('latest_confirmed'),
             KV.getString(TOTAL_POS_REWARD, "0"),
-            this.calculateApy(),
+            PosQuery.calculateApy(this.cfx),
         ]).catch(err=>{
             if (err.message.includes('PoS chain is not enabled')) {
                 return []
@@ -108,22 +108,22 @@ export class PosQuery {
         writeCache(cachePath, result)
         return result
     }
-    async calculateApy() {
+    static async calculateApy(cfx: Conflux, epoch: string|number = 'latest_confirmed') {
         // https://forum.conflux.fun/t/conflux-pos/13395
         // PoS 质押奖励
         // 现有基础质押利率为 4%，而 PoS 质押奖励在此基础上添加加成系数。设 x=CFX总流通量 /CFX总质押量，加成系数为 √x .
         // 当质押量为流通量的 1/4 时，利率为 8%；当质押量为流通量 1/9 时，利率为 12%；以此类推。当参与投票的总数相对较低时，参与投票的人将获得更多的利益。
         let baseR = 4
         const [{totalCirculating}, {totalPosStakingTokens}] = await Promise.all([
-            this.cfx.getSupplyInfo('latest_confirmed'),
-            this.cfx.getPoSEconomics('latest_confirmed'),
+            cfx.getSupplyInfo(epoch),
+            cfx.getPoSEconomics(epoch),
         ]);
         if (!totalPosStakingTokens) {
             return {apy: 0, totalCirculating};
         }
         let x = parseFloat(new Drip(totalCirculating.toString()).toCFX()) / parseFloat(new Drip(totalPosStakingTokens.toString()).toCFX());
         const r = baseR *  Math.sqrt(x)
-        return {apy: r, totalCirculating};
+        return {apy: r, totalCirculating, totalPosStakingTokens};
     }
     async listPosAccountReward({skip, limit, identifier, orderBy, order}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
