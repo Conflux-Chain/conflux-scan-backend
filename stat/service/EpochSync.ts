@@ -1530,14 +1530,18 @@ export class EpochSync extends SyncBase{
             app: { cfx: sdk },
         } = this;
 
+        let params
         try{
-            return sdk.cfx.getParamsFromVote(epochNumber)
+            params = await sdk.cfx.getParamsFromVote(epochNumber)
         }catch (err){
-            const msg = `${err}`
-            if (msg.includes('Invalid parameters: epoch_num')) {
-                throw new Error(`[epoch=${epochNumber}]vote params not ready`);
-            }
-            throw err
+            // need full state rpc
+            // const msg = `${err}`
+            // if (msg.includes('Invalid parameters: epoch_num')) {
+            //     throw new Error(`[epoch=${epochNumber}]vote params not ready`);
+            // }
+            // throw err
         }
+
+        return params
     }
 }
