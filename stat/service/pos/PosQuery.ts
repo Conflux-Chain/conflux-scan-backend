@@ -116,7 +116,7 @@ export class PosQuery {
         let baseR = 4
         const [{totalCirculating}, {totalPosStakingTokens}] = await Promise.all([
             this.cfx.getSupplyInfo('latest_confirmed'),
-            this.cfx.getPoSEconomics(),
+            this.cfx.getPoSEconomics('latest_confirmed'),
         ]);
         if (!totalPosStakingTokens) {
             return {apy: 0, totalCirculating};
