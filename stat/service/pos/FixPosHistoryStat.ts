@@ -53,13 +53,14 @@ async function main() {
     const cfg = await init();
     if (cmd === 'fixDailyPosReward') {
         await fixDailyPosReward()
-    } else if (cmd === '') {
+    } else if (cmd === 'fixDailyStaking') {
         const cfx = new Conflux(cfg.conflux);
         await fixDailyStaking(cfx)
     }
     console.log(`done`);
 }
 
+// node stat/service/pos/FixPosHistoryStat.js fixDailyStaking
 if (module === require.main) {
     main().then()
 }
