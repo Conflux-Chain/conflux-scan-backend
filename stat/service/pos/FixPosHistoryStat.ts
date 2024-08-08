@@ -4,7 +4,6 @@ import {init} from "../tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {Op} from "sequelize";
-import moment from "moment";
 
 async function fixDailyPosReward() {
     const {createdAt: firstDay} = await PosReward.findOne({order:[['id','asc']]})
@@ -24,40 +23,49 @@ async function fixDailyPosReward() {
     process.exit(0)
 }
 async function fixDailyStaking(cfx: Conflux) {
-    const pb = await PosBlock.findOne({order:[['height','asc']], raw: true, offset: 1});
-    console.log(`pos block`, pb);
-    const firstStat = await PosDailyStat.findOne({order: [['statDay', 'asc']], raw: true})
-    console.log(`first stat`, firstStat)
+    const pb = await PosBlock.findOne({where: {height: 2}}); // height 1 has wrong time 1970
+    // const firstStat = await PosDailyStat.findOne({order: [['statDay', 'asc']], raw: true})
+    // console.log(`first stat`, firstStat)
 
     let dt = pb.createdAt;
-    const endT = new Date(firstStat.statDay).getTime();
+    dt.setHours(23, 59, 59, 999);
+    const endT = new Date().getTime();
 
     while (dt.getTime() < endT) {
         const dtStr = dt.toISOString().slice(0, 10);
-        const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lt]: dt}}, order: [['timestamp', 'desc']]})
+        const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lte]: dt}}, order: [['timestamp', 'desc']]})
         const info = await cfx.getPoSEconomics(maxEpoch.epoch);
         const bean = await PosDailyStat.findOne({where: {statDay: dtStr}});
         if (bean) {
+            if (bean.lockedVotes > 0) {
+                // stat worked at that day.
+                console.log(`lockedVotes > 0`, bean.createdAt.toISOString())
+                break;
+            }
             await PosDailyStat.update({stakingAmount: info.totalPosStakingTokens}, {
                 where: {id: bean.id}
-            })
+            });
         } else {
             await PosDailyStat.create({
                 stakingAmount: info.totalPosStakingTokens, statDay: dt,
-                lockedVotes: 0,
+                lockedVotes: 0, epoch: maxEpoch.epoch,
             })
         }
-        console.log(`reach date`, dt.toISOString())
-        dt.setDate(dt.getDate() + 1);
+        console.log(`reach date`, dt.toISOString(), info.totalPosStakingTokens)
     }
     console.log(`done`)
 }
 async function main() {
-    const [,,cmd] = process.argv
+    const [,,cmd, param1] = process.argv
     const cfg = await init();
     if (cmd === 'fixDailyPosReward') {
         await fixDailyPosReward()
     } else if (cmd === 'fixDailyStaking') {
+        cfg.conflux.url = "http://main.confluxrpc.com";
+        if (param1 === "net1") {
+            cfg.conflux.url = "http://test.confluxrpc.com";
+        }
+        console.log(`use rpc url`, cfg.conflux.url)
         const cfx = new Conflux(cfg.conflux);
         await fixDailyStaking(cfx)
     }
