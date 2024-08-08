@@ -24,7 +24,7 @@ async function fixDailyPosReward() {
     process.exit(0)
 }
 async function fixDailyStaking(cfx: Conflux) {
-    const pb = await PosBlock.findOne({order:['height','asc'], raw: true});
+    const pb = await PosBlock.findOne({order:[['height','asc']], raw: true});
     const firstStat = await PosDailyStat.findOne({order: [['statDay', 'asc']], raw: true})
     let dt = pb.createdAt;
     const endT = firstStat.statDay.getTime();
