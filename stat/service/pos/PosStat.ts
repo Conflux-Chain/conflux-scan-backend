@@ -345,7 +345,7 @@ async function main() {
         await init()
         // await calcDailyStaking(new Date('2022-04-29'))
         // await calcDailyStaking(new Date('2022-02-23'))
-        let dt = new Date('2020-10-29')
+        let dt = new Date('2022-02-27')
         while (dt.getTime() < Date.now()) {
             await calcDailyStaking(dt)
             dt.setDate(dt.getDate() + 1)

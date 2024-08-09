@@ -3,7 +3,7 @@ import {calcDailyPosReward, PosDailyStatMix} from "./PosStat";
 import {init} from "../tool/FixDailyTokenStat";
 import {Conflux, Drip} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
-import {Op, where} from "sequelize";
+import {Op} from "sequelize";
 import {PosQuery} from "./PosQuery";
 
 async function fixDailyPosReward() {
@@ -132,7 +132,15 @@ async function main() {
     console.log(`done`);
     return PosBlock.sequelize.close()
 }
-
+/*
+ update pos_daily_stat set totalReward = ifnull(
+    (select posReward*1e18 from daily_pos_reward_stat where statType='1d' and statTime=statDay)
+   ,0) where totalReward = 0;
+ update pos_daily_stat set rewardAccounts =
+    (select count(distinct(accountId)) from pos_reward where createdAt >= statDay and createdAt < date_add(statDay, interval 1 day) )
+     where rewardAccounts = 0;
+ update pos_daily_stat set avgReward =   totalReward /   rewardAccounts where avgReward=0 and rewardAccounts > 0 ;
+*/
 // node stat/service/pos/FixPosHistoryStat.js fixDailyStaking
 // node stat/service/pos/FixPosHistoryStat.js fixDailyApy
 // node stat/service/pos/FixPosHistoryStat.js fixTotalReward
