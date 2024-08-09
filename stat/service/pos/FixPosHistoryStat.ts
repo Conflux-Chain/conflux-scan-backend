@@ -1,9 +1,9 @@
-import {PosBlock, PosDailyStat, PosReward} from "../../model/PoS";
+import {PosBlock, PosDailyStat, PosEpochRewardHash, PosReward} from "../../model/PoS";
 import {calcDailyPosReward, PosDailyStatMix} from "./PosStat";
 import {init} from "../tool/FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, Drip} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
-import {Op} from "sequelize";
+import {Op, where} from "sequelize";
 import {PosQuery} from "./PosQuery";
 
 async function fixDailyPosReward() {
@@ -80,11 +80,41 @@ async function fixDailyApy(cfx: Conflux) {
     }
     console.log(`done`)
 }
+async function fixTotalReward() {
+    // alter table pos_epoch_reward_hash add index idx_pow_dt (powDate);
+    const pb = await PosBlock.findOne({where: {height: 2}}); // height 1 has wrong time 1970
+
+    let dt = pb.createdAt;
+    dt.setHours(23, 59, 59, 999);
+    const endT = new Date().getTime();
+    let total = BigInt(0);
+    while (dt.getTime() < endT) {
+        const bean = await PosDailyStatMix.findOne({where: {day:{lte: dt}, biz: 'pos_total_reward'}});
+        if (bean) {
+            console.log(`exists ${bean.day}`)
+            break;
+        }
+        const dayBegin = new Date(dt);
+        dayBegin.setHours(0,0,0,0)
+        const sum = await PosEpochRewardHash.sum('drip', {
+            where: {powDate: {[Op.between]: [dayBegin, dt]}}
+        })
+        total += BigInt(sum);
+        await PosDailyStatMix.create({
+            day: dt, biz: 'pos_total_reward',
+            // @ts-ignore
+            v: parseFloat(new Drip(total).toCFX()),
+        })
+        dt.setDate(dt.getDate()+1)
+    }
+}
 async function main() {
     const [,,cmd, param1] = process.argv
     const cfg = await init();
     if (cmd === 'fixDailyPosReward') {
         await fixDailyPosReward()
+    } else if (cmd === 'fixTotalReward') {
+        await fixTotalReward();
     } else if (cmd === 'fixDailyStaking' || cmd === 'fixDailyApy') {
         cfg.conflux.url = "http://main.confluxrpc.com";
         if (param1 === "net1") {
@@ -103,6 +133,7 @@ async function main() {
 
 // node stat/service/pos/FixPosHistoryStat.js fixDailyStaking
 // node stat/service/pos/FixPosHistoryStat.js fixDailyApy
+// node stat/service/pos/FixPosHistoryStat.js fixTotalReward
 if (module === require.main) {
     main().then()
 }
