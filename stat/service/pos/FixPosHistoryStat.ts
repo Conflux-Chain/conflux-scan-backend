@@ -89,22 +89,23 @@ async function fixTotalReward() {
     const endT = new Date().getTime();
     let total = BigInt(0);
     while (dt.getTime() < endT) {
-        const bean = await PosDailyStatMix.findOne({where: {day:{lte: dt}, biz: 'pos_total_reward'}});
+        const bean = await PosDailyStatMix.findOne({where: {day:{[Op.eq]: dt}, biz: 'pos_total_reward'}});
         if (bean) {
             console.log(`exists ${bean.day}`)
-            break;
+        } else {
+            const dayBegin = new Date(dt);
+            dayBegin.setHours(0, 0, 0, 0)
+            const sum = await PosEpochRewardHash.sum('drip', {
+                where: {powDate: {[Op.between]: [dayBegin, dt]}}
+            })
+            total += BigInt(sum);
+            const newBean = await PosDailyStatMix.create({
+                day: dt, biz: 'pos_total_reward',
+                // @ts-ignore
+                v: parseFloat(new Drip(total).toCFX()),
+            })
+            console.log(`reward at day `, dt.toISOString(), newBean.v);
         }
-        const dayBegin = new Date(dt);
-        dayBegin.setHours(0,0,0,0)
-        const sum = await PosEpochRewardHash.sum('drip', {
-            where: {powDate: {[Op.between]: [dayBegin, dt]}}
-        })
-        total += BigInt(sum);
-        await PosDailyStatMix.create({
-            day: dt, biz: 'pos_total_reward',
-            // @ts-ignore
-            v: parseFloat(new Drip(total).toCFX()),
-        })
         dt.setDate(dt.getDate()+1)
     }
 }
@@ -129,6 +130,7 @@ async function main() {
         }
     }
     console.log(`done`);
+    return PosBlock.sequelize.close()
 }
 
 // node stat/service/pos/FixPosHistoryStat.js fixDailyStaking
