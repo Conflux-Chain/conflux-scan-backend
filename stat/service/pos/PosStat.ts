@@ -333,9 +333,9 @@ async function main() {
     } else if (cmd === 'testQuery') {
         await init()
         await queryPosStatMix('finalize_epoch_gap','finalize_second_gap', {})
-    } else if (cmd === 'calcDailyVoting') {
+    } else if (cmd === 'calcDailyParticipation') {
         await init()
-        let dt = new Date('2022-01-24')
+        let dt = new Date('2022-02-27')
         while (dt.getTime() < Date.now()) {
             await calcDailyParticipation(dt)
             dt.setDate(dt.getDate() + 1)
@@ -360,6 +360,10 @@ async function main() {
     // await svc.updatePosStaking()
     // await svc.updateApy()
 }
+/*
+node stat/service/pos/PosStat.js calcDailyStaking
+node stat/service/pos/PosStat.js calcDailyParticipation
+ */
 if (module === require.main) {
     main().then()
 }
