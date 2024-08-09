@@ -98,7 +98,7 @@ async function fixTotalReward() {
             const sum = await PosEpochRewardHash.sum('drip', {
                 where: {powDate: {[Op.between]: [dayBegin, dt]}}
             })
-            total += BigInt(sum);
+            total += BigInt(sum ?? 0);
             const newBean = await PosDailyStatMix.create({
                 day: dt, biz: 'pos_total_reward',
                 // @ts-ignore
