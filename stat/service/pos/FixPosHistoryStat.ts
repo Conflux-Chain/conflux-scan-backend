@@ -140,6 +140,19 @@ async function main() {
     (select count(distinct(accountId)) from pos_reward where createdAt >= statDay and createdAt < date_add(statDay, interval 1 day) )
      where rewardAccounts = 0;
  update pos_daily_stat set avgReward =   totalReward /   rewardAccounts where avgReward=0 and rewardAccounts > 0 ;
+
+ alter table pos_gap add index idx_dt(createdAt);
+
+ insert into pos_daily_stat_mix (day, v, biz, createdAt, updatedAt)
+    select date(createdAt) as day, avg(epochGap), 'finalize_epoch_gap', now(), now() from pos_gap where createdAt < '2024-03-06' group by day;
+update  pos_daily_stat_mix set v=(select epochGap from pos_gap where createdAt > day and createdAt < date_add(day, interval 1 hour) limit 1 )
+where day<'2024-03-06' and biz='finalize_epoch_gap';
+
+ insert into pos_daily_stat_mix (day, v, biz, createdAt, updatedAt)
+    select date(createdAt) as day, avg(secondsGap), 'finalize_second_gap', now(), now() from pos_gap where createdAt < '2024-03-06' group by day;
+update  pos_daily_stat_mix set v=(select secondsGap from pos_gap where createdAt > day and createdAt < date_add(day, interval 1 hour) limit 1 )
+where day<'2024-03-06' and biz='finalize_second_gap';
+
 */
 // node stat/service/pos/FixPosHistoryStat.js fixDailyStaking
 // node stat/service/pos/FixPosHistoryStat.js fixDailyApy

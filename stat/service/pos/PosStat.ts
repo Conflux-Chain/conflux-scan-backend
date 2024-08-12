@@ -252,7 +252,7 @@ async function calcDailyParticipation(dt:Date) {
             return Number(res[0]['v'])
         })
     //
-    let rate = votes/shouldVotes * 100;
+    let rate = votes >= shouldVotes ? 100 : votes/shouldVotes * 100;
     await PosDailyStatMix.upsert({
         v: rate, biz: 'participation_rate', day: dayStart,
     })
@@ -363,6 +363,7 @@ async function main() {
 /*
 node stat/service/pos/PosStat.js calcDailyStaking
 node stat/service/pos/PosStat.js calcDailyParticipation
+update pos_daily_stat_mix set v=100 where v > 100 and biz='participation_rate';
  */
 if (module === require.main) {
     main().then()
