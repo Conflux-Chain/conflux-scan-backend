@@ -22,8 +22,7 @@ import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
-import {Stopwatch} from "./service/Stopwatch";
-import {FirstBlockNo} from "./config/StatConfig";
+import {rmCache} from "./service/common/RpcCacheManager";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -531,9 +530,10 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     if (parentH === null) {
                         console.log(` after pop, parent hash bean is null, want epoch ${epoch - 2}`)
                         process.exit(9)
-                        return;
                     }
                     parentHash = parentH.hash;
+                    await rmCache(cfx0.provider.conf.cachePath, epoch-1, true);
+                    await rmCache(cfx0.provider.conf.cachePath, epoch, true);
                     epoch -= 1;
                     break;
                 }

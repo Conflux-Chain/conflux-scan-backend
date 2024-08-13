@@ -9,6 +9,7 @@ import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter"
 import {FirstBlockNo, RpcCacheOption} from "../config/StatConfig";
 import {loadMaxBlockEpoch} from "../model/FullBlock";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
+import {rmCache} from "./common/RpcCacheManager";
 
 const lodash = require('lodash');
 const TOPICS_TO_TRACE = [[
@@ -498,6 +499,7 @@ export abstract class SyncBase{
         const revertBlockArray = blockArray.filter(block => block.epochNumber !== epochNumber);
         if(revertBlockArray.length && epochNumber !== 0){ // epochNumber is null in epoch 0 under consortium mode
             console.log(`epoch-sync.validate epoch:${epochNumber}, minerBlockArray:${JSON.stringify(blockArray)}`)
+            await rmCache(this.app.cfx.provider.conf.cachePath, epochNumber, true)
             return Promise.resolve(false);
         }
 

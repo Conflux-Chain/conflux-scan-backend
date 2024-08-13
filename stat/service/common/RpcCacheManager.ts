@@ -3,6 +3,31 @@ import {CLEAN_CACHE_CURSOR, KV} from "../../model/KV";
 import * as fs from "fs";
 import {init} from "../tool/FixDailyTokenStat";
 
+function rmFile(path: string, showLog: boolean) {
+	try {
+		fs.rmSync(path)
+		showLog && console.log(`rm cache ${path}`)
+	} catch (e) {
+		showLog && console.log(`failed to remove ${path} , ${e}`)
+	}
+}
+
+export async function rmCache(cacheDir: string, cursor: number, showLog: boolean) {
+	if (!cacheDir) {
+		return
+	}
+	for (const method of ['cfx_getBlocksByEpoch', 'cfx_getEpochReceipts']) {
+		const path = `${cacheDir}/${method}_${cursor}.json`;
+		rmFile(path, showLog);
+	}
+
+	const blockList = await FullBlock.findAll({attributes: ['hash'], where: {epoch: cursor}, raw: true})
+	for(const {hash} of blockList) {
+		rmFile(`${cacheDir}/cfx_getBlockByHash_${hash}_true.json`, showLog)
+		rmFile(`${cacheDir}/trace_block_${hash}.json`, showLog)
+	}
+}
+
 export async function evictCache(keepEpochs: number, cacheDir: string) {
 	const maxBlockEpoch = await loadMaxBlockEpoch(NaN)
 	if (isNaN(maxBlockEpoch)) {
@@ -15,29 +40,11 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 		return;
 	}
 	cursor ++;
-	function rmFile(path: string, showLog: boolean) {
-		try {
-			fs.rmSync(path)
-			showLog && console.log(`rm cache ${path}`)
-		} catch (e) {
-			showLog && console.log(`failed to remove ${path} , ${e}`)
-		}
-	}
+
 	let round = 0;
 	while (cursor < bottomEpoch) {
 		const showLog = round % DefaultCacheConf.logPeriod == 0;
-		for (const method of ['cfx_getBlocksByEpoch', 'cfx_getEpochReceipts']) {
-			const path = `${cacheDir}/${method}_${cursor}.json`;
-			rmFile(path, showLog)
-		}
-
-		const blockList = await FullBlock.findAll({attributes: ['hash'], where: {epoch: cursor}, raw: true})
-		for(const {hash} of blockList) {
-			const path = `${cacheDir}/cfx_getBlockByHash_${hash}_true.json`;
-			rmFile(path, showLog)
-			rmFile(`${cacheDir}/trace_block_${hash}.json`, showLog)
-		}
-
+		await rmCache(cacheDir, cursor, showLog);
 		await KV.saveNumber(CLEAN_CACHE_CURSOR, cursor, undefined)
 		cursor ++;
 		round ++;
