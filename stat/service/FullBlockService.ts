@@ -34,7 +34,7 @@ import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
 import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
-import {onlineCache} from "./common/ScanHttpProvider";
+import {rmCache} from "./common/RpcCacheManager";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -397,6 +397,8 @@ export class FullBlockService {
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                 ])
             })
+            await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true)
+            await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true)
             const message = `pivot hash not match, current epoch ${minEpochNumber
                 } = ${pivotBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
             console.log(`pivot switch detected: `, message)
