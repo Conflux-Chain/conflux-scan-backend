@@ -22,8 +22,7 @@ import {PreLoader} from "./service/common/PreLoader";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
-import {Stopwatch} from "./service/Stopwatch";
-import {FirstBlockNo} from "./config/StatConfig";
+import {rmCache} from "./service/common/RpcCacheManager";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -147,7 +146,6 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
-    const isNewTraceFormat = true;//isNewFormatTrace(traceArray2d)
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
@@ -220,11 +218,8 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     || (fromPocket && fromPocket !== 'balance' && toPocket && toPocket !== 'balance')
                     ||
                     (
-                        isNewTraceFormat &&
-                        (
-                            // scan doesn't save gas/storage payment as cfx transfer records.
-                            fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
-                        )
+                        // scan doesn't save gas/storage payment as cfx transfer records.
+                        fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
                     )
                 ) {
                     continue
@@ -247,7 +242,6 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
                     console.log(`unknown trace type ${type}, epoch ${epoch} block ${blockHash
                     } tx ${txBean.txPosition}, trace ${traceIdx}, tx hash ${transactionHash}`)
                     process.exit(8)
-                    return
                 }
                 const fromId = await makeIdV(from)
                 const toId = await makeIdV(to)
@@ -284,33 +278,33 @@ async function runCounter() {
     setTimeout(runCounter, 1)
 }
 async function setup() {
-    const [, , cfxUrlParam, fromEpoch, taskLen] = process.argv
+    const [, , cmd, fromEpoch, taskLen] = process.argv
     const config = await init()
     await checkCfxTransferCountKV()
-    const cfxUrl = cfxUrlParam === 'useConfigRpc' ? (config.cfxTransferRpc?.url || config.conflux.url) : cfxUrlParam
-    if (cfxUrl === 'counter') {
+    const cfxOpt = config.cfxTransferRpc;
+    if (cmd === 'counter') {
         redirectLog({subPath:'.counter'})
         await runCounter()
         return
     } else if (fromEpoch === 'holder') {
         redirectLog({subPath:'.holder'})
-        const cfx = await initCfxSdk({url: cfxUrl});
+        const cfx = await initCfxSdk(cfxOpt);
         await runHolder(cfx);
         return;
-    } else if (cfxUrl === 'marker') {
+    } else if (cmd === 'marker') {
         redirectLog({subPath:'.marker'})
         await runMarker();
         return;
     }
     redirectLog()
-    const cfx = await initCfxSdk({url: cfxUrl});
+    const cfx = await initCfxSdk(cfxOpt);
     runCounter().then();
     runHolder(cfx).then();
     runMarker().then();
     cfx0 = cfx;
     await makeVirtualContractInfo(cfx.networkId);
     scheduleRollupDailyCfxTxn().then();
-    console.log(`---------- ${cfxUrl} ${cfx.networkId} ---------`)
+    console.log(`---------- ${cfxOpt.url} ${cfx.networkId} ---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))
         process.exit(0)
@@ -536,9 +530,10 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer, endFn:()=>void) {
                     if (parentH === null) {
                         console.log(` after pop, parent hash bean is null, want epoch ${epoch - 2}`)
                         process.exit(9)
-                        return;
                     }
                     parentHash = parentH.hash;
+                    await rmCache(cfx0.provider.conf.cachePath, epoch-1, true);
+                    await rmCache(cfx0.provider.conf.cachePath, epoch, true);
                     epoch -= 1;
                     break;
                 }
