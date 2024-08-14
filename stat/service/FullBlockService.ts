@@ -184,8 +184,10 @@ export class FullBlockService {
     private async loadEpochData(minEpochNumber: number) {
         while (minEpochNumber >= this.latestStateEpoch) {
             if (this.latestStateEpoch > 0) {
-                console.log(`block not ready, want ${minEpochNumber} > ${this.latestStateEpoch} latest_state`)
-                await sleep(2_000)
+                if (this.latestStateEpoch % 10 == 0) {
+                    console.log(`block not ready, want ${minEpochNumber} >= ${this.latestStateEpoch} latest_state`)
+                }
+                await sleep(5_000)
             }
             this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
         }
