@@ -613,7 +613,7 @@ export class FullBlockService {
             this.maxEpochOfBlock = await loadMaxBlockEpoch()
         }
         while (epoch > this.latestConfirmEpoch) {
-            if (this.latestConfirmEpoch % 10 == 0) {
+            if (this.latestConfirmEpoch % 10 == 1) {
                 console.log(`not confirmed, want ${epoch} > ${this.latestConfirmEpoch} confirmed.`)
             }
             this.latestConfirmEpoch > 0 && await sleep(5_000)
