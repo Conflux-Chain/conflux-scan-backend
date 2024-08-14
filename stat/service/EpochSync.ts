@@ -260,6 +260,7 @@ export class EpochSync extends SyncBase{
                 },
             };
         }catch(error) {
+            console.log(`${__filename} fetch data error:`, error)
             return {syncCode: SyncCode.RETRY, message: `${error}`};
         }
     }

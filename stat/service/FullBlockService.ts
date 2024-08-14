@@ -110,10 +110,10 @@ export class FullBlockService {
                 // try again
                 that.debugLog && console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message || 'no message'}`)
-                await new Promise(r=>setTimeout(r, 1000))
+                await sleep(5_000)
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 that.debugLog && console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
-                await new Promise(r=>setTimeout(r, 1000))
+                await sleep(5_000)
             } else {
                 maxEpoch += 1
             }
@@ -184,8 +184,10 @@ export class FullBlockService {
     private async loadEpochData(minEpochNumber: number) {
         while (minEpochNumber >= this.latestStateEpoch) {
             if (this.latestStateEpoch > 0) {
-                console.log(`block not ready, want ${minEpochNumber} > ${this.latestStateEpoch} latest_state`)
-                await sleep(2_000)
+                if (this.latestStateEpoch % 10 == 0) {
+                    console.log(`block not ready, want ${minEpochNumber} >= ${this.latestStateEpoch} latest_state`)
+                }
+                await sleep(5_000)
             }
             this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
         }
@@ -219,7 +221,7 @@ export class FullBlockService {
                     console.log(`epoch 0 with null receipts.`)
                     res = []
                 }
-                return res;
+                return res || [];
             }).catch(err=>{
                 if (!err.message?.includes('Unknown block number')) {
                     console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
@@ -232,6 +234,12 @@ export class FullBlockService {
             return {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
             }
+        }
+        if (hashes.length !== receipts.length && minEpochNumber !== 0) {
+            const msg = `block list length ${hashes.length} mismatch receipts length ${receipts?.length
+            } at epoch ${minEpochNumber}`;
+            console.log(msg)
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
         }
         let blockList: any[] = await batchFetchBlock(this.cfx, hashes);
 
@@ -251,9 +259,8 @@ export class FullBlockService {
             if(blockList[0].hash !== hashes[hashes.length - 1]) {
                 return {code: CODE_CONTINUE, message: 'pivot block not match between core and evm space'}
             }
-            const blockList2 = await batchFetchBlockSdk(this.cfx2, hashes, true, true,
+            const blockList2 = await batchFetchBlockSdk(this.cfx2, hashes, false, true,
                 { check: true, epochNumber: minEpochNumber })
-            let cip1559Enabled: boolean
             blockList2.forEach(blk => {
                 if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
                     blocksEvm++
@@ -261,12 +268,6 @@ export class FullBlockService {
             })
         }
         // fill tx receipts to block-> tx
-        if (blockList.length !== receipts.length && minEpochNumber !== 0) {
-            const msg = `block list length ${blockList.length} mismatch receipts length ${receipts.length
-            } at epoch ${minEpochNumber}`;
-            console.log(msg)
-            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
-        }
         let code = 0
         let message = 'ok'
         for (let idx = 0; idx < blockList.length; idx++){
@@ -383,6 +384,8 @@ export class FullBlockService {
                     addresses.add(tx.contractCreatedId)
                 }
             })
+					  await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true);
+					  await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true);
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
                     FailedTx.destroy({where:{epoch:popEpochCondition}, transaction: dbTx}),
@@ -397,8 +400,6 @@ export class FullBlockService {
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                 ])
             })
-            await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true)
-            await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true)
             const message = `pivot hash not match, current epoch ${minEpochNumber
                 } = ${pivotBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
             console.log(`pivot switch detected: `, message)
@@ -612,7 +613,9 @@ export class FullBlockService {
             this.maxEpochOfBlock = await loadMaxBlockEpoch()
         }
         while (epoch > this.latestConfirmEpoch) {
-            console.log(`not confirmed, want ${epoch} > ${this.latestConfirmEpoch} confirmed.`)
+            if (this.latestConfirmEpoch % 10 == 1) {
+                console.log(`not confirmed, want ${epoch} > ${this.latestConfirmEpoch} confirmed.`)
+            }
             this.latestConfirmEpoch > 0 && await sleep(5_000)
             this.latestConfirmEpoch = await this.cfx.getEpochNumber('latest_confirmed')
         }
