@@ -219,7 +219,7 @@ export class FullBlockService {
                     console.log(`epoch 0 with null receipts.`)
                     res = []
                 }
-                return res;
+                return res || [];
             }).catch(err=>{
                 if (!err.message?.includes('Unknown block number')) {
                     console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
@@ -251,9 +251,8 @@ export class FullBlockService {
             if(blockList[0].hash !== hashes[hashes.length - 1]) {
                 return {code: CODE_CONTINUE, message: 'pivot block not match between core and evm space'}
             }
-            const blockList2 = await batchFetchBlockSdk(this.cfx2, hashes, true, true,
+            const blockList2 = await batchFetchBlockSdk(this.cfx2, hashes, false, true,
                 { check: true, epochNumber: minEpochNumber })
-            let cip1559Enabled: boolean
             blockList2.forEach(blk => {
                 if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
                     blocksEvm++
@@ -262,7 +261,7 @@ export class FullBlockService {
         }
         // fill tx receipts to block-> tx
         if (blockList.length !== receipts.length && minEpochNumber !== 0) {
-            const msg = `block list length ${blockList.length} mismatch receipts length ${receipts.length
+            const msg = `block list length ${blockList.length} mismatch receipts length ${receipts?.length
             } at epoch ${minEpochNumber}`;
             console.log(msg)
             return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
@@ -383,6 +382,8 @@ export class FullBlockService {
                     addresses.add(tx.contractCreatedId)
                 }
             })
+					  await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true);
+					  await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true);
             await FullBlock.sequelize.transaction(async (dbTx)=>{
                 await Promise.all([
                     FailedTx.destroy({where:{epoch:popEpochCondition}, transaction: dbTx}),
@@ -397,8 +398,6 @@ export class FullBlockService {
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                 ])
             })
-            await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true)
-            await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true)
             const message = `pivot hash not match, current epoch ${minEpochNumber
                 } = ${pivotBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
             console.log(`pivot switch detected: `, message)
