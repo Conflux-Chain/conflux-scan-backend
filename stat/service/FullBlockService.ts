@@ -110,10 +110,10 @@ export class FullBlockService {
                 // try again
                 that.debugLog && console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message || 'no message'}`)
-                await new Promise(r=>setTimeout(r, 1000))
+                await sleep(5_000)
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 that.debugLog && console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
-                await new Promise(r=>setTimeout(r, 1000))
+                await sleep(5_000)
             } else {
                 maxEpoch += 1
             }
@@ -233,6 +233,12 @@ export class FullBlockService {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
             }
         }
+        if (hashes.length !== receipts.length && minEpochNumber !== 0) {
+            const msg = `block list length ${hashes.length} mismatch receipts length ${receipts?.length
+            } at epoch ${minEpochNumber}`;
+            console.log(msg)
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
+        }
         let blockList: any[] = await batchFetchBlock(this.cfx, hashes);
 
         let blocksEvm: number = 0;
@@ -260,12 +266,6 @@ export class FullBlockService {
             })
         }
         // fill tx receipts to block-> tx
-        if (blockList.length !== receipts.length && minEpochNumber !== 0) {
-            const msg = `block list length ${blockList.length} mismatch receipts length ${receipts?.length
-            } at epoch ${minEpochNumber}`;
-            console.log(msg)
-            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
-        }
         let code = 0
         let message = 'ok'
         for (let idx = 0; idx < blockList.length; idx++){
