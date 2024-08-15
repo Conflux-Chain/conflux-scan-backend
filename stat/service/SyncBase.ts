@@ -552,12 +552,27 @@ async function loadMaxRefEpoch(cfx: Conflux) {
         // trace cache was make by cfx transfer sync
         return EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']]}).then(res=>{
             return res?.epoch || 0
+        }).then(res=>{
+            if (res % 100 == 0) {
+                console.log(`ref to cfx transfer sync, update cursor to `, res)
+            }
+            return res;
         })
     } else if (conf?.readCache) {
-        return loadMaxBlockEpoch(0)
+        return loadMaxBlockEpoch(0).then(res=>{
+            if (res % 100 == 0) {
+                console.log(`ref to block sync, update cursor to `, res)
+            }
+            return res;
+        })
     }
     // do not depend on any cache, fetch from rpc.
-    return cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
+    return cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).then(res=>{
+        if (res % 100 == 0) {
+            console.log(`ref to block chain, update cursor to `, res)
+        }
+        return res;
+    });
 }
 
 export enum SyncCode {
