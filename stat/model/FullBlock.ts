@@ -151,7 +151,7 @@ const FULL_BLOCK_EXT_SQL = `CREATE TABLE if not exists \`full_block_ext\` (
                               \`position\` smallint NOT NULL DEFAULT '0',
                               \`coreBlock\` tinyint(1) NOT NULL DEFAULT '1',
                               \`extra\` varchar(256) DEFAULT NULL,  
-                              primary key  (\`epoch\` desc)
+                              primary key  (epoch, position)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4
 partition by range (epoch) (
     PARTITION p1 VALUES LESS THAN (30000000),
