@@ -198,7 +198,10 @@ export class EpochSync extends SyncBase{
 
             let traceArray = [];
             if (!this.app.config?.traceNotAvailable){
-                const traces = await Promise.all(blockHashArray.map(hash=>{
+                const traces = await Promise.all(blockHashArray.map((hash, idx)=>{
+                    if (blockArray[idx].transactions.length == 0) {
+                        return null;
+                    }
                     return this.app.cfx.traceBlock(hash)
                 }));
                 traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
@@ -1115,7 +1118,7 @@ export class EpochSync extends SyncBase{
             const blockTrace:any = traceArray2d[idx]
             if (!blockTrace) {
                 // no trace at block
-                return traceArray;
+                return;
             }
 
             // add check
@@ -1142,7 +1145,7 @@ export class EpochSync extends SyncBase{
                         });
                     });
                     const matchedTrace = tokenTool.matchTrace(transactionTraceArray, transaction);
-                    traceArray = [...traceArray, ...matchedTrace];
+                    traceArray.push(...matchedTrace);
                     transaction.blockHash && txPosition ++;
                 });
         });
