@@ -217,10 +217,13 @@ export class FullBlockQuery {
                     if (NoCoreSpace) {
                         row['coreBlock'] = 0;
                     } else {
-                        row['coreBlock'] = epochHasEvmBlockMap[row['epochNumber']] ? 0 : 1;
-                        if (epochHasEvmBlockMap[row['epochNumber']]) {
+                        const evmBlockCnt = epochHasEvmBlockMap[row['epochNumber']];
+                        row['coreBlock'] = evmBlockCnt ? 0 : 1;
+                        if (evmBlockCnt) {
                             const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
-                            row['gasLimit'] = BigInt(row['gasLimit']) * BigInt(100 * proportion) / BigInt(100);
+                            row['gasLimit'] = BigInt(row['gasLimit']) * BigInt(100 * evmBlockCnt * proportion) / BigInt(100);
+                        } else {
+                            row['gasLimit'] = BigInt(0);
                         }
                     }
                 }
