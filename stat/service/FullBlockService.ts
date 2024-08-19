@@ -476,7 +476,8 @@ export class FullBlockService {
             block.executedTxnCount = pos
             block.gasUsed = sumGasLimit
             if (!NoCoreSpace) { // !NoCoreSpace => hasCoreSpace, share gasLimit
-                const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
+                // CONST.GAS_LIMIT_PROPORTION.evm , this factor is used when querying block list, not here.
+                const proportion = StatApp.isEVM ? 1 :
                     (block.epochNumber >= StatApp.epochCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
                 block.gasLimit = block.gasLimit * BigInt(100 * proportion) / BigInt(100)
             }
