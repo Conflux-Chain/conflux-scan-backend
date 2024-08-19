@@ -162,14 +162,14 @@ export class FullBlockQuery {
         }
         // cross space tx
         const epochCrossSpaceTxMap = {}
-        let epochCoreBlockMap = {}
+        let epochHasEvmBlockMap = {}
         const epochBlockExtMap = {}
         if(rawList?.length) {
             const blockExts: FullBlockExt[] = await FullBlockExt.sequelize.query(
                 `select * from full_block_ext where epoch>=? and epoch<=?`,
                 { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
             blockExts.forEach(blockExt => {
-                // epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock']
+                // epochHasEvmBlockMap[blockExt['epoch']] = blockExt['coreBlock']
                 if(blockExt?.extra) {
                     epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra)
                 }
@@ -181,9 +181,9 @@ export class FullBlockQuery {
                 txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
                 const shouldRefToCore = blockExts.findIndex(ext=>ext.coreBlock == -1) >= 0;
                 if (shouldRefToCore) {
-                    epochCoreBlockMap = await queryEvmBlockCountInEachEpoch(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
+                    epochHasEvmBlockMap = await queryEvmBlockCountInEachEpoch(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
                 } else {
-                    epochCoreBlockMap = await queryBlockByEpochRangeRpc(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
+                    epochHasEvmBlockMap = await queryBlockByEpochRangeRpc(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
                 }
             }
         }
@@ -216,8 +216,8 @@ export class FullBlockQuery {
                     if (NoCoreSpace) {
                         row['coreBlock'] = 0;
                     } else {
-                        row['coreBlock'] = epochCoreBlockMap[row['epochNumber']] ? 0 : 1;
-                        if (epochCoreBlockMap[row['epochNumber']]) {
+                        row['coreBlock'] = epochHasEvmBlockMap[row['epochNumber']] ? 0 : 1;
+                        if (epochHasEvmBlockMap[row['epochNumber']]) {
                             const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
                             row['gasLimit'] = BigInt(row['gasLimit']) * BigInt(100 * proportion) / BigInt(100);
                         }
