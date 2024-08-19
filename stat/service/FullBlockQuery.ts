@@ -165,6 +165,7 @@ export class FullBlockQuery {
         const epochCrossSpaceTxMap = {}
         let epochHasEvmBlockMap = {}
         const epochBlockExtMap = {}
+        let shouldRefToCore = false;
         if(rawList?.length) {
             const blockExts: FullBlockExt[] = await FullBlockExt.sequelize.query(
                 `select * from full_block_ext where epoch>=? and epoch<=?`,
@@ -180,7 +181,7 @@ export class FullBlockQuery {
                   `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
                   { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
                 txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
-                const shouldRefToCore = blockExts.filter(ext=>ext.coreBlock == -1).length == rawList.length;
+                shouldRefToCore = blockExts.filter(ext=>ext.coreBlock == -1).length == rawList.length;
                 if (shouldRefToCore) {
                     epochHasEvmBlockMap = await queryEvmBlockCountInEachEpoch(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
                 } else {
@@ -220,8 +221,10 @@ export class FullBlockQuery {
                         const evmBlockCnt = epochHasEvmBlockMap[row['epochNumber']];
                         row['coreBlock'] = evmBlockCnt ? 0 : 1;
                         if (evmBlockCnt) {
-                            const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
-                            row['gasLimit'] = BigInt(row['gasLimit']) * BigInt(100 * evmBlockCnt * proportion) / BigInt(100);
+                            if (shouldRefToCore) {
+                                const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
+                                row['gasLimit'] = BigInt(row['gasLimit']) * BigInt(100 * evmBlockCnt * proportion) / BigInt(100);
+                            }
                         } else {
                             row['gasLimit'] = BigInt(0);
                         }
