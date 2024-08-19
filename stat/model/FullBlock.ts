@@ -216,7 +216,7 @@ export function buildBlockExt(epoch: number, evmBlocks: number, block: any): Ful
         extra.evmBlocks = evmBlocks
     }
 
-    return {epoch, position: block.position, coreBlock: evmBlocks === 0, extra: JSON.stringify(extra)} as FullBlockExt
+    return {epoch, position: block.position, coreBlock: block.height % 5 == 0, extra: JSON.stringify(extra)} as FullBlockExt
 }
 export interface IFailedTx {
     id?:number
