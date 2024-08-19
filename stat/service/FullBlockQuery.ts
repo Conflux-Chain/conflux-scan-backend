@@ -179,7 +179,7 @@ export class FullBlockQuery {
                   `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
                   { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
                 txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
-                const shouldRefToCore = blockExts.findIndex(ext=>ext.coreBlock == -1) >= 0;
+                const shouldRefToCore = blockExts.filter(ext=>ext.coreBlock == -1).length == rawList.length;
                 if (shouldRefToCore) {
                     epochHasEvmBlockMap = await queryEvmBlockCountInEachEpoch(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
                 } else {
