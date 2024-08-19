@@ -947,6 +947,7 @@ async function main() {
     const cfg = await init();
     debugRpc = await initCfxSdk(cfg.conflux2);
     await queryEvmBlockCountInEachEpoch(parseInt(p1), parseInt(p2));
+    await queryBlockByEpochRangeRpc(parseInt(p1), parseInt(p2));
     await FullBlockExt.sequelize.close();
 }
 
