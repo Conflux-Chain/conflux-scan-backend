@@ -22,8 +22,9 @@ import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
 import {BigNumber} from "ethers";
 import {CoreSpaceRpc, fmtAddr, StatApp} from "../StatApp";
-import {extractActualGasCost} from "./common/utils";
+import {extractActualGasCost, initCfxSdk} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
+import {init} from "./tool/FixDailyTokenStat";
 
 const limitMap = require('limit-map');
 
@@ -911,20 +912,24 @@ async function queryEvmBlockCountInEachEpoch(epochMin: number, epochMax: number)
     arr.forEach(row=>{
         ret[row['epoch']] = row['blockCount'] - row['coreCount'];
     })
+    debugRpc && console.log(`debug block mark from DB `, ret);
     return ret;
 }
 
+let debugRpc: Conflux = null;
+
 async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
-    if (!CoreSpaceRpc) {
+    const rpc = debugRpc || CoreSpaceRpc;
+    if (!rpc) {
         return {}
     }
     let cursor = epochMin;
     let ret = {}
     const tasks = []
     while(cursor <= epochMax) {
-        const task = CoreSpaceRpc.getBlocksByEpochNumber(cursor).then(blocks=>{
+        const task = rpc.getBlocksByEpochNumber(cursor).then(blocks=>{
             return Promise.all(blocks.map(hash=>{
-                return CoreSpaceRpc.getBlockByHash(hash, false)
+                return rpc.getBlockByHash(hash, false)
             })).then(blockArr=>{
                 ret[cursor] = blockArr.filter(b => b.height % 5 == 0).length;
             })
@@ -933,5 +938,19 @@ async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
         cursor ++;
     }
     await Promise.all(tasks);
+    debugRpc && console.log(`debug block mark from rpc`, ret);
     return ret;
+}
+
+async function main() {
+    const[,,cmd, p1, p2] = process.argv;
+    const cfg = await init();
+    debugRpc = await initCfxSdk(cfg.conflux2);
+    await queryEvmBlockCountInEachEpoch(parseInt(p1), parseInt(p2));
+    await FullBlockExt.sequelize.close();
+}
+
+// node stat/service/FullBlockQuery.js test 11102420  11102440
+if (module == require.main) {
+    main().then()
 }
