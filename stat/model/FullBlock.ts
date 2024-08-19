@@ -212,11 +212,15 @@ export function buildBlockExt(epoch: number, evmBlocks: number, block: any): Ful
     if(block.txsInType.find(v => v > 0)) { // Only store when the block has txs.
         extra.txsInType = block.txsInType
     }
+    let coreBlock = false;
     if(StatApp.isEVM) { // Only store in evm space.
         extra.evmBlocks = evmBlocks
+    } else {
+        // store the mark in core space, use it in evm space when querying block list.
+        coreBlock = block.height % 5 !== 0
     }
 
-    return {epoch, position: block.position, coreBlock: block.height % 5 == 0, extra: JSON.stringify(extra)} as FullBlockExt
+    return {epoch, position: block.position, coreBlock, extra: JSON.stringify(extra)} as FullBlockExt
 }
 export interface IFailedTx {
     id?:number
