@@ -243,30 +243,6 @@ export class FullBlockService {
         }
         let blockList: any[] = await batchFetchBlock(this.cfx, hashes);
 
-        let blocksEvm: number = 0;
-        if (NoCoreSpace) {
-            blocksEvm = hashes.length;
-        } else if(StatApp.isEVM) {
-            const hashes = await this.cfx2.getBlocksByEpochNumber(minEpochNumber).catch(err => {
-                console.log(`fetch core blocks fail at epoch ${minEpochNumber}`, err)
-                return []
-            })
-            if (hashes.length === 0) {
-                return {
-                    code: CODE_EMPTY_BLOCK, message: "core block list is empty", blockCount: 0, epoch: minEpochNumber
-                }
-            }
-            if(blockList[0].hash !== hashes[hashes.length - 1]) {
-                return {code: CODE_CONTINUE, message: 'pivot block not match between core and evm space'}
-            }
-            const blockList2 = await batchFetchBlockSdk(this.cfx2, hashes, false, true,
-                { check: true, epochNumber: minEpochNumber })
-            blockList2.forEach(blk => {
-                if(blk.height % 5 === 0){ // blocks that satisfies blk.height % 5 === 0 will be used for evm space
-                    blocksEvm++
-                }
-            })
-        }
         // fill tx receipts to block-> tx
         let code = 0
         let message = 'ok'
@@ -305,7 +281,7 @@ export class FullBlockService {
                 break;
             }
         }
-        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blocksEvm, blockHashes: hashes}
+        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -502,8 +478,7 @@ export class FullBlockService {
             if (!NoCoreSpace) { // !NoCoreSpace => hasCoreSpace, share gasLimit
                 const proportion = StatApp.isEVM ? CONST.GAS_LIMIT_PROPORTION.evm :
                     (block.epochNumber >= StatApp.epochCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
-                const times = StatApp.isEVM ? preLoadResult.blocksEvm : 1
-                block.gasLimit = block.gasLimit * BigInt(100 * proportion * times) / BigInt(100)
+                block.gasLimit = block.gasLimit * BigInt(100 * proportion) / BigInt(100)
             }
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
 
@@ -511,7 +486,7 @@ export class FullBlockService {
             block.baseFee = BigInt(block?.baseFeePerGas || 0)
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType
-            const blockExt = buildBlockExt(minEpochNumber, preLoadResult.blocksEvm, block)
+            const blockExt = buildBlockExt(minEpochNumber, block)
             blockExtArr.push(blockExt)
         }
         const failedBeans = failedTxArr

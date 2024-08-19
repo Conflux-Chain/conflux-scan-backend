@@ -7,6 +7,7 @@ import {FullTransaction} from "../model/FullBlock";
 import {IS_EVM2, KV} from "../model/KV";
 import {scheduleDaily} from "./pos/PosStat";
 import {initCfxSdk} from "./common/utils";
+import {EvmDB} from "../config/StatConfig";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
     | 'DailyCfxCountToEVM' | 'DailyCfxCountFromEVM'
@@ -49,7 +50,7 @@ let evmZeroId = 0
 export async function calcDailyCfxFromEvm(dt: Date) {
     const dayStart = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
     const dayEnd = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 23, 59, 59)
-    const evm = chainId == 8888 ? 'eth8889' : 'evm'
+    const evm = EvmDB;
     evmZeroId = evmZeroId || await CfxTransfer.sequelize.query(`select id from ${evm}.${Hex40Map.getTableName()
     } where hex='${'0'.padStart(40, '0')}'`, {type: QueryTypes.SELECT, raw: true,
         // logging: console.log,

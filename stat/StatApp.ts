@@ -42,6 +42,9 @@ import {StatOnRealtime} from "./service/timerstat/StatOnRealtime"
 import {TxnQuery} from "./service/TxnQuery";
 import {ethers} from "ethers";
 patchFormat();
+
+export var CoreSpaceRpc: Conflux = null;
+
 export class StatApp{
     public config: StatConfig;
     public sequelize: Sequelize;
@@ -106,6 +109,9 @@ export class StatApp{
         }
         KV.setupSwitch().then()
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+        if (StatApp.isEVM && this.config.conflux2) {
+            CoreSpaceRpc = await initCfxSdk(this.config.conflux2);
+        }
         this.txnSync = new TxnSync(this);
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
