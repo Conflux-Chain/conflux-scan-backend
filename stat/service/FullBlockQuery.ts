@@ -923,18 +923,21 @@ async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
     if (!rpc) {
         return {}
     }
-    let cursor = epochMin;
     let ret = {}
     const tasks = []
-    while(cursor <= epochMax) {
+	  function fetch(epoch: number) {
         const task = rpc.getBlocksByEpochNumber(cursor).then(blocks=>{
             return Promise.all(blocks.map(hash=>{
                 return rpc.getBlockByHash(hash, false)
             })).then(blockArr=>{
-                ret[cursor] = blockArr.filter(b => b.height % 5 == 0).length;
+                ret[epoch] = blockArr.filter(b => b.height % 5 == 0).length;
             })
         });
         tasks.push(task);
+    }
+    let cursor = epochMin;
+    while(cursor <= epochMax) {
+        fetch(cursor);
         cursor ++;
     }
     await Promise.all(tasks);
