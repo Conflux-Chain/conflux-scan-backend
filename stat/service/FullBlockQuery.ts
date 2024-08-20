@@ -932,12 +932,14 @@ async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
     let ret = {}
     const tasks = []
 	  function fetch(epoch: number) {
-        const task = rpc.getBlocksByEpochNumber(cursor).then(blocks=>{
+        const task = rpc.getBlocksByEpochNumber(epoch).then(blocks=>{
             return Promise.all(blocks.map(hash=>{
                 return rpc.getBlockByHash(hash, false)
             })).then(blockArr=>{
                 ret[epoch] = blockArr.filter(b => b.height % 5 == 0).length;
             })
+        }).catch(e=>{
+            console.log(`failed to get block info, epoch ${epoch} . `, e)
         });
         tasks.push(task);
     }
