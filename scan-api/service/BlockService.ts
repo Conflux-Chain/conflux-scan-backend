@@ -1,5 +1,8 @@
 import {ScanApp} from "./index";
 import {QueryTypes} from "sequelize";
+import {queryEvmBlockCountInEachEpoch} from "../../stat/service/FullBlockQuery";
+import {NoCoreSpace} from "../../stat/config/StatConfig";
+import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -85,13 +88,22 @@ export class BlockService {
         prePivot
       }
     }
+    let coreBlock = 0;
+    if (NoCoreSpace) {
 
+    } else if (StatApp.isEVM) {
+      const map = await queryEvmBlockCountInEachEpoch(block.epochNumber, block.epochNumber);
+      const evmBlockCount = map[block.epochNumber];
+      coreBlock = evmBlockCount ? 0 : 1;
+      const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
+      block['gasLimit'] = BigInt(block['gasLimit']) * BigInt(100 * evmBlockCount * proportion) / BigInt(100);
+    }
     const blkExt = await FullBlockExt.sequelize.query(`select * from full_block_ext where epoch = ? and position = 
          (select position from full_block where hash = ?)`,
         { type: QueryTypes.SELECT, replacements: [block.epochNumber, block.hash]})
-        .then(arr => {return arr?.length ? arr[0] : null})
+        .then(arr => {return arr?.length ? arr[0] : null});
     let extra = blkExt?.extra ? JSON.parse(blkExt.extra) : undefined
-    lodash.assign(block, {burntGasFee: extra?.burntFee, coreBlock: blkExt?.coreBlock??0})
+    lodash.assign(block, {burntGasFee: extra?.burntFee, coreBlock})
     rewardDetail['burntGasFee'] = extra?.burntFee
 
     const epoch = await service.epoch.query({ epochNumber: block.epochNumber }) || {};
