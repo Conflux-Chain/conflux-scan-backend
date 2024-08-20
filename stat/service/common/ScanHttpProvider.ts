@@ -30,6 +30,9 @@ export class ScanHttpProvider extends HttpProvider {
                 console.log(`${__filename} must set cache path`)
                 process.exit(9)
             }
+            if (__filename.startsWith("/scan") && conf.cachePath.startsWith("/stat-root")) {
+                conf.cachePath = conf.cachePath.replace("/stat-root", "/scan")
+            }
             // test write
             try {
                 fs.writeFileSync(`${conf.cachePath}/testWrite.txt`, "a test file")

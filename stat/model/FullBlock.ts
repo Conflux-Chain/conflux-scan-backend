@@ -140,7 +140,7 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
 export interface IFullBlockExt {
     epoch: number;
     position: number;
-    coreBlock: boolean;
+    coreBlock: number;
     extra: string;
 }
 // alter table full_block_ext add column `position` smallint(6) NOT NULL DEFAULT '0' after `epoch`;
@@ -185,7 +185,9 @@ export async function createFullBlockExtTable(seq:Sequelize) {
 export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt {
     epoch: number;
     position: number;
-    coreBlock: boolean;
+    // core space: 1: core block; 0: not core block;
+    // evm space -1: not set (ref to core space db); 1/0: legacy data
+    coreBlock: number;
     extra: string;
 
     static register(sequelize) {
@@ -203,7 +205,7 @@ export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt 
         })
     }
 }
-export function buildBlockExt(epoch: number, evmBlocks: number, block: any): FullBlockExt {
+export function buildBlockExt(epoch: number, block: any): FullBlockExt {
     const extra: any = {
         burntFee: block.burntGasFee,
         baseFee: block.baseFee,
@@ -212,11 +214,16 @@ export function buildBlockExt(epoch: number, evmBlocks: number, block: any): Ful
     if(block.txsInType.find(v => v > 0)) { // Only store when the block has txs.
         extra.txsInType = block.txsInType
     }
+    let coreBlock = -1; // It is a marker for evm space, referring to the core space.
     if(StatApp.isEVM) { // Only store in evm space.
-        extra.evmBlocks = evmBlocks
+        // extra.evmBlocks = evmBlocks
+    } else {
+        // blocks that satisfies blk.height % 5 === 0 will be used for evm space.
+        // store the mark in core space, use it in evm space when querying block list.
+        coreBlock = block.height % 5 == 0 ? 0 : 1;
     }
 
-    return {epoch, position: block.position, coreBlock: evmBlocks === 0, extra: JSON.stringify(extra)} as FullBlockExt
+    return {epoch, position: block.position, coreBlock, extra: JSON.stringify(extra)} as FullBlockExt
 }
 export interface IFailedTx {
     id?:number

@@ -1,5 +1,5 @@
 // @ts-ignore
-import {CONST as SDK_CONST, format} from "js-conflux-sdk";
+import {Conflux, CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op, QueryTypes} from "sequelize"
 import {
     AddressTransactionIndex,
@@ -12,7 +12,6 @@ import {
     pagingFullTx,
     TxPage
 } from "../model/FullBlock";
-const limitMap = require('limit-map');
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map, idHex40Map} from "../model/HexMap";
@@ -22,8 +21,12 @@ import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
 import {BigNumber} from "ethers";
-import {fmtAddr, StatApp} from "../StatApp";
-import {extractActualGasCost} from "./common/utils";
+import {CoreSpaceRpc, fmtAddr, StatApp} from "../StatApp";
+import {extractActualGasCost, initCfxSdk} from "./common/utils";
+import {CoreDB, NoCoreSpace} from "../config/StatConfig";
+import {init} from "./tool/FixDailyTokenStat";
+
+const limitMap = require('limit-map');
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -32,7 +35,6 @@ export class FullBlockQuery {
     protected app;
     protected sponsorContract;
     protected recommendGasPrice = BigInt(0);
-
     public constructor(app: any) {
         this.app = app;
         this.sponsorContract = app.cfx.InternalContract('SponsorWhitelistControl');
@@ -161,24 +163,31 @@ export class FullBlockQuery {
         }
         // cross space tx
         const epochCrossSpaceTxMap = {}
-        const epochCoreBlockMap = {}
+        let epochHasEvmBlockMap = {}
         const epochBlockExtMap = {}
+        let shouldRefToCore = false;
         if(rawList?.length) {
-            if(StatApp.isEVM) {
-                const txCounts = await FullTransaction.sequelize.query(
-                    `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
-                    { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
-                txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
-            }
             const blockExts: FullBlockExt[] = await FullBlockExt.sequelize.query(
                 `select * from full_block_ext where epoch>=? and epoch<=?`,
                 { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
             blockExts.forEach(blockExt => {
-                epochCoreBlockMap[blockExt['epoch']] = blockExt['coreBlock']
+                // epochHasEvmBlockMap[blockExt['epoch']] = blockExt['coreBlock']
                 if(blockExt?.extra) {
                     epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra)
                 }
             })
+            if(StatApp.isEVM && !NoCoreSpace) {
+                const txCounts = await FullTransaction.sequelize.query(
+                  `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
+                  { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
+                txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
+                shouldRefToCore = blockExts.filter(ext=>ext.coreBlock == -1).length == rawList.length;
+                if (shouldRefToCore) {
+                    epochHasEvmBlockMap = await queryEvmBlockCountInEachEpoch(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
+                } else {
+                    epochHasEvmBlockMap = await queryBlockByEpochRangeRpc(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
+                }
+            }
         }
         // fields mapping
         const list = [];
@@ -206,7 +215,20 @@ export class FullBlockQuery {
                     row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0
                     row['transactionCount'] = row['transactionCount']
                     row['executedTransactionCount'] = row['executedTransactionCount']
-                    row['coreBlock'] = epochCoreBlockMap[row['epochNumber']];
+                    if (NoCoreSpace) {
+                        row['coreBlock'] = 0;
+                    } else {
+                        const evmBlockCnt = epochHasEvmBlockMap[row['epochNumber']];
+                        row['coreBlock'] = evmBlockCnt ? 0 : 1;
+                        if (evmBlockCnt) {
+                            if (shouldRefToCore) {
+                                const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
+                                row['gasLimit'] = BigInt(row['gasLimit']) * BigInt(100 * evmBlockCnt * proportion) / BigInt(100);
+                            }
+                        } else {
+                            row['gasLimit'] = BigInt(0);
+                        }
+                    }
                 }
             })
         }
@@ -880,4 +902,67 @@ export class FullBlockQuery {
         txList.forEach(tx => sumGasPrice = sumGasPrice + BigInt(tx.gasPrice));
         this.recommendGasPrice = sumGasPrice / BigInt(txList.length);
     }
+}
+
+async function queryEvmBlockCountInEachEpoch(epochMin: number, epochMax: number) {
+    const sql = `select epoch, count(*) as blockCount, sum(coreBlock) as coreCount 
+        from ${CoreDB}.${FullBlockExt.getTableName()}
+        where epoch between ${epochMin} and ${epochMax}
+        group by epoch`;
+    const arr = await FullBlockExt.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true});
+    // core space data may be absent, then query from chain rpc.
+    if (arr.length != epochMax - epochMin + 1) {
+        return queryBlockByEpochRangeRpc(epochMin, epochMax);
+    }
+    const ret = {}
+    arr.forEach(row=>{
+        ret[row['epoch']] = row['blockCount'] - row['coreCount'];
+    })
+    debugRpc && console.log(`debug block mark from DB `, ret);
+    return ret;
+}
+
+let debugRpc: Conflux = null;
+
+async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
+    const rpc = debugRpc || CoreSpaceRpc;
+    if (!rpc) {
+        return {}
+    }
+    let ret = {}
+    const tasks = []
+	  function fetch(epoch: number) {
+        const task = rpc.getBlocksByEpochNumber(epoch).then(blocks=>{
+            return Promise.all(blocks.map(hash=>{
+                return rpc.getBlockByHash(hash, false)
+            })).then(blockArr=>{
+                ret[epoch] = blockArr.filter(b => b.height % 5 == 0).length;
+            })
+        }).catch(e=>{
+            console.log(`failed to get block info, epoch ${epoch} . `, e)
+        });
+        tasks.push(task);
+    }
+    let cursor = epochMin;
+    while(cursor <= epochMax) {
+        fetch(cursor);
+        cursor ++;
+    }
+    await Promise.all(tasks);
+    debugRpc && console.log(`debug block mark from rpc`, ret);
+    return ret;
+}
+
+async function main() {
+    const[,,cmd, p1, p2] = process.argv;
+    const cfg = await init();
+    debugRpc = await initCfxSdk(cfg.conflux2);
+    await queryEvmBlockCountInEachEpoch(parseInt(p1), parseInt(p2));
+    await queryBlockByEpochRangeRpc(parseInt(p1), parseInt(p2));
+    await FullBlockExt.sequelize.close();
+}
+
+// node stat/service/FullBlockQuery.js test 11102420  11102440
+if (module == require.main) {
+    main().then()
 }

@@ -198,12 +198,15 @@ export var FirstBlockNo = 0
 // for chains without core space
 export var NoCoreSpace = false
 
+export var CoreDB = 'conflux_scan';
+export var EvmDB = "evm";
+
 /**
  *  Priority from low to high: template.js -> local.js -> specified.js
  */
 export function loadConfig(specified:string = undefined): StatConfig {
     let path = `${__dirname}/Local.js`;
-    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false}}
+    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false, coreDB: 'conflux_scan', evmDB: 'evm'}}
     if (fs.existsSync(path)){
         defaultConf = require('./Local')
     }
@@ -214,6 +217,8 @@ export function loadConfig(specified:string = undefined): StatConfig {
     const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
     FirstBlockNo = conf.firstBlockNo
     NoCoreSpace = conf.noCoreSpace
+    CoreDB = conf.coreDB;
+    EvmDB = conf.evmDB;
     if(conf?.consortiumBridge) {
         console.log(`web port [${conf.consortiumBridge.port}] rpc [`, conf.consortiumBridge.rpc, `]`)
         return conf;

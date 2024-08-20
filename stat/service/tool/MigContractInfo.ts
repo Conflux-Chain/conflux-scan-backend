@@ -804,7 +804,7 @@ async function syncBlockExt(epoch: number) {
         block.txsInType = txsInType
 
         blockArr.push(lodash.pick(block, ['hash', 'gasLimit']))
-        const blockExt = buildBlockExt(epoch, blocksEvm, block)
+        const blockExt = buildBlockExt(epoch, block)
         blockExtArr.push(blockExt)
     }
 
