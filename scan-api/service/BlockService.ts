@@ -88,15 +88,9 @@ export class BlockService {
         prePivot
       }
     }
-    let coreBlock = 0;
-    if (NoCoreSpace) {
-
-    } else if (StatApp.isEVM) {
-      const map = await queryEvmBlockCountInEachEpoch(block.epochNumber, block.epochNumber);
-      const evmBlockCount = map[block.epochNumber];
-      coreBlock = evmBlockCount ? 0 : 1;
-      const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
-      block['gasLimit'] = BigInt(block['gasLimit']) * BigInt(100 * evmBlockCount * proportion) / BigInt(100);
+    const {coreBlock, gasLimit} = await loadEvmBlockSpec(block);
+    if (gasLimit) {
+      detailInfo['gasLimit'] = gasLimit;
     }
     const blkExt = await FullBlockExt.sequelize.query(`select * from full_block_ext where epoch = ? and position = 
          (select position from full_block where hash = ?)`,
@@ -278,3 +272,17 @@ export class BlockService {
   }
 }
 
+async function loadEvmBlockSpec(block) {
+  let coreBlock = 0;
+  let gasLimit = undefined;
+  if (NoCoreSpace) {
+
+  } else if (StatApp.isEVM) {
+    const map = await queryEvmBlockCountInEachEpoch(block.epochNumber, block.epochNumber);
+    const evmBlockCount = map[block.epochNumber];
+    coreBlock = evmBlockCount ? 0 : 1;
+    const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
+    gasLimit = BigInt(block['gasLimit']) * BigInt(100 * evmBlockCount * proportion) / BigInt(100);
+  }
+  return {coreBlock, gasLimit};
+}
