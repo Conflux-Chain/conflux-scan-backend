@@ -832,24 +832,6 @@ export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfe
   })),
 );
 
-jsonrpc.method('transferTreeByTransactionHash',
-  serializeByIP(),
-  parameter({
-    transactionHash: { path: '0', type: type.hex64 },
-  }),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'transferTreeByTransactionHash' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.transfer.transferTreeByTransactionHash(options);
-  },
-);
-
 // --------------------------------- ENS -----------------------------------
 /*jsonrpc.method('queryENSBasic',
     serializeByIP(),

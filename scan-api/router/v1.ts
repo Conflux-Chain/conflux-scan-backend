@@ -1338,9 +1338,9 @@ router.get('/transferTree/:transactionHash',
     },
   }),
 
-  jsonrpc.methodFlow('transferTreeByTransactionHash'),
-
-  async function (result) {
+  async function ({transactionHash}) {
+    const {app: { service: {accountQuery, conflux} },} = this as ScanCtx;
+    const result = await conflux.getTransactionCFXTransferTree(transactionHash);
     if (result.addressArray === undefined) {
       return result;
     }
@@ -1349,7 +1349,6 @@ router.get('/transferTree/:transactionHash',
     result.addressArray.forEach((address) => {
       addressArray.push(address.toString());
     });
-    const {app: { service: {accountQuery} },} = this as ScanCtx;
     const accountBasic = await accountQuery.listPatchInfo(addressArray);
     // const accountBasic = await jsonrpc.methodFlow('queryAccountBasic').call(this, { addressArray });
     const contractAddressArray = Object.keys(accountBasic.map);

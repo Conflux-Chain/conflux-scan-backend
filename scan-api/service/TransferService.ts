@@ -300,13 +300,5 @@ export class TransferService {
     }
     return iterator;
   }
-
-  async transferTreeByTransactionHash({ transactionHash }) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.conflux.getTransactionCFXTransferTree(transactionHash);
-  }
 }
 
