@@ -268,30 +268,6 @@ export const jsonrpc_countAndListTransaction = jsonrpc.method_('countAndListTran
 );
 
 // -------------------------------- Account ---------------------------------
-jsonrpc.method('queryAccount',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    address: { path: '0', type: app.type.address, required: true },
-    fields: { path: '0', type: type([type.string]).$parse(type.arr) },
-  })),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryAccount' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-
-    return service.account.query(options);
-  },
-
-  buildFlow((app) => type({
-    address: app.type.simpleAddress,
-    admin: app.type.simpleAddress,
-  })),
-);
-
 jsonrpc.method('queryAccountBasic',
     serializeByIP(),
     buildFlow((app) => parameter({

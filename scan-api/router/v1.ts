@@ -591,7 +591,6 @@ router.get('/account/:address',
     },
   }),
   async function(option) {
-    console.log(`param is `, option)
     const addr = this.app.parseParam(()=>this.app.type.address(option.address));
     const result = await (this as ScanCtx).app.service.account.query({address: addr, fields: option.fields});
     ['admin', 'address'].forEach(p=>{
@@ -600,7 +599,6 @@ router.get('/account/:address',
     })
     return result;
   },
-  // jsonrpc.methodFlow('queryAccount'),
 );
 
 // -------------------------------- Contract --------------------------------
