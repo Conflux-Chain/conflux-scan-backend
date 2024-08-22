@@ -934,7 +934,6 @@ router.get('/contract',
     tags: ['contract'],
     input: {
       addressArray: { in: 'query', type: 'array', items: { type: 'string' } },
-      from: { in: 'query', type: 'string' },
       minTimestamp: { in: 'query', type: 'integer', minimum: 0 },
       maxTimestamp: { in: 'query', type: 'integer', minimum: 0 },
       minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },

@@ -446,7 +446,6 @@ export const jsonrpc_countAndListContract = jsonrpc.method_('countAndListContrac
   serializeByIP(),
   buildFlow((app) => parameter({
     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=100': (a) => a.length <= 100 },
-    from: { path: '0', type: app.type.address },
     minTimestamp: { path: '0', type: type.uint },
     maxTimestamp: { path: '0', type: type.uint },
     minEpochNumber: { path: '0', type: type.uint },
@@ -466,7 +465,7 @@ export const jsonrpc_countAndListContract = jsonrpc.method_('countAndListContrac
   async function ({ listLimit, ...options }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.contract.countAndList(options);
     return { ...result, listLimit };

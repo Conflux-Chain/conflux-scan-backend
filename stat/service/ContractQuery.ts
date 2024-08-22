@@ -109,14 +109,6 @@ export class ContractQuery {
         return { total: count || 0, list };
     }
 
-    public async listAddress() {
-        const options: any = {attributes: ['base32'], raw: true};
-        const contractArray = await Contract.findAll(options)
-
-        const addressArray = contractArray.map(item => format.hexAddress(item.base32));
-        return {total: addressArray.length, list: addressArray};
-    }
-
     public async addVerify({address, sourceCode = undefined, name, compiler, version, optimizeFlag, optimizeRuns,
         license, libraries, evmVersion,
         taskStatus = CONST.TASK_STATUS.PROCESSING, verifyResult = undefined, codeHash = undefined}) {
