@@ -684,20 +684,15 @@ router.get('/contract/internals',
     },
   }),
 
-  async function (options, next, end) {
-    const {
-      app: { networkId },
-    } = this;
-
-    // const internalContracts = (networkId === 1029) ? CONST.INTERNAL_CONTRACT.slice(0, 3)
-    //   : CONST.INTERNAL_CONTRACT;
+  async function (options) {
     options = {
       addressArray: CONST.INTERNAL_CONTRACT,
       fields: ['transactionCount'],
       ...options,
     };
-    return jsonrpc_countAndListContract([options]);
+    return options;
   },
+	toArray, jsonrpc_countAndListContract,
 
   (result) => {
     lodash.forEach(result.list, (contract) => {
