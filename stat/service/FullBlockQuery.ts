@@ -904,7 +904,7 @@ export class FullBlockQuery {
     }
 }
 
-async function queryEvmBlockCountInEachEpoch(epochMin: number, epochMax: number) {
+export async function queryEvmBlockCountInEachEpoch(epochMin: number, epochMax: number) {
     const sql = `select epoch, count(*) as blockCount, sum(coreBlock) as coreCount 
         from ${CoreDB}.${FullBlockExt.getTableName()}
         where epoch between ${epochMin} and ${epochMax}
