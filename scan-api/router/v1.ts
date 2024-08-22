@@ -590,8 +590,17 @@ router.get('/account/:address',
       600: { code: 'integer', message: 'string' },
     },
   }),
-
-  jsonrpc.methodFlow('queryAccount'),
+  async function(option) {
+    console.log(`param is `, option)
+    const addr = this.app.parseParam(()=>this.app.type.address(option.address));
+    const result = await (this as ScanCtx).app.service.account.query({address: addr, fields: option.fields});
+    ['admin', 'address'].forEach(p=>{
+      const v = result[p];
+      v && (result[p] = this.app.type.simpleAddress(v));
+    })
+    return result;
+  },
+  // jsonrpc.methodFlow('queryAccount'),
 );
 
 // -------------------------------- Contract --------------------------------

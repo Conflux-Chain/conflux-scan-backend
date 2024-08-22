@@ -281,7 +281,7 @@ jsonrpc.method('queryAccount',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.account.query(options);
   },
