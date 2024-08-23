@@ -19,6 +19,7 @@ import {EpochSync} from "./EpochSync";
 import {ProxyVerify} from "../model/ContractVerify";
 import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
+import {jsonrpc_listCompilers} from "../../scan-api/router/jsonrpc";
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -572,7 +573,7 @@ export class ContractQuery {
 
     public async submitVerify({ address, name, sourcecode, compilerType, compilerVersion, optimizeFlag, optimizeRuns,
         license, constructorArgs, libraries, evmVersion }) {
-        const { cfx, jsonRpc } = this.app;
+        const { cfx, } = this.app;
 
         try{
             const verified = await ContractVerify.findOne({where: {base32: toBase32(address), verifyResult: true}});
@@ -588,7 +589,7 @@ export class ContractQuery {
             const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
 
             // check version
-            const versionTable = await jsonRpc.listVersion();
+            const versionTable = await jsonrpc_listCompilers();
             const versionSet = new Set();
             (Object.values(versionTable) as string[]).forEach(version => {
                 versionSet.add(version.substring(8, version.length - 3));

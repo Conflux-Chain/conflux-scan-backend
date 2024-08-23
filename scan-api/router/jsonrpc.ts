@@ -355,21 +355,16 @@ export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
   })),
 );
 
-jsonrpc.method('listVersion',
-  serializeByIP(),
+export const jsonrpc_listCompilers = jsonrpc.method_('listCompilers',
   cacheFlow(60 * 1000),
-  concurrenceControl(500),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
+  async function () {
+    const {app: { syncSDK },} = this as ScanCtx;
 
-    const versionOriginArray = await service.contract.listVersion(options);
-    const versions = lodash.mapValues(versionOriginArray, (version) => {
+    const versionOriginArray = await syncSDK.listVersion();
+    return lodash.mapValues(versionOriginArray, (version) => {
       const versionPartial = version.substr(8);
       return versionPartial.substr(0, versionPartial.length - 3);
     });
-    return versions;
   },
 );
 

@@ -93,18 +93,6 @@ export class ContractService { // TODO: extends AccountService
     return result;
   }
 
-  async listVersion() {
-    const {
-      app: { syncSDK },
-    } = this;
-
-    try {
-      return syncSDK.listVersion();
-    } catch (e) {
-      return { errors: [e.message] };
-    }
-  }
-
   async verify({ address, ...rest }) {
     const {
       app: { CONST, error, syncSDK, service, logger},

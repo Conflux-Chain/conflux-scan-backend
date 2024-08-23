@@ -4,7 +4,7 @@ import {
   jsonrpc_countAndListContract,
   jsonrpc_countAndListToken, jsonrpc_countAndListTransaction,
   jsonrpc_countAndListTransfer,
-  jsonrpc_dag, jsonrpc_frontend, jsonrpc_listBlock, jsonrpc_listContractVerified,
+  jsonrpc_dag, jsonrpc_frontend, jsonrpc_listBlock, jsonrpc_listCompilers, jsonrpc_listContractVerified,
   jsonrpc_plot, jsonrpc_queryBlock, jsonrpc_queryContract, jsonrpc_queryTransaction,
   jsonrpc_trend, jsonrpc_verifyContract, listEVMVersion
 } from "./jsonrpc";
@@ -712,7 +712,7 @@ router.get('/contract/compiler',
     },
   }),
 
-  jsonrpc.methodFlow('listVersion'),
+  jsonrpc_listCompilers,
 );
 
 router.get('/contract/license',

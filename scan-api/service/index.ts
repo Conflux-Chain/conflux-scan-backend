@@ -40,6 +40,7 @@ export interface ScanApp {
   error: any;
   tool: any;
   logger: any;
+  syncSDK: any;
 }
 
 export class ScanServices {
