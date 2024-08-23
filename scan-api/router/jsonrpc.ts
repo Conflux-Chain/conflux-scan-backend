@@ -267,49 +267,6 @@ export const jsonrpc_countAndListTransaction = jsonrpc.method_('countAndListTran
   }),
 );
 
-// -------------------------------- Account ---------------------------------
-jsonrpc.method('queryAccount',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    address: { path: '0', type: app.type.address, required: true },
-    fields: { path: '0', type: type([type.string]).$parse(type.arr) },
-  })),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryAccount' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.account.query(options);
-  },
-
-  buildFlow((app) => type({
-    address: app.type.simpleAddress,
-    admin: app.type.simpleAddress,
-  })),
-);
-
-jsonrpc.method('queryAccountBasic',
-    serializeByIP(),
-    buildFlow((app) => parameter({
-        addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
-    })),
-
-    cacheFlow(5 * 1000),
-    concurrenceControl(500),
-    durationAlarmFlow(5 * 1000, { method: 'queryAccountBasic' }),
-    async function ({ addressArray }) {
-        const {
-            app: { service },
-        } = this;
-
-        return service.accountQuery.listPatchInfo(addressArray);
-    },
-);
-
 // -------------------------------- Contract --------------------------------
 jsonrpc.method('registerContract',
   serializeByIP(),
@@ -334,7 +291,7 @@ jsonrpc.method('registerContract',
   async function ({ address, token, ...options }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.contract.register({ address, ...options });
   },
@@ -485,11 +442,10 @@ jsonrpc.method('verifyContract',
   })),
 );
 
-jsonrpc.method('countAndListContract',
+export const jsonrpc_countAndListContract = jsonrpc.method_('countAndListContract',
   serializeByIP(),
   buildFlow((app) => parameter({
     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=100': (a) => a.length <= 100 },
-    from: { path: '0', type: app.type.address },
     minTimestamp: { path: '0', type: type.uint },
     maxTimestamp: { path: '0', type: type.uint },
     minEpochNumber: { path: '0', type: type.uint },
@@ -509,7 +465,7 @@ jsonrpc.method('countAndListContract',
   async function ({ listLimit, ...options }) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const result = await service.contract.countAndList(options);
     return { ...result, listLimit };

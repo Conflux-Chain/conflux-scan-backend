@@ -1,5 +1,4 @@
 import {ScanApp, ScanCtx} from "./index";
-import {isNumber} from "lodash";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 
 const lodash = require('lodash');
@@ -306,15 +305,10 @@ export class ContractService { // TODO: extends AccountService
 
   // --------------------------------------------------------------------------
   async countAndList(options) {
-    let result;
-    if (options.addressArray !== undefined) {
-      result = await this._countAndListByAddressArrayPlus(options);
-    } else if (options.from !== undefined) {
-      result = await this._countAndListBySyncPlus(options);
-    } else {
-      result = await this._countAndListByRegisterPlus(options);
+    if (!options.addressArray?.length) {
+      throw new this.app.error.ParameterError("parameter addressArray is absent");
     }
-    return result;
+    return this._countAndListByAddressArrayPlus(options);
   }
 
   // --------------------------------------------------------------------------
@@ -413,21 +407,6 @@ export class ContractService { // TODO: extends AccountService
       }
     }));
     return traceResponse;
-  }
-
-  async _countAndListByRegisterPlus(options) {
-    const {
-      app: { service },
-    } = this;
-
-    const page = await service.contractRdb.listAddress();
-    const addressArray = page?.list;
-
-    return this._countAndListByAddressArrayPlus({ addressArray, ...options });
-  }
-
-  async _countAndListBySyncPlus(options) {
-    return this._countAndListByAddressArrayPlus(options);
   }
 
   convertZeroAddressToNullStr(sponsor) {

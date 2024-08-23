@@ -85,6 +85,15 @@ export class ApiApp extends AppBase {
     }
   }
 
+  // wrap error as ParameterError
+  parseParam(fn:()=>any) {
+    try {
+      return fn();
+    } catch (e) {
+      throw new this.error.ParameterError(e);
+    }
+  }
+
   listen(port = undefined) {
     const pathArr = this.router.stack.map((layer) => {
       return layer.path.split('/').map((sec) => {

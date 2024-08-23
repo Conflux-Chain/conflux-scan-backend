@@ -135,7 +135,11 @@ export class Flow {
       // body = picker(body);
     } catch (e) {
       ctx.methodFlowError = e;
-      console.log(`${__filename} catches unknown error \n url: ${ctx.originalUrl} \n`, e)
+      if (e.name == 'ParameterError') {
+        console.log(`${__filename} catches param error \n url: ${ctx.originalUrl} \n`, e.message)
+      } else {
+        console.log(`${__filename} catches unknown error \n url: ${ctx.originalUrl} \n`, e)
+      }
       // ctx.status = e.status || 500;
       // const picker = this.output[ctx.status] || (() => undefined);
       // body = picker(e);

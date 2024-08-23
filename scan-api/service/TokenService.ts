@@ -205,8 +205,6 @@ export class TokenService {
       skip: options.skip, limit: options.limit,
     });
     const addressArray = tokenList.map(t=>t.base32);
-    // const response = await TokenQuery.listAddress({ auditResult: true, portalSupport: true });
-    // const addressArray = response?.list;
     return this._listByAddressArrayPlus({ addressArray, ...options });
   }
 
