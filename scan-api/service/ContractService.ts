@@ -93,6 +93,7 @@ export class ContractService { // TODO: extends AccountService
     return result;
   }
 
+  // scan web page verify
   async verify({ address, ...rest }) {
     const {
       app: { CONST, error, syncSDK, service, logger},

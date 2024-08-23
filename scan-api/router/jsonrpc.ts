@@ -410,7 +410,7 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.contract.verify(options);
   },
