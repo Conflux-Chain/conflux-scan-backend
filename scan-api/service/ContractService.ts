@@ -306,7 +306,7 @@ export class ContractService { // TODO: extends AccountService
   // --------------------------------------------------------------------------
   async countAndList(options) {
     if (!options.addressArray?.length) {
-      throw new this.app.error.ParameterError("parameter addressArray is absent");
+      throw new this.app.error.ParameterError("addressArray is absent");
     }
     return this._countAndListByAddressArrayPlus(options);
   }

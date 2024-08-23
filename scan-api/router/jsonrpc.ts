@@ -316,7 +316,7 @@ jsonrpc.method('deregisterContract',
   },
 );
 
-jsonrpc.method('queryContract',
+export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
   serializeByIP(),
   buildFlow((app) => parameter({
     address: { path: '0', type: app.type.address, required: true },
@@ -373,28 +373,12 @@ jsonrpc.method('listVersion',
   },
 );
 
-jsonrpc.method('listLicense',
-  serializeByIP(),
-  cacheFlow(60 * 1000),
-  concurrenceControl(500),
-  async () => {
-      const licenseArray =  {};
-      Object.values(CONST_TS.LICENSE).forEach(value => licenseArray[value["code"]] = value["desc"]);
-      return licenseArray;
-  },
-);
+export async function listEVMVersion() {
+  const value = await KV.getString(KEY_EVM_VERSIONS, '')
+  return value.split(',')
+}
 
-jsonrpc.method('listEVMVersion',
-    serializeByIP(),
-    cacheFlow(60 * 1000),
-    concurrenceControl(500),
-    async () => {
-        const value = await KV.getString(KEY_EVM_VERSIONS, '')
-        return value.split(',')
-    },
-);
-
-jsonrpc.method('verifyContract',
+export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   serializeByIP(),
   buildFlow((app) => parameter({
     address: { path: '0', type: app.type.address, required: true },
@@ -428,7 +412,6 @@ jsonrpc.method('verifyContract',
   })),
 
   cacheFlow(5 * 1000),
-  concurrenceControl(500),
   async function (options) {
     const {
       app: { service },
@@ -478,7 +461,7 @@ export const jsonrpc_countAndListContract = jsonrpc.method_('countAndListContrac
   })),
 );
 
-jsonrpc.method('listContractVerified',
+export const jsonrpc_listContractVerified = jsonrpc.method_('listContractVerified',
   serializeByIP(),
   buildFlow((app) => parameter({
     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=100': (a) => a.length <= 100 },
@@ -503,23 +486,6 @@ jsonrpc.method('listContractVerified',
     }],
   })),
 );
-
-// jsonrpc.method('queryContractBasic',
-//   serializeByIP(),
-//   buildFlow((app) => parameter({
-//     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
-//   })),
-//
-//   cacheFlow(5 * 1000),
-//   concurrenceControl(500),
-//   durationAlarmFlow(5 * 1000, { method: 'queryContractBasic' }),
-//   async function ({ addressArray }) {
-//     const {
-//       app: { service },
-//     } = this;
-//     return await service.contractRdb.listBasic({ addressArray });
-//   },
-// );
 
 // ---------------------------------- Token ---------------------------------
 jsonrpc.method('registerToken',

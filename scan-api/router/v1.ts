@@ -4,10 +4,11 @@ import {
   jsonrpc_countAndListContract,
   jsonrpc_countAndListToken, jsonrpc_countAndListTransaction,
   jsonrpc_countAndListTransfer,
-  jsonrpc_dag, jsonrpc_frontend, jsonrpc_listBlock,
-  jsonrpc_plot, jsonrpc_queryBlock, jsonrpc_queryTransaction,
-  jsonrpc_trend
+  jsonrpc_dag, jsonrpc_frontend, jsonrpc_listBlock, jsonrpc_listContractVerified,
+  jsonrpc_plot, jsonrpc_queryBlock, jsonrpc_queryContract, jsonrpc_queryTransaction,
+  jsonrpc_trend, jsonrpc_verifyContract, listEVMVersion
 } from "./jsonrpc";
+import {CONST as CONST_TS} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const {Router} = require('../../koaflow/src/router');
@@ -723,7 +724,11 @@ router.get('/contract/license',
     },
   }),
 
-  jsonrpc.methodFlow('listLicense'),
+  async () => {
+    const licenseArray =  {};
+    Object.values(CONST_TS.LICENSE).forEach(value => licenseArray[value["code"]] = value["desc"]);
+    return licenseArray;
+  }
 );
 
 router.get('/contract/evm-version',
@@ -735,7 +740,7 @@ router.get('/contract/evm-version',
       },
     }),
 
-    jsonrpc.methodFlow('listEVMVersion'),
+    listEVMVersion,
 );
 
 router.post('/contract/verify',
@@ -790,7 +795,7 @@ router.post('/contract/verify',
     },
   }),
 
-  jsonrpc.methodFlow('verifyContract'),
+  toArray, jsonrpc_verifyContract,
 );
 
 router.get('/contract/verified',
@@ -823,7 +828,7 @@ router.get('/contract/verified',
     },
   }),
 
-  jsonrpc.methodFlow('listContractVerified'),
+  toArray, jsonrpc_listContractVerified,
 );
 
 router.get('/contract/:address',
@@ -900,7 +905,7 @@ router.get('/contract/:address',
     },
   }),
 
-  jsonrpc.methodFlow('queryContract'),
+  toArray, jsonrpc_queryContract,
 
   async function (result) {
     const {
@@ -988,29 +993,9 @@ router.get('/contract-and-token',
 
   async function (options) {
     const {app: {service: {contractRdb}}} = this as ScanCtx
-    // address is a string, will be converted to an array in jsonrpc . be careful .
     return contractRdb.listBasic({ addressArray: toArray(options.address) });
-    // return jsonrpc.methodFlow('queryContractBasic').call(this, { addressArray: options.address });
   },
 );
-
-/*router.get('/contractBasic',
-  OpenAPI.flow({
-    tags: ['contract'],
-    input: {
-      addressArray: { in: 'query', type: 'array', items: { type: 'string' } },
-    },
-    output: {
-      200: {
-        total: 'integer',
-        map: 'object',
-      },
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('queryContractBasic'),
-);*/
 
 // ---------------------------------- Token ---------------------------------
 router.post('/token',
