@@ -1323,6 +1323,8 @@ router.get('/eventLog',
   }),
 
   async function (options) {
+    options.aggregate = Boolean(options.aggregate);
+    options.transactionHash = this.app.parseParam(()=>this.app.type.hex64(options.transactionHash))
     const {app: { type, service: {eventLog} },} = this as ScanCtx;
     const result = await eventLog.queryByTransactionHash(options)
     result.list.forEach(item => item.address = type.simpleAddress(item.address));
