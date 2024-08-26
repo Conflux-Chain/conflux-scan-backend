@@ -28,7 +28,6 @@ import {ENSCheckerQuery} from "../../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../../stat/service/AccountQuery";
 import {CensorService} from "../../stat/service/censor/CensorService";
 import {TokenTool} from "../../stat/service/tool/TokenTool";
-const DingTalkRobot = require('./lib/DingTalkRobot');
 
 export interface ScanCtx {
   app: ScanApp
