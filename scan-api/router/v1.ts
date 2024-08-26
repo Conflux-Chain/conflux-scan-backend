@@ -65,7 +65,6 @@ router.get('/testDing', async function(ctx){
   const { app: { dingTalk } } = ctx;
   ctx.body = await dingTalk.sendObject(`test-ding`, {header: ctx.headers})
 });
-router.get('/testConcurrent', jsonrpc.methodFlow('testConcurrent'));
 // --------------------------------- OpenAPI ----------------------------------
 router.get('/openAPI', () => openAPI.toObject());
 
@@ -429,9 +428,6 @@ router.get('/transaction/:hash',
           ? tool.parseTransactionMessage(transaction.txExecErrorMsg)
           : undefined;
         // aggregate log info
-        const eventLog = await jsonrpc.methodFlow('listEventLogByTransactionHash')
-          .call(this, { transactionHash: transaction?.hash || 0 });
-        transaction.eventLogCount = eventLog.total;
       } catch (e) {
         logger.error({ src: 'aggregate event_log for transaction', msg: e.toString() });
       }
@@ -1100,7 +1096,6 @@ router.get('/token',
     },
   }),
 
-  // jsonrpc.methodFlow('countAndListToken'),
   toArray, jsonrpc_countAndListToken,
 
   async function (result) {
@@ -1214,10 +1209,6 @@ router.get('/transfer',
     },
   }),
 
-  // jsonrpc.methodFlow('countAndListTransfer'),
-  // async function (arg, next, end) {
-  //   return jsonrpc_countAndListTransfer.call(this, [arg], next, end)
-  // },
   toArray, jsonrpc_countAndListTransfer,
 
   async function (result) {
@@ -1327,7 +1318,6 @@ router.get('/eventLog',
     options.transactionHash = this.app.parseParam(()=>this.app.type.hex64(options.transactionHash))
     const {app: { type, service: {eventLog} },} = this as ScanCtx;
     const result = await eventLog.queryByTransactionHash(options)
-    result.list.forEach(item => item.address = type.simpleAddress(item.address));
 
     const addressArray = result.list.map(item => item.address);
     const {app: { service: {accountQuery} },} = this as ScanCtx;

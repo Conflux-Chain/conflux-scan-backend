@@ -24,16 +24,6 @@ const {sleepMs} = require("limit-map");
 const {JsonRPCFlow} = require("../../koaflow/lib/flow/JsonRPCFlow");
 export const jsonrpc = new JsonRPCFlow();
 
-// dev stuff
-jsonrpc.method('testConcurrent',
-    concurrenceControl(1),
-    durationAlarmFlow(1_000, { method: 'testConcurrent' }),
-    async function(){
-        await sleepMs(2_000)
-        return {message: 'should timeout'}
-    },
-);
-
 // ------------------------------- Dashboard --------------------------------
 
 export const jsonrpc_dag = jsonrpc.method_('dag',
@@ -205,7 +195,7 @@ export const jsonrpc_queryTransaction = jsonrpc.method_('queryTransaction',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.transaction.query(options).then(res=>{
         if (res?.from) {
