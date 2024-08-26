@@ -93,18 +93,7 @@ export class ContractService { // TODO: extends AccountService
     return result;
   }
 
-  async listVersion() {
-    const {
-      app: { syncSDK },
-    } = this;
-
-    try {
-      return syncSDK.listVersion();
-    } catch (e) {
-      return { errors: [e.message] };
-    }
-  }
-
+  // scan web page verify
   async verify({ address, ...rest }) {
     const {
       app: { CONST, error, syncSDK, service, logger},
@@ -306,7 +295,7 @@ export class ContractService { // TODO: extends AccountService
   // --------------------------------------------------------------------------
   async countAndList(options) {
     if (!options.addressArray?.length) {
-      throw new this.app.error.ParameterError("parameter addressArray is absent");
+      throw new this.app.error.ParameterError("addressArray is absent");
     }
     return this._countAndListByAddressArrayPlus(options);
   }

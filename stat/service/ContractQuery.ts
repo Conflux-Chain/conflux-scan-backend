@@ -570,6 +570,7 @@ export class ContractQuery {
         }
     }
 
+    // open api verify
     public async submitVerify({ address, name, sourcecode, compilerType, compilerVersion, optimizeFlag, optimizeRuns,
         license, constructorArgs, libraries, evmVersion }) {
         const { cfx, jsonRpc } = this.app;
@@ -588,7 +589,7 @@ export class ContractQuery {
             const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
 
             // check version
-            const versionTable = await jsonRpc.listVersion();
+            const versionTable = await jsonRpc.listVersion(); // call compiler jsonrpc
             const versionSet = new Set();
             (Object.values(versionTable) as string[]).forEach(version => {
                 versionSet.add(version.substring(8, version.length - 3));
