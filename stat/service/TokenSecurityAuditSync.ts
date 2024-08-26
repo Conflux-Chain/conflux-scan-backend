@@ -35,20 +35,6 @@ export class TokenSecurityAuditSync{
         return Promise.resolve(true)
     }
 
-    private async auditToken(base32){
-        // const { cfx } = this.app;
-        // const account = await cfx.getAccount(base32);
-        // const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS) ? true : false;
-        //
-        // const verifyInfo = await ContractVerify.findOne({where: {base32, verifyResult: true}});
-        // const verify = verifyInfo?.verifyResult ? true : false;
-        //
-        // const hex40id = (await makeId(format.hexAddress(base32))).id;
-        // await TokenSecurityAudit.upsert({ hex40id, base32, verify, zeroAdmin });
-        // const { tokenQuery } = this.app;
-        // await tokenQuery.audit({address: base32});
-    }
-
     public async schedule() {
         const that = this;
         async function repeat() {

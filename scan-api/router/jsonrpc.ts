@@ -510,34 +510,6 @@ export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   })),
 );
 
-export const jsonrpc_auditToken = jsonrpc.method_('auditToken',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    address: { path: '0', type: app.type.address, required: true },
-    password: { path: '0', type: type.string },
-    verify: { path: '0', type: type.bool },
-    audit: { path: '0', type: type.bool },
-    sponsor: { path: '0', type: type.bool },
-    zeroAdmin: { path: '0', type: type.bool },
-    cexBinance: { path: '0', type: type.string },
-    cexHuobi: { path: '0', type: type.string },
-    cexOKEx: { path: '0', type: type.string },
-    dexMoonSwap: { path: '0', type: type.string },
-    trackCoinMarketCap: { path: '0', type: type.string },
-  })),
-
-  checkPassword,
-  concurrenceControl(500),
-  durationAlarmFlow(30 * 1000, { method: 'auditToken' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-
-    return service.token.audit(options);
-  },
-);
-
 // ---------------------------------- Quote -----------------------------------
 jsonrpc.method('queryQuote',
   serializeByIP(),

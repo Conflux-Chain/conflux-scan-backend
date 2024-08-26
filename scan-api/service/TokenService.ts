@@ -87,20 +87,6 @@ export class TokenService {
     return result;
   }
 
-  async audit({ address, ...rest }) {
-    const {
-      app: { error, dingTalk, service },
-    } = this as ScanCtx;
-
-    if (!await service.conflux.isToken(address)) {
-      throw new error.ParameterError(`address "${address}" is not token, audit abort`);
-    }
-
-    const result = await service.tokenRdb.audit({ address, ...rest });
-    dingTalk.sendObject('Token audit', { address, rest });
-    return result;
-  }
-
   // --------------------------------------------------------------------------
   async countAndList({
     transferType,

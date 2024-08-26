@@ -1,7 +1,6 @@
 import {ScanCtx} from "../service/index";
 import {toArray} from "../../stat/router/ParamChecker";
 import {
-  jsonrpc_auditToken,
   jsonrpc_countAndListContract,
   jsonrpc_countAndListToken, jsonrpc_countAndListTransaction,
   jsonrpc_countAndListTransfer,
@@ -1109,31 +1108,6 @@ router.get('/token',
     });
     return result;
   },
-);
-
-router.post('/token/audit',
-  OpenAPI.flow({
-    tags: ['token'],
-    input: {
-      address: { type: 'string', required: true },
-      password: { type: 'string' },
-      verify: { type: 'boolean' },
-      audit: { type: 'boolean' },
-      sponsor: { type: 'boolean' },
-      zeroAdmin: { type: 'boolean' },
-      cexBinance: { type: 'string' },
-      cexHuobi: { type: 'string' },
-      cexOKEx: { type: 'string' },
-      dexMoonSwap: { type: 'string' },
-      trackCoinMarketCap: { type: 'string' },
-    },
-    output: {
-      200: 'object',
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  toArray, jsonrpc_auditToken,
 );
 
 // ------------------------------- Transfer ---------------------------------
