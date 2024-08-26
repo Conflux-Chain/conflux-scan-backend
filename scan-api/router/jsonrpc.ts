@@ -483,75 +483,6 @@ export const jsonrpc_listContractVerified = jsonrpc.method_('listContractVerifie
 );
 
 // ---------------------------------- Token ---------------------------------
-jsonrpc.method('registerToken',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    password: { path: '0', type: type.string },
-    address: { path: '0', type: app.type.address, required: true },
-    icon: { path: '0', type: type.string }, // base64
-    marketCapId: { path: '0', type: type.integer },
-    quoteUrl: { path: '0', type: type.string },
-    moonDexSymbol: { path: '0', type: type.string },
-    binanceSymbol: { path: '0', type: type.string },
-    ipfsGateway: { path: '0', type: type.string },
-  })),
-
-  checkPassword,
-  concurrenceControl(500),
-  durationAlarmFlow(30 * 1000, { method: 'registerToken' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.token.register(options);
-  },
-);
-
-jsonrpc.method('deregisterToken',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    password: { path: '0', type: type.string },
-    address: { path: '0', type: app.type.address, required: true },
-  })),
-
-  checkPassword,
-  concurrenceControl(500),
-  durationAlarmFlow(30 * 1000, { method: 'deregisterToken' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.token.deregister(options);
-  },
-);
-
-jsonrpc.method('queryToken',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    address: { path: '0', type: app.type.address, required: true },
-    fields: { path: '0', type: type([type.string]).$parse(type.arr), default: [] },
-    detail: { path: '0', type: type.bool, default: false },
-    // TODO: maxEpochNumber, announcer, announceAddress
-  })),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryToken' }),
-  async function ({ address, fields }) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.token.queryPlus({ address, fields });
-  },
-
-  buildFlow((app) => type({
-    address: app.type.simpleAddress,
-  })),
-);
-
 export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   serializeByIP(),
   buildFlow((app) => parameter({
@@ -589,7 +520,7 @@ export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   })),
 );
 
-jsonrpc.method('auditToken',
+export const jsonrpc_auditToken = jsonrpc.method_('auditToken',
   serializeByIP(),
   buildFlow((app) => parameter({
     address: { path: '0', type: app.type.address, required: true },
@@ -611,7 +542,7 @@ jsonrpc.method('auditToken',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.token.audit(options);
   },
@@ -632,25 +563,6 @@ jsonrpc.method('queryQuote',
 );
 
 // ------------------------------- EventLog ---------------------------------
-jsonrpc.method('listEventLogByTransactionHash',
-  serializeByIP(),
-  parameter({
-    transactionHash: { path: '0', type: type.hex64, required: true },
-    aggregate: { path: '0', type: type.bool },
-  }),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'listEventLogByTransactionHash' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.eventLog.queryByTransactionHash(options);
-  },
-);
-
 jsonrpc.method('queryEventLog',
   serializeByIP(),
   parameter({

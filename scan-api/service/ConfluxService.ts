@@ -1,4 +1,4 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 import {fmtAddr} from "../../stat/StatApp";
 
 const {noVerboseAddr} = require("../../stat/service/common/utils")
@@ -106,10 +106,10 @@ export class ConfluxService {
     );
   }*/
 
-  async isToken(address, epochNumber) {
+  async isToken(address, epochNumber = undefined) {
     const {
       app: { tokenTool },
-    } = this;
+    } = this as ScanCtx;
 
     const { name, symbol } = await tokenTool.getToken(address, epochNumber);
     return name !== undefined && symbol !== undefined;

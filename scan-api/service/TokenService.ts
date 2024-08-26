@@ -90,7 +90,7 @@ export class TokenService {
   async audit({ address, ...rest }) {
     const {
       app: { error, dingTalk, service },
-    } = this;
+    } = this as ScanCtx;
 
     if (!await service.conflux.isToken(address)) {
       throw new error.ParameterError(`address "${address}" is not token, audit abort`);

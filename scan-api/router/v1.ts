@@ -1,6 +1,7 @@
 import {ScanCtx} from "../service/index";
 import {toArray} from "../../stat/router/ParamChecker";
 import {
+  jsonrpc_auditToken,
   jsonrpc_countAndListContract,
   jsonrpc_countAndListToken, jsonrpc_countAndListTransaction,
   jsonrpc_countAndListTransfer,
@@ -998,65 +999,6 @@ router.get('/contract-and-token',
 );
 
 // ---------------------------------- Token ---------------------------------
-router.post('/token',
-  OpenAPI.flow({
-    tags: ['token'],
-    input: {
-      address: { type: 'string', required: true },
-      password: { type: 'string' },
-      icon: { type: 'string', description: 'base64' },
-      marketCapId: { type: 'integer' },
-      quoteUrl: { type: 'string' },
-      moonDexSymbol: { type: 'string' },
-      binanceSymbol: { type: 'string' },
-      ipfsGateway: { type: 'string' },
-    },
-    output: {
-      200: [
-        {
-          epochNumber: 'integer',
-          blockHash: 'string',
-          transactionHash: 'string',
-          outcomeStatus: 'integer',
-          from: 'string',
-          to: 'string',
-          gasUsed: 'string',
-          gasFee: 'string',
-        },
-      ],
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('registerToken'),
-);
-
-router.delete('/token/:address',
-  OpenAPI.flow({
-    tags: ['token'],
-    input: {
-      address: { in: 'path', type: 'string', required: true },
-      password: { type: 'string' },
-    },
-    output: {
-      200: [
-        {
-          epochNumber: 'integer',
-          blockHash: 'string',
-          transactionHash: 'string',
-          outcomeStatus: 'integer',
-          from: 'string',
-          to: 'string',
-          gasUsed: 'string',
-          gasFee: 'string',
-        },
-      ],
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('deregisterToken'),
-);
 
 router.get('/token/:address',
   OpenAPI.flow({
@@ -1098,8 +1040,15 @@ router.get('/token/:address',
       600: { code: 'integer', message: 'string' },
     },
   }),
-
-  jsonrpc.methodFlow('queryToken'),
+  async function(option) {
+    const addr = this.app.parseParam(()=>this.app.type.address(option.address));
+    const result = await (this as ScanCtx).app.service.token.queryPlus({address: addr});
+    ['address'].forEach(p=>{
+      const v = result[p];
+      v && (result[p] = this.app.type.simpleAddress(v));
+    })
+    return result;
+  }
 );
 
 router.get('/token',
@@ -1189,7 +1138,7 @@ router.post('/token/audit',
     },
   }),
 
-  jsonrpc.methodFlow('auditToken'),
+  toArray, jsonrpc_auditToken,
 );
 
 // ------------------------------- Transfer ---------------------------------
@@ -1373,12 +1322,9 @@ router.get('/eventLog',
     },
   }),
 
-  jsonrpc.methodFlow('listEventLogByTransactionHash'),
-
-  async function (result) {
-    const {
-      app: { type },
-    } = this;
+  async function (options) {
+    const {app: { type, service: {eventLog} },} = this as ScanCtx;
+    const result = await eventLog.queryByTransactionHash(options)
     result.list.forEach(item => item.address = type.simpleAddress(item.address));
 
     const addressArray = result.list.map(item => item.address);
