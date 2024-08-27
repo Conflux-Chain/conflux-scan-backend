@@ -69,7 +69,7 @@ export class StatDailyTxn extends TimerStat{
                 [Op.and]:[
                     {createdAt: {[Op.gte]: beginTime}},
                     {createdAt: {[Op.lt]: endTime}},
-                    {status: 0},
+                    // {status: 0}, // 2024.8.27  , remove this filter as discussed in TG group.
                 ]
             },
             raw: true,

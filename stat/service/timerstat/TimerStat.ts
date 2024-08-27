@@ -32,6 +32,8 @@ export abstract class TimerStat {
         while(true) {
             this.minDbTime = await FullBlock.findOne({order: [['epoch', 'asc']]}).then(res => res?.createdAt)
             if (this.minDbTime) {
+                // avoid fraction
+                this.minDbTime.setMinutes(0, 0, 0);
                 break
             }
             console.log(`${__filename} first block not found`)
