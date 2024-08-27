@@ -428,7 +428,7 @@ router.get('/transaction/:hash',
           : undefined;
         // aggregate log info
       } catch (e) {
-        logger.error({ src: 'aggregate event_log for transaction', msg: e.toString() });
+        console.log(`${__filename} aggregate event_log for transaction`, e);
       }
 
       if (transaction.aggregate) {
