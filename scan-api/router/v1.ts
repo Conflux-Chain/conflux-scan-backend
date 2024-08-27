@@ -434,8 +434,7 @@ router.get('/transaction/:hash',
       if (transaction.aggregate) {
         try {
           // aggregate transfer info
-          const tokenTransfer = await jsonrpc.methodFlow('countAndListTransfer')
-            .call(this, { transactionHash: transaction.hash, limit: 100, reverse: true /* casFilter: false */ });
+          const tokenTransfer = await service.transfer.countAndList({ transactionHash: transaction.hash, limit: 100, reverse: true /* casFilter: false */ });
           transaction.tokenTransfer = tokenTransfer || [];
           // aggregate contract and token info
           const addressArray = [];
