@@ -435,7 +435,7 @@ router.get('/transaction/:hash',
         try {
           // aggregate transfer info
           const tokenTransfer = await service.transfer.countAndList({ transactionHash: transaction.hash, limit: 100, reverse: true /* casFilter: false */ });
-          this.formatAddrInArray(tokenTransfer, ['address', 'from', 'to', 'operator'])
+          this.app.formatAddrInArray(tokenTransfer, ['address', 'from', 'to', 'operator'])
           transaction.tokenTransfer = tokenTransfer || [];
           // aggregate contract and token info
           const addressArray = [];
