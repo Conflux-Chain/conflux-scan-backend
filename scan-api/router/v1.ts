@@ -435,6 +435,7 @@ router.get('/transaction/:hash',
         try {
           // aggregate transfer info
           const tokenTransfer = await service.transfer.countAndList({ transactionHash: transaction.hash, limit: 100, reverse: true /* casFilter: false */ });
+          this.formatAddrInArray(tokenTransfer, ['address', 'from', 'to', 'operator'])
           transaction.tokenTransfer = tokenTransfer || [];
           // aggregate contract and token info
           const addressArray = [];
@@ -586,10 +587,7 @@ router.get('/account/:address',
   async function(option) {
     const addr = this.app.parseParam(()=>this.app.type.address(option.address));
     const result = await (this as ScanCtx).app.service.account.query({address: addr, fields: option.fields});
-    ['admin', 'address'].forEach(p=>{
-      const v = result[p];
-      v && (result[p] = this.app.type.simpleAddress(v));
-    })
+    this.app.formatAddrObj(result, ['admin', 'address']);
     return result;
   },
 );
@@ -1037,10 +1035,7 @@ router.get('/token/:address',
   async function(option) {
     const addr = this.app.parseParam(()=>this.app.type.address(option.address));
     const result = await (this as ScanCtx).app.service.token.queryPlus({address: addr});
-    ['address'].forEach(p=>{
-      const v = result[p];
-      v && (result[p] = this.app.type.simpleAddress(v));
-    })
+    this.app.formatAddrObj(result, ['address']);
     return result;
   }
 );
