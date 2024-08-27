@@ -458,7 +458,7 @@ router.get('/transaction/:hash',
             transaction.tokenTransferNameTagInfo[address] = accountBasic.map[address]?.nameTag;
           });
         } catch (e) {
-          logger.error({ src: 'aggregate contract and token for transaction', msg: e.toString() });
+          console.log(`${__filename} aggregate contract and token for transaction`, e);
         }
       }
     }
