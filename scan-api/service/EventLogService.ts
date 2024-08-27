@@ -1,4 +1,5 @@
 import {ScanApp} from "./index";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 
 const lodash = require('lodash');
 
@@ -25,6 +26,7 @@ export class EventLogService {
       timestamp: epoch.timestamp,
       syncTimestamp: epoch.timestamp,
     }));
+    result.forEach(item => item.address = fmtAddr(item.address, StatApp.networkId));
     return { total: result.length, list: result, aggregate };
   }
 

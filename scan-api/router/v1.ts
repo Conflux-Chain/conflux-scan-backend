@@ -64,7 +64,6 @@ router.get('/testDing', async function(ctx){
   const { app: { dingTalk } } = ctx;
   ctx.body = await dingTalk.sendObject(`test-ding`, {header: ctx.headers})
 });
-router.get('/testConcurrent', jsonrpc.methodFlow('testConcurrent'));
 // --------------------------------- OpenAPI ----------------------------------
 router.get('/openAPI', () => openAPI.toObject());
 
@@ -428,18 +427,15 @@ router.get('/transaction/:hash',
           ? tool.parseTransactionMessage(transaction.txExecErrorMsg)
           : undefined;
         // aggregate log info
-        const eventLog = await jsonrpc.methodFlow('listEventLogByTransactionHash')
-          .call(this, { transactionHash: transaction?.hash || 0 });
-        transaction.eventLogCount = eventLog.total;
       } catch (e) {
-        logger.error({ src: 'aggregate event_log for transaction', msg: e.toString() });
+        console.log(`${__filename} aggregate event_log for transaction`, e);
       }
 
       if (transaction.aggregate) {
         try {
           // aggregate transfer info
-          const tokenTransfer = await jsonrpc.methodFlow('countAndListTransfer')
-            .call(this, { transactionHash: transaction.hash, limit: 100, reverse: true /* casFilter: false */ });
+          const tokenTransfer = await service.transfer.countAndList({ transactionHash: transaction.hash, limit: 100, reverse: true /* casFilter: false */ });
+          this.app.formatAddrInArray(tokenTransfer.list, ['address', 'from', 'to', 'operator'])
           transaction.tokenTransfer = tokenTransfer || [];
           // aggregate contract and token info
           const addressArray = [];
@@ -462,7 +458,7 @@ router.get('/transaction/:hash',
             transaction.tokenTransferNameTagInfo[address] = accountBasic.map[address]?.nameTag;
           });
         } catch (e) {
-          logger.error({ src: 'aggregate contract and token for transaction', msg: e.toString() });
+          console.log(`${__filename} aggregate contract and token for transaction`, e);
         }
       }
     }
@@ -591,10 +587,7 @@ router.get('/account/:address',
   async function(option) {
     const addr = this.app.parseParam(()=>this.app.type.address(option.address));
     const result = await (this as ScanCtx).app.service.account.query({address: addr, fields: option.fields});
-    ['admin', 'address'].forEach(p=>{
-      const v = result[p];
-      v && (result[p] = this.app.type.simpleAddress(v));
-    })
+    this.app.formatAddrObj(result, ['admin', 'address']);
     return result;
   },
 );
@@ -998,65 +991,6 @@ router.get('/contract-and-token',
 );
 
 // ---------------------------------- Token ---------------------------------
-router.post('/token',
-  OpenAPI.flow({
-    tags: ['token'],
-    input: {
-      address: { type: 'string', required: true },
-      password: { type: 'string' },
-      icon: { type: 'string', description: 'base64' },
-      marketCapId: { type: 'integer' },
-      quoteUrl: { type: 'string' },
-      moonDexSymbol: { type: 'string' },
-      binanceSymbol: { type: 'string' },
-      ipfsGateway: { type: 'string' },
-    },
-    output: {
-      200: [
-        {
-          epochNumber: 'integer',
-          blockHash: 'string',
-          transactionHash: 'string',
-          outcomeStatus: 'integer',
-          from: 'string',
-          to: 'string',
-          gasUsed: 'string',
-          gasFee: 'string',
-        },
-      ],
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('registerToken'),
-);
-
-router.delete('/token/:address',
-  OpenAPI.flow({
-    tags: ['token'],
-    input: {
-      address: { in: 'path', type: 'string', required: true },
-      password: { type: 'string' },
-    },
-    output: {
-      200: [
-        {
-          epochNumber: 'integer',
-          blockHash: 'string',
-          transactionHash: 'string',
-          outcomeStatus: 'integer',
-          from: 'string',
-          to: 'string',
-          gasUsed: 'string',
-          gasFee: 'string',
-        },
-      ],
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('deregisterToken'),
-);
 
 router.get('/token/:address',
   OpenAPI.flow({
@@ -1098,8 +1032,12 @@ router.get('/token/:address',
       600: { code: 'integer', message: 'string' },
     },
   }),
-
-  jsonrpc.methodFlow('queryToken'),
+  async function(option) {
+    const addr = this.app.parseParam(()=>this.app.type.address(option.address));
+    const result = await (this as ScanCtx).app.service.token.queryPlus({address: addr});
+    this.app.formatAddrObj(result, ['address']);
+    return result;
+  }
 );
 
 router.get('/token',
@@ -1151,7 +1089,6 @@ router.get('/token',
     },
   }),
 
-  // jsonrpc.methodFlow('countAndListToken'),
   toArray, jsonrpc_countAndListToken,
 
   async function (result) {
@@ -1165,31 +1102,6 @@ router.get('/token',
     });
     return result;
   },
-);
-
-router.post('/token/audit',
-  OpenAPI.flow({
-    tags: ['token'],
-    input: {
-      address: { type: 'string', required: true },
-      password: { type: 'string' },
-      verify: { type: 'boolean' },
-      audit: { type: 'boolean' },
-      sponsor: { type: 'boolean' },
-      zeroAdmin: { type: 'boolean' },
-      cexBinance: { type: 'string' },
-      cexHuobi: { type: 'string' },
-      cexOKEx: { type: 'string' },
-      dexMoonSwap: { type: 'string' },
-      trackCoinMarketCap: { type: 'string' },
-    },
-    output: {
-      200: 'object',
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('auditToken'),
 );
 
 // ------------------------------- Transfer ---------------------------------
@@ -1265,10 +1177,6 @@ router.get('/transfer',
     },
   }),
 
-  // jsonrpc.methodFlow('countAndListTransfer'),
-  // async function (arg, next, end) {
-  //   return jsonrpc_countAndListTransfer.call(this, [arg], next, end)
-  // },
   toArray, jsonrpc_countAndListTransfer,
 
   async function (result) {
@@ -1373,13 +1281,11 @@ router.get('/eventLog',
     },
   }),
 
-  jsonrpc.methodFlow('listEventLogByTransactionHash'),
-
-  async function (result) {
-    const {
-      app: { type },
-    } = this;
-    result.list.forEach(item => item.address = type.simpleAddress(item.address));
+  async function (options) {
+    options.aggregate = options.aggregate === 'true';
+    options.transactionHash = this.app.parseParam(()=>this.app.type.hex64(options.transactionHash))
+    const {app: { type, service: {eventLog} },} = this as ScanCtx;
+    const result = await eventLog.queryByTransactionHash(options)
 
     const addressArray = result.list.map(item => item.address);
     const {app: { service: {accountQuery} },} = this as ScanCtx;

@@ -27,6 +27,7 @@ import {TokenQuery} from "../../stat/service/TokenQuery";
 import {ENSCheckerQuery} from "../../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../../stat/service/AccountQuery";
 import {CensorService} from "../../stat/service/censor/CensorService";
+import {TokenTool} from "../../stat/service/tool/TokenTool";
 
 export interface ScanCtx {
   app: ScanApp
@@ -41,6 +42,9 @@ export interface ScanApp {
   tool: any;
   logger: any;
   syncSDK: any;
+  tokenTool: TokenTool;
+  dingTalk: any;
+  type: any;
 }
 
 export class ScanServices {

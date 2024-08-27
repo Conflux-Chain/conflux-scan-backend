@@ -1,4 +1,4 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 import {StatApp} from "../../stat/StatApp";
 
 const lodash = require('lodash');
@@ -31,7 +31,7 @@ export class TransactionService {
   async query({ hash, fields, aggregate } = {} as any) {
     const {
       app: { CONST, service },
-    } = this;
+    } = this as ScanCtx;
 
     if (!hash) {
       return null;
@@ -91,6 +91,7 @@ export class TransactionService {
           baseFeePerGas,
           timestamp: epoch.timestamp,
           syncTimestamp: epoch.timestamp,
+          eventLogCount: receipt?.logs?.length,
         }
     );
   }

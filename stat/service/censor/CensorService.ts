@@ -229,7 +229,7 @@ export class CensorService {
         this.debug && console.log(`evictCensorItems ---> ${censorItemDel}`);
     }
 
-    private mosaicText(str: string) {
+    public mosaicText(str: string) {
         const len = str.length;
         return len <= 2 ? '***' : `${str.substr(0, 1)}***${str.substr(len - 1, len)}`;
     }

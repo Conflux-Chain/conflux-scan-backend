@@ -93,6 +93,20 @@ export class ApiApp extends AppBase {
       throw new this.error.ParameterError(e);
     }
   }
+  formatAddrObj(obj: any, props: string[]) {
+    props.forEach(p=>{
+      const v = obj[p];
+      v && (obj[p] = this.type.simpleAddress(v));
+    })
+  }
+	formatAddrInArray(list: any[], props: string[]) {
+    if (!list) {
+      return
+    }
+    list.forEach(row=>{
+      this.formatAddrObj(row, props);
+    });
+  }
 
   listen(port = undefined) {
     const pathArr = this.router.stack.map((layer) => {
