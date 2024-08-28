@@ -48,20 +48,5 @@ export class EventLogService {
       syncTimestamp: epoch.timestamp,
     });
   }
-
-  async countAndList(options) {
-    const {
-      app: { syncSDK },
-    } = this;
-
-    // const rdbSwitch = await KV.getSwitch(KEY_EVENT_LOG_QUERY_RDB_SWITCH);
-    // if (rdbSwitch) {
-      return { total: 0, list: [] };
-    // }
-
-    // const result = await syncSDK.countAndListEventLog(options);
-    // result.list = await Promise.all(result.list.map((object) => this.query(object)));
-    // return result;
-  }
 }
 
