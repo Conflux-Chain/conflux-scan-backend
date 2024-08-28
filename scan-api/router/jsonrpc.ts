@@ -9,7 +9,6 @@ const BigFixed = require('bigfixed');
 const type = require('../../common/type');
 const CONST = require('../../common/const');
 const parameter = require('../../common/parameter');
-const checkPassword = require('../../common/middleware/checkPassword');
 const cacheFlow = require('../../common/middleware/cacheFlow');
 const listLimitBy = require('../../common/middleware/listLimitBy');
 const durationAlarmFlow = require('../../common/middleware/durationAlarmFlow');
@@ -258,54 +257,6 @@ export const jsonrpc_countAndListTransaction = jsonrpc.method_('countAndListTran
 );
 
 // -------------------------------- Contract --------------------------------
-jsonrpc.method('registerContract',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    password: { path: '0', type: type.string },
-    address: { path: '0', type: app.type.address, required: true },
-    name: { path: '0', type: type.string },
-    website: { path: '0', type: type.string }, // url
-    abi: { path: '0', type: type.string }, // json
-    sourceCode: { path: '0', type: type.string }, // solidity
-    optimizeRuns: { path: '0', type: type.unsigned },
-    icon: { path: '0', type: type.string }, // base64
-
-    // XXX: register token for compatible old api
-    token: { path: '0', type: type.object },
-    'token.icon': { path: '0', type: type.string },
-  })),
-
-  checkPassword,
-  concurrenceControl(500),
-  durationAlarmFlow(30 * 1000, { method: 'registerContract' }),
-  async function ({ address, token, ...options }) {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-
-    return service.contract.register({ address, ...options });
-  },
-);
-
-jsonrpc.method('deregisterContract',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    password: { path: '0', type: type.string },
-    address: { path: '0', type: app.type.address, required: true },
-  })),
-
-  checkPassword,
-  concurrenceControl(500),
-  durationAlarmFlow(30 * 1000, { method: 'deregisterContract' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.contract.deregister(options);
-  },
-);
-
 export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
   serializeByIP(),
   buildFlow((app) => parameter({
@@ -510,68 +461,6 @@ export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   })),
 );
 
-// ---------------------------------- Quote -----------------------------------
-jsonrpc.method('queryQuote',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    address: { path: '0', type: app.type.address, required: true },
-  })),
-
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryQuote' }),
-  () => {
-    return { message: 'Deprecated' }; // service.quote.query(options);
-  },
-);
-
-// ------------------------------- EventLog ---------------------------------
-jsonrpc.method('queryEventLog',
-  serializeByIP(),
-  parameter({
-    transactionHash: { path: '0', type: type.hex64, required: true },
-    transactionLogIndex: { path: '0', type: type.uint, required: true },
-  }),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'queryEventLog' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this;
-
-    return service.eventLog.query(options);
-  },
-);
-
-jsonrpc.method('countAndListEventLog',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    address: { path: '0', type: app.type.address },
-    signature: { path: '0', type: type.hex64 },
-    minEpochNumber: { path: '0', type: type.uint },
-    maxEpochNumber: { path: '0', type: type.uint },
-    minTimestamp: { path: '0', type: type.uint },
-    maxTimestamp: { path: '0', type: type.uint },
-    limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 100 },
-    skip: { path: '0', type: type.uint, default: 0 },
-    reverse: { path: '0', type: type.bool },
-  })),
-
-  listLimitBy(['address', 'signature', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'countAndListEventLog' }),
-  async function ({ listLimit, ...options }) {
-    const {
-      app: { service },
-    } = this;
-
-    const result = await service.eventLog.countAndList(options);
-    return { listLimit, ...result };
-  },
-);
-
 // ------------------------------- Transfer -----------------------------------
 export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfer',
   serializeByIP(),
@@ -624,25 +513,9 @@ export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfe
 );
 
 // --------------------------------- ENS -----------------------------------
-/*jsonrpc.method('queryENSBasic',
-    serializeByIP(),
-    buildFlow((app) => parameter({
-        addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=300': (a) => a.length <= 300 },
-    })),
-
-    cacheFlow(5 * 1000),
-    concurrenceControl(500),
-    durationAlarmFlow(5 * 1000, { method: 'queryENSBasic' }),
-    async function ({ addressArray }) {
-        const {
-            app: { service },
-        } = this;
-        return service.ensCheckerQuery.nameBatch(addressArray);
-    },
-);*/
 
 // --------------------------------- Export -----------------------------------
-jsonrpc.method('exportTransaction',
+export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
   serializeByIP(),
   buildFlow((app) => parameter({
     accountAddress: { path: '0', type: app.type.address },
@@ -732,7 +605,7 @@ jsonrpc.method('exportTransaction',
   arrayToCSVFlow(),
 );
 
-jsonrpc.method('exportTransfer',
+export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
   serializeByIP(),
   buildFlow((app) => parameter({
     transactionHash: { path: '0', type: type.hex64 },

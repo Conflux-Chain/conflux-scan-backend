@@ -2,11 +2,22 @@ import {ScanCtx} from "../service/index";
 import {toArray} from "../../stat/router/ParamChecker";
 import {
   jsonrpc_countAndListContract,
-  jsonrpc_countAndListToken, jsonrpc_countAndListTransaction,
+  jsonrpc_countAndListToken,
+  jsonrpc_countAndListTransaction,
   jsonrpc_countAndListTransfer,
-  jsonrpc_dag, jsonrpc_frontend, jsonrpc_listBlock, jsonrpc_listCompilers, jsonrpc_listContractVerified,
-  jsonrpc_plot, jsonrpc_queryBlock, jsonrpc_queryContract, jsonrpc_queryTransaction,
-  jsonrpc_trend, jsonrpc_verifyContract, listEVMVersion
+  jsonrpc_dag,
+  jsonrpc_exportTransaction, jsonrpc_exportTransfer,
+  jsonrpc_frontend,
+  jsonrpc_listBlock,
+  jsonrpc_listCompilers,
+  jsonrpc_listContractVerified,
+  jsonrpc_plot,
+  jsonrpc_queryBlock,
+  jsonrpc_queryContract,
+  jsonrpc_queryTransaction,
+  jsonrpc_trend,
+  jsonrpc_verifyContract,
+  listEVMVersion
 } from "./jsonrpc";
 import {CONST as CONST_TS} from "../../stat/service/common/constant";
 
@@ -593,68 +604,6 @@ router.get('/account/:address',
 );
 
 // -------------------------------- Contract --------------------------------
-router.post('/contract',
-  OpenAPI.flow({
-    tags: ['contract'],
-    input: {
-      address: { type: 'string', required: true },
-      password: { type: 'string' },
-      name: { type: 'string' },
-      website: { type: 'string', description: 'url website' },
-      abi: { type: 'string', description: 'abi json string' },
-      sourceCode: { type: 'string', description: 'solidity code' },
-      icon: { type: 'string', description: 'base64' },
-
-      // XXX: register token for compatible old api
-      token: { type: { icon: 'string' }, description: 'token info object' },
-    },
-    output: {
-      200: [
-        {
-          epochNumber: 'integer',
-          blockHash: 'string',
-          transactionHash: 'string',
-          outcomeStatus: 'integer',
-          from: 'string',
-          to: 'string',
-          gasUsed: 'string',
-          gasFee: 'string',
-        },
-      ],
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('registerContract'),
-);
-
-router.delete('/contract/:address',
-  OpenAPI.flow({
-    tags: ['contract'],
-    input: {
-      address: { in: 'path', type: 'string', required: true },
-      password: { type: 'string' },
-    },
-    output: {
-      200: [
-        {
-          epochNumber: 'integer',
-          blockHash: 'string',
-          transactionHash: 'string',
-          outcomeStatus: 'integer',
-          from: 'string',
-          to: 'string',
-          gasUsed: 'string',
-          gasFee: 'string',
-        },
-      ],
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  jsonrpc.methodFlow('deregisterContract'),
-);
-
 router.get('/contract/internals',
   OpenAPI.flow({
     tags: ['contract'],
@@ -1384,7 +1333,7 @@ router.get('/report/transaction',
     },
   }),
 
-  jsonrpc.methodFlow('exportTransaction'),
+  toArray, jsonrpc_exportTransaction,
   async function (options) {
     const {
       app: { type },
@@ -1428,7 +1377,7 @@ router.get('/report/transfer',
     },
   }),
 
-  jsonrpc.methodFlow('exportTransfer'),
+  toArray, jsonrpc_exportTransfer,
   async function (options) {
     const {
       app: { type },
