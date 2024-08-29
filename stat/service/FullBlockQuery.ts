@@ -257,7 +257,7 @@ export class FullBlockQuery {
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
 
-        const result = {total: (count ? count : 0) + prunedCntr, list, paging};
+        const result = {total: (count ? count : 0) + prunedCntr, list, paging, useEpochRangeForBlockExt};
         return result;
     }
     public async listTransaction({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined, transactionHash = undefined,
