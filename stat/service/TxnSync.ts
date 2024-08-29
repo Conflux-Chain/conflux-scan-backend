@@ -1,12 +1,13 @@
-import {Op, Sequelize, QueryTypes} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 // @ts-ignore
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
 import {StatApp} from "../StatApp";
-import {FullTransaction} from "../model/FullBlock";
+import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {sleep} from "./tool/ProcessTool";
 import {BlockAndMinerSync} from "./BlockAndMinerSync";
 import {Errors} from "./common/LogicError";
+
 const BigFixed = require('bigfixed');
 
 /**
@@ -37,15 +38,24 @@ export class TxnSync {
             return Promise.resolve(cacheV);
         }
         // cache end
-        const maxTx = await FullTransaction.findOne({order: [['epoch','desc']]})
+        const maxTx = await FullTransaction.findOne({order: [['epoch','desc']]});
         if (maxTx == null) {
             return Promise.resolve({
                 code: 500, message: 'Empty Data.'
             })
         }
-        const maxEpoch = maxTx.epoch
-        const maxTime = maxTx.createdAt
-        const endTime = maxTime;
+        // align different servers with same end time.
+        let alignToEpoch = maxTx.epoch;
+        alignToEpoch = alignToEpoch -  (alignToEpoch % 1000);
+        // tx may be absent but block must exist
+        const alignBlock = await FullBlock.findOne({where:{epoch: alignToEpoch}});
+        if (alignBlock == null) {
+            return Promise.resolve({
+                code: 500, message: 'Empty Data!'
+            })
+        }
+        const maxEpoch = alignBlock.epoch;
+        const endTime = alignBlock.createdAt;
         // console.log(` end time is ${endTime}`, endTime)
         let beginTime: Date;
         try {
@@ -101,7 +111,7 @@ export class TxnSync {
         });
 
         let finalRet = {
-            /*code: 0, message: 'ok', */list, sum, beginTime, endTime
+            /*code: 0, message: 'ok', */list, sum, beginTime, endTime, alignToEpoch,
         };
         this.rankCache.set(cacheKey, finalRet)
         return Promise.resolve(finalRet)
