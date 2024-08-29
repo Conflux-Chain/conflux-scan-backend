@@ -170,12 +170,14 @@ export class FullBlockQuery {
             const blockExts: FullBlockExt[] = await FullBlockExt.sequelize.query(
                 `select * from full_block_ext where epoch>=? and epoch<=?`,
                 { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
-            blockExts.forEach(blockExt => {
+            for (const blockExt of blockExts) {
                 // epochHasEvmBlockMap[blockExt['epoch']] = blockExt['coreBlock']
-                if(blockExt?.extra) {
-                    epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra)
+                if (!blockExt || !blockExt.extra) {
+                    continue
                 }
-            })
+                // if(blockExt?.extra) // cpu bursts 100% here, amazing.
+                epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra);
+            }
             if(StatApp.isEVM && !NoCoreSpace) {
                 const txCounts = await FullTransaction.sequelize.query(
                   `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
