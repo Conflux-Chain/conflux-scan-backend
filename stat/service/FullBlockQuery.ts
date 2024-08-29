@@ -7,7 +7,7 @@ import {
     FailedTx,
     FullBlock,
     FullBlockExt,
-    FullTransaction,
+    FullTransaction, IFullBlock,
     pagingFullBlock,
     pagingFullTx,
     TxPage
@@ -120,12 +120,14 @@ export class FullBlockQuery {
         // order
         options.order = [['epoch', 'DESC'], ['position', 'DESC']];
         // query
-        let rawList;
+        let rawList: any[];
         let count;
+        let useEpochRangeForBlockExt = true;
         if(blockHash){
             rawList = await FullBlock.findAll(options);
             count = rawList?.length;
         }else if(minerId){
+            useEpochRangeForBlockExt = false;
             const minerOptions = {...options};
             minerOptions.attributes = ['minerId', 'epoch', 'position', 'createdAt'];
             const page = await FullMinerBlock.findAndCountAll(minerOptions);
@@ -167,9 +169,21 @@ export class FullBlockQuery {
         const epochBlockExtMap = {}
         let shouldRefToCore = false;
         if(rawList?.length) {
-            const blockExts: FullBlockExt[] = await FullBlockExt.sequelize.query(
-                `select * from full_block_ext where epoch>=? and epoch<=?`,
-                { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
+            let blockExts: FullBlockExt[];
+            if (useEpochRangeForBlockExt) {
+                blockExts = await FullBlockExt.sequelize.query(
+                  `select * from full_block_ext where epoch>=? and epoch<=?`,
+                  {type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]});
+            } else {
+                // blocks of a miner may cross too large epoch gap
+                blockExts = []
+                await Promise.all(
+                  rawList.map(b=>
+                    FullBlockExt.findOne({where: {epoch: b["epochNumber"], position: b["blockIndex"]}})
+                        .then(ext=>ext && blockExts.push(ext))
+                  )
+                );
+            }
             for (const blockExt of blockExts) {
                 // epochHasEvmBlockMap[blockExt['epoch']] = blockExt['coreBlock']
                 if (!blockExt || !blockExt.extra) {
@@ -243,7 +257,7 @@ export class FullBlockQuery {
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
 
-        const result = {total: (count ? count : 0) + prunedCntr, list, paging};
+        const result = {total: (count ? count : 0) + prunedCntr, list, paging, useEpochRangeForBlockExt};
         return result;
     }
     public async listTransaction({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined, transactionHash = undefined,
