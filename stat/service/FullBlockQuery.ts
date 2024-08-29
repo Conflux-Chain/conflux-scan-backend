@@ -178,7 +178,7 @@ export class FullBlockQuery {
                 // blocks of a miner may cross too large epoch gap
                 blockExts = []
                 await Promise.all(
-                  [rawList].map(b=>
+                  rawList.map(b=>
                     FullBlockExt.findOne({where: {epoch: b["epochNumber"], position: b["blockIndex"]}})
                         .then(ext=>ext && blockExts.push(ext))
                   )
