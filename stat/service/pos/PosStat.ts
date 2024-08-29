@@ -76,7 +76,11 @@ export class PosStat {
         const cnt = await PosAccount.count({where: {
             [Op.or]: [
                 {availableVotes: {[Op.gt]: 0}}, // active
-                {forceRetiredVotes: {[Op.gt]: 0}}, // inactive
+                {forceRetiredVotes: {[Op.gt]: 0}}, // force retiring
+                {[Op.and]: [ // retiring
+                    {availableVotes: 0},
+                    {unlockingVotes: {[Op.gt]: 0}},
+                ]},
             ],
         }})
         await PosDailyStatMix.upsert({

@@ -245,6 +245,7 @@ export class PosSync {
             unlockedVotes: posStatus.unlocked || 0,
             forfeitedVotes: posStatus.forfeited || 0,
             forceRetiredVotes: posStatus.forceRetired || 0,
+            unlockingVotes: posStatus?.outQueue.map(item => item.power).reduce((a, b) => a + b, 0) || 0,
         }, {
             where: {id: id}
         }).then(()=>{

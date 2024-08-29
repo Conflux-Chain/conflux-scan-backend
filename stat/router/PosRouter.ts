@@ -31,20 +31,26 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/list-pos-account', async (ctx)=>{
-        mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['createdAt', 'availableVotes']);
+        mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['availableVotes', 'votingPower', 'createdAt', 'updatedAt']);
         mustBeEnumParamIfPresent(ctx.request.query, 'reverse', ['true', 'false']);
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
         const {groupByPowAddress, orderBy, reverse} = ctx.request.query
 
-        const page = await statApp.posQuery.listPosAccountWithCurrentCommitteeNew(
-            {skip, limit, orderBy, order: reverse === 'true' ? 'desc' : 'asc', groupByPowAddress: Boolean(groupByPowAddress)}
+        const page = await statApp.posQuery.listPosAccountWithCommittee(
+            {skip, limit, orderBy, order: reverse === 'true' ? 'desc' : 'asc'}
         )
 
-        // `Name tag` field
+        // `Name tag`
         const hex64Array = page.rows.map(row => row.hex)
         const {map} = await statApp.accountQuery.listBytes32NameTagInfo(hex64Array)
-        page.rows.forEach(row => row[`byte32NameTagInfo`] = map[row.hex]?.byte32NameTag || {})
+        page.rows.forEach(row => {
+            const tag = map[row.hex]?.byte32NameTag || {}
+            if(tag?.nameTag) {
+                tag.nameTag = tag.nameTag.replace('(Public Pos Pool)', '').replace('(Personal Node)', '')
+            }
+            row[`byte32NameTagInfo`] = tag
+        })
 
         ctx.body = {
             list: page.rows,
@@ -68,12 +74,12 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         }
     })
 
-    router.get('/pos-account-detail', async (ctx)=>{
-        mustBeHex64ParamIfPresent(ctx.request.query, 'identifier');
+    router.get('/pos-account-overview', async (ctx)=>{
+        mustBeHex64ParamIfPresent(ctx.request.query, 'address');
 
-        const {identifier} = ctx.request.query
+        const {address} = ctx.request.query
         ctx.body = {
-            ...await statApp.posQuery.getAccountDetail(identifier)
+            ...await statApp.posQuery.getAccountOverview(address)
         }
     })
 
