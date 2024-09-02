@@ -827,6 +827,39 @@ async function fixBlockExt(minEpoch: number, maxEpoch: number) {
     }
 }
 
+const KEY_BLOCK_GAS_USED_FIXED = 'BLOCK_GAS_USED_FIXED'
+async function fixBlockGasUsed(maxEpoch: number) {
+    const lastEpoch = await KV.getNumber(KEY_BLOCK_GAS_USED_FIXED, 0)
+    if(lastEpoch >= maxEpoch) {
+        return
+    }
+
+    const loop = maxEpoch - lastEpoch
+    for (let i = 0; i < loop; i++) {
+        // get blocks
+        const curEpoch = lastEpoch + 1 + i
+        const blocks = await FullBlock.findAll({where: {epoch: curEpoch}})
+        for (const block of blocks) {
+            // get txs
+            let blockGasUsed = 0
+            const txs = await FullTransaction.findAll({where:{epoch: block.epoch, blockPosition: block.position}})
+            for (const tx of txs) {
+                const gasPrice = tx.gasPrice
+                const gasFee = tx.gas
+                const gasUsed = gasFee / gasPrice
+                blockGasUsed += gasUsed
+            }
+            await FullBlock.update({gasUsed: blockGasUsed}, {where:{epoch: block.epoch, position: block.position}})
+            await KV.upsert({key: KEY_BLOCK_GAS_USED_FIXED, value: `${block.epoch}`})
+        }
+        if(curEpoch % 1000 ===0){
+            console.log(`fixed epoch ${curEpoch}`)
+            await sleep(10)
+        }
+    }
+    console.log(`done!`)
+}
+
 const POS_ACC_CNTR_DAY = 'POS_ACC_CNTR_DAY'
 const POS_ACC_CNTR_BN = 'POS_ACC_CNTR_BN'
 async function statValidator() {
@@ -1056,6 +1089,9 @@ async function run() {
     if(type === 28) {
         await fixEffectiveGasPrice(minEpoch, maxEpoch, once)
     }
+    if(type === 29) {
+        await fixBlockGasUsed(maxEpoch)
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
@@ -1092,6 +1128,10 @@ if(type === 27) {
 
 if(type === 28) {
     once = Boolean(args[4])
+}
+
+if(type === 29) {
+    maxEpoch = Number(args[2]);
 }
 
 run().then();

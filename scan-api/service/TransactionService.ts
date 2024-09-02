@@ -1,5 +1,6 @@
 import {ScanApp, ScanCtx} from "./index";
 import {StatApp} from "../../stat/StatApp";
+import {NoCoreSpace} from "../../stat/config/StatConfig";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -75,7 +76,8 @@ export class TransactionService {
 
     // using actualGasCost as gasFee when NotEnoughCash error occurs
     // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
-    let gasCharged = `${Math.max(Number(receipt?.gasUsed || 0), (Number(transaction.gas) * 3) / 4)}`
+    let gasCharged = NoCoreSpace ? `${Number(receipt?.gasUsed || 0)}`
+        : `${Math.max(Number(receipt?.gasUsed || 0), (Number(transaction.gas) * 3) / 4)}`
     const actualGasCost = extractActualGasCost(receipt?.txExecErrorMsg)
     if(lodash.isNumber(actualGasCost)) {
       gasFee = BigFixed(actualGasCost)
