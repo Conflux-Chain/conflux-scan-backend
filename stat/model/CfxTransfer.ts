@@ -510,10 +510,15 @@ export async function calcUniqueUser(start:Date, end:Date, model: any) : Promise
         return Number(arr[0]['cnt'])
     })
 }
-export async function rollupDailyCfxTxn(dt:Date) {
+export async function rollupDailyCfxTxn(dt:Date, adjustEndTime = false) {
     dt.setHours(0,0,0,0)
     let end = new Date(dt)
-    end.setHours(23,59,59,999)
+    if (adjustEndTime) {
+        // reduce difference between servers.
+        end.setMinutes(0, 0, 0);
+    } else {
+        end.setHours(23, 59, 59, 999)
+    }
     adjustTodayEndTime(end)
     let [transferCount, userCount, amount] = await Promise.all([
         CfxTransfer.count({        where:{
@@ -536,7 +541,7 @@ export async function rollupDailyCfxTxnCurrent() {
         // rollup previous day, time point is an hour ago.
         await rollupDailyCfxTxn(new Date(cur.getTime() - 1000*3600))
     }
-    await rollupDailyCfxTxn(cur);
+    await rollupDailyCfxTxn(cur, true);
 }
 
 export async function scheduleRollupDailyCfxTxn() {
