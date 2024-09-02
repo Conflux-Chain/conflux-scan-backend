@@ -44,17 +44,20 @@ export class TxnQuery{
 
         // convert createAt to epoch
         const minTime = new Date();
+        minTime.setMinutes(0, 0, 0);
         minTime.setDate(minTime.getDate() + spanDay);
         let epoch = await Epoch.findOne({
             where: {timestamp: {[Op.gte]: minTime}},
             order: [['timestamp', 'ASC']],
         });
+        const latestTx = await FullTransaction.findOne({order: [['epoch', 'desc']]})
+        if (latestTx === null) {
+            return  emptyResult;
+        }
+        let endEpoch = latestTx.epoch;
+        endEpoch = endEpoch - (endEpoch % 3600);
         if (epoch === null) {
             // fallback to estimated epoch
-            const latestTx = await FullTransaction.findOne({order: [['epoch', 'desc']]})
-            if (latestTx === null) {
-                return  emptyResult;
-            }
             epoch = {epoch: latestTx.epoch - 3600 * Math.abs(spanDay)} as Epoch
             console.log(`${__filename} epoch is null, estimate by latest tx, got `, epoch.epoch)
         }
@@ -66,8 +69,11 @@ export class TxnQuery{
                 ],
                 group: ['fromId'], raw: true,
                 // logging: console.log,
-                where: {status: 0,
-                    epoch: {[Op.gte]: epoch.epoch}
+                where: {
+                    [Op.and]: [
+                        {epoch: {[Op.gte]: epoch.epoch}},
+                        {epoch: {[Op.lte]: endEpoch}},
+                    ]
                 },
                 order: [[col('gas'),'desc']], limit: 10,
             });
@@ -80,7 +86,7 @@ export class TxnQuery{
             row['hex'] = ethers.utils.getAddress(`0x${hexMap.get(row['fromId'])}`)
             row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
         })
-        let result = {/*code: 0,*/ totalGas: sumGas, list};
+        let result = {/*code: 0,*/ totalGas: sumGas, list, beginEpoch: epoch.epoch, endEpoch};
         writeCache(cachePath, result)
         return result
     }
@@ -93,7 +99,7 @@ export class TxnQuery{
     }
 
     public topGasUsedCache
-    public async scheduleCache(delay: number = 3600_000) {
+    public async scheduleCache(delay: number = 600_000) {
         console.log(`schedule top_gas_used with delay:${delay}`)
         const that = this
         await that.updateTopGasUsed(true).catch(err =>{
