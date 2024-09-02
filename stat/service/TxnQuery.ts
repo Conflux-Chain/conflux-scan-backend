@@ -86,7 +86,7 @@ export class TxnQuery{
             row['hex'] = ethers.utils.getAddress(`0x${hexMap.get(row['fromId'])}`)
             row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
         })
-        let result = {/*code: 0,*/ totalGas: sumGas, list, beginEpoch: epoch.epoch, endEpoch};
+        let result = {totalGas: sumGas, list, beginEpoch: epoch.epoch, endEpoch};
         writeCache(cachePath, result)
         return result
     }
