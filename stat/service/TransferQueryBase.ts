@@ -182,6 +182,7 @@ export abstract class TransferQueryBase {
         } else{
             queryOptions.attributes.push(['id', 'transactionLogIndex']);
         }
+
         // query
         const page = await this.doQuery(options, queryOptions);
         const list = [];
