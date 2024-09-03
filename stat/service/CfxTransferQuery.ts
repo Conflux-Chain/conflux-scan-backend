@@ -108,7 +108,7 @@ export class CfxTransferQuery extends TransferQueryBase{
             return await AddressCfxTransfer.findAndCountAll(queryOptions);
         }
 
-        const pagedCondition = await this.buildPagedCfxTransferOptions(options.skip);
+        const pagedCondition = await this.buildPagedCfxTransferOptions(options.skip, options.limit);
         if(pagedCondition.where){
             queryOptions.where = {[Op.and]: [pagedCondition.where, queryOptions.where]};
             queryOptions.offset = pagedCondition.skip;
@@ -124,17 +124,31 @@ export class CfxTransferQuery extends TransferQueryBase{
         return row;
     }
 
-    private async buildPagedCfxTransferOptions(skip){
+    private async buildPagedCfxTransferOptions(skip: number, limit: number){
         const pagedCondition: any = {};
-        const cfxTransferPage = await pagingFullCfxTransfer(skip);
+        const cfxTransferPage = await pagingFullCfxTransfer(skip, limit);
+        if (cfxTransferPage?.gtEpoch && cfxTransferPage?.id == Infinity) {
+            pagedCondition.where = {
+                epoch: {[Op.gt]: cfxTransferPage.gtEpoch},
+            }
+            pagedCondition.skip = skip;
+        }
         if(cfxTransferPage && cfxTransferPage.id !== Infinity){
             pagedCondition.where = {
-                [Op.or]: [
-                    {epoch: {[Op.lt]: cfxTransferPage.epoch}},
-                    {[Op.and]: [
-                            {epoch: cfxTransferPage.epoch},
-                            {id: {[Op.lt]: cfxTransferPage.dataId}},
-                        ]},
+                [Op.and]: [
+                    {
+                        [Op.or]: [
+                            {epoch: {[Op.lt]: cfxTransferPage.epoch}},
+                            {
+                                [Op.and]: [
+                                    {epoch: cfxTransferPage.epoch},
+                                    {id: {[Op.lte]: cfxTransferPage.dataId}},
+                                ]
+                            },
+                        ]
+                    },
+                  // shrink order scope
+                    {epoch: {[Op.gt]: cfxTransferPage.gtEpoch}}
                 ]
             };
             pagedCondition.skip = cfxTransferPage.skip;

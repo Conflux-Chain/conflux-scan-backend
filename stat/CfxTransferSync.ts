@@ -129,7 +129,7 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
         cfx.getBlockByEpochNumber(epoch),
     ])
     if (blockArrDb.length == 0) {
-        console.log(`no block in db, epoch ${epoch} }`)
+        console.log(`no block in db, epoch ${epoch}`)
         return {code: 404}
     }
     if (txMapByHash.size === 0 && !checkPivot) {
