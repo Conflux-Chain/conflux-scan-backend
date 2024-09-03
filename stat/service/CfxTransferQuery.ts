@@ -131,6 +131,7 @@ export class CfxTransferQuery extends TransferQueryBase{
             pagedCondition.where = {
                 epoch: {[Op.gt]: cfxTransferPage.gtEpoch},
             }
+            pagedCondition.skip = skip;
         }
         if(cfxTransferPage && cfxTransferPage.id !== Infinity){
             pagedCondition.where = {
