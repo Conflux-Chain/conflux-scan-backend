@@ -182,10 +182,8 @@ export abstract class TransferQueryBase {
         } else{
             queryOptions.attributes.push(['id', 'transactionLogIndex']);
         }
-        console.log(`${__filename} doQuery`, new Date().toISOString())
         // query
         const page = await this.doQuery(options, queryOptions);
-        console.log(`${__filename} doQuery`, new Date().toISOString())
         const list = [];
         if(page?.rows){
             const hex40IdSet = new Set<number>();
@@ -212,9 +210,7 @@ export abstract class TransferQueryBase {
                 )
                 list.push(row);
             });
-            console.log(`${__filename} txTasks`, new Date().toISOString())
             await Promise.all(txTasks)
-            console.log(`${__filename} txTasks`, new Date().toISOString())
             const [hex40Map, txMap] = await Promise.all([
                 idHex40Map(Array.from(hex40IdSet)),
                 // this query is very slow if there are more than 1K rows

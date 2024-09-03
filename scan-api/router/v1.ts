@@ -1140,9 +1140,7 @@ router.get('/transfer',
       if (transfer.address !== undefined) addressArray.push(transfer.address.toString());
     });
     addressArray = addressArray.filter((e) => e?.length > 40); // filter 0xundefined.
-    console.log(`${__filename} listPatchInfo`, new Date().toISOString());
     const accountBasic = await accountQuery.listPatchInfo(addressArray)
-    console.log(`${__filename} listPatchInfo`, new Date().toISOString());
     result.list.forEach((transfer) => {
       transfer.fromContractInfo = accountBasic.map[transfer.from]?.contract;
       transfer.fromTokenInfo = accountBasic.map[transfer.from]?.token;
