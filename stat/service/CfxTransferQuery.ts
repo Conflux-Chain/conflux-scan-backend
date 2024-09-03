@@ -142,7 +142,7 @@ export class CfxTransferQuery extends TransferQueryBase{
                             {
                                 [Op.and]: [
                                     {epoch: cfxTransferPage.epoch},
-                                    {id: {[Op.lt]: cfxTransferPage.dataId}},
+                                    {id: {[Op.lte]: cfxTransferPage.dataId}},
                                 ]
                             },
                         ]
