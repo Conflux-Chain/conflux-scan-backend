@@ -49,14 +49,9 @@ export class TransferService {
     if (options.transactionHash !== undefined) {
       result = await this._countAndListByTransactionHash(options);
     } else {
-/*      const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
-      if (rdbSwitch) {*/
         result = await this._countAndListByRdb(options);
         await fetchEnsMap(result.list,'from','to')
         return result;
-      /*  return lodash.defaults({ rdb: rdbSwitch }, result);
-      }
-      result = await this._countAndListBySync(options);*/
     }
     await fetchEnsMap(result.list,'from','to')
     return result;
@@ -65,40 +60,6 @@ export class TransferService {
   async _countAndListByRdb({ transferType, ...options }) {
     const iterator = this._getTransferService(transferType);
     return iterator.listTransfer(options);
-  }
-
-  async _countAndListBySync({ transferType, fields, ...options }) {
-    const {
-      app: { CONST, error, syncSDK },
-    } = this;
-
-    let iterator;
-    switch (transferType) {
-      case CONST.TRANSFER_TYPE.CFX:
-        iterator = (o) => syncSDK.countAndListCFXTransfer(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC20:
-        iterator = (o) => syncSDK.countAndListERC20Transfer(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC721:
-        iterator = (o) => syncSDK.countAndListERC721Transfer(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC777:
-        iterator = (o) => syncSDK.countAndListERC777Transfer(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC1155:
-        iterator = (o) => syncSDK.countAndListERC1155Transfer(o);
-        break;
-      default:
-        throw new error.ParameterError(`unexpected transferType="${transferType}"`);
-    }
-
-    const result = await iterator(options);
-    result.list = await limitMap(result.list,
-      (object) => this._fill(object, fields),
-      { limit: 100 },
-    );
-    return result;
   }
 
   async _countAndListByTransactionHash({
@@ -208,68 +169,6 @@ export class TransferService {
   }
 
   // --------------------------------------------------------------------------
-  async listAllAccountAddress({ transferType, address }) {
-    const {
-      app: { CONST, tool },
-    } = this;
-
-/*    const accountAddressArray = [];
-    const rdbSwitch = await KV.getSwitch(KEY_TRANSFER_QUERY_RDB_SWITCH);
-    if (rdbSwitch) {*/
-      const page = await this._listAccountAddressByRdb({ transferType, address, limit: CONST.LIST_LIMIT });
-      return page?.list;
-   /* }
-
-    for (let minAccountAddress = CONST.NULL_ADDRESS; minAccountAddress; minAccountAddress = tool.addHex(minAccountAddress, 1)) {
-      const addressArray = await this._listAccountAddress({
-        transferType,
-        address,
-        minAccountAddress,
-        limit: CONST.LIST_LIMIT,
-      });
-
-      minAccountAddress = lodash.last(addressArray);
-      accountAddressArray.push(...addressArray);
-    }
-
-    return accountAddressArray;*/
-  }
-
-  async _listAccountAddressByRdb({ transferType, ...options }) {
-    const iterator = this._getTransferService(transferType);
-    return iterator.listAccountAddress(options);
-  }
-
-  async _listAccountAddress({ transferType, ...options }) {
-    const {
-      app: { CONST, syncSDK, error },
-    } = this;
-
-    let iterator;
-    switch (transferType) {
-      case CONST.TRANSFER_TYPE.CFX:
-        iterator = (o) => syncSDK.listCFXAccount(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC20:
-        iterator = (o) => syncSDK.listERC20Account(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC721:
-        iterator = (o) => syncSDK.listERC721Account(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC777:
-        iterator = (o) => syncSDK.listERC777Account(o);
-        break;
-      case CONST.TRANSFER_TYPE.ERC1155:
-        iterator = (o) => syncSDK.listERC1155Account(o);
-        break;
-      default:
-        throw new error.ParameterError(`unexpected transferType="${transferType}"`);
-    }
-
-    const list = await iterator(options);
-    return list.map((each) => each.accountAddress);
-  }
-
   _getTransferService(transferType) {
     const {
       app: { CONST, error, service },
@@ -286,9 +185,6 @@ export class TransferService {
       case CONST.TRANSFER_TYPE.ERC721:
         iterator = service.crc721Transfer;
         break;
-/*      case CONST.TRANSFER_TYPE.ERC777:
-        iterator = service.crc777Transfer;
-        break;*/
       case CONST.TRANSFER_TYPE.ERC1155:
         iterator = service.crc1155Transfer;
         break;
