@@ -152,15 +152,15 @@ export async function markCfxTransferPosition(count:number=1, maxEpoch:number=In
 }
 
 export class CfxTransferPage {
-    id:number
-    epoch:number
-    dataId:number
-    skip:number
-    nonMarkRows:number
-    calcTotal:number //nonMarkRow+id
+    id?:number
+    epoch?:number
+    dataId?:number
+    skip?:number
+    nonMarkRows?:number
+    calcTotal?:number //nonMarkRow+id
     gtEpoch?: number; //
 }
-export async function pagingFullCfxTransfer(skip:number, logger: any = undefined) : Promise<CfxTransferPage> {
+export async function pagingFullCfxTransfer(skip:number, limit: number) : Promise<CfxTransferPage> {
     // find the max mark
     const maxOne = await CfxTransferRowMark.findOne({order:[["id","desc"]], limit: 1})
     // handle null
@@ -169,18 +169,30 @@ export async function pagingFullCfxTransfer(skip:number, logger: any = undefined
     }
     // calculate rows between max mark and latest block
     const nonMarkRows = await countNonMarkCfxTransferRows(maxOne);
-    if (nonMarkRows >= skip) {
+    if (nonMarkRows >= skip + limit) {
         return {id:Infinity, epoch: Infinity, dataId:Infinity, skip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id, gtEpoch: maxOne.epoch-1}
     }
 
-    const pagedSkip = skip - nonMarkRows
+    const max_2_row = await CfxTransferRowMark.findOne({where: {id: maxOne.id - CFX_TRANSFER_PAGE_MARK_SIZE}}).then(res=>{
+        return res ?? {
+            epoch: -1, dataId: 0,
+        } as ICfxTransferRowMark
+    });
+    if (nonMarkRows >= skip) {
+        return {gtEpoch: max_2_row.epoch, id: Infinity};
+    }
+
+    //the remaining <skip amount> should be calculated by marked anchor.
+    const pagedSkip = skip - nonMarkRows;
+    // within [max one, and max_2_row];
     const skipMarkRows = Math.floor(pagedSkip/CFX_TRANSFER_PAGE_MARK_SIZE)
     if (skipMarkRows === 0) {
         return {
             id: maxOne.id,
             epoch: maxOne.epoch,
             dataId: maxOne.dataId,
-            skip: pagedSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id
+            skip: pagedSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id,
+            gtEpoch: max_2_row.epoch,
         };
     }
     const nearestId = maxOne.id - CFX_TRANSFER_PAGE_MARK_SIZE * skipMarkRows
@@ -197,13 +209,19 @@ export async function pagingFullCfxTransfer(skip:number, logger: any = undefined
     // must exists
     const remainSkip = pagedSkip - CFX_TRANSFER_PAGE_MARK_SIZE * skipMarkRows;
     console.log(`cfx transfer : want skip ${skip},has total ${nonMarkRows+maxOne.id} nonMarkRows ${nonMarkRows}, max id ${maxOne.id}, pagedSkip ${pagedSkip
-    } skipMarkRows ${skipMarkRows}, nearestId ${nearestId}, remain ${remainSkip}`)
+    } skipMarkRows ${skipMarkRows}, nearestId ${nearestId}, remain ${remainSkip}`);
+    const nearest_2_row = await CfxTransferRowMark.findOne({where: {id: nearestOne.id - CFX_TRANSFER_PAGE_MARK_SIZE}}).then(res=>{
+        return res ?? {
+            epoch: -1
+        } as ICfxTransferRowMark
+    });
     return {
         id: nearestOne.id,
         epoch: nearestOne.epoch,
         dataId: nearestOne.dataId,
         skip: remainSkip
-        , nonMarkRows, calcTotal: nonMarkRows+maxOne.id
+        , nonMarkRows, calcTotal: nonMarkRows+maxOne.id,
+        gtEpoch: nearest_2_row.epoch,
     };
 }
 
