@@ -158,6 +158,7 @@ export class CfxTransferPage {
     skip:number
     nonMarkRows:number
     calcTotal:number //nonMarkRow+id
+    gtEpoch?: number; //
 }
 export async function pagingFullCfxTransfer(skip:number, logger: any = undefined) : Promise<CfxTransferPage> {
     // find the max mark
@@ -169,7 +170,7 @@ export async function pagingFullCfxTransfer(skip:number, logger: any = undefined
     // calculate rows between max mark and latest block
     const nonMarkRows = await countNonMarkCfxTransferRows(maxOne);
     if (nonMarkRows >= skip) {
-        return {id:Infinity, epoch:Infinity, dataId:Infinity, skip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id}
+        return {id:Infinity, epoch: Infinity, dataId:Infinity, skip, nonMarkRows, calcTotal: nonMarkRows+maxOne.id, gtEpoch: maxOne.epoch-1}
     }
 
     const pagedSkip = skip - nonMarkRows

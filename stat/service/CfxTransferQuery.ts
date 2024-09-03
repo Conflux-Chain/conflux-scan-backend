@@ -127,6 +127,11 @@ export class CfxTransferQuery extends TransferQueryBase{
     private async buildPagedCfxTransferOptions(skip){
         const pagedCondition: any = {};
         const cfxTransferPage = await pagingFullCfxTransfer(skip);
+        if (cfxTransferPage?.gtEpoch) {
+            pagedCondition.where = {
+                epoch: {[Op.gt]: cfxTransferPage.gtEpoch},
+            }
+        }
         if(cfxTransferPage && cfxTransferPage.id !== Infinity){
             pagedCondition.where = {
                 [Op.or]: [
