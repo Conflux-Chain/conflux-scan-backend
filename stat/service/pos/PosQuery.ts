@@ -155,6 +155,25 @@ export class PosQuery {
         })
         return {rows, count}
     }
+    async getAccountDetail(identifier:string) {
+        const [dbInfo, onChainInfo, {currentCommittee}] = await Promise.all([
+            PosAccount.findOne({where: {hex: identifier}}),
+            this.cfx.pos.getAccount(identifier).catch(err=>{
+                return {status:{forceRetired: 0, waitPosEnable: true}}
+            }),
+            this.cfx.pos.getCommittee().catch(err=>{
+                return {currentCommittee:{nodes:[]}}
+            }),
+        ])
+        const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
+        return {
+            ...onChainInfo.status,
+            forceRetired: onChainInfo.status.forceRetired || 0,
+            createdAt: dbInfo?.createdAt || new Date(),
+            totalReward: dbInfo?.totalReward || 0,
+            committeeInfo: map[identifier] || {votingPower: 0}
+        }
+    }
     async getAccountOverview(posAddress: string) {
         const [accountDB, account] = await Promise.all([
             PosAccount.findOne({where: {hex: posAddress}}),

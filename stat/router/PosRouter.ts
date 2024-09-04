@@ -83,6 +83,15 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
         }
     })
 
+    router.get('/pos-account-detail', async (ctx)=>{
+        mustBeHex64ParamIfPresent(ctx.request.query, 'identifier');
+
+        const {identifier} = ctx.request.query
+        ctx.body = {
+            ...await statApp.posQuery.getAccountDetail(identifier)
+        }
+    })
+
     router.get('/pos-info', async (ctx)=>{
         ctx.body = statApp.config.conflux.consortiumMode ? {} : await statApp.posQuery.posInfo()
     })
