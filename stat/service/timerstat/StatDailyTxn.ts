@@ -24,6 +24,7 @@ export class StatDailyTxn extends TimerStat{
             order:[["statDay","desc"]],
             limit: 1
         });
+        // TxnQuery.gasUsedSum  ref to this parameter, statType = '10m' .
         return this.getStatRangeMin(lastStat, 10);
     }
 

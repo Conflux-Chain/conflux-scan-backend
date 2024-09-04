@@ -1,11 +1,12 @@
 import { col, fn, Op} from 'sequelize'
-import {DailyTokenTxn, Erc20Transfer, T_ERC20_TRANSFER} from "../model/Erc20Transfer";
+import {DailyTokenTxn, Erc20Transfer, T_ERC20_TRANSFER, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
 import {adjustTodayEndTime, getEpochRange} from "../model/Utils";
+import {TxnQuery} from "./TxnQuery";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
@@ -28,24 +29,19 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
 }
 export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount, userCount}> {
+    const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
     const sum = await DailyTokenTxn.findOne({
         attributes: [
             [fn('sum', col('txnCount')),'txnCount'],
             [fn('sum', col('userCount')),'userCount'],
         ],
         where: {
-            day: {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)},
-            type: {[Op.in]:['_ALL_4','ERC1155','ERC721','ERC20']},
+            day: {[Op.between]: [beginTime, endTime]},
+            type: TOKEN_TYPE_ALL_4,
             },
         logging: msg=>console.log(` countRecentTokenTransfer: ${msg}`),
     })
     return sum;
-    // return Promise.all([
-    //     Erc20Transfer.count(options),
-    //     Erc721Transfer.count(options),
-    //     Erc777Transfer.count(options),
-    //     Erc1155Transfer.count(options),
-    // ]).then(arr=>arr.reduce((a,b)=>a+b))
 }
 export async  function countRecentTokenTransferAccount(days:number) {
     // const options = {where:{createdAt:{[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}}}

@@ -530,8 +530,8 @@ export async function calcUniqueUser(start:Date, end:Date, model: any) : Promise
     })
 }
 export async function rollupDailyCfxTxn(dt:Date, adjustEndTime = false) {
-    dt.setHours(0,0,0,0)
     let end = new Date(dt)
+    dt.setHours(0,0,0,0)
     if (adjustEndTime) {
         // reduce difference between servers.
         end.setMinutes(0, 0, 0);

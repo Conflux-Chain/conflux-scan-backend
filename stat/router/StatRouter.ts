@@ -49,7 +49,7 @@ const BigFixed = require('bigfixed');
 const moment = require("moment/moment");
 
 const dbCache = new NodeCache()
-const cacheTtl = 60 * 10 // 10 minutes
+const cacheTtl = 60 // 1 minutes
 
 export const ROUTER_PREFIX = '/stat'
 
@@ -235,9 +235,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             return
         }
 
-        let days = parseInt(ctx.query.days || 1)
-        days = Math.max(days, 1)
-        days = Math.min(days, 7)
+        let days = parseInt(ctx.query.days || 1); // default 1
+        days = Math.max(days, 1);// use min 1
+        days = Math.min(days, 7); // use max 7
         const now = Date.now()
         const timeCosts = {}
         function timeCost(res,key){

@@ -2,7 +2,7 @@
  * Unique address for each token.
  */
 
-import {adjustTodayEndTime} from "../model/Utils";
+import {adjustTodayEndTime, sqlLogFn} from "../model/Utils";
 import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, Erc20Transfer, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {regExitHook, sleep} from "./tool/ProcessTool";
@@ -192,24 +192,22 @@ export async function calcDailyUniqueAddr() {
     }
     await calcOneDayUniqueArr(dt)
 }
-export async function calcDailyTokenOnChain(dt: Date) {
-    // console.log(`calcDailyTokenOnChain ${dt.toISOString()}`)
-    const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
-    const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+export async function calcDailyTokenOnChain(timeBegin: Date, timeEnd: Date) {
     adjustTodayEndTime(timeEnd)
     const transferCount = await DailyToken.sum('transferCount',{
-        where: {day: dt}, raw: true,
-        logging: console.log,
+        where: {day: timeBegin}, raw: true,
+        logging: sqlLogFn(`${__filename} calc daily token`),
     }).then(res=>{
         return isNaN(res) ? 0: res;
     })
     const userCount = await UniqueAddress.count({
             distinct: true, col: 'addr',
-            where: {timeStart: {[Op.between]: [timeBegin, timeEnd]}}
+            where: {timeStart: {[Op.between]: [timeBegin, timeEnd]}},
+            logging: sqlLogFn(`${__filename} unique user count`),
         },
     )
     await DailyTokenTxn.upsert({
-        day: dt, txnCount: transferCount,
+        day: timeBegin, txnCount: transferCount,
         userCount, type: TOKEN_TYPE_ALL_4,
         createdAt: timeEnd,
     })
@@ -244,7 +242,7 @@ export async function calcOneDayUniqueArr(dt:Date) {
         })
     }
     console.log(`UniqueAddr calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
-    await calcDailyTokenOnChain(dt);
+    await calcDailyTokenOnChain(timeBegin, timeEnd);
 }
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index on timeStart, not timeEnd.
