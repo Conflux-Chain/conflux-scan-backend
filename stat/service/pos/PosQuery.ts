@@ -7,29 +7,38 @@ import {
     PosReward,
     PosTransaction
 } from "../../model/PoS";
-import {col, fn,Op} from 'sequelize'
+import {col, fn, Op, QueryTypes} from 'sequelize'
 import {Conflux, Drip} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Errors} from "../common/LogicError";
-const lodash = require('lodash')
-const BigFixed = require('bigfixed');
-import {buildSqlLog, } from "../../../common/tool.js";
 import {StatApp} from "../../StatApp";
 import {loadCache, PATH_POS_INFO, resolveDockerPath, writeCache} from "../CacheService";
+import {NameTag} from "../../model/NameTag";
+
+const lodash = require('lodash')
+const BigFixed = require('bigfixed')
+const {abi} = require('../abi/PosPool')
+
 // noinspection CommaExpressionJS
 export class PosQuery {
     private cfx: Conflux;
+    private contract
     private cachedData: Object
     private whereCondForValidators: any = {
         [Op.or]: [
             {availableVotes: {[Op.gt]: 0}}, // active
-            {forceRetiredVotes: {[Op.gt]: 0}}, // inactive
+            {forceRetiredVotes: {[Op.gt]: 0}}, // force retiring
+            {[Op.and]: [ // retiring
+                    {availableVotes: 0},
+                    {unlockingVotes: {[Op.gt]: 0}},
+            ]},
         ],
     }
 
     constructor(cfx:Conflux) {
         this.cfx = cfx
+        this.contract = cfx.Contract({abi})
         const that = this;
         if (StatApp.isEVM) {
             return
@@ -165,50 +174,131 @@ export class PosQuery {
             committeeInfo: map[identifier] || {votingPower: 0}
         }
     }
-    async listPosAccountWithCurrentCommitteeNew(query) {
-        const [page, {currentCommittee}] = await Promise.all([
-            this.listPosAccount(query),
-            this.cfx.pos.getCommittee().catch(err=>{
-                return {currentCommittee:{nodes:[]}}
-            }),
+    async getAccountOverview(posAddress: string) {
+        const [accountDB, account] = await Promise.all([
+            PosAccount.findOne({where: {hex: posAddress}}),
+            this.cfx.pos.getAccount(posAddress).catch(() => ({status:{}})),
         ])
-        const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
-        const tvp = currentCommittee.totalVotingPower
-        let index = (query?.order === 'desc') ? query.skip : (page.count - query.skip)
-        page.rows.forEach(row=>{
-            // `Rank` field, only when `query.orderBy` is `availableVotes`.
-            if(query?.orderBy === 'availableVotes') {
-                if(query?.order === 'desc') {
-                    row['rank'] = ++index
-                } else{
-                    row['rank'] = index--
-                }
-            }
-            // `Voting Power` field.
-            row['availableVotesInCfx'] = row.availableVotes * 1000
-            // `Active` field.
-            row['forceRetired'] = row['forceRetiredVotes']
-            row['forceRetiredVotes'] = undefined
-            // `Voting Share` field.
-            const ci: any = map[row.hex] || {votingPower: 0}
-            ci.totalVotingPower = tvp
-            ci.votingShare = BigFixed(ci.votingPower).div(BigFixed(tvp)).toNumber()
-            row['committeeInfo'] = ci
-        })
-        return page;
+        if(!accountDB) {
+            return new AccountOverview(posAddress)
+        }
+
+        // pool contract
+        const base32 = accountDB.powBase32
+        const poolName = await this.contract.poolName().call({to: base32}).catch(() => undefined)
+
+        // name tag/node type
+        const tag = await NameTag.findOne({attributes: ['nameTag', 'website'],
+            where: {base32: posAddress.substr(2)}, raw: true})
+        const type = tag?.nameTag?.includes(NodeType.Public) ? NodeType.Public : NodeType.Personal
+        if(tag?.nameTag) {
+            tag.nameTag = tag.nameTag.replace('(Public Pos Pool)', '').replace('(Personal Node)', '')
+        }
+
+        // availableVotes/withdrawable/locking/unlocking votes
+        const availableVotesInCfx = account.status.availableVotes * 1000
+        const withdrawableInCfx =  account.status.locked  * 1000
+        const countVotes = queue => queue.map(item => item.power).reduce((a, b) => a + b, 0)
+        const lockingInCfx = countVotes(account.status.inQueue) * 1000
+        const unlockingInCfx = countVotes(account.status.outQueue) * 1000
+
+        // status
+        let status
+        if(account.status.availableVotes > 0) {
+            status = NodeStatus.Active
+        } else if(account.status.forceRetired > 0) {
+            status = NodeStatus.ForceRetiring
+        } else if(account.status.availableVotes === 0 && unlockingInCfx > 0) {
+            status = NodeStatus.Retiring
+        } else if(account.status.forfeited) {
+            status = NodeStatus.Forfeited
+        } else {
+            status = NodeStatus.HistoricalNode
+        }
+
+        // pool info
+        let poolInfo
+        if(type === NodeType.Public) {
+            poolInfo = {address: base32, name: poolName}
+        }
+
+        return {
+            address: posAddress,
+            byte32NameTagInfo: tag,
+            createdAt: accountDB.createdAt,
+            type,
+            status,
+            availableVotesInCfx,
+            withdrawableInCfx,
+            lockingInCfx,
+            unlockingInCfx,
+            poolInfo,
+        } as AccountOverview
     }
-    async listPosAccountWithCurrentCommittee(query) {
-        const [page, {currentCommittee}] = await Promise.all([
-            this.listPosAccount(query),
-            this.cfx.pos.getCommittee().catch(err=>{
-                return {currentCommittee:{nodes:[]}}
-            }),
-        ])
-        const map = lodash.keyBy(currentCommittee.nodes, n=>n.address);
-        page.rows.forEach(row=>{
-            row['committeeInfo'] = map[row.hex] || {votingPower: 0}
+    // Supports sorting by availableVotes/votingPower/createdAt/updatedAt
+    async listPosAccountWithCommittee({orderBy = 'availableVotes', order = 'desc', skip = 0, limit = 10}) {
+        const committee = await PosCommittee.findOne({
+            attributes: ["epochNumber", "totalVotingPower"], order: [["epochNumber", 'desc']], raw: true})
+        if(!committee) {
+            return {count:0, rows:[]}
+        }
+
+        const sqlSelect = `select account.*, node.votingPower from`
+        const sqlTmpTable = `
+        (
+            SELECT 
+                (@row_number:=@row_number + 1) AS rankAvailableVotes, t.*
+            FROM
+                (select id, hex, availableVotes, forceRetiredVotes, unlockingVotes, forfeitedVotes, createdAt, updatedAt
+                from pos_account where availableVotes > 0 or forceRetiredVotes > 0 or (availableVotes = 0  and unlockingVotes > 0) order by availableVotes desc) t, 
+                (select @row_number := 0) r
+        ) account
+        left join (select accountId, votingPower from pos_committee_node where epochNumber = ?) node
+        on account.id = node.accountId`
+        const sqlOrder =`order by ${orderBy} ${order}, rankAvailableVotes ${order === 'desc' ? 'asc' : 'desc'}, id desc limit ?,?`
+        const sqlCounter = `select count(*) as cntr from`
+
+        const sqlQuery = `${sqlSelect} ${sqlTmpTable} ${sqlOrder}`
+        const sqlCount = `${sqlCounter} ${sqlTmpTable}`
+        const rows: any[] = await PosAccount.sequelize.query(sqlQuery,{
+            type: QueryTypes.SELECT, replacements: [committee.epochNumber, skip, limit], raw: true})
+        const count = await PosAccount.sequelize.query(sqlCount,{
+            type: QueryTypes.SELECT, replacements: [committee.epochNumber], raw: true}).then(list => {
+            return Number(list[0]['cntr'])
         })
-        return page;
+
+        rows.forEach(row => {
+            delete row['id']
+            // `Voting Power`
+            row['availableVotesInCfx'] = row.availableVotes * 1000
+            // `Committee Voting Share`
+            row['committeeInfo'] = {
+                totalVotingPower: committee.totalVotingPower,
+                votingPower: row.votingPower || 0,
+                votingShare: BigFixed(row.votingPower || 0).div(BigFixed(committee.totalVotingPower)).toNumber()
+            }
+            delete row['votingPower']
+            // `Status`
+            let status
+            if(row.availableVotes > 0) {
+                status = NodeStatus.Active
+            } else if(row.forceRetiredVotes > 0) {
+                status = NodeStatus.ForceRetiring
+            } else if(row.availableVotes === 0 && row.unlockingVotes > 0) {
+                status = NodeStatus.Retiring
+            } else if(row.forfeitedVotes) {
+                status = NodeStatus.Forfeited
+            } else {
+                status = NodeStatus.HistoricalNode
+            }
+            delete row['availableVotes']
+            delete row['forceRetiredVotes']
+            delete row['unlockingVotes']
+            delete row['forfeitedVotes']
+            row['status'] = status
+        })
+
+        return {count, rows}
     }
     async listPosAccount({orderBy = 'id', order = 'desc', skip = 0, limit = 10,
                              groupByPowAddress=false}) {
@@ -234,7 +324,7 @@ export class PosQuery {
                 return {rows, count}
             })
         }
-        return await PosAccount.findAndCountAll({
+        return PosAccount.findAndCountAll({
             where: this.whereCondForValidators,
             offset: skip, limit, raw: true,
             order: [[orderBy, order]],
@@ -335,4 +425,39 @@ export class PosQuery {
         })
         return page;
     }
+}
+
+class AccountOverview {
+    address: string // pos address
+    byte32NameTagInfo: NameTag = null // name info
+    createdAt: Date = null// register time
+    type: string = null// Personal Node / Public Pos Pool
+    status: NodeStatus = null
+
+    availableVotesInCfx: number = 0// total voting power
+    withdrawableInCfx: number = 0// withdrawable(locked vote only, withdrawable interest not included)
+    lockingInCfx: number = 0// deposit freezing period
+    unlockingInCfx: number = 0// unlocking
+
+    poolInfo: {
+        address: string,
+        name: string | null,
+    } | null // pos pool contract info
+
+    constructor(address: string) {
+        this.address = address;
+    }
+}
+
+enum NodeType {
+    Personal = 'Personal Node',
+    Public = 'Public Pos Pool',
+}
+
+enum NodeStatus {
+    Active = 'Active',
+    Retiring = 'Retiring',
+    ForceRetiring = 'Force Retiring',
+    Forfeited = 'Forfeited',
+    HistoricalNode = 'Historical Node',
 }

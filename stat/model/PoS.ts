@@ -84,6 +84,7 @@ export interface IPosAccount {
     unlockedVotes: number
     forfeitedVotes: number
     forceRetiredVotes: number
+    unlockingVotes: number
     createdAt?: Date
     updatedAt?: Date
 }
@@ -99,6 +100,7 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
     unlockedVotes: number
     forfeitedVotes: number
     forceRetiredVotes: number
+    unlockingVotes: number
     createdAt?: Date
     updatedAt?: Date
     static register(seq: Sequelize) {
@@ -114,6 +116,7 @@ export class PosAccount extends Model<IPosAccount> implements IPosAccount{
             unlockedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
             forfeitedVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
             forceRetiredVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
+            unlockingVotes: {type: DataTypes.BIGINT({unsigned: true}), allowNull:false, defaultValue: 0},
         }, {
             sequelize: seq,
             tableName: 'pos_account',
@@ -421,6 +424,8 @@ export class PosCommitteeNode extends Model<IPosCommitteeNode> implements IPosCo
                 name: 'idx_accountId', fields: ['accountId']
             }, {
                 name: 'idx_block_n', fields: ['blockNumber']
+            }, {
+                name: 'idx_epoch_n', fields: ['epochNumber']
             }],
             updatedAt: false,
         })
