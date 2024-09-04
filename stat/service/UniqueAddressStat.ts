@@ -2,7 +2,7 @@
  * Unique address for each token.
  */
 
-import {adjustTodayEndTime} from "../model/Utils";
+import {adjustTodayEndTime, sqlLogFn} from "../model/Utils";
 import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, Erc20Transfer, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {regExitHook, sleep} from "./tool/ProcessTool";
@@ -195,14 +195,15 @@ export async function calcDailyUniqueAddr() {
 export async function calcDailyTokenOnChain(timeBegin: Date, timeEnd: Date) {
     adjustTodayEndTime(timeEnd)
     const transferCount = await DailyToken.sum('transferCount',{
-        where: {day: {[Op.between]:[timeBegin, timeEnd]}}, raw: true,
-        logging: console.log,
+        where: {day: timeBegin}, raw: true,
+        logging: sqlLogFn(`${__filename} calc daily token`),
     }).then(res=>{
         return isNaN(res) ? 0: res;
     })
     const userCount = await UniqueAddress.count({
             distinct: true, col: 'addr',
-            where: {timeStart: {[Op.between]: [timeBegin, timeEnd]}}
+            where: {timeStart: {[Op.between]: [timeBegin, timeEnd]}},
+            logging: sqlLogFn(`${__filename} unique user count`),
         },
     )
     await DailyTokenTxn.upsert({

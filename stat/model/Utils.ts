@@ -38,6 +38,11 @@ export function adjustTodayEndTime(end: Date, showLog = false) {
     }
 }
 
+export function sqlLogFn(tag) {
+    return (sql, ms)=>{ //need set benchmark: true
+        console.log(tag, sql, ms, 'ms');
+    }
+}
 export function pickNumber(v, defaultV) {
     return isNaN(v) ? defaultV : parseInt(v)
 }
