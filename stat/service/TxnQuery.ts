@@ -9,17 +9,34 @@ import {Errors} from "./common/LogicError";
 import {Epoch} from "../model/Epoch";
 import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./CacheService";
 import {ethers} from "ethers";
+import {IntervalType} from "./timerstat/TimerStat";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
+    static buildTimeRange(days: number) {
+        let beginTime = new Date();
+        beginTime.setDate(beginTime.getDate() + days);
+        beginTime.setMinutes(0, 0, 0);
+
+        let endTime = new Date();
+        endTime.setMinutes(0, 0, 0);
+        return {beginTime, endTime};
+    }
+    // parameter days is negative.
     static async gasUsedSum(days:number) : Promise<{txCount, gasFee}> {
+        const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
+        let statType = IntervalType.DAY;
+        if (days == -1) {
+            statType = IntervalType.TEN_MIN;
+        }
         const sum = await DailyTransaction.findOne({
             attributes: [
                 [fn('sum', col('txCount')),'txCount'],
                 [fn('sum', col('gasFee')),'gasFee'],
             ],
             where: {
-                statDay: {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`),}
+                statDay: {[Op.between]: [beginTime, endTime],},
+                statType,
             },
             // logging: console.log,
         })
@@ -98,7 +115,7 @@ export class TxnQuery{
         return format.address(hex, networkId)
     }
 
-    public topGasUsedCache
+    public topGasUsedCache = {};
     public async scheduleCache(delay: number = 600_000) {
         console.log(`schedule top_gas_used with delay:${delay}`)
         const that = this

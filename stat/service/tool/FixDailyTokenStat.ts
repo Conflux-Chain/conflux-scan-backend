@@ -20,7 +20,7 @@ import {ContractService} from "../contract/ContractService";
 import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
-import {getEpochRange} from "../../model/Utils";
+import {adjustTodayEndTime, getEpochRange} from "../../model/Utils";
 
 let configCache: StatConfig|null = null;
 
@@ -63,7 +63,10 @@ export async function fixDate(hexId=0, dtStr = '2020-10-28') {
                 await calcDailyToken(dt, row['cid'])
             }
             // await calcAllRegisteredTokenDailyStat(dt)
-            await calcDailyTokenOnChain(dt)
+            const endT = new Date(dt);
+            endT.setHours(23, 59, 59, 999);
+            adjustTodayEndTime(endT);
+            await calcDailyTokenOnChain(dt, endT)
         }
         console.log(`fixed ${dt.toISOString()}`)
         dt.setDate(dt.getDate()+1)
@@ -138,7 +141,10 @@ async function dailyTokenTxn() {
     let now = new Date()
     while( dt < now) {
         console.log(` that is ${dt.toISOString()}`)
-        await calcDailyTokenOnChain(dt)
+        const endT = new Date(dt);
+        endT.setHours(23, 59, 59, 999);
+        adjustTodayEndTime(endT);
+        await calcDailyTokenOnChain(dt, endT);
         dt.setDate(dt.getDate()+1)
     }
     console.log(`ok.`)

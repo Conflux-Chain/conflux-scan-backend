@@ -33,11 +33,7 @@ export function adjustTodayEndTime(end: Date, showLog = false) {
         // half day
         const minutes = today.getMinutes()
         // uniform time range
-        if (minutes < 40) { // do not use <30> , in case  the data is behind 10 minutes
-            end.setHours(today.getHours(), 0, 0, 0)
-        } else {
-            end.setHours(today.getHours(),30, 0, 0)
-        }
+        end.setMinutes(0, 0, 0);
         showLog && console.log(`half day, set end time to ${end.toISOString()} now ${today.toISOString()}`)
     }
 }

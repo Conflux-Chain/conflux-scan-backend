@@ -10,6 +10,7 @@ import {sleep} from "./tool/ProcessTool";
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
 import {init} from "./tool/FixDailyTokenStat";
+import {TxnQuery} from "./TxnQuery";
 
 const BigFixed = require('bigfixed');
 let _showLog = false
@@ -179,8 +180,9 @@ export class BlockAndMinerSync {
 }
 
 export async function countRecentMiner(days: number, showLog=false) {
+    const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
     return MinerBlock.count({
-        where: { 'beginTime': {[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}, timeWindow:'1h'},
+        where: { beginTime: {[Op.between]: [beginTime, endTime]}, timeWindow:'1h'},
         distinct: true, col: 'minerId',
         // benchmark: true,
         logging: showLog ? console.log : false

@@ -192,13 +192,10 @@ export async function calcDailyUniqueAddr() {
     }
     await calcOneDayUniqueArr(dt)
 }
-export async function calcDailyTokenOnChain(dt: Date) {
-    // console.log(`calcDailyTokenOnChain ${dt.toISOString()}`)
-    const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
-    const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+export async function calcDailyTokenOnChain(timeBegin: Date, timeEnd: Date) {
     adjustTodayEndTime(timeEnd)
     const transferCount = await DailyToken.sum('transferCount',{
-        where: {day: dt}, raw: true,
+        where: {day: {[Op.between]:[timeBegin, timeEnd]}}, raw: true,
         logging: console.log,
     }).then(res=>{
         return isNaN(res) ? 0: res;
@@ -209,7 +206,7 @@ export async function calcDailyTokenOnChain(dt: Date) {
         },
     )
     await DailyTokenTxn.upsert({
-        day: dt, txnCount: transferCount,
+        day: timeBegin, txnCount: transferCount,
         userCount, type: TOKEN_TYPE_ALL_4,
         createdAt: timeEnd,
     })
@@ -244,7 +241,7 @@ export async function calcOneDayUniqueArr(dt:Date) {
         })
     }
     console.log(`UniqueAddr calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
-    await calcDailyTokenOnChain(dt);
+    await calcDailyTokenOnChain(timeBegin, timeEnd);
 }
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index on timeStart, not timeEnd.
