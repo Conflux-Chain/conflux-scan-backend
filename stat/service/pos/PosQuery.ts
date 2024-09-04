@@ -233,6 +233,7 @@ export class PosQuery {
             lockingInCfx,
             unlockingInCfx,
             poolInfo,
+            forceRetired: account.status.forceRetired,
         } as AccountOverview
     }
     // Supports sorting by availableVotes/votingPower/createdAt/updatedAt
@@ -438,6 +439,7 @@ class AccountOverview {
     withdrawableInCfx: number = 0// withdrawable(locked vote only, withdrawable interest not included)
     lockingInCfx: number = 0// deposit freezing period
     unlockingInCfx: number = 0// unlocking
+    forceRetired: number = null// the block number when the votes was retired
 
     poolInfo: {
         address: string,
