@@ -1,6 +1,6 @@
 import {col, Sequelize, QueryTypes, Op, fn} from "sequelize";
 import {IMinerBlock, MinerBlock} from "../model/MinerBlock";
-import {adjustTodayEndTime, calculateBeginTime, fmtDtUTC, getEpochRange} from "../model/Utils";
+import {adjustTodayEndTime, calculateBeginTime, fmtDtUTC, getEpochRange, sqlLogFn} from "../model/Utils";
 // @ts-ignore
 import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
 import {getDBConf, getSumFunction} from "./DBProvider";
@@ -185,7 +185,7 @@ export async function countRecentMiner(days: number, showLog=false) {
         where: { beginTime: {[Op.between]: [beginTime, endTime]}, timeWindow:'1h'},
         distinct: true, col: 'minerId',
         // benchmark: true,
-        logging: showLog ? console.log : false
+        logging: showLog ? sqlLogFn('count recent miner') : false
     })
 }
 
