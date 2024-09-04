@@ -101,7 +101,7 @@ export class BlockService {
     rewardDetail['burntGasFee'] = extra?.burntFee
 
     const epoch = await service.epoch.query({ epochNumber: block.epochNumber }) || {};
-    return lodash.defaults(detailInfo, block, pivotInfo, detailInfo, reward, {
+    return lodash.defaults(detailInfo, block, pivotInfo, reward, {
       risk,
       rewardDetail,
       baseFeePerGasRef,
@@ -134,9 +134,11 @@ export class BlockService {
       newTransactionCount,
       avgGasPrice: newTransactionCount ? BigFixed(gasPriceCount).div(newTransactionCount) : BigFixed(0),
     };
-    result['gasUsed'] = gasUsed;
-    const block = await FullBlock.findOne({where:{hash}})
-    block && (result['gasLimit'] = block['gasLimit'])
+    if(!NoCoreSpace) { // For the case where there is no corespace/espace, use block's gasLIMIT and gasUsed
+      result['gasUsed'] = gasUsed;
+      const block = await FullBlock.findOne({where:{hash}})
+      block && (result['gasLimit'] = block['gasLimit'])
+    }
     StatApp.isEVM && (result['crossSpaceTransactionCount'] = crossSpaceTransactionCount)
 
     return result;
