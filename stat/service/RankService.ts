@@ -30,7 +30,7 @@ export class RankService{
         // update unique addr cache.
         ['senders','receivers','participants'].forEach(which=>{
             [1,3,7].forEach(day=>{
-                this.rankTokenUniqueAddr({day, which}).catch(err=>{
+                this.rankTokenUniqueAddr({day, which, useCache: false}).catch(err=>{
                     console.log(` update token unique addr fail.`, err)
                 })
             })
@@ -42,7 +42,7 @@ export class RankService{
         }).then(()=>{
             return this.rankCfxBalance('balance', cnt , true)
         }).then(()=>{
-            setTimeout(()=>this.updateTxnCache(), 1000*3600)
+            setTimeout(()=>this.updateTxnCache(), 1000*600)
         })
     }
     /*
@@ -104,16 +104,19 @@ export class RankService{
     }
 
     tokenUniqueArrCache = {} // 1 3 7 day
-    async rankTokenUniqueAddr({day = 7, which = 'participants'}) {
-        let cached = this.tokenUniqueArrCache[day];
+    async rankTokenUniqueAddr({day = 7, which = 'participants', useCache=true}) {
+        let cached = useCache ? this.tokenUniqueArrCache[day] : undefined;
         if (cached) {
             return cached[which]
         }
-        const {maxTimeStart, list, timeBegin} = await topUnique({limit: 10, day})
+        const {maxTimeStart, list, timeBegin, alignTimeEnd} = await topUnique({limit: 10, day});
+        const now = new Date();
         const [senders, receivers, participants] = await Promise.all(
             ['sender','receiver','all'].map(k=>{
                 return this.buildUniqueAddrTop(list[k], k).then(res=>{
-                    res["maxTimeStart"] = maxTimeStart
+                    res["maxTimeStart"] = maxTimeStart;
+                    res['alignTimeEnd'] = alignTimeEnd;
+                    res['cacheTime'] = now;
                     return res;
                 })
             })

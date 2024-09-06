@@ -245,16 +245,19 @@ export async function calcOneDayUniqueArr(dt:Date) {
     await calcDailyTokenOnChain(timeBegin, timeEnd);
 }
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
-    // index on timeStart, not timeEnd.
+    // index is on timeStart, not timeEnd.
+    // do not use universal time because the result may be too few.
     const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
     if (maxUnique === null) {
         if (!this.___show_log){
             console.log(`UniqueAddr no unique address record found.`)
             this.___show_log = true;
         }
-        return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0)}
+        return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined}
     }
-    let timeBegin = new Date(maxUnique.timeStart)
+    let alignTimeEnd = new Date(maxUnique.timeStart);
+    alignTimeEnd.setMinutes(0,0,0);
+    let timeBegin = new Date(alignTimeEnd)
     timeBegin.setDate(timeBegin.getDate() - day)
     return UniqueAddress.findAll(({
         attributes: [
@@ -263,10 +266,10 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
             [literal('count(distinct(if(toMark, addr, "")))'), 'receiver'],
             [literal('count(distinct(addr))'), 'all'],
         ], raw: true, group: ['contractId'], order: [[col('all'), 'desc']],
-        where: {timeStart:{[Op.gte]: timeBegin}}, limit: limit * 6,
+        where: {timeStart:{[Op.between]: [timeBegin, alignTimeEnd]}}, limit: limit * 6,
         logging: showSql ? console.log : false,
     })).then(list=>{
-        return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart}
+        return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd}
     })
 }
 export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:any[], all:any[]} {
