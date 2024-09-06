@@ -900,7 +900,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 // swagger stat doesn't support multiple instances,
 // use this hook to bypass.
 let swStatFn = function(ctx, next) {
-    console.log(`call to stub`)
+    console.log(`${__filename} call to stub`)
     return next()
 }
 
