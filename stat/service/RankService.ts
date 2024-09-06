@@ -109,12 +109,14 @@ export class RankService{
         if (cached) {
             return cached[which]
         }
-        const {maxTimeStart, list, timeBegin, alignTimeEnd} = await topUnique({limit: 10, day})
+        const {maxTimeStart, list, timeBegin, alignTimeEnd} = await topUnique({limit: 10, day});
+        const now = new Date();
         const [senders, receivers, participants] = await Promise.all(
             ['sender','receiver','all'].map(k=>{
                 return this.buildUniqueAddrTop(list[k], k).then(res=>{
                     res["maxTimeStart"] = maxTimeStart;
                     res['alignTimeEnd'] = alignTimeEnd;
+                    res['cacheTime'] = now;
                     return res;
                 })
             })
