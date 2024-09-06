@@ -245,7 +245,8 @@ export async function calcOneDayUniqueArr(dt:Date) {
     await calcDailyTokenOnChain(timeBegin, timeEnd);
 }
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
-    // index on timeStart, not timeEnd.
+    // index is on timeStart, not timeEnd.
+    // do not use universal time because the result may be too few.
     const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
     if (maxUnique === null) {
         if (!this.___show_log){
