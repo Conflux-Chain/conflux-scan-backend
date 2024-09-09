@@ -85,6 +85,7 @@ import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
 import {NameTag} from "../model/NameTag";
 import {HeartBeatBean} from "../model/HeartBeat";
 import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
+import {GasConsumer} from "../model/GasSpender";
 
 let conf
 export function createDB(config) {
@@ -217,6 +218,7 @@ export async function initPartialModel(sequelize) {
     Blacklist.register(sequelize);
     RateConfig.register(sequelize);
     HeartBeatBean.register(sequelize);
+    GasConsumer.register(sequelize);
     RateKey.register(sequelize);
     RateHit.register(sequelize)
     ESpaceHex40Map.register(sequelize)

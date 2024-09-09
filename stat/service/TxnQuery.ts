@@ -10,6 +10,7 @@ import {Epoch} from "../model/Epoch";
 import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./CacheService";
 import {ethers} from "ethers";
 import {IntervalType} from "./timerstat/TimerStat";
+import {GasConsumer, IGasConsumer} from "../model/GasSpender";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
@@ -140,5 +141,85 @@ export class TxnQuery{
             '3d': d3,
             '24h': h24,
         };
+        await statGasConsumer(new Date());
     }
+}
+
+
+async function statGasConsumer(dt: Date) {
+    let [lastDay, lastHour] = await Promise.all([
+      GasConsumer.findOne({where: {addrId: 0, statType: '1d'}, order:['statTime', 'desc'], raw: true}),
+      GasConsumer.findOne({where: {addrId: 0, statType: '1h'}, order:['statTime', 'desc'], raw: true}).then(res=>res as IGasConsumer),
+    ]) ;
+    let hourT = new Date(dt);
+    hourT.setHours(hourT.getHours() - 1, 0, 0, 0);
+    if (lastHour == null) {
+        // build recent 9 days by hour
+        const setupHour = new Date(hourT);
+        setupHour.setHours(setupHour.getHours() - 24 * 9);
+        lastHour = {statTime: setupHour} as IGasConsumer;
+    }
+    // hourly stat
+    {
+        let movingHT = lastHour.statTime;
+        while (movingHT.getTime() <= dt.getTime()) {
+            const endT = new Date(movingHT);
+            endT.setMinutes(59, 59, 999);
+            const statArr = await sumGasUsed({beginTime: movingHT, endTime: endT});
+            const beanArr = statArr.map(row => {
+                return {addrId: row.fromId, gas: row.gas, statType: '1h', statTime: movingHT, endTime: endT} as IGasConsumer
+            })
+            await GasConsumer.bulkCreate(beanArr, {updateOnDuplicate: ['gas']});
+            movingHT.setHours(movingHT.getHours()+1);
+        }
+        await GasConsumer.upsert({
+            addrId: 0, statType: '1h', statTime: hourT,
+        })
+    }
+    // daily stat
+    let dayT = new Date(dt);
+    dayT.setDate(dayT.getDate()-1);
+    dayT.setHours(0, 0, 0, 0);
+    if (lastDay == null) {
+        //build recent 8 days by day
+        const setupDay = new Date(dayT);
+        setupDay.setDate(setupDay.getDate() - 8);
+        lastDay = {statTime: setupDay} as GasConsumer;
+    }
+    let movingDT = lastDay.statTime;
+    while (movingDT.getTime() <= dt.getTime()) {
+        const endT = new Date(movingDT);
+        endT.setHours(23, 59, 59, 999);
+        const sumList = await GasConsumer.findAll({
+            attributes: [
+                [fn('sum',col('gas')), 'gas'],
+                'addrId',
+            ],
+            where: {
+            statTime: {[Op.between]: [movingDT, endT]},
+                statType: '1h',
+        }});
+        const beanArr = sumList.map(({gas, addrId})=>{
+            return {addrId, gas, statTime: movingDT, statType: '1d', endTime: endT} as GasConsumer;
+        })
+        await GasConsumer.bulkCreate(beanArr, {updateOnDuplicate: ['gas']});
+        movingDT.setDate(movingDT.getDate()+1);
+    }
+    await GasConsumer.upsert({
+        addrId: 0, statType: '1d', statTime: hourT,
+    })
+}
+
+async function sumGasUsed({beginTime, endTime}: {beginTime: Date, endTime:Date}) {
+    return FullTransaction.findAll({
+        attributes: [
+            [fn('sum',col('gas')), 'gas'],
+            'fromId',
+        ],
+        group: ['fromId'], raw: true,
+        // logging: console.log,
+        where: {
+            createdAt: {[Op.between]: [ beginTime, endTime]},
+        },
+    });
 }
