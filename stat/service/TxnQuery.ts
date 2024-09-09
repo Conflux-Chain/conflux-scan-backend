@@ -10,7 +10,7 @@ import {Epoch} from "../model/Epoch";
 import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./CacheService";
 import {ethers} from "ethers";
 import {IntervalType} from "./timerstat/TimerStat";
-import {GasConsumer, IGasConsumer} from "../model/GasSpender";
+import {GasConsumer, IGasConsumer} from "../model/GasConsumer";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
