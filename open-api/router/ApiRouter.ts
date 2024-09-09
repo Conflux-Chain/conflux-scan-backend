@@ -89,6 +89,7 @@ import {
     loadRateKeyConfig
 } from "../../stat/router/RateLimiter";
 import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
+import {NoCoreSpace} from "../../stat/config/StatConfig";
 
 const path = require('path');
 const cors = require('@koa/cors');
@@ -117,7 +118,7 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     app.use(handleException)
 
     const prefix = '/open';
-    const yaml = path.resolve(__dirname, '../../document/', StatApp.isEVM ? 'espace-open-api.yaml' : 'open-api.yaml');
+    const yaml = path.resolve(__dirname, '../../document/', NoCoreSpace ? 'evm-open-api.yaml' : StatApp.isEVM ? 'espace-open-api.yaml' : 'open-api.yaml');
     const tld = apiServer.config.tldOpenapi
     addSwagger(app, prefix, yaml, tld)
     getApiService().logger.info(`url prefix: ${prefix}`)
