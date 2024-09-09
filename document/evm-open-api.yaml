@@ -898,219 +898,6 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TxsByTypeStat"
-  '/account/transactions':
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      description: "Get transactions associated with an account. A transaction with 'from' or 'to' equals to specified account
-        is considered as 'associate'. Parameters 'from' and 'to' are [or] logic."
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/TransactionListResp"
-  '/account/erc20/transfers':
-    get:
-      description: 'Get erc20 transfer records of an account.'
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer20ListResp"
-  '/account/erc721/transfers':
-    description: 'Get erc721 transfer records of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer721ListResp"
-  '/account/erc1155/transfers':
-    description: 'Get erc1155 transfer records of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer1155ListResp"
-  '/account/erc3525/transfers':
-    description: 'Get erc1155 transfer records of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer3525ListResp"
-  '/account/transfers':
-    description: 'Get all transfer records (includes: erc20/erc721/erc1155 transfer) of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-        - $ref: '#/components/parameters/transferTypeParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/TransferListWithCursor"
-  '/account/approvals':
-    description: 'Get token approvals of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - name: tokenType
-          in: query
-          required: false
-          schema:
-            type: string
-            default: ''
-            enum:
-              - ERC20
-              - ERC721
-              - ERC1155
-        - name: byTokenId
-          in: query
-          description: Whether to query each NFT token id, only valid for ERC721.
-          required: false
-          schema:
-            type: string
-            default: false
-            enum:
-              - true
-              - false
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Approvals"
-  '/account/tokens':
-    get:
-      description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/tokenTypeParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/AssetsOfAccountResp"
-  '/token/tokeninfos':
-    get:
-      tags:
-        - 'Tokens(Deprecated)'
-      description: 'Get Token Info by contract addresses. Supports up to 30 tokens at a time.'
-      parameters:
-        - $ref: '#/components/parameters/contractArrayParam'
-      responses:
-        200:
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenInfos'
 components:
   schemas:
     CommonResponse:
@@ -1231,9 +1018,6 @@ components:
                 type: string
               cumulativeGasUsed:
                 type: string
-              input:
-                type: string
-                description: "deprecated"
               confirmations:
                 type: string
     Transfer721List:
@@ -1281,9 +1065,6 @@ components:
                 type: string
               cumulativeGasUsed:
                 type: string
-              input:
-                type: string
-                description: "deprecated"
               confirmations:
                 type: string
     MinedBlockList:
@@ -3158,14 +2939,6 @@ components:
       required: true
       schema:
         type: string
-    detailParam:
-      description: "(Deprecated, see 'withBrief' parameter)If show detail, the value is true/false."
-      name: detail
-      in: query
-      required: false
-      schema:
-        type: string
-        default: 'false'
     withBriefParam:
       description: "If show brief which contains name，image and description, the value is true/false."
       name: withBrief
