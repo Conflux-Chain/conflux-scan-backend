@@ -141,7 +141,9 @@ export class TxnQuery{
             '3d': d3,
             '24h': h24,
         };
-        await statGasConsumer(new Date());
+        await statGasConsumer(new Date()).catch(e=>{
+            console.log(`stat Gas Consumer error`, e)
+        });
     }
 }
 
@@ -173,7 +175,7 @@ async function statGasConsumer(dt: Date) {
             movingHT.setHours(movingHT.getHours()+1);
         }
         await GasConsumer.upsert({
-            addrId: 0, statType: '1h', statTime: hourT,
+            addrId: 0, statType: '1h', statTime: hourT, endTime: dt,
         })
     }
     // daily stat
@@ -195,10 +197,12 @@ async function statGasConsumer(dt: Date) {
                 [fn('sum',col('gas')), 'gas'],
                 'addrId',
             ],
+            group: ['addrId'], raw: true,
             where: {
-            statTime: {[Op.between]: [movingDT, endT]},
+                statTime: {[Op.between]: [movingDT, endT]},
                 statType: '1h',
-        }});
+            }
+        });
         const beanArr = sumList.map(({gas, addrId})=>{
             return {addrId, gas, statTime: movingDT, statType: '1d', endTime: endT} as GasConsumer;
         })
@@ -206,7 +210,7 @@ async function statGasConsumer(dt: Date) {
         movingDT.setDate(movingDT.getDate()+1);
     }
     await GasConsumer.upsert({
-        addrId: 0, statType: '1d', statTime: hourT,
+        addrId: 0, statType: '1d', statTime: hourT, endTime: dt,
     })
 }
 

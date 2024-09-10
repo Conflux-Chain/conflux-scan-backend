@@ -27,7 +27,9 @@ export class GasConsumer extends Model<IGasConsumer> implements IGasConsumer {
 		}, {
 			tableName: 'gas_consumer',
 			indexes: [{
-				name: 'uk_addId_type_time', fields: ['addrId', 'statType', 'statTime'], unique: true
+				name: 'uk_type_time_addId', fields: ['statType', 'statTime', 'addrId'], unique: true
+			},{
+				name: 'uk_type_addId_time', fields: ['statType', 'addrId', 'statTime'], unique: true
 			}],
 			sequelize,
 		})
