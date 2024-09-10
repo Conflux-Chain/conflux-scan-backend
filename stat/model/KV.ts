@@ -59,6 +59,8 @@ export const KEY_EVM_VERSIONS = "KEY_EVM_VERSIONS"
 export const UNIFORM_APPROVAL_EPOCH = "UNIFORM_APPROVAL_EPOCH"
 export const KEY_EPOCH_CIP1559_ENABLED = "EPOCH_CIP1559_ENABLED"
 
+export const KEY_SUPRESS_FULLSTATE_RPC_ERR = "SUPRESS_FULLSTATE_RPC_ERR"
+
 export class KV extends Model<IKV> implements IKV {
     key: string;
     value: string;
