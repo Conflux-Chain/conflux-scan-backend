@@ -11,6 +11,8 @@ import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./Cache
 import {ethers} from "ethers";
 import {IntervalType} from "./timerstat/TimerStat";
 import {GasConsumer, IGasConsumer} from "../model/GasConsumer";
+import {sqlLogFn} from "../model/Utils";
+import {NoCoreSpace} from "../config/StatConfig";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
@@ -47,7 +49,6 @@ export class TxnQuery{
     static async topByGasUsed({span = '24h', forceUseCache = false}) {
         const emptyResult = {/*code: 0,*/ totalGas: 0, list:[]};
         const def = {'24h': -1, '3d': -3, '7d': -7}
-        const cacheTTL_hour = {'24h': 0.5, '3d': 6, '7d': 12}[span]
 
         let spanDay = def[span];
         if (spanDay === undefined) {
@@ -55,7 +56,7 @@ export class TxnQuery{
             throw new Errors.ParameterError(`unknown span [${span}], support ${Object.keys(def).join(',')}`);
         }
         let cachePath = resolveDockerPath(`${this.cacheFilePrefix}.${span}.json`);
-        const cachedData = loadCache(cachePath, forceUseCache ? 0 : 3600 * cacheTTL_hour)
+        const cachedData = loadCache(cachePath, forceUseCache ? 0 : 300)
         if (cachedData) {
             return cachedData;
         }
@@ -64,33 +65,19 @@ export class TxnQuery{
         const minTime = new Date();
         minTime.setMinutes(0, 0, 0);
         minTime.setDate(minTime.getDate() + spanDay);
-        let epoch = await Epoch.findOne({
-            where: {timestamp: {[Op.gte]: minTime}},
-            order: [['timestamp', 'ASC']],
-        });
-        const latestTx = await FullTransaction.findOne({order: [['epoch', 'desc']]})
-        if (latestTx === null) {
-            return  emptyResult;
-        }
-        let endEpoch = latestTx.epoch;
-        endEpoch = endEpoch - (endEpoch % 3600);
-        if (epoch === null) {
-            // fallback to estimated epoch
-            epoch = {epoch: latestTx.epoch - 3600 * Math.abs(spanDay)} as Epoch
-            console.log(`${__filename} epoch is null, estimate by latest tx, got `, epoch.epoch)
-        }
         const list = await
-            FullTransaction.findAll({
+            GasConsumer.findAll({
                 attributes: [
                     [fn('sum',col('gas')), 'gas'],
-                    'fromId',
+                    'addrId',
                 ],
-                group: ['fromId'], raw: true,
-                // logging: console.log,
+                group: ['addrId'], raw: true,
+                logging: sqlLogFn(`gas consumer rank`),
                 where: {
                     [Op.and]: [
-                        {epoch: {[Op.gte]: epoch.epoch}},
-                        {epoch: {[Op.lte]: endEpoch}},
+                        {statType: span=='24h' ? '1h' : '1d'},
+                        {addrId: {[Op.gt]: 0}},
+                        {statTime: {[Op.gte]: minTime}}
                     ]
                 },
                 order: [[col('gas'),'desc']], limit: 10,
@@ -99,12 +86,12 @@ export class TxnQuery{
             return emptyResult;
         }
         const sumGas = list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b);
-        const hexMap = await idHex40Map(list.map(row=>row['fromId']));
+        const hexMap = await idHex40Map(list.map(row=>row['addrId']));
         list.forEach(row=>{
-            row['hex'] = ethers.utils.getAddress(`0x${hexMap.get(row['fromId'])}`)
-            row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId)
+            row['hex'] = ethers.utils.getAddress(`0x${hexMap.get(row['fromId'])}`);
+            !NoCoreSpace && (row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId));
         })
-        let result = {totalGas: sumGas, list, beginEpoch: epoch.epoch, endEpoch};
+        let result = {totalGas: sumGas, list, minTime};
         writeCache(cachePath, result)
         return result
     }
