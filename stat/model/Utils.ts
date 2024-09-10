@@ -39,8 +39,9 @@ export function adjustTodayEndTime(end: Date, showLog = false) {
 }
 
 export function sqlLogFn(tag) {
-    return (sql, ms)=>{ //need set benchmark: true
-        console.log(tag, sql, ms, 'ms');
+    return (sql, ms)=>{
+        const isNum = Number.isInteger(ms);
+        isNum ? console.log(tag, sql, ms, 'ms') : console.log(tag, sql);
     }
 }
 export function pickNumber(v, defaultV) {
