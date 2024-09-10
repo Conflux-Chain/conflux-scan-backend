@@ -11,7 +11,7 @@ import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
     CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
-    IS_EVM2,
+    IS_EVM2, KEY_SUPRESS_FULLSTATE_RPC_ERR,
     KV
 } from "./model/KV";
 import {regExitHook} from "./service/tool/ProcessTool";
@@ -89,7 +89,8 @@ async function main() {
     await statDailyPowReward.schedule(1000 * 1);
     //
     if(!StatApp.isEVM) {
-        const statDailyBurntFee = new StatDailyBurntFee({cfx});
+        const supressFullStateRpcErr = await KV.getSwitch(KEY_SUPRESS_FULLSTATE_RPC_ERR)
+        const statDailyBurntFee = new StatDailyBurntFee({cfx, supressFullStateRpcErr});
         await statDailyBurntFee.schedule(1000 * 60);
     }
     //

@@ -82,13 +82,23 @@ export class StatDailyBurntFee extends TimerStat{
 
     private async statBurntFee(statType: string, beginTime: Date, endTime: Date) {
         const {
-            app: { cfx: sdk }
+            app: { cfx: sdk, supressFullStateRpcErr }
         } = this
 
         const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lt]: endTime}}, order: [['timestamp', 'desc']]})
         const[collateralInfoNew, feeNew] = await Promise.all([
-            sdk.cfx.getCollateralInfo(maxEpoch.epoch),
-            sdk.cfx.getFeeBurnt(maxEpoch.epoch)
+            sdk.cfx.getCollateralInfo(maxEpoch.epoch).catch(e => {
+                if(supressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
+                    return {convertedStoragePoints: 0}
+                }
+                throw e
+            }),
+            sdk.cfx.getFeeBurnt(maxEpoch.epoch).catch(e => {
+                if(supressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
+                    return 0
+                }
+                throw e
+            }),
         ])
 
         const statTime = this.getRangeBegin(beginTime, statType as IntervalType);
