@@ -148,8 +148,8 @@ export class TxnQuery{
 
 async function statGasConsumer(dt: Date) {
     let [lastDay, lastHour] = await Promise.all([
-      GasConsumer.findOne({where: {addrId: 0, statType: '1d'}, order:['statTime', 'desc'], raw: true}),
-      GasConsumer.findOne({where: {addrId: 0, statType: '1h'}, order:['statTime', 'desc'], raw: true}).then(res=>res as IGasConsumer),
+      GasConsumer.findOne({where: {addrId: 0, statType: '1d'}, order:[['statTime', 'desc']], raw: true}),
+      GasConsumer.findOne({where: {addrId: 0, statType: '1h'}, order:[['statTime', 'desc']], raw: true}).then(res=>res as IGasConsumer),
     ]) ;
     let hourT = new Date(dt);
     hourT.setHours(hourT.getHours() - 1, 0, 0, 0);
