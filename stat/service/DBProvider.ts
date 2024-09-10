@@ -23,7 +23,6 @@ import {
     DailyCfxTxn,
 } from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
-// import {createAddressErc777TransferTable, Erc777Transfer} from "../model/Erc777Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo, ContractInfo} from "../model/ContractInfo";
@@ -45,7 +44,6 @@ import {TokenSecurityAudit, TokenSecurityAudit2} from "../model/TokenSecurityAud
 import {StatApp} from "../StatApp";
 import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
-import {createV2CfxBillTable, NegativeCfxBill} from "./watcher/DummyNode";
 import {PruneInfo} from "../model/PruneInfo";
 import {
     PosAccount,
@@ -85,7 +83,7 @@ import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
 import {NameTag} from "../model/NameTag";
 import {HeartBeatBean} from "../model/HeartBeat";
 import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
-import {GasConsumer} from "../model/GasSpender";
+import {GasConsumer} from "../model/GasConsumer";
 
 let conf
 export function createDB(config) {
