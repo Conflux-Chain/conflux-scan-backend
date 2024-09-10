@@ -175,7 +175,7 @@ async function statGasConsumer(dt: Date) {
             movingHT.setHours(movingHT.getHours()+1);
         }
         await GasConsumer.upsert({
-            addrId: 0, statType: '1h', statTime: hourT, endTime: dt,
+            addrId: 0, statType: '1h', statTime: hourT, endTime: dt, gas: 0,
         })
     }
     // daily stat
@@ -210,7 +210,7 @@ async function statGasConsumer(dt: Date) {
         movingDT.setDate(movingDT.getDate()+1);
     }
     await GasConsumer.upsert({
-        addrId: 0, statType: '1d', statTime: hourT, endTime: dt,
+        addrId: 0, statType: '1d', statTime: hourT, endTime: dt, gas: 0,
     })
 }
 
