@@ -32,6 +32,7 @@ import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
+import {scheduleGasConsumerStat} from "./service/TxnQuery";
 
 async function main() {
     redirectLog()
@@ -57,6 +58,7 @@ async function main() {
     //
     const reporter = new Reporter({config, cfx});
     await reporter.start();
+    scheduleGasConsumerStat();
     //
     const statDailyBlockData = new StatDailyBlockData({cfx});
     await statDailyBlockData.schedule(1000 * 6);

@@ -7,6 +7,7 @@ export interface IGasConsumer {
 	statTime: Date;
 	endTime: Date;
 	gas: number;
+	updatedAt?: Date;
 }
 
 export class GasConsumer extends Model<IGasConsumer> implements IGasConsumer {

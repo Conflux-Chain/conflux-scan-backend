@@ -71,12 +71,11 @@ export class TxnQuery{
                     [fn('sum',col('gas')), 'gas'],
                     'addrId',
                 ],
-                group: ['addrId'], raw: true,
+                group: ['addrId'], raw: true, benchmark: true,
                 logging: sqlLogFn(`gas consumer rank`),
                 where: {
                     [Op.and]: [
                         {statType: span=='24h' ? '1h' : '1d'},
-                        {addrId: {[Op.gt]: 0}},
                         {statTime: {[Op.gte]: minTime}}
                     ]
                 },
@@ -128,17 +127,21 @@ export class TxnQuery{
             '3d': d3,
             '24h': h24,
         };
-        await statGasConsumer(new Date()).catch(e=>{
-            console.log(`stat Gas Consumer error`, e)
-        });
     }
 }
 
+export function scheduleGasConsumerStat() {
+    setInterval(()=>{
+        statGasConsumer(new Date()).catch(e=>{
+            console.log(`stat Gas Consumer error`, e)
+        });
+    }, 60_0_000);
+}
 
 async function statGasConsumer(dt: Date) {
     let [lastDay, lastHour] = await Promise.all([
-      GasConsumer.findOne({where: {addrId: 0, statType: '1d'}, order:[['statTime', 'desc']], raw: true}),
-      GasConsumer.findOne({where: {addrId: 0, statType: '1h'}, order:[['statTime', 'desc']], raw: true}).then(res=>res as IGasConsumer),
+      GasConsumer.findOne({where: {statType: '1d'}, order:[['statTime', 'desc']], raw: true}),
+      GasConsumer.findOne({where: {statType: '1h'}, order:[['statTime', 'desc']], raw: true}).then(res=>res as IGasConsumer),
     ]) ;
     let hourT = new Date(dt);
     hourT.setHours(hourT.getHours() - 1, 0, 0, 0);
@@ -158,12 +161,9 @@ async function statGasConsumer(dt: Date) {
             const beanArr = statArr.map(row => {
                 return {addrId: row.fromId, gas: row.gas, statType: '1h', statTime: movingHT, endTime: endT} as IGasConsumer
             })
-            await GasConsumer.bulkCreate(beanArr, {updateOnDuplicate: ['gas']});
+            await GasConsumer.bulkCreate(beanArr, {updateOnDuplicate: ['gas', 'updatedAt']});
             movingHT.setHours(movingHT.getHours()+1);
         }
-        await GasConsumer.upsert({
-            addrId: 0, statType: '1h', statTime: hourT, endTime: dt, gas: 0,
-        })
     }
     // daily stat
     let dayT = new Date(dt);
@@ -193,12 +193,9 @@ async function statGasConsumer(dt: Date) {
         const beanArr = sumList.map(({gas, addrId})=>{
             return {addrId, gas, statTime: movingDT, statType: '1d', endTime: endT} as GasConsumer;
         })
-        await GasConsumer.bulkCreate(beanArr, {updateOnDuplicate: ['gas']});
+        await GasConsumer.bulkCreate(beanArr, {updateOnDuplicate: ['gas', 'updatedAt']});
         movingDT.setDate(movingDT.getDate()+1);
     }
-    await GasConsumer.upsert({
-        addrId: 0, statType: '1d', statTime: hourT, endTime: dt, gas: 0,
-    })
 }
 
 async function sumGasUsed({beginTime, endTime}: {beginTime: Date, endTime:Date}) {
