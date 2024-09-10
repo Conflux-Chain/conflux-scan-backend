@@ -1,13 +1,12 @@
 import {idHex40Map} from "../model/HexMap";
-import {Op, fn, col} from 'sequelize'
+import {col, fn, Op} from 'sequelize'
 // @ts-ignore
 import {format} from 'js-conflux-sdk'
 import {StatApp} from "../StatApp";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {FullTransaction} from "../model/FullBlock";
 import {Errors} from "./common/LogicError";
-import {Epoch} from "../model/Epoch";
-import {loadCache, PATH_TOP_BY_GAS, resolveDockerPath, writeCache} from "./CacheService";
+import {PATH_TOP_BY_GAS} from "./CacheService";
 import {ethers} from "ethers";
 import {IntervalType} from "./timerstat/TimerStat";
 import {GasConsumer, IGasConsumer} from "../model/GasConsumer";
@@ -55,11 +54,6 @@ export class TxnQuery{
             /*return {code: 610, message: `unknown span [${span}], support ${Object.keys(def).join(',')}`}*/
             throw new Errors.ParameterError(`unknown span [${span}], support ${Object.keys(def).join(',')}`);
         }
-        let cachePath = resolveDockerPath(`${this.cacheFilePrefix}.${span}.json`);
-        const cachedData = loadCache(cachePath, forceUseCache ? 0 : 300)
-        if (cachedData) {
-            return cachedData;
-        }
 
         // convert createAt to epoch
         const minTime = new Date();
@@ -72,7 +66,7 @@ export class TxnQuery{
                     'addrId',
                 ],
                 group: ['addrId'], raw: true, benchmark: true,
-                logging: sqlLogFn(`gas consumer rank`),
+                // logging: sqlLogFn(`gas consumer rank`),
                 where: {
                     [Op.and]: [
                         {statType: span=='24h' ? '1h' : '1d'},
@@ -90,9 +84,7 @@ export class TxnQuery{
             row['hex'] = ethers.utils.getAddress(`0x${hexMap.get(row['addrId'])}`);
             !NoCoreSpace && (row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId));
         })
-        let result = {totalGas: sumGas, list, minTime};
-        writeCache(cachePath, result)
-        return result
+        return {totalGas: sumGas, list, minTime}
     }
 
     static base32(hex, networkId) {
