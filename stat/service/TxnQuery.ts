@@ -154,7 +154,7 @@ async function statGasConsumer(dt: Date) {
     // hourly stat
     {
         let movingHT = lastHour.statTime;
-        while (movingHT.getTime() <= dt.getTime()) {
+        while (movingHT.getTime() <= hourT.getTime()) {
             const endT = new Date(movingHT);
             endT.setMinutes(59, 59, 999);
             const statArr = await sumGasUsed({beginTime: movingHT, endTime: endT});
@@ -176,7 +176,7 @@ async function statGasConsumer(dt: Date) {
         lastDay = {statTime: setupDay} as GasConsumer;
     }
     let movingDT = lastDay.statTime;
-    while (movingDT.getTime() <= dt.getTime()) {
+    while (movingDT.getTime() <= dayT.getTime()) {
         const endT = new Date(movingDT);
         endT.setHours(23, 59, 59, 999);
         const sumList = await GasConsumer.findAll({
