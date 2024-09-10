@@ -184,7 +184,8 @@ async function statGasConsumer(dt: Date) {
                 [fn('sum',col('gas')), 'gas'],
                 'addrId',
             ],
-            group: ['addrId'], raw: true,
+            group: ['addrId'], raw: true, benchmark: true,
+            logging: sqlLogFn('sum gas used 1d'),
             where: {
                 statTime: {[Op.between]: [movingDT, endT]},
                 statType: '1h',
@@ -204,8 +205,8 @@ async function sumGasUsed({beginTime, endTime}: {beginTime: Date, endTime:Date})
             [fn('sum',col('gas')), 'gas'],
             'fromId',
         ],
-        group: ['fromId'], raw: true,
-        // logging: console.log,
+        group: ['fromId'], raw: true, benchmark: true,
+        logging: sqlLogFn(`sum gas used on full tx`),
         where: {
             createdAt: {[Op.between]: [ beginTime, endTime]},
         },
