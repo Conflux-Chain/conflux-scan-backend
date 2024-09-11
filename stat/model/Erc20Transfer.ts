@@ -275,8 +275,11 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
 }
 export async function calcAllTokenUniqueUser(startT:Date, endT:Date) : Promise<[number, number]> {
     const [start, end] = await Promise.all([startT, endT].map(t=>{
-        return Epoch.findOne({where: {timestamp:{[Op.lte]:t}}, order:[['timestamp','desc']]})
+        return Epoch.findOne({where: {timestamp:{[Op.lte]:t}}, order:[['timestamp','desc']]}).then(res=>res?.epoch ?? 0);
     }));
+    if (start == 0 || end == 0) {
+        return [0, 0];
+    }
     const transferCount = await Promise.all([Erc20Transfer, Erc721Transfer/*, Erc777Transfer*/, Erc1155Transfer].map(t=>{
         // @ts-ignore
         return t.count(
