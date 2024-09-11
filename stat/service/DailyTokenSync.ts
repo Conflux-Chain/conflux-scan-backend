@@ -1,5 +1,11 @@
 import { col, fn, Op} from 'sequelize'
-import {DailyTokenTxn, Erc20Transfer, T_ERC20_TRANSFER, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
+import {
+    calcAllTokenUniqueUser,
+    DailyTokenTxn,
+    Erc20Transfer,
+    T_ERC20_TRANSFER,
+    TOKEN_TYPE_ALL_4
+} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
@@ -32,6 +38,8 @@ export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount
     const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
     if (days == -1) {
         //recent 24 hours
+        const [txnCount, userCount] = await  calcAllTokenUniqueUser(beginTime, endTime);
+        return {txnCount, userCount}
     }
     const sum = await DailyTokenTxn.findOne({
         attributes: [

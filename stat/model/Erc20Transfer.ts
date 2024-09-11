@@ -1,11 +1,10 @@
 import {QueryTypes, DataTypes, Model, Op, Sequelize} from "sequelize";
-import {batchBuildId, Hex64Map, makeId, makeIdV} from "./HexMap";
+import {makeIdV} from "./HexMap";
 import {Erc721Transfer} from "./Erc721Transfer";
-// import {Erc777Transfer} from "./Erc777Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
-import {StatApp} from "../StatApp";
-import {popPartition} from "./ErcTransfer";
+import {Epoch} from "./Epoch";
+import {sqlLogFn} from "./Utils";
 export interface IContractUser {
     id?: number
     contractId: number
@@ -274,10 +273,19 @@ export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenT
         })
     }
 }
-export async function calcAllTokenUniqueUser(start:Date, end:Date) : Promise<number> {
+export async function calcAllTokenUniqueUser(startT:Date, endT:Date) : Promise<[number, number]> {
+    const [start, end] = await Promise.all([startT, endT].map(t=>{
+        return Epoch.findOne({where: {timestamp:{[Op.lte]:t}}, order:[['timestamp','desc']]})
+    }));
+    const transferCount = await Promise.all([Erc20Transfer, Erc721Transfer/*, Erc777Transfer*/, Erc1155Transfer].map(t=>{
+        // @ts-ignore
+        return t.count(
+          {where: {epoch: {[Op.between]: [start, end]}}, logging: sqlLogFn(`all token transfer count `)}
+        ).then(res=>res[0].count)
+    })).then(arr=>arr.reduce((a,b)=>a+b));
     const sqlInner = [Erc20Transfer, Erc721Transfer/*, Erc777Transfer*/, Erc1155Transfer].map(
-        token=>`select fromId from ${token.getTableName()} where createdAt between ? and ?
-            union select toId from ${token.getTableName()} where createdAt between ? and ?`
+        token=>`select fromId from ${token.getTableName()} where epoch between ? and ?
+            union select toId from ${token.getTableName()} where epoch between ? and ?`
     ).join(' union ');
     const replace = [
         start, end, start, end,
@@ -288,13 +296,14 @@ export async function calcAllTokenUniqueUser(start:Date, end:Date) : Promise<num
     const sql = `select count(*) as cnt from (
         ${sqlInner}
     ) t`
-    return Erc20Transfer.sequelize.query(sql,
+    const userCnt = await Erc20Transfer.sequelize.query(sql,
         {type:QueryTypes.SELECT, replacements: replace,
-        // logging: console.log, benchmark: true
+        logging: sqlLogFn('all token transfer user:'), benchmark: true
         }
     ).then(arr=>{
         return Number(arr[0]['cnt'])
     })
+    return [transferCount, userCnt]
 }
 
 export const TOKEN_TYPE_ALL_4 = '_ALL_4'
