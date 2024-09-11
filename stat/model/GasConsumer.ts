@@ -24,7 +24,7 @@ export class GasConsumer extends Model<IGasConsumer> implements IGasConsumer {
 			statType: {type: DataTypes.STRING({length: 8}), allowNull: false, },
 			statTime: {type: DataTypes.DATE(), allowNull: false, },
 			endTime: {type: DataTypes.DATE(), allowNull: false, },
-			gas: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+			gas: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
 		}, {
 			tableName: 'gas_consumer',
 			indexes: [{

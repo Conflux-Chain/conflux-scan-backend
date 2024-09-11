@@ -88,7 +88,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
         return;
     }
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
-    let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+    let end = new Date(dt);
     adjustTodayEndTime(end)
     const [startE, endE] = await getEpochRange(start, end)
     if (showDebugLog) {
@@ -140,7 +140,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
     }
     //
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
-        let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+        let end = new Date(dt);
         adjustTodayEndTime(end)
         const [startE, endE] = await getEpochRange(start, end)
         if (showLog) {
