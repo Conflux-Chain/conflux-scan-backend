@@ -280,13 +280,13 @@ export async function calcAllTokenUniqueUser(startT:Date, endT:Date) : Promise<[
     if (start == 0 || end == 0) {
         return [0, 0];
     }
-    const transferCount = await Promise.all([Erc20Transfer, Erc721Transfer/*, Erc777Transfer*/, Erc1155Transfer].map(t=>{
+    const transferCount = await Promise.all([Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
         // @ts-ignore
         return t.count(
-          {where: {epoch: {[Op.between]: [start, end]}}, logging: sqlLogFn(`all token transfer count `)}
-        ).then(res=>res[0].count)
+          {where: {epoch: {[Op.between]: [start, end]}}, logging: sqlLogFn(`all token transfer count: `), benchmark: true}
+        ).then(res=> res as unknown as number);
     })).then(arr=>arr.reduce((a,b)=>a+b));
-    const sqlInner = [Erc20Transfer, Erc721Transfer/*, Erc777Transfer*/, Erc1155Transfer].map(
+    const sqlInner = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(
         token=>`select fromId from ${token.getTableName()} where epoch between ? and ?
             union select toId from ${token.getTableName()} where epoch between ? and ?`
     ).join(' union ');
