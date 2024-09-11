@@ -1,7 +1,7 @@
 // @ts-ignore
 const superagent = require('superagent');
 import {Conflux, format} from "js-conflux-sdk"
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import {Context} from 'koa'
 import * as Router from 'koa-router'
@@ -131,7 +131,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 );
             }
         }
-
+        if (result?.address) {
+            result.address = fmtAddr(result.address, StatApp.networkId);
+        }
         ctx.body = result || {};
     })
 
