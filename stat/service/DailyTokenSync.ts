@@ -17,9 +17,17 @@ import {TxnQuery} from "./TxnQuery";
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
     showDebugLog = false
-    await calcAllRegisteredTokenDailyStat(new Date()).catch(e=>{
-        console.log(`failed to calcAllRegisteredTokenDailyStat`, e)
+    const now = new Date();
+    await calcAllRegisteredTokenDailyStat(now).catch(e=>{
+        console.log(`failed to calcAllRegisteredTokenDaily Stat`, e)
     })
+    if (now.getHours() == 0 && now.getMinutes() <= 20) {
+        now.setDate(now.getDate() - 1); // previous day
+        now.setHours(23, 59, 59, 999);
+        await calcAllRegisteredTokenDailyStat(now).catch(e=>{
+            console.log(`failed to calcAllRegisteredTokenDaily Stat previous day`, e)
+        });
+    }
     setTimeout(scheduleDailyTokenStat, 1000*60*10) //
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
