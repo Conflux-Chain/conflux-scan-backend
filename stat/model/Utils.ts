@@ -30,10 +30,11 @@ export async function getEpochRange(beginDt: Date, endDt: Date, showLog = false)
 export function adjustTodayEndTime(end: Date, showLog = false) {
     const today = new Date()
     if (end.getTime() > today.getTime()) {
-        // half day
-        const minutes = today.getMinutes()
         // uniform time range
         end.setMinutes(0, 0, 0);
+        if (end.getHours() > today.getHours()) {
+            end.setHours(today.getHours());
+        }
         showLog && console.log(`half day, set end time to ${end.toISOString()} now ${today.toISOString()}`)
     }
 }

@@ -1,5 +1,11 @@
 import { col, fn, Op} from 'sequelize'
-import {DailyTokenTxn, Erc20Transfer, T_ERC20_TRANSFER, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
+import {
+    calcAllTokenUniqueUser,
+    DailyTokenTxn,
+    Erc20Transfer,
+    T_ERC20_TRANSFER,
+    TOKEN_TYPE_ALL_4
+} from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
 import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
@@ -11,9 +17,17 @@ import {TxnQuery} from "./TxnQuery";
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
     showDebugLog = false
-    await calcAllRegisteredTokenDailyStat(new Date()).catch(e=>{
-        console.log(`failed to calcAllRegisteredTokenDailyStat`, e)
+    const now = new Date();
+    await calcAllRegisteredTokenDailyStat(now).catch(e=>{
+        console.log(`failed to calcAllRegisteredTokenDaily Stat`, e)
     })
+    if (now.getHours() == 0 && now.getMinutes() <= 20) {
+        now.setDate(now.getDate() - 1); // previous day
+        now.setHours(23, 59, 59, 999);
+        await calcAllRegisteredTokenDailyStat(now).catch(e=>{
+            console.log(`failed to calcAllRegisteredTokenDaily Stat previous day`, e)
+        });
+    }
     setTimeout(scheduleDailyTokenStat, 1000*60*10) //
 }
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
@@ -30,6 +44,11 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
 }
 export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount, userCount}> {
     const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
+    if (days == -1) {
+        //recent 24 hours
+        const [txnCount, userCount] = await  calcAllTokenUniqueUser(beginTime, endTime);
+        return {txnCount, userCount}
+    }
     const sum = await DailyTokenTxn.findOne({
         attributes: [
             [fn('sum', col('txnCount')),'txnCount'],
@@ -88,7 +107,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
         return;
     }
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
-    let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+    let end = new Date(dt);   end.setUTCHours(23,59,59,999);
     adjustTodayEndTime(end)
     const [startE, endE] = await getEpochRange(start, end)
     if (showDebugLog) {
@@ -140,7 +159,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
     }
     //
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
-        let end = new Date(dt);   end.setUTCHours(23,59,59,999)
+        let end = new Date(dt);   end.setUTCHours(23,59,59,999);
         adjustTodayEndTime(end)
         const [startE, endE] = await getEpochRange(start, end)
         if (showLog) {
