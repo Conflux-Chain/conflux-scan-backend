@@ -30,6 +30,9 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
 }
 export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount, userCount}> {
     const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
+    if (days == -1) {
+        //recent 24 hours
+    }
     const sum = await DailyTokenTxn.findOne({
         attributes: [
             [fn('sum', col('txnCount')),'txnCount'],
@@ -88,7 +91,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
         return;
     }
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
-    let end = new Date(dt);
+    let end = new Date(dt);   end.setUTCHours(23,59,59,999);
     adjustTodayEndTime(end)
     const [startE, endE] = await getEpochRange(start, end)
     if (showDebugLog) {
@@ -140,7 +143,7 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
     }
     //
         let start = new Date(dt); start.setUTCHours(0,0,0,0)
-        let end = new Date(dt);
+        let end = new Date(dt);   end.setUTCHours(23,59,59,999);
         adjustTodayEndTime(end)
         const [startE, endE] = await getEpochRange(start, end)
         if (showLog) {
