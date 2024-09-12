@@ -1,26 +1,32 @@
+import {TokenTool} from "../stat/service/tool/TokenTool";
+import {initCfxSdk} from "../stat/service/common/utils";
+import koaBodyParser from "koa-bodyparser";
+
 const lodash = require('lodash');
 const {Koaflow} = require('../koaflow');
 const {requestLogger} = require('../koaflow/lib/middleware/requestLogger');
 const {requestId} = require('../koaflow/lib/middleware/requestId');
-const TTLMap = require('./lib/TTLMap');
-const DingTalkRobot = require('./lib/DingTalkRobot');
-const CONST = require('./const');
-const error = require('./error');
-const tool = require('./tool');
-const type = require('./type');
-const TraceLog = require('./TraceLog');
-const {createLogger} = require("./utils");
-const {TokenTool} = require("../stat/service/tool/TokenTool");
-const {initCfxSdk} = require("../stat/service/common/utils");
+const TTLMap = require('../common/lib/TTLMap');
+const DingTalkRobot = require('../common/lib/DingTalkRobot');
+const CONST = require('../common/const');
+const error = require('../common/error');
+const tool = require('../common/tool');
+const type = require('../common/type');
+const TraceLog = require('../common/TraceLog');
+const {createLogger} = require("../common/utils");
+const Koa = require('koa');
+
 
 // eslint-disable-next-line no-extend-native
+// @ts-ignore
 BigInt.prototype.toJSON = function () {
   return this.toString();
 };
 
-class AppBase extends Koaflow {
+export class AppBase extends Koa {
   constructor(config) {
     super();
+    this.use(koaBodyParser({ enableTypes: ['json', 'form', 'text'] }));
     this.config = type.config(config);
   }
 
@@ -62,7 +68,11 @@ class AppBase extends Koaflow {
     });
     this.use(requestId);
 
-    super.listen(port || this.config.port);
+    if (!this.server) {
+      this.use(this.router.routes());
+      this.use(this.router.allowedMethods());
+      this.server = super.listen(port || this.config.port);
+    }
   }
 
   async run() {
@@ -74,8 +84,11 @@ class AppBase extends Koaflow {
   async close() {
     await this.cfx.close();
     this.ttlMap.close();
-    await super.close();
+
+    if (this.server) {
+      this.server.close();
+      this.server = null;
+    }
   }
 }
 
-module.exports = AppBase;
