@@ -535,7 +535,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     // daily token stat
     router.get('/daily-token-stat', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32', 'address');
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         mustBeIntParamIfPresent(ctx.request.query, 'limit');
         const {limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
