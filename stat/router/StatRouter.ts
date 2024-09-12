@@ -1,7 +1,7 @@
 // @ts-ignore
 const superagent = require('superagent');
 import {Conflux, format} from "js-conflux-sdk"
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import * as Koa from 'koa'
 import {Context} from 'koa'
 import * as Router from 'koa-router'
@@ -131,7 +131,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 );
             }
         }
-
+        if (result?.address) {
+            result.address = fmtAddr(result.address, StatApp.networkId);
+        }
         ctx.body = result || {};
     })
 
@@ -533,20 +535,22 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     // daily token stat
     router.get('/daily-token-stat', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32', 'address');
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         mustBeIntParamIfPresent(ctx.request.query, 'limit');
         const {limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
-        const base32 = ctx.request.query.base32 || ''
+        const addr = ctx.request.query.base32 || ctx.request.query.address || '';
+        const base32 = format.address(addr, StatApp.networkId, false);
         const token = await Token.findOne({
             attributes: ['name', 'symbol', 'decimals', 'granularity', 'totalSupply', 'type', 'hex40id'],
             where: {base32: base32}
         });
         if (!token) {
-            throw new Errors.ParameterError(`token not found ${base32}`);
+            throw new Errors.ParameterError(`token not found ${addr}`);
         }
         const list = await DailyToken.findAll({limit, order:[['day','DESC']], where: {hexId: token.hex40id}})
-        ctx.body = {list, token}
+        ctx.body = {list, token, base32, hex: format.hexAddress(base32), addressParam: addr}
     })
 
     // daily cfx transfer count
