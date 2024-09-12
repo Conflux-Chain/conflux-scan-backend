@@ -2,13 +2,13 @@ import {router} from "./router";
 import {serviceLoader} from "./service";
 import {fmtAddr} from "../stat/StatApp";
 
+import {AppBase} from "./AppBase";
+
 const lodash = require('lodash');
 const { address, format } = require('js-conflux-sdk');
 const { Sequelize } = require('sequelize');
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
-
-const AppBase = require('../common/AppBase');
 const {parameterErrorCode} = require('../common/error')
 const JsonRPCSDK = require('../common/JsonRPCSDK');
 

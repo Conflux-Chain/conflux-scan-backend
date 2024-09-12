@@ -3,6 +3,7 @@ const koaBodyParser = require('koa-bodyparser');
 const {Router} = require('./router');
 
 /**
+ * deprecated
  */
 export class Koaflow extends Koa {
   constructor(options) {
