@@ -1,9 +1,8 @@
 import {TokenTool} from "../stat/service/tool/TokenTool";
 import {initCfxSdk} from "../stat/service/common/utils";
-import koaBodyParser from "koa-bodyparser";
 
 const lodash = require('lodash');
-const {Koaflow} = require('../koaflow');
+const koaBodyParser = require('koa-bodyparser');
 const {requestLogger} = require('../koaflow/lib/middleware/requestLogger');
 const {requestId} = require('../koaflow/lib/middleware/requestId');
 const TTLMap = require('../common/lib/TTLMap');
