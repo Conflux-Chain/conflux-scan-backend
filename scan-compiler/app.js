@@ -1,5 +1,5 @@
 const lodash = require('lodash');
-const AppBase = require('../scan-api/AppBase');
+const {AppBase} = require('../scan-api/AppBase');
 const FileMap = require('../common/lib/FileMap');
 const Service = require('./service');
 const router = require('./router');
