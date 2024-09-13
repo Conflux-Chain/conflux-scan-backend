@@ -183,3 +183,5 @@ async function main() {
         DailyActiveAddress.sequelize.close().then()
     })
 }
+
+// node stat/service/tool/FixDailyTokenStat.js fix-dt 2024-09-03
