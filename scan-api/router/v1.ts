@@ -61,7 +61,7 @@ router.use(async (ctx, next) => {
       e = new error.BizError(e.message);
     }
     // see common/error.js
-    ctx.status = e.status;
+    ctx.status = e.status || 500;
     ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
         { code: e.code, message: e.message, data: e.partialData };
   }
