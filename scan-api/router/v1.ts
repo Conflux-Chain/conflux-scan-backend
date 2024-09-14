@@ -20,9 +20,9 @@ import {
   listEVMVersion
 } from "./jsonrpc";
 import {CONST as CONST_TS} from "../../stat/service/common/constant";
-
 const lodash = require('lodash');
 const {Router} = require('../../koaflow/src/router');
+const {router_get} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
@@ -30,7 +30,6 @@ const {StatApp} = require("../../stat/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
 const moment = require("moment/moment");
 const {patchFlowError} = require("../../koaflow/lib/flow/JsonRPCFlow");
-const {jsonrpc} = require("./jsonrpc");
 const openAPI = new OpenAPI({
   info: {
     version: 'v1.0.0',
@@ -180,7 +179,7 @@ router.get('/trend',
     toArray, jsonrpc_trend,
 );
 
-router.get('/homeDashboard',
+router_get(router, '/homeDashboard',
   OpenAPI.flow({
     tags: ['statistic'],
     input: {},
@@ -204,7 +203,7 @@ router.get('/homeDashboard',
     },
 );
 
-router.get('/frontend',
+router_get(router,'/frontend',
   OpenAPI.flow({
     tags: ['frontend'],
     input: {},

@@ -23,6 +23,7 @@ export class Router extends KoaRouter {
 
   _asFlow(methodName) {
     const method = this[methodName];
+    this[`_original_${methodName}`] = method;
 
     return function (path, ...flowArray) {
       lodash.set(this.pathTable, [path, methodName], flowArray);
