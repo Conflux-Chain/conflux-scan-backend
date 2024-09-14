@@ -5,6 +5,7 @@ export function addKoaRouter(router: KoaRouter, method: string, path: string, ..
 		let input = ctx;
 		for(const fn of fnArr) {
 			input = await fn.call(this, input);
+			console.log(`${__filename} got `, input);
 		}
 		ctx.body = input;
 	}

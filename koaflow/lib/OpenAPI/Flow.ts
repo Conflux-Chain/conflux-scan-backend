@@ -124,7 +124,13 @@ export class Flow {
     this.output = lodash.mapValues(output, pickBody);
   }
 
-  async call(ctx, arg, next, end) {
+  async call(ctx) {
+    console.log(`${__filename} hit.`);
+    return this.input(ctx);
+  }
+
+  // it's the koaflow style, deprecated.
+  async call_(ctx, arg, next, end) {
     let body;
 
     try {
