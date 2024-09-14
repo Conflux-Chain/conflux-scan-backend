@@ -4,7 +4,7 @@ export function addKoaRouter(router: KoaRouter, method: string, path: string, ..
 	const composite = async function(ctx) {
 		let input = ctx;
 		for(const fn of fnArr) {
-			input = await fn.call(this, input);
+			input = await fn.call(ctx, input);
 			console.log(`${__filename} got `, input);
 		}
 		ctx.body = input;
