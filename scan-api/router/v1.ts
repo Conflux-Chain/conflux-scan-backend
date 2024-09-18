@@ -23,7 +23,7 @@ import {CONST as CONST_TS} from "../../stat/service/common/constant";
 const lodash = require('lodash');
 import KoaRouter from "koa-router";
 // const {Router} = require('../../koaflow/src/router');
-const {router_get} = require ("../../koaflow/src/koaHelper");
+const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
@@ -682,7 +682,7 @@ router_get(router,'/contract/evm-version',
     listEVMVersion,
 );
 
-router.post('/contract/verify',
+router_post(router, '/contract/verify',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -1405,6 +1405,6 @@ router_get(router,'/report/transfer',
 
 
 // ----------------------------------------------------------------------------
-openAPI.loadRouter(router);
+// openAPI.loadRouter(router);
 
 module.exports = router;

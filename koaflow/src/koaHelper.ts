@@ -17,3 +17,7 @@ export function addKoaRouter(router: KoaRouter, method: string, path: string, ..
 export function router_get(router: KoaRouter, path: string, ...fnArr: Function[]) {
 	addKoaRouter(router, 'get', path, ...fnArr)
 }
+
+export function router_post(router: KoaRouter, path: string, ...fnArr: Function[]) {
+	addKoaRouter(router, 'post', path, ...fnArr)
+}
