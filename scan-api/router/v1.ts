@@ -31,14 +31,6 @@ const {StatApp} = require("../../stat/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
 const moment = require("moment/moment");
 const {patchFlowError} = require("../../koaflow/lib/flow/JsonRPCFlow");
-const openAPI = new OpenAPI({
-  info: {
-    version: 'v1.0.0',
-    title: 'conflux-scan',
-    description: ``,
-  },
-  servers: [],
-});
 
 // ----------------------------------------------------------------------------
 // const router = new Router();
@@ -73,7 +65,6 @@ router_get(router,'/testDing', async function(ctx){
   ctx.body = await dingTalk.sendObject(`test-ding`, {header: ctx.headers})
 });
 // --------------------------------- OpenAPI ----------------------------------
-router_get(router,'/openAPI', () => openAPI.toObject());
 
 // -------------------------------- Statistic ---------------------------------
 router_get(router,'/supply',
@@ -1405,6 +1396,5 @@ router_get(router,'/report/transfer',
 
 
 // ----------------------------------------------------------------------------
-// openAPI.loadRouter(router);
 
 module.exports = router;
