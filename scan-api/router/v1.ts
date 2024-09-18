@@ -21,7 +21,8 @@ import {
 } from "./jsonrpc";
 import {CONST as CONST_TS} from "../../stat/service/common/constant";
 const lodash = require('lodash');
-const {Router} = require('../../koaflow/src/router');
+import KoaRouter from "koa-router";
+// const {Router} = require('../../koaflow/src/router');
 const {router_get} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
@@ -40,12 +41,9 @@ const openAPI = new OpenAPI({
 });
 
 // ----------------------------------------------------------------------------
-const router = new Router();
+// const router = new Router();
+const router = new KoaRouter();
 router.use(async (ctx, next) => {
-  const {
-    app: { dingTalk },
-  } = ctx;
-
   ctx.set('Access-Control-Allow-Origin', '*'); // for "swagger.io"
   try {
     await next();

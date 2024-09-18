@@ -10,7 +10,8 @@ export function addKoaRouter(router: KoaRouter, method: string, path: string, ..
 		ctx.body = input;
 	}
 
-	router[`_original_${method}`](path, composite);
+	// router[`_original_${method}`](path, composite);
+	router[method](path, composite);
 }
 
 export function router_get(router: KoaRouter, path: string, ...fnArr: Function[]) {
