@@ -21,7 +21,7 @@ import {
 } from "./jsonrpc";
 import {CONST as CONST_TS} from "../../stat/service/common/constant";
 const lodash = require('lodash');
-import KoaRouter from "koa-router";
+import * as KoaRouter from "koa-router";
 // const {Router} = require('../../koaflow/src/router');
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
