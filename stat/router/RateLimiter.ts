@@ -91,9 +91,13 @@ const burstyLimiter = new BurstyRateLimiter(
     })
 );
 
+export function getClientIP(ctx) {
+    return ctx.headers['ali-cdn-real-ip'] || ctx.headers['cf-connecting-ip'] || ctx.request.ip;
+}
+
 export async function checkRate(ctx, next) {
     const {path} = ctx.request;
-    const ip = ctx.request.ip;
+    const ip = getClientIP(ctx);
     ctx.set("ip", ip);
     const key = ip
     let nonVarPath = path;
@@ -307,7 +311,7 @@ export async function initRateLimiters() {
 export async function checkRateByLevel(ctx, next) {
     let rateLimiter;
     let rateLimiterDaily;
-    const ip = ctx.request.ip;
+    const ip = getClientIP(ctx);
     const apiKey = ctx?.request?.query?.apiKey || ctx?.headers['apiKey'];
 
     let rateKey = ip

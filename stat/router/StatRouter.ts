@@ -35,7 +35,7 @@ import {
     mustBeIntParamIfPresent,
 } from "../service/common/utils";
 import {limitListOnBody} from "../service/pos/PosStat";
-import {checkRate, loadRateConfig} from "./RateLimiter";
+import {checkRate, getClientIP, loadRateConfig} from "./RateLimiter";
 import {Errors} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
 import {paginateCore, paginateCoreStat} from "./ParamChecker";
@@ -704,7 +704,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
 
         const { contractAddress, tokenId} = ctx.request.query
-        const consumerKey = `${ctx.request.ip}-${contractAddress}-${tokenId}`
+        const consumerKey = `${getClientIP(ctx)}-${contractAddress}-${tokenId}`
         try {
             await refreshRateLimiter.consume(consumerKey, 1);
         } catch (e) {

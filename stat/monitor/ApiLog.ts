@@ -1,5 +1,6 @@
 import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
 import {API_LOG_RT_LIMIT, KV} from "../model/KV";
+import {getClientIP} from "../router/RateLimiter";
 
 
 export interface IApiLog {
@@ -69,7 +70,7 @@ export async function saveApiLog(ctx:any, rt:number) {
     if (query) {
         query = decodeURIComponent(query);
     }
-    const ip = ctx.request.ip;
+    const ip = getClientIP(ctx);
     ApiLog.create({
         path, query, createdAt: new Date(), rt, ip,
     }).then()
