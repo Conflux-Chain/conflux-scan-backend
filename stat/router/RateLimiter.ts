@@ -93,6 +93,11 @@ const burstyLimiter = new BurstyRateLimiter(
 );
 
 export async function checkRate(ctx, next) {
+    const ip = requestIp.getClientIp(ctx.request);
+    ctx.set("_ip", ip);
+    return next();
+}
+export async function checkRate1(ctx, next) {
     const {path} = ctx.request;
     const ip = requestIp.getClientIp(ctx.request);
     const key = ip
