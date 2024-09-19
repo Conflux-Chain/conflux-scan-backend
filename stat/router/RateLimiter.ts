@@ -5,7 +5,6 @@ import {decodeApiKey} from "web3pay-sdk-js"
 import {getVipInfo, getWeb3pay} from "web3pay-sdk-js/lib/rpc";
 
 const lodash = require('lodash');
-const requestIp = require('request-ip');
 
 export interface IRateConfig {
     id?: number;
@@ -93,13 +92,9 @@ const burstyLimiter = new BurstyRateLimiter(
 );
 
 export async function checkRate(ctx, next) {
-    const ip = requestIp.getClientIp(ctx.request);
-    ctx.set("_ip", ip);
-    return next();
-}
-export async function checkRate1(ctx, next) {
     const {path} = ctx.request;
-    const ip = requestIp.getClientIp(ctx.request);
+    const ip = ctx.request.ip;
+    ctx.set("ip", ip);
     const key = ip
     let nonVarPath = path;
     if (path?.startsWith("/v1/transferTree/0x")) {
@@ -134,7 +129,7 @@ export async function checkAddressRate(address: string, ctx: any = null) {
     if (paid) {
         pointsToConsume /= 10;
     }
-    const ip = requestIp.getClientIp(ctx?.request || {}) || '-';
+    const ip = ctx?.request?.ip ?? '-';
     try {
         await burstyLimiter.consume(address, pointsToConsume)
         ctx?.set(`pointsAddress`, pointsToConsume)
@@ -312,7 +307,7 @@ export async function initRateLimiters() {
 export async function checkRateByLevel(ctx, next) {
     let rateLimiter;
     let rateLimiterDaily;
-    const ip = requestIp.getClientIp(ctx.request);
+    const ip = ctx.request.ip;
     const apiKey = ctx?.request?.query?.apiKey || ctx?.headers['apiKey'];
 
     let rateKey = ip
@@ -367,7 +362,6 @@ export function checkRateByAddress(addressParamName: string) {
 }
 
 async function checkRateByAddress0(addressParamName, ctx, next) {
-    const ip = requestIp.getClientIp(ctx.request);
     const {[addressParamName]: address} = ctx.request.query;
 
     let limiter = rateLimiterAddress;

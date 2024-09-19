@@ -1,5 +1,4 @@
 const assert = require('assert');
-const requestIp = require('request-ip');
 const LockSet = require('../lib/LockSet');
 const KeyCounter = require('../lib/KeyCounter');
 
@@ -14,7 +13,7 @@ function serializeByIP(limit = 100) {
       app: { error },
     } = this;
 
-    const ip = this.request ? requestIp.getClientIp(this.request) : undefined;
+    const ip = this.request ? this.request.ip : undefined;
     if (!ip) {
       return next(options);
     }

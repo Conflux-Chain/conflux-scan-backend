@@ -1,7 +1,6 @@
 import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
 import {API_LOG_RT_LIMIT, KV} from "../model/KV";
 
-const requestIp = require('request-ip');
 
 export interface IApiLog {
     id?:number; path:string; query:string; rt:number; createdAt:Date; ip:string;
@@ -70,7 +69,7 @@ export async function saveApiLog(ctx:any, rt:number) {
     if (query) {
         query = decodeURIComponent(query);
     }
-    const ip = requestIp.getClientIp(ctx.request);
+    const ip = ctx.request.ip;
     ApiLog.create({
         path, query, createdAt: new Date(), rt, ip,
     }).then()
