@@ -92,7 +92,13 @@ const burstyLimiter = new BurstyRateLimiter(
 );
 
 export function getClientIP(ctx) {
-    return ctx.headers['ali-cdn-real-ip'] || ctx.headers['cf-connecting-ip'] || ctx.request.ip;
+    if (!ctx) {
+        return '-';
+    }
+    if (ctx.headers) {
+        return ctx.headers['ali-cdn-real-ip'] || ctx.headers['cf-connecting-ip'] || ctx.request?.ip;
+    }
+    return ctx.request?.ip || '~';
 }
 
 export async function checkRate(ctx, next) {
@@ -133,7 +139,7 @@ export async function checkAddressRate(address: string, ctx: any = null) {
     if (paid) {
         pointsToConsume /= 10;
     }
-    const ip = ctx?.request?.ip ?? '-';
+    const ip = getClientIP(ctx);
     try {
         await burstyLimiter.consume(address, pointsToConsume)
         ctx?.set(`pointsAddress`, pointsToConsume)
