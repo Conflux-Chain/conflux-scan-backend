@@ -35,7 +35,7 @@ import {
     mustBeIntParamIfPresent,
 } from "../service/common/utils";
 import {limitListOnBody} from "../service/pos/PosStat";
-import {checkRate, loadRateConfig} from "./RateLimiter";
+import {checkRate, getClientIP, loadRateConfig} from "./RateLimiter";
 import {Errors} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
 import {paginateCore, paginateCoreStat} from "./ParamChecker";
@@ -44,7 +44,6 @@ const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
-const requestIp = require('request-ip');
 const BigFixed = require('bigfixed');
 const moment = require("moment/moment");
 
@@ -705,7 +704,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
 
         const { contractAddress, tokenId} = ctx.request.query
-        const consumerKey = `${requestIp.getClientIp(ctx.request)}-${contractAddress}-${tokenId}`
+        const consumerKey = `${getClientIP(ctx)}-${contractAddress}-${tokenId}`
         try {
             await refreshRateLimiter.consume(consumerKey, 1);
         } catch (e) {

@@ -6,11 +6,11 @@ import {StatApp} from "../../stat/StatApp";
 import {saveApiLog} from "../../stat/monitor/ApiLog";
 import {KnownError} from "../common/RestTool";
 import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
+import {getClientIP} from "../../stat/router/RateLimiter";
 
 const yamljs = require('yamljs');
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
-const requestIp = require('request-ip');
 const Limiter = require('ratelimiter')
 
 let db
@@ -34,7 +34,7 @@ export async function executionTime(ctx, next) {
 }
 export async function rateControl(ctx, next) {
     // https://www.npmjs.com/package/ratelimiter
-    const ip = requestIp.getClientIp(ctx.request)
+    const ip = getClientIP(ctx);
     // duration - of limit in milliseconds [3600000]
     const max = 100, duration = 10_000
     const limit = new Limiter({ id: ip, db: getDB(), max, duration });

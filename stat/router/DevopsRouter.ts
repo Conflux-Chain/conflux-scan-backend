@@ -32,9 +32,10 @@ import {Erc721Transfer} from "../model/Erc721Transfer";
 import {pickNumber} from "../model/Utils";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
+import {getClientIP} from "./RateLimiter";
 
 async function checkLocal(ctx: Context, next) {
-    const ip = ctx.request.ip
+    const ip = getClientIP(ctx);
     if (ip === '127.0.0.1' || ip === '::1'
         || ip.startsWith('172.31.124') || ip === '::ffff:127.0.0.1') {
         await next()
@@ -231,7 +232,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/echo', (ctx)=>{
         ctx.body = {
             "headers": ctx.headers,
-            "ip": ctx.request.ip,
+            "ip": getClientIP(ctx),
             "time": new Date().toISOString(),
         }
     })

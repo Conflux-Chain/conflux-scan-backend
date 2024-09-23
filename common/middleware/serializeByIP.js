@@ -1,7 +1,7 @@
 const assert = require('assert');
-const requestIp = require('request-ip');
 const LockSet = require('../lib/LockSet');
 const KeyCounter = require('../lib/KeyCounter');
+const {getClientIP} = require("../../stat/router/RateLimiter");
 
 function serializeByIP(limit = 100) {
   assert(Number.isInteger(limit) && limit > 0, `limit must > 0, got ${limit}`);
@@ -14,7 +14,7 @@ function serializeByIP(limit = 100) {
       app: { error },
     } = this;
 
-    const ip = this.request ? requestIp.getClientIp(this.request) : undefined;
+    const ip = this.request ? getClientIP(this) : undefined;
     if (!ip) {
       return next(options);
     }
