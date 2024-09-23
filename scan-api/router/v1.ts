@@ -20,9 +20,10 @@ import {
   listEVMVersion
 } from "./jsonrpc";
 import {CONST as CONST_TS} from "../../stat/service/common/constant";
-
 const lodash = require('lodash');
-const {Router} = require('../../koaflow/src/router');
+import * as KoaRouter from "koa-router";
+// const {Router} = require('../../koaflow/src/router');
+const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
 const error = require('../../common/error');
@@ -30,23 +31,11 @@ const {StatApp} = require("../../stat/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
 const moment = require("moment/moment");
 const {patchFlowError} = require("../../koaflow/lib/flow/JsonRPCFlow");
-const {jsonrpc} = require("./jsonrpc");
-const openAPI = new OpenAPI({
-  info: {
-    version: 'v1.0.0',
-    title: 'conflux-scan',
-    description: ``,
-  },
-  servers: [],
-});
 
 // ----------------------------------------------------------------------------
-const router = new Router();
+// const router = new Router();
+const router = new KoaRouter();
 router.use(async (ctx, next) => {
-  const {
-    app: { dingTalk },
-  } = ctx;
-
   ctx.set('Access-Control-Allow-Origin', '*'); // for "swagger.io"
   try {
     await next();
@@ -62,24 +51,23 @@ router.use(async (ctx, next) => {
       e = new error.BizError(e.message);
     }
     // see common/error.js
-    ctx.status = e.status;
+    ctx.status = e.status || 500;
     ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
         { code: e.code, message: e.message, data: e.partialData };
   }
 });
-router.get('/', function (ctx) {
+router_get(router,'/', function (ctx) {
   const { app: { config: { machine } } } = this;
   ctx.body = { message: `scan backend, [${machine}]` };
 });
-router.get('/testDing', async function(ctx){
+router_get(router,'/testDing', async function(ctx){
   const { app: { dingTalk } } = ctx;
   ctx.body = await dingTalk.sendObject(`test-ding`, {header: ctx.headers})
 });
 // --------------------------------- OpenAPI ----------------------------------
-router.get('/openAPI', () => openAPI.toObject());
 
 // -------------------------------- Statistic ---------------------------------
-router.get('/supply',
+router_get(router,'/supply',
   OpenAPI.flow({
     tags: ['statistic'],
     input: {},
@@ -104,7 +92,7 @@ router.get('/supply',
 
 );
 
-router.get('/dag',
+router_get(router,'/dag',
   OpenAPI.flow({
     tags: ['statistic'],
     input: {
@@ -132,7 +120,7 @@ router.get('/dag',
   toArray,  jsonrpc_dag
 );
 
-router.get('/plot',
+router_get(router,'/plot',
   OpenAPI.flow({
     tags: ['statistic'],
     input: {
@@ -159,7 +147,7 @@ router.get('/plot',
     toArray, jsonrpc_plot,
 );
 
-router.get('/trend',
+router_get(router,'/trend',
   OpenAPI.flow({
     tags: ['statistic'],
     input: {
@@ -180,7 +168,7 @@ router.get('/trend',
     toArray, jsonrpc_trend,
 );
 
-router.get('/homeDashboard',
+router_get(router, '/homeDashboard',
   OpenAPI.flow({
     tags: ['statistic'],
     input: {},
@@ -204,7 +192,7 @@ router.get('/homeDashboard',
     },
 );
 
-router.get('/frontend',
+router_get(router,'/frontend',
   OpenAPI.flow({
     tags: ['frontend'],
     input: {},
@@ -229,7 +217,7 @@ router.get('/frontend',
 );
 
 // --------------------------------- Block ----------------------------------
-router.get('/block/:hash',
+router_get(router,'/block/:hash',
   OpenAPI.flow({
     tags: ['block'],
     input: {
@@ -282,7 +270,7 @@ router.get('/block/:hash',
   (block) => block || {}, // XXX: null => {}, cause http json can not handle null good
 );
 
-router.get('/block',
+router_get(router,'/block',
   OpenAPI.flow({
     tags: ['block'],
     input: {
@@ -357,7 +345,7 @@ router.get('/block',
 );
 
 // ------------------------------- Transaction ------------------------------
-router.get('/transaction/:hash',
+router_get(router,'/transaction/:hash',
   OpenAPI.flow({
     tags: ['transaction'],
     input: {
@@ -477,7 +465,7 @@ router.get('/transaction/:hash',
   },
   (transaction) => transaction || {}, // XXX: null => {}, cause http json can not handle null good
 );
-router.get('/transaction',
+router_get(router,'/transaction',
   OpenAPI.flow({
     tags: ['transaction'],
     input: {
@@ -564,7 +552,7 @@ router.get('/transaction',
 );
 
 // -------------------------------- Account ---------------------------------
-router.get('/account/:address',
+router_get(router,'/account/:address',
   OpenAPI.flow({
     tags: ['account'],
     input: {
@@ -604,7 +592,7 @@ router.get('/account/:address',
 );
 
 // -------------------------------- Contract --------------------------------
-router.get('/contract/internals',
+router_get(router,'/contract/internals',
   OpenAPI.flow({
     tags: ['contract'],
     input: {},
@@ -645,7 +633,7 @@ router.get('/contract/internals',
   },
 );
 
-router.get('/contract/compiler',
+router_get(router,'/contract/compiler',
   OpenAPI.flow({
     tags: ['contract'],
     output: {
@@ -657,7 +645,7 @@ router.get('/contract/compiler',
   jsonrpc_listCompilers,
 );
 
-router.get('/contract/license',
+router_get(router,'/contract/license',
   OpenAPI.flow({
     tags: ['contract'],
     output: {
@@ -673,7 +661,7 @@ router.get('/contract/license',
   }
 );
 
-router.get('/contract/evm-version',
+router_get(router,'/contract/evm-version',
     OpenAPI.flow({
       tags: ['contract'],
       output: {
@@ -685,7 +673,7 @@ router.get('/contract/evm-version',
     listEVMVersion,
 );
 
-router.post('/contract/verify',
+router_post(router, '/contract/verify',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -740,7 +728,7 @@ router.post('/contract/verify',
   toArray, jsonrpc_verifyContract,
 );
 
-router.get('/contract/verified',
+router_get(router,'/contract/verified',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -773,7 +761,7 @@ router.get('/contract/verified',
   toArray, jsonrpc_listContractVerified,
 );
 
-router.get('/contract/:address',
+router_get(router,'/contract/:address',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -876,7 +864,7 @@ router.get('/contract/:address',
   },
 );
 
-router.get('/contract',
+router_get(router,'/contract',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -918,7 +906,7 @@ router.get('/contract',
 );
 
 // ------------------------- Contract and Token -----------------------------
-router.get('/contract-and-token',
+router_get(router,'/contract-and-token',
   OpenAPI.flow({
     tags: ['contract'],
     input: {
@@ -941,7 +929,7 @@ router.get('/contract-and-token',
 
 // ---------------------------------- Token ---------------------------------
 
-router.get('/token/:address',
+router_get(router,'/token/:address',
   OpenAPI.flow({
     tags: ['token'],
     input: {
@@ -989,7 +977,7 @@ router.get('/token/:address',
   }
 );
 
-router.get('/token',
+router_get(router,'/token',
   OpenAPI.flow({
     tags: ['token'],
     input: {
@@ -1054,7 +1042,7 @@ router.get('/token',
 );
 
 // ------------------------------- Transfer ---------------------------------
-router.get('/transfer',
+router_get(router,'/transfer',
   buildCheckAddressRateFn('address'),
   OpenAPI.flow({
     tags: ['transfer'],
@@ -1162,7 +1150,7 @@ router.get('/transfer',
   },
 );
 
-router.get('/transferTree/:transactionHash',
+router_get(router,'/transferTree/:transactionHash',
   OpenAPI.flow({
     tags: ['transfer'],
     input: {
@@ -1202,7 +1190,7 @@ router.get('/transferTree/:transactionHash',
 );
 
 // ----------------------------------- EventLog ---------------------------------
-router.get('/eventLog',
+router_get(router,'/eventLog',
   OpenAPI.flow({
     tags: ['eventLog'],
     input: {
@@ -1249,7 +1237,7 @@ router.get('/eventLog',
 );
 
 // ---------------------------------- ENS -------------------------------------
-router.get('/ens/reverse/match',
+router_get(router,'/ens/reverse/match',
     OpenAPI.flow({
       tags: ['contract'],
       input: {
@@ -1277,7 +1265,7 @@ router.get('/ens/reverse/match',
 );
 
 // -------------------------------- name tag ----------------------------------
-router.get('/nametag',
+router_get(router,'/nametag',
     OpenAPI.flow({
       tags: ['contract'],
       input: {
@@ -1305,7 +1293,7 @@ router.get('/nametag',
 );
 
 // ----------------------------------- Report ---------------------------------
-router.get('/report/transaction',
+router_get(router,'/report/transaction',
   OpenAPI.flow({
     tags: ['exporter'],
     input: {
@@ -1346,7 +1334,7 @@ router.get('/report/transaction',
   },
 );
 
-router.get('/report/transfer',
+router_get(router,'/report/transfer',
   OpenAPI.flow({
     tags: ['exporter'],
     input: {
@@ -1408,6 +1396,5 @@ router.get('/report/transfer',
 
 
 // ----------------------------------------------------------------------------
-openAPI.loadRouter(router);
 
 module.exports = router;
