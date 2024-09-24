@@ -36,7 +36,7 @@ module.exports = {
     enable: false,
     level: 'info',
     format: 'json',
-    request: { method: true, url: true, query: true, header: true, requestId: 'requestId' },
+    request: { method: true, url: true, query: true, header: true },
     response: { status: true, message: true, duration: true },
   },
 
