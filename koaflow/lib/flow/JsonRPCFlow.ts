@@ -33,7 +33,6 @@ export class JsonRPCFlow {
     if (Reflect.has(this.methods, method)) {
       throw new Error(`already exist method "${method}"`);
     }
-    // v1.ts : input = await fn.call(ctx, input);  in koaHelper.ts, fn is just this anonymous fn.
     // scan-compiler: ctx.body = await jsonrpcHandler.call(ctx, req); in router/index.js, see `call` below.
     this.methods[method] =  composeFlow(flowArray);
   }
