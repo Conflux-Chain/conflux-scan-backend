@@ -1,16 +1,17 @@
 import {ScanCtx} from "../service/index";
 
 import * as KoaRouter from "koa-router";
+const {router_get} = require("../../koaflow/src/koaHelper");
 const {Drip} = require('js-conflux-sdk');
 const {formatDecimal} = require('../../stat/service/common/utils');
 
 const router = new KoaRouter();
 
-router.get('/circulating',
+router_get(router, '/circulating',
 
 	// eslint-disable-next-line prefer-arrow-callback
-	async function (ctx) {
-		const {app: {service},} = ctx as unknown as ScanCtx;
+	async function () {
+		const {app: {service},} = this as ScanCtx;
 		const data = service.homeDashboard.getData();
 		// @ts-ignore
 		const totalCirculating = data?.supplyInfo?.totalCirculating ?? 0
@@ -21,10 +22,10 @@ router.get('/circulating',
 	},
 );
 
-router.get('/total',
+router_get(router, '/total',
 	// eslint-disable-next-line prefer-arrow-callback
-	async function (ctx) {
-		const {app: {service},} = ctx as unknown as ScanCtx;
+	async function () {
+		const {app: {service},} = this as ScanCtx;
 		const data = service.homeDashboard.getData()?.supplyInfo || {totalIssued: 0, nullAddressBalance: 0};
 		// @ts-ignore
 		const {totalIssued, nullAddressBalance} = data;
