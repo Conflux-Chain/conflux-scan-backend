@@ -1,12 +1,13 @@
 import {ScanCtx} from "../service/index";
 
 import * as KoaRouter from "koa-router";
+const {router_get} = require("../../koaflow/src/koaHelper");
 const {Drip} = require('js-conflux-sdk');
 const {formatDecimal} = require('../../stat/service/common/utils');
 
 const router = new KoaRouter();
 
-router.get('/circulating',
+router_get(router, '/circulating',
 
 	// eslint-disable-next-line prefer-arrow-callback
 	async function () {
@@ -21,7 +22,7 @@ router.get('/circulating',
 	},
 );
 
-router.get('/total',
+router_get(router, '/total',
 	// eslint-disable-next-line prefer-arrow-callback
 	async function () {
 		const {app: {service},} = this as ScanCtx;
