@@ -1,10 +1,10 @@
 import {ScanCtx} from "../service/index";
 
-const {Router} = require('../../koaflow/src/router');
+import * as KoaRouter from "koa-router";
 const {Drip} = require('js-conflux-sdk');
 const {formatDecimal} = require('../../stat/service/common/utils');
 
-const router = new Router();
+const router = new KoaRouter();
 
 router.get('/circulating',
 

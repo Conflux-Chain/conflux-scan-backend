@@ -1,6 +1,6 @@
-const {Router} = require('../../koaflow/src/router');
+import * as KoaRouter from "koa-router";
 
-export const router = new Router();
+export const router = new KoaRouter();
 
 router.get('/', function () {
   const {
@@ -20,5 +20,5 @@ router.get('/switch-req-log', function () {
   }
 })
 
-router.sub('/supply', require('./supply'));
-router.sub('/v1', require('./v1'));
+router.use('/supply', require('./supply').routes());
+router.use('/v1', require('./v1').routes());
