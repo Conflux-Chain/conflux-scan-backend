@@ -1,6 +1,7 @@
 import {Errors, UnhandledErrorCode} from "../../../stat/service/common/LogicError";
 
 const lodash = require('lodash');
+const { composeFlow } = require('../../src/util');
 
 const VERSION = '2.0';
 
@@ -34,23 +35,17 @@ export class JsonRPCFlow {
     }
     // v1.ts : input = await fn.call(ctx, input);  in koaHelper.ts, fn is just this anonymous fn.
     // scan-compiler: ctx.body = await jsonrpcHandler.call(ctx, req); in router/index.js, see `call` below.
-    this.methods[method] = async function (data: any) {
-      let input = data;
-      for (const fn of flowArray) {
-        // <this> is the object that call this anonymous fn. should be a koa context.
-        input = await fn.call(this, input);
-        // console.log(`${__filename} got `, input);
-      }
-      return input;
-    };
+    this.methods[method] =  composeFlow(flowArray);
   }
 
   /**
    * @param ctx {object} - Koa context instance
    * @param data {object|object[]}
+   * @param next {function}
+   * @param end {function}
    * @return {Promise<object>}
    */
-  async call(ctx, data) {
+  async call(ctx, data, next, end) {
       if (!lodash.isPlainObject(data)) {
         const error = new JsonRPCError({ code: -32700, message: `Parse error "${data}" not a plain object` });
         return { jsonrpc: VERSION, id: null, error };
@@ -74,7 +69,7 @@ export class JsonRPCFlow {
       }
 
       try {
-        const result = await flow.call(ctx, params);
+        const result = await flow.call(ctx, params, next, end);
         return { jsonrpc, id, result };
       } catch (e) {
         const error = new JsonRPCError({ code: e.code || -32000, message: e.message || 'Server error' });
