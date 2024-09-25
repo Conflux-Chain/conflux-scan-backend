@@ -25,7 +25,7 @@ export class JsonRPCFlow {
     this.method(method, ...flowArray)
     // see koaHelper.ts : input = await fn.call(ctx, input);
     // the returned fn will be used that way.
-    // parameter is an array. in v1.ts , it's done by `toArray` before fn, in scan-compiler , it's done by then caller.
+    // parameter is an array. in v1.ts , it's done by `toArray` before fn, in scan-compiler , it's done by the caller.
     // the first fn (`parameter`) in the flowArray will take that array and parse the first element( path: 0 ).
     return this.methods[method];
   }
