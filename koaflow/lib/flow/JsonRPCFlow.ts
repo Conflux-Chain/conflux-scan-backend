@@ -23,6 +23,10 @@ export class JsonRPCFlow {
   }
   method_(method: string, ...flowArray:Function[]) {
     this.method(method, ...flowArray)
+    // see koaHelper.ts : input = await fn.call(ctx, input);
+    // the returned fn will be used that way.
+    // parameter is an array. in v1.ts , it's done by `toArray` before fn, in scan-compiler , it's done by then caller.
+    // the first fn (`parameter`) in the flowArray will take that array and parse the first element( path: 0 ).
     return this.methods[method];
   }
   /**
@@ -33,18 +37,17 @@ export class JsonRPCFlow {
     if (Reflect.has(this.methods, method)) {
       throw new Error(`already exist method "${method}"`);
     }
-    // scan-compiler: ctx.body = await jsonrpcHandler.call(ctx, req); in router/index.js, see `call` below.
     this.methods[method] =  composeFlow(flowArray);
   }
 
   /**
+   * scan-compiler: ctx.body = await jsonrpcHandler.handle(ctx, req); in router/index.js, see `call` below.
+   *
    * @param ctx {object} - Koa context instance
    * @param data {object|object[]}
-   * @param next {function}
-   * @param end {function}
    * @return {Promise<object>}
    */
-  async call(ctx, data, next, end) {
+  async handle(ctx: any, data: any) {
       if (!lodash.isPlainObject(data)) {
         const error = new JsonRPCError({ code: -32700, message: `Parse error "${data}" not a plain object` });
         return { jsonrpc: VERSION, id: null, error };
@@ -68,7 +71,7 @@ export class JsonRPCFlow {
       }
 
       try {
-        const result = await flow.call(ctx, params, next, end);
+        const result = await flow.call(ctx, params);
         return { jsonrpc, id, result };
       } catch (e) {
         const error = new JsonRPCError({ code: e.code || -32000, message: e.message || 'Server error' });
