@@ -48,7 +48,7 @@ function compileEntry(key, {
     try {
       value = type(value);
     } catch (e) {
-      throw new ParameterError(`[${key}] error with ${e.message?.replace(`path="",`, '').replace(`"`, `'`)}`);
+      throw new ParameterError(`[${key}] error with ${e.message?.replace(`path="",`, '').replaceAll(/"/g, `'`)}`);
     }
 
     // 检查枚举
