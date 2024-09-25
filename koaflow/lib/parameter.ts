@@ -31,7 +31,7 @@ function compileEntry(key, {
     // 检查是否必填
     // @ts-ignore
     if (value === undefined && isRequired(dist)) {
-      throw new ParameterError(`[${key}]" is required`);
+      throw new ParameterError(`[${key}] is required`);
     }
 
     // 获取默认值
@@ -48,7 +48,7 @@ function compileEntry(key, {
     try {
       value = type(value);
     } catch (e) {
-      throw new ParameterError(`[${key}] error with ${e.message?.replace(`path="",`, '')}`);
+      throw new ParameterError(`[${key}] error with ${e.message?.replace(`path="",`, '').replace(`"`, `'`)}`);
     }
 
     // 检查枚举
