@@ -4,7 +4,6 @@ import {initCfxSdk} from "../stat/service/common/utils";
 const lodash = require('lodash');
 const koaBodyParser = require('koa-bodyparser');
 const {requestLogger} = require('../koaflow/lib/middleware/requestLogger');
-const {requestId} = require('../koaflow/lib/middleware/requestId');
 const TTLMap = require('../common/lib/TTLMap');
 const DingTalkRobot = require('../common/lib/DingTalkRobot');
 const CONST = require('../common/const');
@@ -65,7 +64,6 @@ export class AppBase extends Koa {
       }
       return next();
     });
-    this.use(requestId);
 
     if (!this.server) {
       this.use(this.router.routes());

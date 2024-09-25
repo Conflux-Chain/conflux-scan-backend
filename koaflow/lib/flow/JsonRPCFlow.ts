@@ -2,7 +2,6 @@ import {Errors, UnhandledErrorCode} from "../../../stat/service/common/LogicErro
 
 const lodash = require('lodash');
 const { composeFlow } = require('../../src/util');
-const {parameterErrorCode} = require('../../../common/error')
 
 const VERSION = '2.0';
 
@@ -22,58 +21,33 @@ export class JsonRPCFlow {
   constructor() {
     this.methods = {};
   }
-  method_(method, ...flowArray) {
+  method_(method: string, ...flowArray:Function[]) {
     this.method(method, ...flowArray)
+    // see koaHelper.ts : input = await fn.call(ctx, input);
+    // the returned fn will be used that way.
+    // parameter is an array. in v1.ts , it's done by `toArray` before fn, in scan-compiler , it's done by the caller.
+    // the first fn (`parameter`) in the flowArray will take that array and parse the first element( path: 0 ).
     return this.methods[method];
   }
   /**
    * @param method {string}
    * @param flowArray {function}
    */
-  method(method, ...flowArray) {
+  method(method: string, ...flowArray: Function[]) {
     if (Reflect.has(this.methods, method)) {
       throw new Error(`already exist method "${method}"`);
     }
-    this.methods[method] = composeFlow(flowArray);
-  }
-
-  methodFlow(method) {
-    const jsonRPCFlow = this;
-
-    return async function (arg, next, end) {
-      try {
-        const flow = jsonRPCFlow.methods[method]; // dynamic get method
-        return await flow.call(this, [arg], next, end);
-      } catch (e) {
-        if (!end) { // v1.ts, directly call in code
-          throw e;
-        }
-        this.methodFlowError = e;
-        if (e.code !== parameterErrorCode) {
-          console.log(`error caught at ${__filename} \n url: ${this.originalUrl} \n`, e);
-        }
-        end(/* nothing but stop calling chain */);
-      }
-    };
+    this.methods[method] =  composeFlow(flowArray);
   }
 
   /**
+   * scan-compiler: ctx.body = await jsonrpcHandler.handle(ctx, req); in router/index.js, see `call` below.
+   *
    * @param ctx {object} - Koa context instance
    * @param data {object|object[]}
-   * @param next {function}
-   * @param end {function}
    * @return {Promise<object>}
    */
-  call(ctx, data, next, end) {
-    const func = this.bind(ctx);
-
-    return Array.isArray(data)
-      ? Promise.all(data.map(d => func(d, next, end)))
-      : func(data, next, end);
-  }
-
-  bind(ctx) {
-    return async (data, next, end) => {
+  async handle(ctx: any, data: any) {
       if (!lodash.isPlainObject(data)) {
         const error = new JsonRPCError({ code: -32700, message: `Parse error "${data}" not a plain object` });
         return { jsonrpc: VERSION, id: null, error };
@@ -96,17 +70,14 @@ export class JsonRPCFlow {
         return { jsonrpc, id, error };
       }
 
-      // XXX: new JsonRPCError({ code: -32603, message: 'Internal error' });
-
       try {
-        const result = await flow.call(ctx, params, next, end);
+        const result = await flow.call(ctx, params);
         return { jsonrpc, id, result };
       } catch (e) {
         const error = new JsonRPCError({ code: e.code || -32000, message: e.message || 'Server error' });
         return { jsonrpc, id, error };
       }
     };
-  }
 }
 
 function transformError(ctx, e, msg = '', detail = '') {
@@ -133,6 +104,3 @@ export function patchFlowError(ctx) {
 export function setCfxRpcUrl(url) {
   cfxRpcUrl = url || ''
 }
-
-// module.exports = JsonRPCFlow;
-// module.exports.JsonRPCError = JsonRPCError;

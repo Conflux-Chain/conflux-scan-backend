@@ -31,7 +31,7 @@ function compileEntry(key, {
     // 检查是否必填
     // @ts-ignore
     if (value === undefined && isRequired(dist)) {
-      throw new ParameterError(`"${fillPath}" is required`);
+      throw new ParameterError(`[${key}] is required`);
     }
 
     // 获取默认值
@@ -48,18 +48,18 @@ function compileEntry(key, {
     try {
       value = type(value);
     } catch (e) {
-      throw new ParameterError(`"${fillPath}" error with "${e.message}"`);
+      throw new ParameterError(`[${key}] error with ${e.message?.replace(`path="", `, '').replaceAll(/"/g, `'`)}`);
     }
 
     // 检查枚举
     if (enumSet && !enumSet.has(value)) {
-      throw new ParameterError(`"${fillPath}" do not match enum {${[...enumSet].join(',')}}, got: ${value}`);
+      throw new ParameterError(`[${key}] do not match enum {${[...enumSet].join(',')}}, got: ${value}`);
     }
 
     // 附加检查条件
     for (const [name, condition] of Object.entries(conditions)) {
       if (!condition(value, dist)) {
-        throw new ParameterError(`"${fillPath}" do not match condition "${name}", got: ${value}`);
+        throw new ParameterError(`[${key}] do not match condition [${name}], got: ${value}`);
       }
     }
 

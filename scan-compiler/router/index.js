@@ -14,7 +14,7 @@ const jsonrpcHandler = require('./jsonrpc')
 router.post('/',
     async (ctx) => {
         const req = ctx.request.body;
-        ctx.body = await jsonrpcHandler.call(ctx, req);
+        ctx.body = await jsonrpcHandler.handle(ctx, req);
     },
 );
 
