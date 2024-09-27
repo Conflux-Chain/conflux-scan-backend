@@ -123,7 +123,14 @@ export async function scheduleCrossSpaceStat(cfx:Conflux) {
     }
     return scheduleDaily(async (dt)=>{
         await calcDailyCfxToEvm(dt)
-        await calcDailyCfxFromEvm(dt)
+        await calcDailyCfxFromEvm(dt).catch(e=>{
+            const str = `${e}`;
+            if (str.includes('Unknown database')) {
+                console.log(`evm db not exist ${EvmDB}`)
+            } else {
+                console.log(`${__filename} cfx from evm error:`, e)
+            }
+        })
     })
 }
 async function main() {
