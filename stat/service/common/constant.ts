@@ -224,9 +224,21 @@ export const CONST = {
   NETWORKS_CIP1559_ENABLED: [1029, 1030, 1, 71],
 
   CHAIN_INFO: {
-    '1029': {      isEvm: false,      EPOCH_CIP1559: 101900000,    },
-    '1030': {      isEvm: true,       EPOCH_CIP1559: 101900000,    },
-    '1':    {      isEvm: false,      EPOCH_CIP1559: 175600000,    },
-    '71':   {      isEvm: true,       EPOCH_CIP1559: 175600000,    },
+    '1029': {      isEvm: false,      EPOCH_CIP1559: 101900000,
+      C_ANNOUNCE: '0x81bbe80b1282387e19d7e1a57476869081c7d965',
+      C_META: '0x8cb5b0e8a80fa62b2dc500219b4ebc386cb5fa70',
+    },
+    '1030': {      isEvm: true,       EPOCH_CIP1559: 101900000,
+      C_ANNOUNCE: '0xdf07c798e70138ca6963ea0db3226e124db59ddd',
+      C_META: '0x4a90f705ce108de778a0a5f20dfad2c0b7077316',
+    },
+    '1':    {      isEvm: false,      EPOCH_CIP1559: 175600000,
+      C_ANNOUNCE: '0x81bbe80b1282387e19d7e1a57476869081c7d965',
+      C_META: '0x8396a5771e1efb2767519a10dec97d9aaafab1d1',
+    },
+    '71':   {      isEvm: true,       EPOCH_CIP1559: 175600000,
+      C_ANNOUNCE: '0x623a0340bd4b0817379c8482c92dd26fb8c5316d',
+      C_META: '0x96c326866db1b879b2a25be4104fd1d2a7ffb108',
+    },
   }
 };
