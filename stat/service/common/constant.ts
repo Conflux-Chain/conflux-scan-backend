@@ -222,4 +222,11 @@ export const CONST = {
   },
 
   NETWORKS_CIP1559_ENABLED: [1029, 1030, 1, 71],
+
+  CHAIN_INFO: {
+    '1029': {      isEvm: false,      EPOCH_CIP1559: 101900000,    },
+    '1030': {      isEvm: true,       EPOCH_CIP1559: 101900000,    },
+    '1':    {      isEvm: false,      EPOCH_CIP1559: 175600000,    },
+    '71':   {      isEvm: true,       EPOCH_CIP1559: 175600000,    },
+  }
 };
