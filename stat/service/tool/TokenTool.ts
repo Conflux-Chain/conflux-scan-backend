@@ -632,7 +632,7 @@ async function checkOssBucket(accessId, accessKey, bucket) {
 let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: ''}
 export async function initOss(conf) {
     ossConf = conf
-    const {accessId, accessKey, bucket, prefix} = ossConf
+    const {accessId, accessKey, bucket, prefix} = ossConf || {}
     if (!accessId) {
         console.log(`oss not configured.`)
         return
@@ -649,8 +649,11 @@ export async function uploadOss(srcFile, ossFilename) {
         return undefined
     }
     const {accessId, accessKey, bucket, prefix} = ossConf;
+    if (!accessId) {
+        return `/stat/${ossFilename}`;
+    }
     // const bucket0 = await checkOssBucket(accessId, accessKey, bucket)
-    const oss = createOssClient(accessId, accessKey, bucket)
+    const oss = createOssClient(accessId, accessKey, bucket);
     const subPathOnOss = `${prefix||'dev'}/${ossFilename}`;
     return oss.put(subPathOnOss, srcFile).then(res=>{
         console.log(`upload to oss success, ${subPathOnOss}`)
