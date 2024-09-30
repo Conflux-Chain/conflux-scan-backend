@@ -247,7 +247,7 @@ async function run() {
     // @ts-ignore
     StatApp.networkId = cfx.networkId
     console.log(` network id ${StatApp.networkId}`)
-    new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
+    new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
     if (args[0] === 'test') {
         const addr = ['','']
         const contract = ''

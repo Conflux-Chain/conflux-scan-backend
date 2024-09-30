@@ -11,7 +11,7 @@ async function run() {
         // init contract
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` net work id ${StatApp.networkId}, util contract ${ utilContract}`)
-        const w = new BatchBalanceWatcher(cfx,null, utilContract)
+        const w = new BatchBalanceWatcher(cfx,utilContract)
         const list = await Token.findAll({
             where: {auditResult: true, fetchBalance: true},
             attributes: {

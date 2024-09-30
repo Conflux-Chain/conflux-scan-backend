@@ -3,7 +3,6 @@ const lodash = require('lodash');
 // @ts-ignore
 import {Conflux, Contract, format} from "js-conflux-sdk";
 import {abi} from "./contract/BatchBalanceOf";
-import {CfxWatcher} from "./BalanceWatcher";
 import {buildHexSet, Hex40Map, idHex40Map, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
@@ -34,19 +33,13 @@ const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
 const TESTNET_UTIL_CONTRACT = 'cfxtest:achamkxtk3yn534h483vdvv0kcffwr221uyw9xnucr'
 
 export class BatchBalanceWatcher {
-    private cfx: Conflux;
     public static contract: {balances};
     public static allTokenContract: {getBalances};
-    private readonly tokenList: string[];
-    fraction = BigInt(1e+18)
-    private readonly cfxWatcher:CfxWatcher
-    constructor( cfx:Conflux, cfxWatcher:CfxWatcher, utilContract: string | null) {
+    constructor( cfx:Conflux, utilContract: string | null) {
         if (!utilContract) {
             console.log(` scan util contract should be an address. Got [${utilContract}]`)
             process.exit(9)
         }
-        this.cfx = cfx;
-        this.cfxWatcher = cfxWatcher;
         // @ts-ignore
         BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
         // @ts-ignore
@@ -336,7 +329,7 @@ async function fix20holder(cfx:Conflux) {
     await cfx.updateNetworkId();
     const {networkId} = await cfx.getStatus()
     StatApp.networkId = networkId
-    new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
+    new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
     if (contractId === 'all') {
         const list = await Token.findAll({attributes: ['hex40id', 'symbol', 'base32'],
             where: {type: 'ERC20', auditResult: true}})
@@ -406,7 +399,7 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
         map.set(0, new Set<number>([0]))
         const cfx = await initCfxSdk(cfg.conflux);
         StatApp.networkId = await cfx.getStatus().then(({networkId})=>networkId)
-        new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
+        new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
         await handleTokenTransferWithContract(map, cfx)
     } else if (script) {
         // scripts is empty when calling from TokenMiscSync.ts
@@ -426,7 +419,7 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
     }
     const st = await cfx.getStatus()
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr(cfg.conflux.consortiumMode);
-    new BatchBalanceWatcher(cfx, null, utilContract)
+    new BatchBalanceWatcher(cfx, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)
     scheduleTransferUpdater(cfg.serverTag);

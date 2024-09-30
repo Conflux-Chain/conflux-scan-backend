@@ -151,7 +151,7 @@ export class ApiServer {
 
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
-        new BatchBalanceWatcher(this.cfx, null, utilContract)
+        new BatchBalanceWatcher(this.cfx, utilContract)
         await apiService.marketDataQuery.scheduleCache();
         await apiService.txnQuery.scheduleCache()
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
