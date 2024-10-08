@@ -26,7 +26,7 @@ import {
 } from "./Erc1155DataSync";
 import {doHeartBeat, KEY_1155_SYNC, KEY_CONTRACT_USER} from "../../model/HeartBeat";
 
-const {abi: miniErc20Abi} = require('../service/watcher/contract/miniERC20.json');
+const {abi: miniErc20Abi} = require('./contract/miniERC20.json');
 
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
