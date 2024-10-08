@@ -1,8 +1,6 @@
 import {redirectLog} from "../../config/LoggerConfig";
 const lodash = require('lodash');
-// @ts-ignore
-import {Conflux, Contract, format} from "js-conflux-sdk";
-import {abi} from "./contract/BatchBalanceOf";
+import {Conflux, Contract} from "js-conflux-sdk";
 import {buildHexSet, Hex40Map, idHex40Map, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
@@ -28,22 +26,25 @@ import {
 } from "./Erc1155DataSync";
 import {doHeartBeat, KEY_1155_SYNC, KEY_CONTRACT_USER} from "../../model/HeartBeat";
 
+const {abi: miniErc20Abi} = require('../service/watcher/contract/miniERC20.json');
+
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
 const TESTNET_UTIL_CONTRACT = 'cfxtest:achamkxtk3yn534h483vdvv0kcffwr221uyw9xnucr'
+let miniErc20ContractMap: Map<string,Contract> = new Map();
+let useRawErc20 = false;
+let _cfx: Conflux = null;
 
 export class BatchBalanceWatcher {
-    public static contract: {balances};
     public static allTokenContract: {getBalances};
     constructor( cfx:Conflux, utilContract: string | null) {
-        if (!utilContract) {
-            console.log(` scan util contract should be an address. Got [${utilContract}]`)
-            process.exit(9)
+        if (utilContract) {
+            BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
+        } else {
+            console.log(` scan util contract not set, fallback to raw contract call`)
+            useRawErc20 = true;
+            _cfx = cfx;
         }
-        // @ts-ignore
-        BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
-        // @ts-ignore
-        BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
     }
 
     public static async getUtilContractAddr(consortiumMode: boolean = false) {
@@ -52,13 +53,31 @@ export class BatchBalanceWatcher {
             (StatApp.networkId === 1029 && !consortiumMode) ? MAINNET_UTIL_CONTRACT : (await KV.getString(SCAN_UTIL_CONTRACT, ''))
         return utilContract;
     }
-    logCount = 300
 
-    public static async getBalances(account:string, tokens:string[]) {
+    public static async getBalances(account:string|string[]|any, tokens:string|string[]|any) {
+        if (useRawErc20) {
+            const accArr = Array.isArray(account) ? account : [account];
+            const contractArr = Array.isArray(tokens) ? tokens : [tokens];
+            const taskArr = [];
+            for(const acc of accArr) {
+                for (const contract of contractArr) {
+                    let cInst = miniErc20ContractMap.get(contract);
+                    if (!cInst) {
+                        cInst = _cfx.Contract({abi: miniErc20Abi, address: contract});
+                        miniErc20ContractMap.set(contract, cInst);
+                    }
+                    taskArr.push((cInst['balanceOf'](acc)).catch(e=>{
+                        console.log(`${__filename} raw balance of error , account ${acc}, contract ${contract} , `, e)
+                        return BigInt(0);
+                    }));
+                }
+            }
+            return Promise.all(taskArr);
+        }
         let banList = await BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
             console.log(` getBalances fail: `, err.data)
             console.log(` getBalances fail: `, err)
-        })
+        });
         return banList
     }
 }
