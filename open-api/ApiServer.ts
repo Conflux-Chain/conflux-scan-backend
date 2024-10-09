@@ -98,7 +98,7 @@ export class ApiServer {
         logger.info(`-------- start api server, port ${config.apiPort}--------`)
 
         this.cfx = await initCfxSdk(config.conflux);
-        this.eth = initEthSdk(config.ether.url)
+        this.eth = initEthSdk(config.ether?.url)
         StatApp.networkId = this.cfx.networkId;
 
         StatApp.readonly = config.database.readonly
