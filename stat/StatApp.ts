@@ -89,7 +89,7 @@ export class StatApp{
 
     public async init() {
         this.cfx = await initCfxSdk(this.config.conflux);
-        this.eth = await initEthSdk(this.config.ether.url)
+        this.eth = initEthSdk(this.config.ether?.url);
         StatApp.networkId = this.cfx.networkId
         PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly

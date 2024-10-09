@@ -497,7 +497,7 @@ async function getLogs(ctx) {
     topic3 && (topics[3] = topic3);
     const limit = 1000;
     const options = {fromBlock, toBlock, address, topics, limit};
-    const logArray = (await getApiService().eth.getLogs(options)) || [];
+    const logArray = (await getApiService().eth?.getLogs(options)) || [];
     const result = logArray.slice(0, limit);
     setBody(ctx, result)
 }
