@@ -101,7 +101,7 @@ export class StatApp{
             initModel(sequelize),
             initOss(this.config.oss)
         ])
-        if (this.config.database.syncSchema) {
+        if (this.config.database?.syncSchema) {
             console.log(`sync model begin.`)
             await sequelize.sync({});
         } else {

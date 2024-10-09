@@ -27,7 +27,7 @@ export async function run() {
 
     let seq = createDB(config.databaseRW)
     await initModel(seq)
-    if (config.database.syncSchema) {
+    if (config.database?.syncSchema) {
         console.log(`sync model begin...`);
         await seq.sync({})
         console.log(`sync model finished.`);

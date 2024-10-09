@@ -59,11 +59,11 @@ export class ApiApp extends AppBase {
     this.startLog();
 
     // stat service
-    StatApp.readonly = config.database.readonly;
+    StatApp.readonly = config.database?.readonly;
     StatApp.networkId = this.networkId;
     if (!ApiApp.injectedSequelize) {
       await initPartialModel(this.sequelize);
-      if (config.database.syncSchema) {
+      if (config.database?.syncSchema) {
         await this.sequelize.sync({alter: false});
       } else {
         console.log(`${new Date().toISOString()} ScanApi skip sync schema`);

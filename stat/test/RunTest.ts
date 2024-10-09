@@ -71,7 +71,7 @@ async function run(){
     await sequelize.authenticate();
     await initModel(sequelize)
 
-    if (config.database.syncSchema) {
+    if (config.database?.syncSchema) {
         console.log('sync model begin.')
         await sequelize.sync({alter: false}).catch(err=>{
             console.log(`sync fail: `, err)

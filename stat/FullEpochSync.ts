@@ -30,11 +30,11 @@ export class FullEpochSync{
     }
 
     private async initDb(){
-        StatApp.readonly = this.config.database.readonly;
+        StatApp.readonly = this.config.database?.readonly;
 
         this.sequelize = createDB(this.config.databaseRW);
         await initModel(this.sequelize);
-        if (this.config.database.syncSchema) {
+        if (this.config.database?.syncSchema) {
             console.log(`sync model begin...`);
             await this.sequelize.sync({});
             console.log(`sync model finished.`);
