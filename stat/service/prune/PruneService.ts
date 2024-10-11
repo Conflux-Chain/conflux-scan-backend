@@ -319,7 +319,7 @@ async function start(opts: any) {
     StatApp.readonly = config.database.readonly
     const sequelize = createDB(config.databaseRW)
     await initModel(sequelize)
-    if (config.database.syncSchema) {
+    if (config.database?.syncSchema) {
         console.log(`sync model begin...`)
         await sequelize.sync({})
         console.log(`sync model finished.`)

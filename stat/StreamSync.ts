@@ -202,7 +202,7 @@ async function fetchAll(addressArr, contractHex40, result:any[], cfx:Conflux) {
         let finished = true
         for (let ids of chunks2d) {
             try {
-                const banList = await BatchBalanceWatcher.allTokenContract.getBalances(ids, contractHex40);
+                const banList = await BatchBalanceWatcher.getBalances(ids, contractHex40);
                 result.push(...banList);
             } catch (e) {
                 // check network
@@ -247,11 +247,11 @@ async function run() {
     // @ts-ignore
     StatApp.networkId = cfx.networkId
     console.log(` network id ${StatApp.networkId}`)
-    new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
+    new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
     if (args[0] === 'test') {
         const addr = ['','']
         const contract = ''
-        const list = await BatchBalanceWatcher.allTokenContract.getBalances(addr, contract)
+        const list = await BatchBalanceWatcher.getBalances(addr, contract)
         console.log(` balance list is `, list)
         return
     }

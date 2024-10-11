@@ -297,6 +297,9 @@ export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = und
 }
 
 export function initEthSdk(url) {
+    if (!url) {
+        return null;
+    }
     return new ethers.providers.JsonRpcProvider(url);
 }
 

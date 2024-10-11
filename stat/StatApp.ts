@@ -89,7 +89,7 @@ export class StatApp{
 
     public async init() {
         this.cfx = await initCfxSdk(this.config.conflux);
-        this.eth = await initEthSdk(this.config.ether.url)
+        this.eth = initEthSdk(this.config.ether?.url);
         StatApp.networkId = this.cfx.networkId
         PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly
@@ -101,7 +101,7 @@ export class StatApp{
             initModel(sequelize),
             initOss(this.config.oss)
         ])
-        if (this.config.database.syncSchema) {
+        if (this.config.database?.syncSchema) {
             console.log(`sync model begin.`)
             await sequelize.sync({});
         } else {
@@ -116,7 +116,7 @@ export class StatApp{
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
             (this.cfxWatcher = new CfxWatcher('cfx', this.cfx))
-            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, this.cfxWatcher, utilContract)
+            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, utilContract)
         }
         // @ts-ignore
         this.balanceService = new BalanceService(this, [], StatApp.networkId)

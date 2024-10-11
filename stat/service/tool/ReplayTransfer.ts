@@ -43,7 +43,7 @@ async function setup(config){
     console.log(` network id ${StatApp.networkId}`)
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     console.log(` util contract ${utilContract}`)
-    new BatchBalanceWatcher(cfx,null, utilContract)
+    new BatchBalanceWatcher(cfx,utilContract)
     // type could be 20, 721, 1155
     const [,,from, type] = process.argv
     const tokenList = await Token.findAll({

@@ -134,10 +134,11 @@ export class EpochSync extends SyncBase{
     }
 
     private async checkConfig() {
+        const zero = '0x0000000000000000000000000000000000000000';
         const [announcement, addressMetadata, epochCIP1559Enabled] = await Promise.all([
-            KV.getString(CONTRACT_ANNOUNCEMENT, ''),
-            KV.getString(CONTRACT_ADDRESS_METADATA, ''),
-            KV.getNumber(KEY_EPOCH_CIP1559_ENABLED),
+            KV.getString(CONTRACT_ANNOUNCEMENT, CONST.CHAIN_INFO[StatApp.networkId]?.C_ANNOUNCE ?? zero),
+            KV.getString(CONTRACT_ADDRESS_METADATA, CONST.CHAIN_INFO[StatApp.networkId]?.C_META ?? zero),
+            KV.getNumber(KEY_EPOCH_CIP1559_ENABLED, CONST.CHAIN_INFO[StatApp.networkId]?.EPOCH_CIP1559),
         ])
 
         if(!announcement) {

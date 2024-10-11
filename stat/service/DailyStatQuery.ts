@@ -129,7 +129,7 @@ export class DailyStatQuery {
             return {total: 0, list: []}
         }
         if(!StatApp.epochCIP1559Enabled) {
-            StatApp.epochCIP1559Enabled = await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED)
+            StatApp.epochCIP1559Enabled = await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED, CONST.CHAIN_INFO[StatApp.networkId]?.EPOCH_CIP1559)
         }
 
         const queryOptions: any = {

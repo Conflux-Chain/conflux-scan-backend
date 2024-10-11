@@ -98,7 +98,7 @@ export class ApiServer {
         logger.info(`-------- start api server, port ${config.apiPort}--------`)
 
         this.cfx = await initCfxSdk(config.conflux);
-        this.eth = initEthSdk(config.ether.url)
+        this.eth = initEthSdk(config.ether?.url)
         StatApp.networkId = this.cfx.networkId;
 
         StatApp.readonly = config.database.readonly
@@ -151,7 +151,7 @@ export class ApiServer {
 
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
-        new BatchBalanceWatcher(this.cfx, null, utilContract)
+        new BatchBalanceWatcher(this.cfx, utilContract)
         await apiService.marketDataQuery.scheduleCache();
         await apiService.txnQuery.scheduleCache()
         config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());

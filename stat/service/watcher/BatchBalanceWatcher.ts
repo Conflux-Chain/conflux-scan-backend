@@ -1,9 +1,6 @@
 import {redirectLog} from "../../config/LoggerConfig";
 const lodash = require('lodash');
-// @ts-ignore
-import {Conflux, Contract, format} from "js-conflux-sdk";
-import {abi} from "./contract/BatchBalanceOf";
-import {CfxWatcher} from "./BalanceWatcher";
+import {Conflux, Contract} from "js-conflux-sdk";
 import {buildHexSet, Hex40Map, idHex40Map, makeIdV} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
 import {BALANCE_UTIL_ABI} from "./contract/BalanceUtilAbi";
@@ -29,28 +26,25 @@ import {
 } from "./Erc1155DataSync";
 import {doHeartBeat, KEY_1155_SYNC, KEY_CONTRACT_USER} from "../../model/HeartBeat";
 
+const {abi: miniErc20Abi} = require('./contract/miniERC20.json');
+
 export const batchContractAddress = '0x8f35930629fce5b5cf4cd762e71006045bfeb24d'
 const MAINNET_UTIL_CONTRACT = 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh'
 const TESTNET_UTIL_CONTRACT = 'cfxtest:achamkxtk3yn534h483vdvv0kcffwr221uyw9xnucr'
+let miniErc20ContractMap: Map<string,Contract> = new Map();
+let useRawErc20 = false;
+let _cfx: Conflux = null;
 
 export class BatchBalanceWatcher {
-    private cfx: Conflux;
-    public static contract: {balances};
     public static allTokenContract: {getBalances};
-    private readonly tokenList: string[];
-    fraction = BigInt(1e+18)
-    private readonly cfxWatcher:CfxWatcher
-    constructor( cfx:Conflux, cfxWatcher:CfxWatcher, utilContract: string | null) {
-        if (!utilContract) {
-            console.log(` scan util contract should be an address. Got [${utilContract}]`)
-            process.exit(9)
+    constructor( cfx:Conflux, utilContract: string | null) {
+        if (utilContract) {
+            BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
+        } else {
+            console.log(` scan util contract not set, fallback to raw contract call`)
+            useRawErc20 = true;
+            _cfx = cfx;
         }
-        this.cfx = cfx;
-        this.cfxWatcher = cfxWatcher;
-        // @ts-ignore
-        BatchBalanceWatcher.contract = cfx.Contract({abi, address: format.address(batchContractAddress, StatApp.networkId)})
-        // @ts-ignore
-        BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
     }
 
     public static async getUtilContractAddr(consortiumMode: boolean = false) {
@@ -59,13 +53,31 @@ export class BatchBalanceWatcher {
             (StatApp.networkId === 1029 && !consortiumMode) ? MAINNET_UTIL_CONTRACT : (await KV.getString(SCAN_UTIL_CONTRACT, ''))
         return utilContract;
     }
-    logCount = 300
 
-    public static async getBalances(account:string, tokens:string[]) {
+    public static async getBalances(account:string|string[]|any, tokens:string|string[]|any) {
+        if (useRawErc20) {
+            const accArr = Array.isArray(account) ? account : [account];
+            const contractArr = Array.isArray(tokens) ? tokens : [tokens];
+            const taskArr = [];
+            for(const acc of accArr) {
+                for (const contract of contractArr) {
+                    let cInst = miniErc20ContractMap.get(contract);
+                    if (!cInst) {
+                        cInst = _cfx.Contract({abi: miniErc20Abi, address: contract});
+                        miniErc20ContractMap.set(contract, cInst);
+                    }
+                    taskArr.push((cInst['balanceOf'](acc)).catch(e=>{
+                        console.log(`${__filename} raw balance of error , account ${acc}, contract ${contract} , `, e)
+                        return BigInt(0);
+                    }));
+                }
+            }
+            return Promise.all(taskArr);
+        }
         let banList = await BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
             console.log(` getBalances fail: `, err.data)
             console.log(` getBalances fail: `, err)
-        })
+        });
         return banList
     }
 }
@@ -336,7 +348,7 @@ async function fix20holder(cfx:Conflux) {
     await cfx.updateNetworkId();
     const {networkId} = await cfx.getStatus()
     StatApp.networkId = networkId
-    new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
+    new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
     if (contractId === 'all') {
         const list = await Token.findAll({attributes: ['hex40id', 'symbol', 'base32'],
             where: {type: 'ERC20', auditResult: true}})
@@ -406,7 +418,7 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
         map.set(0, new Set<number>([0]))
         const cfx = await initCfxSdk(cfg.conflux);
         StatApp.networkId = await cfx.getStatus().then(({networkId})=>networkId)
-        new BatchBalanceWatcher(cfx, null, await BatchBalanceWatcher.getUtilContractAddr())
+        new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
         await handleTokenTransferWithContract(map, cfx)
     } else if (script) {
         // scripts is empty when calling from TokenMiscSync.ts
@@ -426,7 +438,7 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
     }
     const st = await cfx.getStatus()
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr(cfg.conflux.consortiumMode);
-    new BatchBalanceWatcher(cfx, null, utilContract)
+    new BatchBalanceWatcher(cfx, utilContract)
     console.log(`------------- network ${st.networkId} ------ utilContract ${utilContract}------`)
     console.log(`---- latestState ${st.latestState} latestConfirmed ${st.latestConfirmed}`)
     scheduleTransferUpdater(cfg.serverTag);

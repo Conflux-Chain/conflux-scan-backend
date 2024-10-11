@@ -778,7 +778,9 @@ export class FullBlockQuery {
 
     public async listPendingTxEvm({accountAddress}){
         const{ cfx, eth } = this.app;
-
+        if (!eth) {
+            return {message: 'eth is not available'};
+        }
         // check
         const result = await eth.send('eth_getAccountPendingTransactions', [accountAddress, undefined, '10']);
         const {firstTxStatus, pendingTransactions} = result;
