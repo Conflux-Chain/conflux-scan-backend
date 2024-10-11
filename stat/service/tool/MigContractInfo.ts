@@ -752,7 +752,7 @@ async function initFullBlockSyncer() {
         cfx2 = await initCfxSdk(config.conflux2)
     }
 
-    StatApp.epochCIP1559Enabled = CONST.CHAIN_INFO[StatApp.networkId]?.EPOCH_CIP1559 ?? await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED)
+    StatApp.epochCIP1559Enabled = await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED, CONST.CHAIN_INFO[StatApp.networkId]?.EPOCH_CIP1559)
 
     fullBlockService = new FullBlockService(cfx, cfx2)
 }

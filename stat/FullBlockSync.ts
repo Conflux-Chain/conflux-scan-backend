@@ -83,7 +83,7 @@ async function mustInit() {
     if(!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
         StatApp.epochCIP1559Enabled = 0
     } else{
-        const epochCIP1559Enabled = CONST.CHAIN_INFO[StatApp.networkId]?.EPOCH_CIP1559 ?? await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED)
+        const epochCIP1559Enabled = await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED, CONST.CHAIN_INFO[StatApp.networkId]?.EPOCH_CIP1559)
         if(!epochCIP1559Enabled) {
             console.log(`Failed to load config for epoch number at which CIP1559 enabled!`)
             process.exit(9)
