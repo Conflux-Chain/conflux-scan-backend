@@ -46,13 +46,11 @@ export class FullBlockService {
     public latestConfirmEpoch = 0;
     public latestStateEpoch = -1
     public maxEpochOfBlock = 0
-    public cfx2: Conflux;
     public debugLog:boolean = true
     preLoadMap:PreloadMap
     private powSidePosSync: PowSidePosSync;
-    constructor(cfx:Conflux, cfx2?:Conflux) {
+    constructor(cfx:Conflux) {
         this.cfx = cfx;
-        this.cfx2 = cfx2
         this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this))
         this.powSidePosSync = new PowSidePosSync(cfx);
     }

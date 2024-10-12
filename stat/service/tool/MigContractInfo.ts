@@ -747,14 +747,10 @@ async function initFullBlockSyncer() {
     let cfx = await initCfxSdk(config.blockSyncRpc);
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    let cfx2
-    if(StatApp.isEVM) {
-        cfx2 = await initCfxSdk(config.conflux2)
-    }
 
     StatApp.epochCIP1559Enabled = await KV.getNumber(KEY_EPOCH_CIP1559_ENABLED, CONST.CHAIN_INFO[StatApp.networkId]?.EPOCH_CIP1559)
 
-    fullBlockService = new FullBlockService(cfx, cfx2)
+    fullBlockService = new FullBlockService(cfx)
 }
 
 async function syncBlockExt(epoch: number) {
