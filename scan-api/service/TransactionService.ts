@@ -72,12 +72,13 @@ export class TransactionService {
     // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
     const gasPrice = receipt?.effectiveGasPrice || transaction.gasPrice || BigInt(0);
-    let gasFee = receipt?.gasFee || gasPrice * (receipt?.gasUsed || BigInt(0))
 
     // using actualGasCost as gasFee when NotEnoughCash error occurs
     // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
-    let gasCharged = NoCoreSpace ? `${Number(receipt?.gasUsed || 0)}`
-        : `${Math.max(Number(receipt?.gasUsed || 0), (Number(transaction.gas) * 3) / 4)}`
+    let gasCharged = NoCoreSpace ? Number(receipt?.gasUsed || 0)
+        : Math.max(Number(receipt?.gasUsed || 0), (Number(transaction.gas) * 3) / 4)
+    let gasFee = StatApp.isEVM ? Number(gasPrice) * gasCharged
+        : (receipt?.gasFee || Number(gasPrice) * gasCharged)
     const actualGasCost = extractActualGasCost(receipt?.txExecErrorMsg)
     if(lodash.isNumber(actualGasCost)) {
       gasFee = BigFixed(actualGasCost)
@@ -86,7 +87,8 @@ export class TransactionService {
 
     // zg rpc do not return contract address on transaction
     const contractCreated = receipt?.contractCreated ?? transaction.contractCreated
-    return lodash.defaults({aggregate, data: txInputData, gasPrice, gasFee, gasCharged, contractCreated},
+    return lodash.defaults({aggregate, data: txInputData, gasPrice, gasFee: gasFee.toString(),
+          gasCharged: gasCharged.toString(), contractCreated},
         transaction, receipt, {
           risk,
           typeDesc,

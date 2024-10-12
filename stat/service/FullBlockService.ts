@@ -36,6 +36,8 @@ import {CONST} from "./common/constant";
 import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {rmCache} from "./common/RpcCacheManager";
 
+const BigFixed = require('bigfixed');
+
 // Do not care the value
 const CODE_REWIND = 20201029
 export const CODE_OK = 0
@@ -452,7 +454,10 @@ export class FullBlockService {
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
                     txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice || txInfo.gasPrice
-                    txInfo.gas = txInfo.receipt?.gasFee || (txInfo.receipt?.gasUsed || BigInt(0)) * txInfo.gasPrice// save gasFee.
+                    const gasCharged = NoCoreSpace ? Number(txInfo.receipt?.gasUsed || 0)
+                        : Math.max(Number(txInfo.receipt?.gasUsed || 0), (Number(txInfo.gas) * 3) / 4)
+                    txInfo.gas = StatApp.isEVM ? Number(txInfo.gasPrice) * gasCharged
+                        : (txInfo.receipt?.gasFee || Number(txInfo.gasPrice) * gasCharged) // save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId
