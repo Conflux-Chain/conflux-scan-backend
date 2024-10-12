@@ -3,7 +3,6 @@ import {decodeUtf8} from "../tool/StringTool";
 const lodash = require('lodash');
 import {Balance} from "../../model/Balance";
 import {Token, TOKEN_ERC_1155} from "../../model/Token";
-import {Erc20WatchList} from "../../config/StatConfig";
 import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {Contract} from "../../model/Contract";
 // @ts-ignore
@@ -23,18 +22,11 @@ import {ethers} from "ethers";
 
 export class BalanceService {
     private app: StatApp;
-    private tokens: Erc20WatchList[];
     private readonly networkId: number;
-    private tokenMap:Map<string, Erc20WatchList>
 
-    constructor(app, erc20watchList: Erc20WatchList[], networkId:number = 1029) {
+    constructor(app, networkId:number = 1029) {
         this.app = app;
-        this.tokens = erc20watchList;
         this.networkId = networkId;
-        this.tokenMap = new Map()
-        erc20watchList.forEach(t=>{
-            this.tokenMap.set(t.name, t)
-        })
     }
 
     public async listToken() {

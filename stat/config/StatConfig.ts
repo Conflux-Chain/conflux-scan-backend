@@ -122,7 +122,6 @@ export interface StatConfig{
     syncEpochNumber: number,
     syncEpochNumberBackward: number,
     serverTag: string,
-    erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,
     cfxWatcherDelay:number,
     recaptchaUrl:string,
@@ -183,15 +182,6 @@ export interface StatConfig{
     asyncWrappedToken: boolean,
     wrappedCFX: string,
     wrappedUSDT: string,
-}
-
-export interface Erc20WatchList{
-    // hex address
-    address:string
-    // it's the symbol of the token. why not use real name : real name contains space.
-    name:string
-    watchDelay:number
-    tokenType:string // erc1155 needs a token type
 }
 
 export var FirstBlockNo = 0
