@@ -37,14 +37,10 @@ export async function run() {
     setInterval(()=>autoAddPartition(seq), 600_000)
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    let cfx2
-    if(StatApp.isEVM) {
-        cfx2 = await initCfxSdk(config.conflux2)
-    }
 
     await mustInit()
 
-    const svc = new FullBlockService(cfx, cfx2)
+    const svc = new FullBlockService(cfx)
     if (args[0] === 'fix') {
         // batch size 10, loop 1 time:
         // node this fix 10 1

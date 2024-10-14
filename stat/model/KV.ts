@@ -1,4 +1,5 @@
 import {DataTypes, Model, Transaction, Sequelize, UniqueConstraintError} from "sequelize";
+import {Cfg_is_EVM} from "../config/StatConfig";
 
 export interface IKV {
     key: string;
@@ -81,6 +82,11 @@ export class KV extends Model<IKV> implements IKV {
         return KV.upsert({key, value: value.toString()}, {transaction: dbTx})
     }
     static async getSwitch(key: string): Promise<boolean> {
+        if (key === IS_EVM2) {
+            if (Cfg_is_EVM != null) { //  null == undefined --> true
+                return Cfg_is_EVM;
+            }
+        }
         const str = (await KV.findOne({where: {key}}) || {}).value
         return Promise.resolve((str || '').toLowerCase() === 'true')
     }

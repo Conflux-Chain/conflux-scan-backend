@@ -108,6 +108,7 @@ export interface StatConfig{
     cfxWsUrl: string
     preload: number,
     scanApiUrl: string
+    isEvm: boolean,
     scanJsonRpcUrl: string
     database: Database;
     syncBlock: boolean,
@@ -122,7 +123,6 @@ export interface StatConfig{
     syncEpochNumber: number,
     syncEpochNumberBackward: number,
     serverTag: string,
-    erc20watchList:Erc20WatchList[],
     watchCfxBalance: boolean,
     cfxWatcherDelay:number,
     recaptchaUrl:string,
@@ -185,28 +185,19 @@ export interface StatConfig{
     wrappedUSDT: string,
 }
 
-export interface Erc20WatchList{
-    // hex address
-    address:string
-    // it's the symbol of the token. why not use real name : real name contains space.
-    name:string
-    watchDelay:number
-    tokenType:string // erc1155 needs a token type
-}
-
 export var FirstBlockNo = 0
 // for chains without core space
 export var NoCoreSpace = false
 
 export var CoreDB = 'conflux_scan';
 export var EvmDB = "evm";
-
+export var Cfg_is_EVM = false;
 /**
  *  Priority from low to high: template.js -> local.js -> specified.js
  */
 export function loadConfig(specified:string = undefined): StatConfig {
     let path = `${__dirname}/Local.js`;
-    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false, coreDB: 'conflux_scan', evmDB: 'evm'}}
+    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false, coreDB: 'conflux_scan', evmDB: 'evm', isEvm: false}}
     if (fs.existsSync(path)){
         defaultConf = require('./Local')
     }
@@ -219,6 +210,7 @@ export function loadConfig(specified:string = undefined): StatConfig {
     NoCoreSpace = conf.noCoreSpace
     CoreDB = conf.coreDB;
     EvmDB = conf.evmDB;
+    Cfg_is_EVM = conf.isEvm;
     if(conf?.consortiumBridge) {
         console.log(`web port [${conf.consortiumBridge.port}] rpc [`, conf.consortiumBridge.rpc, `]`)
         return conf;
