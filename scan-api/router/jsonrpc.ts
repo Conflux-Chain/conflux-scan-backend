@@ -110,13 +110,10 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });
       frontedConfig = { networkId, networks, contracts };
-      const urls = await KV.findAll({where: {"key": {[Op.in]:
-                      [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]
-      }}})
-      urls.forEach(kv=>{
+      for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]) {
           // use local config prior to shared DB config.
-          frontedConfig[kv.key] = config[kv.key] ?? kv.value;
-      })
+          frontedConfig[kv] = await KV.getString(kv, config[kv]);
+      }
     } catch (e) {
       logger.error({ src: 'frontend config error', msg: e });
     }
