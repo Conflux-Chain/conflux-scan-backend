@@ -195,12 +195,13 @@ export class PosQuery {
             tag.nameTag = tag.nameTag.replace('(Public Pos Pool)', '').replace('(Personal Node)', '')
         }
 
-        // availableVotes/withdrawable/locking/unlocking votes
+        // availableVotes/withdrawable/locking/unlocking votes/total reward
         const availableVotesInCfx = account.status.availableVotes * 1000
         const withdrawableInCfx =  account.status.locked  * 1000
         const countVotes = queue => queue.map(item => item.power).reduce((a, b) => a + b, 0)
         const lockingInCfx = countVotes(account.status.inQueue) * 1000
         const unlockingInCfx = countVotes(account.status.outQueue) * 1000
+        const totalReward = accountDB?.totalReward || 0
 
         // status
         let status
@@ -234,6 +235,8 @@ export class PosQuery {
             unlockingInCfx,
             poolInfo,
             forceRetired: account.status.forceRetired,
+            totalReward,
+
         } as AccountOverview
     }
     // Supports sorting by availableVotes/votingPower/createdAt/updatedAt
@@ -440,6 +443,7 @@ class AccountOverview {
     lockingInCfx: number = 0// deposit freezing period
     unlockingInCfx: number = 0// unlocking
     forceRetired: number = null// the block number when the votes was retired
+    totalReward: number = 0// total reward
 
     poolInfo: {
         address: string,

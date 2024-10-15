@@ -1,4 +1,4 @@
-import {ConfluxOption, loadConfig, StatConfig} from "../../config/StatConfig";
+import {ConfluxOption, loadConfig, NoCoreSpace, StatConfig} from "../../config/StatConfig";
 import {saveAbiInfo} from "../../model/ContractInfo";
 import {StatApp} from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
@@ -583,7 +583,7 @@ import {u} from "@web3identity/address-encoder/lib/groestl-hash-js/op";
 import zlib from "zlib";
 import {TokenSecurityAudit, TokenSecurityAudit2} from "../../model/TokenSecurityAudit";
 import {Contract, Contract2} from "../../model/Contract";
-import {buildBlockExt, FullBlock, FullBlockExt, FullTransaction} from "../../model/FullBlock";
+import {AddressTransactionIndex, buildBlockExt, FullBlock, FullBlockExt, FullTransaction} from "../../model/FullBlock";
 import {FullBlockService} from "../FullBlockService";
 import {PosAccount, PosBlock} from "../../model/PoS";
 import {PosDailyStatMix} from "../pos/PosStat";
@@ -1019,6 +1019,82 @@ async function fixEffectiveGasPrice(minEpoch: number, maxEpoch: number, once: bo
     console.log(`done!`)
 }
 
+const BigFixed = require('bigfixed');
+const KEY_TX_FEE_BY_GAS_CHARGED = 'KEY_TX_FEE_BY_GAS_CHARGED'
+async function fixTxFeeEvm(minEpoch: number, maxEpoch: number, times: number) {
+    console.log(`fixTxFeeEvm ------ minEpoch ${minEpoch} maxEpoch ${maxEpoch} times ${times}`)
+    let lastEpoch = await KV.getNumber(KEY_TX_FEE_BY_GAS_CHARGED, minEpoch)
+    const pageSize = 1000
+    let runTimes = 0
+    do{
+        runTimes++
+        const txs = await FullTransaction.findAll({
+            where:{
+                [Op.and]: [
+                    {epoch: {[Op.gte]: lastEpoch}},
+                    {epoch: {[Op.lte]: maxEpoch}},
+                    {gasPrice: {[Op.gt]: 0}}
+                ]
+            },
+            order: [['epoch', 'asc']],
+            offset: 0,
+            limit: pageSize,
+            logging: sql => times && console.log(`lastEpoch ${lastEpoch}, maxEpoch ${maxEpoch}, query txs: ${sql}`)
+        })
+        if(!txs?.length) {
+            break
+        }
+        console.log(`txs ${txs.length} epoch [${txs[0].epoch}, ${txs[txs.length-1].epoch}]`)
+
+        for (const tx of txs) {
+            const [txn, rcpt] = await Promise.all([
+                cfx.getTransactionByHash(tx.hash),
+                cfx.getTransactionReceipt(tx.hash)
+            ])
+            lastEpoch = rcpt.epochNumber
+
+            // console.log(`hash ${txn.hash} gasUsed ${rcpt?.gasUsed} gas ${txn.gas} gasPrice ${typeof txn.gasPrice}`)
+            const gasCharged = Math.max(Number(rcpt?.gasUsed || 0), (Number(txn.gas) * 3) / 4)
+            const gas = BigFixed(txn.gasPrice).mul(BigFixed(gasCharged))
+
+            const txDB = await FullTransaction.findOne({where:{hash: rcpt.transactionHash}})
+            await FullTransaction.sequelize.transaction(async (dbTx) => {
+                await FullTransaction.update({gas: Number(gas)},
+                {
+                    where: {hash: rcpt.transactionHash},
+                    transaction: dbTx, /*logging: sql => console.log(`update tx: ${sql}`)*/
+                })
+                await AddressTransactionIndex.update({gas: Number(gas)},
+                    {
+                        where: {addressId: txDB.fromId, epoch: txDB.epoch, blockPosition: txDB.blockPosition, txPosition: txDB.txPosition},
+                        transaction: dbTx, /*logging: sql => console.log(`update address tx: ${sql}`)*/
+                })
+                await AddressTransactionIndex.update({gas: Number(gas)},
+                    {
+                        where: {addressId: txDB.toId, epoch: txDB.epoch, blockPosition: txDB.blockPosition, txPosition: txDB.txPosition},
+                        transaction: dbTx, /*logging: sql => console.log(`update address tx: ${sql}`)*/
+                })
+            });
+
+            // record cursor
+            await KV.upsert({key: KEY_TX_FEE_BY_GAS_CHARGED, value: `${lastEpoch}`})
+            await sleep(10)
+
+
+            // run specified times
+            if(runTimes >= times) {
+                return
+            }
+        }
+
+        // last batch
+        if(txs?.length < pageSize) {
+            break
+        }
+    }while (true)
+    console.log(`done!`)
+}
+
 async function run() {
     await init();
     if(type === 1){
@@ -1088,6 +1164,9 @@ async function run() {
     if(type === 29) {
         await fixBlockGasUsed(maxEpoch)
     }
+    if(type === 30) {
+        await fixTxFeeEvm(minEpoch, maxEpoch, times)
+    }
 }
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
@@ -1113,7 +1192,7 @@ if(type === 21 || type === 22 || type === 23) {
     max = Number(args[3]);
 }
 
-if(type === 25 || type === 28) {
+if(type === 25 || type === 28 || type === 30) {
     minEpoch = Number(args[2]);
     maxEpoch = Number(args[3]);
 }
@@ -1128,6 +1207,10 @@ if(type === 28) {
 
 if(type === 29) {
     maxEpoch = Number(args[2]);
+}
+
+if(type === 30) {
+    times = Number(args[4])
 }
 
 run().then();
