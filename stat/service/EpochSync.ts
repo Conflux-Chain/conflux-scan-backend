@@ -63,7 +63,7 @@ export class EpochSync extends SyncBase{
     public static SYNC_VERIFY_LINK = true;
     public static SYNC_EVM_ADDR = true;
     public static SYNC_TRANSFERRED_NFT = true;
-    public static SYNC_CENSOR_ITEM = true;
+    public static SYNC_CENSOR_ITEM = false;
     public static SYNC_NAME_TAG = true;
     public static SYNC_NFT_TRANSFER = true;
     public static SYNC_ADDR_NFT_TRANSFER = true;
@@ -160,6 +160,10 @@ export class EpochSync extends SyncBase{
                 process.exit(9)
             }
             StatApp.epochCIP1559Enabled = epochCIP1559Enabled
+        }
+
+        if (this.app.config.censorApiKey && this.app.config.censorSecretKey) {
+            EpochSync.SYNC_CENSOR_ITEM = true
         }
     }
 
