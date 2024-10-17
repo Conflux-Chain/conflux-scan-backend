@@ -868,17 +868,19 @@ export class FullBlockQuery {
 
         // ready
         if(firstTxStatus?.endsWith('ready')){
-            const proposedBlock = blockNumber;
-            const confirmedBlock = BigInt(await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
-            const blockGap = Math.abs(Number(proposedBlock??0) - Number(confirmedBlock))
-            if(blockGap > 100_000){
-                const pendingDetail = {
-                    code: 31,
-                    message: 'The block gap [proposedBlock confirmedBlock] exceeded 100,000',
-                    params:{proposedBlock, confirmedBlock}
-                };
-                lodash.defaults(result, {pendingDetail});
-                return result;
+            if(blockNumber) {
+                const proposedBlock = blockNumber;
+                const confirmedBlock = BigInt(await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
+                const blockGap = Math.abs(Number(proposedBlock) - Number(confirmedBlock))
+                if(blockGap > 100_000){
+                    const pendingDetail = {
+                        code: 31,
+                        message: 'The block gap [proposedBlock confirmedBlock] exceeded 100,000',
+                        params:{proposedBlock, confirmedBlock}
+                    };
+                    lodash.defaults(result, {pendingDetail});
+                    return result;
+                }
             }
 
             const pendingDetail = {
