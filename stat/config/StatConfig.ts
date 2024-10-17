@@ -191,7 +191,7 @@ export var NoCoreSpace = false
 
 export var CoreDB = 'conflux_scan';
 export var EvmDB = "evm";
-export var Cfg_is_EVM = false;
+export var Cfg_is_EVM: boolean = null;
 /**
  *  Priority from low to high: template.js -> local.js -> specified.js
  */

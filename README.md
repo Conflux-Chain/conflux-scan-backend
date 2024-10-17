@@ -55,9 +55,9 @@ and restart the service.
     ```
 2. ./run.sh
 3. edit scan.env, change 3 PORTS, DB_NAME, and other things.
-4. work as constructions above.
+4. Follow the instructions above.
 
 ### Evm chain or e space:
 1. Run a confura cfx bridge
 2. set `IS_EVM=true` in scan.env
-3. work as constructions above.
+3. Follow the instructions above.
