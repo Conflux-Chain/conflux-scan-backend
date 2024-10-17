@@ -191,13 +191,13 @@ export var NoCoreSpace = false
 
 export var CoreDB = 'conflux_scan';
 export var EvmDB = "evm";
-export var Cfg_is_EVM = false;
+export var Cfg_is_EVM: boolean = null;
 /**
  *  Priority from low to high: template.js -> local.js -> specified.js
  */
 export function loadConfig(specified:string = undefined): StatConfig {
     let path = `${__dirname}/Local.js`;
-    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false, coreDB: 'conflux_scan', evmDB: 'evm', isEvm: false}}
+    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false, coreDB: 'conflux_scan', evmDB: 'evm', isEvm: null}}
     if (fs.existsSync(path)){
         defaultConf = require('./Local')
     }
