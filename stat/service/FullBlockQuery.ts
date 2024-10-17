@@ -870,7 +870,7 @@ export class FullBlockQuery {
         if(firstTxStatus?.endsWith('ready')){
             const proposedBlock = blockNumber;
             const confirmedBlock = BigInt(await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_CONFIRMED));
-            const blockGap = Math.abs(Number(proposedBlock - confirmedBlock));
+            const blockGap = Math.abs(Number(proposedBlock??0) - Number(confirmedBlock))
             if(blockGap > 100_000){
                 const pendingDetail = {
                     code: 31,

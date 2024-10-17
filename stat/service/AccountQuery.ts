@@ -289,14 +289,14 @@ export class AccountQuery {
         const accountInfo = await cfx.getAccount(addr);
         const sponsorInfo = await cfx.getSponsorInfo(addr);
 
-        const usedStoragePoints = BigFixed(sponsorInfo.usedStoragePoints);
+        const usedStoragePoints = BigFixed(sponsorInfo.usedStoragePoints??0);
         const usedStoragePointsInCFX = usedStoragePoints.div(BigFixed(1024)).mul(BigFixed(1e18));
         const usedRefundableInCFX = BigFixed(accountInfo.collateralForStorage).sub(BigFixed(usedStoragePointsInCFX));
 
-        const totalStoragePoints = BigFixed(sponsorInfo.availableStoragePoints).add(BigFixed(sponsorInfo.usedStoragePoints));
+        const totalStoragePoints = BigFixed(sponsorInfo.availableStoragePoints??0).add(BigFixed(sponsorInfo.usedStoragePoints??0));
         const totalRefundableInCFX = BigFixed(sponsorInfo.sponsorBalanceForCollateral).add(usedRefundableInCFX);
 
-        const availStoragePoints = BigFixed(sponsorInfo.availableStoragePoints);
+        const availStoragePoints = BigFixed(sponsorInfo.availableStoragePoints??0);
         const availRefundableInCFX = BigFixed(sponsorInfo.sponsorBalanceForCollateral);
 
         return {
