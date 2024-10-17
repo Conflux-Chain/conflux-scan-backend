@@ -1,6 +1,6 @@
 # conflux-scan-backend
 
-## how to deploy:
+## How to deploy:
 - ./run.sh
 
 It will generate `scan.env` file. Edit it as needed.
@@ -45,3 +45,19 @@ If you edit stat/config.Prod.ts, you MUST compile it:
 npm run compile
 ```
 and restart the service.
+
+
+### More than one chain(space):
+1. clone this repo to another folder, with different name.
+   Docker compose will use that name in container name. 
+    ```
+     git clone repo_url <FolderName>
+    ```
+2. ./run.sh
+3. edit scan.env, change 3 PORTS, DB_NAME, and other things.
+4. work as constructions above.
+
+### Evm chain or e space:
+1. Run a confura cfx bridge
+2. set `IS_EVM=true` in scan.env
+3. work as constructions above.
