@@ -76,9 +76,9 @@ class EpochMax {
     epoch: number; biz:string; createdAt: Date;
 }
 let measurement = 'sync_epoch_3';
-function connectInflux({host, database, username, password}) {
+function connectInflux({host, database, username, password,  port, protocol}) {
     const influx = new InfluxDB({
-        host,        database, username, password,
+        host,        database, username, password, port, protocol,
         schema: [
             {
                 measurement,
@@ -126,12 +126,12 @@ async function setup() {
     // host = 'http://influxdb-luhhh4.conflux-chain.org.cn'
     const config = await init();
     console.log(`------init done-----`)
-    const {host, database, username, password, measurement: confMeasurement} = config.influxDB
+    const {host, database, username, password,  port, protocol, measurement: confMeasurement} = config.influxDB
     if (confMeasurement) {
         measurement = confMeasurement
     }
     console.log(`influx db is ${host} ${database} user ${username} measurement ${measurement}`)
-    const inf = connectInflux({host, database, username, password});
+    const inf = connectInflux({host, database, username, password,  port, protocol});
     // await test(inf);
     await copyAll(inf)
     setInterval(()=>{
