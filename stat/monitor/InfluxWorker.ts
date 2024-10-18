@@ -10,6 +10,11 @@ import {FullBlock} from "../model/FullBlock";
 import {HeartBeatBean} from "../model/HeartBeat";
 import {KEY_1155data_EPOCH, KV} from "../model/KV";
 import {Op} from "sequelize";
+import {Conflux} from "js-conflux-sdk";
+import {initCfxSdk} from "../service/common/utils";
+
+let cfx: Conflux;
+
 async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a.epoch) {
     // model = TaskCfxTransfer;
     const max = await model.findOne({order: [['epoch', 'desc']]})
@@ -67,7 +72,12 @@ async function copyAll(inf: InfluxDB) {
     await copy(inf, Epoch, 'sync-epoch')
     await copy(inf, FullBlock, 'sync-block-and-tx')
     // influx worker itself
-    await write(inf, measurement, {epoch: Date.now(), createdAt: new Date(), biz: 'influx-worker'})
+    await write(inf, measurement, {epoch: Date.now(), createdAt: new Date(), biz: 'influx-worker'});
+    await cfx.getEpochNumber().then(res=>{
+        return write(inf, measurement, {epoch: res, createdAt: new Date(), biz: 'chain-height'});
+    }).catch(e=>{
+        console.log(`failed to get epoch number`, e)
+    })
     await heartBeat(inf)
     // await epochCursorInConfig(inf)
     console.log(`---`)
@@ -126,6 +136,7 @@ async function setup() {
     // host = 'http://influxdb-luhhh4.conflux-chain.org.cn'
     const config = await init();
     console.log(`------init done-----`)
+    cfx = await initCfxSdk(config.conflux);
     const {host, database, username, password,  port, protocol, measurement: confMeasurement} = config.influxDB
     if (confMeasurement) {
         measurement = confMeasurement
