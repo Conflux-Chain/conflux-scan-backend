@@ -4,7 +4,7 @@ if [ "$1" == "clean" ]; then
 	rm stat/config/Prod.*
 	docker compose stop
 	exit
-fi	
+fi
 
 echo "Deploy blockchain browser(scan)"
 _DB_NAME="core"
@@ -49,7 +49,7 @@ if [ -s "./scan.env" ]; then
         }
         location /$SPACE/open/ {
                 proxy_pass http://127.0.0.1:$OPEN_PORT/open/;
-        }		
+        }
 		"""
 		echo "you may need these urls to setup frontend:"
 		echo "scan backend api: http://$PUB_IP/$SPACE"
@@ -62,7 +62,7 @@ if [ -s "./scan.env" ]; then
 			echo "scan open api   : http://$PUB_IP/core/open"
 			echo
 		fi
-		exit 
+		exit
 	fi
 else
 	echo """
@@ -88,7 +88,7 @@ _RPC="http://127.0.0.1:12537"
 V1_PORT=8895
 STAT_PORT=8087
 OPEN_PORT=9527
-# un-comment if it's a evm compatiable chain 
+# un-comment if it's a evm compatiable chain
 #_IS_EVM=true
 # for conflux e space
 #CORE_DB=core
@@ -98,7 +98,7 @@ OPEN_PORT=9527
 	echo "We have created a config file, scan.env."
 	echo "Edit it and run this script again"
 	exit
-fi	
+fi
 
 echo "OS requirements: Ubuntu Noble 24.04 (LTS)"
 _OS=$(cat /etc/issue || echo 'unknown')
@@ -109,7 +109,7 @@ echo "Software requirements: git: $_GIT"
 if [ "not found" == "${_GIT}" ]; then
 	echo "Please install git first, eg.: sudo apt install git"
 	exit
-fi	
+fi
 
 echo "Checking repository accessibility..."
 echo $_GIT_REPO
@@ -129,8 +129,8 @@ if [ "not found" == "${_DOCKER}" ]; then
 	echo "Please install docker first, see $_DOCKER_DOC"
 	#exit
 else
-	sudo docker version | head -2	
-fi	
+	sudo docker version | head -2
+fi
 
 # docker compose
 _DOCKER_C=$(docker compose version 2>/dev/null || echo "not found")
@@ -139,13 +139,14 @@ if [ "not found" == "${_DOCKER_C}" ]; then
 	_DOCKER_DOC="https://docs.docker.com/compose/install/"
 	echo "Please install docker compose first, see $_DOCKER_DOC"
 	exit
-fi	
+fi
 
 # nodejs
 fn_loadNVM() {
 	export NVM_DIR="$HOME/.nvm"
 	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+	return 0
 }
 fn_loadNVM
 _NODE=$(which node || echo "not found")
@@ -172,8 +173,8 @@ if [ "not found" == "${_NODE}" ]; then
 	fi
 else
 	echo "node version is:"
-	node -v	
-fi	
+	node -v
+fi
 
 which jq || sudo apt install jq
 
@@ -181,7 +182,7 @@ if [[ $_RPC == "" ]]; then
 	echo "must set the rpc url."
 	exit
 else
-	echo "detect chain at $_RPC ..."	
+	echo "detect chain at $_RPC ..."
 	_JSON=$(curl -XPOST -H"content-type: application/json" -s -d '
 	{"jsonrpc":"2.0","id":"0", "method": "cfx_getStatus"}
 	' "$_RPC")
@@ -199,14 +200,14 @@ else
 		else
 			echo "evm chain is supported, but you must run a cfx-bridge. read the comments in scan.env, _RPC section."
 			exit
-		fi	
+		fi
 	elif [ "0" == $(echo $_JSON | grep "chainId" | wc -l) ]; then
 		echo $_JSON | jq
 		echo "failed to dectect chain id"
 		exit
 	else
 		echo "supported chain"
-	fi		
+	fi
 	# check getEpochReceipts
 	_JSON=$(curl -XPOST -H"content-type: application/json" -s -d '
 	{"jsonrpc":"2.0","id":"0", "method": "cfx_getEpochReceipts", "params": ["0x01"]}
@@ -216,8 +217,8 @@ else
 		echo "the rpc endpoint must support/enable/allow this method:cfx_getEpochReceipts"
 		echo $_JSON
 		exit
-	fi		
-fi	
+	fi
+fi
 # mysql
 if [[ $_HAS_MYSQL_SERVER =~ ^[Yy]$ ]]; then
 	#nothing
@@ -228,8 +229,8 @@ elif [[ "$_DB_IN_DOCKER_CREATED" == "1" ]]; then
 fi
 if [[ $_HAS_MYSQL_SERVER =~ ^[Yy]$ ]]; then
 	echo "use db config in env file"
-else	
-	read -p "Start a mysql server in docker? type y/n: " -n 1 -r 
+else
+	read -p "Start a mysql server in docker? type y/n: " -n 1 -r
 	echo    # (optional) move to a new line
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		_DB_HOST="127.0.0.1"
@@ -242,7 +243,7 @@ else
 	else
 		echo "user quit"
 		exit
-	fi	
+	fi
 fi
 echo "$_DB_HOST $_DB_PORT $_DB_USER $_DB_PWD $_DB_NAME"
 
@@ -253,11 +254,11 @@ if [ "not found" == "${_MYSQL_C}" ]; then
 	echo "install mysql client..."
 	sudo apt install mysql-client-core-8.0
 else
-	mysql --version	
-fi	
+	mysql --version
+fi
 
 echo "test db config"
-while true 
+while true
 do
 _DB_V=$(mysql -h $_DB_HOST -P$_DB_PORT -u $_DB_USER -p$_DB_PWD $_DB_NAME -e "select version() as DB_VERSION;" 2>&1 || echo "failed to access db")
 # ERROR 1049 (42000): Unknown database
@@ -268,13 +269,13 @@ if [ "1" == "$(echo $_DB_V | grep 'ERROR 1049 (42000)' | wc -l)" ]; then
 	if [ "$?" != "0" ]; then
 		exit
 	else
-		echo "created"		
+		echo "created"
 		break
 	fi
 elif [ "1" == "$(echo $_DB_V | grep 'Lost connection to MySQL server ' | wc -l)" ]; then
 	echo " db is not ready, $_DB_V"
 	echo "try again..."
-	sleep 5 
+	sleep 5
 	continue
 elif [ "1" == "$(echo $_DB_V | grep 'DB_VERSION' | wc -l)" ]; then
 	echo "DB is OK"
@@ -284,30 +285,30 @@ elif [ "1" == "$(echo $_DB_V | grep 'DB_VERSION' | wc -l)" ]; then
 else
 	echo "error: $_DB_V"
 	exit
-fi	
+fi
 done
 
 echo "check local repo"
 if [ -s ".git" ]; then
 	echo "local repo exists, skip cloning."
-else	
+else
 	git init .
 	git branch main
-	git remote add origin $_GIT_REPO 
+	git remote add origin $_GIT_REPO
 	git pull origin main
-fi 
+fi
 
 echo "install project dependencies..."
 which rustc || sudo apt  install rustc
-which cargo || sudo apt  install cargo  
+which cargo || sudo apt  install cargo
 which make || sudo apt install make
-which g++|| sudo apt install g++ 
+which g++|| sudo apt install g++
 
 if [ -s "./node_modules" ]; then
 	echo "node_modules exists"
 else
 	npm i
-fi	
+fi
 
 if [ -s "./stat/config/Prod.ts" ]; then
 	echo "config file exists"
@@ -315,13 +316,13 @@ else
 	echo "generate config file ..."
 	if [ "" != "$_IS_EVM" ]; then
 		_IS_EVM="isEvm: $_IS_EVM, coreDB: '$CORE_DB',"
-	fi		
+	fi
 	if [ "" != "$_NO_CORE_SPACE" ]; then
 		_NO_CORE_SPACE="noCoreSpace: $_NO_CORE_SPACE,"
-	fi		
+	fi
 	if [ "" != "$CORE_RPC" ]; then
 		CORE_RPC="conflux2: '$CORE_RPC',"
-	fi		
+	fi
 	echo """
 // eslint-disable-next-line no-unused-vars
 export default {
@@ -333,7 +334,7 @@ export default {
     cfxTransferRpc: { url: '$_RPC',keepAlive: true,},
     blockSyncRpc: { url: '$_RPC',keepAlive: true,},
     preload: 4,
-    $_IS_EVM $_NO_CORE_SPACE $CORE_RPC 
+    $_IS_EVM $_NO_CORE_SPACE $CORE_RPC
     database: { USE_MYSQL: true, syncSchema: true, },
   databaseRW: {
     USE_MYSQL: true,
@@ -348,7 +349,7 @@ export default {
     },
     logging: false,
   },
-}  
+}
 	""" > ./stat/config/Prod.ts
 	echo """
 const frontend = require('./frontend');
@@ -365,7 +366,7 @@ conflux: {
         "CORE_OPEN_API_URL": 'http://$PUB_IP/core/open',
 }
 	""" > ./scan-api/config/local.js
-fi	
+fi
 
 npm run compile || exit
 
@@ -373,9 +374,9 @@ dc="sudo docker compose"
 fn_up() {
 	if [ "0" == "$(sudo docker compose ps -a | grep $1 | wc -l)" ]; then
 		echo "create container: $1..."
-		$dc up -d $1 
-	else 
-		$dc start $1 
+		$dc up -d $1
+	else
+		$dc start $1
 	fi
 }
 fn_up block
@@ -387,10 +388,10 @@ fn_up token_transfer
 fn_up token_x
 fn_up compiler
 sleep 5
-fn_up api 
-fn_up open_api 
+fn_up api
+fn_up open_api
 #$dc logs -n 10 -f block
-#$dc logs -n 10 -f epoch 
+#$dc logs -n 10 -f epoch
 #$dc logs -n 10 -f cfx_transfer
 #$dc logs -n 10 -f token_transfer
 #$dc logs -n 10 -f token_x
