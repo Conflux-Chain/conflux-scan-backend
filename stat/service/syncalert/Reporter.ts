@@ -31,14 +31,14 @@ export class Reporter{
             app:{ config }
         } = this;
 
-        const {host, database, username, password, disable, measurement} = config.influxDB;
+        const {host, database, username, password, disable, measurement, port, protocol,} = config.influxDB;
         if (disable) {
             console.log(`influx is disabled`)
             return;
         }
         this.measurement = measurement || 'scan_sync_monitor';
         this.influx = new InfluxDB({
-            host, database, username, password,
+            host, database, username, password, port, protocol,
             schema: [
                 {
                     measurement: this.measurement,
@@ -66,7 +66,7 @@ export class Reporter{
             new EpochMiscSampler(this.app),
         ];
 
-        if(!config.conflux.consortiumMode) {
+        if(!config.conflux.consortiumMode && !config.traceNotAvailable) {
             this.samplerArray.push(new CfxTransferSampler(this.app));
         }
 
