@@ -109,3 +109,5 @@ async function main() {
 if (module == require.main) {
 	main().then()
 }
+
+// node stat/service/tool/syncChecker.js fixTx 0 dryRun
