@@ -252,7 +252,7 @@ async function run() {
 
 async function getNotExecutedTransaction(epochNumber) {
     const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber);
-    const blockArray = await batchFetchBlock(cfx,  blockHashArray);
+    const blockArray = await batchFetchBlock(cfx,  blockHashArray, null, epochNumber);
     for (const block of blockArray) {
         const transactionArray = block?.transactions || [];
         for (const transaction of transactionArray) {

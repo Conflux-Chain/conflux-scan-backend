@@ -344,27 +344,11 @@ function formatBlock(arr) {
         arr[idx] = format.block.$or(null)(blk);
     })
 }
-export function batchFetchBlock(cfx:Conflux, hashes:string[]) {
+export function batchFetchBlock(cfx:Conflux, hashes:string[], pivot: string, epoch: number) {
+    pivot = pivot ?? hashes[hashes.length-1];
     return Promise.all(hashes.map(hash=>{
-        return cfx.getBlockByHash(hash, true);
+        return cfx.getBlockByHashWithPivotAssumption(hash, pivot, epoch);
     }))
-}
-export function batchFetchBlockSdk(cfx:Conflux, hashes:string[], detail = true, doFormat = true,
-    checkPivotOptions: { check: boolean, epochNumber?: number } = { check: false }) : Promise<any[]> {
-    const method = checkPivotOptions.check ? "cfx_getBlockByHashWithPivotAssumption" : "cfx_getBlockByHash"
-    const pivotBlockHash = hashes[hashes.length - 1]
-    const epoch = `0x${Number(checkPivotOptions.epochNumber).toString(16)}`
-    return cfx.provider.batch(
-        hashes.map(hash=>{
-            const params = checkPivotOptions.check ? [hash, pivotBlockHash, epoch] : [hash, detail]
-            return {method, params}
-        })
-    ).then(arr=>{
-        if (doFormat) {
-            formatBlock(arr)
-        }
-        return arr
-    })
 }
 
 export function isNewFormatTrace(traceArray2d:any[] = []) {

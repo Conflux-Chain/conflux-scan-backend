@@ -280,7 +280,7 @@ export abstract class SyncBase{
         if (epochNumber != 0 && receipts === null) {
             throw new Error(`[epoch=${epochNumber}]not ready, receipts is null`);
         }
-        const blockArray = await batchFetchBlock(cfx,  blockHashArray);
+        const blockArray = await batchFetchBlock(cfx,  blockHashArray, null, epochNumber);
         if (epochNumber !== 0 && blockArray.length !== receipts.length && epochNumber !== 0) {
             throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
         }
