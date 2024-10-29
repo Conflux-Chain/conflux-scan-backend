@@ -260,7 +260,9 @@ export class FullBlockService {
                 let tx = blk.transactions[txIdx];
                 tx.receipt = (receipts[idx]||[])[txIdx]
                 const st = tx.receipt?.outcomeStatus
-                if (st != 1 && st != 0 && tx.status == st) {
+                if (st != 1 && st != 0
+                  && ((tx.status == null && st == 2/*not executed*/) || tx.status == st /*consistent, non-fail, non-success*/)
+                ) {
                     continue
                 }
                 // check consistency
