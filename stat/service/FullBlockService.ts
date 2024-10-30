@@ -485,14 +485,16 @@ export class FullBlockService {
             }
             block.executedTxnCount = pos
             if (!NoCoreSpace) { // !NoCoreSpace => hasCoreSpace, share gasLimit
-                // After the update, rpc will return the actual gasLimit, and we won't need to calculate it.
-                // Currently, hardcoded it for migration.
-                block.gasLimit = BigInt(60_000_000); // in BlockService.ts, the logic is also related to here.
-                // CONST.GAS_LIMIT_PROPORTION.evm , this factor is used when querying block list, not here.
-                const proportion = StatApp.isEVM ? 1 :
-                    (block.epochNumber >= StatApp.epochCIP1559Enabled ? CONST.GAS_LIMIT_PROPORTION.core : 1)
-                block.gasLimit = block.gasLimit * BigInt(100 * proportion) / BigInt(100)
-                block.gasUsed = sumGasLimit
+                if (StatApp.isEVM) {
+                    // CONST.GAS_LIMIT_PROPORTION.evm , this factor is used when querying block list, not here.
+                } else if (block.epochNumber >= StatApp.epochCIP1559Enabled) {
+                    // After the update, rpc will return the actual gasLimit, and we won't need to calculate it.
+                    // Currently, hardcoded it for migration.
+                    // in BlockService.ts, the logic is also related to here.
+                    // 60 * 0.9 = 54
+                    block.gasLimit = BigInt(54_000_000);// * BigInt(100 * CONST.GAS_LIMIT_PROPORTION.core) / BigInt(100);
+                }
+                block.gasUsed = sumGasLimit;
             }
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
 
