@@ -1,0 +1,739 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: scan-sync
+    folder: conflux-scan
+    interval: 1m
+    rules:
+      - uid: ee27xjntbpaf4a
+        title: sync-block-tx-epoch
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: Z_OpweXnz
+            model:
+              adhocFilters: []
+              alias: ""
+              datasource:
+                type: influxdb
+                uid: Z_OpweXnz
+              groupBy:
+                - params:
+                    - $__interval
+                  type: time
+                - params:
+                    - "null"
+                  type: fill
+              intervalMs: 1000
+              limit: ""
+              maxDataPoints: 43200
+              measurement: epochs
+              orderByTime: ASC
+              policy: default
+              query: ""
+              rawSql: ""
+              refId: A
+              resultFormat: time_series
+              select:
+                - - params:
+                      - epoch
+                    type: field
+                  - params: []
+                    type: max
+                  - params:
+                      - block-tx
+                    type: alias
+              slimit: ""
+              tags:
+                - key: biz
+                  operator: =
+                  value: sync-block-and-tx
+              tz: ""
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                      - 0
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: diff_abs
+                  type: query
+              datasource:
+                name: Expression
+                type: __expr__
+                uid: __expr__
+              expression: ""
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        dashboardUid: GsMOJ2xSk
+        panelId: 26
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: GsMOJ2xSk
+          __panelId__: "26"
+        labels: {}
+        isPaused: false
+        notification_settings:
+          receiver: scan-ding
+      - uid: be2b4x3f9i8e8a
+        title: sync-gap-block
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: Z_OpweXnz
+            model:
+              adhocFilters: []
+              alias: ""
+              datasource:
+                type: influxdb
+                uid: Z_OpweXnz
+              groupBy:
+                - params:
+                    - $__interval
+                  type: time
+                - params:
+                    - "null"
+                  type: fill
+              intervalMs: 1000
+              limit: ""
+              maxDataPoints: 43200
+              measurement: epochs
+              orderByTime: ASC
+              policy: default
+              query: ""
+              rawSql: ""
+              refId: A
+              resultFormat: time_series
+              select:
+                - - params:
+                      - syncGap
+                    type: field
+                  - params: []
+                    type: max
+              slimit: ""
+              tags:
+                - key: syncType::tag
+                  operator: =
+                  value: blockTx
+              tz: ""
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 100
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: avg
+                  type: query
+              datasource:
+                name: Expression
+                type: __expr__
+                uid: __expr__
+              expression: ""
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        dashboardUid: GsMOJ2xSk000
+        panelId: 27
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: GsMOJ2xSk000
+          __panelId__: "27"
+          summary: '[scan] 1029 hk , sync gap is too large.'
+        labels: {}
+        isPaused: false
+        notification_settings:
+          receiver: scan-ding
+      - uid: be2baaa07bgn4e
+        title: syn-gap:block
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: Z_OpweXnz
+            model:
+              adhocFilters: []
+              alias: ""
+              datasource:
+                type: influxdb
+                uid: Z_OpweXnz
+              groupBy:
+                - params:
+                    - $__interval
+                  type: time
+                - params:
+                    - "null"
+                  type: fill
+              intervalMs: 1000
+              limit: ""
+              maxDataPoints: 43200
+              measurement: epochs
+              orderByTime: ASC
+              policy: default
+              query: ""
+              rawSql: ""
+              refId: A
+              resultFormat: time_series
+              select:
+                - - params:
+                      - syncGap
+                    type: field
+                  - params: []
+                    type: max
+              slimit: ""
+              tags:
+                - key: syncType::tag
+                  operator: =
+                  value: blockTx
+              tz: ""
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: min
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: be2ba4kkiy51ca
+        panelId: 1
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: be2ba4kkiy51ca
+          __panelId__: "1"
+          summary: '[scan] 1029 HK , sync gap of block is too large.'
+        labels: {}
+        isPaused: false
+        notification_settings:
+          receiver: scan-ding
+      - uid: fe2bazvgjdrlsa
+        title: syn-gap:cfx-transfer
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: Z_OpweXnz
+            model:
+              adhocFilters: []
+              alias: ""
+              datasource:
+                type: influxdb
+                uid: Z_OpweXnz
+              groupBy:
+                - params:
+                    - $__interval
+                  type: time
+                - params:
+                    - "null"
+                  type: fill
+              intervalMs: 1000
+              limit: ""
+              maxDataPoints: 43200
+              measurement: epochs
+              orderByTime: ASC
+              policy: default
+              query: ""
+              rawSql: ""
+              refId: A
+              resultFormat: time_series
+              select:
+                - - params:
+                      - syncGap
+                    type: field
+                  - params: []
+                    type: max
+              slimit: ""
+              tags:
+                - key: syncType::tag
+                  operator: =
+                  value: cfxTransfer
+              tz: ""
+          - refId: B
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: min
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: be2ba4kkiy51ca
+        panelId: 2
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: be2ba4kkiy51ca
+          __panelId__: "2"
+          summary: '[scan] 1029 HK , sync gap of cfx transferring is too large.'
+        labels: {}
+        isPaused: false
+        notification_settings:
+          receiver: scan-ding
+      - uid: fe2bbr72jzhtsf
+        title: syn-gap:epoch misc
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: Z_OpweXnz
+            model:
+              adhocFilters: []
+              alias: ""
+              datasource:
+                type: influxdb
+                uid: Z_OpweXnz
+              groupBy:
+                - params:
+                    - $__interval
+                  type: time
+                - params:
+                    - "null"
+                  type: fill
+              intervalMs: 1000
+              limit: ""
+              maxDataPoints: 43200
+              measurement: epochs
+              orderByTime: ASC
+              policy: default
+              query: ""
+              rawSql: ""
+              refId: A
+              resultFormat: time_series
+              select:
+                - - params:
+                      - syncGap
+                    type: field
+                  - params: []
+                    type: max
+              slimit: ""
+              tags:
+                - key: syncType::tag
+                  operator: =
+                  value: epochMisc
+              tz: ""
+          - refId: B
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: min
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: be2ba4kkiy51ca
+        panelId: 3
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: be2ba4kkiy51ca
+          __panelId__: "3"
+          summary: '[scan] 1029 HK , sync gap of epoch misc is too large.'
+        labels: {}
+        isPaused: false
+        notification_settings:
+          receiver: scan-ding
+      - uid: fe2bc247t5x4wd
+        title: syn-gap:pos block
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: Z_OpweXnz
+            model:
+              adhocFilters: []
+              alias: ""
+              datasource:
+                type: influxdb
+                uid: Z_OpweXnz
+              groupBy:
+                - params:
+                    - $__interval
+                  type: time
+                - params:
+                    - "null"
+                  type: fill
+              intervalMs: 1000
+              limit: ""
+              maxDataPoints: 43200
+              measurement: epochs
+              orderByTime: ASC
+              policy: default
+              query: ""
+              rawSql: ""
+              refId: A
+              resultFormat: time_series
+              select:
+                - - params:
+                      - syncGap
+                    type: field
+                  - params: []
+                    type: max
+              slimit: ""
+              tags:
+                - key: syncType::tag
+                  operator: =
+                  value: posBlock
+              tz: ""
+          - refId: B
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: min
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 3
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: be2ba4kkiy51ca
+        panelId: 4
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: be2ba4kkiy51ca
+          __panelId__: "4"
+          summary: '[scan] 1029 HK , sync gap of pos block is too large.'
+        labels: {}
+        isPaused: false
+        notification_settings:
+          receiver: scan-ding
+      - uid: ce2bc5isy9tkwd
+        title: syn-gap:token-transfer
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: Z_OpweXnz
+            model:
+              adhocFilters: []
+              alias: ""
+              datasource:
+                type: influxdb
+                uid: Z_OpweXnz
+              groupBy:
+                - params:
+                    - $__interval
+                  type: time
+                - params:
+                    - "null"
+                  type: fill
+              intervalMs: 1000
+              limit: ""
+              maxDataPoints: 43200
+              measurement: epochs
+              orderByTime: ASC
+              policy: default
+              query: ""
+              rawSql: ""
+              refId: A
+              resultFormat: time_series
+              select:
+                - - params:
+                      - syncGap
+                    type: field
+                  - params: []
+                    type: max
+              slimit: ""
+              tags:
+                - key: syncType::tag
+                  operator: =
+                  value: tokenTransfer
+              tz: ""
+          - refId: B
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: min
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: be2ba4kkiy51ca
+        panelId: 5
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          __dashboardUid__: be2ba4kkiy51ca
+          __panelId__: "5"
+          summary: '[scan] 1029 HK , sync gap of token transferring is too large.'
+        labels: {}
+        isPaused: false
+        notification_settings:
+          receiver: scan-ding
