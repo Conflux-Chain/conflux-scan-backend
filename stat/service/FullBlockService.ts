@@ -26,7 +26,7 @@ import {
     KV
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
-import {batchFetchBlock, batchFetchBlockSdk, noVerboseAddr} from "./common/utils";
+import {batchFetchBlock, noVerboseAddr} from "./common/utils";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
@@ -48,7 +48,6 @@ export class FullBlockService {
     public latestConfirmEpoch = 0;
     public latestStateEpoch = -1
     public maxEpochOfBlock = 0
-    public debugLog:boolean = true
     preLoadMap:PreloadMap
     private powSidePosSync: PowSidePosSync;
     constructor(cfx:Conflux) {
@@ -79,7 +78,7 @@ export class FullBlockService {
         let maxAtDb = await FullBlock.findOne({
             where: {epoch: useWhichEpoch, pivot: true}
         });
-        this.debugLog && console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
+        console.log(`use max block ${maxAtDb.epoch} ${maxAtDb.hash}`)
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) : Promise<void> {
@@ -108,11 +107,11 @@ export class FullBlockService {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                that.debugLog && console.log(` try again epoch ${maxEpoch+1
+                console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message || 'no message'}`)
                 await sleep(5_000)
             } else if (ret.code === CODE_EMPTY_BLOCK) {
-                that.debugLog && console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
+                console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await sleep(5_000)
             } else {
                 maxEpoch += 1
@@ -241,7 +240,8 @@ export class FullBlockService {
             console.log(msg)
             return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
         }
-        let blockList: any[] = await batchFetchBlock(this.cfx, hashes);
+        const pivot = hashes[hashes.length-1];
+        let blockList: any[] = await batchFetchBlock(this.cfx, hashes, pivot, minEpochNumber);
 
         // fill tx receipts to block-> tx
         let code = 0
@@ -260,7 +260,9 @@ export class FullBlockService {
                 let tx = blk.transactions[txIdx];
                 tx.receipt = (receipts[idx]||[])[txIdx]
                 const st = tx.receipt?.outcomeStatus
-                if (st != 1 && st != 0) {
+                if (st != 1 && st != 0
+                  && ((tx.status == null && st == 2/*not executed*/) || tx.status == st /*consistent, non-fail, non-success*/)
+                ) {
                     continue
                 }
                 // check consistency
@@ -268,11 +270,16 @@ export class FullBlockService {
                 } else if (tx.blockHash !== blk.hash
                     || tx.receipt.epochNumber != minEpochNumber
                     || tx.receipt.transactionHash !== tx.hash
+                    || tx.status !== st
                     || tx.receipt.blockHash !== blk.hash) {
-                    message = `hash mismatch, \n block ${blk.hash}\n tx block hash ${tx.blockHash
-                    } \n tx hash ${tx.hash}\n receipt tx hash ${tx.receipt.transactionHash
-                    }\n receipt block hash ${tx.receipt.blockHash} \n tx epoch ${tx.receipt.epochNumber} != ${minEpochNumber}`
-                    console.log(message)
+                    message = `properties mismatch, 
+                     \n block              ${blk.hash
+                    }\n tx block hash      ${tx.blockHash
+                    }\n receipt block hash ${tx.receipt.blockHash
+                    }\n tx         hash ${tx.hash} status ${tx.status
+                    }\n receipt tx hash ${tx.receipt.transactionHash} status ${st
+                    }\n receipt epoch ${tx.receipt.epochNumber} , expected ${minEpochNumber
+                    }\n pivot at ${pivot}`
                     code = CODE_CONTINUE
                     break;
                 }
