@@ -331,3 +331,12 @@ export async function getSlaveStatus(seq:Sequelize) {
     return seq.query('SHOW SLAVE STATUS', {type: QueryTypes.SELECT, raw: true})
         .then(arr => {return arr[0]})
 }
+
+/**
+ ALTER TABLE full_block_ext
+    REORGANIZE PARTITION p1 INTO (
+        PARTITION p01 VALUES LESS THAN (10000000),
+        PARTITION p02 VALUES LESS THAN (20000000),
+        PARTITION p03 VALUES LESS THAN (30000000)
+);
+ */
