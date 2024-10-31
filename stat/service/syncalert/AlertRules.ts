@@ -1,5 +1,5 @@
 import { Meter, MetricRegistry } from "inspector-metrics";
-import {IMetric} from "./Sampler";
+import {IMetric, SamplerType} from "./Sampler";
 
 const registry = new MetricRegistry();
 
@@ -43,8 +43,10 @@ export function pushMeter(metrics: IMetric[]) {
 		const threshold = 100;
 		{//var scope block
 			const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
-			if (v5mGrowth < threshold) {
-				console.log(`height doesn't grow, ${meterData.name}, in last 5 minutes, total growth is ${v5mGrowth} < ${threshold}`);
+			// pos block is generated every minute.
+			const growthThreshold = meterData.name == SamplerType.POS_BLOCK ? 1 : threshold;
+			if (v5mGrowth < growthThreshold) {
+				console.log(`height doesn't grow, ${meterData.name}, in last 5 minutes, total growth is ${v5mGrowth} < ${growthThreshold}`);
 			}
 		}
 		const v5mGap_per_1m = meterData.meterGap.get5MinuteRate() * 60;
