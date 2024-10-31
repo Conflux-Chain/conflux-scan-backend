@@ -11,6 +11,7 @@ interface IMeterData {
 const map:Map<string, IMeterData> = new Map<string, IMeterData>();
 
 export function pushMeter(metrics: IMetric[]) {
+	const scale = 60 * 5;
 	for(const m of metrics) {
 		const {tags:{syncType}, fields: {latestSynced, syncGap}} = m;
 		const meterData = map.get(m.tags.syncType);
@@ -27,7 +28,8 @@ export function pushMeter(metrics: IMetric[]) {
 		meterData.meterGrowth.mark(Math.max(latestSynced - meterData.lastV, 0));
 		//
 		[meterData.meterGap, meterData.meterGrowth].forEach(m=>{
-			console.log(`meter info : ${m.getName()} 5m ${m.get5MinuteRate()}, 15m ${m.get15MinuteRate()}`)
+			console.log(`meter info : ${m.getName()} 5m ${m.get5MinuteRate() * scale
+			}, 15m ${m.get15MinuteRate() * scale} , count ${m.getCount()}`)
 		})
 		// gap is too large, or, height doesn't grow.
 		const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
