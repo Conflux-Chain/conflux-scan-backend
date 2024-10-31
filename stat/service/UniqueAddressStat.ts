@@ -196,14 +196,14 @@ export async function calcDailyTokenOnChain(timeBegin: Date, timeEnd: Date) {
     adjustTodayEndTime(timeEnd)
     const transferCount = await DailyToken.sum('transferCount',{
         where: {day: timeBegin}, raw: true,
-        logging: sqlLogFn(`${__filename} calc daily token`),
+        // logging: sqlLogFn(`${__filename} calc daily token`),
     }).then(res=>{
         return isNaN(res) ? 0: res;
     })
     const userCount = await UniqueAddress.count({
             distinct: true, col: 'addr',
             where: {timeStart: {[Op.between]: [timeBegin, timeEnd]}},
-            logging: sqlLogFn(`${__filename} unique user count`),
+            // logging: sqlLogFn(`${__filename} unique user count`),
         },
     )
     await DailyTokenTxn.upsert({
