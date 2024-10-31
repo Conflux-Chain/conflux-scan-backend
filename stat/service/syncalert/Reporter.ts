@@ -22,9 +22,7 @@ export class Reporter{
     public constructor(app: any) {
         this.app = app;
         this.initInflux();
-        if (this.influx) {
-            this.registerSampler();
-        }
+        this.registerSampler();
     }
 
     private initInflux() {
@@ -77,6 +75,9 @@ export class Reporter{
     }
 
     private async report(pointArray: any[]) {
+        if (!this.influx) {
+            return ;
+        }
         return this.influx.writePoints(pointArray).catch(e => {
             console.log(`[alert]scanSyncMonitor report:${JSON.stringify(pointArray)}`, e);
             throw e;
@@ -115,9 +116,6 @@ export class Reporter{
     }
 
     public async start(delay: number = 1000 * 60) {
-        if (!this.influx) {
-            return;
-        }
         const that = this;
         async function repeat() {
             await that.sampleSyncProgress().catch(e=>{
