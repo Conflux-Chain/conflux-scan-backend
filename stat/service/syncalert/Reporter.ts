@@ -8,6 +8,7 @@ import {
     TokenTransferSampler
 } from "./Sampler";
 import {StatApp} from "../../StatApp";
+import {pushMeter} from "./AlertRules";
 
 const lodash = require('lodash');
 
@@ -106,11 +107,11 @@ export class Reporter{
     }
 
     private async sampleSyncProgress(){
-        const tasks = lodash.map(this.samplerArray, sampler => sampler.sample());
-        const pointArray = await Promise.all(tasks);
+        const pointArray = await Promise.all(this.samplerArray.map(s=>s.sample()));
         pointArray.forEach(point => lodash.defaults(point, {measurement: this.measurement}));
         // console.log(`[alert]scanSyncMonitor report pointArray:${JSON.stringify(pointArray)}`);
         await this.report(pointArray);
+        pushMeter(pointArray);
     }
 
     public async start(delay: number = 1000 * 60) {
