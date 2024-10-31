@@ -29,22 +29,25 @@ export function pushMeter(metrics: IMetric[]) {
 		meterData.meterGrowth.mark(Math.max(latestSynced - meterData.lastV, 0));
 		//
 		[meterData.meterGap, meterData.meterGrowth].forEach(m=>{
-			console.log(`meter info : ${m.getName().padEnd(20, ' ')} 1m ${m.get1MinuteRate() * 60} 5m ${m.get5MinuteRate() * 60 * 5
-			}, 15m ${m.get15MinuteRate() * 60 * 15} , count ${m.getCount()}`)
+			console.log(`meter info : ${m.getName().padEnd(20, ' ')} 1m ${m.get1MinuteRate() * 60} 5m ${m.get5MinuteRate() * 60
+			}, 15m ${m.get15MinuteRate() * 60}`)
 		})
 		if (meterData.counter < 5) {
 			continue;
 		}
 
 		// gap is too large, or, height doesn't grow.
-		const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
 		const threshold = 100;
-		if (v5mGrowth < threshold) {
-			console.log(`height doesn't grow, ${meterData.name}, 5minutes, v ${v5mGrowth} < ${threshold}`);
+		{//var scope block
+			const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
+			if (v5mGrowth < threshold) {
+				console.log(`height doesn't grow, ${meterData.name}, 5minutes, v ${v5mGrowth} < ${threshold}`);
+			}
 		}
-		const v5mGap = meterData.meterGap.get5MinuteRate() * 60 * 5;
-		if (v5mGap > threshold) {
-			console.log(`gap is too large, ${meterData.name}, 5minutes, v ${v5mGrowth} > ${threshold}`);
+		const v5mGap_per_1m = meterData.meterGap.get5MinuteRate() * 60;
+		if (v5mGap_per_1m > threshold) {
+			console.log(`gap is too large, ${meterData.name}, 5minutes, v ${v5mGap_per_1m} > ${threshold}`);
 		}
 	}
+	console.log(`${__filename} ok`)
 }
