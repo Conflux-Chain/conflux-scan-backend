@@ -57,10 +57,7 @@ export class BlockService {
       pivotInfo = await this._getPivot(block);
     }
 
-    let detailInfo = {};
-    if (lodash.intersection(fields, DETAIL_FIELDS).length) {
-      detailInfo = await this._getDetail(block);
-    }
+    let detailInfo = await this._getDetail(block);
 
     let reward = {};
     let rewardDetail = {}
@@ -72,7 +69,7 @@ export class BlockService {
       rewardDetail['storageCollateralInterest'] = reward['totalReward'] - rewardDetail['baseReward'] - rewardDetail['txFee']
     }
 
-    let baseFeePerGasRef
+    let baseFeePerGasRef;
     if(block.epochNumber > 0) {
       const refEpoch = StatApp.isEVM ? block.epochNumber - (block.epochNumber % 5) : block.epochNumber
       const preEpoch = StatApp.isEVM ? refEpoch - 5 : refEpoch - 1
@@ -88,7 +85,7 @@ export class BlockService {
         prePivot
       }
     }
-    const {coreBlock, gasLimit} = await loadEvmBlockSpec(block);
+    const {coreBlock, gasLimit} = await loadEvmBlockSpec(block.epochNumber, detailInfo["gasLimit"] ?? block.gasLimit);
     if (gasLimit) {
       detailInfo['gasLimit'] = gasLimit;
     }
@@ -134,7 +131,10 @@ export class BlockService {
       newTransactionCount,
       avgGasPrice: newTransactionCount ? BigFixed(gasPriceCount).div(newTransactionCount) : BigFixed(0),
     };
-    if(!NoCoreSpace) { // For the case where there is no corespace/espace, use block's gasLIMIT and gasUsed
+    if(NoCoreSpace) {
+      // For non-cfx chains, use block's gasLIMIT and gasUsed
+    } else {
+      // Some calculations are performed when syncing blocks
       result['gasUsed'] = gasUsed;
       const block = await FullBlock.findOne({where:{hash}})
       block && (result['gasLimit'] = block['gasLimit'])
@@ -237,26 +237,6 @@ export class BlockService {
     };
   }
 
-  async _countAndListByEpochNumber({
-    epochNumber,
-    skip = 0,
-    limit = Infinity,
-    reverse = false,
-  } = {} as any) {
-    const {
-      app: { service },
-    } = this;
-
-    let list = await service.conflux.getBlocksByEpochNumber(epochNumber).catch(() => []);
-    const total = list.length;
-
-    list = reverse ? [...list].reverse() : list;
-    list = list.slice(skip, skip + limit);
-    list = await Promise.all(list.map((hash) => ({ hash })));
-
-    return { total, list };
-  }
-
   async _countAndListRefereeByHash({
     referredBy,
     skip = 0,
@@ -274,17 +254,20 @@ export class BlockService {
   }
 }
 
-async function loadEvmBlockSpec(block) {
+async function loadEvmBlockSpec(epochNumber: number, gasLimitBase: number) {
   let coreBlock = 0;
   let gasLimit = undefined;
   if (NoCoreSpace) {
-
+    // the other chains go here.
   } else if (StatApp.isEVM) {
-    const map = await queryEvmBlockCountInEachEpoch(block.epochNumber, block.epochNumber);
-    const evmBlockCount = map[block.epochNumber];
+    // E Space
+    const map = await queryEvmBlockCountInEachEpoch(epochNumber, epochNumber);
+    const evmBlockCount = map[epochNumber];
     coreBlock = evmBlockCount ? 0 : 1;
     const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
-    gasLimit = BigInt(block['gasLimit']) * BigInt(100 * evmBlockCount * proportion) / BigInt(100);
+    gasLimit = BigInt(gasLimitBase) * BigInt(100 * evmBlockCount * proportion) / BigInt(100);
+  } else {
+    // core space, it was calculated when syncing blocks, and used in fn _getDetail
   }
   return {coreBlock, gasLimit};
 }
