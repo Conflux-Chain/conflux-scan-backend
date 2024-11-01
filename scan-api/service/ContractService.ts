@@ -1,5 +1,6 @@
 import {ScanApp, ScanCtx} from "./index";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
+import {ConfigInstance} from "../../stat/config/StatConfig";
 
 const lodash = require('lodash');
 const { ContractVerify } = require('../../stat/model/ContractVerify');
@@ -224,6 +225,9 @@ export class ContractService { // TODO: extends AccountService
 
     const trace = await service.traceCreate.query(address);
     const transaction = await cfx.getTransactionByHash(trace.transactionHash);
+    if (ConfigInstance.traceNotAvailable) {
+      return transaction.data;
+    }
     const transactionTraceArray = await cfx.traceTransaction(transaction.hash);
     const traceArray = await tokenTool.matchTrace(transactionTraceArray, transaction);
     const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
