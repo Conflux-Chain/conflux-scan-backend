@@ -1,7 +1,11 @@
 import { Meter, MetricRegistry } from "inspector-metrics";
 import {IMetric, SamplerType} from "./Sampler";
+import {ConfigInstance} from "../../config/StatConfig";
+import {dingMsg} from "../../monitor/Monitor";
+import * as fs from "fs";
 
 const registry = new MetricRegistry();
+let lastAlertTime = 0;
 
 interface IMeterData {
 	meterGap: Meter,
@@ -12,7 +16,10 @@ interface IMeterData {
 const map:Map<string, IMeterData> = new Map<string, IMeterData>();
 
 export function pushMeter(metrics: IMetric[]) {
+	const testAlertFlagFile = __filename + ".test";
+	const doTest = fs.existsSync(testAlertFlagFile);
 	let cnt = 0;
+	const alertMsgArr = [];
 	for(const m of metrics) {
 		const {tags:{syncType}, fields: {latestSynced, syncGap}} = m;
 		const meterData = map.get(m.tags.syncType);
@@ -35,7 +42,9 @@ export function pushMeter(metrics: IMetric[]) {
 			console.log(`meter info : ${m.getName().padEnd(20, ' ')} 1m ${m.get1MinuteRate() * 60} 5m ${m.get5MinuteRate() * 60
 			}, 15m ${m.get15MinuteRate() * 60}`)
 		})
-		if (meterData.counter < 5) {
+		if (doTest && meterData.counter > 0){
+			// do test with at least one round data.
+		} else	if (meterData.counter < 5) {
 			continue;
 		}
 
@@ -45,14 +54,31 @@ export function pushMeter(metrics: IMetric[]) {
 			const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
 			// pos block is generated every minute.
 			const growthThreshold = meterData.name == SamplerType.POS_BLOCK ? 1 : threshold;
-			if (v5mGrowth < growthThreshold) {
-				console.log(`height doesn't grow, ${meterData.name}, in last 5 minutes, total growth is ${v5mGrowth} < ${growthThreshold}`);
+			if (v5mGrowth < growthThreshold || doTest) {
+				const msg = `height doesn't grow, ${meterData.name}, in last 5 minutes, total growth is ${
+					v5mGrowth.toFixed(2)} < ${growthThreshold}`;
+				console.log(msg);
+				alertMsgArr.push(msg);
 			}
 		}
 		const v5mGap_per_1m = meterData.meterGap.get5MinuteRate() * 60;
-		if (v5mGap_per_1m > threshold) {
-			console.log(`gap is too large, ${meterData.name}, in last 5 minutes, gap per minute is ${v5mGap_per_1m} > ${threshold}`);
+		if (v5mGap_per_1m > threshold || doTest) {
+			const msg = `gap is too large, ${meterData.name}, in last 5 minutes, gap per minute is ${
+				v5mGap_per_1m.toFixed(2)} > ${threshold}`;
+			console.log(msg);
+			alertMsgArr.push(msg);
 		}
 	}
-	console.log(`${__filename} ok , round ${cnt}`)
+	const alertTimeAllow = Date.now() - lastAlertTime > 1000 * 3600 * 4;
+	console.log(`${__filename} ok , round ${cnt} , alert msg count ${alertMsgArr.length} ,  alertTimeAllow ${alertTimeAllow}`);
+	if (alertMsgArr.length && alertTimeAllow) {
+		const msg = alertMsgArr.join('\n');
+		dingMsg(doTest ? "--TEST ALERT--" + msg : msg, ConfigInstance.dingTalkToken).then();
+		if (doTest) {
+			fs.rm(testAlertFlagFile, undefined);
+		} else {
+			lastAlertTime = Date.now();
+		}
+	}
 }
+
