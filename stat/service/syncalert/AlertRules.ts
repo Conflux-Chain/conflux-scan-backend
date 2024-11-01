@@ -75,7 +75,7 @@ export function pushMeter(metrics: IMetric[]) {
 		const msg = alertMsgArr.join('\n');
 		dingMsg(doTest ? "--TEST ALERT--" + msg : msg, ConfigInstance.dingTalkToken).then();
 		if (doTest) {
-			fs.rm(testAlertFlagFile, undefined);
+			fs.rm(testAlertFlagFile, ()=>{});
 		} else {
 			lastAlertTime = Date.now();
 		}
