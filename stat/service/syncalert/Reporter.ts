@@ -8,6 +8,7 @@ import {
     TokenTransferSampler
 } from "./Sampler";
 import {StatApp} from "../../StatApp";
+import {pushMeter} from "./AlertRules";
 
 const lodash = require('lodash');
 
@@ -21,9 +22,7 @@ export class Reporter{
     public constructor(app: any) {
         this.app = app;
         this.initInflux();
-        if (this.influx) {
-            this.registerSampler();
-        }
+        this.registerSampler();
     }
 
     private initInflux() {
@@ -76,6 +75,9 @@ export class Reporter{
     }
 
     private async report(pointArray: any[]) {
+        if (!this.influx) {
+            return ;
+        }
         return this.influx.writePoints(pointArray).catch(e => {
             console.log(`[alert]scanSyncMonitor report:${JSON.stringify(pointArray)}`, e);
             throw e;
@@ -106,17 +108,14 @@ export class Reporter{
     }
 
     private async sampleSyncProgress(){
-        const tasks = lodash.map(this.samplerArray, sampler => sampler.sample());
-        const pointArray = await Promise.all(tasks);
+        const pointArray = await Promise.all(this.samplerArray.map(s=>s.sample()));
         pointArray.forEach(point => lodash.defaults(point, {measurement: this.measurement}));
         // console.log(`[alert]scanSyncMonitor report pointArray:${JSON.stringify(pointArray)}`);
         await this.report(pointArray);
+        pushMeter(pointArray);
     }
 
     public async start(delay: number = 1000 * 60) {
-        if (!this.influx) {
-            return;
-        }
         const that = this;
         async function repeat() {
             await that.sampleSyncProgress().catch(e=>{

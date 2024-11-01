@@ -198,7 +198,7 @@ async function sumGasUsed({beginTime, endTime}: {beginTime: Date, endTime:Date})
             'fromId',
         ],
         group: ['fromId'], raw: true, benchmark: true,
-        logging: sqlLogFn(`sum gas used on full tx`),
+        // logging: sqlLogFn(`sum gas used on full tx`),
         where: {
             createdAt: {[Op.between]: [ beginTime, endTime]},
         },

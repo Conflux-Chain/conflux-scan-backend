@@ -3,6 +3,7 @@ import {Epoch} from "../model/Epoch";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {CFX_TRANSFER_DELAY, ERC20_TRANSFER_DELAY, KV} from "../model/KV";
 import {init} from "../service/tool/FixDailyTokenStat";
+import {ConfigInstance} from "../config/StatConfig";
 const superagent = require('superagent')
 
 export class Monitor{
@@ -66,6 +67,7 @@ export class Monitor{
 export async function dingMsg(msg:string, dingTalkToken:string) {
     console.log(`pre send msg:${msg}`);
     if (!dingTalkToken) {
+        console.log(`ding talk token is not set`)
         return;
     }
     let url = 'https://oapi.dingtalk.com/robot/send?access_token='+dingTalkToken;
@@ -73,13 +75,13 @@ export async function dingMsg(msg:string, dingTalkToken:string) {
         {
             "msgtype": "text",
             "text": {
-                "content": `${msg}\n[scan]`
+                "content": `${msg}\n[scan] ${ConfigInstance.serverTag}`
             }
         }).then(res=>{
             console.log(`send ding message done, success:`, res.ok);
         })
         .catch(err=>{
-            console.log(`send ding message fail: ${msg}`);
+            console.log(`send ding message fail: ${err}`);
 
         })
 }

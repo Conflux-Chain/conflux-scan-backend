@@ -6,6 +6,15 @@ import {Epoch} from "../../model/Epoch";
 import {PosBlock} from "../../model/PoS";
 import {Errors} from "../common/LogicError";
 
+export interface IMetric {
+    tags: {syncType: string},
+    fields:{
+        latestSynced: number,
+        latestReached: number,
+        syncGap: number,
+    }
+}
+
 export abstract class Sampler {
 
     protected app: any;
@@ -22,7 +31,7 @@ export abstract class Sampler {
         return cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
     }
 
-    public async sample(): Promise<any>{
+    public async sample(): Promise<IMetric>{
         const [latestSynced, latestReached] = await Promise.all([
             this.getLatestSynced(),
             this.getLatestState()
