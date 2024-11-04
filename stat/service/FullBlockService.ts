@@ -214,12 +214,13 @@ export class FullBlockService {
                 }
                 return []
             }),
-            this.cfx.getBlockByEpochNumber(minEpochNumber).then(pivotBlock=>{
+            /*this.cfx.getBlockByEpochNumber(minEpochNumber).then(pivotBlock=>{
                 if (pivotBlock.epochNumber != minEpochNumber) {
                     console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${minEpochNumber}`);
                     return []
                 }
                 return this.cfx.getEpochReceiptsByPivotBlockHash(pivotBlock.hash).then(res=>{
+                return */this.cfx.getEpochReceipts(minEpochNumber).then(res=>{
                     if (res === null && minEpochNumber === 0) {
                         console.log(`epoch 0 with null receipts.`)
                         res = []
@@ -230,7 +231,7 @@ export class FullBlockService {
                         console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
                     }
                     return []
-                })
+                //})
             }),
 
         ])
@@ -298,17 +299,17 @@ export class FullBlockService {
             }
         }
         if (dumpInfo) {
-            console.log(`dump rpc result, epoch ${minEpochNumber}`);
+            console.log(`-- dump rpc result, epoch ${minEpochNumber}`);
             for (let idx = 0; idx < blockList.length; idx++) {
                 let blk = blockList[idx];
-                console.log(`--block ----------- ${blk.hash} epoch ${blk.epochNumber} tx count ${blk.transactions.length} pos ${idx}`);
+                    console.log(`* block ------- ${blk.hash} epoch ${blk.epochNumber} tx count ${blk.transactions.length} pos ${idx}`);
                 for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++) {
                     let tx = blk.transactions[txIdx];
                     tx.receipt = (receipts[idx] || [])[txIdx];
-                    console.log(`  tx            ${tx.hash} status ${tx.status}  index ${txIdx}`);
-                    console.log(`  receipt       ${tx.receipt?.transactionHash} status ${tx.receipt?.outcomeStatus}`);
                     console.log(`  tx block hash ${tx.blockHash}`);
                     console.log(`  rcpt blk hash ${tx.receipt?.blockHash} epoch ${tx.receipt?.epochNumber}`);
+                    console.log(`~ tx            ${tx.hash} status ${tx.status}  index ${txIdx}`);
+                    console.log(`  receipt       ${tx.receipt?.transactionHash} status ${tx.receipt?.outcomeStatus}`);
                 }
             }
         }
