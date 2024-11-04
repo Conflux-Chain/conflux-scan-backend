@@ -33,7 +33,7 @@ import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
-import {FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
+import {ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {rmCache} from "./common/RpcCacheManager";
 
 const BigFixed = require('bigfixed');
@@ -214,19 +214,25 @@ export class FullBlockService {
                 }
                 return []
             }),
-            // @ts-ignore
-            this.cfx.getEpochReceipts(minEpochNumber).then(res=>{
-                if (res === null && minEpochNumber === 0) {
-                    console.log(`epoch 0 with null receipts.`)
-                    res = []
+            this.cfx.getBlockByEpochNumber(minEpochNumber).then(pivotBlock=>{
+                if (pivotBlock.epochNumber != minEpochNumber) {
+                    console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${minEpochNumber}`);
+                    return []
                 }
-                return res || [];
-            }).catch(err=>{
-                if (!err.message?.includes('Unknown block number')) {
-                    console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
-                }
-                return []
+                return this.cfx.getEpochReceipts(pivotBlock.hash).then(res=>{
+                    if (res === null && minEpochNumber === 0) {
+                        console.log(`epoch 0 with null receipts.`)
+                        res = []
+                    }
+                    return res || [];
+                }).catch(err=>{
+                    if (!err.message?.includes('Unknown block number')) {
+                        console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
+                    }
+                    return []
+                })
             }),
+
         ])
 
         if (hashes.length === 0) {
@@ -270,7 +276,7 @@ export class FullBlockService {
                 } else if (tx.blockHash !== blk.hash
                     || tx.receipt.epochNumber != minEpochNumber
                     || tx.receipt.transactionHash !== tx.hash
-                    || tx.status !== st
+                    || (tx.status !== st && !ConfigInstance.noCoreSpace)
                     || tx.receipt.blockHash !== blk.hash) {
                     message = `properties mismatch, 
                      \n block              ${blk.hash
@@ -279,7 +285,8 @@ export class FullBlockService {
                     }\n tx         hash ${tx.hash} status ${tx.status
                     }\n receipt tx hash ${tx.receipt.transactionHash} status ${st
                     }\n receipt epoch ${tx.receipt.epochNumber} , expected ${minEpochNumber
-                    }\n pivot at ${pivot}`
+                    }\n pivot at ${pivot
+                    }\n`
                     code = CODE_CONTINUE
                     break;
                 }
