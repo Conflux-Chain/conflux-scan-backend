@@ -219,7 +219,7 @@ export class FullBlockService {
                     console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${minEpochNumber}`);
                     return []
                 }
-                return this.cfx.getEpochReceipts(pivotBlock.hash).then(res=>{
+                return this.cfx.getEpochReceiptsByPivotBlockHash(pivotBlock.hash).then(res=>{
                     if (res === null && minEpochNumber === 0) {
                         console.log(`epoch 0 with null receipts.`)
                         res = []
@@ -252,6 +252,7 @@ export class FullBlockService {
         // fill tx receipts to block-> tx
         let code = 0
         let message = 'ok'
+        let dumpInfo = false;
         for (let idx = 0; idx < blockList.length; idx++){
             let blk = blockList[idx];
             if (minEpochNumber === 0) {
@@ -279,20 +280,36 @@ export class FullBlockService {
                     || (tx.status !== st && !ConfigInstance.noCoreSpace)
                     || tx.receipt.blockHash !== blk.hash) {
                     message = `properties mismatch, 
-                     \n block              ${blk.hash
+                     \n block              ${blk.hash} at position ${idx
                     }\n tx block hash      ${tx.blockHash
                     }\n receipt block hash ${tx.receipt.blockHash
-                    }\n tx         hash ${tx.hash} status ${tx.status
-                    }\n receipt tx hash ${tx.receipt.transactionHash} status ${st
+                    }\n tx         hash    ${tx.hash} status ${tx.status
+                    }\n receipt tx hash    ${tx.receipt.transactionHash} status ${st
                     }\n receipt epoch ${tx.receipt.epochNumber} , expected ${minEpochNumber
-                    }\n pivot at ${pivot
-                    }\n`
+                    }\n pivot at           ${pivot} block count ${blockList.length
+                    }`
                     code = CODE_CONTINUE
+                    dumpInfo = true;
                     break;
                 }
             }
             if (code !== 0) {
                 break;
+            }
+        }
+        if (dumpInfo) {
+            console.log(`dump rpc result, epoch ${minEpochNumber}`);
+            for (let idx = 0; idx < blockList.length; idx++) {
+                let blk = blockList[idx];
+                console.log(`--block ----------- ${blk.hash} epoch ${blk.epochNumber} tx count ${blk.transactions.length} pos ${idx}`);
+                for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++) {
+                    let tx = blk.transactions[txIdx];
+                    tx.receipt = (receipts[idx] || [])[txIdx];
+                    console.log(`  tx            ${tx.hash} status ${tx.status}  index ${txIdx}`);
+                    console.log(`  receipt       ${tx.receipt?.transactionHash} status ${tx.receipt?.outcomeStatus}`);
+                    console.log(`  tx block hash ${tx.blockHash}`);
+                    console.log(`  rcpt blk hash ${tx.receipt?.blockHash} epoch ${tx.receipt?.epochNumber}`);
+                }
             }
         }
         return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes}
