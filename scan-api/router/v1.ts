@@ -57,11 +57,7 @@ router.use(async (ctx, next) => {
 });
 router_get(router,'/', function (ctx) {
   const { app: { config: { machine } } } = this;
-  ctx.body = { message: `scan backend, [${machine}]` };
-});
-router_get(router,'/testDing', async function(ctx){
-  const { app: { dingTalk } } = ctx;
-  ctx.body = await dingTalk.sendObject(`test-ding`, {header: ctx.headers})
+  return { message: `scan-api-v1, [${machine}]` };
 });
 // --------------------------------- OpenAPI ----------------------------------
 
