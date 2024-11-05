@@ -96,10 +96,12 @@ export const jsonrpc_trend = jsonrpc.method_('trend',
 export const jsonrpc_frontend = jsonrpc.method_('frontend',
   parameter({
     referer: { path: '0', type: type.string, required: false },
+    host: { path: '0', type: type.string, required: false },
   }),
   cacheFlow(60 * 1000),
   durationAlarmFlow(5 * 1000, { method: 'frontend' }),
-  async function ({referer}) {
+  async function ({referer, host}) {
+    const refHost = referer || host;
     const {
       app: { config, networkId, logger },
     } = this;
@@ -114,13 +116,13 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       });
       frontedConfig = { networkId, networks, contracts, referer };
       let {from, to} = {from: '.io', to: '.net'};
-      if (referer?.includes('.io/') || referer?.endsWith('.io')) {
+      if (refHost?.includes('.io/') || refHost?.endsWith('.io')) {
         from = '.net'; to = '.io';
       }
       for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]) {
           // use local config prior to shared DB config.
           frontedConfig[kv] = await KV.getString(kv, config[kv]);
-          if (referer && frontedConfig[kv]) {
+          if (refHost && frontedConfig[kv]) {
             frontedConfig[kv] = frontedConfig[kv].replace(from, to);
           }
       }
