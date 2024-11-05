@@ -94,6 +94,9 @@ export const jsonrpc_trend = jsonrpc.method_('trend',
 );
 
 export const jsonrpc_frontend = jsonrpc.method_('frontend',
+  parameter({
+    referer: { path: '0', type: type.string, required: false },
+  }),
   cacheFlow(60 * 1000),
   durationAlarmFlow(5 * 1000, { method: 'frontend' }),
   async function ({referer}) {
