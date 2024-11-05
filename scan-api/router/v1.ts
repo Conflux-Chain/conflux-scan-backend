@@ -190,7 +190,10 @@ router_get(router, '/homeDashboard',
 router_get(router,'/frontend',
   OpenAPI.flow({
     tags: ['frontend'],
-    input: {},
+    input: {
+      referer: {in: 'header', type: 'string', required: false},
+      host: {in: 'header', type: 'string', required: false},
+    },
     output: {
       200: 'object',
       600: { code: 'integer', message: 'string' },
