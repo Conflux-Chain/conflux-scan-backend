@@ -114,7 +114,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       const contracts = frontend.contracts.map((contract) => {
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });
-      frontedConfig = { networkId, networks, contracts, referer };
+      frontedConfig = { networkId, networks, contracts, referer, host };
       let {from, to} = {from: '.io', to: '.net'};
       if (refHost?.includes('.io/') || refHost?.endsWith('.io')) {
         from = '.net'; to = '.io';
