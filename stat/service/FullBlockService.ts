@@ -214,13 +214,13 @@ export class FullBlockService {
                 }
                 return []
             }),
-            /*this.cfx.getBlockByEpochNumber(minEpochNumber).then(pivotBlock=>{
+            this.cfx.getBlockByEpochNumber(minEpochNumber).then(pivotBlock=>{
                 if (pivotBlock.epochNumber != minEpochNumber) {
                     console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${minEpochNumber}`);
                     return []
                 }
+                //return this.cfx.getEpochReceipts(minEpochNumber).then(res=>{
                 return this.cfx.getEpochReceiptsByPivotBlockHash(pivotBlock.hash).then(res=>{
-                return */this.cfx.getEpochReceipts(minEpochNumber).then(res=>{
                     if (res === null && minEpochNumber === 0) {
                         console.log(`epoch 0 with null receipts.`)
                         res = []
@@ -231,7 +231,7 @@ export class FullBlockService {
                         console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
                     }
                     return []
-                //})
+                })
             }),
 
         ])
