@@ -107,7 +107,7 @@ export const CacheConfig = {
         return `${hash}_${detail}`
     },
     cfx_getEpochReceipts: ([no])=>{
-        return typeof no === 'string' ? no : BigInt(no);
+        return no.blockHash ?? typeof no === 'string' ? no : BigInt(no);
     },
     trace_block:([hash])=>{
         return hash;
