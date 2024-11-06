@@ -23,6 +23,7 @@ const {abi} = require('../abi/PosPool')
 // noinspection CommaExpressionJS
 export class PosQuery {
     public cfx: Conflux;
+    private contract;
     private cachedData: Object
     private whereCondForValidators: any = {
         [Op.or]: [
@@ -37,6 +38,7 @@ export class PosQuery {
 
     constructor(cfx:Conflux) {
         this.cfx = cfx
+        this.contract = cfx.Contract({abi})
         const that = this;
         if (StatApp.isEVM) {
             return
