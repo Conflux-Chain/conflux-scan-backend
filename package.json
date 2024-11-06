@@ -39,7 +39,7 @@
     "influx": "~5.9.3",
     "inspector-influx": "^2.10.0",
     "inspector-metrics": "^1.23.0",
-    "js-conflux-sdk": "^2.4.4",
+    "js-conflux-sdk": "^2.4.9",
     "koa": "2.13.1",
     "koa-bodyparser": "~4.3.0",
     "koa-helmet": "6.0.0",

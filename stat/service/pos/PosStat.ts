@@ -59,14 +59,14 @@ export class PosStat {
         })
     }
     async updateApy() {
-        const {apy} = await this.posQuery.calculateApy()
+        const {apy} = await PosQuery.calculateApy(this.posQuery.cfx)
         console.log('apy',apy)
         await PosDailyStatMix.upsert({
             day: new Date(), v: apy, biz: 'pos_apy'
         })
     }
     async updatePosStaking() {
-        const posE = await this.cfx.getPoSEconomics()
+        const posE = await this.cfx.getPoSEconomics('latest_confirmed')
         console.log(`posE`, posE)
         await PosDailyStatMix.upsert({
             day: new Date(), v: parseFloat(new Drip(posE.totalPosStakingTokens.toString()).toCFX()), biz: 'pos_staking'
@@ -256,7 +256,7 @@ async function calcDailyParticipation(dt:Date) {
             return Number(res[0]['v'])
         })
     //
-    let rate = votes/shouldVotes * 100;
+    let rate = votes >= shouldVotes ? 100 : votes/shouldVotes * 100;
     await PosDailyStatMix.upsert({
         v: rate, biz: 'participation_rate', day: dayStart,
     })
@@ -337,9 +337,9 @@ async function main() {
     } else if (cmd === 'testQuery') {
         await init()
         await queryPosStatMix('finalize_epoch_gap','finalize_second_gap', {})
-    } else if (cmd === 'calcDailyVoting') {
+    } else if (cmd === 'calcDailyParticipation') {
         await init()
-        let dt = new Date('2022-01-24')
+        let dt = new Date('2022-02-27')
         while (dt.getTime() < Date.now()) {
             await calcDailyParticipation(dt)
             dt.setDate(dt.getDate() + 1)
@@ -349,7 +349,7 @@ async function main() {
         await init()
         // await calcDailyStaking(new Date('2022-04-29'))
         // await calcDailyStaking(new Date('2022-02-23'))
-        let dt = new Date('2020-10-29')
+        let dt = new Date('2022-02-27')
         while (dt.getTime() < Date.now()) {
             await calcDailyStaking(dt)
             dt.setDate(dt.getDate() + 1)
@@ -364,6 +364,11 @@ async function main() {
     // await svc.updatePosStaking()
     // await svc.updateApy()
 }
+/*
+node stat/service/pos/PosStat.js calcDailyStaking
+node stat/service/pos/PosStat.js calcDailyParticipation
+update pos_daily_stat_mix set v=100 where v > 100 and biz='participation_rate';
+ */
 if (module === require.main) {
     main().then()
 }
