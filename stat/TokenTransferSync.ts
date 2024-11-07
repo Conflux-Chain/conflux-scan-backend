@@ -147,7 +147,7 @@ export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number) {
 }
 
 export async function loadEpoch(epoch: number, cfx: Conflux) {
-    const [dbBlocks, dbTxArr, parentDbBlock] = await
+    const arr = await
         // load blocks and txs from db instead of rpc
         FullBlock.sequelize.transaction(tx=>{
             return Promise.all([
@@ -156,6 +156,7 @@ export async function loadEpoch(epoch: number, cfx: Conflux) {
                 FullBlock.findOne({where: {epoch: epoch-1}, transaction: tx})
             ])
         });
+    const [dbBlocks, dbTxArr, parentDbBlock] = arr;
     const blockHashes = dbBlocks.map(b=>b.hash);
     const block = dbBlocks[dbBlocks.length-1];
     const pivotHash = block.hash;
