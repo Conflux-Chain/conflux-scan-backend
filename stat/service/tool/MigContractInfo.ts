@@ -589,6 +589,7 @@ import {PosAccount, PosBlock} from "../../model/PoS";
 import {PosDailyStatMix} from "../pos/PosStat";
 import {TokenApproval} from "../../ApprovalSync";
 import {StatDailyBurntFee} from "../timerstat/StatDailyBurntFee";
+import {cfxSafeEpochReceipts} from "../../TokenTransferSync";
 const licenseMap = {}
 Object.keys(CONST.LICENSE).forEach(k => {
     const v = CONST.LICENSE[k]
@@ -966,7 +967,7 @@ async function fixEffectiveGasPrice(minEpoch: number, maxEpoch: number, once: bo
 
             // get all tx receipts in a block
             const blkRcptMap = {}
-            const epochRcpt = await cfx.getEpochReceipts(rcpt.epochNumber)
+            const epochRcpt = await cfxSafeEpochReceipts(cfx, rcpt.epochNumber)
             for (const blkRcpt of epochRcpt) {
                 if(blkRcpt?.length) {
                     blkRcptMap[blkRcpt[0].blockHash] = blkRcpt

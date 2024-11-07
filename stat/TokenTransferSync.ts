@@ -137,28 +137,34 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
     return result;
 }
 
+export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number) {
+    return cfx.getBlockByEpochNumber(epoch).then(blk=>{
+        if (blk.epochNumber != epoch) {
+            throw new Error(`rpc returns a block with epoch ${blk.epochNumber} , expect ${epoch}`);
+        }
+        return cfx.getEpochReceiptsByPivotBlockHash(blk.hash)
+    })
+}
+
 export async function loadEpoch(epoch: number, cfx: Conflux) {
-    const [receipts, [dbBlocks, dbTxArr, parentDbBlock]] = await Promise.all([
-        cfx.getEpochReceipts(epoch).then(res=>{
-            if (res === null && epoch === 0) {
-                res = []
-            }
-            return res as TransactionReceipt[][];
-        }),
+    const tx = await FullBlock.sequelize.transaction();
         // load blocks and txs from db instead of rpc
-        FullBlock.sequelize.transaction(tx=>{
-            return Promise.all([
+    const [dbBlocks, dbTxArr, parentDbBlock] = await Promise.all([
                 loadBlocksByEpoch(epoch, tx),
                 loadTxsByEpoch(epoch, tx),
                 FullBlock.findOne({where: {epoch: epoch-1}, transaction: tx})
-            ])
-        }),
-
-    ])
+            ]).finally(()=>tx.rollback());
     const blockHashes = dbBlocks.map(b=>b.hash);
-    await validate(epoch, dbBlocks, receipts, dbTxArr);
     const block = dbBlocks[dbBlocks.length-1];
     const pivotHash = block.hash;
+    const receipts = await cfx.getEpochReceiptsByPivotBlockHash(pivotHash).then(res=>{
+        if (res === null && epoch === 0) {
+            res = []
+        }
+        return res;
+    })
+    await validate(epoch, dbBlocks, receipts, dbTxArr);
+
 
     // simulatePivotSwitch(epoch, 3)
     const dt = dbBlocks[dbBlocks.length-1].createdAt;
@@ -173,7 +179,7 @@ export async function validate(epoch:number, dbBlocks:FullBlock[], receipts:Tran
         throw new Error(`[epoch=${epoch}]validate, null receipts`);
     }
     if (dbBlocks.length !== receipts.length) {
-        throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks, receipts)`);
+        throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks ${dbBlocks.length}, receipts ${receipts.length})`);
     }
     let dbTxPos = 0
     for (const [blockIndex, block] of dbBlocks.entries()) {

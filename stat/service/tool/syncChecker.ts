@@ -4,10 +4,11 @@ import {loadTxsByEpoch} from "../FullBlockService";
 import {makeIdV} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
+import {cfxSafeEpochReceipts} from "../../TokenTransferSync";
 
 async function checkEpochTx({cfx, epoch, dryRun}:{cfx: Conflux, epoch: number, dryRun: boolean}) {
 	console.log(`check epoch ${epoch}`);
-	const rcpts = await cfx.getEpochReceipts(epoch);
+	const rcpts = await cfxSafeEpochReceipts(cfx, epoch);
 	const block = await FullBlock.findOne({where: {epoch, pivot: true}});
 	const newTxArr = []
 	for(let b=0; b<rcpts.length; b++) {

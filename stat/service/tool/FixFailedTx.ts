@@ -3,6 +3,7 @@ import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
 import {init} from "./FixDailyTokenStat";
 import {AddressTransactionIndex, FullTransaction, loadMaxTxEpoch} from "../../model/FullBlock";
+import {cfxSafeEpochReceipts} from "../../TokenTransferSync";
 
 const pLimit = require('p-limit');
 
@@ -30,7 +31,7 @@ async function patch(list:FullTransaction[]) {
     const receiptsAllEpochMap = new Map()
     await Promise.all(epochs.map(async ep=>{
         // @ts-ignore
-        return limitR(()=>cfx.getEpochReceipts(ep)).then(rc=>receiptsAllEpochMap.set(ep, rc))
+        return limitR(()=>cfxSafeEpochReceipts(cfx, ep)).then(rc=>receiptsAllEpochMap.set(ep, rc))
     }))
     for (const t of list) {
         const receipts = receiptsAllEpochMap.get(t.epoch)

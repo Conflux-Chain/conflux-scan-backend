@@ -12,11 +12,12 @@ import {initCfxSdk, removeLongData} from "../service/common/utils";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {sleep} from "../service/tool/ProcessTool";
 import {TransactionReceipt, Transaction} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 
 async function loadData(epoch: number) {
     return Promise.all([
         FullBlock.findAll({where: {epoch}, order:[['position','asc']]}),
-        cfx.getEpochReceipts(epoch).then(res=>res as TransactionReceipt[][]),
+        cfxSafeEpochReceipts(cfx, epoch),
     ])
 }
 async function check(epoch:number) {
@@ -183,7 +184,7 @@ async function fixEvmPhantomTx() {
     let fixCnt = 0
     for (let i = 0; i < list.length;) {
         const tx = list[i]
-        const [receipts] = await cfx.getEpochReceipts(tx.epoch) as TransactionReceipt[][];
+        const [receipts] = await cfxSafeEpochReceipts(cfx, tx.epoch);
         if (receipts.length === 0) {
             console.log(`should have receipts at epoch ${tx.epoch}`)
             process.exit(8)

@@ -10,6 +10,7 @@ import {FirstBlockNo, RpcCacheOption} from "../config/StatConfig";
 import {loadMaxBlockEpoch} from "../model/FullBlock";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {rmCache} from "./common/RpcCacheManager";
+import { cfxSafeEpochReceipts } from "../TokenTransferSync";
 
 const lodash = require('lodash');
 const TOPICS_TO_TRACE = [[
@@ -265,7 +266,7 @@ export abstract class SyncBase{
             // cfx.getEpochNumber('latest_state'),
             cfx.getBlocksByEpochNumber(epochNumber)
                 /*.catch(err=>{ console.log(`epoch-sync.getBlocks epoch:${epochNumber} error:${err}`); return [];})*/,
-            cfx.getEpochReceipts(epochNumber)
+            cfxSafeEpochReceipts(cfx, epochNumber)
                 .then(res=>{ if (epochNumber === 0) res = []; return res;})
                 /*.catch(err=>{ console.log(`epoch-sync.getReceipts epoch:${epochNumber} error:${err}`); return [];})*/,
         ]);
