@@ -143,7 +143,7 @@ export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number) {
             throw new Error(`rpc returns a block with epoch ${blk.epochNumber} , expect ${epoch}`);
         }
         return cfx.getEpochReceiptsByPivotBlockHash(blk.hash)
-    }).then(res=>res as TransactionReceipt[][])
+    })
 }
 
 export async function loadEpoch(epoch: number, cfx: Conflux) {
@@ -161,7 +161,7 @@ export async function loadEpoch(epoch: number, cfx: Conflux) {
         if (res === null && epoch === 0) {
             res = []
         }
-        return res as TransactionReceipt[][];
+        return res;
     })
     await validate(epoch, dbBlocks, receipts, dbTxArr);
 
@@ -179,7 +179,7 @@ export async function validate(epoch:number, dbBlocks:FullBlock[], receipts:Tran
         throw new Error(`[epoch=${epoch}]validate, null receipts`);
     }
     if (dbBlocks.length !== receipts.length) {
-        throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks, receipts)`);
+        throw new Error(`[epoch=${epoch}]validate, mismatch length (blocks ${dbBlocks.length}, receipts ${receipts.length})`);
     }
     let dbTxPos = 0
     for (const [blockIndex, block] of dbBlocks.entries()) {
