@@ -219,7 +219,6 @@ export class FullBlockService {
                     console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${minEpochNumber}`);
                     return []
                 }
-                //return this.cfx.getEpochReceipts(minEpochNumber).then(res=>{
                 return this.cfx.getEpochReceiptsByPivotBlockHash(pivotBlock.hash).then(res=>{
                     if (res === null && minEpochNumber === 0) {
                         console.log(`epoch 0 with null receipts.`)
@@ -228,7 +227,7 @@ export class FullBlockService {
                     return res || [];
                 }).catch(err=>{
                     if (!err.message?.includes('Unknown block number')) {
-                        console.log(` getEpochReceipts fail, epoch ${minEpochNumber}:`, err)
+                        console.log(` get EpochReceipts fail, epoch ${minEpochNumber}:`, err)
                     }
                     return []
                 })

@@ -137,14 +137,17 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
     return result;
 }
 
+export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number) {
+    return cfx.getBlockByEpochNumber(epoch).then(blk=>{
+        if (blk.epochNumber != epoch) {
+            throw new Error(`rpc returns a block with epoch ${blk.epochNumber} , expect ${epoch}`);
+        }
+        return cfx.getEpochReceiptsByPivotBlockHash(blk.hash)
+    }).then(res=>res as TransactionReceipt[][])
+}
+
 export async function loadEpoch(epoch: number, cfx: Conflux) {
-    const [receipts, [dbBlocks, dbTxArr, parentDbBlock]] = await Promise.all([
-        cfx.getEpochReceipts(epoch).then(res=>{
-            if (res === null && epoch === 0) {
-                res = []
-            }
-            return res as TransactionReceipt[][];
-        }),
+    const [dbBlocks, dbTxArr, parentDbBlock] = await
         // load blocks and txs from db instead of rpc
         FullBlock.sequelize.transaction(tx=>{
             return Promise.all([
@@ -152,13 +155,18 @@ export async function loadEpoch(epoch: number, cfx: Conflux) {
                 loadTxsByEpoch(epoch, tx),
                 FullBlock.findOne({where: {epoch: epoch-1}, transaction: tx})
             ])
-        }),
-
-    ])
+        });
     const blockHashes = dbBlocks.map(b=>b.hash);
-    await validate(epoch, dbBlocks, receipts, dbTxArr);
     const block = dbBlocks[dbBlocks.length-1];
     const pivotHash = block.hash;
+    const receipts = await cfx.getEpochReceiptsByPivotBlockHash(pivotHash).then(res=>{
+        if (res === null && epoch === 0) {
+            res = []
+        }
+        return res as TransactionReceipt[][];
+    })
+    await validate(epoch, dbBlocks, receipts, dbTxArr);
+
 
     // simulatePivotSwitch(epoch, 3)
     const dt = dbBlocks[dbBlocks.length-1].createdAt;
