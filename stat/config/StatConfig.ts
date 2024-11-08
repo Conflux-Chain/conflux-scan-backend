@@ -89,6 +89,8 @@ export interface StatConfig{
     pendingTxNotAvailable: boolean
     traceNotAvailable: boolean,
     dingTalkToken: string;
+    tgToken?: string; //telegram
+    tgChatId?: string //telegram
     syncBlockDelay: number;
     syncTxnDelay: number;
     syncTraceDelay: number;
