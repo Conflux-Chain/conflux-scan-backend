@@ -143,6 +143,9 @@ export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number, pivotHas
     }
     if (!pivotHash) {
         pivotHash = await cfx.getBlockByEpochNumber(epoch).then(pivotBlock=> {
+            if (!pivotBlock) {
+                return '';
+            }
             if (pivotBlock.epochNumber != epoch) {
                 console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${epoch}`);
                 return '';
