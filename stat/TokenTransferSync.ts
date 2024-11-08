@@ -153,7 +153,7 @@ export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number, pivotHas
             return [];
         }
     }
-    return this.cfx.getEpochReceiptsByPivotBlockHash(pivotHash).then(res=>{
+    return cfx.getEpochReceiptsByPivotBlockHash(pivotHash).then(res=>{
         if (res === null && epoch === 0) {
             console.log(`epoch 0 with null receipts.`)
             res = []
