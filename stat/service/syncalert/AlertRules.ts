@@ -3,6 +3,7 @@ import {IMetric, SamplerType} from "./Sampler";
 import {ConfigInstance} from "../../config/StatConfig";
 import {dingMsg} from "../../monitor/Monitor";
 import * as fs from "fs";
+import {sendAlertTg} from "../../monitor/telegram";
 
 const registry = new MetricRegistry();
 let lastAlertTime = 0;
@@ -73,7 +74,11 @@ export function pushMeter(metrics: IMetric[]) {
 	console.log(`${__filename} ok , round ${cnt} , alert msg count ${alertMsgArr.length} ,  alertTimeAllow ${alertTimeAllow}`);
 	if (alertMsgArr.length && alertTimeAllow) {
 		const msg = alertMsgArr.join('\n');
-		dingMsg(doTest ? "--TEST ALERT--" + msg : msg, ConfigInstance.dingTalkToken).then();
+		if (ConfigInstance.tgToken) {
+			sendAlertTg(doTest ? "--TEST ALERT--" + msg : msg).then();
+		} else {
+			dingMsg(doTest ? "--TEST ALERT--" + msg : msg, ConfigInstance.dingTalkToken).then();
+		}
 		if (doTest) {
 			fs.rm(testAlertFlagFile, ()=>{});
 		} else {
