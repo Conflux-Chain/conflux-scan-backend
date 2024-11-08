@@ -137,7 +137,7 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
     return result;
 }
 
-export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number, pivotHash: string) {
+export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number, pivotHash: string = '') {
     if (ConfigInstance.noCoreSpace) {
         return cfx.getEpochReceipts(epoch);
     }
