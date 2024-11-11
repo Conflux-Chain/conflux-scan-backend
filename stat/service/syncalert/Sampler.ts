@@ -78,6 +78,32 @@ export class BlockTxSampler extends Sampler{
 }
 
 //------------------------------------------------------------------------
+// measure chain growth
+export class RpcSampler extends Sampler{
+
+    previousState:Promise<number>;
+
+    public constructor(app: any) {
+        super(app);
+        this.updateState();
+    }
+
+    protected getType(): string {
+        return SamplerType.RPC;
+    }
+
+    protected async getLatestSynced(): Promise<number> {
+        const ret = this.previousState;
+        this.updateState();
+        return ret;
+    }
+
+    private updateState() {
+        this.previousState = this.getLatestState();
+    }
+}
+
+//------------------------------------------------------------------------
 export class CfxTransferSampler extends Sampler{
 
     public constructor(app: any) {
@@ -155,6 +181,7 @@ export class PosBlockSampler extends Sampler{
 
 export enum SamplerType {
     BLOCK_TX = 'blockTx',
+    RPC = 'rpc',
     CFX_TRANSFER = 'cfxTransfer',
     TOKEN_TRANSFER = 'tokenTransfer',
     EPOCH_MISC = 'epochMisc',
