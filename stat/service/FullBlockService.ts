@@ -35,6 +35,8 @@ import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
 import {ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {rmCache} from "./common/RpcCacheManager";
+import {cfxSafeEpochReceipts} from "../TokenTransferSync";
+import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 
 const BigFixed = require('bigfixed');
 
@@ -190,7 +192,7 @@ export class FullBlockService {
             }
             this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
         }
-        const [rewardList, hashes, receipts] = await Promise.all([
+        const [rewardList, hashes] = await Promise.all([
             // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
@@ -214,25 +216,6 @@ export class FullBlockService {
                 }
                 return []
             }),
-            this.cfx.getBlockByEpochNumber(minEpochNumber).then(pivotBlock=>{
-                if (pivotBlock.epochNumber != minEpochNumber) {
-                    console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${minEpochNumber}`);
-                    return []
-                }
-                return this.cfx.getEpochReceiptsByPivotBlockHash(pivotBlock.hash).then(res=>{
-                    if (res === null && minEpochNumber === 0) {
-                        console.log(`epoch 0 with null receipts.`)
-                        res = []
-                    }
-                    return res || [];
-                }).catch(err=>{
-                    if (!err.message?.includes('Unknown block number')) {
-                        console.log(` get EpochReceipts fail, epoch ${minEpochNumber}:`, err)
-                    }
-                    return []
-                })
-            }),
-
         ])
 
         if (hashes.length === 0) {
@@ -240,14 +223,18 @@ export class FullBlockService {
                 code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
             }
         }
+        const pivot = hashes[hashes.length-1];
+        const [receipts, blockList] = await Promise.all([
+            cfxSafeEpochReceipts(this.cfx, minEpochNumber, pivot),
+            batchFetchBlock(this.cfx, hashes, pivot, minEpochNumber).then(res=>res as (Block & any)[]),
+        ]);
+
         if (hashes.length !== receipts.length && minEpochNumber !== 0) {
             const msg = `block list length ${hashes.length} mismatch receipts length ${receipts?.length
             } at epoch ${minEpochNumber}`;
             console.log(msg)
             return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
         }
-        const pivot = hashes[hashes.length-1];
-        let blockList: any[] = await batchFetchBlock(this.cfx, hashes, pivot, minEpochNumber);
 
         // fill tx receipts to block-> tx
         let code = 0

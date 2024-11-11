@@ -33,7 +33,7 @@ import {NftMint, Token} from "./model/Token";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
 import {dingMsg} from "./monitor/Monitor";
-import {FirstBlockNo} from "./config/StatConfig";
+import {ConfigInstance, FirstBlockNo} from "./config/StatConfig";
 import {loadBlocksByEpoch, loadTxsByEpoch} from "./service/FullBlockService";
 import {ApprovalRelation, batchSaveApproval, buildRelation, TaskEpochApproval, TokenApproval} from "./ApprovalSync";
 
@@ -137,12 +137,36 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
     return result;
 }
 
-export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number) {
-    return cfx.getBlockByEpochNumber(epoch).then(blk=>{
-        if (blk.epochNumber != epoch) {
-            throw new Error(`rpc returns a block with epoch ${blk.epochNumber} , expect ${epoch}`);
+export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number, pivotHash: string = '') {
+    if (ConfigInstance.noCoreSpace) {
+        return cfx.getEpochReceipts(epoch);
+    }
+    if (!pivotHash) {
+        pivotHash = await cfx.getBlockByEpochNumber(epoch).then(pivotBlock=> {
+            if (!pivotBlock) {
+                return '';
+            }
+            if (pivotBlock.epochNumber != epoch) {
+                console.log(`properties mismatch , pivotBlock epoch ${pivotBlock.epochNumber} != wanted ${epoch}`);
+                return '';
+            }
+            return pivotBlock.hash;
+        });
+        if (!pivotHash) {
+            return [];
         }
-        return cfx.getEpochReceiptsByPivotBlockHash(blk.hash)
+    }
+    return cfx.getEpochReceiptsByPivotBlockHash(pivotHash).then(res=>{
+        if (res === null && epoch === 0) {
+            console.log(`epoch 0 with null receipts.`)
+            res = []
+        }
+        return res || [];
+    }).catch(err=>{
+        if (!err.message?.includes('Unknown block number')) {
+            console.log(` get EpochReceipts fail, epoch ${epoch}:`, err)
+        }
+        return []
     })
 }
 
@@ -157,12 +181,7 @@ export async function loadEpoch(epoch: number, cfx: Conflux) {
     const blockHashes = dbBlocks.map(b=>b.hash);
     const block = dbBlocks[dbBlocks.length-1];
     const pivotHash = block.hash;
-    const receipts = await cfx.getEpochReceiptsByPivotBlockHash(pivotHash).then(res=>{
-        if (res === null && epoch === 0) {
-            res = []
-        }
-        return res;
-    })
+    const receipts = await cfxSafeEpochReceipts(cfx, epoch, pivotHash);
     await validate(epoch, dbBlocks, receipts, dbTxArr);
 
 

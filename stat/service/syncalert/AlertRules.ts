@@ -50,7 +50,7 @@ export function pushMeter(metrics: IMetric[]) {
 		}
 
 		// gap is too large, or, height doesn't grow.
-		const threshold = 100;
+		const threshold = ConfigInstance.noCoreSpace ? 10 : 100;
 		{//var scope block
 			const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
 			// pos block is generated every minute.

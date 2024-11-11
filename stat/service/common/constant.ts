@@ -240,5 +240,13 @@ export const CONST = {
       C_ANNOUNCE: '0x623a0340bd4b0817379c8482c92dd26fb8c5316d',
       C_META: '0x96c326866db1b879b2a25be4104fd1d2a7ffb108',
     },
+    '8888':    {      isEvm: false,      EPOCH_CIP1559: 587382,
+      C_ANNOUNCE: '0x81bbe80b1282387e19d7e1a57476869081c7d965', // placeholder
+      C_META: '0x8396a5771e1efb2767519a10dec97d9aaafab1d1', // placeholder
+    },
+    '8889':   {      isEvm: true,       EPOCH_CIP1559: 587382,
+      C_ANNOUNCE: '0x623a0340bd4b0817379c8482c92dd26fb8c5316d', // placeholder
+      C_META: '0x96c326866db1b879b2a25be4104fd1d2a7ffb108', // placeholder
+    },
   }
 };
