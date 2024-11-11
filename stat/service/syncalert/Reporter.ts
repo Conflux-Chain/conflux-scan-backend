@@ -3,7 +3,7 @@ import {
     BlockTxSampler,
     CfxTransferSampler,
     EpochMiscSampler,
-    PosBlockSampler,
+    PosBlockSampler, RpcSampler,
     Sampler,
     TokenTransferSampler
 } from "./Sampler";
@@ -63,6 +63,7 @@ export class Reporter{
             new BlockTxSampler(this.app),
             new TokenTransferSampler(this.app),
             new EpochMiscSampler(this.app),
+            new RpcSampler(this.app),
         ];
 
         if(!config.conflux.consortiumMode && !config.traceNotAvailable) {
