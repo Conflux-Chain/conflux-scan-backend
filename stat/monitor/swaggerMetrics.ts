@@ -14,6 +14,7 @@ export async function fetchSwaggerMetrics(port = 8895) {
 async function report(config: StatConfig, inf: InfluxDB) {
 	const {name, ip, qps, lag} = await fetchSwaggerMetrics(config.v1port);
 	return inf.writePoints([{
+		measurement: config.influxDB.measurement,
 		tags: {name, ip}, fields: {qps, lag}
 	}])
 }
