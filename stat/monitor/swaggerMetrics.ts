@@ -10,11 +10,11 @@ export async function fetchSwaggerMetrics(port = 8895) {
 	console.log(`${name} ${ip} qps ${req_rate} lag ${lag}`);
 	return {name, ip, qps: req_rate, lag};
 }
-
+const defaultMeasurement = 'scan-api';
 async function report(config: StatConfig, inf: InfluxDB) {
 	const {name, ip, qps, lag} = await fetchSwaggerMetrics(config.v1port);
 	return inf.writePoints([{
-		measurement: config.influxDB.measurement,
+		measurement: config.influxDB.measurement || defaultMeasurement,
 		tags: {name, ip}, fields: {qps, lag}
 	}])
 }
@@ -27,7 +27,7 @@ function setup(config: StatConfig) {
 	return new InfluxDB({
 		host, database, username, password, port, protocol,
 		schema: [{
-				measurement: measurement,
+				measurement: measurement || defaultMeasurement,
 				fields: {
 					qps: FieldType.INTEGER,					lag: FieldType.INTEGER,
 					ip: FieldType.STRING, name: FieldType.STRING,
