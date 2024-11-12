@@ -7,7 +7,7 @@ export async function fetchSwaggerMetrics(port = 8895) {
 	const {body:{name,ip,timeline:{settings:{bucket_current}, data}}} = await superagent.get(`http://127.0.0.1:${port}/v1/api-stat/stats?fields=timeline`);
 	const {stats:{req_rate},} = data[bucket_current];
 	const {sys:{lag}} = data[bucket_current - 1];
-	console.log(`${name} ${ip} qps ${req_rate} lag ${lag}`);
+	// console.log(`${name} ${ip} qps ${req_rate} lag ${lag}`);
 	return {name, ip, qps: req_rate, lag};
 }
 const defaultMeasurement = 'scan-api';
