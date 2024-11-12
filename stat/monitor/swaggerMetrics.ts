@@ -25,18 +25,14 @@ function setup(config: StatConfig) {
 	}
 	return new InfluxDB({
 		host, database, username, password, port, protocol,
-		schema: [
-			{
+		schema: [{
 				measurement: measurement,
 				fields: {
-					qps: FieldType.INTEGER,
-					lag: FieldType.INTEGER,
+					qps: FieldType.INTEGER,					lag: FieldType.INTEGER,
+					ip: FieldType.STRING, name: FieldType.STRING,
 				},
-				tags: [
-					'ip', 'name'
-				]
-			}
-		]
+				tags: ['ip', 'name'],
+		}]
 	});
 }
 
