@@ -97,6 +97,7 @@ export interface StatConfig{
     syncTraceCreateContractDelay: number;
     port: number;
     apiPort: number;
+    v1port: number; // scan-api port, for path /v1
     billingUrl: string;
     billingKey: string;
     billingApp: string;
