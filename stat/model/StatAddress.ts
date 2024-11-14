@@ -54,7 +54,9 @@ export class DailyActiveAddress extends Model<IDailyActiveAddress> implements ID
     }
 }
 export async function scheduleDailyActiveAddress() {
-    calcDailyActiveAddress(new Date()).then()
+    calcDailyActiveAddress(new Date()).catch(e=>{
+        console.log(`${__filename} calc Daily Active Address:`, e)
+    })
     setTimeout(scheduleDailyActiveAddress,3600*1000) // 1h
 }
 export async function calcDailyActiveAddress(dt:Date) {

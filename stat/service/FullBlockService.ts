@@ -37,6 +37,7 @@ import {ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {rmCache} from "./common/RpcCacheManager";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {incDailyAddressCount} from "../model/StatAddress";
 
 const BigFixed = require('bigfixed');
 
@@ -550,6 +551,9 @@ export class FullBlockService {
                     } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime})   `)
                 if ((minEpochNumber % 1000) === 0) {
+                    // insert a place holder
+                    incDailyAddressCount(blockTime, 0).catch(e=>console.log(`${__filename}`, e));
+
                     const target = await this.cfx.getEpochNumber('latest_state')
                     const remainTime = (target - minEpochNumber) / epochPerStat * (metrics.ms)
                     const targetTime:Date = new Date(now + remainTime)
