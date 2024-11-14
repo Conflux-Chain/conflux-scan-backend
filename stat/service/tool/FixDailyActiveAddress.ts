@@ -50,3 +50,5 @@ function main() {
 if (require.main === module) {
     main();
 }
+
+// node stat/service/tool/FixDailyActiveAddress.js fixDailyAddr
