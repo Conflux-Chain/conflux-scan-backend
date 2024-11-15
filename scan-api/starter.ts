@@ -15,7 +15,7 @@ async function main() {
     if (!ConfigInstance.v1port) {
         ConfigInstance.v1port = app.config.port;
     }
-    await scheduleSwaggerReporter(ConfigInstance);
+    await scheduleSwaggerReporter(ConfigInstance, ConfigInstance.v1port);
     return app.start()
 }
 

@@ -3,19 +3,20 @@ import {FieldType, InfluxDB} from "influx";
 
 const superagent = require('superagent');
 
-export async function fetchSwaggerMetrics(port = 8895) {
-	const {body:{name,ip,timeline:{settings:{bucket_current}, data}}} = await superagent.get(`http://127.0.0.1:${port}/v1/api-stat/stats?fields=timeline`);
+export async function fetchSwaggerMetrics(port: string|number = 8895, path_ = '') {
+	const path = path_ || `v1/api-stat`;
+	const {body:{name,ip,timeline:{settings:{bucket_current}, data}}} = await superagent.get(`http://127.0.0.1:${port}/${path}/stats?fields=timeline`);
 	const {stats:{req_rate},} = data[bucket_current];
 	const {sys:{lag}} = data[bucket_current - 1];
 	// console.log(`${name} ${ip} qps ${req_rate} lag ${lag}`);
 	return {name, ip, qps: req_rate, lag};
 }
 const defaultMeasurement = 'scan-api';
-async function report(config: StatConfig, inf: InfluxDB) {
-	const {name, ip, qps, lag} = await fetchSwaggerMetrics(config.v1port);
+async function report(config: StatConfig, inf: InfluxDB, dataPort: number|string, nameFix: string, path: string) {
+	const {name, ip, qps, lag} = await fetchSwaggerMetrics(dataPort, path);
 	return inf.writePoints([{
 		measurement: config.influxDB.measurement || defaultMeasurement,
-		tags: {name, ip}, fields: {qps, lag}
+		tags: {name: nameFix ? `${name}_${nameFix}` : name, ip}, fields: {qps, lag}
 	}])
 }
 
@@ -37,19 +38,19 @@ function setup(config: StatConfig) {
 	});
 }
 
-export async function scheduleSwaggerReporter(config: StatConfig) {
+export async function scheduleSwaggerReporter(config: StatConfig, dataPort: number|string, name = '', path = '') {
 	const inf = setup(config);
 	if (!inf) {
 		return
 	}
-	setInterval(()=>report(config, inf), 30_000);
+	setInterval(()=>report(config, inf, dataPort, name, path), 30_000);
 }
 
 async function main() {
 	const [,,cmd,arg1] = process.argv;
 	// await fetchSwaggerMetrics();
 	const cfg = loadConfig('Prod');
-	scheduleSwaggerReporter(cfg).then();
+	scheduleSwaggerReporter(cfg, cfg.v1port || 8895).then();
 }
 
 if (module == require.main) {

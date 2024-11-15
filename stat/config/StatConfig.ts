@@ -1,5 +1,6 @@
 // import {ConfluxOption} from "js-conflux-sdk";
 import {ISingleHostConfig} from "influx";
+import * as os from "os";
 
 const fs = require('fs')
 const templateConf = require('./Template')
@@ -219,7 +220,7 @@ export function loadConfig(specified:string = undefined): StatConfig {
         console.log(`web port [${conf.consortiumBridge.port}] rpc [`, conf.consortiumBridge.rpc, `]`)
         return conf;
     }
-
+    conf.serverTag = `${conf.serverTag}@${os.hostname()}`
     const {databaseRW:{replication:{write:{host: writeHost, username}, read:[{host:readHost}]}}} = conf
     console.log(`database conf, host: write ${writeHost
     } read ${readHost}, user ${username} DB ${conf.databaseRW.instanceName

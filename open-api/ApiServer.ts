@@ -38,6 +38,7 @@ import {DailyStatQuery} from "../stat/service/DailyStatQuery";
 import {KEY_OPEN_API, repeatHeartBeat} from "../stat/model/HeartBeat";
 import {TxnQuery} from "../stat/service/TxnQuery";
 import {TxnSync} from "../stat/service/TxnSync";
+import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -211,6 +212,7 @@ export function initApiServer() {
         return checkTest();
     }).then(()=>{
         repeatHeartBeat(KEY_OPEN_API+apiServer.config.serverTag+port)
+        scheduleSwaggerReporter(apiServer.config, port, 'OpenApi', 'open/swagger-stats').then();
         app.listen(port)
         console.log(`api server listen at ${port}`)
     })
