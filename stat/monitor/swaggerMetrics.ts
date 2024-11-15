@@ -11,11 +11,11 @@ export async function fetchSwaggerMetrics(port: string|number = 8895) {
 	return {name, ip, qps: req_rate, lag};
 }
 const defaultMeasurement = 'scan-api';
-async function report(config: StatConfig, inf: InfluxDB, dataPort: number|string) {
+async function report(config: StatConfig, inf: InfluxDB, dataPort: number|string, nameFix: string) {
 	const {name, ip, qps, lag} = await fetchSwaggerMetrics(dataPort);
 	return inf.writePoints([{
 		measurement: config.influxDB.measurement || defaultMeasurement,
-		tags: {name, ip}, fields: {qps, lag}
+		tags: {name: nameFix ? `${name}_${nameFix}` : name, ip}, fields: {qps, lag}
 	}])
 }
 
@@ -37,12 +37,12 @@ function setup(config: StatConfig) {
 	});
 }
 
-export async function scheduleSwaggerReporter(config: StatConfig, dataPort: number|string) {
+export async function scheduleSwaggerReporter(config: StatConfig, dataPort: number|string, name = '') {
 	const inf = setup(config);
 	if (!inf) {
 		return
 	}
-	setInterval(()=>report(config, inf, dataPort), 30_000);
+	setInterval(()=>report(config, inf, dataPort, name), 30_000);
 }
 
 async function main() {
