@@ -13,6 +13,10 @@ const lodash = require('lodash');
 //   running = false;
 // });
 process.on('unhandledRejection', (e) => {
+  if (e["message"]?.startsWith('ConnectionManager.getConnection was called after the connection manager was closed!')) {
+    console.log(e['message']);
+    return
+  }
   console.error(`${new Date().toISOString()} ProcessTool.ts, the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
   // running = false;
 });

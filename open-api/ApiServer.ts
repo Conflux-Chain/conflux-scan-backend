@@ -174,7 +174,7 @@ export class ApiServer {
 
     private async initMetrics(apiService: ApiService){
         apiService.metrics = new Metrics(config);
-        await apiService.metrics.init();
+        return apiService.metrics.init();
     }
 }
 async function initBilling(config: StatConfig) {
