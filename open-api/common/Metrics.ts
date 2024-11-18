@@ -31,8 +31,13 @@ export class Metrics {
             tags = new Map<string, string>();
             tags.set('env', this.metricsEnv);
         }
-
-        await this.initReport();
+        const hint = setTimeout(()=>{
+            console.log(`${__filename} slow job here`)
+        }, 2_000);
+        await this.initReport().catch(e=>{
+            console.log(`${__filename} failed to init :`, e)
+        });
+        clearTimeout(hint);
 
         const urls = StatApp.isEVM ? ethUrls : cfxUrls;
         for(const url of Object.values(urls.paths)){
@@ -70,16 +75,16 @@ export class Metrics {
             console.log(`InfluxDB is not configured, metrics won't work.`)
             return;
         }
-        const {host, database, username, password, disable,} = this.config.influxDB;
+        const {host, database, username, password, disable, protocol, port} = this.config.influxDB;
         if (disable) {
             return;
         }
-        const dbConfig = {username, password, database, hosts: [{ host, port: 8086 }]};
+        const dbConfig = {username, password, database, hosts: [{ host, port, protocol }]};
 
         this.reporter = new InfluxMetricReporter({
             log: null, //global.console,
             sender: new DefaultSender(dbConfig, 'ms'),
-            reportInterval: 10000,
+            reportInterval: 10_000,
         });
         this.registry = new MetricRegistry();
         this.reporter.addMetricRegistry(this.registry);
