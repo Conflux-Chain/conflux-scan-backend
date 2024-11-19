@@ -1,9 +1,8 @@
-const {scheduleSwaggerReporter} = require("../stat/monitor/swaggerMetrics");
-
-const {app} = require('./index')
-const {ApiApp} = require('./app')
-const {init: initStatApp} = require('../stat/Index')
-const {KV} = require('../stat/model/KV')
+import {init as initStatApp} from "../stat/Index";
+import {KV} from "../stat/model/KV";
+import {app} from "./index";
+import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
+import {ApiApp} from "./app";
 
 export {} // placeholder
 
