@@ -1,25 +1,19 @@
 import * as Koa from 'koa'
 import * as Router from "koa-router";
-import bodyParser = require("koa-bodyparser");
+import * as bodyParser from "koa-bodyparser";
 import {ApiServer, getApiService} from '../ApiServer'
 import {StatApp} from "../../stat/StatApp";
 import {registerRouter as registerRouterESpace} from "./ESpaceApiRouter";
 import {addSwagger, executionTime, handleException, setBody} from "./middleware";
-import {
-    listAccountAssets
-} from "../service/OpenAccountService";
-import {
-    abiDecode,
-    abiDecodeRaw,
-    listAccountTransaction
-} from "../service/OpenTxService";
+import {listAccountAssets} from "../service/OpenAccountService";
+import {abiDecode, abiDecodeRaw, listAccountTransaction} from "../service/OpenTxService";
 import {
     listAccountCfxTransfer,
-    listAccountTransfer20,
-    listAccountTransfer721,
-    listAccountTransfer1155,
-    listAccountTransfer3525,
     listAccountTransfer,
+    listAccountTransfer1155,
+    listAccountTransfer20,
+    listAccountTransfer3525,
+    listAccountTransfer721,
     listNFTTransfers
 } from "../service/OpenTransferService";
 import {
@@ -30,61 +24,56 @@ import {
     verifyProxyContract,
     verifySourcecode
 } from "../service/OpenContractService";
+import {getTokenInfos, queryTokenInfo} from "../service/OpenTokenService";
 import {
-    getTokenInfos,
-    queryTokenInfo
-} from "../service/OpenTokenService";
-import {
-    listNFTBalances,
-    listNFTTokensByFts,
     getNFTPreview,
+    listNFTBalances,
     listNFTOwners,
+    listNFTTokensByFts,
     listNFTTokensPro,
 } from "../service/OpenNFTService";
 import {
-    listMiningStat,
     getSupplyStat,
-    listTpsStat,
-    listContractStat,
-    listCfxHolderStat,
-    listAccountGrowthStat,
     listAccountActiveStat,
-    listTransactionStat,
-    listCfxTransferStat,
-    listTokenTransferStat,
-    listGasUsedTopStat,
-    listMinerTopStat,
-    listTransactionSenderTopStat,
-    listTransactionReceiverTopStat,
-    listCfxSenderTopStat,
-    listCfxReceiverTopStat,
-    listTokenTransferTopStat,
-    listTokenSenderTopStat,
-    listTokenReceiverTopStat,
-    listTokenParticipantTopStat,
-    listTokenHolderStat,
-    listTokenUniqueSenderStat,
-    listTokenUniqueReceiverStat,
-    listTokenUniqueParticipantStat,
+    listAccountGrowthStat,
     listApproval,
-    listNFTAssetStat,
-    listNFTContractStat,
-    listNFTTransferStat,
-    listNFTHolderStat,
-    listPowRewardStat,
-    listPosRewardStat,
-    listTransactionSenderStat,
     listBurntFeeStat,
     listBurntRateStat,
+    listCfxHolderStat,
+    listCfxReceiverTopStat,
+    listCfxSenderTopStat,
+    listCfxTransferStat,
     listCIP1559Stat,
+    listContractStat,
+    listGasUsedTopStat,
+    listMinerTopStat,
+    listMiningStat,
+    listNFTAssetStat,
+    listNFTContractStat,
+    listNFTHolderStat,
+    listNFTTransferStat,
+    listPosRewardStat,
+    listPowRewardStat,
+    listTokenHolderStat,
+    listTokenParticipantTopStat,
+    listTokenReceiverTopStat,
+    listTokenSenderTopStat,
+    listTokenTransferStat,
+    listTokenTransferTopStat,
+    listTokenUniqueParticipantStat,
+    listTokenUniqueReceiverStat,
+    listTokenUniqueSenderStat,
+    listTpsStat,
+    listTransactionReceiverTopStat,
+    listTransactionSenderStat,
+    listTransactionSenderTopStat,
+    listTransactionStat,
 } from "../service/OpenStatService";
-import {
-    mustBeAddressParamIfPresent,
-} from "../../stat/service/common/utils";
+import {mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
 import {
     checkApiKey,
-    checkRateByLevel,
     checkRateByAddress,
+    checkRateByLevel,
     loadRateConfig,
     loadRateKeyConfig
 } from "../../stat/router/RateLimiter";

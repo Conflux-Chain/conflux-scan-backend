@@ -1,6 +1,6 @@
 import * as Koa from 'koa'
 import * as Router from "koa-router";
-import bodyParser = require("koa-bodyparser");
+import * as bodyParser from "koa-bodyparser";
 import {getConsortiumService} from "../ConsortiumBridge";
 import {
     mustBeEnumParamIfPresent,

@@ -5,6 +5,8 @@ const {ApiApp} = require('./app')
 const {init: initStatApp} = require('../stat/Index')
 const {KV} = require('../stat/model/KV')
 
+export {} // placeholder
+
 async function main() {
     console.log(`----- start stat and scan-api -----`)
     process.env['unified_mod'] = 'yes';
