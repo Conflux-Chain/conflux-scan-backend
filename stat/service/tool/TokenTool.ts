@@ -4,7 +4,7 @@ import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
 import {decodeUtf8} from "./StringTool";
-import oss = require('ali-oss');
+import * as oss from "ali-oss";
 import {getAddrId} from "../../model/HexMap";
 import {CONST} from "../common/constant";
 import {StatApp} from "../../StatApp";

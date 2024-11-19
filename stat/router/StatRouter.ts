@@ -1,11 +1,11 @@
 // @ts-ignore
 const superagent = require('superagent');
-import {Conflux, format} from "js-conflux-sdk"
+import {format} from "js-conflux-sdk"
 import {fmtAddr, StatApp} from "../StatApp";
 import * as Koa from 'koa'
+import * as Application from 'koa'
 import {Context} from 'koa'
 import * as Router from 'koa-router'
-import bodyParser = require("koa-bodyparser");
 import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV, USE_REMOTE_STAT} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
@@ -14,12 +14,11 @@ import {addDevopsRouter} from "./DevopsRouter";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {DailyCfxTxn, sumRecentCfxAmount} from "../model/CfxTransfer";
-import Application = require("koa");
-import {QueryTypes,Op} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer} from "../service/DailyTokenSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
-import {getAddrId, Hex40Map} from "../model/HexMap";
+import {Hex40Map} from "../model/HexMap";
 import {Epoch} from "../model/Epoch";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
@@ -27,8 +26,8 @@ import {listNftOfAccountByContract} from "../service/NftService";
 import {BalanceService, scientificToBigInt} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
-    formatBalance, formatPercentage,
-    initCfxSdk,
+    formatBalance,
+    formatPercentage,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
@@ -39,6 +38,7 @@ import {checkRate, getClientIP, loadRateConfig} from "./RateLimiter";
 import {Errors} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
 import {paginateCore, paginateCoreStat} from "./ParamChecker";
+import * as bodyParser from "koa-bodyparser";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -55,12 +55,6 @@ export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = { serverInfo: `${statApp.config.serverTag} network id ${StatApp.networkId}` }
-    })
-
-    router.get('/contract/all', async (ctx)=>{
-        ctx.body = {
-            list: [...statApp.contractService.map.values()]
-        }
     })
 
     router.get('/account-token-balance', async(ctx) => {

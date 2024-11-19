@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "module": "commonjs", // ensure using `require` instead of `import`
+    "module": "CommonJS",
     "incremental": true,
     "skipLibCheck": true,
-    "sourceMap": true,
+    "downlevelIteration": true,
     "lib": ["ES2020"],
-    "target": "es2016", // <=
+    "target": "ES2020", // <=
     "allowSyntheticDefaultImports": true
     // ...
   }

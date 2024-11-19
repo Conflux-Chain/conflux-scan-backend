@@ -416,9 +416,6 @@ async function test() {
     }
 }
 const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
-if (module === require.main) {
-    main().then()
-}
 
 // 721 1030 0xf31216bd4c532effff0a8c397d21c4f931e6c3b23620328693dd91f10d500245 epoch 5371609
 // 20  1030 0x00a5164cc7b88758ad8d087387cc4015b07d073c4ff2b9abcafb934fca66ce53 epoch 62237

@@ -1,9 +1,11 @@
-const {scheduleSwaggerReporter} = require("../stat/monitor/swaggerMetrics");
+import {init as initStatApp} from "../stat/Index";
+import {KV} from "../stat/model/KV";
+import {app} from "./index";
+import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
+import {ApiApp} from "./app";
+import {ConfigInstance} from "../stat/config/StatConfig";
 
-const {app} = require('./index')
-const {ApiApp} = require('./app')
-const {init: initStatApp} = require('../stat/Index')
-const {KV} = require('../stat/model/KV')
+export {} // placeholder
 
 async function main() {
     console.log(`----- start stat and scan-api -----`)
@@ -11,7 +13,6 @@ async function main() {
     await initStatApp();
     console.log(`--- start scan-api ---`)
     ApiApp.injectContext(KV.sequelize);
-    const {ConfigInstance} =require("../stat/config/StatConfig");
     if (!ConfigInstance.v1port) {
         ConfigInstance.v1port = app.config.port;
     }
