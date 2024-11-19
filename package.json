@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "compile": "npx tsc -b ./stat ./scan-api ./open-api ./koaflow",
+    "compile": "npx tsc -b .",
     "api-c": "npx tsc -b ./open-api",
     "api-clean": "npx tsc -b --clean ./open-api",
     "copyfiles": "cp ./stat/service/watcher/contract/*.json ./stat/service/watcher/contract/",
