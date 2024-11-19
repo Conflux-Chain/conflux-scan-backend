@@ -57,12 +57,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = { serverInfo: `${statApp.config.serverTag} network id ${StatApp.networkId}` }
     })
 
-    router.get('/contract/all', async (ctx)=>{
-        ctx.body = {
-            list: [...statApp.contractService.map.values()]
-        }
-    })
-
     router.get('/account-token-balance', async(ctx) => {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32');
 
