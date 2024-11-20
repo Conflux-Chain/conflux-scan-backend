@@ -407,6 +407,11 @@ export class FullBlockService {
             if (block.epochNumber !== minEpochNumber) {
                 throw new Error(`epoch in block ${block.epoch} != ${minEpochNumber} wanted!`)
             }
+            // when gas used is null, the block is not executed yet.
+            if (block.gasUsed == null) {
+                message = `gas used is null, block ${block.hash}`;
+                return {code: CODE_CONTINUE, message};
+            }
             block.epoch = minEpochNumber;
             block.pivot = false;
             const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash) || {}
