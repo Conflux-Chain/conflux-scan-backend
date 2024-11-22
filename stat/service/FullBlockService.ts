@@ -67,6 +67,8 @@ export class FullBlockService {
         blockCount: 0,
         //
         queryFullNodeTime: 0,
+        pureRpcTime: 0,
+        procTime: 0,
         buildTime: 0,
         saveBlockTime: 0,
         saveTxTime: 0,
@@ -192,6 +194,7 @@ export class FullBlockService {
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
     private async loadEpochData(minEpochNumber: number) {
+        let start = Date.now();
         const [rewardList, hashes] = await Promise.all([
             // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
@@ -220,7 +223,7 @@ export class FullBlockService {
 
         if (hashes.length === 0) {
             return {
-                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
+                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber, rpcTime: Date.now() - start, procTime: 0,
             }
         }
         const pivot = hashes[hashes.length-1];
@@ -233,9 +236,9 @@ export class FullBlockService {
             const msg = `block list length ${hashes.length} mismatch receipts length ${receipts?.length
             } at epoch ${minEpochNumber}`;
             // console.log(msg)
-            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch, rpcTime: Date.now() - start, procTime: 0,}
         }
-
+        const rpcTime = Date.now() - start; start = Date.now();
         // fill tx receipts to block-> tx
         let code = 0
         let message = 'ok'
@@ -299,7 +302,7 @@ export class FullBlockService {
                 }
             }
         }
-        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes}
+        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -347,6 +350,8 @@ export class FullBlockService {
         let now = Date.now();
         let metrics = this.metrics;
         metrics.queryFullNodeTime += now - start;  start = now; // =====================================================
+        metrics.pureRpcTime += preLoadResult.rpcTime;
+        metrics.procTime += preLoadResult.procTime;
         if (preLoadResult.code !== 0) {
             return preLoadResult
         }
@@ -550,8 +555,8 @@ export class FullBlockService {
                 console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
-                }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms: rpc ${metrics.queryFullNodeTime
-                    } build ${metrics.buildTime}, bulkSaveDB ${metrics.bulkSaveMs} Detail: block ${metrics.saveBlockTime} allTx ${metrics.saveTxTime} addrTx ${metrics.saveAddrTxTime
+                }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms: rpc ${metrics.pureRpcTime}/${metrics.queryFullNodeTime
+                    } build ${metrics.procTime}/${metrics.buildTime}, bulkSaveDB ${metrics.bulkSaveMs} Detail: block ${metrics.saveBlockTime} allTx ${metrics.saveTxTime} addrTx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime}   `)
                 if ((minEpochNumber % 1000) === 0) {
                     // insert a place holder
@@ -564,7 +569,7 @@ export class FullBlockService {
                 }
                 metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
                 metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
-                metrics.diffTxCntTime = metrics.diffBlockCntTime = metrics.bulkSaveMs = 0
+                metrics.diffTxCntTime = metrics.diffBlockCntTime = metrics.bulkSaveMs = metrics.pureRpcTime = metrics.procTime = 0
             }
         }).catch(err => {
             message = `${err}`
