@@ -523,7 +523,7 @@ export class SyncData {
 
 export class PreloadMap extends Map {
     private func: Function;
-    maxId: number;
+    maxId: number = 0;
     limit: number;
     constructor(func, _limit = 10) {
         super();
