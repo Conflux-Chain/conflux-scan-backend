@@ -61,6 +61,7 @@ export class FullBlockService {
     // sync metrics
     private metrics = {
         ms : 0,
+        bulkSaveMs: 0,
         executedTxCount : 0,
         addressTxCount: 0,
         blockCount: 0,
@@ -94,15 +95,18 @@ export class FullBlockService {
         await FullBlockService.checkBlockCountKV()
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
+        this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
+        this.preLoadMap.initTasks(maxEpoch+1, 50);
         const that = this
-        async function repeat(){
+        const repeat = async ()=>{
+            const wantEpoch = maxEpoch + 1;
             let ret
-            ret = await that.syncBlockByEpoch(maxEpoch+1).catch(err=>{
+            ret = await that.syncBlockByEpoch(wantEpoch).catch(err=>{
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
-                    console.log(`lock time out at epoch ${maxEpoch+1}:`, err)
+                    console.log(`lock time out at epoch ${wantEpoch}:`, err)
                 } else {
-                    console.log(`sync block fail at epoch ${maxEpoch+1}`, err)
+                    console.log(`sync block fail at epoch ${wantEpoch}`, err)
                 }
                 return {code: CODE_CONTINUE}
             })
@@ -113,9 +117,11 @@ export class FullBlockService {
                 console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message || 'no message'}`)
                 await sleep(5_000)
+                this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await sleep(5_000)
+                this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
             } else {
                 maxEpoch += 1
             }
@@ -184,15 +190,6 @@ export class FullBlockService {
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
     private async loadEpochData(minEpochNumber: number) {
-        while (minEpochNumber >= this.latestStateEpoch) {
-            if (this.latestStateEpoch > 0) {
-                if (this.latestStateEpoch % 10 == 0) {
-                    console.log(`block not ready, want ${minEpochNumber} >= ${this.latestStateEpoch} latest_state`)
-                }
-                await sleep(5_000)
-            }
-            this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
-        }
         const [rewardList, hashes] = await Promise.all([
             // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
@@ -344,7 +341,7 @@ export class FullBlockService {
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
         let veryBegin = start
-        let preLoadResult = await this.preLoadMap.pop(minEpochNumber)
+        let preLoadResult = await this.preLoadMap.pop(minEpochNumber);
         let now = Date.now();
         let metrics = this.metrics;
         metrics.queryFullNodeTime += now - start;  start = now; // =====================================================
@@ -352,9 +349,7 @@ export class FullBlockService {
             return preLoadResult
         }
         if (preLoadResult.latest_state - minEpochNumber > 500) {
-            for (let i=1; i<=10; i++) {
-                this.preLoadMap.start(minEpochNumber + i)
-            }
+            this.preLoadMap.startNext();
         }
         // blockList = blockList.reverse(); // turn to asc order.
         const blockList = preLoadResult.blockList
@@ -542,6 +537,7 @@ export class FullBlockService {
         }).then(async ()=>{
             let now = Date.now()
             metrics.ms += now - veryBegin
+            metrics.bulkSaveMs += now - start;
             this.previousPivotHash = pivotBlock.hash
             metrics.executedTxCount += executedTxArr.length
             metrics.addressTxCount += txByAddressArr.length
@@ -552,9 +548,9 @@ export class FullBlockService {
                 console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
-                }, time ${blockTime.toISOString()}, cost ${metrics.ms}ms (full node ${metrics.queryFullNodeTime
-                    } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
-                    } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime})   `)
+                }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms , full node rpc ${metrics.queryFullNodeTime
+                    } build ${metrics.buildTime} , bulk save DB ${metrics.bulkSaveMs} \n DB detail: block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
+                    } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime}   `)
                 if ((minEpochNumber % 1000) === 0) {
                     // insert a place holder
                     incDailyAddressCount(blockTime, 0).catch(e=>console.log(`${__filename}`, e));
@@ -566,7 +562,7 @@ export class FullBlockService {
                 }
                 metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
                 metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
-                metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
+                metrics.diffTxCntTime = metrics.diffBlockCntTime = metrics.bulkSaveMs = 0
             }
         }).catch(err => {
             message = `${err}`
