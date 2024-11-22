@@ -1,7 +1,7 @@
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../stat/service/common/utils";
 
-async function doIt(cfx: Conflux, start: number, step: number) {
+async function doIt(cfx: Conflux, workerId: number, start: number, step: number) {
 	let round = 0;
 	let totalMs = 0;
 	let eCnt = 0;
@@ -24,7 +24,7 @@ async function doIt(cfx: Conflux, start: number, step: number) {
 		start += step;
 		round++;
 		if (round % 100 == 1) {
-			console.log(`round ${round} position ${start} time ${blockTime.toISOString()} error ${eCnt} avg ms ${Math.round(totalMs / round)}`);
+			console.log(`worker ${workerId} round ${round} position ${start} time ${blockTime.toISOString()} error ${eCnt} avg ms ${Math.round(totalMs / round)}`);
 		}
 	}
 }
@@ -33,7 +33,7 @@ export async function rpcLoadTest(url: string, start = 1, threads: number=8) {
 	const cfx = await initCfxSdk({url});
 	console.log(`network `, cfx.networkId);
 	for (let i = 0; i < threads; i++) {
-		doIt(cfx, start+i, threads).then();
+		doIt(cfx, i, start+i, threads).then();
 	}
 }
 
@@ -48,4 +48,4 @@ if (module == require.main) {
 	main().then()
 }
 
-// node tools/rpcLoad.js rpcLoadTest http:// 100 16
+// node tools/rpcLoadTest.js rpcLoadTest http:// 100 16
