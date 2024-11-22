@@ -230,7 +230,7 @@ export class FullBlockService {
         if (hashes.length !== receipts.length && minEpochNumber !== 0) {
             const msg = `block list length ${hashes.length} mismatch receipts length ${receipts?.length
             } at epoch ${minEpochNumber}`;
-            console.log(msg)
+            // console.log(msg)
             return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
         }
 
@@ -617,7 +617,7 @@ export class FullBlockService {
     }
     public async fillBlockReward(epoch: number) : Promise<{code:number, message:string}>{
         while (epoch > this.maxEpochOfBlock) {
-            console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
+            // console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
             await sleep(5_000)
             // max function on desc index is very slow.
             this.maxEpochOfBlock = await loadMaxBlockEpoch()
