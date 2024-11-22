@@ -96,8 +96,8 @@ export class FullBlockService {
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
         this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
-        if (this.latestStateEpoch - maxEpoch > 120) {
-            this.preLoadMap.initTasks(maxEpoch + 1, 50);
+        if (this.latestStateEpoch - maxEpoch > 600) {
+            this.preLoadMap.initTasks(maxEpoch + 1, 300);
         }
         const that = this
         const repeat = async ()=>{
@@ -550,8 +550,8 @@ export class FullBlockService {
                 console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
-                }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms , full node rpc ${metrics.queryFullNodeTime
-                    } build ${metrics.buildTime} , bulk save DB ${metrics.bulkSaveMs} \n DB detail: block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
+                }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms: rpc ${metrics.queryFullNodeTime
+                    } build ${metrics.buildTime}, bulkSaveDB ${metrics.bulkSaveMs} Detail: block ${metrics.saveBlockTime} allTx ${metrics.saveTxTime} addrTx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime}   `)
                 if ((minEpochNumber % 1000) === 0) {
                     // insert a place holder
