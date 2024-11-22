@@ -525,7 +525,7 @@ export class PreloadMap extends Map {
     private func: Function;
     maxId: number;
     limit: number;
-    constructor(func, _limit = 0) {
+    constructor(func, _limit = 10) {
         super();
         this.func = func;
         this.limit = _limit;

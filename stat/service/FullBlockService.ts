@@ -55,7 +55,7 @@ export class FullBlockService {
     private powSidePosSync: PowSidePosSync;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
-        this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this))
+        this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this), 50)
         this.powSidePosSync = new PowSidePosSync(cfx);
     }
     // sync metrics
@@ -96,7 +96,9 @@ export class FullBlockService {
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
         this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
-        this.preLoadMap.initTasks(maxEpoch+1, 50);
+        if (this.latestStateEpoch - maxEpoch > 120) {
+            this.preLoadMap.initTasks(maxEpoch + 1, 50);
+        }
         const that = this
         const repeat = async ()=>{
             const wantEpoch = maxEpoch + 1;
