@@ -532,6 +532,9 @@ export class PreloadMap extends Map {
     }
 
     public start(arg:number) {
+        if (isNaN(arg)) {
+            console.log(`who call it ? `, new Error("stack is "))
+        }
         if (!this.has(arg)) {
             const task = this.func(arg).catch((e: any) => e);
             this.set(arg, task);

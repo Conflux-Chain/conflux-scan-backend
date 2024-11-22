@@ -97,7 +97,7 @@ export class FullBlockService {
         await FullBlockService.checkBlockCountKV()
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
-        this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
+        await this.updateEpochNumber();
         if (this.latestStateEpoch - maxEpoch > 600) {
             this.preLoadMap.initTasks(maxEpoch + 1, 300);
         }
@@ -147,6 +147,10 @@ export class FullBlockService {
         return repeat()
     }
 
+    public async updateEpochNumber() {
+        this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
+    }
+
     public static async checkTxCountKV(update = false) {
         const cnt = await KV.getNumber(KEY_FULL_TX_COUNT, NaN)
         if (!isNaN(cnt) && !update) {
@@ -193,7 +197,7 @@ export class FullBlockService {
         }
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
-    private async loadEpochData(minEpochNumber: number) {
+    public async loadEpochData(minEpochNumber: number) {
         let start = Date.now();
         const [rewardList, hashes] = await Promise.all([
             // @ts-ignore
