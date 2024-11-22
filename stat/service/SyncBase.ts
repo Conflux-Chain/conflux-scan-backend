@@ -536,11 +536,11 @@ export class PreloadMap extends Map {
             console.log(`who call it ? `, new Error("stack is "))
         }
         if (!this.has(arg)) {
-            const task = this.func(arg).catch((e: any) => e);
-            this.set(arg, task);
             if (arg > this.maxId) {
                 this.maxId = arg;
             }
+            const task = this.func(arg).catch((e: any) => e);
+            this.set(arg, task);
             return task;
         }
         return this.get(arg);
