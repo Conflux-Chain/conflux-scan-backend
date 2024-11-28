@@ -586,9 +586,7 @@ export class FullBlockService {
                 metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
                 metrics.diffTxCntTime = metrics.diffBlockCntTime = metrics.bulkSaveMs = metrics.pureRpcTime = metrics.procTime = 0
             }
-        }).catch(err => {
-            throw err;
-        });
+        })
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
