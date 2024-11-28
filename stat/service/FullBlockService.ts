@@ -447,6 +447,7 @@ export class FullBlockService {
         // build transaction template
         const hexMap = await this.buildHexIds(blockList, blockTime);
         const blockBeanArr = this.batchBlockTx.fullBlock;
+        blockBeanArr.push(...blockList);
         const executedTxArr = this.batchBlockTx.fullTransaction;
         const txByAddressArr = this.batchBlockTx.addressTransactionIndex;
         const failedTxArr = this.batchBlockTx.failedTX;
@@ -586,8 +587,6 @@ export class FullBlockService {
                 metrics.diffTxCntTime = metrics.diffBlockCntTime = metrics.bulkSaveMs = metrics.pureRpcTime = metrics.procTime = 0
             }
         }).catch(err => {
-            message = `${err}`
-            console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
             throw err;
         });
         return {
