@@ -418,8 +418,11 @@ export class FullBlockService {
             }
             // when gas used is null, the block is not executed yet.
             if (block.gasUsed == null) {
-                message = `gas used is null, block ${block.hash}`;
-                return {code: CODE_CONTINUE, message};
+                if (minEpochNumber > 0) {
+                    message = `gas used is null, block ${block.hash}`;
+                    return {code: CODE_CONTINUE, message};
+                }
+                block.gasUsed = 0
             }
             block.epoch = minEpochNumber;
             block.pivot = false;
