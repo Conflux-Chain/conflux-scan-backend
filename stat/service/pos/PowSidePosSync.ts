@@ -31,6 +31,7 @@ export class PowSidePosSync {
         if(StatApp.isEVM) {
             return
         }
+        const arr:IPosRegister[] = []
         // check it , send to mq by condition.
         for (let receipts of receipts2d) {
             for (let receipt of receipts) {
@@ -39,11 +40,13 @@ export class PowSidePosSync {
                     log.transactionLogIndex = logIdx++;
                     if (log.address === PowSidePosSync.POS_CONTRACT_VERBOSE) {
                         log.transactionHash = receipt.transactionHash;
-                        await this.sync(epoch, log, blockTime, dbTx)
+                        const bean = await this.sync(epoch, log, blockTime, dbTx)
+                        arr.push(bean);
                     }
                 }
             }
         }
+        return arr;
     }
     async sync(epoch, log, blockTime, dbTx) {
         const bean:IPosRegister = {
@@ -80,8 +83,9 @@ export class PowSidePosSync {
         } else {
             throw new Error(` unexpected pos register topic, at epoch ${epoch}, topic ${log["topics"][0]}`)
         }
-        await PosRegister.create(bean, {transaction: dbTx})
+        // await PosRegister.create(bean, {transaction: dbTx})
         console.log(` pos register, epoch ${epoch}`);
+        return bean;
     }
 
     async testRetire(account:string) {

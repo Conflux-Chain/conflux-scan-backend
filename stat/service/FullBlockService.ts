@@ -447,6 +447,7 @@ export class FullBlockService {
         const txByAddressArr = []
         const failedTxArr = []
         const blockExtArr = []
+        const posRegArr = await this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, null)
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let sumGasLimit = BigInt(0)
@@ -543,7 +544,7 @@ export class FullBlockService {
                 FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
                 this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
-                this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),
+                PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),
             ])
         }).then(async ()=>{
             let now = Date.now()
