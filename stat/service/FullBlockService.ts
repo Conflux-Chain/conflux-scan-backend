@@ -446,12 +446,16 @@ export class FullBlockService {
         pivotBlock.pivot = true
         // build transaction template
         const hexMap = await this.buildHexIds(blockList, blockTime);
+        const blockBeanArr = this.batchBlockTx.fullBlock;
         const executedTxArr = this.batchBlockTx.fullTransaction;
         const txByAddressArr = this.batchBlockTx.addressTransactionIndex;
         const failedTxArr = this.batchBlockTx.failedTX;
         const blockExtArr = this.batchBlockTx.fullBlockExt;
         const posRegArr = this.batchBlockTx.posRegArr;
         await this.powSidePosSync.checkPosRegister(posRegArr, preLoadResult.receipts, minEpochNumber, blockTime, null)
+        const txCntPre = executedTxArr.length;
+        const addrTxCntPre = txByAddressArr.length;
+
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let sumGasLimit = BigInt(0)
@@ -536,21 +540,18 @@ export class FullBlockService {
             const blockExt = buildBlockExt(minEpochNumber, block)
             blockExtArr.push(blockExt)
         }
-        const failedBeans = failedTxArr
-        this.batchBlockTx.blockCount += blockList.length
-        this.batchBlockTx.txCount += executedTxArr.length
         this.batchBlockTx.batchSize ++
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         //
         await (this.batchBlockTx.batchSize < 10 ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
-                FailedTx.bulkCreate(failedBeans, {transaction: dbTx, ignoreDuplicates: true}),
-                FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
+                FailedTx.bulkCreate(failedTxArr, {transaction: dbTx, ignoreDuplicates: true}),
+                FullBlock.bulkCreate(blockBeanArr, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.blockCount, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
-                this.diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.txCount, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.fullBlock.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
+                this.diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.fullTransaction.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),
             ])
             this.batchBlockTx.reset();
@@ -559,8 +560,8 @@ export class FullBlockService {
             metrics.ms += now - veryBegin
             metrics.bulkSaveMs += now - start;
             this.previousPivotHash = pivotBlock.hash
-            metrics.executedTxCount += executedTxArr.length
-            metrics.addressTxCount += txByAddressArr.length
+            metrics.executedTxCount += executedTxArr.length - txCntPre
+            metrics.addressTxCount += txByAddressArr.length - addrTxCntPre
             metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
             const epochPerStat = 100

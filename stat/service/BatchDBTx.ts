@@ -13,8 +13,6 @@ export class BatchBlockTx {
 	fullTransaction: FullTransaction[]
 	addressTransactionIndex: AddressTransactionIndex[]
 	fullBlockExt: FullBlockExt[]
-	blockCount: number
-	txCount: number
 	posRegArr: IPosRegister[]
 
 	batchSize: number
@@ -30,8 +28,6 @@ export class BatchBlockTx {
 		this.fullTransaction = []
 		this.addressTransactionIndex = []
 		this.fullBlockExt = []
-		this.blockCount = 0
-		this.txCount = 0
 		this.posRegArr = []
 
 		this.batchSize = 0
