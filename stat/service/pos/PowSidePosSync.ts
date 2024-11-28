@@ -27,11 +27,10 @@ export class PowSidePosSync {
         this.posContractAddr = PowSidePosSync.POS_CONTRACT_HEX
         this.posContract = this.cfx.Contract({abi: posAbi, address: this.posContractAddr})
     }
-    async checkPosRegister(receipts2d:any[][], epoch: number, blockTime: Date, dbTx: Transaction) {
+    async checkPosRegister(arr: IPosRegister[], receipts2d:any[][], epoch: number, blockTime: Date, dbTx: Transaction) {
         if(StatApp.isEVM) {
             return
         }
-        const arr:IPosRegister[] = []
         // check it , send to mq by condition.
         for (let receipts of receipts2d) {
             for (let receipt of receipts) {

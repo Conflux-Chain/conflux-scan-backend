@@ -38,6 +38,7 @@ import {rmCache} from "./common/RpcCacheManager";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
+import {BatchBlockTx} from "./BatchDBTx";
 
 const BigFixed = require('bigfixed');
 
@@ -53,10 +54,12 @@ export class FullBlockService {
     public maxEpochOfBlock = 0
     preLoadMap:PreloadMap
     private powSidePosSync: PowSidePosSync;
+    batchBlockTx: BatchBlockTx;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this), 50)
         this.powSidePosSync = new PowSidePosSync(cfx);
+        this.batchBlockTx = new BatchBlockTx();
     }
     // sync metrics
     private metrics = {
@@ -443,11 +446,12 @@ export class FullBlockService {
         pivotBlock.pivot = true
         // build transaction template
         const hexMap = await this.buildHexIds(blockList, blockTime);
-        const executedTxArr = []
-        const txByAddressArr = []
-        const failedTxArr = []
-        const blockExtArr = []
-        const posRegArr = await this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, null)
+        const executedTxArr = this.batchBlockTx.fullTransaction;
+        const txByAddressArr = this.batchBlockTx.addressTransactionIndex;
+        const failedTxArr = this.batchBlockTx.failedTX;
+        const blockExtArr = this.batchBlockTx.fullBlockExt;
+        const posRegArr = this.batchBlockTx.posRegArr;
+        await this.powSidePosSync.checkPosRegister(posRegArr, preLoadResult.receipts, minEpochNumber, blockTime, null)
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let sumGasLimit = BigInt(0)
@@ -533,20 +537,24 @@ export class FullBlockService {
             blockExtArr.push(blockExt)
         }
         const failedBeans = failedTxArr
+        this.batchBlockTx.blockCount += blockList.length
+        this.batchBlockTx.txCount += executedTxArr.length
+        this.batchBlockTx.batchSize ++
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         //
-        await FullBlock.sequelize.transaction(async (dbTx) => {
+        await (this.batchBlockTx.batchSize < 10 ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 FailedTx.bulkCreate(failedBeans, {transaction: dbTx, ignoreDuplicates: true}),
                 FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
-                this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.blockCount, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
+                this.diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.txCount, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),
             ])
-        }).then(async ()=>{
+            this.batchBlockTx.reset();
+        })).then(async ()=>{
             let now = Date.now()
             metrics.ms += now - veryBegin
             metrics.bulkSaveMs += now - start;
