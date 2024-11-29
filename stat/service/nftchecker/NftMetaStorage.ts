@@ -603,7 +603,7 @@ async function batchFetchMeta(taskArray, contractMap) {
         const ipfsGateway = await getIpfsGateway(contractInfo.ipfsGateway);
         const {uri, content, name, errorType, error} = await fetchMeta(contractInfo.hex, tokenId, contractInfo.is1155,
             ipfsGateway);
-        const [status, err] = error ? [MetaStatus.FAILURE, error.substr(0, 1024)] : [MetaStatus.SUCCESS, error];
+        const [status, err] = errorType ? [MetaStatus.FAILURE, error.substr(0, 1024)] : [MetaStatus.SUCCESS, error];
         return {contractId, tokenId, epochNumber, status, retry: 0, errorType, error: err, uri, content, name};
     }));
 }
