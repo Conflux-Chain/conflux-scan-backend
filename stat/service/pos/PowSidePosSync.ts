@@ -27,7 +27,7 @@ export class PowSidePosSync {
         this.posContractAddr = PowSidePosSync.POS_CONTRACT_HEX
         this.posContract = this.cfx.Contract({abi: posAbi, address: this.posContractAddr})
     }
-    async checkPosRegister(receipts2d:any[][], epoch: number, blockTime: Date, dbTx: Transaction) {
+    async checkPosRegister(arr: IPosRegister[], receipts2d:any[][], epoch: number, blockTime: Date, dbTx: Transaction) {
         if(StatApp.isEVM) {
             return
         }
@@ -39,11 +39,13 @@ export class PowSidePosSync {
                     log.transactionLogIndex = logIdx++;
                     if (log.address === PowSidePosSync.POS_CONTRACT_VERBOSE) {
                         log.transactionHash = receipt.transactionHash;
-                        await this.sync(epoch, log, blockTime, dbTx)
+                        const bean = await this.sync(epoch, log, blockTime, dbTx)
+                        arr.push(bean);
                     }
                 }
             }
         }
+        return arr;
     }
     async sync(epoch, log, blockTime, dbTx) {
         const bean:IPosRegister = {
@@ -80,8 +82,9 @@ export class PowSidePosSync {
         } else {
             throw new Error(` unexpected pos register topic, at epoch ${epoch}, topic ${log["topics"][0]}`)
         }
-        await PosRegister.create(bean, {transaction: dbTx})
+        // await PosRegister.create(bean, {transaction: dbTx})
         console.log(` pos register, epoch ${epoch}`);
+        return bean;
     }
 
     async testRetire(account:string) {

@@ -38,6 +38,7 @@ import {rmCache} from "./common/RpcCacheManager";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
+import {BatchBlockTx} from "./BatchDBTx";
 
 const BigFixed = require('bigfixed');
 
@@ -53,19 +54,24 @@ export class FullBlockService {
     public maxEpochOfBlock = 0
     preLoadMap:PreloadMap
     private powSidePosSync: PowSidePosSync;
+    batchBlockTx: BatchBlockTx;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
-        this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this))
+        this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this), 50)
         this.powSidePosSync = new PowSidePosSync(cfx);
+        this.batchBlockTx = new BatchBlockTx();
     }
     // sync metrics
     private metrics = {
         ms : 0,
+        bulkSaveMs: 0,
         executedTxCount : 0,
         addressTxCount: 0,
         blockCount: 0,
         //
         queryFullNodeTime: 0,
+        pureRpcTime: 0,
+        procTime: 0,
         buildTime: 0,
         saveBlockTime: 0,
         saveTxTime: 0,
@@ -94,15 +100,22 @@ export class FullBlockService {
         await FullBlockService.checkBlockCountKV()
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
+        await this.updateEpochNumber();
+        if (this.latestStateEpoch - maxEpoch > this.batchBlockTx.safeCatchupGap) {
+            this.preLoadMap.initTasks(maxEpoch + 1, this.batchBlockTx.initialTaskCount);
+            // only enable it at startup
+            this.batchBlockTx.enable = true;
+        }
         const that = this
-        async function repeat(){
+        const repeat = async ()=>{
+            const wantEpoch = maxEpoch + 1;
             let ret
-            ret = await that.syncBlockByEpoch(maxEpoch+1).catch(err=>{
+            ret = await that.syncBlockByEpoch(wantEpoch).catch(err=>{
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
-                    console.log(`lock time out at epoch ${maxEpoch+1}:`, err)
+                    console.log(`lock time out at epoch ${wantEpoch}:`, err)
                 } else {
-                    console.log(`sync block fail at epoch ${maxEpoch+1}`, err)
+                    console.log(`sync block fail at epoch ${wantEpoch}`, err)
                 }
                 return {code: CODE_CONTINUE}
             })
@@ -113,9 +126,11 @@ export class FullBlockService {
                 console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message || 'no message'}`)
                 await sleep(5_000)
+                await this.updateEpochNumber()
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await sleep(5_000)
+                await this.updateEpochNumber()
             } else {
                 maxEpoch += 1
             }
@@ -135,6 +150,10 @@ export class FullBlockService {
             }
         }
         return repeat()
+    }
+
+    public async updateEpochNumber() {
+        this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
     }
 
     public static async checkTxCountKV(update = false) {
@@ -183,24 +202,14 @@ export class FullBlockService {
         }
         return KV.create({key: KEY_FULL_BLOCK_COUNT, value: countNow.toString()});
     }
-    private async loadEpochData(minEpochNumber: number) {
-        while (minEpochNumber >= this.latestStateEpoch) {
-            if (this.latestStateEpoch > 0) {
-                if (this.latestStateEpoch % 10 == 0) {
-                    console.log(`block not ready, want ${minEpochNumber} >= ${this.latestStateEpoch} latest_state`)
-                }
-                await sleep(5_000)
-            }
-            this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
-        }
+    public async loadEpochData(minEpochNumber: number) {
+        let start = Date.now();
         const [rewardList, hashes] = await Promise.all([
             // @ts-ignore
             this.cfx.getBlockRewardInfo(minEpochNumber).catch(async err=>{
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
-                    // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
-                    // console.log(`latest_state ${latest}`)
                 } else if (msg.includes('Invalid parameters: epoch')){
                     // try again
                 } else {
@@ -221,7 +230,7 @@ export class FullBlockService {
 
         if (hashes.length === 0) {
             return {
-                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber
+                code: CODE_EMPTY_BLOCK, message: "block list is empty", blockCount: 0, epoch: minEpochNumber, rpcTime: Date.now() - start, procTime: 0,
             }
         }
         const pivot = hashes[hashes.length-1];
@@ -233,10 +242,10 @@ export class FullBlockService {
         if (hashes.length !== receipts.length && minEpochNumber !== 0) {
             const msg = `block list length ${hashes.length} mismatch receipts length ${receipts?.length
             } at epoch ${minEpochNumber}`;
-            console.log(msg)
-            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch}
+            // console.log(msg)
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch, rpcTime: Date.now() - start, procTime: 0,}
         }
-
+        const rpcTime = Date.now() - start; start = Date.now();
         // fill tx receipts to block-> tx
         let code = 0
         let message = 'ok'
@@ -300,7 +309,7 @@ export class FullBlockService {
                 }
             }
         }
-        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes}
+        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start}
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -344,17 +353,19 @@ export class FullBlockService {
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let start = Date.now()
         let veryBegin = start
-        let preLoadResult = await this.preLoadMap.pop(minEpochNumber)
+        let preLoadResult = await this.preLoadMap.pop(minEpochNumber);
         let now = Date.now();
         let metrics = this.metrics;
         metrics.queryFullNodeTime += now - start;  start = now; // =====================================================
+        metrics.pureRpcTime += preLoadResult.rpcTime;
+        metrics.procTime += preLoadResult.procTime;
         if (preLoadResult.code !== 0) {
             return preLoadResult
         }
-        if (preLoadResult.latest_state - minEpochNumber > 500) {
-            for (let i=1; i<=10; i++) {
-                this.preLoadMap.start(minEpochNumber + i)
-            }
+        if (preLoadResult.latest_state - minEpochNumber > this.batchBlockTx.safeCatchupGap) {
+            this.preLoadMap.startNext();
+        } else if (this.batchBlockTx.enable) {
+            this.batchBlockTx.enable = false
         }
         // blockList = blockList.reverse(); // turn to asc order.
         const blockList = preLoadResult.blockList
@@ -364,6 +375,11 @@ export class FullBlockService {
         // the last one is pivot block.
         let pivotBlock = blockList[blockList.length-1];
         if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > FirstBlockNo && this.checkReOrg) {
+            if (this.batchBlockTx.batchSize > 0) {
+                console.log(`----- it should not happen. re-org detected at catchup ----`);
+                // restart
+                process.exit(0);
+            }
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();
@@ -409,8 +425,11 @@ export class FullBlockService {
             }
             // when gas used is null, the block is not executed yet.
             if (block.gasUsed == null) {
-                message = `gas used is null, block ${block.hash}`;
-                return {code: CODE_CONTINUE, message};
+                if (minEpochNumber > 0) {
+                    message = `gas used is null, block ${block.hash}`;
+                    return {code: CODE_CONTINUE, message};
+                }
+                block.gasUsed = 0
             }
             block.epoch = minEpochNumber;
             block.pivot = false;
@@ -437,10 +456,17 @@ export class FullBlockService {
         pivotBlock.pivot = true
         // build transaction template
         const hexMap = await this.buildHexIds(blockList, blockTime);
-        const executedTxArr = []
-        const txByAddressArr = []
-        const failedTxArr = []
-        const blockExtArr = []
+        const blockBeanArr = this.batchBlockTx.fullBlock;
+        blockBeanArr.push(...blockList);
+        const executedTxArr = this.batchBlockTx.fullTransaction;
+        const txByAddressArr = this.batchBlockTx.addressTransactionIndex;
+        const failedTxArr = this.batchBlockTx.failedTX;
+        const blockExtArr = this.batchBlockTx.fullBlockExt;
+        const posRegArr = this.batchBlockTx.posRegArr;
+        await this.powSidePosSync.checkPosRegister(posRegArr, preLoadResult.receipts, minEpochNumber, blockTime, null)
+        const txCntPre = executedTxArr.length;
+        const addrTxCntPre = txByAddressArr.length;
+
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
             let sumGasLimit = BigInt(0)
@@ -525,26 +551,28 @@ export class FullBlockService {
             const blockExt = buildBlockExt(minEpochNumber, block)
             blockExtArr.push(blockExt)
         }
-        const failedBeans = failedTxArr
+        this.batchBlockTx.batchSize ++
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         //
-        await FullBlock.sequelize.transaction(async (dbTx) => {
+        await ((this.batchBlockTx.enable && this.batchBlockTx.batchSize < this.batchBlockTx.saveAtSize) ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
-                FailedTx.bulkCreate(failedBeans, {transaction: dbTx, ignoreDuplicates: true}),
-                FullBlock.bulkCreate(blockList, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
+                FailedTx.bulkCreate(failedTxArr, {transaction: dbTx, ignoreDuplicates: true}),
+                FullBlock.bulkCreate(blockBeanArr, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, blockList.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
-                this.diffCount(KEY_FULL_TX_COUNT, executedTxArr.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
-                this.powSidePosSync.checkPosRegister(preLoadResult.receipts, minEpochNumber, blockTime, dbTx),
+                this.diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.fullBlock.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
+                this.diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.fullTransaction.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
+                PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),
             ])
-        }).then(async ()=>{
+            this.batchBlockTx.reset();
+        })).then(async ()=>{
             let now = Date.now()
             metrics.ms += now - veryBegin
+            metrics.bulkSaveMs += now - start;
             this.previousPivotHash = pivotBlock.hash
-            metrics.executedTxCount += executedTxArr.length
-            metrics.addressTxCount += txByAddressArr.length
+            metrics.executedTxCount += executedTxArr.length - txCntPre
+            metrics.addressTxCount += txByAddressArr.length - addrTxCntPre
             metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
             const epochPerStat = 100
@@ -552,27 +580,23 @@ export class FullBlockService {
                 console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
-                }, time ${blockTime.toISOString()}, cost ${metrics.ms}ms (full node ${metrics.queryFullNodeTime
-                    } build ${metrics.buildTime} block ${metrics.saveBlockTime} all tx ${metrics.saveTxTime} addr tx ${metrics.saveAddrTxTime
-                    } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime})   `)
+                }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms: rpc ${metrics.pureRpcTime}/${metrics.queryFullNodeTime
+                    } build ${metrics.procTime}/${metrics.buildTime}, bulkSaveDB ${metrics.bulkSaveMs} Detail: block ${metrics.saveBlockTime} allTx ${metrics.saveTxTime} addrTx ${metrics.saveAddrTxTime
+                    } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime}   `)
                 if ((minEpochNumber % 1000) === 0) {
                     // insert a place holder
                     incDailyAddressCount(blockTime, 0).catch(e=>console.log(`${__filename}`, e));
 
-                    const target = await this.cfx.getEpochNumber('latest_state')
+                    const target = this.latestStateEpoch;
                     const remainTime = (target - minEpochNumber) / epochPerStat * (metrics.ms)
                     const targetTime:Date = new Date(now + remainTime)
                     console.log(`estimate target time ${targetTime.toISOString()}, ${target}, ${remainTime/1000/3600}h`)
                 }
                 metrics.executedTxCount = metrics.addressTxCount = metrics.blockCount = metrics.ms = 0;
                 metrics.queryFullNodeTime = metrics.buildTime = metrics.saveBlockTime = metrics.saveTxTime = metrics.saveAddrTxTime = 0;
-                metrics.diffTxCntTime = metrics.diffBlockCntTime = 0
+                metrics.diffTxCntTime = metrics.diffBlockCntTime = metrics.bulkSaveMs = metrics.pureRpcTime = metrics.procTime = 0
             }
-        }).catch(err => {
-            message = `${err}`
-            console.error(`sync blocks fail, min epoch ${minEpochNumber}.`, err)
-            throw err;
-        });
+        })
         return {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
@@ -609,7 +633,7 @@ export class FullBlockService {
                 case CODE_OK:
                     prePos += 1
                     await KV.upsert({value: prePos.toString(), key: KEY_FILL_BLOCK_REWARD_EPOCH})
-                    if (prePos % 200 === 0) {
+                    if (prePos % 1000 === 0) {
                         console.log(` Fill block reward to epoch ${prePos}`)
                     }
                     break;
@@ -621,7 +645,7 @@ export class FullBlockService {
     }
     public async fillBlockReward(epoch: number) : Promise<{code:number, message:string}>{
         while (epoch > this.maxEpochOfBlock) {
-            console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
+            // console.log(`max epoch in full block table is ${this.maxEpochOfBlock}, less than ${epoch}`)
             await sleep(5_000)
             // max function on desc index is very slow.
             this.maxEpochOfBlock = await loadMaxBlockEpoch()
@@ -637,8 +661,6 @@ export class FullBlockService {
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
-                    // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
-                    // console.log(`latest_state ${latest}`)
                 } else if (msg.includes('Invalid parameters: epoch')){
                     // come on !
                 } else {

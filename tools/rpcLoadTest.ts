@@ -1,5 +1,7 @@
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../stat/service/common/utils";
+import {FullBlockService} from "../stat/service/FullBlockService";
+import {init} from "../stat/service/tool/FixDailyTokenStat";
 
 async function doIt(cfx: Conflux, workerId: number, start: number, step: number) {
 	let round = 0;
@@ -37,10 +39,30 @@ export async function rpcLoadTest(url: string, start = 1, threads: number=8) {
 	}
 }
 
+async function fetchDataTest(start: number) {
+	const cfg = await init();
+	const cfx = await initCfxSdk(cfg.conflux);
+	const svc = new FullBlockService(cfx);
+	await svc.updateEpochNumber();
+	let ms = 0;
+	let cnt = 0;
+	while(true) {
+		const data = await svc.loadEpochData(start++);
+		cnt ++;
+		ms += data.rpcTime;
+		if (cnt % 100 == 0) {
+			console.log(`ms ${ms} epoch ${start}`);
+			ms = 0;
+		}
+	}
+}
+
 async function main() {
 	const [,,cmd, url, start, threads] = process.argv;
 	if ('rpcLoadTest' === cmd) {
 		await rpcLoadTest(url, parseInt(start||"1"), parseInt(threads||"8"));
+	} else if ('fetchDataTest' === cmd) {
+		await fetchDataTest(parseInt(start||"1"));
 	}
 }
 

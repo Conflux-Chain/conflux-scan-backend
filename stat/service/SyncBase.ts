@@ -522,21 +522,45 @@ export class SyncData {
 }
 
 export class PreloadMap extends Map {
-    private func: any;
-    constructor(func) {
+    private func: Function;
+    maxId: number = 0;
+    limit: number;
+    constructor(func, _limit = 10) {
         super();
         this.func = func;
+        this.limit = _limit;
     }
 
-    public start(arg) {
+    public start(arg:number) {
+        if (isNaN(arg)) {
+            console.log(`who call it ? `, new Error("stack is "))
+        }
         if (!this.has(arg)) {
-            this.set(arg, this.func(arg).catch((e) => e));
+            if (arg > this.maxId) {
+                this.maxId = arg;
+            }
+            const task = this.func(arg).catch((e: any) => e);
+            this.set(arg, task);
+            return task;
         }
         return this.get(arg);
     }
 
-    public async pop(arg) {
-        const task = this.start(arg);
+    public initTasks(first: number, count: number) {
+        for (let i = 0; i < count; i++) {
+            this.start(first++);
+        }
+    }
+
+    public startNext() {
+        if (this.size > this.limit) {
+            return;
+        }
+        this.start(this.maxId+1);
+    }
+
+    public async pop(arg:number) {
+        const task = this.get(arg) ?? this.start(arg);
         this.delete(arg);
 
         const value = await task;
