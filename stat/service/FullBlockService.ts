@@ -126,11 +126,11 @@ export class FullBlockService {
                 console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message || 'no message'}`)
                 await sleep(5_000)
-                this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
+                await this.updateEpochNumber()
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)
                 await sleep(5_000)
-                this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state')
+                await this.updateEpochNumber()
             } else {
                 maxEpoch += 1
             }
@@ -210,8 +210,6 @@ export class FullBlockService {
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
-                    // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
-                    // console.log(`latest_state ${latest}`)
                 } else if (msg.includes('Invalid parameters: epoch')){
                     // try again
                 } else {
@@ -589,7 +587,7 @@ export class FullBlockService {
                     // insert a place holder
                     incDailyAddressCount(blockTime, 0).catch(e=>console.log(`${__filename}`, e));
 
-                    const target = await this.cfx.getEpochNumber('latest_state')
+                    const target = this.latestStateEpoch;
                     const remainTime = (target - minEpochNumber) / epochPerStat * (metrics.ms)
                     const targetTime:Date = new Date(now + remainTime)
                     console.log(`estimate target time ${targetTime.toISOString()}, ${target}, ${remainTime/1000/3600}h`)
@@ -663,8 +661,6 @@ export class FullBlockService {
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
                     // https://developer.conflux-chain.org/docs/conflux-doc/docs/json_rpc/#the-epoch-number-parameter
-                    // const latest = await this.cfx.getEpochNumber('latest_state') // for the latest epoch that has been executed.
-                    // console.log(`latest_state ${latest}`)
                 } else if (msg.includes('Invalid parameters: epoch')){
                     // come on !
                 } else {
