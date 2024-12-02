@@ -101,8 +101,10 @@ export class FullBlockService {
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
         await this.updateEpochNumber();
-        if (this.latestStateEpoch - maxEpoch > 600) {
-            this.preLoadMap.initTasks(maxEpoch + 1, 300);
+        if (this.latestStateEpoch - maxEpoch > this.batchBlockTx.safeCatchupGap) {
+            this.preLoadMap.initTasks(maxEpoch + 1, this.batchBlockTx.initialTaskCount);
+            // only enable it at startup
+            this.batchBlockTx.enable = true;
         }
         const that = this
         const repeat = async ()=>{
@@ -362,8 +364,10 @@ export class FullBlockService {
         if (preLoadResult.code !== 0) {
             return preLoadResult
         }
-        if (preLoadResult.latest_state - minEpochNumber > 500) {
+        if (preLoadResult.latest_state - minEpochNumber > this.batchBlockTx.safeCatchupGap) {
             this.preLoadMap.startNext();
+        } else if (this.batchBlockTx.enable) {
+            this.batchBlockTx.enable = false
         }
         // blockList = blockList.reverse(); // turn to asc order.
         const blockList = preLoadResult.blockList
@@ -373,6 +377,11 @@ export class FullBlockService {
         // the last one is pivot block.
         let pivotBlock = blockList[blockList.length-1];
         if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > FirstBlockNo && this.checkReOrg) {
+            if (this.batchBlockTx.batchSize > 0) {
+                console.log(`----- it should not happen. re-org detected at catchup ----`);
+                // restart
+                process.exit(0);
+            }
             // pivot switch, pop and re-sync previous,
             let preEpoch = minEpochNumber-1;
             const addresses = new Set<number>();
@@ -547,7 +556,7 @@ export class FullBlockService {
         this.batchBlockTx.batchSize ++
         now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
         //
-        await (this.batchBlockTx.batchSize < 10 ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
+        await ((this.batchBlockTx.enable && this.batchBlockTx.batchSize < this.batchBlockTx.saveAtSize) ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 FailedTx.bulkCreate(failedTxArr, {transaction: dbTx, ignoreDuplicates: true}),
                 FullBlock.bulkCreate(blockBeanArr, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),

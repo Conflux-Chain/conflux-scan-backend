@@ -17,7 +17,15 @@ export class BatchBlockTx {
 
 	batchSize: number
 
+	enable: boolean
+	safeCatchupGap: number
+	initialTaskCount: number
+	saveAtSize: number
+
 	constructor() {
+		this.safeCatchupGap = 600;
+		this.initialTaskCount = 300;
+		this.saveAtSize = 100;
 		this.reset();
 	}
 	//
