@@ -436,6 +436,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
     const loader = new PreloadMap(wrapFetchData, batchData.initialTaskCount);
     // should not higher than tx sync, otherwise the transaction hash may can not be found.
     let epoch = fromEpoch;
+    const stateEpoch = await cfx.getEpochNumber('latest_state')
     let maxEpochOfBlock = 0;
     async function updateMaxDbEpoch() {
         const maxE = await loadMaxBlockEpoch()
@@ -445,7 +446,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
         maxEpochOfBlock = maxE;
     }
     await updateMaxDbEpoch()
-    if (batchData.enableByGap(epoch, maxEpochOfBlock)) {
+    if (batchData.enableByGap(epoch, stateEpoch)) {
         loader.initTasks(epoch, batchData.initialTaskCount);
     }
     async function repeat() {
@@ -492,7 +493,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                     parentHash = data.pivotHash
                 }
                 if (data.code === 0) {
-                    if (maxEpochOfBlock - epoch > batchData.safeCatchupGap) {
+                    if (stateEpoch - epoch > batchData.safeCatchupGap) {
                         loader.startNext()
                     } else {
                         batchData.enable = false
