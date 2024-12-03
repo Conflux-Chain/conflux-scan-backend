@@ -479,7 +479,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
     async function repeat() {
         return repeat0().catch(err=>{
             // DB failure, maybe.
-            console.log(` repeat error : `, err)
+            console.log(` repeat error at epoch ${epoch}: `, err)
             setTimeout(repeat, 10_000)
         })
     }
@@ -490,7 +490,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
             setTimeout(repeat, 5_000)
             return;
         }
-        let data: CfxTransferEpochData = await measure.call('fetchData', () => loader.get(epoch));
+        let data: CfxTransferEpochData = await measure.call('fetchData', () => loader.pop(epoch));
         let action = 'ok'
         // console.log(`action ${action}, data:`, data)
         let delay = 0
