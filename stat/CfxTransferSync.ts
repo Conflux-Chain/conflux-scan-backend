@@ -281,7 +281,7 @@ async function setup() {
         process.exit(0)
     } else {
         scheduleCrossSpaceStat(cfx).then()
-        return runTask(cfx, parseInt(fromEpoch))
+        return runTask(cfx)
     }
 }
 async function test(ep:number) {
@@ -519,8 +519,8 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
 }
 const measure = new Measure()
 // noinspection DuplicatedCode
-async function runTask(cfx:Conflux, fromEpoch:number = 0) {
-    const task = await fetchTask(undefined, fromEpoch, cfx, TaskCfxTransfer)
+async function runTask(cfx:Conflux) {
+    const task = await fetchTask(undefined, -1, cfx, TaskCfxTransfer)
     console.log(` start cfx transfer task, [${task.epoch}, ~) cursor/first epoch ${task.cursor + 1}`)
     return run(cfx, task)
 }
