@@ -116,7 +116,7 @@ export async function getCfxTransferTraces(epoch: number)
     }
     if (txMapByHash.size === 0 && batchData.enable) {
         // catchup mode, shortcut when tx in db was empty.
-        return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-', epoch};
+        return {result: [], addrBeans: [], code: 0, pivotHash: blockArrDb[blockArrDb.length-1].hash, parentHash: '-', epoch, shortcut: true};
     }
     const hashes = blockArrDb.map(blk=>blk.hash);
     if (pivotBlock.hash != hashes[hashes.length - 1]) {
@@ -454,10 +454,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
             }
         }
     }
-    async function wrapFetchData(epoch:number) {
-        return getCfxTransferTraces(epoch)
-    }
-    const loader = new PreloadMap(wrapFetchData, batchData.initialTaskCount);
+    const loader = new PreloadMap(getCfxTransferTraces, batchData.initialTaskCount);
     // should not higher than tx sync, otherwise the transaction hash may can not be found.
     let epoch = fromEpoch;
     const stateEpoch = await cfx.getEpochNumber('latest_state')
@@ -500,7 +497,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                 }
                 // console.log(` epoch ${epoch}, code ${data.code}, parentHash ${parentHash}`, data)
                 // previous epoch may have not checked pivot, its pivot hash will be '-'.
-                if (data.code === 0 && parentHash && parentHash !== data.parentHash && parentHash !== '-') {
+                if (data.code === 0 && parentHash !== data.parentHash && epoch != FirstBlockNo && !data.shortcut) {
                     console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash}`)
                     const [parentH] = await pop(epoch-1, taskBegin)
                     if (parentH === null) {
@@ -514,9 +511,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                     break;
                 }
                 delay = await measure.call('save', ()=>processEpoch(data, taskBegin));
-                if (parentHash) {
-                    parentHash = data.pivotHash
-                }
+                parentHash = data.pivotHash
                 if (data.code === 0) {
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
                         loader.startNext()

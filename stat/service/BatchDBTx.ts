@@ -42,6 +42,7 @@ export class CfxTransferEpochData {
 	epoch?: number
 	pivotHash?: string
 	parentHash?: string
+	shortcut?: boolean
 }
 
 export class BatchCfxTransfer extends BatchDataBase {
