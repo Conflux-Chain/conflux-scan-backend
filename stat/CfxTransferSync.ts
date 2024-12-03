@@ -23,6 +23,7 @@ import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 import {rmCache} from "./service/common/RpcCacheManager";
 import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
+import {FirstBlockNo} from "./config/StatConfig";
 
 export interface ICfxUser {
     id?: number
@@ -348,10 +349,15 @@ async function runHolder(cfx:Conflux) {
     setTimeout(()=>runHolder(cfx), 0);
 }
 let cfxWatcher:CfxWatcher;
+let lastNoUserLogMinute = -1
 async function holder() {
     const list = await CfxUser.findAll({order:[['id','asc']], limit: 100})
     if (list.length === 0) {
-        console.log(`HOLDER: cfx user table is empty.`)
+        const minutes = new Date().getMinutes();
+        if (minutes != lastNoUserLogMinute) {
+            console.log(`HOLDER: cfx user table is empty.`)
+            lastNoUserLogMinute = minutes;
+        }
         await sleep(5_000)
         return;
     }
@@ -385,6 +391,7 @@ async function runMarker() {
     setTimeout(runMarker, 0)
 }
 let preMarkEpoch = 0;
+let noTaskLogMinute = -1
 async function marker() {
     // all task under [TOP epoch] must be finished before mark.
     const [minUnderGoingTask, maxFinished ]= await Promise.all([
@@ -398,7 +405,11 @@ async function marker() {
     ])
     const top = minUnderGoingTask || maxFinished
     if (!top) {
-        console.log(` no task info in db. ${minUnderGoingTask}, ${maxFinished}`)
+        const m = new Date().getMinutes();
+        if (m != noTaskLogMinute) {
+            console.log(` no task info in db. ${minUnderGoingTask}, ${maxFinished}`)
+            noTaskLogMinute = m;
+        }
         await sleep(5_000)
         return;
     }
@@ -519,7 +530,10 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
 const measure = new Measure()
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux) {
-    const task = await fetchTask(undefined, -1, cfx, TaskCfxTransfer)
+    let task = await TaskCfxTransfer.findOne({order:[['epoch','desc']]});
+    if (!task) {
+        task = await TaskCfxTransfer.create({epoch: FirstBlockNo, cursor: FirstBlockNo - 1, range: -1, finished: false});
+    }
     console.log(` start cfx transfer task, [${task.epoch}, ~) cursor/first epoch ${task.cursor + 1}`)
     return run(cfx, task)
 }
