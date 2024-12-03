@@ -5,7 +5,6 @@ import {Conflux} from "js-conflux-sdk";
 import {batchTraceBlock, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {IEpochTask} from "./service/UniqueAddressStat";
-import {fetchTask} from "./TokenTransferSync";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
@@ -16,7 +15,7 @@ import {
     popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
-import {IEpochTokenTransfer, waitParentHashDB} from "./TokenTransferSync";
+import {IEpochTokenTransfer} from "./TokenTransferSync";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
@@ -416,7 +415,7 @@ async function marker() {
     if (top.epoch === preMarkEpoch) {
         console.log(`MARKER: no [NEW] task info in db, pre mark ${preMarkEpoch
         }. ${minUnderGoingTask?.epoch}, ${maxFinished?.epoch}`)
-        await sleep(5_000)
+        await sleep(60_000)
         return;
     }
     let avoidReOrg = 1000;
@@ -488,7 +487,8 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
             setTimeout(repeat, 5_000)
             return;
         }
-        let {action, data} = await measure.call('epoch', () => loader.get(epoch));
+        let data: CfxTransferEpochData = await measure.call('fetchData', () => loader.get(epoch));
+        let action = 'ok'
         // console.log(`action ${action}, data:`, data)
         let delay = 0
         switch (action) {
@@ -528,10 +528,6 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                     }
                     epoch++;
                 }
-                break;
-            case "wait":
-                console.log(`fetch result is 'wait'.`)
-                delay = 5_000;
                 break;
         }
         if (delay >= 1000) {
