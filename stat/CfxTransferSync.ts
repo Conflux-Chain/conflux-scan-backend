@@ -275,7 +275,7 @@ async function setup() {
     }
     redirectLog()
     const cfx = await initCfxSdk(cfxOpt);
-    runHolder(cfx).then();
+    setTimeout(()=>runHolder(cfx).then(), 5_000);
     runMarker().then();
     cfx0 = cfx;
     await makeVirtualContractInfo(cfx.networkId);
@@ -305,10 +305,7 @@ async function test(ep:number) {
 const batchData = new BatchCfxTransfer();
 
 async function save(data:CfxTransferEpochData, taskBegin:number) {
-    await measure.call('enq', ()=>{
-        batchData.enqueue(data)
-        return Promise.resolve(1)
-    });
+    batchData.enqueue(data)
     if (batchData.shouldWaitBatch()) {
         return;
     }
@@ -530,8 +527,8 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                     } else {
                         batchData.enable = false
                     }
-                    if (epoch % 100 === 0) {
-                        measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "NO "}batch : `, 1, 'save');
+                    if (epoch % (batchData.enable ? 1000 : 100) === 0) {
+                        measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "NO "}batch, `, 1, 'save');
                     }
                     epoch++;
                 }
