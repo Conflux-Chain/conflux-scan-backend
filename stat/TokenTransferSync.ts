@@ -528,7 +528,7 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
         const checkPivot = stateEpoch - preEnd < len * 2 || FORCE_CHECK_PIVOT
         console.log(`checkPivot : ${stateEpoch - preEnd < len * 2} || ${FORCE_CHECK_PIVOT}`)
         const now = new Date();
-        const newOne:IEpochTokenTransfer = {epoch: preEnd, range: len,
+        const newOne:IEpochTokenTransfer = {epoch: preEnd, range: isNaN(len) ? -1 : len,
             cursor: preEnd - 1, checkPivot,
             finished: false, createdAt: now, updatedAt: now}
         let ok = false
