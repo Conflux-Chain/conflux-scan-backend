@@ -2,7 +2,6 @@ import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
-import {EpochCfxTransferCount} from "../CfxTransferSync";
 import {adjustTodayEndTime} from "./Utils";
 
 // ============= partition by address table ==============
@@ -472,11 +471,8 @@ export async function popPartitionCfxTransfer(epoch, logger = undefined, dbTx = 
                 where: { epoch, addressId: {[Op.in]: [...addressIds]} },
                 transaction: dbTx
             }),
-            // KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
+            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
             CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
-            EpochCfxTransferCount.create({epoch, n: -cfxTransferArray.length}, {
-                transaction: dbTx
-            })
         ]);
         // logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
 

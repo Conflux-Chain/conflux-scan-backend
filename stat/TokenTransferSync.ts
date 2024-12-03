@@ -511,9 +511,13 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
             model.findOne({order:[['epoch','desc']]}),
             model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
         ])
+        if (len == undefined) {
+            // that is , disable multiple task mechanism.
+            return  maxOne;
+        }
         if (exactOne) {
-            await setCheckPivot(exactOne, cfx, len)
-            console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}, checkPivot ${exactOne.checkPivot}`)
+            await setCheckPivot(exactOne, cfx, len);
+            console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}, checkPivot ${exactOne.checkPivot}`);
             return exactOne;
         }
         if (fromEpoch === -1) {
