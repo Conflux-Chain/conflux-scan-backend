@@ -63,7 +63,7 @@ import {TokenTransferStat} from "../model/TokenTransferStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
-import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
+import {CfxUser, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
 import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
@@ -254,7 +254,6 @@ export async function initModel(sequelize: Sequelize) {
     TaskCfxTransfer.register(sequelize);
     CfxUser.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
-    EpochCfxTransferCount.register(sequelize);
     UniqueAddress.register(sequelize);
     CrossSpaceStat.register(sequelize)
     SearchText.register(sequelize)

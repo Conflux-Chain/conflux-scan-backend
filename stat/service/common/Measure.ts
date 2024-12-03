@@ -56,7 +56,7 @@ export class Measure {
         const buildInfo = (keys:string[]) => {
             return keys.map(k=>{
                 const t = this.map.get(k);
-                return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}=${t.ms}/${t.times
+                return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)} rounds ${t.times
                 }` : '' // (${t.veryStart}-${t.veryEnd})
             }).join('; ');
         }
@@ -64,7 +64,7 @@ export class Measure {
         specialKey.forEach(k=>this.map.delete(k))
 
         const info = buildInfo([...this.map.keys()])
-        console.log(`${msg} avg=sum/times: ${specialInfo} ${info}`)
+        console.log(`${msg} avg: ${specialInfo} ${info}`)
         this.times = 0
         this.map.clear()
     }
