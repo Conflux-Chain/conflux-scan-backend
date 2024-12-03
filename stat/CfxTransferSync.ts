@@ -98,8 +98,10 @@ export async function getCfxTransferTraces(epoch: number)
     : Promise<CfxTransferEpochData>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
+    const _dbTx = batchData.enable ? await FullBlock.sequelize.transaction() : undefined;
     const [txMapByHash, blockArrDb, pivotBlock] = await Promise.all([FullTransaction.findAll({
-            where: {epoch}, order: [['blockPosition', 'asc'],['txPosition', 'asc']]
+            where: {epoch}, order: [['blockPosition', 'asc'],['txPosition', 'asc']],
+            transaction: _dbTx,
         }).then(list=>{
             const txMap = new Map<string, FullTransaction>()
             list.forEach(tx=>{
@@ -107,24 +109,28 @@ export async function getCfxTransferTraces(epoch: number)
             })
             return txMap
         }),
-        FullBlock.findAll({where: {epoch}, order:[['position','asc']], raw: true}),
+        FullBlock.findAll({where: {epoch}, order:[['position','asc']], raw: true, transaction: _dbTx,}),
         cfx.getBlockByEpochNumber(epoch),
     ])
+    if (_dbTx) {
+        _dbTx.rollback().catch()
+    }
     if (blockArrDb.length == 0) {
-        console.log(`no block in db, epoch ${epoch}`)
+        console.log(`no block in db, epoch ${epoch}`);
+        return {code: 404};
+    }
+    const dbPBH = blockArrDb[blockArrDb.length-1].hash;
+    if (pivotBlock.hash != dbPBH) {
+        console.log(`rpc pivotBlock.hash ${pivotBlock.hash}`)
+        console.log(`db  pivot has ${dbPBH} mismatch , epoch ${epoch}`)
         return {code: 404}
     }
     if (txMapByHash.size === 0 && batchData.enable) {
         // catchup mode, shortcut when tx in db was empty.
-        return {result: [], addrBeans: [], code: 0, pivotHash: blockArrDb[blockArrDb.length-1].hash, parentHash: '-', epoch, shortcut: true};
-    }
-    const hashes = blockArrDb.map(blk=>blk.hash);
-    if (pivotBlock.hash != hashes[hashes.length - 1]) {
-        console.log(`rpc pivotBlock.hash ${pivotBlock.hash}`)
-        console.log(`db  pivot has ${hashes[hashes.length - 1]} mismatch , epoch ${epoch}`)
-        return {code: 404}
+        return {result: [], addrBeans: [], code: 0, pivotHash: dbPBH, parentHash: pivotBlock.parentHash, epoch};
     }
 
+    const hashes = blockArrDb.map(blk=>blk.hash);
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
@@ -134,7 +140,7 @@ export async function getCfxTransferTraces(epoch: number)
             continue
         }
         const {blockHash, transactionTraces, epochHash, epochNumber} = traceOfBlock;
-        if (epochNumber != epochNumber) {
+        if (epoch != epochNumber) {
             console.log(`epoch number in trace ${epochNumber}`)
             console.log(`mismatch! want epoch ${epoch}`)
             return {code : 404} // try again
@@ -497,7 +503,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                 }
                 // console.log(` epoch ${epoch}, code ${data.code}, parentHash ${parentHash}`, data)
                 // previous epoch may have not checked pivot, its pivot hash will be '-'.
-                if (data.code === 0 && parentHash !== data.parentHash && epoch != FirstBlockNo && !data.shortcut) {
+                if (data.code === 0 && parentHash !== data.parentHash && epoch != FirstBlockNo) {
                     console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash}`)
                     const [parentH] = await pop(epoch-1, taskBegin)
                     if (parentH === null) {
