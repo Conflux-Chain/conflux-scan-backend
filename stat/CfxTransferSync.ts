@@ -305,7 +305,10 @@ async function test(ep:number) {
 const batchData = new BatchCfxTransfer();
 
 async function save(data:CfxTransferEpochData, taskBegin:number) {
-    batchData.enqueue(data)
+    await measure.call('enq', ()=>{
+        batchData.enqueue(data)
+        return Promise.resolve(1)
+    });
     if (batchData.shouldWaitBatch()) {
         return;
     }
@@ -528,7 +531,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                         batchData.enable = false
                     }
                     if (epoch % 100 === 0) {
-                        measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "no "} batch : `, 1, 'epoch', 'save');
+                        measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "NO "}batch : `, 1, 'save');
                     }
                     epoch++;
                 }

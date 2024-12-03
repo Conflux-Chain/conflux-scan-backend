@@ -47,8 +47,8 @@ export class CfxTransferEpochData {
 export class BatchCfxTransfer extends BatchDataBase {
 	cfxTransArr: ICfxTransfer[]
 	addrBeans: IAddressCfxTransfer[]
-	transferCount: number
 	pivotHashArr: IEpochHashCfxTransfer[]
+	transferCount: number
 	lastEpoch: number
 
 	constructor() {
@@ -70,8 +70,8 @@ export class BatchCfxTransfer extends BatchDataBase {
 	reset() {
 		this.cfxTransArr = []
 		this.addrBeans = []
-		this.transferCount = 0
 		this.pivotHashArr = []
+		this.transferCount = 0
 		this.lastEpoch = -1
 	}
 }
