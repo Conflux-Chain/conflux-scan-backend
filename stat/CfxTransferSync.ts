@@ -386,7 +386,7 @@ async function holder() {
 async function runMarker() {
     await marker().catch(e=>{
         console.log(`${__filename} failed to run marker`, e)
-        return sleep(10_000)
+        return sleep(60_000)
     });
     setTimeout(runMarker, 0)
 }
@@ -439,18 +439,20 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
     const fromEpoch = task.cursor + 1;
     const taskBegin = task.epoch;
     // parentHash, also indicates whether checking parent hash.
-    let parentHash = ''
-    const hashBean = await EpochHashCfxTransfer.findOne({where: {epoch: task.cursor}});
-    if (hashBean) {
-        parentHash = hashBean.hash
-    } else {
-        const pb = await FullBlock.findOne({where: {epoch: task.cursor, pivot: true}});
-        if (pb) {
-            parentHash = pb.hash;
+    let parentHash = '-'
+    if (fromEpoch > FirstBlockNo) {
+        const hashBean = await EpochHashCfxTransfer.findOne({where: {epoch: task.cursor}});
+        if (hashBean) {
+            parentHash = hashBean.hash
         } else {
-            console.log(`pivot block in db not found, epoch ${task.cursor}`);
-            await sleep(5_000)
-            process.exit(0);
+            const pb = await FullBlock.findOne({where: {epoch: task.cursor, pivot: true}});
+            if (pb) {
+                parentHash = pb.hash;
+            } else {
+                console.log(`pivot block in db not found, epoch ${task.cursor}`);
+                await sleep(5_000)
+                process.exit(0);
+            }
         }
     }
     async function wrapFetchData(epoch:number) {
