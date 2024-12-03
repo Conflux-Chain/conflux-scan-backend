@@ -67,7 +67,6 @@ export class EpochHashCfxTransfer extends Model<IEpochHashCfxTransfer>
 }
 export interface ITaskCfxTransfer extends IEpochTask {
     cursor:number
-    checkPivot?: boolean
 }
 // task table.
 export class TaskCfxTransfer extends Model<ITaskCfxTransfer> implements ITaskCfxTransfer{
@@ -95,7 +94,7 @@ let cfx0:Conflux
 export function setCfxSync(cfx: Conflux) {
     cfx0 = cfx
 }
-export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
+export async function getCfxTransferTraces(epoch: number)
     : Promise<CfxTransferEpochData>{
     const cfx = cfx0;
     // speed up in case no transaction in epoch.
@@ -115,7 +114,7 @@ export async function getCfxTransferTraces(epoch: number, checkPivot:boolean)
         console.log(`no block in db, epoch ${epoch}`)
         return {code: 404}
     }
-    if (txMapByHash.size === 0 && !checkPivot) {
+    if (txMapByHash.size === 0 && batchData.enable) {
         // catchup mode, shortcut when tx in db was empty.
         return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-'};
     }
@@ -285,7 +284,7 @@ async function setup() {
     }
 }
 async function test(ep:number) {
-    const {addrBeans, result, code} = await getCfxTransferTraces(ep, false)
+    const {addrBeans, result, code} = await getCfxTransferTraces(ep)
     if (code === 404) {
         console.log(` tx not sync yet.`)
         await sleep(5_000)
@@ -431,7 +430,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
     // parentHash, also indicates whether checking parent hash.
     let parentHash = await waitParentHashDB(task, task.cursor, EpochHashCfxTransfer)
     async function wrapFetchData(epoch:number) {
-        return getCfxTransferTraces(epoch, task.checkPivot)
+        return getCfxTransferTraces(epoch)
     }
     const loader = new PreloadMap(wrapFetchData, batchData.initialTaskCount);
     // should not higher than tx sync, otherwise the transaction hash may can not be found.

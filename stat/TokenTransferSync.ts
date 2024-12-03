@@ -523,7 +523,7 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
         if (maxOne !== null) {
             preEnd = maxOne.epoch + maxOne.range
         }
-        // check whether need new task.
+        // check whether we need a new task.
         const stateEpoch = await joinTask(preEnd, cfx, len * 2, model)
         const checkPivot = stateEpoch - preEnd < len * 2 || FORCE_CHECK_PIVOT
         console.log(`checkPivot : ${stateEpoch - preEnd < len * 2} || ${FORCE_CHECK_PIVOT}`)
@@ -585,7 +585,7 @@ export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, mo
             return 0
         });
     } while (stateEpoch === 0)
-    if (stateEpoch - targetEpoch >  dist) {
+    if (isNaN(dist) || stateEpoch - targetEpoch >  dist) {
         return stateEpoch;
     }
     const formerOne = await model.findOne({
