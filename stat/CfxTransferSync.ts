@@ -116,7 +116,7 @@ export async function getCfxTransferTraces(epoch: number)
     }
     if (txMapByHash.size === 0 && batchData.enable) {
         // catchup mode, shortcut when tx in db was empty.
-        return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-'};
+        return {result: [], addrBeans: [], code: 0, pivotHash: '-', parentHash: '-', epoch};
     }
     const hashes = blockArrDb.map(blk=>blk.hash);
     if (pivotBlock.hash != hashes[hashes.length - 1]) {
@@ -250,7 +250,7 @@ export async function getCfxTransferTraces(epoch: number)
     }
     // removeLongData(traceArray2d);
     // console.log(JSON.stringify(traceArray2d, null, 4))
-    return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash}
+    return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch}
 }
 async function setup() {
     const [, , cmd, fromEpoch, taskLen] = process.argv
