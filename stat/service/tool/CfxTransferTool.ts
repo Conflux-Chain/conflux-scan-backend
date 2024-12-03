@@ -18,7 +18,7 @@ async function fixStaking(config) {
     let fixed = 0
     for (let i = 0; i < txList.length; i++) {
         const {epoch, blockPosition: blockIndex, txPosition: txIndex} = txList[i]
-        const traces = await getCfxTransferTraces(epoch, false)
+        const traces = await getCfxTransferTraces(epoch)
         // do not fix full cfx table, it will
         const dbX = await CfxTransfer.findAll({
             where: {epoch, blockIndex, txIndex}

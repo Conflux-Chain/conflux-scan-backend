@@ -511,7 +511,6 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
         if (delay >= 1000) {
             // clear footprint
             await EpochHashCfxTransfer.destroy({where: {epoch: {[Op.lt]: epoch - 10_000}}, limit: 1000});
-            await TaskCfxTransfer.destroy({where: {epoch: {[Op.lt]: epoch - 100}}, limit: 100});
         }
         setTimeout(repeat, delay)
     }
