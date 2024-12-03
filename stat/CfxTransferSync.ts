@@ -356,7 +356,10 @@ async function runHolder(cfx:Conflux) {
 let cfxWatcher:CfxWatcher;
 let lastNoUserLogMinute = -1
 async function holder() {
-    const list = await CfxUser.findAll({order:[['id','asc']], limit: 100})
+    if (batchData.enable) {
+        return sleep(60_000);
+    }
+    const list = await CfxUser.findAll({order:[['id','asc']], limit: 100});
     if (list.length === 0) {
         const minutes = new Date().getMinutes();
         if (minutes != lastNoUserLogMinute) {
@@ -525,7 +528,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                         batchData.enable = false
                     }
                     if (epoch % 100 === 0) {
-                        measure.dump(` ${epoch} sync cfx trs : `, 1, 'epoch', 'save');
+                        measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "no "} batch : `, 1, 'epoch', 'save');
                     }
                     epoch++;
                 }
