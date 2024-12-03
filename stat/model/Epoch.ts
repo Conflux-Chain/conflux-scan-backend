@@ -29,6 +29,23 @@ export class Epoch extends Model<IEpoch> implements IEpoch {
     }
 }
 
+export enum ClosestType {
+    AFTER = 'after',
+    BEFORE = 'before',
+}
+
+export async function closestEpochByTimeStamp(closest: ClosestType, timestampInSec: number) {
+    const [comparator, order] = closest === ClosestType.AFTER ? [Op.gte, 'ASC'] : [Op.lte, 'DESC']
+    const datetime =  new Date(timestampInSec * 1000)
+
+    const epoch = await Epoch.findOne({
+        where: {timestamp: {[comparator]: datetime}},
+        order: [['timestamp', order]],
+    })
+
+    return epoch?.epoch
+}
+
 export class EpochNftTransfer extends Model<IEpoch> implements IEpoch {
     public epoch: number;
     pivotHash: string;

@@ -1,10 +1,9 @@
 import * as Router from "koa-router";
-import {Op} from "sequelize";
 import {format} from "js-conflux-sdk";
 import {getApiService} from "../ApiServer";
 import {StatApp} from "../../stat/StatApp";
 import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
-import {Epoch} from "../../stat/model/Epoch";
+import {closestEpochByTimeStamp, ClosestType} from "../../stat/model/Epoch";
 import {setBody} from "./middleware";
 import {
     listAccountAssets,
@@ -448,22 +447,15 @@ async function getBlockNoByTime(ctx) {
     let {timestamp, closest} = ctx.request.query;
     checkPresent({timestamp}, ['timestamp']);
 
-    closest = closest === undefined ? 'before' : closest;
+    const closestType = (closest === 'before' || closest === undefined) ? ClosestType.BEFORE : ClosestType.AFTER
 
-    const comparator = closest === 'before' ? Op.lte : Op.gte;
-    const order = closest === 'before' ? 'DESC' : 'ASC';
-    const datetime =  new Date(timestamp * 1000);
-    const epoch = await Epoch.findOne({
-        where: {timestamp: {[comparator]: datetime}},
-        order: [['timestamp', order]],
-    });
-    if(!epoch){
-        setBody(ctx, undefined, 1, `blockno ${closest} timestamp ${timestamp} not found` );
+    const epochNumber = await closestEpochByTimeStamp(closestType, timestamp)
+    if(!lodash.isNumber(epochNumber)){
+        setBody(ctx, undefined, 1, `blockno ${closest} timestamp ${timestamp} not found` )
         return;
     }
 
-    const result = epoch.epoch;
-    setBody(ctx, result)
+    setBody(ctx, epochNumber)
 }
 
 async function getLogs(ctx) {

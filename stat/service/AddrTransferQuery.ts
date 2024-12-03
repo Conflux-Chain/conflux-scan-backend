@@ -77,10 +77,8 @@ export class AddrTransferQuery extends TransferQueryBase{
             row['method'] = tx?.method;
             row['status'] = tx?.status;
             row['gasFee'] = tx?.gas;
-            /* set in TransferQueryBase
-            row['storageFee'] = tx['storageFee'];
-            row['input'] = tx['input'];*/
         }
+
         return row;
     }
 
