@@ -42,6 +42,7 @@ export class PruneService {
     private readonly opts: Options
     private switchAdjustBySbm: boolean
     private KEEP_ROWS = 20000
+    private KEEP_ROWS_ADDR_TS = 5000
     private sbmLastTime = 0
     private pruneHappens = false
     private pruneCfg = {
@@ -234,8 +235,9 @@ export class PruneService {
     private async pruneAddress(addressId, type, maxEpoch?) {
         const [_, model] = this.getTables(type)
         const whereOpt = model === FullMinerBlock ? {minerId: addressId} : {addressId}
+        const keepRows = model === AddressTransfer ? this.KEEP_ROWS_ADDR_TS : this.KEEP_ROWS
         const one = await (model as any).findOne({
-            where: whereOpt, order: [["epoch", "desc"]], offset: this.KEEP_ROWS, limit: 1, raw: true
+            where: whereOpt, order: [["epoch", "desc"]], offset: keepRows, limit: 1, raw: true
         })
         if (!one) {
             return
@@ -243,12 +245,12 @@ export class PruneService {
 
         let prune = await PruneInfo.findOne({ where: {addressId, type}, raw: true})
         if (!prune) {
-            prune = await PruneInfo.create({addressId, type, pruned: 0, epoch: one.epoch} as PruneInfo)
+            prune = await PruneInfo.create({addressId, type, pruned: 0, epoch: 0} as PruneInfo)
         }
         if(this.opts?.skipPrunedEpoch && lodash.isNumber(maxEpoch) && maxEpoch < prune.epoch) { // skip if max epoch is less than pruned epoch
             return
         }
-        console.log(`pruneAddress ------ ${addressId} ${maxEpoch} ${prune.epoch}`)
+        console.log(`prune ${addressId} ${type} ${prune.epoch} ${maxEpoch}`)
 
         let del
         let pruned = prune.pruned
@@ -259,15 +261,16 @@ export class PruneService {
                     where: {...whereOpt, epoch: {[Op.lt]: one.epoch}}, limit: this.pruneCfg.delRowsPerLoop})
                 if (del) {
                     pruned += del
-                    await PruneInfo.update({pruned, epoch: one.epoch}, {
-                        transaction: dbTx, where: {id: prune.id}})
+                    await PruneInfo.update({pruned}, {transaction: dbTx, where: {id: prune.id}})
+                } else{
+                    await PruneInfo.update({epoch: one.epoch}, {transaction: dbTx, where: {id: prune.id}})
                 }
             })
 
             this.pruneCfg.sleepMsPerLoop && await sleep(this.pruneCfg.sleepMsPerLoop)
             await doHeartBeat(KEY_PRUNE+this.config.serverTag)
             if(++loop % 10 === 0) {
-                console.log(`prune ${type} ${addressId} ${this.pruneCfg.delRowsPerLoop} ${pruned - prune.pruned}`)
+                console.log(`prune ${addressId} ${type} ${this.pruneCfg.delRowsPerLoop} ${pruned - prune.pruned}`)
             }
         } while (del > 0)
     }
