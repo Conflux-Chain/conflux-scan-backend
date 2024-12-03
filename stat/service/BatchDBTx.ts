@@ -65,6 +65,8 @@ export class BatchCfxTransfer extends BatchDataBase {
 		}
 		this.pivotHashArr.push({epoch, hash: pivotHash});
 		this.lastEpoch = epoch;
+
+		this.batchSize++
 	}
 
 	reset() {
@@ -73,6 +75,8 @@ export class BatchCfxTransfer extends BatchDataBase {
 		this.pivotHashArr = []
 		this.transferCount = 0
 		this.lastEpoch = -1
+
+		this.batchSize = 0
 	}
 }
 
