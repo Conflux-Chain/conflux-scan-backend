@@ -4,7 +4,6 @@ import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
 import {batchTraceBlock, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
-import {IEpochTask} from "./service/UniqueAddressStat";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
@@ -15,7 +14,6 @@ import {
     popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
-import {IEpochTokenTransfer} from "./TokenTransferSync";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
@@ -65,31 +63,7 @@ export class EpochHashCfxTransfer extends Model<IEpochHashCfxTransfer>
         })
     }
 }
-export interface ITaskCfxTransfer extends IEpochTask {
-    cursor:number
-}
-// task table.
-export class TaskCfxTransfer extends Model<ITaskCfxTransfer> implements ITaskCfxTransfer{
-    epoch: number
-    range: number
-    createdAt: Date
-    updatedAt: Date
-    finished: boolean
 
-    cursor: number;
-    static register(seq: Sequelize) {
-        TaskCfxTransfer.init({
-            epoch: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
-            cursor: {type: DataTypes.BIGINT, allowNull: false},
-            range: {type: DataTypes.BIGINT, allowNull: false},
-            createdAt: {type: DataTypes.DATE, allowNull: false},
-            updatedAt: {type: DataTypes.DATE, allowNull: false},
-            finished: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-        },{
-            sequelize: seq, tableName: 'task_cfx_transfer',
-        })
-    }
-}
 let cfx0:Conflux
 export function setCfxSync(cfx: Conflux) {
     cfx0 = cfx
@@ -259,7 +233,7 @@ export async function getCfxTransferTraces(epoch: number)
     return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch}
 }
 async function setup() {
-    const [, , cmd, fromEpoch, taskLen] = process.argv
+    const [, , cmd, fromEpoch, ] = process.argv
     const config = await init()
     await checkCfxTransferCountKV()
     const cfxOpt = config.cfxTransferRpc;
@@ -304,40 +278,35 @@ async function test(ep:number) {
 
 const batchData = new BatchCfxTransfer();
 
-async function save(data:CfxTransferEpochData, taskBegin:number) {
+async function save(data:CfxTransferEpochData) {
+    measure.count('addrBeans', data.addrBeans.length);
     batchData.enqueue(data)
     if (batchData.shouldWaitBatch()) {
         return;
     }
-    return TaskCfxTransfer.sequelize.transaction(async dbTx=>{
+    return CfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
             KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, batchData.transferCount, dbTx, ),
             CfxUser.bulkCreate(batchData.cfxTransArr, {transaction: dbTx}),
             CfxTransfer.bulkCreate(batchData.cfxTransArr, {transaction: dbTx}),
             AddressCfxTransfer.bulkCreate(batchData.addrBeans, {transaction: dbTx}),
             EpochHashCfxTransfer.bulkCreate(batchData.pivotHashArr,{transaction: dbTx}),
-            TaskCfxTransfer.update(
-                {cursor: batchData.lastEpoch, },
-                {where:{epoch:taskBegin}, transaction:dbTx}),
         ]).then(()=>{
             batchData.reset();
         })
     })
 }
-async function pop(epoch: number, taskBegin: number) {
+async function pop(epoch: number) {
     if (batchData.batchSize > 0) {
         console.log(`${__filename} batch size is ${batchData.batchSize} but re-org detected. epoch ${epoch}`)
         // restart
         process.exit(0)
     }
-    return TaskCfxTransfer.sequelize.transaction(async dbTx=>{
+    return CfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
             EpochHashCfxTransfer.findByPk(epoch-1),
             popPartitionCfxTransfer(epoch, undefined, dbTx),
             EpochHashCfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
-            TaskCfxTransfer.update({cursor: epoch - 1},
-                {where: {epoch: taskBegin}, limit: 1, transaction:dbTx}
-            )
         ])
     });
 }
@@ -401,63 +370,51 @@ async function runMarker() {
 let preMarkEpoch = 0;
 let noTaskLogMinute = -1
 async function marker() {
-    // all task under [TOP epoch] must be finished before mark.
-    const [minUnderGoingTask, maxFinished ]= await Promise.all([
-        TaskCfxTransfer.findOne({
-            where: {finished: 0,}, order: [['epoch','asc']]
-        }),  //
-
-        TaskCfxTransfer.findOne({
-            where: {finished: 1,}, order: [['epoch','desc']]
-        }), // in case all task is finished, use this.
-    ])
-    const top = minUnderGoingTask || maxFinished
+    const top = await EpochHashCfxTransfer.findOne({order:[['epoch', 'desc']]});
     if (!top) {
         const m = new Date().getMinutes();
         if (m != noTaskLogMinute) {
-            console.log(` no task info in db. ${minUnderGoingTask}, ${maxFinished}`)
+            console.log(` no info in db. `)
             noTaskLogMinute = m;
         }
-        await sleep(5_000)
+        await sleep(50_000)
         return;
     }
-    if (top.epoch === preMarkEpoch) {
-        console.log(`MARKER: no [NEW] task info in db, pre mark ${preMarkEpoch
-        }. ${minUnderGoingTask?.epoch}, ${maxFinished?.epoch}`)
+    if (top.epoch < preMarkEpoch + 1_000) {
+        console.log(`MARKER: no [NEW] task info in db, pre mark ${preMarkEpoch}`)
         await sleep(60_000)
         return;
     }
     let avoidReOrg = 1000;
-    await markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, top.cursor - avoidReOrg);
+    await markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, top.epoch - avoidReOrg);
     preMarkEpoch = top.epoch;
-    console.log(`mark done. cursor ${top.cursor} at epoch ${top.epoch}`)
+    console.log(`mark done. epoch ${top.epoch}`)
 }
 
-async function processEpoch(data:CfxTransferEpochData, taskBegin: number) {
+async function processEpoch(data:CfxTransferEpochData) {
     const {code} = data;
     if (code === 404) {
         return 5_000;
     } else if (code !== 0) {
         return 10_000
     }
-    await save(data, taskBegin)
+    await save(data)
     return 0;
 }
-async function run(cfx:Conflux, task:IEpochTokenTransfer) {
-    const fromEpoch = task.cursor + 1;
-    const taskBegin = task.epoch;
+async function run(cfx:Conflux, preFinished: number) {
+    const fromEpoch = preFinished + 1;
     // parentHash, also indicates whether checking parent hash.
     let parentHash = '-'
     if (fromEpoch > FirstBlockNo) {
-        const hashBean = await EpochHashCfxTransfer.findOne({where: {epoch: task.cursor}});
+        const hashBean = await EpochHashCfxTransfer.findOne({where: {epoch: preFinished}});
         if (hashBean) {
             parentHash = hashBean.hash
         } else {
-            const pb = await FullBlock.findOne({where: {epoch: task.cursor, pivot: true}});
+            const pb = await FullBlock.findOne({where: {epoch: preFinished, pivot: true}});
             if (pb) {
                 parentHash = pb.hash;
             } else {
-                console.log(`pivot block in db not found, epoch ${task.cursor}`);
+                console.log(`pre pivot block in db not found, epoch ${preFinished}`);
                 await sleep(5_000)
                 process.exit(0);
             }
@@ -508,7 +465,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                 // previous epoch may have not checked pivot, its pivot hash will be '-'.
                 if (data.code === 0 && parentHash !== data.parentHash && epoch != FirstBlockNo) {
                     console.log(` parent hash not match epoch ${epoch}, want ${parentHash}, actual ${data.pivotHash}`)
-                    const [parentH] = await pop(epoch-1, taskBegin)
+                    const [parentH] = await pop(epoch-1)
                     if (parentH === null) {
                         console.log(` after pop, parent hash bean is null, want epoch ${epoch - 2}`)
                         process.exit(9)
@@ -519,7 +476,7 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
                     epoch -= 1;
                     break;
                 }
-                delay = await measure.call('save', ()=>processEpoch(data, taskBegin));
+                delay = await measure.call('save', ()=>processEpoch(data));
                 parentHash = data.pivotHash
                 if (data.code === 0) {
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
@@ -545,12 +502,10 @@ async function run(cfx:Conflux, task:IEpochTokenTransfer) {
 const measure = new Measure()
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux) {
-    let task = await TaskCfxTransfer.findOne({order:[['epoch','desc']]});
-    if (!task) {
-        task = await TaskCfxTransfer.create({epoch: FirstBlockNo, cursor: FirstBlockNo - 1, range: -1, finished: false});
-    }
-    console.log(` start cfx transfer task, [${task.epoch}, ~) cursor/first epoch ${task.cursor + 1}`)
-    return run(cfx, task)
+    let hashBean = await EpochHashCfxTransfer.findOne({order:[['epoch','desc']]});
+    const preFinished = hashBean?.epoch || FirstBlockNo - 1;
+    console.log(` start cfx transfer task, first epoch ${preFinished + 1}`)
+    return run(cfx, preFinished)
 }
 if (module === require.main) {
     regExitHook()
