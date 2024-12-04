@@ -9,6 +9,7 @@ import {fillMethodInfo} from "../model/ContractInfo";
 import {Errors} from "./common/LogicError";
 import {TransferCount} from "../model/TransferCount";
 import {fmtAddr} from "../StatApp";
+import {closestEpochByTimeStamp, ClosestType} from "../model/Epoch";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -27,7 +28,7 @@ export abstract class TransferQueryBase {
         conditionArray.push({tokenId: tokenId.toString()});
     }
 
-    public buildQueryOptions({minEpochNumber, maxEpochNumber, txParas, minTimestamp, maxTimestamp, accountAddressId,
+    public async buildQueryOptions({minEpochNumber, maxEpochNumber, txParas, minTimestamp, maxTimestamp, accountAddressId,
         addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray, tokenId, transferType = undefined,
         txType, skip, limit, sort='DESC', cursor = undefined, cursorField = undefined}){
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
@@ -44,17 +45,27 @@ export abstract class TransferQueryBase {
         if(tokenAddressIdArray.length){
             conditionArray.push({contractId: {[Op.in]: tokenAddressIdArray}});
         }
+        if(minTimestamp !== undefined) {
+            if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
+                const epochNumber = await closestEpochByTimeStamp(ClosestType.AFTER, minTimestamp)
+                minEpochNumber = lodash.max([minEpochNumber, epochNumber])
+            } else{
+                conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}})
+            }
+        }
+        if(maxTimestamp !== undefined) {
+            if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
+                const epochNumber = await closestEpochByTimeStamp(ClosestType.BEFORE, maxTimestamp)
+                maxEpochNumber = lodash.min([maxEpochNumber, epochNumber])
+            } else{
+                conditionArray.push({createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}})
+            }
+        }
         if(minEpochNumber !== undefined) {
             conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
         }
         if(maxEpochNumber !== undefined) {
             conditionArray.push({epoch: { [Op.lte]: maxEpochNumber}});
-        }
-        if(minTimestamp !== undefined) {
-            conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}});
-        }
-        if(maxTimestamp !== undefined) {
-            conditionArray.push({createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}});
         }
         if(fromAddressId !== undefined && toAddressId === undefined) {
             conditionArray.push({fromId: fromAddressId});
@@ -165,7 +176,7 @@ export abstract class TransferQueryBase {
         }
 
         // queryOptions
-        const queryOptions = this.buildQueryOptions({
+        const queryOptions = await this.buildQueryOptions({
             minEpochNumber, maxEpochNumber, txParas,
             minTimestamp, maxTimestamp,
             accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,

@@ -90,4 +90,4 @@ services:
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/service/prune/PruneService.js all
+    command: node /stat-root/stat/service/prune/PruneService.js all 0

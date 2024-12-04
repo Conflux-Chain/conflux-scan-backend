@@ -16,7 +16,7 @@ import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
-import {AddressTransfer} from "../model/AddrTransfer";
+import {AddressTransfer, EpochAddressIds} from "../model/AddrTransfer";
 import {Errors} from "./common/LogicError";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
 import {CensorItem} from "../model/CensorItem";
@@ -32,6 +32,7 @@ import {
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
+import {CONST as SDK_CONST} from "js-conflux-sdk";
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -243,8 +244,8 @@ export class EpochSync extends SyncBase{
             s = this.m('CFXTransfer', s)
             const txArray = await EpochSync.getTransactionArrayDB(blockArray, epochTimestamp);
             s = this.m('Transaction', s)
-            const addrTransferArray = await this.getAddrTransferArrayDB(epochNumber, epochTimestamp, tokenTransferArray,
-                cfxTransferArray, txArray);
+            const {transfers: addrTransferArray, epochAddrIds} = await this.getAddrTransferArrayDB(epochNumber,
+                epochTimestamp, tokenTransferArray, cfxTransferArray, txArray);
             s = this.m('AddrTransfer', s)
 
             const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
@@ -263,8 +264,8 @@ export class EpochSync extends SyncBase{
                 parentHash: epoch.parentHash,
                 pivotHash: epoch.pivotHash,
                 modelData: {epoch, blockArray, minerBlockArray, announceInfo, tokenArray, nameTagInfo, traceCreateArray,
-                    traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, transferredNftArray, censorItemArray,
-                    nftTransferArray, addrNftTransferArray, transactionArray, bytes32NameTagInfo, voteParams
+                    traceCrossSpaceArray, adminDestroyTxArray, addrTransferArray, epochAddrIds, transferredNftArray,
+                    censorItemArray, nftTransferArray, addrNftTransferArray, transactionArray, bytes32NameTagInfo, voteParams
                 },
             };
         }catch(error) {
@@ -291,7 +292,8 @@ export class EpochSync extends SyncBase{
                 transaction: dbTx
             });
             s = this.m('Trace-c', s)
-            EpochSync.SYNC_TRANSFER && await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx});
+            EpochSync.SYNC_TRANSFER && await AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx})
+            EpochSync.SYNC_TRANSFER && await EpochAddressIds.bulkCreate(modelData.epochAddrIds, {transaction: dbTx})
             s = this.m('AddressTransfer-c', s)
             EpochSync.SYNC_DESTROY && await ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {
                 updateOnDuplicate:["epochNumber","blockTime","txHash","admin"],
@@ -413,11 +415,23 @@ export class EpochSync extends SyncBase{
     }
 
     async delete(epochNumber, modelData) {
+        const epochAddressIds = await EpochAddressIds.findAll({where: {epoch: epochNumber}, raw: true})
+        const addrIds = epochAddressIds.map(epochAddressId => epochAddressId.addressId)
+
         await Epoch.sequelize.transaction(async (dbTx) => {
             const epochDel = await Epoch.destroy({where:{epoch: epochNumber}, transaction: dbTx});
             const minerBlockDel = await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
-            const addrTransferDel = await AddressTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+
+            let addrTransferDel = 0
+            let epochAddressDel = 0
+            if(addrIds?.length) {
+                addrTransferDel = await AddressTransfer.destroy({
+                    where: {addressId: {[Op.in]:addrIds}, epoch: epochNumber}, transaction: dbTx})
+                epochAddressDel = await EpochAddressIds.destroy({
+                    where: {epoch: epochNumber}, transaction:dbTx})
+            }
+
             const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
             const censorItemDel = await CensorItem.destroy({where: {epochNumber}, transaction: dbTx});
             const addrNftDel = await this.deleteAddressNft(epochNumber, modelData, dbTx);
@@ -425,9 +439,9 @@ export class EpochSync extends SyncBase{
             const addrNftTransferDel = await AddressNftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const voteParamsDel = await VoteParams.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             console.log(`epoch-sync.delete epoch ${epochNumber} epochDel ${epochDel} minerBlockDel ${minerBlockDel}
-                traceCreateDel ${traceCreateDel} addrTransferDel ${addrTransferDel} contractDestroyDel ${contractDestroyDel}
-                censorItemDel ${censorItemDel} addrNftDel ${addrNftDel} nftTransferDel ${nftTransferDel} 
-                addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
+                traceCreateDel ${traceCreateDel} addrTransferDel ${addrTransferDel} epochAddressDel ${epochAddressDel} 
+                contractDestroyDel ${contractDestroyDel} censorItemDel ${censorItemDel} addrNftDel ${addrNftDel} 
+                nftTransferDel ${nftTransferDel} addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
         });
 
         this.realtimeStat(modelData.epoch, 'pop')
@@ -792,7 +806,8 @@ export class EpochSync extends SyncBase{
 
     // ---------------------------- address transfer ----------------------------
     public async getAddrTransferArrayDB(epochNumber,epochTimestamp,tokenTransferArray,cfxTransferArray,txArray){
-        const result = [];
+        const transfers = []
+        const addressIds = new Set<number>()
         let index = 0;
 
         [...txArray, ...cfxTransferArray, ...tokenTransferArray].forEach( transfer => {
@@ -801,15 +816,22 @@ export class EpochSync extends SyncBase{
             if(transfer.contractCreatedId) {
                 lodash.assign(transfer, {contractId: transfer.contractCreatedId})
             }
-            result.push({...transfer, addressId: transfer.fromId})
+            transfers.push({...transfer, addressId: transfer.fromId})
+            addressIds.add(transfer.fromId)
 
             const dummyToId = transfer.toId || transfer.contractCreatedId
             if (dummyToId && dummyToId !== transfer.fromId) {
-                result.push({...transfer, addressId: dummyToId})
+                transfers.push({...transfer, addressId: dummyToId})
+                addressIds.add(dummyToId)
             }
         });
 
-        return result;
+        const epochAddrIds = []
+        for (const addressId of addressIds) {
+            epochAddrIds.push({epoch: epochNumber, addressId})
+        }
+
+        return {transfers, epochAddrIds};
     }
 
     public static buildAddrTransferCursor(t) {
@@ -1552,5 +1574,28 @@ export class EpochSync extends SyncBase{
         }
 
         return params
+    }
+
+    // `-------------------------- evict epoch address ---------------------------`
+    public async scheduleEvict(delay: number = 1000) {
+        console.log(`schedule evict epoch address with delay: ${delay}`);
+        const that = this;
+        async function repeat() {
+            await that.evict().catch(err =>{
+                console.log(`schedule evict epoch address error:${err}`)
+            })
+            setTimeout(repeat, delay)
+        }
+        repeat().then();
+    }
+
+    private async evict() {
+        const {
+            app: { cfx: sdk },
+        } = this;
+
+        const epochFinalized = await sdk.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
+        const epochReserved = Math.max(epochFinalized - 1000, 0)
+        await EpochAddressIds.destroy({where: {epoch: {[Op.lt]: epochReserved}}, limit: 1000})
     }
 }

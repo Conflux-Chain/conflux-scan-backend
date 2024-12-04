@@ -21,8 +21,7 @@ CREATE TABLE IF NOT EXISTS ${T_ADDRESS_TRANSFER}
   \`type\` smallint(6) NOT NULL,
   \`cursorId\` decimal(65, 0) default NULL,
   \`createdAt\` datetime NOT NULL,
-  PRIMARY KEY  (addressId DESC,epoch DESC,blockIndex DESC, txIndex DESC, txLogIndex DESC, batchIndex DESC, type DESC),
-  KEY \`from_idx\` (\`epoch\`)
+  PRIMARY KEY  (addressId DESC,epoch DESC,blockIndex DESC, txIndex DESC, txLogIndex DESC, batchIndex DESC, type DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 PARTITION BY HASH (addressId)
    PARTITIONS 97;
@@ -100,6 +99,33 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
             updatedAt: false,
             tableName: T_ADDRESS_TRANSFER,
             indexes: [
+            ],
+        })
+    }
+}
+
+export interface IEpochAddressIds {
+    epoch: number
+    addressId: number
+}
+
+//=================
+export const T_EPOCH_ADDRESS_IDS = "epoch_address_ids"
+
+export class EpochAddressIds extends Model<IEpochAddressIds> implements IEpochAddressIds {
+    epoch: number
+    addressId: number
+
+    static register(seq: Sequelize) {
+        EpochAddressIds.init({
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            addressId: {type: DataTypes.BIGINT, allowNull: false},
+        }, {
+            sequelize: seq,
+            updatedAt: false,
+            tableName: T_EPOCH_ADDRESS_IDS,
+            indexes: [
+                {name: "pk", fields: [{name:"epoch", order: "DESC"}, {name:"addressId", order: "DESC"}], unique: true},
             ],
         })
     }
