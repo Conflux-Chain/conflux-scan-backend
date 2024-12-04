@@ -3,20 +3,19 @@ import {init} from "../service/tool/FixDailyTokenStat";
 process.env.TZ = 'UTC'
 // create monitor data in influx DB.
 import {FieldType, IHostConfig, InfluxDB} from 'influx'
-import {TaskCfxTransfer} from "../CfxTransferSync";
 import {EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
 import {HeartBeatBean} from "../model/HeartBeat";
-import {KEY_1155data_EPOCH, KV} from "../model/KV";
+import {KV} from "../model/KV";
 import {Op} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../service/common/utils";
+import {EpochHashCfxTransfer} from "../CfxTransferSync";
 
 let cfx: Conflux;
 
 async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a.epoch) {
-    // model = TaskCfxTransfer;
     const max = await model.findOne({order: [['epoch', 'desc']]})
     if (max === null) {
         console.log(` ${new Date().toISOString()} no data for ${biz}`)
@@ -67,7 +66,7 @@ async function epochCursorInConfig(inf: InfluxDB) {
     })
 }
 async function copyAll(inf: InfluxDB) {
-    await copy(inf, TaskCfxTransfer, 'task-cfx-x', a=>a.cursor)
+    await copy(inf, EpochHashCfxTransfer, 'task-cfx-x', a=>a.epoch)
     await copy(inf, EpochTaskTokenTransfer, 'task-token-x', a=>a.cursor)
     await copy(inf, Epoch, 'sync-epoch')
     await copy(inf, FullBlock, 'sync-block-and-tx')

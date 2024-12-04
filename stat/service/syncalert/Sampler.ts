@@ -1,10 +1,10 @@
 import {CONST} from "../common/constant";
 import {FullBlock} from "../../model/FullBlock";
-import {TaskCfxTransfer} from "../../CfxTransferSync";
 import {EpochTaskTokenTransfer} from "../../TokenTransferSync";
 import {Epoch} from "../../model/Epoch";
 import {PosBlock} from "../../model/PoS";
 import {Errors} from "../common/LogicError";
+import {EpochHashCfxTransfer} from "../../CfxTransferSync";
 
 export interface IMetric {
     tags: {syncType: string},
@@ -115,8 +115,8 @@ export class CfxTransferSampler extends Sampler{
     }
 
     protected async getLatestSynced(): Promise<number> {
-        return TaskCfxTransfer.findOne({order: [['epoch', 'desc']]})
-            .then(max => max?.cursor);
+        return EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']]})
+            .then(max => max?.epoch);
     }
 }
 
