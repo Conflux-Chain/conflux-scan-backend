@@ -1,27 +1,18 @@
 import {redirectLog} from "./config/LoggerConfig";
-import {
-    getTokenTool,
-    IEpochTask,
-} from "./service/UniqueAddressStat";
-import {
-    Transaction,
-    Model,
-    DataTypes,
-    Sequelize,
-    Op,
-    UniqueConstraintError,
-    DatabaseError
-} from "sequelize";
+import {getTokenTool, IEpochTask,} from "./service/UniqueAddressStat";
+import {DatabaseError, DataTypes, Model, Op, Sequelize, Transaction, UniqueConstraintError} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchFetchBlock, initCfxSdk} from "./service/common/utils";
+import {initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
 import {
     AddressErc20Transfer,
     aggregateTransfer,
-    buildErc20Transfer, buildTransferList2address, ContractUser,
+    buildErc20Transfer,
+    buildTransferList2address,
+    ContractUser,
     Erc20Transfer,
 } from "./model/Erc20Transfer";
 import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
@@ -502,8 +493,7 @@ async function pop(epoch:number, taskBegin: number) {
 }
 async function setCheckPivot(task:IEpochTokenTransfer, cfx:Conflux, len:number) {
     const stateEpoch = await cfx.getEpochNumber('latest_state')
-    const checkPivot = stateEpoch - task.epoch < len * 2 || FORCE_CHECK_PIVOT
-    task.checkPivot = checkPivot;
+    task.checkPivot = stateEpoch - task.epoch < len * 2 || FORCE_CHECK_PIVOT;
 }
 export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, model) : Promise<IEpochTokenTransfer> {
     do {
@@ -511,9 +501,13 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
             model.findOne({order:[['epoch','desc']]}),
             model.findOne({where: {epoch: fromEpoch, finished: false}}), // resume exists task
         ])
+        if (len == undefined && maxOne) {
+            // that is , disable multiple task mechanism.
+            return  maxOne;
+        }
         if (exactOne) {
-            await setCheckPivot(exactOne, cfx, len)
-            console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}, checkPivot ${exactOne.checkPivot}`)
+            await setCheckPivot(exactOne, cfx, len);
+            console.log(` resume exists task ${exactOne.epoch}, cursor ${exactOne.cursor}, checkPivot ${exactOne.checkPivot}`);
             return exactOne;
         }
         if (fromEpoch === -1) {
@@ -529,12 +523,12 @@ export async function fetchTask(len:number, fromEpoch: number, cfx:Conflux, mode
         if (maxOne !== null) {
             preEnd = maxOne.epoch + maxOne.range
         }
-        // check whether need new task.
+        // check whether we need a new task.
         const stateEpoch = await joinTask(preEnd, cfx, len * 2, model)
         const checkPivot = stateEpoch - preEnd < len * 2 || FORCE_CHECK_PIVOT
         console.log(`checkPivot : ${stateEpoch - preEnd < len * 2} || ${FORCE_CHECK_PIVOT}`)
         const now = new Date();
-        const newOne:IEpochTokenTransfer = {epoch: preEnd, range: len,
+        const newOne:IEpochTokenTransfer = {epoch: preEnd, range: isNaN(len) ? -1 : len,
             cursor: preEnd - 1, checkPivot,
             finished: false, createdAt: now, updatedAt: now}
         let ok = false
@@ -591,7 +585,7 @@ export async function joinTask(targetEpoch:number, cfx: Conflux, dist:number, mo
             return 0
         });
     } while (stateEpoch === 0)
-    if (stateEpoch - targetEpoch >  dist) {
+    if (isNaN(dist) || stateEpoch - targetEpoch >  dist) {
         return stateEpoch;
     }
     const formerOne = await model.findOne({

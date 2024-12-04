@@ -16,7 +16,6 @@ import {CfxBalance, createTokenBalanceTable, NFTBalance,} from "../model/Balance
 import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token, Token2} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {
-    BakCfxTransfer,
     CfxTransfer,
     CfxTransferRowMark,
     createAddressCfxTransferTable,
@@ -63,7 +62,7 @@ import {TokenTransferStat} from "../model/TokenTransferStat";
 import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
-import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer, TaskCfxTransfer} from "../CfxTransferSync";
+import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer} from "../CfxTransferSync";
 import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
 import {ENS, SearchText} from "./ens/EnsService";
@@ -182,7 +181,6 @@ export async function initPartialModel(sequelize) {
     Erc1155Amount.register(sequelize)
     DailyTokenTxn.register(sequelize)
     CfxTransfer.register(sequelize)
-    BakCfxTransfer.register(sequelize)
     DailyCfxTxn.register(sequelize)
     DailyActiveAddress.register(sequelize)
     DailyToken.register(sequelize)
@@ -251,7 +249,6 @@ export async function initModel(sequelize: Sequelize) {
     EpochTaskTokenTransfer.register(sequelize);
     EpochHashTokenTransfer.register(sequelize)
     ContractUser.register(sequelize);
-    TaskCfxTransfer.register(sequelize);
     CfxUser.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
     EpochCfxTransferCount.register(sequelize);
