@@ -423,14 +423,13 @@ export class EpochSync extends SyncBase{
             const minerBlockDel = await FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx});
             const traceCreateDel = await TraceCreateContract.destroy({where: {epochNumber}});
 
-            const addrTransferDel = await AddressTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx});
+            let addrTransferDel = 0
             let epochAddressDel = 0
             if(addrIds?.length) {
+                addrTransferDel = await AddressTransfer.destroy({
+                    where: {addressId: {[Op.in]:addrIds}, epoch: epochNumber}, transaction: dbTx})
                 epochAddressDel = await EpochAddressIds.destroy({
-                    where: {addressId:{[Op.in]:addrIds}, epoch: epochNumber},
-                    transaction:dbTx,
-                    logging: sql => console.log(`epoch-sync.delete epoch address ids: ${sql}`)
-                })
+                    where: {epoch: epochNumber}, transaction:dbTx})
             }
 
             const contractDestroyDel = await ContractDestroy.destroy({where: {epochNumber}});
@@ -1596,7 +1595,7 @@ export class EpochSync extends SyncBase{
         } = this;
 
         const epochFinalized = await sdk.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-        const epochReserved = Math.min(epochFinalized - 1000, 0)
+        const epochReserved = Math.max(epochFinalized - 1000, 0)
         await EpochAddressIds.destroy({where: {epoch: {[Op.lt]: epochReserved}}, limit: 1000})
     }
 }
