@@ -290,55 +290,7 @@ export interface ICfxTransfer {
     value: number
     type:string
 }
-// ======================== fix backup
-export interface IBakCfxTransfer {
-    id?: number
-    epoch: number
-    createdAt: Date
-    blockIndex: number;
-    txIndex: number;
-    txLogIndex: number
-    fromId: number
-    toId: number
-    value: number
-    type:string
-}
-export class BakCfxTransfer extends Model<IBakCfxTransfer> implements IBakCfxTransfer {
-    id?: number
-    epoch: number
-    createdAt: Date
-    blockIndex: number;
-    txIndex: number;
-    txLogIndex: number
-    fromId: number
-    toId: number
-    value: number
-    type:string
-    static register(seq) {
-        BakCfxTransfer.init({
-            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
-            epoch: {type: DataTypes.BIGINT, allowNull: false},
-            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
-            txIndex: {type: DataTypes.INTEGER, allowNull: false},
-            txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
-            createdAt: {type: DataTypes.DATE, allowNull: false},
-            fromId: {type: DataTypes.BIGINT, allowNull: false},
-            toId: {type: DataTypes.BIGINT, allowNull: false},
-            value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
-            type: {type: DataTypes.STRING(128), allowNull: false, defaultValue: ''},
-        }, {
-            sequelize: seq,
-            updatedAt: false,
-            tableName: 'bak_cfx_transfer',
-            indexes: [
-                {
-                    name: 'idx_epoch',
-                    fields: [{name: 'epoch', order: "DESC"}]
-                },
-            ],
-        })
-    }
-}
+
 // ======================== fix backup , end
 export const T_CFX_TRANSFER = 'cfx_transfer_2'
 export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
