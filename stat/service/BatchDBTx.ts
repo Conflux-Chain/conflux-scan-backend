@@ -44,6 +44,50 @@ export class CfxTransferEpochData {
 	parentHash?: string
 }
 
+export class BatchTokenTransfer extends BatchDataBase {
+	constructor() {
+		super();
+		this.reset();
+	}
+	t20: any[];
+	t20addr: any[];
+	t721: any[];  t721addr: any[];
+	t1155: any[];  t1155addr: any[];
+	approvals: any[];  relations: any[];  epochHash: any[];  nfts: any[]
+
+	enqueue(data:any, epoch: number) {
+		const {t20, t20addr, t721, t721addr, t1155, t1155addr, approvals, relations, pivotHash, nfts} = data
+		this.t20.push(...t20);
+		this.t20addr.push(...t20addr);
+		this.t721.push(...t721);
+		this.t721addr.push(...t721addr);
+		this.t1155.push(...t1155);
+		this.t1155addr.push(...t1155addr);
+		this.approvals.push(...approvals);
+		this.relations.push(...relations);
+		this.nfts.push(...nfts);
+		this.epochHash.push({epoch, hash: pivotHash});
+
+		this.batchSize++;
+	}
+
+	reset() {
+		this.t20 = [];
+		this.t20addr = [];
+		this.t721 = [];
+		this.t721addr = [];
+		this.t1155 = [];
+		this.t1155addr = [];
+		this.approvals = [];
+		this.relations = [];
+		this.nfts = [];
+		this.epochHash = [];
+
+
+		this.batchSize = 0
+	}
+}
+
 export class BatchCfxTransfer extends BatchDataBase {
 	cfxTransArr: ICfxTransfer[]
 	addrBeans: IAddressCfxTransfer[]

@@ -59,7 +59,7 @@ import {
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
 import {TokenTransferStat} from "../model/TokenTransferStat";
-import {EpochHashTokenTransfer, EpochTaskTokenTransfer} from "../TokenTransferSync";
+import {EpochHashTokenTransfer, } from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
 import {CfxUser, EpochCfxTransferCount, EpochHashCfxTransfer} from "../CfxTransferSync";
@@ -246,7 +246,6 @@ export async function initModel(sequelize: Sequelize) {
     DailyPowRewardStat.register(sequelize);
     NFTBalance.register(sequelize);
     EpochTask.register(sequelize);
-    EpochTaskTokenTransfer.register(sequelize);
     EpochHashTokenTransfer.register(sequelize)
     ContractUser.register(sequelize);
     CfxUser.register(sequelize);

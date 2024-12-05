@@ -443,12 +443,11 @@ async function processEpoch(data:CfxTransferEpochData) {
     await save(data)
     return 0;
 }
-async function run(cfx:Conflux, preFinished: number) {
-    const fromEpoch = preFinished + 1;
-    // parentHash, also indicates whether checking parent hash.
+
+export async function loadParentHash(fromEpoch: number, preFinished: number, model:{findOne:(p:{where: { epoch: number }})=>Promise<{hash: string}>}) {
     let parentHash = '-'
     if (fromEpoch > FirstBlockNo) {
-        const hashBean = await EpochHashCfxTransfer.findOne({where: {epoch: preFinished}});
+        const hashBean = await model.findOne({where: {epoch: preFinished}});
         if (hashBean) {
             parentHash = hashBean.hash
         } else {
@@ -462,6 +461,12 @@ async function run(cfx:Conflux, preFinished: number) {
             }
         }
     }
+    return parentHash;
+}
+
+async function run(cfx:Conflux, preFinished: number) {
+    const fromEpoch = preFinished + 1;
+    let parentHash = await loadParentHash(fromEpoch, preFinished, EpochHashCfxTransfer);
     const loader = new PreloadMap(getCfxTransferTraces, batchData.initialTaskCount);
     // should not higher than tx sync, otherwise the transaction hash may can not be found.
     let epoch = fromEpoch;
