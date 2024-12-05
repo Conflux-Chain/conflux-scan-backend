@@ -19,17 +19,16 @@ import {Measure} from "./service/common/Measure";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./service/tool/TokenTool";
 
-import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
+import {CheckPivotHashError} from "./service/common/PreLoader";
 import {sleep} from "./service/tool/ProcessTool";
 import {loadMaxBlockEpoch} from "./model/FullBlock";
 import {dingMsg} from "./monitor/Monitor";
 import {
 	EpochHashTokenTransfer,
-	fetchTask,
-	finishTask,
 	loadEpoch,
-	waitParentHashDB
 } from "./TokenTransferSync";
+import {loadParentHash} from "./CfxTransferSync";
+import {PreloadMap} from "./service/SyncBase";
 
 function decodeFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[], handler:SyncHandler) {
@@ -104,15 +103,13 @@ export class TaskTemplate extends Model<ITaskCursor> implements ITaskCursor {
 }
 const measure = new Measure()
 const dumpPerRound = parseInt(process.env.ROUND || '1000')
-async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
+async function run(cfx:Conflux, preFinished: number, taskClz,
                    handler:SyncHandler
 ) {
-    const fromEpoch = task.cursor+1;
-    const stopBeforeEpoch = task.epoch + task.range
-    const taskBegin = task.epoch;
+    const fromEpoch = preFinished+1;
     const {tokenTool} = getTokenTool(cfx)
     // parentHash, also indicates whether checking parent hash.
-    let parentHash = await waitParentHashDB(task, task.cursor, EpochHashTokenTransfer) // reuse token transfer's epoch hash
+    let parentHash = await loadParentHash(fromEpoch, preFinished, EpochHashTokenTransfer) // reuse token transfer's epoch hash
     async function fetchAndBuild(epoch: number) {
 			const {pivotTime: dt, receipts, blockHashes, parentDbBlock, pivotHash} = await loadEpoch(epoch, cfx);
         let parsedResult = decodeFromReceipts(receipts, tokenTool, dt, blockHashes, handler);
@@ -122,7 +119,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
         try {
-            await measure.call('save', () => handler.save(epoch, finalData as any, taskBegin))
+            await measure.call('save', () => handler.save(epoch, finalData as any))
         } catch (e) {
             console.log(`${handler.name()}  processData catch it, epoch ${epoch}, ${e.message}`)
             return Promise.reject(e)
@@ -141,15 +138,14 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
                     hash as 'parentHash'.
          */
         console.log(`${handler.name()}  local pop ${ep}`)
-        await pop(ep, taskBegin, taskClz, handler)
+        await pop(ep, fromEpoch, taskClz, handler)
         epoch = ep
         console.log(`${handler.name()}  set cursor to ${epoch}`)
-        parentHash = await waitParentHashDB(task, ep - 1, EpochHashTokenTransfer)
+        parentHash = await loadParentHash(fromEpoch, ep - 1, EpochHashTokenTransfer)
         console.log(`${handler.name()}  local pop ${ep} end -`)
         return ep
     }
-    const loader = new PreLoader(cfx, fetchAndBuild, 3, stopBeforeEpoch);
-    loader.preLoadSize = 10;
+    const loader = new PreloadMap(fetchAndBuild, 100);
     // should not higher than block/tx sync, otherwise the transaction hash may not be found.
     let maxEpochOfBlock = 0;
     async function updateMaxDbEpoch() {
@@ -181,7 +177,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
             setTimeout(repeat, 5_000)
             return;
         }
-        let {action, data} = await measure.call('epoch', ()=>loader.get(epoch));
+        let {action, data} = await measure.call('epoch', ()=>loader.pop(epoch));
         let delay = 0
         switch (action) {
             case "ok":
@@ -219,7 +215,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
                         await sleep(10_000)
                         break;
                     }
-                    const failMsg = `${handler.name()} process epoch fail at ${epoch}, task start epoch ${taskBegin}, `;
+                    const failMsg = `${handler.name()} process epoch fail at ${epoch} `;
                     console.log(failMsg, e.message)
                     throw e;
                 }
@@ -234,12 +230,7 @@ async function run(cfx:Conflux, task:ITaskCursor, taskClz, endFn:()=>void,
             case "pop":
                 break;
         }
-        if (epoch < stopBeforeEpoch) {
-            setTimeout(repeat, delay)
-        } else {
-            await finishTask(taskBegin, taskClz);
-            endFn()
-        }
+        setTimeout(repeat, delay)
     }
     repeat().then()
 }
@@ -248,7 +239,7 @@ export interface SyncHandler {
     prepareData:()=>any;
     logParser:(log, dt:Date)=>{key, parsed},
     postProcess:(parsedResult, dt:Date, epoch)=>Promise<any>,
-    save:(epoch:number, {pivotHash}, taskBegin:number)=>Promise<void>,
+    save:(epoch:number, {pivotHash})=>Promise<void>,
     popAction: (epoch, dbTx) => Promise<void>
     needCheckMaxEpoch:()=>boolean
     name(): string
@@ -290,31 +281,14 @@ export async function startSyncEvent(cfxUrl:string,
 
     await handler.init({cfx})
     console.log(`${handler.name()}  ${process.argv[1]} \n ------- network ${cfx.networkId} ${confluxOption.url} --------`)
-    return runTask(cfx, taskClz, handler, parseInt(fromEpoch), parseInt(taskLen))
+    return runTask(cfx, taskClz, handler)
 }
 // noinspection DuplicatedCode
 async function runTask(cfx:Conflux, taskClz,
-                       handler:SyncHandler,
-                       fromEpoch:number = 0, len) {
-    const task = await fetchTask(len, fromEpoch, cfx, taskClz)
-    console.log(`${handler.name()}  start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range
-    }, cursor/first epoch ${task.cursor + 1}`)
-    if (fromEpoch === -1) {
-        // -1 means 'continue unfinished task',
-        // switch to normal(support multiple) after the first task is picked up.
-        fromEpoch = 1
-    }
-    await new Promise(r=>{
-        run(cfx, task, taskClz,()=>{
-            r(0)
-        }, handler)
-    })
-    if (len === 0) {
-        console.log(`${handler.name()} length parameter is zero, quit.`)
-        process.exit(0)
-    } else {
-        setTimeout(() => runTask(cfx, taskClz, handler, fromEpoch, len), 0)
-    }
+                       handler:SyncHandler) {
+    // const task = await taskClz.findOne()
+    // console.log(`${handler.name()}  start task, first epoch ${task.cursor + 1}`)
+    // return run(cfx, task.epoch)
 }
 if (module === require.main) {
     // redirectLog()

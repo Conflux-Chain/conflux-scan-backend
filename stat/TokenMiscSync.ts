@@ -10,7 +10,7 @@ async function main() {
     regExitHook()
     // init firstly
     await init()
-    startSync3525('useConfigRpc', "-1", "10000").then()
+    // startSync3525('useConfigRpc', "-1", "10000").then()
     startBalanceTask("", "useConfigRpc", "500").then()
     startUniqueAddrStat().then()
     console.log(`\n${__filename} started.\n`)

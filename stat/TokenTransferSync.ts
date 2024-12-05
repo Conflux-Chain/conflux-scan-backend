@@ -18,7 +18,7 @@ import {
 import {AddressErc721Transfer, buildErc721Transfer, Erc721Transfer} from "./model/Erc721Transfer";
 import {AddressErc1155Transfer, Erc1155Transfer} from "./model/Erc1155Transfer";
 import {KV, UNIFORM_APPROVAL_EPOCH} from "./model/KV";
-import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
+import {CheckPivotHashError} from "./service/common/PreLoader";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
@@ -370,10 +370,7 @@ async function run(cfx:Conflux, preFinished: number) {
     }
     repeat().then()
 }
-export async function finishTask(epoch, model) {
-    await model.update({finished: true}, {where: {epoch}})
-    console.log(` ---- finish task ${epoch} ---- ${model.getTableName()}`)
-}
+
 async function save(epoch:number, data) {
     batchData.enqueue(data, epoch)
     measure.count('addrBeans', batchData.t20addr.length);
