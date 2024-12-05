@@ -341,8 +341,7 @@ async function run(cfx:Conflux, preFinished: number) {
                         batchData.enable = false
                     }
                     if (epoch % (batchData.enable ? 1000 : 100) === 0) {
-                        console.log(` sync transfer sample log, at epoch ${epoch}`);
-                        measure.dump(` sync transfer metrics ${batchData.enable ? "" : "NO "}batch `, 1, 'fetch', fetchAndBuildTag, 'save');
+                        measure.dump(`${epoch} ${batchData.enable ? "" : "NO "}batch `, 1, 'save');
                     }
                     epoch ++
                 } catch (e) {
@@ -373,7 +372,7 @@ async function run(cfx:Conflux, preFinished: number) {
 
 async function save(epoch:number, data) {
     batchData.enqueue(data, epoch)
-    measure.count('addrBeans', batchData.t20addr.length);
+    measure.count('addrBeans', data.t20addr.length);
     if (batchData.shouldWaitBatch()) {
         return;
     }
