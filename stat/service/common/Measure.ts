@@ -56,8 +56,7 @@ export class Measure {
         const buildInfo = (keys:string[]) => {
             return keys.map(k=>{
                 const t = this.map.get(k);
-                return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)} rounds ${t.times
-                }` : '' // (${t.veryStart}-${t.veryEnd})
+                return t ? `${k}:${(t.ms/(t.times || 1)).toPrecision(5)}${ mod == 1 ? "" : ` rounds ${t.times}`}` : '' // (${t.veryStart}-${t.veryEnd})
             }).join('; ');
         }
         let specialInfo = buildInfo(specialKey)
