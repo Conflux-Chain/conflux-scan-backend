@@ -2,25 +2,23 @@
  * Unique address for each token.
  */
 
-import {adjustTodayEndTime, sqlLogFn} from "../model/Utils";
+import {adjustTodayEndTime} from "../model/Utils";
 import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, Erc20Transfer, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {regExitHook, sleep} from "./tool/ProcessTool";
 import {col, DataTypes, literal, Model, Op, QueryTypes, Sequelize} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
-import {Conflux, format} from "js-conflux-sdk";
+import {Conflux} from "js-conflux-sdk";
 import {init} from "./tool/FixDailyTokenStat";
 import {initCfxSdk} from "./common/utils";
-import {PreLoader} from "./common/PreLoader";
-import {Log as CfxLog} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {TokenTool} from "./tool/TokenTool";
-import {makeIdV} from "../model/HexMap";
 import {Measure} from "./common/Measure";
 import {Epoch} from "../model/Epoch";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {FirstBlockNo} from "../config/StatConfig";
+import {PreloadMap} from "./SyncBase";
 
 process.env.TZ='UTC'
 
@@ -286,8 +284,6 @@ export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:
 }
 
 const measure = new Measure()
-const addrMap = new Map<string, string>()
-const addrIdMap = new Map<string, number>()
 const ADDR_LEN = 8 // 40. only save the tail of an address.
 async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
     epoch
@@ -352,8 +348,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
         })
     }
     let timeStart, timeEnd;
-    const loader = new PreLoader(cfx, getLogs, 10000, stopBeforeEpoch);
-    loader.preLoadSize = 5
+    const loader = new PreloadMap(getLogs, 1);
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
     let delay = 0
     async function biz() {
@@ -361,7 +356,8 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
             await sleep(2_000)
             maxDbTransferEpoch = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]}).then(res => res?.epoch - 100)
         }
-        const {action, data} = await loader.get(epoch);
+        let action = 'ok'
+        const data = await loader.pop(epoch);
         delay = 0;
         const epochMeasureKey = 'perEpoch';
         switch (action) {
@@ -393,14 +389,13 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                     console.log(`UniqueAddr sample transfer at epoch ${epoch} hour ${epochHour
                     }, contract ${sample.contractId
                     } : ${sample.from} -> ${sample.to
-                    }, preload size ${loader.data.size}, epoch time ${transfers.epochTime.toISOString()
+                    }, preload size ${loader.size}, epoch time ${transfers.epochTime.toISOString()
                     } transfer count ${transfers.arr.length}`)
                 } else {
                     console.log(`UniqueAddr no transfer at ${epoch}`)
                 }
                 if (epoch % 100 === 0) {
                     measure.dump(`\n UniqueAddr --`, undefined, epochMeasureKey, 'rpc', 'polishLogs', 'buildMap', 'idLength');
-                    loader.dumpMetrics(` --------------- get logs metrics , addr count ${addrIdMap.size}`)
                 }
                 epoch++
                 break;

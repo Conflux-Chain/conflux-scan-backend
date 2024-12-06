@@ -1,10 +1,10 @@
 import {CONST} from "../common/constant";
 import {FullBlock} from "../../model/FullBlock";
-import {EpochTaskTokenTransfer} from "../../TokenTransferSync";
 import {Epoch} from "../../model/Epoch";
 import {PosBlock} from "../../model/PoS";
 import {Errors} from "../common/LogicError";
 import {EpochHashCfxTransfer} from "../../CfxTransferSync";
+import {EpochHashTokenTransfer} from "../../TokenTransferSync";
 
 export interface IMetric {
     tags: {syncType: string},
@@ -132,8 +132,8 @@ export class TokenTransferSampler extends Sampler{
     }
 
     protected async getLatestSynced(): Promise<number> {
-        return EpochTaskTokenTransfer.findOne({order: [['epoch', 'desc']]})
-            .then(max => max?.cursor);
+        return EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]})
+            .then(max => max?.epoch);
     }
 }
 

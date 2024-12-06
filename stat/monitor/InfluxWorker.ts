@@ -3,7 +3,6 @@ import {init} from "../service/tool/FixDailyTokenStat";
 process.env.TZ = 'UTC'
 // create monitor data in influx DB.
 import {FieldType, IHostConfig, InfluxDB} from 'influx'
-import {EpochTaskTokenTransfer} from "../TokenTransferSync";
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
 import {HeartBeatBean} from "../model/HeartBeat";
@@ -12,6 +11,7 @@ import {Op} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../service/common/utils";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
+import {EpochHashTokenTransfer} from "../TokenTransferSync";
 
 let cfx: Conflux;
 
@@ -66,8 +66,8 @@ async function epochCursorInConfig(inf: InfluxDB) {
     })
 }
 async function copyAll(inf: InfluxDB) {
-    await copy(inf, EpochHashCfxTransfer, 'task-cfx-x', a=>a.epoch)
-    await copy(inf, EpochTaskTokenTransfer, 'task-token-x', a=>a.cursor)
+    await copy(inf, EpochHashCfxTransfer, 'task-cfx-x')
+    await copy(inf, EpochHashTokenTransfer, 'task-token-x')
     await copy(inf, Epoch, 'sync-epoch')
     await copy(inf, FullBlock, 'sync-block-and-tx')
     // influx worker itself

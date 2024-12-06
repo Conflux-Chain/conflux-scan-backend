@@ -37,7 +37,7 @@ export class ApiApp extends AppBase {
 
   async init() {
     await super.init();
-
+    this.proxy = true;
     // networkId
     this.networkId = this.cfx.networkId;
     console.log(`================== start api, networkId ${this.cfx.networkId} ==================`);

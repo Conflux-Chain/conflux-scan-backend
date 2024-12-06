@@ -22,6 +22,7 @@ import {
 import {CONST as CONST_TS} from "../../stat/service/common/constant";
 const lodash = require('lodash');
 import * as KoaRouter from "koa-router";
+import {getClientIP} from "../../stat/router/RateLimiter";
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
@@ -59,6 +60,14 @@ router_get(router,'/', function (ctx) {
   const { app: { config: { machine } } } = this;
   return { message: `scan-api-v1, [${machine}]` };
 });
+router_get(router,'/echo', function (ctx) {
+  return {
+    "headers": ctx.headers,
+    "ip": getClientIP(ctx),
+    "time": new Date().toISOString(),
+    "service": "v1",
+  }
+})
 // --------------------------------- OpenAPI ----------------------------------
 
 // -------------------------------- Statistic ---------------------------------

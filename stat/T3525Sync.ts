@@ -443,7 +443,7 @@ class Event3525handler implements SyncHandler {
         return result;
     }
 
-    save(epoch: number, {pivotHash, events, slotChanged, slots, tokens}, taskBegin: number): Promise<void> {
+    save(epoch: number, {pivotHash, events, slotChanged, slots, tokens}): Promise<void> {
         const slotArr = Object.keys(slots).map(k=>slots[k]);
         // build token id beans
         const fields = ['contractId','tokenId', 'slot', 'ownerId','createdAt', 'updatedAt'];
@@ -491,9 +491,13 @@ class Event3525handler implements SyncHandler {
                 }),
                 TaskEvent3525.update(
                     {cursor: epoch, },
-                    {where:{epoch:taskBegin}, transaction:dbTx})
+                    {where:{epoch: this.getCursorId()}, transaction:dbTx})
             ])
         }).then();
+    }
+
+    async getCursorId() : Promise<number> {
+        return Promise.reject("not implemented")
     }
 
     needCheckMaxEpoch(): boolean {

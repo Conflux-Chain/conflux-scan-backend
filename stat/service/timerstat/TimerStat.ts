@@ -1,11 +1,9 @@
 import {Op} from "sequelize";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
-import {EpochTaskTokenTransfer} from "../../TokenTransferSync";
-import {StatApp} from "../../StatApp";
-import {FirstBlockNo} from "../../config/StatConfig";
 import {sleep} from "../tool/ProcessTool";
 import {FullBlock} from "../../model/FullBlock";
+import {EpochHashTokenTransfer} from "../../TokenTransferSync";
 
 const moment = require('moment');
 
@@ -178,7 +176,7 @@ export abstract class TimerStat {
         return { rangeBegin, rangeEnd };
     }
 
-    protected async firstEpochViaEpochTask(rangeEnd): Promise<number> {
+    protected async firstEpochViaEpochTask(rangeEnd: number): Promise<number> {
         const item = await Epoch.findOne({
             where: {timestamp: {[Op.gte]: rangeEnd}}, order:[['timestamp', 'asc']]});
         const epoch = item?.epoch;
@@ -186,15 +184,8 @@ export abstract class TimerStat {
             return undefined;
         }
 
-        const task = await EpochTaskTokenTransfer.findOne({
-            where: {epoch: {[Op.lte]: epoch}, cursor: {[Op.gte]: epoch}}, order: [['epoch', 'desc']]});
-        if(task === null) {
-            return undefined;
-        }
-
-        const processingTask = await EpochTaskTokenTransfer.findOne({
-            where: {epoch: {[Op.lt]: task.epoch}, finished: false}});
-        if(processingTask !== null) {
+        const task = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]});
+        if(task === null || task.epoch < rangeEnd) {
             return undefined;
         }
 

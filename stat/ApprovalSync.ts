@@ -1,35 +1,19 @@
-import {redirectLog} from "./config/LoggerConfig";
 import {
-    getTokenTool,
     IEpochTask,
 } from "./service/UniqueAddressStat";
 import {
-    Transaction,
     Model,
     DataTypes,
     Sequelize,
     Op,
-    UniqueConstraintError,
-    DatabaseError, QueryTypes,
+    QueryTypes,
 } from "sequelize";
-import {init} from "./service/tool/FixDailyTokenStat";
-import {Conflux, format} from "js-conflux-sdk";
-import {initCfxSdk} from "./service/common/utils";
-import {Measure} from "./service/common/Measure";
-import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
-import {TokenTool} from "./service/tool/TokenTool";
+import {format} from "js-conflux-sdk";
 import {
-    aggregateTransfer,
-    buildErc20Transfer,
     IErc20Transfer,
 } from "./model/Erc20Transfer";
-import {KV, UNIFORM_APPROVAL_EPOCH} from "./model/KV";
-import {CheckPivotHashError, PreLoader} from "./service/common/PreLoader";
-import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {Token} from "./model/Token";
-import {FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
-import {dingMsg} from "./monitor/Monitor";
-import {EpochHashTokenTransfer, fetchTask, finishTask, waitParentHashDB} from "./TokenTransferSync";
+import {FullTransaction} from "./model/FullBlock";
 import {buildHexSet, getAddrId, idHex40Map, makeIdV, mapProp} from "./model/HexMap";
 import {StatApp} from "./StatApp";
 import {ContractInfo} from "./model/ContractInfo";
@@ -267,56 +251,6 @@ export class TaskEpochApproval extends Model<IEpochApproval> implements IEpochAp
     }
 }
 
-function decodeApprovalFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
-                                    dt:Date, blockHashes:string[]) {
-    const result = {approvals:[]}
-    function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex, txPos) {
-        transfer['epoch'] = tx.epochNumber;
-        transfer['transactionIndex'] = txPos;//tx.index;
-        transfer['transactionLogIndex'] = txLogIndex;
-        transfer['blockIndex'] = blockIdx;
-        transfer['createdAt'] = dt;
-        arr.push(transfer)
-    }
-    let blockIdx = -1;
-    for (let receiptsInBlock of receipts2d) {
-        blockIdx ++
-        let txPos = -1; // match with the logic in TransactionSync.
-        for (let txReceipt of receiptsInBlock) {
-            if (txReceipt.outcomeStatus === 0) {
-                txPos ++ // inc for status 0
-            } else if (txReceipt.outcomeStatus === 1) {
-                txPos ++ // inc for status 1 (failed)
-                continue;
-            } else { // null: not executed; 2: skipped.
-                continue;
-            }
-            if (txReceipt.blockHash !== blockHashes[blockIdx]) {
-                throw new Error(`tx receipt has mismatch block hash, epoch ${txReceipt.epochNumber
-                }, ${txReceipt.blockHash
-                } vs block hashes ${blockHashes[blockIdx]}`)
-            }
-            let txLogIndex = -1;
-            for (let log of txReceipt.logs) {
-                txLogIndex ++
-                if (log.topics.length < 3) {
-                    continue;
-                }
-                const {topics: [, t1, t2, ]} = log;
-                if (t1 === undefined || t2 === undefined) {
-                    continue
-                }
-                let transfer;
-                if ((transfer = tokenTool.decode721_1155_ApprovalForAll(log, false))) {
-                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos)
-                } else if ((transfer = tokenTool.decodeERC721_ERC20Approval(log, false))) {
-                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos);
-                }
-            }
-        }
-    }
-    return result;
-}
 export async function batchSaveApproval(mainModel,
                                  // addrModel,
                                  arr,
@@ -328,8 +262,6 @@ export async function batchSaveApproval(mainModel,
     ])
 }
 
-const measure = new Measure()
-const dumpPerRound = parseInt(process.env.ROUND || '1000')
 export function buildRelation(list, arr) {
 	list.forEach(t=>{
 		t.updatedAt = t.createdAt
@@ -337,85 +269,6 @@ export function buildRelation(list, arr) {
 	})
 }
 
-
-async function save(epoch:number, {pivotHash, approvals, relations}, taskBegin:number) {
-    return KV.sequelize.transaction(dbTx=>{
-        return Promise.all([
-            batchSaveApproval(TokenApproval, approvals, dbTx),
-            ApprovalRelation.bulkCreate(relations, {transaction: dbTx,
-                updateOnDuplicate:["updatedAt","epoch","blockIndex","txIndex", "value"],
-            }),
-            TaskEpochApproval.update(
-                {cursor: epoch, },
-                {where:{epoch:taskBegin}, transaction:dbTx})
-                // .then(res=>{
-                //     console.log(` update cursor, epoch ${epoch} result `, res)
-                // })
-        ])
-    })
-}
-const MAIN_MODELS = [TokenApproval]
-async function pop(epoch:number, taskBegin: number) {
-    async function prepare(model:any) {
-        const mainList = await model.findAll({where: {epoch}})
-        if (mainList.length === 0) {
-            return []
-        }
-        const addrIds = new Set<number>();
-        mainList.forEach(r=>{
-            addrIds.add(r.fromId);
-            addrIds.add(r.toId);
-        })
-        return [...addrIds]
-    }
-    const popRef = await Promise.all(
-        MAIN_MODELS.map(prepare)
-    )
-    async function popAction(mainModel, addrIdArr, dbTx) {
-        if (addrIdArr.length === 0) {
-            return 'empty';
-        }
-        return Promise.all([
-            mainModel.destroy({where: {epoch}, transaction:dbTx}).then((cnt)=>`M:${cnt}`),
-        ]);
-    }
-    async function popTaskCursor(dbTx: Transaction) {
-        // cursor could less than the start epoch of this task. doesn't matter.
-        // there should be only one task under execution.
-        return TaskEpochApproval.update({cursor: epoch - 1},
-            {where: {epoch: taskBegin}, limit: 1, transaction:dbTx}
-            )
-    }
-    return TaskEpochApproval.sequelize.transaction(dbTx=>{
-        return Promise.all([
-            popAction(TokenApproval, popRef[0], dbTx).then(res=>`approvals ${res}`),
-            popTaskCursor(dbTx).then((cnt)=>`CURSOR ${cnt}`),
-        ])
-    }).then(res=>{
-        console.log(`Approval-SYNC  pop done. epoch ${epoch}, ${JSON.stringify(res)}`)
-        return res;
-    })
-}
-async function setCheckPivot(task:IEpochApproval, cfx:Conflux, len:number) {
-    const stateEpoch = await cfx.getEpochNumber('latest_state')
-    const checkPivot = stateEpoch - task.epoch < len * 2 || FORCE_CHECK_PIVOT
-    task.checkPivot = checkPivot;
-}
-
-async function test() {
-    const [,,cmd,arg1, arg2] = process.argv;
-    if (cmd === 'testQuery') {
-        await init();
-        const cfx = new Conflux({url: arg2})
-        await ApprovalRelation.queryApprovalOfAccount({
-            account: arg1, tokenType:'', byTokenId: false, cfx})
-            .then(({list})=>{
-                console.log(`Approval-SYNC total ${0}`, list)
-            })
-        process.exit();
-    }
-}
-const FORCE_CHECK_PIVOT = Boolean(process.env.FORCE_CHECK_PIVOT)
 
 // 721 1030 0xf31216bd4c532effff0a8c397d21c4f931e6c3b23620328693dd91f10d500245 epoch 5371609
 // 20  1030 0x00a5164cc7b88758ad8d087387cc4015b07d073c4ff2b9abcafb934fca66ce53 epoch 62237
