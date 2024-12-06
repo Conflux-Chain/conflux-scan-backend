@@ -27,7 +27,7 @@ import {dingMsg} from "./monitor/Monitor";
 import {ConfigInstance, FirstBlockNo} from "./config/StatConfig";
 import {loadBlocksByEpoch, loadTxsByEpoch} from "./service/FullBlockService";
 import {ApprovalRelation, batchSaveApproval, buildRelation, TaskEpochApproval, TokenApproval} from "./ApprovalSync";
-import {loadParentHash} from "./CfxTransferSync";
+import {EpochHashCfxTransfer, loadParentHash} from "./CfxTransferSync";
 import {PreloadMap} from "./service/SyncBase";
 import {BatchTokenTransfer} from "./service/BatchDBTx";
 
@@ -258,9 +258,7 @@ async function run(cfx:Conflux, preFinished: number) {
             console.log(` processData catch it, epoch ${epoch}, ${e.message}`)
             return Promise.reject(e)
         }
-        if (parentHash) { // checking mode.
-            parentHash = finalData['pivotHash'];
-        }
+        parentHash = finalData['pivotHash'];
         return finalData;
     }
     let epoch = fromEpoch;
@@ -279,6 +277,7 @@ async function run(cfx:Conflux, preFinished: number) {
         console.log(` local pop ${ep}`)
         await pop(ep)
         epoch = ep
+        parentHash = await loadParentHash(fromEpoch, ep - 1, EpochHashCfxTransfer)
         console.log(` set cursor to ${epoch} local pop ${ep} end -`)
         return ep
     }
@@ -299,7 +298,6 @@ async function run(cfx:Conflux, preFinished: number) {
         console.log(` update max epoch of block to ${maxE} `)
     }
     await updateMaxDbEpoch()
-    let firstWait = true
     async function repeat() {
         return repeat0().catch(err=>{
             console.log(` repeat error at epoch ${epoch}: `, err)
