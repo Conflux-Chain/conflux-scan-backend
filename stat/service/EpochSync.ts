@@ -326,10 +326,10 @@ export class EpochSync extends SyncBase{
                 censorItemDel,addrNftDel,nftTransferDel,addrNftTransferDel,voteParamsDel] = await Promise.all([
                 Epoch.destroy({where:{epoch: epochNumber}, transaction: dbTx}),
                 FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
-                TraceCreateContract.destroy({where: {epochNumber}}),
+                TraceCreateContract.destroy({where: {epochNumber}, transaction: dbTx}),
                 addrIds?.length ? AddressTransfer.destroy({where: {addressId: {[Op.in]:addrIds}, epoch: epochNumber}, transaction: dbTx}) : 0 as any,
                 addrIds?.length ? EpochAddressIds.destroy({where: {epoch: epochNumber}, transaction:dbTx}) : 0 as any,
-                ContractDestroy.destroy({where: {epochNumber}}),
+                ContractDestroy.destroy({where: {epochNumber}, transaction: dbTx}),
                 CensorItem.destroy({where: {epochNumber}, transaction: dbTx}),
                 this.deleteAddressNft(epochNumber, modelData, dbTx),
                 NftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
