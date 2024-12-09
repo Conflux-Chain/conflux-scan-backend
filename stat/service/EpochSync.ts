@@ -226,6 +226,15 @@ export class EpochSync extends SyncBase{
             }
         }
 
+        const voteParams = []
+        if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
+            const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams
+            if ((!this.latestVoteParams && (s >= 0 || b >= 0)) ||
+                (this.latestVoteParams && (this.latestVoteParams.storagePointProp != s || this.latestVoteParams.baseFeeShareProp != b))) {
+                voteParams.push({epoch: epochNumber, storagePointProp: s, baseFeeShareProp: b, timestamp: modelData.epoch.timestamp})
+            }
+        }
+
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 Epoch.create(modelData.epoch, {transaction: dbTx}),
@@ -244,7 +253,8 @@ export class EpochSync extends SyncBase{
                 AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray, {transaction: dbTx}),
                 Promise.all(tokenTasks),
                 Promise.all(nameTagTasks),
-                ESpaceHex40Map.bulkCreate(evmAddresses, {transaction: dbTx, updateOnDuplicate: ['hexId']})
+                ESpaceHex40Map.bulkCreate(evmAddresses, {transaction: dbTx, updateOnDuplicate: ['hexId']}),
+                VoteParams.bulkCreate(voteParams, {transaction: dbTx}),
             ])
         })
 
@@ -285,14 +295,6 @@ export class EpochSync extends SyncBase{
         }
 
         this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
-
-        if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
-            const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams
-            if ((!this.latestVoteParams && (s >= 0 || b >= 0)) ||
-                (this.latestVoteParams && (this.latestVoteParams.storagePointProp != s || this.latestVoteParams.baseFeeShareProp != b))) {
-                await VoteParams.create({epoch: epochNumber, storagePointProp: s, baseFeeShareProp: b, timestamp: modelData.epoch.timestamp})
-            }
-        }
 
         if (epochNumber % 100 === 0) {
             console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
