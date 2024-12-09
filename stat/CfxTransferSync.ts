@@ -21,6 +21,7 @@ import {rmCache} from "./service/common/RpcCacheManager";
 import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
+import {diffCount} from "./service/FullBlockService";
 
 export interface IEpochCfxTransferCount {
     id?:number; epoch:number; n:number;
@@ -303,7 +304,7 @@ async function save(data:CfxTransferEpochData) {
     }
     return CfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, batchData.transferCount, dbTx, ),
+            diffCount(KEY_FULL_CFX_TRANSFER_COUNT, batchData.transferCount, dbTx, ),
             CfxUser.bulkCreate(batchData.cfxTransArr, {transaction: dbTx}),
             CfxTransfer.bulkCreate(batchData.cfxTransArr, {transaction: dbTx}),
             AddressCfxTransfer.bulkCreate(batchData.addrBeans, {transaction: dbTx}),
@@ -421,7 +422,7 @@ async function counter() {
 
     const sum = list.map(r=>r.n).reduce((a,b)=>a+b)
     await KV.sequelize.transaction(async dbTx=>{
-        await KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, sum, dbTx)
+        await diffCount(KEY_FULL_CFX_TRANSFER_COUNT, sum, dbTx)
         const cnt=await EpochCfxTransferCount.destroy({
             where:{id:{[Op.between]:[minId, maxId]}}, transaction: dbTx
         })
