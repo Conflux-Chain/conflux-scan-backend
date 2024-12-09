@@ -406,8 +406,8 @@ export class FullBlockService {
                         where:{epoch: popEpochCondition, addressId: [...addresses],},
                         transaction: dbTx}),
                     FullBlockExt.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
-                    this.diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
-                    this.diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
+                    diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
+                    diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                 ])
             })
@@ -561,8 +561,8 @@ export class FullBlockService {
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
-                this.diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.fullBlock.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
-                this.diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.fullTransaction.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
+                diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.fullBlock.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
+                diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.fullTransaction.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),
             ])
             this.batchBlockTx.reset();
@@ -575,7 +575,7 @@ export class FullBlockService {
             metrics.addressTxCount += txByAddressArr.length - addrTxCntPre
             metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
-            const epochPerStat = 100
+            const epochPerStat = this.batchBlockTx.enable ? 1000 : 100
             if((minEpochNumber % epochPerStat) === 0) {
                 console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
@@ -601,12 +601,6 @@ export class FullBlockService {
             code: ok ? 0 : 500, message, blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
-    }
-    async diffCount(key:string, diff:number, dbTx:Transaction) {
-        const sql = "update config set `value` = ? + cast(`value` as unsigned) where `key`=?"
-        return KV.sequelize.query(sql,
-            {type: QueryTypes.UPDATE, replacements: [diff, key],
-                transaction: dbTx})
     }
     public async fillBlockRewardByPos() {
         let prePos = await KV.getNumber(KEY_FILL_BLOCK_REWARD_EPOCH, NaN)
@@ -757,6 +751,14 @@ export async function loadTxsByEpoch(no: number, dbTx:Transaction) {
         transaction: dbTx,
     })
 }
+
+export async function diffCount(key:string, diff:number, dbTx:Transaction) {
+    const sql = "update config set `value` = ? + cast(`value` as unsigned) where `key`=?"
+    return KV.sequelize.query(sql,
+        {type: QueryTypes.UPDATE, replacements: [diff, key],
+            transaction: dbTx})
+}
+
 /*
 SELECT TABLE_SCHEMA,TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
        FROM INFORMATION_SCHEMA.PARTITIONS

@@ -120,16 +120,6 @@ export class KV extends Model<IKV> implements IKV {
             {key: KEY_EVENT_LOG_QUERY_RDB_SWITCH, value: 'true'},
         ]);*/
     }
-
-    static async diffCount(key:string, diff:number, dbTx:Transaction, logger = undefined): Promise<[number, number]> {
-        const oldValue = await KV.getNumber(key, NaN);
-        if(isNaN(oldValue)) throw new Error(`no key:${key} in KV`);
-
-        const newValue = oldValue + diff;
-        await KV.update({value: newValue.toString()}, {where:{key:key}, transaction: dbTx});
-        // logger?.info(`batchSaveCfxTransfer-0----------------------dbValue+diff:${dbValue+diff},----resultArray:${JSON.stringify(resultArray)}`);
-        return Promise.resolve([oldValue, newValue]);
-    }
 }
 
 export interface IPosition {
@@ -137,7 +127,6 @@ export interface IPosition {
     pos:number
     active:boolean
 }
-export const POS_CFX_BILL = 'POS_CFX_BILL'
 export class Position extends Model<IPosition> implements IPosition {
     tag:string
     pos:number

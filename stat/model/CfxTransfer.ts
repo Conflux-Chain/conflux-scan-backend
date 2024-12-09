@@ -3,6 +3,7 @@ import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {adjustTodayEndTime} from "./Utils";
+import { diffCount } from "../service/FullBlockService";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {
@@ -423,7 +424,7 @@ export async function popPartitionCfxTransfer(epoch, logger = undefined, dbTx = 
                 where: { epoch, addressId: {[Op.in]: [...addressIds]} },
                 transaction: dbTx
             }),
-            KV.diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
+            diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
             CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
         ]);
         // logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
