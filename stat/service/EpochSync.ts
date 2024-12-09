@@ -181,6 +181,9 @@ export class EpochSync extends SyncBase{
             const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
             const voteParams = StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber)
 
+            await this.saveTokenIcon(announceInfo)
+            await this.saveContractVerify(traceCreateArray)
+
             return {
                 syncCode: SyncCode.SUCCESS,
                 parentHash: epoch.parentHash,
@@ -196,9 +199,46 @@ export class EpochSync extends SyncBase{
         }
     }
 
-    async save(epochNumber, modelData) {
-        const { tokenQuery } = this.app;
+    async saveTokenIcon(announceInfo) {
+        try{
+            const {tokenArray} = announceInfo;
+            const {dir} = getImageDir();
+            for (const token of tokenArray) {
+                if(!EpochSync.SYNC_TOKEN_ICON) break;
+                if (token.icon) {
+                    const dbIcon = await Token.findOne({where: {base32: token.base32}});
+                    setTimeout(()=>{
+                        base64ToPNG(dbIcon, dir).then(({absPath, filename})=>{
+                            return uploadOss(absPath, filename)
+                        }).then(res=>{
+                            return saveOssUrl(dbIcon, res)
+                        }).catch(err=>{
+                            console.log(`epoch-sync.create one TokenIcon url fail: ${token.base32}`, err);
+                        })
+                    }, 10_000)
+                }
+            }
+        } catch (e){
+            console.log(`epoch-sync, createTokenIcon url fail`, e);
+        }
+    }
 
+    async saveContractVerify(traceCreateArray) {
+        for(const traceCreate of traceCreateArray){
+            if(!EpochSync.SYNC_VERIFY_LINK) break;
+            const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
+            const address = `0x${hex40.hex}`;
+            const codeHash = traceCreate.codeHash;
+            const isEIP1167 = await this.verifyMinimalProxy({address}).catch(e => {
+                console.log(`[${address}]epoch-sync.minimalVerify`, e);
+                return false;
+            });
+            if(isEIP1167) continue;
+            await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
+        }
+    }
+
+    async save(epochNumber, modelData) {
         await this.updateCursor(modelData.epoch.timestamp)
 
         const tokenTasks = []
@@ -257,42 +297,6 @@ export class EpochSync extends SyncBase{
                 VoteParams.bulkCreate(voteParams, {transaction: dbTx}),
             ])
         })
-
-        try{
-            const {tokenArray} = modelData.announceInfo;
-            const {dir} = getImageDir();
-            for (const token of tokenArray) {
-                if(!EpochSync.SYNC_TOKEN_ICON) break;
-                if (token.icon) {
-                    const dbIcon = await Token.findOne({where: {base32: token.base32}});
-                    setTimeout(()=>{
-                        base64ToPNG(dbIcon, dir).then(({absPath, filename})=>{
-                            return uploadOss(absPath, filename)
-                        }).then(res=>{
-                            return saveOssUrl(dbIcon, res)
-                        }).catch(err=>{
-                            console.log(`epoch-sync.create one TokenIcon url fail: ${token.base32}`, err);
-                        })
-                    }, 10_000)
-                }
-            }
-        } catch (e){
-            console.log(`epoch-sync, createTokenIcon url fail`, e);
-        }
-
-        const traceCreateArray = modelData.traceCreateArray;
-        for(const traceCreate of traceCreateArray){
-            if(!EpochSync.SYNC_VERIFY_LINK) break;
-            const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
-            const address = `0x${hex40.hex}`;
-            const codeHash = traceCreate.codeHash;
-            const isEIP1167 = await this.verifyMinimalProxy({address}).catch(e => {
-                console.log(`[${address}]epoch-sync.minimalVerify`, e);
-                return false;
-            });
-            if(isEIP1167) continue;
-            await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
-        }
 
         this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
 
