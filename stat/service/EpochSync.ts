@@ -71,11 +71,6 @@ export class EpochSync extends SyncBase{
     private readonly statSwitch
     private latestVoteParams: VoteParams
 
-    public metric = {
-        startEpoch: 0,
-        currentEpoch: 0,
-    };
-
     constructor(app: StatApp | any) {
         super(app);
         this.app = app;
@@ -132,10 +127,6 @@ export class EpochSync extends SyncBase{
         const {
             app: { tokenTool },
         } = this;
-
-        if(this.metric.startEpoch === 0) {
-            this.metric.startEpoch = epochNumber
-        }
 
         try{
             const epochData = await this.getEpochData(epochNumber);
@@ -242,15 +233,6 @@ export class EpochSync extends SyncBase{
             ])
         })
 
-        const addressArray = [
-            ...modelData.announceInfo.tokenArray.map(item => item.base32),
-            ...modelData.tokenArray.map(item => item.base32)
-        ];
-        for(const address of addressArray){
-            if(!EpochSync.SYNC_TOKEN_AUDIT) break;
-            await tokenQuery.audit({address}).catch(e => console.log(`epoch-sync.audit, address:${address}`, e));
-        }
-
         try{
             const {tokenArray} = modelData.announceInfo;
             const {dir} = getImageDir();
@@ -301,7 +283,6 @@ export class EpochSync extends SyncBase{
         }
 
         this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
-        this.metric.currentEpoch = epochNumber
 
         if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
             const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams

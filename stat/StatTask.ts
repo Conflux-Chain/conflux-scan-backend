@@ -33,6 +33,8 @@ import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
 import {scheduleGasConsumerStat} from "./service/TxnQuery";
+import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
+import {TokenQuery} from "./service/TokenQuery";
 
 async function main() {
     redirectLog()
@@ -89,6 +91,13 @@ async function main() {
     //
     const statDailyPowReward = new StatDailyPowReward({cfx});
     await statDailyPowReward.schedule(1000 * 1);
+    //
+    if (this.config.syncTokenSecurityAudit) {
+        const tokenQuery = new TokenQuery({cfx})
+        const tokenAudit = new TokenSecurityAuditSync({tokenQuery})
+        await tokenAudit.schedule()
+        await tokenAudit.scheduleRecently()
+    }
     //
     if(!StatApp.isEVM) {
         const supressFullStateRpcErr = await KV.getSwitch(KEY_SUPRESS_FULLSTATE_RPC_ERR)
