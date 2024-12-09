@@ -14,7 +14,7 @@ import {
     popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
-import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./model/KV";
+import {KEY_FULL_CFX_TRANSFER_COUNT} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 import {rmCache} from "./service/common/RpcCacheManager";
@@ -23,23 +23,6 @@ import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
 import {diffCount} from "./service/FullBlockService";
 
-export interface IEpochCfxTransferCount {
-    id?:number; epoch:number; n:number;
-}
-// trace count, multiple task will conflict if they update counter and paging mark.
-export class EpochCfxTransferCount extends Model<IEpochCfxTransferCount> implements IEpochCfxTransferCount {
-    id?:number; epoch:number; n:number;
-    static register(seq:Sequelize) {
-        EpochCfxTransferCount.init({
-            id: {type:DataTypes.BIGINT({unsigned: true}), primaryKey: true, autoIncrement: true},
-            epoch: {type:DataTypes.BIGINT({unsigned: true}), allowNull: false},
-            // when pop, it's negative.
-            n: {type:DataTypes.BIGINT(), allowNull: false},
-        },{
-            sequelize: seq, tableName: 'epoch_cfx_transfer_count', timestamps: false,
-        })
-    }
-}
 export interface ICfxUser {
     id?: number
     fromId: number
@@ -409,31 +392,6 @@ async function marker() {
     console.log(`mark done. epoch ${top.epoch}`)
 }
 // counter , handle multiple task situation.
-async function counter() {
-    const list = await EpochCfxTransferCount.findAll({
-        order: [['id','asc']], limit: 1000
-    })
-    if (list.length === 0) {
-        console.log(`COUNTER: cfx count table is empty.`)
-        return false;
-    }
-    const {id:minId} = list[0]
-    const {id:maxId} = list[list.length-1]
-
-    const sum = list.map(r=>r.n).reduce((a,b)=>a+b)
-    await KV.sequelize.transaction(async dbTx=>{
-        await diffCount(KEY_FULL_CFX_TRANSFER_COUNT, sum, dbTx)
-        const cnt=await EpochCfxTransferCount.destroy({
-            where:{id:{[Op.between]:[minId, maxId]}}, transaction: dbTx
-        })
-    }).then(()=>{
-        console.log(`EpochCfxTransferCount ${sum} epoch ${list[0].epoch}`)
-    }).catch(err=>{
-        console.log(err)
-        return sleep(5_000);
-    })
-    return true
-}
 async function processEpoch(data:CfxTransferEpochData) {
     const {code} = data;
     if (code === 404) {
@@ -549,7 +507,6 @@ async function run(cfx:Conflux, preFinished: number) {
 }
 const measure = new Measure()
 async function runTask(cfx:Conflux) {
-    while(await counter()){} // legacy code, remove it later.
     let hashBean = await EpochHashCfxTransfer.findOne({order:[['epoch','desc']]});
     const preFinished = hashBean?.epoch || FirstBlockNo - 1;
     console.log(` start cfx transfer task, first epoch ${preFinished + 1}`)
