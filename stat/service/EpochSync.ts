@@ -206,10 +206,24 @@ export class EpochSync extends SyncBase{
             if(token?.name?.length > 64) token.name = token.name.substr(0, 64)
             tokenTasks.push(Token.upsert(token))
         }
+
         const nameTagTasks = []
         for (const nameTag of [...modelData.nameTagInfo, ...modelData.bytes32NameTagInfo]) {
             console.log('epoch-sync.nameTag', nameTag);
             nameTagTasks.push(NameTag.upsert(nameTag))
+        }
+
+        const evmAddresses = []
+        if(EpochSync.SYNC_EVM_ADDR) {
+            const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
+            for(const traceCrossSpace of traceCrossSpaceArray){
+                if(traceCrossSpace.fromSpace === 'evm'){
+                    evmAddresses.push({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
+                }
+                if(traceCrossSpace.toSpace === 'evm' && traceCrossSpace.to !== traceCrossSpace.from){
+                    evmAddresses.push({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)})
+                }
+            }
         }
 
         await Epoch.sequelize.transaction(async (dbTx) => {
@@ -230,6 +244,7 @@ export class EpochSync extends SyncBase{
                 AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray, {transaction: dbTx}),
                 Promise.all(tokenTasks),
                 Promise.all(nameTagTasks),
+                ESpaceHex40Map.bulkCreate(evmAddresses, {transaction: dbTx, updateOnDuplicate: ['hexId']})
             ])
         })
 
@@ -267,19 +282,6 @@ export class EpochSync extends SyncBase{
             });
             if(isEIP1167) continue;
             await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
-        }
-
-        const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
-        for(const traceCrossSpace of traceCrossSpaceArray){
-            if(!EpochSync.SYNC_EVM_ADDR) break;
-            if(traceCrossSpace.fromSpace === 'evm'){
-                await ESpaceHex40Map.create({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
-                    .catch(() => undefined);
-            }
-            if(traceCrossSpace.toSpace === 'evm'){
-                await ESpaceHex40Map.create({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)})
-                    .catch(() => undefined);
-            }
         }
 
         this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
