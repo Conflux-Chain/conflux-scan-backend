@@ -453,6 +453,7 @@ async function run(cfx:Conflux, preFinished: number) {
         if (epoch > maxEpochOfBlock) {
             console.log(` reach max block/tx epoch ${maxEpochOfBlock}`)
             await updateMaxDbEpoch();
+            await EpochHashCfxTransfer.destroy({where: {epoch: {[Op.lt]: epoch - 10_000}}, limit: 1000});
             setTimeout(repeat, 5_000)
             return;
         }
@@ -496,10 +497,6 @@ async function run(cfx:Conflux, preFinished: number) {
                     epoch++;
                 }
                 break;
-        }
-        if (delay >= 1000) {
-            // clear footprint
-            await EpochHashCfxTransfer.destroy({where: {epoch: {[Op.lt]: epoch - 10_000}}, limit: 1000});
         }
         setTimeout(repeat, delay)
     }
