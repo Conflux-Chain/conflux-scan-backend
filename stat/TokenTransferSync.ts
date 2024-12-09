@@ -307,7 +307,7 @@ async function run(cfx:Conflux, preFinished: number) {
     async function repeat0() {
         if (epoch>maxEpochOfBlock) {
             await updateMaxDbEpoch();
-            await EpochHashTokenTransfer.destroy({where: {epoch: {[Op.lt]: epoch - 10_000}}, limit: 1000});
+            await EpochHashTokenTransfer.destroy({where: {epoch: {[Op.lt]: epoch - 10_000}}, limit: 5000});
             setTimeout(repeat, 5_000)
             return;
         }
