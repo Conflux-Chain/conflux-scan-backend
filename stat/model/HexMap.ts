@@ -47,37 +47,7 @@ export async function makeVirtualContractInfo(netId: number) {
         }
     }
 }
-/**
- * mapping a hex64 to a number in DB, to decrease data length and make effective index.
- */
-export interface IAddress{
-    id: number;
-    hex40: string;
-    base32: string;
-}
-export class Address extends Model<IAddress> implements IAddress{
-    id: number;
-    hex40: string;
-    base32: string;
-    static register(seq: Sequelize) {
-        Address.init({
-            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
-            hex40: {type: DataTypes.CHAR(40), allowNull: false,},
-            base32: {type: DataTypes.CHAR(128), allowNull: false,},
-        },{
-            sequelize: seq,
-            timestamps: false,
-            tableName: T_ADDRESS,
-            indexes: [
-                {
-                    name: 'addr_hex_40_u',
-                    fields: ['hex40'],
-                    unique: true,
-                }
-            ]
-        })
-    }
-}
+
 export interface HexMapAttributes {
     id?: number;
     hex: string
@@ -315,38 +285,6 @@ export function hexMapInit(sequelize) {
 
 
 export const ADDR_INFO_STATE_OK = 'ok'
-export const ADDR_INFO_STATE_DELETED = 'deleted'
-export interface IAddressInfo {
-    id?: number; // refer to hex40 id
-    name: string;
-    createAt: Date;
-    updateAt: Date;
-    remark: string;
-    state: string; // ok, deleted
-}
-export const T_ADDRESS_INFO = 'address_info'
-export class AddressInfo extends Model<IAddressInfo> implements IAddressInfo {
-    id?: number; // refer to hex40 id
-    name: string;
-    createAt: Date;
-    updateAt: Date;
-    remark: string;
-    state: string;
-    static register(seq: Sequelize) {
-        AddressInfo.init({
-            id:       {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
-            name:     {type: DataTypes.CHAR(32), allowNull: false, unique: true},
-            createAt: {type: DataTypes.DATE, allowNull: false},
-            updateAt: {type: DataTypes.DATE, allowNull: false},
-            remark:   {type: DataTypes.CHAR(128), allowNull: false, defaultValue: ''},
-            state:   {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ADDR_INFO_STATE_OK},
-        },{
-            tableName: T_ADDRESS_INFO,
-            sequelize: seq,
-            timestamps: false
-        })
-    }
-}
 
 export async function hex40IdMap(hex40Array: Array<string>): Promise<Map<string, number>> {
     hex40Array = hex40Array.map(hex=>hex.startsWith('0x') ? hex.substr(2) : hex)

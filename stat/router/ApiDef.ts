@@ -1,5 +1,3 @@
-import {TOP_CFX_HOLD} from "../model/TopRecord";
-
 export default {
     "openapi": "3.0.0",
     "info": {
@@ -552,7 +550,7 @@ export default {
                 parameters: [
                     {name: 'type', in: 'query', required: true,
                         schema: {type: String,
-                            enum: [TOP_CFX_HOLD, 'rank_address_by_staking','rank_address_by_cfx',
+                            enum: ['TOP_CFX_HOLD', 'rank_address_by_staking','rank_address_by_cfx',
                                 'rank_address_by_total_cfx',
                                 'rank_contract_by_number_of_participants_1d',
                                 'rank_contract_by_number_of_participants_30d',

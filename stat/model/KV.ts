@@ -34,8 +34,6 @@ export const KEY_TOKEN_TRANSFER_PER_SECOND = "KEY_TOKEN_TRANSFER_PER_SECOND"
 export const KEY_GAS_USED_PER_SECOND = "KEY_GAS_USED_PER_SECOND"
 export const KEY_GAS_PRICE_TRACKER = "KEY_GAS_PRICE_TRACKER"
 export const KEY_GAS_USED_PER_SECOND_NOTIFY = "KEY_GAS_USED_PER_SECOND_NOTIFY"
-export const CFX_BILL_EPOCH_3 = "CFX_BILL_EPOCH_3"
-export const CFX_BILL_POS_EPOCH_REWARD_3 = "CFX_BILL_POS_EPOCH_REWARD_3"
 export const KEY_FULL_STATE_RPC = "KEY_FULL_STATE_RPC"
 export const CLEAN_CACHE_CURSOR = "CLEAN_CACHE_CURSOR"
 export const KEY_PRUNE_EPOCHS_PER_TIME = "KEY_PRUNE_EPOCHS_PER_TIME"
@@ -122,46 +120,3 @@ export class KV extends Model<IKV> implements IKV {
     }
 }
 
-export interface IPosition {
-    tag:string
-    pos:number
-    active:boolean
-}
-export class Position extends Model<IPosition> implements IPosition {
-    tag:string
-    pos:number
-    active: boolean
-    static register(seq:Sequelize) {
-        Position.init({
-            tag: {type: DataTypes.STRING(32), unique: true, primaryKey: true},
-            pos: {type: DataTypes.BIGINT({unsigned: true})},
-            active: {type: DataTypes.BOOLEAN, defaultValue: true},
-        },{
-            sequelize: seq,
-            tableName: 'Positions'
-        })
-    }
-
-    public static async getPosDefault(tag: string, v: number) {
-        return this.getPosition(tag).then(res=>{
-            return res ? res.pos : v
-        })
-    }
-    static async getPosition(tag:string) : Promise<Position> {
-        return Position.findByPk(tag)
-    }
-    static async setPosition(tag:string, pos:number) {
-        return Position.update({pos}, {where:{tag}, limit: 1})
-            .then(([cnt])=>{
-            if (cnt === 0) {
-                return Position.create({tag, pos, active: true}).catch(err=>{
-                    if (err instanceof UniqueConstraintError){
-                        // when pos is not changed ?
-                    } else {
-                        throw err
-                    }
-                })
-            }
-        })
-    }
-}
