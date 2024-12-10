@@ -1,12 +1,10 @@
 import {QueryTypes, Sequelize} from "sequelize";
-import {Address, AddressInfo, ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
+import {ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
 import {Epoch, EpochNftTransfer, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
-import {KV, Position} from "../model/KV";
-import {TestTimezone} from "../model/TestTimezone";
+import {KV} from "../model/KV";
 import {Database} from "../config/StatConfig";
-import {TopBatchIndex, TopRecord} from "../model/TopRecord";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
@@ -153,7 +151,6 @@ export async function initPartialModel(sequelize) {
         createAddressNftTable(sequelize),
         createFullBlockExtTable(sequelize),
     ])
-    Position.register(sequelize)
     ENS.register(sequelize)
     ApiLog.register(sequelize)
     TransferCount.register(sequelize)
@@ -226,13 +223,8 @@ export async function initModel(sequelize: Sequelize) {
     console.log(`init models ...`)
     await initPartialModel(sequelize)
     MinerBlock.register(sequelize);
-    TopBatchIndex.register(sequelize)
-    TopRecord.register(sequelize);
-    Address.register(sequelize)
-    AddressInfo.register(sequelize);
     NftId.register(sequelize)
     PivotSwitch.register(sequelize)
-    TestTimezone.register(sequelize);
     CheckBlockInfo.register(sequelize)
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);

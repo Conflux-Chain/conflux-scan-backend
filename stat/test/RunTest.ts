@@ -5,7 +5,6 @@ import {Hex40Map} from "../model/HexMap";
 import {BlockAndMinerSync} from "../service/BlockAndMinerSync";
 import {TxnSync} from "../service/TxnSync";
 import {createDB, initModel} from "../service/DBProvider";
-import {TestTimezone} from "../model/TestTimezone";
 import {QueryTypes} from "sequelize";
 import {fmtDtUTC} from "../model/Utils";
 import {loadConfig} from "../config/StatConfig";
@@ -88,9 +87,6 @@ async function run(){
     // });
     // await testTopMinerBlock();
     // await testTxSync()
-    await new TestRank().buildTestData(sequelize).catch(err=>{
-        console.log(`build test data fail`, err)
-    })
     await new TestRank().testTop(sequelize)
     // const porter = new DataPorter(sequelize, config.conflux)
     // await porter.copyEpoch(5882304);
@@ -100,28 +96,6 @@ async function run(){
     sequelize.close().then()
 }
 
-async function testTimezone(sequelize: DB) {
-    const key = "test1"
-    await TestTimezone.destroy({where: {key}})
-    const date = new Date(1610076925672)
-    const created = await TestTimezone.create({key, value: date},{
-        // logging: console.log
-    })
-    console.log(`memory  is ${date.toISOString()}, local is ${date}`)
-    console.log(`created is ${created.value.toISOString()}, local is ${created.value}`)
-    // find
-    const findOne = await TestTimezone.findOne({where: {value: date}, limit:1,
-        })
-    console.log(`findOne is ${created.value.toISOString()}, local is ${created.value}`)
-    // raw query
-    const rawOne = await sequelize.query(`select * from testTimezone where value = ?`,
-        { type: QueryTypes.SELECT, replacements: [fmtDtUTC(date)] ,
-        logging: (...args)=>{
-            console.log(`raw query -------`)
-            console.info(args)
-        },
-    })
-    console.log(`raw one is `, rawOne)
-}
+
 
 run().then()

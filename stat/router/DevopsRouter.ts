@@ -3,8 +3,6 @@ const addressSdk = require('js-conflux-sdk/src/util/address')
 import {StatApp} from "../StatApp";
 import {Context} from "koa";
 const proxy = require('koa-proxy');
-import {setAddressInfo} from "../service/ConfigService";
-import {TopBatchIndex} from "../model/TopRecord";
 import {Hex40Map} from "../model/HexMap";
 import {AbiInfo, fillMethodInfo, listAllContract} from "../model/ContractInfo";
 import {DailyToken, Token} from "../model/Token";
@@ -21,9 +19,8 @@ import {FullBlockQuery} from "../service/FullBlockQuery";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 
 import {TxnQuery} from "../service/TxnQuery";
-import {AddressErc20Transfer, Erc20Transfer} from "../model/Erc20Transfer";
-import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
-import {BalanceWatcher} from "../service/watcher/BalanceWatcher";
+import {Erc20Transfer} from "../model/Erc20Transfer";
+import {CfxTransfer} from "../model/CfxTransfer";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {PruneInfo} from "../model/PruneInfo";
@@ -125,10 +122,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         const list = await PruneInfo.findAll({order:[[orderBy || 'pruned','desc']], limit: 100})
         ctx.body = {list}
     })
-    router.get('/devops/set-address-name',
-        checkLocal,
-        async (ctx) => await setAddressInfo(ctx)
-    )
     router.get('/devops/list-tx',
         async (ctx) => {
             const {skipStr = 0, limitStr = 10} = ctx.request.query
@@ -209,12 +202,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         }
     )
 
-    router.get('/devops/list-rank',
-        checkLocal,
-        async (ctx) => {
-            ctx.body = await TopBatchIndex.findAll({limit: 30, order: [['id', 'desc']]})
-        }
-    )
     router.get('/devops/table-size',
         checkLocal,
         async (ctx) => {
