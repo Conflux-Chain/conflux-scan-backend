@@ -6,7 +6,7 @@ import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
-import {Op, QueryTypes, Sequelize, Transaction} from "sequelize";
+import {Op, QueryTypes, Transaction} from "sequelize";
 import {batchBlockDetail} from "./common/utils";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
@@ -24,7 +24,7 @@ import {CENSOR_TYPE} from "./censor/CensorService";
 import {NameTag} from "../model/NameTag";
 import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
-import {AddressNfts} from "../model/AddrNft";
+import {AddressNfts, T_ADDRESS_NFTS} from "../model/AddrNft";
 import {
     CONTRACT_ADDRESS_METADATA,
     CONTRACT_ANNOUNCEMENT,
@@ -53,7 +53,6 @@ const POCKET_ARRAY = ['gas_payment', 'storage_collateral', 'sponsor_balance_for_
 
 export class EpochSync extends SyncBase{
     public static SYNC_TRANSFER = true;
-    public static SYNC_TOKEN_AUDIT = true;
     public static SYNC_TOKEN_ICON = true;
     public static SYNC_VERIFY_LINK = true;
     public static SYNC_EVM_ADDR = true;
@@ -241,18 +240,6 @@ export class EpochSync extends SyncBase{
     async save(epochNumber, modelData) {
         await this.updateCursor(modelData.epoch.timestamp)
 
-        const tokenTasks = []
-        for(const token of modelData.tokenArray){
-            if(token?.name?.length > 64) token.name = token.name.substr(0, 64)
-            tokenTasks.push(Token.upsert(token))
-        }
-
-        const nameTagTasks = []
-        for (const nameTag of [...modelData.nameTagInfo, ...modelData.bytes32NameTagInfo]) {
-            console.log('epoch-sync.nameTag', nameTag);
-            nameTagTasks.push(NameTag.upsert(nameTag))
-        }
-
         const evmAddresses = []
         if(EpochSync.SYNC_EVM_ADDR) {
             const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
@@ -275,26 +262,61 @@ export class EpochSync extends SyncBase{
             }
         }
 
+        let addressNfts = []
+        let placeholders = ''
+        const addressNftArr = this.getAddressNfts(epochNumber, modelData.epoch.timestamp, modelData.addrNftTransferArray)
+        const len = addressNftArr.length
+        for (let i = 0; i < len; i++) {
+            addressNfts = [...addressNfts, ...addressNftArr[i]]
+            placeholders += '(?,?,?,?,?,?,?,?)'
+            if(i != len -1) {
+                placeholders += ',\n\t\t\t'
+            }
+        }
+
+        const tokenTasks = []
+        for(const token of modelData.tokenArray){
+            if(token?.name?.length > 64) token.name = token.name.substr(0, 64)
+            tokenTasks.push(Token.upsert(token))
+        }
+
+        const nameTagTasks = []
+        for (const nameTag of [...modelData.nameTagInfo, ...modelData.bytes32NameTagInfo]) {
+            console.log('epoch-sync.nameTag', nameTag);
+            nameTagTasks.push(NameTag.upsert(nameTag))
+        }
+
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
-                Epoch.create(modelData.epoch, {transaction: dbTx}),
+                Epoch.bulkCreate([modelData.epoch], {transaction: dbTx}),
                 FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx}),
-                EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx),
+                EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx), //TODO
                 TraceCreateContract.bulkCreate(modelData.traceCreateArray, {updateOnDuplicate:["epochNumber","blockTime","txHash","traceIndex"], transaction: dbTx}),
                 AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx}),
                 EpochAddressIds.bulkCreate(modelData.epochAddrIds, {transaction: dbTx}),
                 ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, {updateOnDuplicate:["epochNumber","blockTime","txHash","admin"], transaction: dbTx}),
                 NftMeta.bulkCreate(modelData.transferredNftArray, {updateOnDuplicate:["epochNumber"], transaction: dbTx}),
+                NftTransfer.bulkCreate(modelData.nftTransferArray, {transaction: dbTx}),
+                AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray, {transaction: dbTx}),
+                ESpaceHex40Map.bulkCreate(evmAddresses, {transaction: dbTx, updateOnDuplicate: ['hexId']}),
+                VoteParams.bulkCreate(voteParams, {transaction: dbTx}),
                 EpochSync.SYNC_CENSOR_ITEM ? CensorItem.bulkCreate(modelData.censorItemArray, {
                     updateOnDuplicate:["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"], transaction: dbTx,
                 }) : undefined as any,
-                this.saveAddressNft(epochNumber, modelData, dbTx),
-                NftTransfer.bulkCreate(modelData.nftTransferArray, {transaction: dbTx}),
-                AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray, {transaction: dbTx}),
+                AddressNfts.sequelize.query( `insert into 
+                        ${T_ADDRESS_NFTS}(addressId,contractId,tokenId,type,value,updatedCursor,createdAt,updatedAt) 
+                    values 
+                        ${placeholders}
+                    on duplicate key update 
+                        value = value + values(value),
+                        updatedAt = values(updatedAt)`,{
+                    type: QueryTypes.UPDATE,
+                    replacements: addressNfts,
+                    transaction: dbTx,
+                    // logging: sql => console.log(`addr nft -> ${pivotSwitch ? 'pop' : 'push'} -> sql ${sql}`)
+                }),
                 Promise.all(tokenTasks),
                 Promise.all(nameTagTasks),
-                ESpaceHex40Map.bulkCreate(evmAddresses, {transaction: dbTx, updateOnDuplicate: ['hexId']}),
-                VoteParams.bulkCreate(voteParams, {transaction: dbTx}),
             ])
         })
 
@@ -320,7 +342,7 @@ export class EpochSync extends SyncBase{
                 addrIds?.length ? EpochAddressIds.destroy({where: {epoch: epochNumber}, transaction:dbTx}) : 0 as any,
                 ContractDestroy.destroy({where: {epochNumber}, transaction: dbTx}),
                 CensorItem.destroy({where: {epochNumber}, transaction: dbTx}),
-                this.deleteAddressNft(epochNumber, modelData, dbTx),
+                this.deleteAddressNft(epochNumber, modelData.epoch.timestamp, dbTx),
                 NftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
                 AddressNftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
                 VoteParams.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
@@ -1234,20 +1256,18 @@ export class EpochSync extends SyncBase{
     // ------------------------------ address nft -------------------------------
     // addressId|epoch|blockIndex|txIndex|txLogIndex|batchIndex|fromId|toId|contractId|tokenId|value|type
     // addressId|contractId|tokenId|value|type
-    private async saveAddressNft(epochNumber, modelData, dbTx) {
-        const {addrNftTransferArray, epoch} = modelData;
-        await this.updateAddressNft(epochNumber, epoch.timestamp, addrNftTransferArray, false, dbTx);
+    private saveAddressNft(epochNumber, timestamp, addrNftTransferArray, dbTx) {
+        return this.updateAddressNft(epochNumber, timestamp, addrNftTransferArray, false, dbTx)
     }
 
-    private async deleteAddressNft(epochNumber, modelData, dbTx) {
-        const {epoch} = modelData;
-        const addrNftTransferArray = await AddressNftTransfer.findAll({where: {epoch: epochNumber}});
-        await this.updateAddressNft(epochNumber, epoch.timestamp, addrNftTransferArray, true, dbTx);
+    private async deleteAddressNft(epochNumber, timestamp, dbTx) {
+        const addrNftTransferArray = await AddressNftTransfer.findAll({where: {epoch: epochNumber}})
+        return this.updateAddressNft(epochNumber, timestamp, addrNftTransferArray, true, dbTx)
     }
 
-    private async updateAddressNft(epochNumber, epochTimestamp, addrNftTransferArray, pivotSwitch, dbTx) {
+    private updateAddressNft(epochNumber, epochTimestamp, addrNftTransferArray, pivotSwitch, dbTx) {
         if(!addrNftTransferArray?.length) {
-            return;
+            return
         }
 
         const nftChangeMap = {};
@@ -1264,41 +1284,84 @@ export class EpochSync extends SyncBase{
             nftTypeMap[contractId] = !nftTypeMap[contractId] ? transfer.type : nftTypeMap[contractId];
         }
 
-        for (const k of Object.keys(nftChangeMap)) {
-            const key = k.split('_');
-            const value = nftChangeMap[k]
-            const [addrId, ctId, tokenId] = key;
+        let placeholders = ''
+        let replacements = []
+        const keys = Object.keys(nftChangeMap)
+        const len = keys.length
+        for (let i = 0; i < len; i++) {
+            const key = keys[i]
+            const value = nftChangeMap[key]
+            const [addrId, ctId, tokenId] = key.split('_');
             const addressId = Number(addrId)
             const contractId = Number(ctId);
             if(addressId === this.app.zeroAddressId) {
                 continue;
             }
 
-            const primaryKey = {addressId, contractId, tokenId};
-            const updatedCursor = ++ this.addrNftCursor
-            if(pivotSwitch) {
-                await AddressNfts.update(
-                    {'value': Sequelize.literal(`value - ${Number(value)}`), updatedAt: epochTimestamp, updatedCursor},
-                    {where: primaryKey, transaction: dbTx}
-                );
-                await AddressNfts.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx});
-            } else{
-                const record = await AddressNfts.findOne({where: primaryKey});
-                if(!record) {
-                    const type = nftTypeMap[contractId];
-                    await AddressNfts.create(
-                        {...primaryKey, value, type, createdAt: epochTimestamp, updatedAt: epochTimestamp, updatedCursor},
-                        {transaction: dbTx}
-                    );
-                } else{
-                    await AddressNfts.update(
-                        {'value': Sequelize.literal(`value + ${Number(value)}`), updatedAt: epochTimestamp, updatedCursor},
-                        {where: primaryKey, transaction: dbTx}
-                    )
-                    await AddressNfts.destroy({where: {...primaryKey, value: {[Op.lt]: 1}}, transaction: dbTx});
-                }
+            placeholders += '(?,?,?,?,?,?,?,?)'
+            if(i != len -1) {
+                placeholders += ',\n\t\t\t'
             }
+
+            const type = nftTypeMap[contractId];
+            const updatedCursor = ++ this.addrNftCursor
+            replacements = [...replacements, ...[addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp]]
         }
+
+        const sql = `insert into 
+                    ${T_ADDRESS_NFTS}(addressId,contractId,tokenId,type,value,updatedCursor,createdAt,updatedAt) 
+                values 
+                    ${placeholders}
+                on duplicate key update 
+                    value = value ${pivotSwitch ? '-' : '+'} values(value),
+                    updatedAt = values(updatedAt)`
+
+        return AddressNfts.sequelize.query(sql,{
+            type: QueryTypes.UPDATE,
+            replacements,
+            transaction: dbTx,
+            // logging: sql => console.log(`addr nft -> ${pivotSwitch ? 'pop' : 'push'} -> sql ${sql}`)
+        })
+    }
+
+    private getAddressNfts(epochNumber, epochTimestamp, addrNftTransferArray) {
+        if(!addrNftTransferArray?.length) {
+            return []
+        }
+
+        const nftChangeMap = {};
+        const nftTypeMap = {};
+        for (const transfer of addrNftTransferArray) {
+            const {addressId, fromId, toId, contractId, tokenId, value} = transfer;
+            if(fromId === toId){
+                continue;
+            }
+
+            const key = `${addressId}_${contractId}_${tokenId}`;
+            const val = addressId === fromId ? -BigInt(value) : BigInt(value);
+            nftChangeMap[key] = !nftChangeMap[key] ? val : nftChangeMap[key] + val;
+            nftTypeMap[contractId] = !nftTypeMap[contractId] ? transfer.type : nftTypeMap[contractId];
+        }
+
+        let addrNfts = []
+        const keys = Object.keys(nftChangeMap)
+        const len = keys.length
+        for (let i = 0; i < len; i++) {
+            const key = keys[i]
+            const value = nftChangeMap[key]
+            const [addrId, ctId, tokenId] = key.split('_');
+            const addressId = Number(addrId)
+            const contractId = Number(ctId);
+            if(addressId === this.app.zeroAddressId) {
+                continue;
+            }
+
+            const type = nftTypeMap[contractId];
+            const updatedCursor = ++ this.addrNftCursor
+            addrNfts.push([addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp])
+        }
+
+        return addrNfts
     }
 
     private addrNftCursor: number
