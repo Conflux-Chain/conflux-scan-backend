@@ -1297,10 +1297,11 @@ paths:
     get:
       tags:
         - 'data'
-      description: "Get accounts of the blockchain"
+      description: "Get accounts on the blockchain."
       parameters:
         - $ref: '#/components/parameters/idCursor'
         - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/sortParam'
       responses:
         200:
           description: ''
@@ -3181,7 +3182,7 @@ components:
       schema:
         type: integer
     idCursor:
-      description: 'data id, used as a cursor.'
+      description: 'Data id, used as a cursor. For the first request, it could be absent, otherwise set it as the value from previous respond.'
       name: id
       in: query
       required: false

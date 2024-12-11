@@ -18,7 +18,7 @@ export async function listAccountsByCursor(ctx) {
 	if (!id) {
 		delete idOption['id']
 	}
-	const list = await Hex40Map.findAll({where: idOption, order: [['id', sort]], limit});
+	const list = await Hex40Map.findAll({where: idOption, order: [['id', sort]], limit, raw: true});
 
 	const addr= list.map(bean=>fmtAddr(`0x${bean.hex}`, StatApp.networkId))
 
