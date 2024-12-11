@@ -1293,6 +1293,22 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TxsByTypeStat"
+  /data/accounts:
+    get:
+      tags:
+        - 'data'
+      description: "Get accounts on the blockchain."
+      parameters:
+        - $ref: '#/components/parameters/idCursor'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/StringArray"
 components:
   schemas:
     Version:
@@ -3013,6 +3029,21 @@ components:
                   timestamp:
                     type: number
                     description: 'Block timestamp, UTC.'
+    StringArray:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            properties:
+              id:
+                type: number
+              address:
+                type: string
     TxsByTypeStat:
       type: object
       properties:
@@ -3156,6 +3187,13 @@ components:
       required: false
       schema:
         type: integer
+    idCursor:
+      description: 'Data id, used as a cursor. For the first request, it could be absent, otherwise set it as the value from previous response.'
+      name: id
+      in: query
+      required: false
+      schema:
+        type: integer
     minTimestampParam:
       description: 'Timestamp in seconds.'
       name: minTimestamp
@@ -3217,7 +3255,7 @@ components:
         type: boolean
         default: false
     sortParam:
-      description: "Sort in ASC or DESC order by timestamp"
+      description: "Sort in ASC or DESC order by timestamp(or relevant field)"
       name: sort
       in: query
       required: false
