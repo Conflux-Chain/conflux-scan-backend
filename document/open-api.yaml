@@ -3249,7 +3249,7 @@ components:
         type: boolean
         default: false
     sortParam:
-      description: "Sort in ASC or DESC order by timestamp"
+      description: "Sort in ASC or DESC order by timestamp(or relevant field)"
       name: sort
       in: query
       required: false

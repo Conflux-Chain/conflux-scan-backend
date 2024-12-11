@@ -9,7 +9,7 @@ import {Errors} from "../../stat/service/common/LogicError";
 export async function listAccountsByCursor(ctx) {
 	mustBeIntParamIfPresent(ctx.request.query, "id", "limit");
 	mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
-	const {id, sort} = ctx.request;
+	const {id, sort = 'DESC'} = ctx.request;
 	const limit = intParam(ctx.request.query, "limit", 10);
 	if (limit > LIMIT_MAX) {
 		throw new Errors.ParameterError(`Parameter <limit exceeds ${LIMIT_MAX}`);
@@ -20,7 +20,9 @@ export async function listAccountsByCursor(ctx) {
 	}
 	const list = await Hex40Map.findAll({where: idOption, order: [['id', sort]], limit, raw: true});
 
-	const addr= list.map(bean=>fmtAddr(`0x${bean.hex}`, StatApp.networkId))
+	const addr= list.map(bean=>{
+		return {address: fmtAddr(`0x${bean.hex}`, StatApp.networkId), id: bean.id}
+	})
 
 	setBody(ctx, addr)
 }
