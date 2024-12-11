@@ -56,7 +56,6 @@ export class RankService{
             select h.hex, addressId, ${order}, balance as value2, stakingBalance as value3, total as value4 from
             (select * from cfx_balance where ${order} > 1 order by ${order} desc, cfx_balance.addressId asc limit ?) b
             left join hex40 h on h.id = b.addressId
-            left join address_info ai on ai.id = h.id
         `
         const list = await CfxBalance.sequelize.query(sql, {type: QueryTypes.SELECT, replacements:[limit],
             // logging: console.log, benchmark: true,
