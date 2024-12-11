@@ -3038,6 +3038,12 @@ components:
           type: string
         data:
           type: array
+          items:
+            properties:
+              id:
+                type: number
+              address:
+                type: string
     TxsByTypeStat:
       type: object
       properties:
