@@ -19,26 +19,26 @@ const internalContractArray = [
     {
         address: '0x0888000000000000000000000000000000000000',
         name: 'AdminControl',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
         abi: JSON.stringify(AdminControl.abi),
     },
     {
         address: '0x0888000000000000000000000000000000000001',
         name: 'SponsorWhitelistControl',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
         abi: JSON.stringify(SponsorWhitelistControl.abi),
     },
     {
         address: '0x0888000000000000000000000000000000000002',
         name: 'Staking',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
         abi: JSON.stringify(Staking.abi),
     },
     // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-64.md
     {
         address: '0x0888000000000000000000000000000000000004',
         name: 'ConfluxContext',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
         abi: JSON.stringify(ConfluxContext.abi),
     },
     // // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-71.md
@@ -54,19 +54,19 @@ const internalContractArray = [
     {
         address: '0x0888000000000000000000000000000000000005',
         name: 'PoSRegister',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
         abi: JSON.stringify(PoSRegister.abi),
     },
     {
         address: '0x0888000000000000000000000000000000000006',
         name: 'CrossSpaceCall',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
         abi: JSON.stringify(CrossSpaceCall.abi),
     },
     {
         address: '0x0888000000000000000000000000000000000007',
         name: 'ParamsControl',
-        website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
+        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
         abi: JSON.stringify(ParamsControl.abi),
     },
     {
@@ -92,7 +92,7 @@ async function registerContract(contract) {
     const [, r1] = await Contract.upsert(newContract);
     console.log(`newContract ---1--- r1 ${r1}, ${JSON.stringify(newContract)}`)
 
-    const sourceCode = await fs.readFileSync(`../../../../contracts/${contract.name}.sol`);
+    const sourceCode = await fs.readFileSync(`../../../contracts/${contract.name}.sol`);
     const newContractVerify = {
         name: contract.name,
         base32,
@@ -117,7 +117,7 @@ async function run() {
     await init();
     // do business
     for (const contract of internalContractArray) {
-        if(contract.name === 'SponsorWhitelistControl'){
+        if(contract.name === 'ConfluxContext'){
             await registerContract(contract);
         }
     }

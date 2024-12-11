@@ -1,5 +1,24 @@
 export const abi = [
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "epochHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "epochNumber",
     "outputs": [
@@ -14,7 +33,7 @@ export const abi = [
   },
   {
     "inputs": [],
-    "name": "posHeight",
+    "name": "finalizedEpochNumber",
     "outputs": [
       {
         "internalType": "uint256",
@@ -27,7 +46,7 @@ export const abi = [
   },
   {
     "inputs": [],
-    "name": "finalizedEpochNumber",
+    "name": "posHeight",
     "outputs": [
       {
         "internalType": "uint256",
