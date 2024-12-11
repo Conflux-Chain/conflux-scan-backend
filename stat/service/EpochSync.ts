@@ -240,6 +240,9 @@ export class EpochSync extends SyncBase{
     async save(epochNumber, modelData) {
         await this.updateCursor(modelData.epoch.timestamp)
 
+        const tokens = this.getAnnouncedTokens(epochNumber, modelData.announceInfo.tokenArray)
+        const contracts = this.getAnnouncedContracts(epochNumber, modelData.announceInfo.contractArray)
+
         const evmAddresses = []
         if(EpochSync.SYNC_EVM_ADDR) {
             const traceCrossSpaceArray = modelData.traceCrossSpaceArray;
@@ -290,7 +293,8 @@ export class EpochSync extends SyncBase{
             await Promise.all([
                 Epoch.bulkCreate([modelData.epoch], {transaction: dbTx}),
                 FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx}),
-                EpochSync.saveAnnounceInfo(epochNumber, modelData.announceInfo, dbTx), //TODO
+                Token.bulkCreate(tokens, {updateOnDuplicate: FIELDS_TOKEN as any, transaction: dbTx}),
+                Contract.bulkCreate(contracts, {updateOnDuplicate: FIELDS_CONTRACT as any, transaction: dbTx}),
                 TraceCreateContract.bulkCreate(modelData.traceCreateArray, {updateOnDuplicate:["epochNumber","blockTime","txHash","traceIndex"], transaction: dbTx}),
                 AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx}),
                 EpochAddressIds.bulkCreate(modelData.epochAddrIds, {transaction: dbTx}),
@@ -420,6 +424,14 @@ export class EpochSync extends SyncBase{
             let c = lodash.defaults({epoch: epochNumber, updatedAt: new Date()}, lodash.pick(contract, FIELDS_CONTRACT));
             await Contract.upsert(c, { transaction:dbTx });
         }
+    }
+
+    private getAnnouncedTokens(epochNumber, tokenArray) {
+        return tokenArray.map(t => lodash.defaults({epoch: epochNumber, updatedAt: new Date()}, lodash.pick(t, FIELDS_TOKEN)))
+    }
+
+    private getAnnouncedContracts(epochNumber, contractArray) {
+        return contractArray.map(c => lodash.defaults({epoch: epochNumber, updatedAt: new Date()}, lodash.pick(c, FIELDS_CONTRACT)))
     }
 
     private async getAnnounceInfo(epochNumber, announceArray) {
