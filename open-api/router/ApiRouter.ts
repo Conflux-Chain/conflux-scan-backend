@@ -79,6 +79,7 @@ import {
 } from "../../stat/router/RateLimiter";
 import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
+import {listAccountsByCursor} from "../service/OpenDataService";
 
 const path = require('path');
 const cors = require('@koa/cors');
@@ -223,4 +224,10 @@ function registerRouter(router: Router) {
     router.get('/statistics/block/avg-priority-fee', listCIP1559Stat(CIP1559StatType.PRIORITY_FEE));
     router.get('/statistics/block/gas-used', listCIP1559Stat(CIP1559StatType.GAS_USED));
     router.get('/statistics/block/txs-by-type', listCIP1559Stat(CIP1559StatType.TXS_BY_TYPE));
+
+    registerDataApi(router)
+}
+
+export function registerDataApi(router: Router) {
+    router.get('/data/accounts', listAccountsByCursor)
 }

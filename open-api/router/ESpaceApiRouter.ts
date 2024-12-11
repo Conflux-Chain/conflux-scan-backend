@@ -73,6 +73,7 @@ import {paginateEVM} from "../../stat/router/ParamChecker";
 import { CONST } from '../../stat/service/common/constant';
 import {ethers} from "ethers";
 import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
+import {registerDataApi} from "./ApiRouter";
 
 const lodash = require('lodash');
 
@@ -624,4 +625,6 @@ export function registerRouter(router: Router) {
 
     // token(deprecated)
     router.get('/token/tokeninfos', getTokenInfos);
+
+    registerDataApi(router)
 }

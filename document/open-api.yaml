@@ -1293,6 +1293,21 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TxsByTypeStat"
+  /data/accounts:
+    get:
+      tags:
+        - 'data'
+      description: "Get accounts of the blockchain"
+      parameters:
+        - $ref: '#/components/parameters/idCursor'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/StringArray"
 components:
   schemas:
     Version:
@@ -3013,6 +3028,15 @@ components:
                   timestamp:
                     type: number
                     description: 'Block timestamp, UTC.'
+    StringArray:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: array
     TxsByTypeStat:
       type: object
       properties:
@@ -3152,6 +3176,13 @@ components:
         type: integer
     maxEpochNumberParam:
       name: maxEpochNumber
+      in: query
+      required: false
+      schema:
+        type: integer
+    idCursor:
+      description: 'data id, used as a cursor.'
+      name: id
       in: query
       required: false
       schema:

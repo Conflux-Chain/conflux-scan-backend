@@ -92,7 +92,6 @@ async function run(){
     // await porter.copyEpoch(5882304);
     // await testIdAndModel();
     // await testConfig();
-    // await testTimezone(sequelize)
     sequelize.close().then()
 }
 

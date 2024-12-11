@@ -45,12 +45,6 @@ export class RankService{
             setTimeout(()=>this.updateTxnCache(), 1000*600)
         })
     }
-    /*
-     select h.hex, addressId, balance as value2, stakingBalance as value3, total as value4 from
-(select * from cfx_balance order by total desc limit 100) b
-         left join hex40 h on h.id = b.addressId
-           left join address_info ai on ai.id = h.id;
-     */
     async rankCfxBalance(order:string, limit, updateTxnCache=false) {
         const sql = ` 
             select h.hex, addressId, ${order}, balance as value2, stakingBalance as value3, total as value4 from
