@@ -3182,7 +3182,7 @@ components:
       schema:
         type: integer
     idCursor:
-      description: 'Data id, used as a cursor. For the first request, it could be absent, otherwise set it as the value from previous respond.'
+      description: 'Data id, used as a cursor. For the first request, it could be absent, otherwise set it as the value from previous response.'
       name: id
       in: query
       required: false
