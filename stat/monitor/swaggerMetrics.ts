@@ -21,6 +21,9 @@ async function report(config: StatConfig, inf: InfluxDB, dataPort: number|string
 }
 
 function setup(config: StatConfig) {
+	if (!config.influxDB) {
+		return null
+	}
 	const {host, database, username, password, disable, measurement, port, protocol,} = config.influxDB;
 	if (disable) {
 		return null;

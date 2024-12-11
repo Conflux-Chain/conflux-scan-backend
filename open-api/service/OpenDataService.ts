@@ -15,7 +15,7 @@ export async function listAccountsByCursor(ctx) {
 		throw new Errors.ParameterError(`Parameter <limit exceeds ${LIMIT_MAX}`);
 	}
 	const idOption = {id:{[sort == "ASC" ? Op.gt : Op.lt] : id}};
-	if (!id) {
+	if (id == undefined) {
 		delete idOption['id']
 	}
 	const list = await Hex40Map.findAll({where: idOption, order: [['id', sort]], limit, raw: true});
