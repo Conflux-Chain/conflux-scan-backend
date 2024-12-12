@@ -47,9 +47,9 @@ export async function checkTest() {
         enablePerformance()
         await testTxToken(getApiService().cfxTransferQuery, arg1, arg2)
     } else if (cmd === 'data-api-erc20') {
-        const ctx = {request: {query: {}}};
+        const ctx = {request: {query: {cursor:'15924441_0_0_0'}}};
         await listErc20transferByCursor(ctx)
-        console.log(ctx)
+        console.log(JSON.stringify(ctx, null, 4))
     } else if (cmd === 'test-nft-balances') {
         enablePerformance()
         await testNftBalances(arg1, arg2)

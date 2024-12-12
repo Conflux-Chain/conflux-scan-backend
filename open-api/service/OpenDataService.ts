@@ -1,3 +1,4 @@
+const lodash = require('lodash');
 import {intParam, mustBeEnumParamIfPresent, mustBeIntParamIfPresent} from "../../stat/service/common/utils";
 import {buildHexSet, Hex40Map} from "../../stat/model/HexMap";
 import {Op} from "sequelize";
@@ -36,7 +37,7 @@ export async function listErc20transferByCursor(ctx) {
 	if (cursor && !/\d+_\d+_\d+_\d+/.test(cursor)) {
 		throw new Errors.ParameterError(`Parameter cursor is invalid`);
 	}
-	const [epoch, blockPosition, txPosition, txLogIndex] = (cursor || "").split("_").map(str=>parseInt(str));
+	const [epoch, blockIndex, txIndex, txLogIndex] = (cursor || "").split("_").map(str=>parseInt(str));
 	let op = sort === 'DESC' ? Op.lt : Op.gt;
 	const limit = intParam(ctx.request.query, "limit", 10);
 	if (limit > LIMIT_MAX) {
@@ -52,23 +53,23 @@ export async function listErc20transferByCursor(ctx) {
 				{
 					[Op.and]: [
 						{epoch: epoch},
-						{blockPosition: {[op]: blockPosition}},
+						{blockIndex: {[op]: blockIndex}},
 					]
 				},
 				// or ( epoch = ? and blockPosition = ? and txPosition > ?)
 				{
 					[Op.and]: {
 						epoch: epoch,
-						blockPosition: blockPosition,
-						txPosition: {[op]: txPosition},
+						blockIndex: blockIndex,
+						txIndex: {[op]: txIndex},
 					}
 				},
 				// or ( epoch = ? and blockPosition = ? and txPosition = ? and txLogIndex > ?)
 				{
 					[Op.and]: {
 						epoch: epoch,
-						blockPosition: blockPosition,
-						txPosition,
+						blockIndex: blockIndex,
+						txIndex,
 						txLogIndex: {[op]: txLogIndex},
 					}
 				},
@@ -76,13 +77,19 @@ export async function listErc20transferByCursor(ctx) {
 		}
 	}
 	const list = await Erc20Transfer.findAll({where,
+		attributes: getApiService().crc20transferQuery.buildQueryFields({txType: null}),
 		order: [['epoch', sort], ['blockIndex', sort], ['txIndex', sort], ['txLogIndex', sort]],
-		limit, raw: true}
+		limit, raw: true,
+		// logging: console.log,
+		}
 	);
 
 	const filledList = await getApiService().crc20transferQuery.processList(list, undefined)
 	const addrArr = buildHexSet(undefined, filledList, 'address');
 	const tokens = await getApiService().tokenQuery.list({addressArray: [...addrArr]});
-
-	setBody(ctx, {list: filledList, tokenMap: lodash.keyBy(tokens, 'address')})
+	const tokenArr = tokens.list.map(tk=>{
+		const {name, symbol, address, decimals} = tk;
+		return {name, symbol, address, decimals}
+	});
+	setBody(ctx, {list: filledList, tokenMap: lodash.keyBy(tokenArr, 'address')})
 }
