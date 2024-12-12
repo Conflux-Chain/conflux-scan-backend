@@ -1,5 +1,5 @@
 import {intParam, mustBeEnumParamIfPresent, mustBeIntParamIfPresent} from "../../stat/service/common/utils";
-import {Hex40Map} from "../../stat/model/HexMap";
+import {buildHexSet, Hex40Map} from "../../stat/model/HexMap";
 import {Op} from "sequelize";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {setBody} from "../router/middleware";
