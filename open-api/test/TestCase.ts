@@ -4,6 +4,7 @@ import {polishContract} from "../service/OpenContractService";
 import {polishTransferList} from "../service/OpenTransferService";
 import {TransferQueryBase} from "../../stat/service/TransferQueryBase";
 import {listNFTBalances} from "../service/OpenNFTService";
+import {listErc20transferByCursor} from "../service/OpenDataService";
 
 
 export async function checkTest() {
@@ -32,15 +33,12 @@ export async function checkTest() {
         await once(arg1,'ASC', arg1)
         console.log(`test full tx`)
         await once(undefined,'DESC', undefined)
-        process.exit(0)
     } else if (cmd === 'test-tx-20') {
         enablePerformance()
         await testTxToken(getApiService().crc20transferQuery, arg1, arg2)
-        process.exit(0)
     } else if (cmd === 'test-tx-721') {
         enablePerformance()
         await testTxToken(getApiService().crc721transferQuery, arg1, arg2)
-        process.exit(0)
     } else if (cmd === 'test-tx-1155') {
         enablePerformance()
         await testTxToken(getApiService().crc1155transferQuery, arg1, arg2)
@@ -48,12 +46,17 @@ export async function checkTest() {
     } else if (cmd === 'test-tx-cfx') {
         enablePerformance()
         await testTxToken(getApiService().cfxTransferQuery, arg1, arg2)
-        process.exit(0)
+    } else if (cmd === 'data-api-erc20') {
+        const ctx = {request: {query: {}}};
+        await listErc20transferByCursor(ctx)
+        console.log(ctx)
     } else if (cmd === 'test-nft-balances') {
         enablePerformance()
         await testNftBalances(arg1, arg2)
-        process.exit(0)
+    } else {
+        return
     }
+    process.exit(0)
 }
 async function testNftBalances(arg1, arg2) {
     async function once({account}) {
