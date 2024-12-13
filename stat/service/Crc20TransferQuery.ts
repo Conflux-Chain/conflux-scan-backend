@@ -1,7 +1,7 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Erc20Transfer, AddressErc20Transfer} from "../model/Erc20Transfer";
-import {TransferQueryBase} from "./TransferQueryBase";
+import {patchTokenTxQueryRange, TransferQueryBase} from "./TransferQueryBase";
 import {CONST} from "./common/constant"
 /*const CONST = require('./common/constant');*/
 import {Token} from "../model/Token";
@@ -60,19 +60,7 @@ export class Crc20TransferQuery extends TransferQueryBase{
             if (Object.keys(queryOptions.where).length === 1) {
                 const base32 = format.address(options.address, StatApp.networkId);
                 const token = await Token.findOne({attributes: ['transfer'], where:{base32}});
-                const n = 5000;
-                let logging = undefined;
-                logging = console.log;
-                queryOptions.logging = logging;
-                if (token?.transfer > n) {
-                    const {where, order, limit, offset} = queryOptions;
-                    const [[_, sort]] = order;
-                    const SORT = sort.toUpperCase();
-                    const tailOne = await Erc20Transfer.findOne({where, order: [order[0]], skip: limit + offset, logging} as any);
-                    if (tailOne) {
-                        options.where['epoch'] = {[SORT == 'DESC' ? Op.gte : Op.lte]: tailOne.epoch}
-                    }
-                }
+                await patchTokenTxQueryRange(token, queryOptions, Erc20Transfer);
                 const rows = await Erc20Transfer.findAll(queryOptions);
                 return {count: token?.transfer || rows.length , rows: rows || []};
             }
