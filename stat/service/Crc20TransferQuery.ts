@@ -65,7 +65,8 @@ export class Crc20TransferQuery extends TransferQueryBase{
                 logging = console.log;
                 queryOptions.logging = logging;
                 if (token?.transfer > n) {
-                    const tailOne = await Erc20Transfer.findOne({...options, skip: options.limit + options.offset, logging});
+                    const {where, order, limit, offset} = queryOptions;
+                    const tailOne = await Erc20Transfer.findOne({where, order: [order[0]], skip: limit + offset, logging} as any);
                     if (tailOne) {
                         options.where['epoch'] = {[Op.gte]: tailOne.epoch}
                     }
