@@ -1,5 +1,5 @@
 import {Epoch, VoteParams} from "../model/Epoch";
-import {SyncBase, SyncCode, SyncData} from "./SyncBase";
+import {ModelData, SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
 import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
@@ -53,12 +53,12 @@ export const NAME_TAG_SPLIT = "__,__";
 
 export class EpochSync extends SyncBase {
     protected app: any
-    private transferTypeMap: object
     private announcementContract: string
     private addressMetadataContract: string
     private syncCensorItem: boolean
-    private statOnRealtime: StatOnRealtime
+    private transferTypeMap: object
     private latestVoteParams: VoteParams
+    private statOnRealtime: StatOnRealtime
 
     constructor(app: any) {
         super(app)
@@ -111,100 +111,90 @@ export class EpochSync extends SyncBase {
 
     //----------------- implementation method from SyncBase -----------------
     public async getData(epochNumber): Promise<SyncData> {
-        const {
-            app: {tokenTool},
-        } = this;
 
         try {
-            const epochData = await this.getEpochData(epochNumber);
-            const {epoch, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts} = epochData;
-            const epochTimestamp = epoch.timestamp;
+            const epochData = await this.getEpochData(epochNumber)
+            const {epoch, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts} = epochData
+            const epochTimestamp = epoch.timestamp
 
-            const minerBlockArray = await this.getMinerBlockArray(epochNumber, blockArray);
-            const adminDestroyTxArray = await this.getAdminDestroyTxArray(blockArray, epochTimestamp);
+            const [minerBlockArray, txArray, adminDestroyTxArray, eventLogInfo, traceArray, tokenLogs,
+                censorItemArray, voteParamArray] = await Promise.all([
+                this.getMinerBlockArray(epochNumber, blockArray),
+                EpochSync.getTransactionArrayDB(blockArray, epochTimestamp),
+                this.getAdminDestroyTxArray(blockArray, epochTimestamp),
+                this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray),
+                this.getTraceArray(epochNumber, blockHashArray, blockArray),
+                this.getTokenLogs(epochTimestamp, blockHashArray, receipts),
+                this.getCensorItemArray(epoch, transactionHashArray),
+                StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
+            ])
 
-            const eventLogInfo = await this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray)
-            const announceInfo = await this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray);
-            const announcedTokens = this.getAnnouncedTokens(epochNumber, announceInfo.tokenArray)
-            const announcedContracts = this.getAnnouncedContracts(epochNumber, announceInfo.contractArray)
-            const nameTagArray = await this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray)
-            const bytes32NameTagArray = await this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray)
+            const [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray, createArray, crossSpaceArray,
+                tokenTransferArray, cfxTransferArray] = await Promise.all([
+                this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray),
+                this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray),
+                this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray),
+                this.getTokensAutoDetected(tokenLogs),
+                this.getTraceCreateArrayPlus(traceArray),
+                this.getTraceCrossSpaceArray(traceArray),
+                this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true),
+                this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray),
+            ])
 
-            let traceArray = [];
-            if (!this.app.config?.traceNotAvailable) {
-                const traces = await Promise.all(blockHashArray.map((hash, idx) => {
-                    if (blockArray[idx].transactions.length == 0) {
-                        return null;
-                    }
-                    return this.app.cfx.traceBlock(hash)
-                }));
-                traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
-                // This function will repeatedly fetch block hashes and details.
-                // await this.getTraceArray(epochNumber);
+            const [announcedTokenArray, announcedContractArray, traceCreateArray, traceCrossSpaceArray,
+                {transfers: addrTransferArray, epochAddrIdArray}, nftTransferArray,
+                addrNftTransferArray] = await Promise.all([
+                this.getAnnouncedTokens(epochNumber, announceInfo.tokenArray),
+                this.getAnnouncedContracts(epochNumber, announceInfo.contractArray),
+                this.buildTraceCreateArray(createArray),
+                this.getTraceCrossSpaceArrayDB(crossSpaceArray),
+                this.getAddrTransferArrayDB(epochNumber, epochTimestamp, tokenTransferArray, cfxTransferArray, txArray),
+                this.getNftTransferArray(epochNumber, tokenTransferArray),
+                this.getAddrNftTransferArray(epochNumber, tokenTransferArray),
+            ])
+
+            const [evmAddressArray, addressNfts, transferredNftArray] = await Promise.all([
+                this.getEvmAddressArray(traceCrossSpaceArray),
+                this.getAddressNft(epochNumber, epochTimestamp, addrNftTransferArray),
+                this.getTransferredNftArray(epochNumber, addrTransferArray),
+                this.saveTokenIcon(announceInfo),
+                this.saveContractVerify(traceCreateArray)
+            ])
+
+            const modelData: ModelData = {
+                epoch,
+                minerBlockArray,
+                addrTransferArray,
+                epochAddrIdArray,
+                nftTransferArray,
+                addrNftTransferArray,
+                addressNfts,
+                voteParamArray,
+
+                announcedTokenArray,
+                announcedContractArray,
+                evmAddressArray,
+                traceCreateArray,
+                adminDestroyTxArray,
+                transferredNftArray,
+                tokenArray,
+                nameTagArray,
+                bytes32NameTagArray,
+
+                censorItemArray,
+
+                blockArray,
+                transactionArray,
             }
-            const createArray = await this.getTraceCreateArrayPlus(traceArray);
-            const traceCreateArray = await this.buildTraceCreateArray(createArray);
-            const crossSpaceArray = await this.getTraceCrossSpaceArray(traceArray);
-            const traceCrossSpaceArray = await this.getTraceCrossSpaceArrayDB(crossSpaceArray);
-            const evmAddressArray = this.getEvmAddressArray(traceCrossSpaceArray)
-
-            const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray);
-            const t20Aggregated = aggregateTransfer(t20)
-            const tokenLogs = {
-                transfer20Array: t20Aggregated.filter(t => t.value && t.value > BigInt(0)),
-                transfer721Array: t721,
-                transfer1155Array: t1155.filter(t => t.value && t.value > BigInt(0)),
-            };
-            const tokenArray = await this.getTokensAutoDetected(tokenLogs);
-
-            const tokenTransferArray = await this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true);
-            const cfxTransferArray = await this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray);
-            const txArray = await EpochSync.getTransactionArrayDB(blockArray, epochTimestamp);
-            const {transfers: addrTransferArray, epochAddrIds} = await this.getAddrTransferArrayDB(epochNumber,
-                epochTimestamp, tokenTransferArray, cfxTransferArray, txArray);
-
-            const transferredNftArray = this.getTransferredNftArray(epochNumber, addrTransferArray);
-            const nftTransferArray = await this.getNftTransferArray(epochNumber, tokenTransferArray);
-            const addrNftTransferArray = await this.getAddrNftTransferArray(epochNumber, tokenTransferArray);
-
-            const censorItemArray = this.getCensorItemArray(epoch, transactionHashArray);
-            const voteParams = StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber)
-
-            await this.saveTokenIcon(announceInfo)
-            await this.saveContractVerify(traceCreateArray)
 
             return {
                 syncCode: SyncCode.SUCCESS,
                 parentHash: epoch.parentHash,
                 pivotHash: epoch.pivotHash,
-                modelData: {
-                    epoch,
-                    minerBlockArray,
-                    addrTransferArray,
-                    epochAddrIds,
-                    nftTransferArray,
-                    addrNftTransferArray,
-                    voteParams,
-
-                    announcedTokens,
-                    announcedContracts,
-                    evmAddressArray,
-                    traceCreateArray,
-                    adminDestroyTxArray,
-                    transferredNftArray,
-                    tokenArray,
-                    nameTagArray,
-                    bytes32NameTagArray,
-
-                    censorItemArray,
-
-                    blockArray,
-                    transactionArray,
-                },
-            };
+                modelData,
+            }
         } catch (error) {
-            console.log(`${__filename} fetch data error:`, error)
-            return {syncCode: SyncCode.RETRY, message: `${error}`};
+            return {syncCode: SyncCode.RETRY, message: `${error}`}
         }
     }
 
@@ -246,44 +236,48 @@ export class EpochSync extends SyncBase {
     }
 
     async save(epochNumber, modelData) {
-        const voteParams = []
-        if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
-            const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams
+        const voteParamArray = []
+        if (modelData?.voteParamArray) { // The record will be added only when any one of vote params changes.
+            const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParamArray
             if ((!this.latestVoteParams && (s >= 0 || b >= 0)) ||
                 (this.latestVoteParams && (this.latestVoteParams.storagePointProp != s || this.latestVoteParams.baseFeeShareProp != b))) {
                 const v = {
                     epoch: epochNumber, storagePointProp: s, baseFeeShareProp: b, timestamp: modelData.epoch.timestamp
                 } as VoteParams
                 this.latestVoteParams = v
-                voteParams.push(v)
+                voteParamArray.push(v)
             }
         }
 
-        let addressNfts = []
-        let placeholders = ''
-        const addressNftArr = this.getAddressNft(epochNumber, modelData.epoch.timestamp, modelData.addrNftTransferArray)
-        const len = addressNftArr.length
-        for (let i = 0; i < len; i++) {
-            addressNfts = [...addressNfts, ...addressNftArr[i]]
-            placeholders += '(?,?,?,?,?,?,?,?)'
-            if (i != len - 1) {
-                placeholders += ',\n\t\t\t'
-            }
+        const {catchupMode, needStore} = await this.catchup.enqueue(modelData, voteParamArray)
+        if(needStore) {
+            const data = this.catchup.data()
+            await this.saveOnce(data, data.voteParamArray).finally(() => this.catchup.reset())
+        }
+        if(catchupMode) {
+            return
         }
 
-        await Epoch.sequelize.transaction(async (dbTx) => {
+        await this.saveOnce(modelData, voteParamArray)
+
+        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
+    }
+
+    async saveOnce(modelData, voteParamArray) {
+        const epochArray = modelData.epochArray?.length ? modelData.epochArray : [modelData.epoch]
+        return Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
-                Epoch.bulkCreate([modelData.epoch], {transaction: dbTx}),
+                Epoch.bulkCreate(epochArray, {transaction: dbTx}),
                 FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx}),
                 AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx}),
-                EpochAddressIds.bulkCreate(modelData.epochAddrIds, {transaction: dbTx}),
+                EpochAddressIds.bulkCreate(modelData.epochAddrIdArray, {transaction: dbTx}),
                 NftTransfer.bulkCreate(modelData.nftTransferArray, {transaction: dbTx}),
                 AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray, {transaction: dbTx}),
-                VoteParams.bulkCreate(voteParams, {transaction: dbTx}),
+                VoteParams.bulkCreate(voteParamArray, {transaction: dbTx}),
 
-                Token.bulkCreate(modelData.announcedTokens, {transaction: dbTx,
+                Token.bulkCreate([...modelData.announcedTokenArray, ...modelData.tokenArray], {transaction: dbTx,
                     updateOnDuplicate: FIELDS_TOKEN as any}),
-                Contract.bulkCreate(modelData.announcedContracts, {transaction: dbTx,
+                Contract.bulkCreate(modelData.announcedContractArray, {transaction: dbTx,
                     updateOnDuplicate: FIELDS_CONTRACT as any}),
                 ESpaceHex40Map.bulkCreate(modelData.evmAddressArray, {transaction: dbTx,
                     updateOnDuplicate: ['hexId']}),
@@ -293,40 +287,28 @@ export class EpochSync extends SyncBase {
                     updateOnDuplicate: ["epochNumber", "blockTime", "txHash", "admin"]}),
                 NftMeta.bulkCreate(modelData.transferredNftArray, { transaction: dbTx,
                     updateOnDuplicate: ["epochNumber"]}),
-                Token.bulkCreate(modelData.tokenArray, {transaction: dbTx,
-                    updateOnDuplicate: FIELDS_TOKEN as any}),
                 NameTag.bulkCreate([...modelData.nameTagArray, ...modelData.bytes32NameTagArray], {transaction: dbTx,
                     updateOnDuplicate: ["eoa", "auditor", "epoch", "nameTag", "website", "desc", "labels"]}),
 
                 this.syncCensorItem ? CensorItem.bulkCreate(modelData.censorItemArray, { transaction: dbTx,
-                    updateOnDuplicate: ["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],})
+                        updateOnDuplicate: ["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],})
                     : undefined as any,
 
-                AddressNfts.sequelize.query(`
+                modelData.addressNfts.replacements.length ? AddressNfts.sequelize.query(`
                     insert into ${T_ADDRESS_NFTS}(addressId, contractId, tokenId, type, value, updatedCursor, 
                         createdAt, updatedAt)
                     values
-                        ${placeholders} 
+                        ${lodash.join(modelData.addressNfts.placeholders)} 
                     on duplicate key update
                         value = value + values(value),
                         updatedCursor = values(updatedCursor),
                         updatedAt = values(updatedAt)`, {
                     type: QueryTypes.UPDATE,
-                    replacements: addressNfts,
+                    replacements: modelData.addressNfts.replacements,
                     transaction: dbTx,
-                    // logging: sql => console.log(`addr nft -> ${pivotSwitch ? 'pop' : 'push'} -> sql ${sql}`)
-                }),
-
+                }): undefined as any,
             ])
         })
-
-        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
-
-        if (epochNumber % 100 === 0) {
-            console.log(`${fmtDtUTC(new Date())} insert full_epoch at epoch:${epochNumber}`)
-        }
-
-        return Promise.resolve();
     }
 
     async delete(epochNumber, modelData) {
@@ -540,16 +522,14 @@ export class EpochSync extends SyncBase {
             return false
         }
 
-        const creator = await Hex40Map.sequelize.query(`select hex
-                                                        from hex40
-                                                        where id = (select fromId
-                                                                    from full_tx
-                                                                    where hash = (select CONCAT('0x', txHash)
-                                                                                  from trace_create_contract
-                                                                                  where \`to\` = (select id from hex40 where hex = ?)))`, {
+        const creator = await Hex40Map.sequelize.query(`select hex from hex40 where id = (
+            select fromId from full_tx where hash = (
+                select CONCAT('0x', txHash) from trace_create_contract where \`to\` = (
+                    select id from hex40 where hex = ?
+            )))`, {
             type: QueryTypes.SELECT,
             replacements: [contract.substr(2)],
-            logging: sql => console.log(`announce sql ${sql}`)
+            // logging: sql => console.log(`announce sql ${sql}`)
         }).then(array => {
             return array?.length ? array[0]['hex'] : undefined;
         });
@@ -564,36 +544,29 @@ export class EpochSync extends SyncBase {
 
     // ----------------------- business method for token ------------------------
     private async getTokensAutoDetected({transfer20Array, transfer721Array, transfer1155Array}) {
-        let tokenArray = [];
+        let tokenArray = []
+
         try {
-            const [crc20AddressArray, crc721AddressArray, crc1155AddressArray] = await Promise.all([
-                [...new Set(transfer20Array.map(item => item.address).filter(Boolean))],
-                [...new Set(transfer721Array.map(item => item.address).filter(Boolean))],
-                [...new Set(transfer1155Array.map(item => item.address).filter(Boolean))]
+            const [token20Task, token721Task, token1155Task] = await Promise.all([
+                this.getTokenTask(transfer20Array, CONST.TRANSFER_TYPE.ERC20),
+                this.getTokenTask(transfer721Array, CONST.TRANSFER_TYPE.ERC721),
+                this.getTokenTask(transfer1155Array, CONST.TRANSFER_TYPE.ERC1155),
             ]);
-            if (crc20AddressArray.length) {
-                tokenArray = [...tokenArray, ...await this.getTokens(crc20AddressArray, CONST.TRANSFER_TYPE.ERC20)];
-            }
-            if (crc721AddressArray.length) {
-                tokenArray = [...tokenArray, ...await this.getTokens(crc721AddressArray, CONST.TRANSFER_TYPE.ERC721)];
-            }
-            if (crc1155AddressArray.length) {
-                tokenArray = [...tokenArray, ...await this.getTokens(crc1155AddressArray, CONST.TRANSFER_TYPE.ERC1155)];
-            }
+
+            const tokenTasks = [...token20Task, ...token721Task, ...token1155Task]
+            tokenArray = await Promise.all(tokenTasks)
+            tokenArray = tokenArray.filter(Boolean)
         } catch (e) {
             console.log(`epoch-sync.getTokensAutoDetected fail`, e);
             throw e;
         }
+
         return tokenArray;
     }
 
-    private async getTokens(hexAddressArray, transferType) {
-        const tokenArray = [];
-        for (const hex40 of hexAddressArray) {
-            const token = await this.getToken(hex40, transferType);
-            token && tokenArray.push(token);
-        }
-        return tokenArray;
+    private getTokenTask(transferArray, transferType) {
+        return [...new Set(transferArray.map(transfer => transfer.address).filter(Boolean))]
+            .map(hex40 => this.getToken(hex40, transferType))
     }
 
     private async getToken(hexAddress, transferType) {
@@ -640,6 +613,22 @@ export class EpochSync extends SyncBase {
             return Erc721Transfer.count({where: {contractId: addressId}});
         if (transferType === CONST.TRANSFER_TYPE.ERC1155)
             return Erc1155Transfer.count({where: {contractId: addressId}});
+    }
+
+    private getTokenLogs(epochTimestamp, blockHashArray, receipts) {
+        const {
+            app: {tokenTool},
+        } = this
+
+        const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray)
+
+        const t20Aggregated = aggregateTransfer(t20)
+
+        return {
+            transfer20Array: t20Aggregated.filter(t => t.value && t.value > BigInt(0)),
+            transfer721Array: t721,
+            transfer1155Array: t1155.filter(t => t.value && t.value > BigInt(0)),
+        }
     }
 
     // --------------------- business method for name tag -----------------------
@@ -766,12 +755,12 @@ export class EpochSync extends SyncBase {
             }
         });
 
-        const epochAddrIds = []
+        const epochAddrIdArray = []
         for (const addressId of addressIds) {
-            epochAddrIds.push({epoch: epochNumber, addressId})
+            epochAddrIdArray.push({epoch: epochNumber, addressId})
         }
 
-        return {transfers, epochAddrIds};
+        return {transfers, epochAddrIdArray};
     }
 
     private static buildAddrTransferCursor(epochNumber, index) {
@@ -892,6 +881,24 @@ export class EpochSync extends SyncBase {
     }
 
     // ------------------------------ trace create ------------------------------
+    public async getTraceArray(epochNumber, blockHashArray, blockArray) {
+        let traceArray = [];
+
+        if (!this.app.config?.traceNotAvailable) {
+            const traces = await Promise.all(blockHashArray.map((hash, idx) => {
+                if (blockArray[idx].transactions.length == 0) {
+                    return null;
+                }
+                return this.app.cfx.traceBlock(hash)
+            }));
+            traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
+            // This function will repeatedly fetch block hashes and details.
+            // await this.getTraceArray(epochNumber);
+        }
+
+        return traceArray
+    }
+
     public async getTraceCrossSpaceArray(traceArray) {
         // filter
         const crossSpaceTraceArray = [];
@@ -1263,17 +1270,17 @@ export class EpochSync extends SyncBase {
     }
 
     private getAddressNft(epochNumber, epochTimestamp, addrNftTransferArray) {
+        const addressNfts = {placeholders: [], replacements: []}
         if (!addrNftTransferArray?.length) {
-            return []
+            return addressNfts
         }
 
         const {nftChangeMap, nftTypeMap} = this.getNftTransferInfo(addrNftTransferArray)
 
-        const addrNfts = []
+        const addressNftArr = []
         const keys = Object.keys(nftChangeMap)
-        const len = keys.length
         let index = 0
-        for (let i = 0; i < len; i++) {
+        for (let i = 0; i < keys.length; i++) {
             const key = keys[i]
             const value = nftChangeMap[key]
             const [addrId, ctId, tokenId] = key.split('_');
@@ -1285,11 +1292,16 @@ export class EpochSync extends SyncBase {
 
             const type = nftTypeMap[contractId];
             const updatedCursor= EpochSync.buildAddrNftCursor(epochNumber, index)
-            addrNfts.push([addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp])
+            addressNftArr.push([addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp])
             index++
         }
 
-        return addrNfts
+        for (let i = 0; i < addressNftArr.length; i++) {
+            addressNfts.placeholders.push('(?,?,?,?,?,?,?,?)')
+            addressNfts.replacements.push(...addressNftArr[i])
+        }
+
+        return addressNfts
     }
 
     private getNftTransferInfo(addrNftTransferArray) {

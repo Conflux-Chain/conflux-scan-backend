@@ -10,37 +10,72 @@ import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {CfxTransfer} from "../model/CfxTransfer";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
+import {fmtDtUTC} from "../model/Utils";
+
 const lodash = require('lodash');
 
-const PRELOAD_SIZE_DEFAULT = 16
-const PRELOAD_SIZE_CATCHUP = 100
+const PRELOAD_SIZE_NORMAL = 8
+const PRELOAD_SIZE_CATCHUP = 16
 
 export abstract class SyncBase {
+    private forwardQueue: PreloadMap
     protected app: any
     protected catchup: Catchup
-    private preloadSize: number = PRELOAD_SIZE_DEFAULT
-    private forwardQueue: PreloadMap
+    public preloadSize: number = PRELOAD_SIZE_CATCHUP
 
     protected constructor(app: any) {
         this.app = app;
         this.forwardQueue = new PreloadMap(this.getData.bind(this));
-        this.catchup = new Catchup(app)
+        this.catchup = new Catchup(app, this)
+    }
+
+    private metric0 = {
+        startEpoch: 0,
+        currentEpoch: 0,
+    };
+    private m0(step, startTime){
+        const runTimes = this.metric0[step];
+        const elapsedTime = this.metric0[`${step}_ms`];
+        const elapsedDelta = Date.now() - startTime;
+        this.metric0[step] = runTimes === undefined ? 1 : runTimes + 1;
+        this.metric0[`${step}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
+
+        const epochDelta = this.metric0.currentEpoch - this.metric0.startEpoch
+        if(epochDelta > 0 && epochDelta % 10000 === 0) {
+            console.log(`metrics0-----------------------------------`);
+            console.log(JSON.stringify(this.metric0));
+            console.log(`------------------------------------------`);
+            this.metric0 = {
+                startEpoch: this.metric0.currentEpoch,
+                currentEpoch: this.metric0.currentEpoch,
+            };
+        }
+
+        return Date.now();
     }
 
     private async getDataForwardWithPreload(epochNumber): Promise<SyncData> {
+        let start = Date.now()
         const stateEpochNumber = await this.latestStateEpoch()
+        start = this.m0('getDataForwardWithPreload_latestStateEpoch', start)
         lodash.range(this.preloadSize).forEach((i) => {
             if (epochNumber + i < stateEpochNumber) {
                 this.forwardQueue.start(epochNumber + i);
             }
         });
-        return this.forwardQueue.pop(epochNumber);
+        start = this.m0('getDataForwardWithPreload_start', start)
+        const result = await this.forwardQueue.pop(epochNumber);
+        start = this.m0('getDataForwardWithPreload_pop', start)
+        return result
     }
 
     private async saveForward(epochNumber, {parentHash, modelData}: SyncData): Promise<SyncCode> {
         const preEpochNumber = epochNumber - 1
+        let start = Date.now()
         const prevEpoch = await this.epochByEpochNumber(preEpochNumber)
+        start = this.m0('saveForward_epochByEpochNumber', start)
         if (prevEpoch && parentHash !== prevEpoch.pivotHash) {
+            start = this.m0('saveForward_pivotHash', start)
             console.log(`saveForward reorg ${JSON.stringify({
                 epochNumber,
                 preEpochNumber,
@@ -50,6 +85,7 @@ export abstract class SyncBase {
             return SyncCode.PIVOT_SWITCH
         }
         await this.save(epochNumber, modelData)
+        start = this.m0('saveForward_save', start)
         return SyncCode.SUCCESS
     }
 
@@ -57,8 +93,15 @@ export abstract class SyncBase {
         let syncCode;
         let data: SyncData;
 
+        let start = Date.now()
+        let overallStart = start
+        if(this.metric0.startEpoch === 0) {
+            this.metric0.startEpoch = epochNumber
+        }
+
         try {
             data = await this.getDataForwardWithPreload(epochNumber);
+            start = this.m0('syncForward_getDataForwardWithPreload', start)
             if (data.syncCode === SyncCode.RETRY) {
                 console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
                 await sleep(10_000);
@@ -71,6 +114,10 @@ export abstract class SyncBase {
         }
         try {
             syncCode = await this.saveForward(epochNumber, data);
+            start = this.m0('syncForward_saveForward', start)
+            if (epochNumber % 100 === 0) {
+                console.log(`${fmtDtUTC(new Date())} Catch-up mode: ${this.catchup.status()}, latest epoch ${epochNumber}`)
+            }
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
             await sleep(10_000);
@@ -88,6 +135,8 @@ export abstract class SyncBase {
                 throw e;
             });
         }
+        this.metric0.currentEpoch = epochNumber
+        start = this.m0('syncForward_overall', overallStart)
 
         return epochNumber;
     }
@@ -95,9 +144,7 @@ export abstract class SyncBase {
     public async run() {
         let epoch = await this.nextEpochNumber()
 
-        if(await this.catchup.status(epoch)) {
-            this.preloadSize = PRELOAD_SIZE_CATCHUP
-        }
+        epoch = lodash.max([epoch, this.app?.config?.syncEpochNumber])
 
         let latestStateEpoch = await this.latestStateEpoch().catch(e => {
             console.error(`Failed to get latest epoch number`, e)
@@ -129,12 +176,13 @@ export abstract class SyncBase {
 
         const [latestState, blockHashArray, receipts] = await Promise.all([
             this.latestStateEpoch(),
-            cfx.getBlocksByEpochNumber(epochNumber),
+            cfx.getBlocksByEpochNumber(epochNumber)
+                .catch(() => {return []}),
             cfxSafeEpochReceipts(cfx, epochNumber)
                 .then(res => {
                     if (epochNumber === 0) res = [];
-                    return res;
-                })
+                    return res;})
+                .catch(() => {return []})
         ]);
 
         if (latestState < epochNumber) {
@@ -218,8 +266,8 @@ export abstract class SyncBase {
         }
 
         const epoch = result.epoch
-        if (epoch % 1000 === 0) {
-            console.log(`latest state epoch ${epoch} from ${result.table??'rpc'}`)
+        if (epoch % 1000 === 0 && result.table) {
+            console.log(`latest state epoch ${epoch} from ${result.table}`)
         }
 
         return epoch
@@ -337,26 +385,55 @@ export abstract class SyncBase {
 
 export class Catchup {
     private app: any
-    private initialEpoch: number
-    private finalizedEpoch: number
-    private catchupMode: boolean
-    private initialAlready: boolean
+    private syncer: any
+
+    private catchupMode: boolean = true
+    private finalizedEpoch: number = 0
+
+    private accumulatedSize: number = 0
     private batchSizeOnSave: number = 100
     private batchData: BatchData
 
-    public constructor(app: any) {
-        this.app = app;
+    public constructor(app: any, syncer: any) {
+        this.app = app
+        this.syncer = syncer
         this.batchData = new BatchData()
     }
 
-    private async init(epoch) {
-        const {
-            app: {cfx},
-        } = this
+    public status(): boolean {
+        return this.catchupMode
+    }
 
-        this.initialEpoch = epoch
-        this.finalizedEpoch = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-        this.catchupMode = this.initialEpoch  < this.finalizedEpoch
+    public data(): BatchData {
+        return this.batchData.data()
+    }
+
+    // only enqueue data which finalized already
+    public async enqueue(data: ModelData, voteParamArray) {
+        const result = {
+            needStore: false,
+            catchupMode: await this.checkStatus(data.epoch.epoch)
+        }
+
+        // catchup already and BatchData hold some data，the data of the epoch will not be enqueued
+        // return {needStore: true, catchMode: false} when BatchData holds some data v
+        // return {needStore: false, catchMode: false} when BatchData holds no data  v
+        if(!result.catchupMode) {
+            result.needStore = this.dataSize() > 0
+            return result
+        }
+
+        // catchup mode
+        // return {needStore: true, catchMode: true} when accumulated to batch size to save v
+        // return {needStore: false, catchMode: true} when accumulate size not up to batch size
+        this.cacheData(data, voteParamArray)
+        result.needStore = this.needStore()
+        return result
+    }
+
+    public reset() {
+        this.batchData = new BatchData()
+        this.accumulatedSize = 0
     }
 
     /**
@@ -366,16 +443,7 @@ export class Catchup {
      *      true when in catchup mode
      *      false when catchup already
      */
-    public async status(epoch: number): Promise<boolean> {
-        const {
-            app: {cfx},
-        } = this
-
-        if(!this.initialAlready) {
-            await this.init(epoch)
-            this.initialAlready = true
-        }
-
+    private async checkStatus(epoch: number): Promise<boolean> {
         if (!this.catchupMode) { // catchup already
             return false
         }
@@ -384,83 +452,36 @@ export class Catchup {
             return true
         }
 
+        return this.latestStatus(epoch)
+    }
+
+    private async latestStatus(epoch) {
+        const {
+            app: {cfx},
+        } = this
+
         this.finalizedEpoch = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-        if (epoch <= this.finalizedEpoch) { // compare with latest finalized epoch
-            return true
+        this.catchupMode = epoch <= this.finalizedEpoch
+
+        if(!this.catchupMode) {
+            this.syncer.preloadSize = PRELOAD_SIZE_NORMAL
+            console.log(`${fmtDtUTC(new Date())} Catch-up done, epoch ${this.finalizedEpoch}`)
         }
 
-        this.catchupMode = false // in normal mode
-        return false
+        return this.catchupMode
     }
 
-    public add() {
-
+    private cacheData(data: ModelData, voteParamArray) {
+        this.accumulatedSize ++
+        this.batchData.enqueue(data, voteParamArray)
     }
 
-    public clear() {
-    }
-}
-
-export class BatchData {
-    epochs = []
-    minerBlocks = []
-    tokens = []
-    contracts = []
-    addressTransfers = []
-    epochAddressIds = []
-    nftTransfers = []
-    addressNftTransfer = []
-    evmAddresses = []
-    voteParams = []
-    traceCreates = []
-    adminDestroyTxs = []
-    transferNfts = []
-    censorItems = []
-    addressNftsPlaceholders = []
-    addressNftsReplacements = []
-    tokenTasks = []
-    nameTagTasks = []
-
-    public add(data, tokens, contracts, evmAddresses, voteParams, placeholders, addressNfts, tokenTasks, nameTagTasks) {
-        this.epochs.push(data.epoch)
-        this.minerBlocks.push(...data.minerBlockArray)
-        this.tokens.push(...tokens)
-        this.contracts.push(...contracts)
-        this.addressTransfers.push(...data.addrTransferArray)
-        this.epochAddressIds.push(...data.epochAddrIds)
-        this.nftTransfers.push(...data.nftTransferArray)
-        this.addressNftTransfer.push(...data.addrNftTransferArray)
-        this.evmAddresses.push(...evmAddresses)
-        this.voteParams.push(...voteParams)
-        this.traceCreates.push(...data.traceCreateArray)
-        this.adminDestroyTxs.push(...data.adminDestroyTxArray)
-        this.transferNfts.push(...data.transferredNftArray)
-        this.censorItems.push(...data.censorItemArray)
-        this.addressNftsPlaceholders.push(...placeholders)
-        this.addressNftsReplacements.push(...addressNfts)
-        this.tokenTasks.push(...tokenTasks)
-        this.nameTagTasks.push(...nameTagTasks)
+    private needStore() {
+        return this.dataSize() >= this.batchSizeOnSave
     }
 
-    public clear() {
-        this.epochs =[]
-        this.minerBlocks =[]
-        this.tokens =[]
-        this.contracts =[]
-        this.addressTransfers =[]
-        this.epochAddressIds =[]
-        this.nftTransfers =[]
-        this.addressNftTransfer =[]
-        this.evmAddresses =[]
-        this.voteParams =[]
-        this.traceCreates =[]
-        this.adminDestroyTxs =[]
-        this.transferNfts =[]
-        this.censorItems =[]
-        this.addressNftsPlaceholders =[]
-        this.addressNftsReplacements =[]
-        this.tokenTasks =[]
-        this.nameTagTasks =[]
+    private dataSize() {
+        return this.accumulatedSize
     }
 }
 
@@ -528,4 +549,104 @@ export enum SyncCode {
     FAILURE,
     PIVOT_SWITCH,
     RETRY
+}
+
+export class ModelData{
+    epoch: any = {}
+    minerBlockArray = []
+    addrTransferArray = []
+    epochAddrIdArray = []
+    nftTransferArray = []
+    addrNftTransferArray = []
+    addressNfts: any = {}
+    voteParamArray = []
+
+    announcedTokenArray = []
+    announcedContractArray = []
+    evmAddressArray = []
+    traceCreateArray = []
+    adminDestroyTxArray = []
+    transferredNftArray = []
+    tokenArray = []
+    nameTagArray = []
+    bytes32NameTagArray = []
+
+    censorItemArray = []
+
+    blockArray = []
+    transactionArray = []
+}
+
+export class BatchData extends ModelData {
+    epochArray = []
+
+    addressNfts:any = {}
+    addressNftsPlaceholders = []
+    addressNftsReplacements = []
+
+    public enqueue(data: ModelData, voteParamArray) {
+        this.epochArray.push(data.epoch)
+        this.minerBlockArray.push(...data.minerBlockArray)
+        this.addrTransferArray.push(...data.addrTransferArray)
+        this.epochAddrIdArray.push(...data.epochAddrIdArray)
+        this.nftTransferArray.push(...data.nftTransferArray)
+        this.addrNftTransferArray.push(...data.addrNftTransferArray)
+        this.voteParamArray.push(...voteParamArray)
+
+        this.announcedTokenArray.push(...data.announcedTokenArray)
+        this.announcedContractArray.push(...data.announcedContractArray)
+        this.evmAddressArray.push(...data.evmAddressArray)
+        this.traceCreateArray.push(...data.traceCreateArray)
+        this.adminDestroyTxArray.push(...data.adminDestroyTxArray)
+        this.transferredNftArray.push(...data.transferredNftArray)
+        this.tokenArray.push(...data.tokenArray)
+        this.nameTagArray.push(...data.nameTagArray)
+        this.bytes32NameTagArray.push(...data.bytes32NameTagArray)
+
+        this.censorItemArray.push(...data.censorItemArray)
+
+        this.addressNftsPlaceholders.push(...data.addressNfts.placeholders)
+        this.addressNftsReplacements.push(...data.addressNfts.replacements)
+    }
+
+    public data() {
+        this.addressNfts = {
+            placeholders: this.addressNftsPlaceholders,
+            replacements: this.addressNftsReplacements
+        }
+
+        this.merge()
+
+        return this
+    }
+
+    // merge in asc order by epoch number
+    private merge() {
+        this.tokenArray = this.mergeItems([...this.announcedTokenArray, ...this.tokenArray])
+        this.announcedTokenArray = []
+
+        this.announcedContractArray = this.mergeItems(this.announcedContractArray)
+
+        this.nameTagArray = this.mergeItems([...this.nameTagArray, ...this.bytes32NameTagArray])
+        this.bytes32NameTagArray = []
+    }
+
+    private mergeItems(items: any[], uniqueKey = 'base32', mergeByField = 'epoch', mergeSort = 'asc') {
+        const itemMapping = {}; // base32 => item[]
+        items.forEach(item => {
+            if(!itemMapping[item[uniqueKey]]) {
+                itemMapping[item[uniqueKey]] = []
+            }
+            itemMapping[item[uniqueKey]].push(item)
+        })
+
+        const itemArray = []
+        Object.keys(itemMapping).forEach(uniqueKey => {
+            const items = lodash.orderBy(itemMapping[uniqueKey], mergeByField, mergeSort)
+            const item = lodash.assign(...items)
+            itemArray.push(item)
+        })
+
+        return itemArray
+    }
 }
