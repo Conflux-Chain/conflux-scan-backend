@@ -246,9 +246,6 @@ export class EpochSync extends SyncBase {
     }
 
     async save(epochNumber, modelData) {
-        await this.updateCursor(modelData.epoch.timestamp)
-
-        // TODO in asc order by epoch
         const voteParams = []
         if (modelData?.voteParams) { // The record will be added only when any one of vote params changes.
             const {storagePointProp: s, baseFeeShareProp: b} = modelData.voteParams
@@ -264,7 +261,7 @@ export class EpochSync extends SyncBase {
 
         let addressNfts = []
         let placeholders = ''
-        const addressNftArr = this.getAddressNfts(epochNumber, modelData.epoch.timestamp, modelData.addrNftTransferArray)
+        const addressNftArr = this.getAddressNft(epochNumber, modelData.epoch.timestamp, modelData.addrNftTransferArray)
         const len = addressNftArr.length
         for (let i = 0; i < len; i++) {
             addressNfts = [...addressNfts, ...addressNftArr[i]]
@@ -311,8 +308,9 @@ export class EpochSync extends SyncBase {
                     values
                         ${placeholders} 
                     on duplicate key update
-                        value = value + values (value), 
-                        updatedAt = values (updatedAt)`, {
+                        value = value + values(value),
+                        updatedCursor = values(updatedCursor),
+                        updatedAt = values(updatedAt)`, {
                     type: QueryTypes.UPDATE,
                     replacements: addressNfts,
                     transaction: dbTx,
@@ -753,7 +751,7 @@ export class EpochSync extends SyncBase {
         let index = 0;
 
         [...txArray, ...cfxTransferArray, ...tokenTransferArray].forEach(transfer => {
-            lodash.assign(transfer, {cursorId: EpochSync.buildAddrTransferCursorTs(epochNumber, index)})
+            lodash.assign(transfer, {cursorId: EpochSync.buildAddrTransferCursor(epochNumber, index)})
             index++
             if (transfer.contractCreatedId) {
                 lodash.assign(transfer, {contractId: transfer.contractCreatedId})
@@ -776,13 +774,13 @@ export class EpochSync extends SyncBase {
         return {transfers, epochAddrIds};
     }
 
-    public static buildAddrTransferCursorTs(epochNumber, index) {
-        function pad(val, len, isEnd = false) {
-            const v = val.toString()
-            return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
-        }
+    private static buildAddrTransferCursor(epochNumber, index) {
+        return `${epochNumber}${EpochSync.pad(index, 6)}`;
+    }
 
-        return `${epochNumber}${pad(index, 6)}`;
+    private static pad(val, len, isEnd = false) {
+        const v = val.toString()
+        return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
     }
 
     public static async getTransactionArrayDB(blockArray, epochTimestamp) {
@@ -1224,6 +1222,7 @@ export class EpochSync extends SyncBase {
         let replacements = []
         const keys = Object.keys(nftChangeMap)
         const len = keys.length
+        let index = 0
         for (let i = 0; i < len; i++) {
             const key = keys[i]
             const value = nftChangeMap[key]
@@ -1240,18 +1239,20 @@ export class EpochSync extends SyncBase {
             }
 
             const type = nftTypeMap[contractId];
-            const updatedCursor = ++this.addrNftCursor
+            const updatedCursor = EpochSync.buildAddrNftCursor(epochNumber, index)
             replacements = [...replacements, ...[addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp]]
+            index++
         }
 
-        const sql = `insert into ${T_ADDRESS_NFTS}(addressId, contractId, tokenId, type, value, updatedCursor,
-                                                   createdAt, updatedAt)
-                     values
-                         ${placeholders} on duplicate key
-        update
-            value = value ${pivotSwitch ? '-' : '+'}
-        values (value), updatedAt =
-        values (updatedAt)`
+        const sql = `
+            insert into ${T_ADDRESS_NFTS}(addressId, contractId, tokenId, type, value, updatedCursor, 
+                createdAt, updatedAt)
+            values
+                ${placeholders} 
+            on duplicate key update
+                value = value ${pivotSwitch ? '-' : '+'} values(value),
+                updatedCursor = values(updatedCursor),                        
+                updatedAt = values(updatedAt)`
 
         return AddressNfts.sequelize.query(sql, {
             type: QueryTypes.UPDATE,
@@ -1261,16 +1262,17 @@ export class EpochSync extends SyncBase {
         })
     }
 
-    private getAddressNfts(epochNumber, epochTimestamp, addrNftTransferArray) {
+    private getAddressNft(epochNumber, epochTimestamp, addrNftTransferArray) {
         if (!addrNftTransferArray?.length) {
             return []
         }
 
         const {nftChangeMap, nftTypeMap} = this.getNftTransferInfo(addrNftTransferArray)
 
-        let addrNfts = []
+        const addrNfts = []
         const keys = Object.keys(nftChangeMap)
         const len = keys.length
+        let index = 0
         for (let i = 0; i < len; i++) {
             const key = keys[i]
             const value = nftChangeMap[key]
@@ -1282,8 +1284,9 @@ export class EpochSync extends SyncBase {
             }
 
             const type = nftTypeMap[contractId];
-            const updatedCursor = ++this.addrNftCursor
+            const updatedCursor= EpochSync.buildAddrNftCursor(epochNumber, index)
             addrNfts.push([addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp])
+            index++
         }
 
         return addrNfts
@@ -1307,25 +1310,8 @@ export class EpochSync extends SyncBase {
         return {nftChangeMap, nftTypeMap};
     }
 
-    private addrNftCursor: number
-
-    private async updateCursor(epochTimestamp) {
-        const start = Number(`${epochTimestamp.getTime().toString().substring(0, 10)}${''.padStart(6, '0')}`)
-        const end = start + Number(`${'1'.padEnd(7, '0')}`)
-        const maxCursor: number = (
-            await AddressNfts.max('updatedCursor', {
-                    where: {
-                        [Op.and]: [
-                            {updatedCursor: {[Op.gte]: start}},
-                            {updatedCursor: {[Op.lt]: end}}
-                        ]
-                    },
-                }
-            )
-        ) || (
-            start - 1
-        );
-        this.addrNftCursor = maxCursor + 1
+    private static buildAddrNftCursor(epochNumber, index) {
+        return `${epochNumber}${EpochSync.pad(index, 8)}`
     }
 
     // ----------------------------- realtime stat ------------------------------

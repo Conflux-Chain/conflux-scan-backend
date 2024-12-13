@@ -1,4 +1,4 @@
-import {ConfluxOption, loadConfig, NoCoreSpace, StatConfig} from "../../config/StatConfig";
+import {ConfluxOption, loadConfig, StatConfig} from "../../config/StatConfig";
 import {saveAbiInfo} from "../../model/ContractInfo";
 import {StatApp} from "../../StatApp";
 import {createDB, initModel} from "../DBProvider";
@@ -7,19 +7,34 @@ import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../common/utils";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {Hex40Map, makeId} from "../../model/HexMap";
-import {Op, QueryTypes} from "sequelize";
+import {Op} from "sequelize";
 import {ContractQuery} from "../ContractQuery";
 import {EpochSync} from "../EpochSync";
-import {AddressNft, AddressNfts} from "../../model/AddrNft";
 import {IS_EVM2, KEY_EPOCH_CIP1559_ENABLED, KV} from "../../model/KV";
-import {Erc1155Data, NftMint, Token, Token2} from "../../model/Token";
+import {Token, Token2} from "../../model/Token";
 import {sleep} from "./ProcessTool";
 import {NftMeta} from "../nftchecker/NftMetaStorage";
+import {CONST} from "../common/constant"
+import {TokenSecurityAudit2} from "../../model/TokenSecurityAudit";
+import {Contract2} from "../../model/Contract";
+import {AddressTransactionIndex, buildBlockExt, FullBlock, FullBlockExt, FullTransaction} from "../../model/FullBlock";
+import {FullBlockService} from "../FullBlockService";
+import {PosAccount, PosBlock} from "../../model/PoS";
+import {PosDailyStatMix} from "../pos/PosStat";
+import {StatDailyBurntFee} from "../timerstat/StatDailyBurntFee";
+import {cfxSafeEpochReceipts} from "../../TokenTransferSync";
 
 const fs = require('fs');
 const lodash = require('lodash');
+const BigFixed = require('bigfixed');
 const {format, sign} = require('js-conflux-sdk');
 const superagent = require('superagent');
+
+const licenseMap = {}
+Object.keys(CONST.LICENSE).forEach(k => {
+    const v = CONST.LICENSE[k]
+    licenseMap[v.code] = k
+})
 
 let type: number;
 let cfx:Conflux;
@@ -90,195 +105,6 @@ export async function batchParseVerified() {
     console.log(`generate abi info, done!`)
 }
 
-async function paddingCursorIdForAddressTransfer(times: number, rows: number) {
-    let cursorId = 0;
-    let timesCounter = 0;
-    do{
-        timesCounter = timesCounter + 1;
-        if(timesCounter > times) return;
-
-        const addressNftArray: AddressNft[] =  await AddressNft.sequelize.query(
-            `select * from address_nft where cursorId is null order by createdAt asc limit ?;`,
-            {type: QueryTypes.SELECT, replacements: [rows], raw: true/*, logging: sql => console.log(`AddressNft.query ${sql}`)*/ });
-        if(!addressNftArray?.length){
-            return;
-        }
-
-        const maxCursorId: number = await AddressNft.max('cursorId')
-        if(maxCursorId){
-            cursorId = maxCursorId;
-        }
-
-        for (const addressNft of addressNftArray) {
-            cursorId = cursorId + 1;
-            await AddressNft.update({cursorId}, {
-                where: {addressId: addressNft.addressId , contractId: addressNft.contractId, tokenId: addressNft.tokenId},
-                /*logging: sql => console.log(`AddressNft.update cursorId ${cursorId} ${sql}`)*/
-            });
-            if(cursorId % 1000 === 0) {
-                console.log(`cursorId ------ ${cursorId}`)
-            }
-        }
-    } while (true)
-}
-
-const KEY_CURSOR = 'KEY_CURSOR';
-async function paddingIdForAddressTransfer(times: number, rows: number) {
-    let cursorId = 0;
-    let timesCounter = 0;
-    do{
-        timesCounter = timesCounter + 1;
-        if(timesCounter > times) return;
-
-        // get cursor
-        const lastCursorId = await KV.getNumber(KEY_CURSOR, 0);
-        if(lastCursorId > 0) {
-            cursorId = lastCursorId;
-        }
-
-        // query
-        const addressNftArray: AddressNft[] =  await AddressNft.sequelize.query(
-            `select * from address_nft where cursorId > ? order by cursorId asc limit ?;`,
-            {type: QueryTypes.SELECT, replacements: [cursorId, rows], raw: true/*, logging: sql => console.log(`AddressNft.query ${sql}`)*/ });
-        if(!addressNftArray?.length){
-            return;
-        }
-        cursorId = addressNftArray[addressNftArray?.length - 1].cursorId; // for next loop
-
-        // build and persist
-        const addressNftsArray = [];
-        for (const addressNft of addressNftArray) {
-            const item = lodash.pick(addressNft, ['addressId', 'contractId', 'tokenId', 'value', 'type', 'createdAt', 'updatedAt']);
-            addressNftsArray.push(item);
-        }
-        await AddressNfts.sequelize.transaction(async (dbTx) => {
-            await AddressNfts.bulkCreate(addressNftsArray, {transaction: dbTx});
-            await KV.upsert({key: KEY_CURSOR, value: `${cursorId}`}, {transaction: dbTx});
-        });
-        console.log(`timesCounter ------ ${timesCounter}`)
-    } while (true)
-    console.log(`done ------ cursorId ${cursorId}`)
-}
-
-async function paddingUpdatedCursor(times: number, rows: number) {
-    let lastId = 0;
-    let timesCounter = 0;
-    do{
-        timesCounter = timesCounter + 1;
-        if(timesCounter > times) break;
-
-        const list = await AddressNfts.findAll({
-            where: {id: {[Op.gt]: lastId}, updatedCursor: null},
-            order: [['id', 'asc']],
-            limit: rows,
-            raw: true,
-        })
-
-        const fetchSize = list?.length;
-        if(fetchSize) {
-            for (const addrNfts of list) {
-                const {addressId: toId, contractId, tokenId, type, updatedCursor: dbCursor,value} = addrNfts;
-                if(dbCursor) continue;
-                if(type !== 21 && type !== 55){
-                    throw new Error(`invalid nft type`);
-                }
-
-                let latestTransferTime;
-                if(type === 21) {
-                    /*let start = Date.now();*/
-                    let latestTransfer: any = await NftMint.findOne({where: {contractId, toId, tokenId}});
-                    if(!latestTransfer){
-                        latestTransfer = {updatedAt: addrNfts.updatedAt};
-                        /*console.log(`contractId ${contractId} tokenId ${tokenId} toId ${toId} value ${value}`)*/
-                    }
-                    /*const elapsed2 = Date.now() - start;
-                    console.log(`721  elapsed2 ${elapsed2}`)*/
-                    latestTransferTime = latestTransfer.updatedAt;
-                } else{
-                    /*let start = Date.now();*/
-                    let latestTransfer: any = await Erc1155Data.findOne({where: {contractId, addressId: toId, tokenId}});
-                    if(!latestTransfer) {
-                        latestTransfer = {updatedAt: addrNfts.updatedAt};
-                        console.log(`contractId ${contractId} tokenId ${tokenId} toId ${toId} value ${value}`)
-                    }
-                    /*const elapsed2 = Date.now() - start;
-                    console.log(`1155  elapsed2 ${elapsed2}`)*/
-                    latestTransferTime = latestTransfer['updatedAt'];
-                }
-                const updatedCursor = Number(`${latestTransferTime.getTime().toString().substring(0, 10)}000000`);
-                await AddressNfts.update({updatedAt: latestTransferTime, updatedCursor}, {where: {id: addrNfts.id}});
-            }
-
-            const last = list[list.length-1];
-            lastId = last.id;
-            await sleep(100);
-        }
-        console.log(`${new Date()}paddingUpdatedCursor ------ timesCounter:${timesCounter} fetchSize:${fetchSize} lastId:${lastId}`);
-    } while (true)
-    console.log(`done`)
-}
-
-const KEY_UPDATED_CURSOR = 'KEY_UPDATED_CURSOR';
-async function serializeUpdatedCursor(times: number) {
-    let timesCounter = 0;
-    const step = 1000000;
-    do{
-        /*console.log(`---1---`)*/
-        timesCounter = timesCounter + 1;
-        if(timesCounter > times) break;
-        if(timesCounter % 100 === 0) {
-            await sleep(100);
-            console.log(`${new Date()}serializeUpdatedCursor ------ timesCounter:${timesCounter}`);
-        }
-
-        const lastCursor = await KV.getNumber(KEY_UPDATED_CURSOR, 0);
-        const nextCursor = lastCursor + step;
-        /*console.log(`---2--- lastCursor ${lastCursor}`)*/
-        const row = await AddressNfts.findOne({
-            where: {
-                [Op.and]: [
-                    {updatedCursor: {[Op.gte]: nextCursor}},
-                    {updatedCursor: {[Op.lt]: 1682205766000000}},
-                ]
-            },
-            order: [['updatedCursor', 'asc']],
-            limit: 1,
-            raw: true,
-        })
-        /*console.log(`---3--- ${JSON.stringify(row)}`)*/
-        if(!row){
-           break;
-        }
-
-        const rowsSameCursor = await AddressNfts.findAll({
-            where: {updatedCursor: row.updatedCursor},
-            raw: true,
-        })
-        /*console.log(`---5--- ${rowsSameCursor.length}`)*/
-        if(rowsSameCursor.length < 2){
-            /*console.log(`---6--- lastCursor ${lastCursor}`)*/
-            await KV.saveNumber(KEY_UPDATED_CURSOR, row.updatedCursor, undefined);
-            continue
-        }
-
-        const toUpdateArray = [];
-        let index = 0;
-        rowsSameCursor.forEach(item => {
-            const updatedCursor = Number(`${item.updatedCursor.toString().substring(0, 10)}${(index++).toString().padStart(6, '0')}`);
-            toUpdateArray.push({id: item.id, updatedCursor});
-        })
-        /*console.log(`toUpdateArray ${JSON.stringify(toUpdateArray)}`)*/
-
-        await AddressNfts.sequelize.transaction(async (dbTx) => {
-            for (const toUpdate of toUpdateArray) {
-                await AddressNfts.update({updatedCursor: toUpdate.updatedCursor}, {where: {id: toUpdate.id}});
-            }
-            await KV.saveNumber(KEY_UPDATED_CURSOR, row.updatedCursor, dbTx);
-        });
-    } while (true)
-    console.log(`done`)
-}
-
 async function statNft(address) {
     const base32 = format.address(address, StatApp.networkId);
     let token = await Token.findOne({where: {base32: base32}, attributes: {exclude: ['icon']}})
@@ -340,79 +166,6 @@ async function statNft(address) {
     do{
         console.log(tokenIdArrayWithoutAuthor[cntr++])
     }while (cntr < 100)
-}
-
-
-
-/*async function fixRepeatedUpdatedCursor(updatedCursorArray: number[]) {
-    for (const updatedCursor of updatedCursorArray) {
-        const strUpdatedCursor = updatedCursor.toString().substring(10);
-        /!*if(strUpdatedCursor !== '000000') continue;*!/
-
-        async function getTransfer(row) {
-            const {addressId, contractId, tokenId} = row;
-            const model = row.type === 21 ? AddressErc721Transfer : AddressErc1155Transfer;
-            let transfer: any = await model.findOne({
-                where: {addressId, tokenId},
-                order: [['epoch', 'desc']],
-                raw: true,
-                logging: console.log
-            });
-            if(!transfer) {
-                const model = row.type === 21 ? Erc721Transfer : Erc1155Transfer;
-                transfer = await model.findOne({
-                    where: {contractId, tokenId},
-                    order: [['epoch', 'desc']],
-                    raw: true,
-                    logging: console.log
-                });
-            }
-            return transfer;
-        }
-
-        const rows = await AddressNfts.findAll({where: {updatedCursor}, raw: true});
-        if(rows.length === 2) {
-            const row1 = rows[0];
-            const row2 = rows[1];
-            const transfer1 = await getTransfer(row1);
-            const transfer2 = await getTransfer(row2);
-            if(!transfer1) {
-                console.log(`no transfer found for ${JSON.stringify(row1)}`)
-                continue;
-            }
-            if(!transfer2) {
-                console.log(`no transfer found for ${JSON.stringify(row2)}`)
-                continue;
-            }
-            if(transfer1.epoch > transfer2.epoch) {
-                await AddressNfts.update({updatedCursor: updatedCursor+ 500000}, {where:{id: row1.id}});
-            } else if(transfer2.epoch > transfer1.epoch) {
-                await AddressNfts.update({updatedCursor: updatedCursor+ 500000}, {where:{id: row2.id}});
-            } else {
-                console.log(`epoch equals between row1 ${row1.id} and rows ${row2.id}`)
-            }
-        }
-    }
-}*/
-
-async function testUpdateByLiteral(amount) {
-    const primaryKey = {contractId: 105, addressId: 366, tokenId: '1'};
-    /*await Erc1155Data.update(
-        {'amount': Sequelize.literal(`amount - ${Number(amount)}`)},
-        {where: primaryKey, logging: sql => console.log(`sql------ ${sql}`)}
-    );*/
-
-    // check if update updatedAt field when using update of sequelize
-    /*await AddressNfts.update(
-        {'value': Sequelize.literal(`value - ${Number(amount)}`)},
-        {where: primaryKey, logging: sql => console.log(`sql------ ${sql}`)}
-    );*/
-
-    // check if update updatedAt field when using increment of sequelize
-    await AddressNfts.increment(
-        {'value': -Number(amount)},
-        {where: primaryKey, logging: sql => console.log(`sql------ ${sql}`)}
-    );
 }
 
 async function addCodeHashForVerify() {
@@ -530,20 +283,6 @@ async function fixConstructorArgsForSimilarVerify() {
     console.log(`fixConstructorArgsForSimilarVerify------done!`);
 }
 
-/*async function fixMinimalProxyContract() {
-    const addressArray = [
-        'net71:aacw3z94b49etazfs9suyyjtrk388s7d868nars6sm',
-    ];
-    for(const address of addressArray) {
-        const implVerify = await ContractVerify.findOne({
-            where: {base32: address, verifyResult: true},
-            order: [['updatedAt', 'ASC']],
-            raw: true
-        });
-        await contractQuery.verifyMinimalProxy({address, implVerifyId: implVerify.id});
-    }
-}*/
-
 async function fixMinimalProxyContract() {
     const traceArray = await TraceCreateContract.findAll({
         attributes: ['id', 'to', 'codeHash'],
@@ -577,24 +316,6 @@ async function searchBeaconContract() {
         }
     }
 }
-
-import {CONST} from "../common/constant"
-import {u} from "@web3identity/address-encoder/lib/groestl-hash-js/op";
-import zlib from "zlib";
-import {TokenSecurityAudit, TokenSecurityAudit2} from "../../model/TokenSecurityAudit";
-import {Contract, Contract2} from "../../model/Contract";
-import {AddressTransactionIndex, buildBlockExt, FullBlock, FullBlockExt, FullTransaction} from "../../model/FullBlock";
-import {FullBlockService} from "../FullBlockService";
-import {PosAccount, PosBlock} from "../../model/PoS";
-import {PosDailyStatMix} from "../pos/PosStat";
-import {TokenApproval} from "../../ApprovalSync";
-import {StatDailyBurntFee} from "../timerstat/StatDailyBurntFee";
-import {cfxSafeEpochReceipts} from "../../TokenTransferSync";
-const licenseMap = {}
-Object.keys(CONST.LICENSE).forEach(k => {
-    const v = CONST.LICENSE[k]
-    licenseMap[v.code] = k
-})
 
 // uri
 // coreSpace mainNet https://www-stage.confluxscan.io
@@ -1020,7 +741,6 @@ async function fixEffectiveGasPrice(minEpoch: number, maxEpoch: number, once: bo
     console.log(`done!`)
 }
 
-const BigFixed = require('bigfixed');
 const KEY_TX_FEE_BY_GAS_CHARGED = 'KEY_TX_FEE_BY_GAS_CHARGED'
 async function fixTxFeeEvm(minEpoch: number, maxEpoch: number, times: number) {
     console.log(`fixTxFeeEvm ------ minEpoch ${minEpoch} maxEpoch ${maxEpoch} times ${times}`)
@@ -1081,7 +801,6 @@ async function fixTxFeeEvm(minEpoch: number, maxEpoch: number, times: number) {
             await KV.upsert({key: KEY_TX_FEE_BY_GAS_CHARGED, value: `${lastEpoch}`})
             await sleep(10)
 
-
             // run specified times
             if(runTimes >= times) {
                 return
@@ -1120,23 +839,8 @@ async function run() {
             await parseVerified(base32);
         }
     }
-    if(type === 7) {
-        await paddingCursorIdForAddressTransfer(times, rows);
-    }
-    if(type === 8) {
-        await paddingIdForAddressTransfer(times, rows);
-    }
-    if(type === 9) {
-        await testUpdateByLiteral(amount);
-    }
     if(type === 10) {
         await searchBeaconContract();
-    }
-    if(type === 11) {
-        await paddingUpdatedCursor(times, rows);
-    }
-    if(type === 12) {
-        await serializeUpdatedCursor(times);
     }
     if(type === 20) {
         await statNft(base32)
