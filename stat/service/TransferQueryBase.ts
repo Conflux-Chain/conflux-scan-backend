@@ -383,14 +383,14 @@ export abstract class TransferQueryBase {
 export async function patchTokenTxQueryRange(token: Token, queryOptions: any, model: any/* = Erc20Transfer*/) {
     const n = 5000;
     let logging = undefined;
-    logging = console.log;
+    // logging = console.log;
     queryOptions.logging = logging;
     if (!token || token.transfer > n) {
+        // why erc1155 table use the wrong index idx_epoch ?
         queryOptions['indexHints'] = [{ type: IndexHints.USE, values: ['idx_contractId_epoch'] }];
         const {where, order, limit, offset, indexHints} = queryOptions;
         const [[_, sort]] = order;
         const SORT = sort.toUpperCase();
-        // why erc1155 table use the wrong index idx_epoch ?
         const tailOne = await model.findOne({where, order: [order[0]], offset: limit + offset, indexHints, logging} as any);
         if (tailOne) {
             queryOptions.where['epoch'] = {[SORT == 'DESC' ? Op.gte : Op.lte]: tailOne.epoch}
