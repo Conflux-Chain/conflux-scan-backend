@@ -6,7 +6,7 @@ import {CONST} from "./common/constant"
 /*const CONST = require('./common/constant');*/
 import {Token} from "../model/Token";
 import {fmtAddr, StatApp} from "../StatApp";
-import {IndexHints} from "sequelize";
+import {Op} from "sequelize";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
@@ -60,8 +60,18 @@ export class Crc20TransferQuery extends TransferQueryBase{
             if (Object.keys(queryOptions.where).length === 1) {
                 const base32 = format.address(options.address, StatApp.networkId);
                 const token = await Token.findOne({attributes: ['transfer'], where:{base32}});
+                const n = 5000;
+                let logging = undefined;
+                logging = console.log;
+                queryOptions.logging = logging;
+                if (token?.transfer > n) {
+                    const tailOne = await Erc20Transfer.findOne({...options, skip: options.limit + options.offset, logging});
+                    if (tailOne) {
+                        options.where['epoch'] = {[Op.gte]: tailOne.epoch}
+                    }
+                }
                 const rows = await Erc20Transfer.findAll(queryOptions);
-                return {count: token.transfer , rows: rows || []};
+                return {count: token?.transfer || rows.length , rows: rows || []};
             }
             return Erc20Transfer.findAndCountAll(queryOptions);
         }
