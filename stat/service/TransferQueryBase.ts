@@ -385,15 +385,15 @@ export async function patchTokenTxQueryRange(token: Token, queryOptions: any, mo
     let logging = undefined;
     logging = console.log;
     queryOptions.logging = logging;
-    if (token?.transfer > n) {
+    if (!token || token.transfer > n) {
         const {where, order, limit, offset} = queryOptions;
         const [[_, sort]] = order;
         const SORT = sort.toUpperCase();
+        // why erc1155 table use the wrong index idx_epoch ?
+        queryOptions['indexHints'] = [{ type: IndexHints.USE, values: ['idx_contractId_epoch'] }];
         const tailOne = await model.findOne({where, order: [order[0]], offset: limit + offset, logging} as any);
         if (tailOne) {
             queryOptions.where['epoch'] = {[SORT == 'DESC' ? Op.gte : Op.lte]: tailOne.epoch}
-            // why erc1155 table use the wrong index idx_epoch ?
-            queryOptions['indexHints'] = [{ type: IndexHints.USE, values: ['idx_contractId_epoch'] }];
         }
     }
 }
