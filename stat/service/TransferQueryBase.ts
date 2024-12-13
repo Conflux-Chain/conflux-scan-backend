@@ -1,6 +1,6 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {Op} from "sequelize"
+import {IndexHints, Op} from "sequelize"
 import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo} from "../model/PruneInfo";
@@ -392,6 +392,8 @@ export async function patchTokenTxQueryRange(token: Token, queryOptions: any, mo
         const tailOne = await model.findOne({where, order: [order[0]], offset: limit + offset, logging} as any);
         if (tailOne) {
             queryOptions.where['epoch'] = {[SORT == 'DESC' ? Op.gte : Op.lte]: tailOne.epoch}
+            // why erc1155 table use the wrong index idx_epoch ?
+            queryOptions['indexHints'] = [{ type: IndexHints.USE, values: ['idx_contractId_epoch'] }];
         }
     }
 }
