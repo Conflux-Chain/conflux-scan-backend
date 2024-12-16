@@ -176,7 +176,7 @@ export abstract class TimerStat {
         return { rangeBegin, rangeEnd };
     }
 
-    protected async firstEpochViaEpochTask(rangeEnd: number): Promise<number> {
+    protected async firstEpochViaEpochTask(rangeEnd: Date): Promise<number> {
         const item = await Epoch.findOne({
             where: {timestamp: {[Op.gte]: rangeEnd}}, order:[['timestamp', 'asc']]});
         const epoch = item?.epoch;
@@ -185,7 +185,7 @@ export abstract class TimerStat {
         }
 
         const task = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]});
-        if(task === null || task.epoch < rangeEnd) {
+        if(task === null || task.epoch < item.epoch) {
             return undefined;
         }
 
