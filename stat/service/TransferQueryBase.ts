@@ -1,6 +1,6 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {Op} from "sequelize"
+import {IndexHints, Op} from "sequelize"
 import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo} from "../model/PruneInfo";
@@ -10,6 +10,7 @@ import {Errors} from "./common/LogicError";
 import {TransferCount} from "../model/TransferCount";
 import {fmtAddr} from "../StatApp";
 import {closestEpochByTimeStamp, ClosestType} from "../model/Epoch";
+import {Token} from "../model/Token";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -46,20 +47,12 @@ export abstract class TransferQueryBase {
             conditionArray.push({contractId: {[Op.in]: tokenAddressIdArray}});
         }
         if(minTimestamp !== undefined) {
-            if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
-                const epochNumber = await closestEpochByTimeStamp(ClosestType.AFTER, minTimestamp)
-                minEpochNumber = lodash.max([minEpochNumber, epochNumber])
-            } else{
-                conditionArray.push({createdAt: { [Op.gte]: new Date(minTimestamp * 1000)}})
-            }
+            const epochNumber = await closestEpochByTimeStamp(ClosestType.AFTER, minTimestamp)
+            minEpochNumber = lodash.max([minEpochNumber, epochNumber])
         }
         if(maxTimestamp !== undefined) {
-            if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
-                const epochNumber = await closestEpochByTimeStamp(ClosestType.BEFORE, maxTimestamp)
-                maxEpochNumber = lodash.min([maxEpochNumber, epochNumber])
-            } else{
-                conditionArray.push({createdAt: { [Op.lte]: new Date(maxTimestamp * 1000)}})
-            }
+            const epochNumber = await closestEpochByTimeStamp(ClosestType.BEFORE, maxTimestamp)
+            maxEpochNumber = lodash.min([maxEpochNumber, epochNumber])
         }
         if(minEpochNumber !== undefined) {
             conditionArray.push({epoch: { [Op.gte]: minEpochNumber}});
@@ -384,5 +377,23 @@ export abstract class TransferQueryBase {
         const count = await model.count(queryOptions);
 
         return {count, rows: list}
+    }
+}
+
+export async function patchTokenTxQueryRange(token: Token, queryOptions: any, model: any/* = Erc20Transfer*/) {
+    const n = 5000;
+    let logging = undefined;
+    // logging = console.log;
+    queryOptions.logging = logging;
+    if (!token || token.transfer > n) {
+        // why erc1155 table use the wrong index idx_epoch ?
+        queryOptions['indexHints'] = [{ type: IndexHints.USE, values: ['idx_contractId_epoch'] }];
+        const {where, order, limit, offset, indexHints} = queryOptions;
+        const [[_, sort]] = order;
+        const SORT = sort.toUpperCase();
+        const tailOne = await model.findOne({where, order: [order[0]], offset: limit + offset, indexHints, logging} as any);
+        if (tailOne) {
+            queryOptions.where['epoch'] = {[SORT == 'DESC' ? Op.gte : Op.lte]: tailOne.epoch}
+        }
     }
 }

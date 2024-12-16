@@ -1,12 +1,12 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Erc20Transfer, AddressErc20Transfer} from "../model/Erc20Transfer";
-import {TransferQueryBase} from "./TransferQueryBase";
+import {patchTokenTxQueryRange, TransferQueryBase} from "./TransferQueryBase";
 import {CONST} from "./common/constant"
 /*const CONST = require('./common/constant');*/
 import {Token} from "../model/Token";
 import {fmtAddr, StatApp} from "../StatApp";
-import {IndexHints} from "sequelize";
+import {Op} from "sequelize";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
@@ -60,8 +60,9 @@ export class Crc20TransferQuery extends TransferQueryBase{
             if (Object.keys(queryOptions.where).length === 1) {
                 const base32 = format.address(options.address, StatApp.networkId);
                 const token = await Token.findOne({attributes: ['transfer'], where:{base32}});
+                await patchTokenTxQueryRange(token, queryOptions, Erc20Transfer);
                 const rows = await Erc20Transfer.findAll(queryOptions);
-                return {count: token.transfer , rows: rows || []};
+                return {count: token?.transfer || rows.length , rows: rows || []};
             }
             return Erc20Transfer.findAndCountAll(queryOptions);
         }

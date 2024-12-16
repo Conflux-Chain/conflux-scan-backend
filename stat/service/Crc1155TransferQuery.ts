@@ -1,7 +1,7 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Erc1155Transfer, AddressErc1155Transfer} from "../model/Erc1155Transfer";
-import {TransferQueryBase} from "./TransferQueryBase";
+import {patchTokenTxQueryRange, TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {fmtAddr, StatApp} from "../StatApp";
 import {Token} from "../model/Token";
@@ -52,8 +52,9 @@ export class Crc1155TransferQuery extends TransferQueryBase{
             if (Object.keys(queryOptions.where).length === 1) {
                 const base32 = format.address(options.address, StatApp.networkId);
                 const token = await Token.findOne({attributes: ['transfer'], where:{base32}});
+                await patchTokenTxQueryRange(token, queryOptions, Erc1155Transfer);
                 const rows = await Erc1155Transfer.findAll(queryOptions);
-                return {count: token.transfer , rows: rows || []};
+                return {count: token?.transfer || rows.length, rows: rows || []};
             }
             return Erc1155Transfer.findAndCountAll(queryOptions);
         }
