@@ -19,6 +19,7 @@ import {Hex40Map, makeId} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {Transaction,QueryTypes,UniqueConstraintError, Op} from "sequelize"
 import {
+    diffCount,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KEY_FILL_BLOCK_REWARD_EPOCH,
     KEY_FULL_BLOCK_COUNT,
@@ -750,13 +751,6 @@ export async function loadTxsByEpoch(no: number, dbTx:Transaction) {
         order: [["blockPosition", "asc"], ["txPosition", "asc"]],
         transaction: dbTx,
     })
-}
-
-export async function diffCount(key:string, diff:number, dbTx:Transaction) {
-    const sql = "update config set `value` = ? + cast(`value` as unsigned) where `key`=?"
-    return KV.sequelize.query(sql,
-        {type: QueryTypes.UPDATE, replacements: [diff, key],
-            transaction: dbTx})
 }
 
 /*

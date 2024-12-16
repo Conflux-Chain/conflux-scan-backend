@@ -1,4 +1,4 @@
-import {DataTypes, Model, Transaction, Sequelize, UniqueConstraintError} from "sequelize";
+import {DataTypes, Model, Transaction, Sequelize, UniqueConstraintError, QueryTypes} from "sequelize";
 import {Cfg_is_EVM} from "../config/StatConfig";
 
 export interface IKV {
@@ -120,3 +120,9 @@ export class KV extends Model<IKV> implements IKV {
     }
 }
 
+export async function diffCount(key:string, diff:number, dbTx:Transaction) {
+    const sql = "update config set `value` = ? + cast(`value` as unsigned) where `key`=?"
+    return KV.sequelize.query(sql,
+        {type: QueryTypes.UPDATE, replacements: [diff, key],
+            transaction: dbTx})
+}
