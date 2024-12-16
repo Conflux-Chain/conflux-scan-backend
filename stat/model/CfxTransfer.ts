@@ -1,9 +1,8 @@
 import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
-import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
+import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {adjustTodayEndTime} from "./Utils";
-import { diffCount } from "../service/FullBlockService";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {

@@ -14,14 +14,13 @@ import {
     popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
-import {KEY_FULL_CFX_TRANSFER_COUNT} from "./model/KV";
+import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
 import {rmCache} from "./service/common/RpcCacheManager";
 import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
-import {diffCount} from "./service/FullBlockService";
 
 export interface ICfxUser {
     id?: number
