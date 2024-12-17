@@ -109,6 +109,14 @@ export class FullBlockService {
         }
         const that = this
         const repeat = async ()=>{
+			try {
+                await fnUnsafe();
+            } catch (e) {
+                console.log(`${__filename} failed: `, e)
+                setTimeout(repeat, 5_000)
+            }
+        }
+        const fnUnsafe = async ()=>{
             const wantEpoch = maxEpoch + 1;
             let ret
             ret = await that.syncBlockByEpoch(wantEpoch).catch(err=>{
