@@ -19,6 +19,7 @@ process.on('unhandledRejection', (e) => {
   }
   console.error(`${new Date().toISOString()} ProcessTool.ts, the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
   // running = false;
+  process.exit(9) // restart
 });
 export function regExitHook() {
   const fn = (signal) => {
