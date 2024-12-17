@@ -113,7 +113,8 @@ export class FullBlockService {
                 await fnUnsafe();
             } catch (e) {
                 console.log(`${__filename} failed: `, e)
-                setTimeout(repeat, 5_000)
+                await sleep(5_000)
+                process.exit(1) // restart to clear batch data in memory
             }
         }
         const fnUnsafe = async ()=>{
