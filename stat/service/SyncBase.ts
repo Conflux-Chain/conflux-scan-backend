@@ -15,77 +15,48 @@ import {fmtDtUTC} from "../model/Utils";
 const lodash = require('lodash');
 
 const PRELOAD_SIZE_NORMAL = 8
-const PRELOAD_SIZE_CATCHUP = 16
+const PRELOAD_SIZE_CATCHUP = 300
 
 export abstract class SyncBase {
     private forwardQueue: PreloadMap
     protected app: any
-    protected catchup: Catchup
+    protected catchUp: CatchUp
     public preloadSize: number = PRELOAD_SIZE_CATCHUP
+    private epochLatestState: number
 
     protected constructor(app: any) {
         this.app = app;
         this.forwardQueue = new PreloadMap(this.getData.bind(this));
-        this.catchup = new Catchup(app, this)
-    }
-
-    private metric0 = {
-        startEpoch: 0,
-        currentEpoch: 0,
-    };
-    private m0(step, startTime){
-        const runTimes = this.metric0[step];
-        const elapsedTime = this.metric0[`${step}_ms`];
-        const elapsedDelta = Date.now() - startTime;
-        this.metric0[step] = runTimes === undefined ? 1 : runTimes + 1;
-        this.metric0[`${step}_ms`] = elapsedTime === undefined ? elapsedDelta : (elapsedTime + elapsedDelta);
-
-        const epochDelta = this.metric0.currentEpoch - this.metric0.startEpoch
-        if(epochDelta > 0 && epochDelta % 10000 === 0) {
-            console.log(`metrics0-----------------------------------`);
-            console.log(JSON.stringify(this.metric0));
-            console.log(`------------------------------------------`);
-            this.metric0 = {
-                startEpoch: this.metric0.currentEpoch,
-                currentEpoch: this.metric0.currentEpoch,
-            };
-        }
-
-        return Date.now();
+        this.catchUp = new CatchUp(app, this)
     }
 
     private async getDataForwardWithPreload(epochNumber): Promise<SyncData> {
-        let start = Date.now()
-        const stateEpochNumber = await this.latestStateEpoch()
-        start = this.m0('getDataForwardWithPreload_latestStateEpoch', start)
+        const stateEpochNumber = this.epochLatestState
         lodash.range(this.preloadSize).forEach((i) => {
             if (epochNumber + i < stateEpochNumber) {
                 this.forwardQueue.start(epochNumber + i);
             }
         });
-        start = this.m0('getDataForwardWithPreload_start', start)
-        const result = await this.forwardQueue.pop(epochNumber);
-        start = this.m0('getDataForwardWithPreload_pop', start)
-        return result
+        return this.forwardQueue.pop(epochNumber);
     }
 
     private async saveForward(epochNumber, {parentHash, modelData}: SyncData): Promise<SyncCode> {
-        const preEpochNumber = epochNumber - 1
-        let start = Date.now()
-        const prevEpoch = await this.epochByEpochNumber(preEpochNumber)
-        start = this.m0('saveForward_epochByEpochNumber', start)
-        if (prevEpoch && parentHash !== prevEpoch.pivotHash) {
-            start = this.m0('saveForward_pivotHash', start)
-            console.log(`saveForward reorg ${JSON.stringify({
-                epochNumber,
-                preEpochNumber,
-                prevEpoch,
-                code: SyncCode.PIVOT_SWITCH
-            })}`)
-            return SyncCode.PIVOT_SWITCH
+        if(!this.catchUp.status()) {
+            const preEpochNumber = epochNumber - 1
+            const prevEpoch = await this.epochByEpochNumber(preEpochNumber)
+            if (prevEpoch && parentHash !== prevEpoch.pivotHash) {
+                console.log(`saveForward reorg ${JSON.stringify({
+                    epochNumber,
+                    preEpochNumber,
+                    prevEpoch,
+                    code: SyncCode.PIVOT_SWITCH
+                })}`)
+                return SyncCode.PIVOT_SWITCH
+            }
         }
+
         await this.save(epochNumber, modelData)
-        start = this.m0('saveForward_save', start)
+
         return SyncCode.SUCCESS
     }
 
@@ -93,15 +64,8 @@ export abstract class SyncBase {
         let syncCode;
         let data: SyncData;
 
-        let start = Date.now()
-        let overallStart = start
-        if(this.metric0.startEpoch === 0) {
-            this.metric0.startEpoch = epochNumber
-        }
-
         try {
             data = await this.getDataForwardWithPreload(epochNumber);
-            start = this.m0('syncForward_getDataForwardWithPreload', start)
             if (data.syncCode === SyncCode.RETRY) {
                 console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
                 await sleep(10_000);
@@ -112,11 +76,11 @@ export abstract class SyncBase {
             await sleep(10_000);
             return epochNumber;
         }
+
         try {
             syncCode = await this.saveForward(epochNumber, data);
-            start = this.m0('syncForward_saveForward', start)
             if (epochNumber % 100 === 0) {
-                console.log(`${fmtDtUTC(new Date())} Catch-up mode: ${this.catchup.status()}, latest epoch ${epochNumber}`)
+                console.log(`${fmtDtUTC(new Date())} Catch-up mode: ${this.catchUp.status()}, latest epoch ${epochNumber}`)
             }
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
@@ -127,6 +91,7 @@ export abstract class SyncBase {
         if (syncCode === SyncCode.SUCCESS) {
             epochNumber += 1;
         }
+
         if (syncCode === SyncCode.PIVOT_SWITCH) {
             this.forwardQueue.clear();
             epochNumber -= 1;
@@ -135,8 +100,6 @@ export abstract class SyncBase {
                 throw e;
             });
         }
-        this.metric0.currentEpoch = epochNumber
-        start = this.m0('syncForward_overall', overallStart)
 
         return epochNumber;
     }
@@ -146,10 +109,7 @@ export abstract class SyncBase {
 
         epoch = lodash.max([epoch, this.app?.config?.syncEpochNumber])
 
-        let latestStateEpoch = await this.latestStateEpoch().catch(e => {
-            console.error(`Failed to get latest epoch number`, e)
-            return 0
-        });
+        let latestStateEpoch = this.epochLatestState
 
         const that = this
         async function repeat() {
@@ -157,10 +117,7 @@ export abstract class SyncBase {
                 epoch = await that.syncForward(epoch);
                 setTimeout(repeat, 0)
             } else {
-                latestStateEpoch = await that.latestStateEpoch().catch(e => {
-                    console.error(`Failed to get latest epoch number`, e)
-                    return 0
-                })
+                latestStateEpoch = that.epochLatestState
                 setTimeout(repeat, 5_000)
             }
         }
@@ -175,7 +132,7 @@ export abstract class SyncBase {
         } = this;
 
         const [latestState, blockHashArray, receipts] = await Promise.all([
-            this.latestStateEpoch(),
+            this.epochLatestState,
             cfx.getBlocksByEpochNumber(epochNumber)
                 .catch(() => {return []}),
             cfxSafeEpochReceipts(cfx, epochNumber)
@@ -249,6 +206,23 @@ export abstract class SyncBase {
         return Epoch.findOne({where: {epoch: epochNumber}});
     }
 
+    //------------------------- flush latest epoch ---------------------------
+    public async scheduleLatestEpoch(delay: number = 10) {
+        console.log(`schedule latest epoch with delay: ${delay}`)
+
+        await this.latestStateEpoch()
+
+        const that = this
+        async function repeat() {
+            await that.latestStateEpoch().catch(err => {
+                console.log(`schedule latest epoch error:${err}`)
+            })
+            setTimeout(repeat, delay)
+        }
+
+        repeat().then()
+    }
+
     private async latestStateEpoch() {
         const {
             app: {cfx},
@@ -265,12 +239,11 @@ export abstract class SyncBase {
             await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).then(epoch => {result = {epoch}})
         }
 
-        const epoch = result.epoch
-        if (epoch % 1000 === 0 && result.table) {
-            console.log(`latest state epoch ${epoch} from ${result.table}`)
-        }
+        this.epochLatestState = result.epoch
 
-        return epoch
+        if (result.epoch % 1000 === 0 && result.table) {
+            console.log(`latest state epoch ${result.epoch} from ${result.table}`)
+        }
     }
 
     //------------------------------- event log ------------------------------
@@ -383,11 +356,11 @@ export abstract class SyncBase {
     public abstract delete(epochNumber, modelData);
 }
 
-export class Catchup {
+export class CatchUp {
     private app: any
     private syncer: any
 
-    private catchupMode: boolean = true
+    private catchingUp: boolean = true
     private finalizedEpoch: number = 0
 
     private accumulatedSize: number = 0
@@ -401,7 +374,7 @@ export class Catchup {
     }
 
     public status(): boolean {
-        return this.catchupMode
+        return this.catchingUp
     }
 
     public data(): BatchData {
@@ -412,13 +385,13 @@ export class Catchup {
     public async enqueue(data: ModelData, voteParamArray) {
         const result = {
             needStore: false,
-            catchupMode: await this.checkStatus(data.epoch.epoch)
+            catchingUp: await this.checkStatus(data.epoch.epoch)
         }
 
         // catchup already and BatchData hold some data，the data of the epoch will not be enqueued
         // return {needStore: true, catchMode: false} when BatchData holds some data v
         // return {needStore: false, catchMode: false} when BatchData holds no data  v
-        if(!result.catchupMode) {
+        if(!result.catchingUp) {
             result.needStore = this.dataSize() > 0
             return result
         }
@@ -444,7 +417,7 @@ export class Catchup {
      *      false when catchup already
      */
     private async checkStatus(epoch: number): Promise<boolean> {
-        if (!this.catchupMode) { // catchup already
+        if (!this.catchingUp) { // catchup already
             return false
         }
 
@@ -461,14 +434,14 @@ export class Catchup {
         } = this
 
         this.finalizedEpoch = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-        this.catchupMode = epoch <= this.finalizedEpoch
+        this.catchingUp = epoch <= this.finalizedEpoch
 
-        if(!this.catchupMode) {
+        if(!this.catchingUp) {
             this.syncer.preloadSize = PRELOAD_SIZE_NORMAL
             console.log(`${fmtDtUTC(new Date())} Catch-up done, epoch ${this.finalizedEpoch}`)
         }
 
-        return this.catchupMode
+        return this.catchingUp
     }
 
     private cacheData(data: ModelData, voteParamArray) {

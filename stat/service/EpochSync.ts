@@ -249,12 +249,12 @@ export class EpochSync extends SyncBase {
             }
         }
 
-        const {catchupMode, needStore} = await this.catchup.enqueue(modelData, voteParamArray)
+        const {catchingUp, needStore} = await this.catchUp.enqueue(modelData, voteParamArray)
         if(needStore) {
-            const data = this.catchup.data()
-            await this.saveOnce(data, data.voteParamArray).finally(() => this.catchup.reset())
+            const data = this.catchUp.data()
+            await this.saveOnce(data, data.voteParamArray).finally(() => this.catchUp.reset())
         }
-        if(catchupMode) {
+        if(catchingUp) {
             return
         }
 
