@@ -1,51 +1,65 @@
-import {StatApp} from "../StatApp";
-import {TokenQuery} from "./TokenQuery";
-import {Contract} from "../model/Contract";
-import {toBase32} from "./tool/AddressTool";
-import {CONST} from "./common/constant";
-import {format} from "js-conflux-sdk";
 import {Token} from "../model/Token";
+import {Contract} from "../model/Contract";
+import {Op} from "sequelize";
 
 export class TokenSecurityAuditSync{
-    private readonly app;
+    private readonly app
 
-    constructor(app: StatApp) {
-        this.app = app;
+    constructor(app: any) {
+        this.app = app
     }
 
-    private async audit(now: Date): Promise<Boolean>{
+    private async audit(recently: boolean = false){
         const { tokenQuery } = this.app
 
-        const tokens = await Token.findAll({attributes: ['base32'], raw: true})
+        const now = new Date()
+
+        const opt: any = {attributes: ['base32'], raw: true}
+        if(recently) {
+            const minTime = new Date(now)
+            minTime.setDate(minTime.getDate() - 1) // Only audit tokens/contracts in the last 24 hours.
+            opt.where = {createdAt: {[Op.gte]: minTime}}
+        }
+
+        const tokens = await Token.findAll(opt)
         let addresses = tokens?.map(item => (item.base32))
         for(const address of addresses){
             await tokenQuery.audit({address})
         }
-        console.log(`token_security_audit_sync audit start at:${now}, end at:${new Date()}`)
-
 
         const tokenSet = new Set([...addresses])
-        const contracts = await Contract.findAll({attributes: ['base32'], raw: true})
+        const contracts = await Contract.findAll(opt)
         addresses = contracts?.map(item => (item.base32)).filter(item => (!tokenSet.has(item)))
         for(const address of addresses){
             await tokenQuery.audit({address})
         }
-        console.log(`token_security_audit_sync audit contract start at:${now}, end at:${new Date()}`)
 
-        return Promise.resolve(true)
+        console.log(`token audit start ${now} end ${new Date()} recently ${recently}`)
     }
 
     public async schedule() {
-        const that = this;
+        const that = this
         async function repeat() {
-            const now = new Date();
-            await that.audit(now).catch(err=>{
-                console.log(`token_security_audit_sync fail: `, err);
-            });
-            const delay = 1000 * 60 * 60; // interval is 1 hour
-            setTimeout(repeat, delay);
+            await that.audit().catch(err=>{
+                console.log(`token audit fail: `, err)
+            })
+            setTimeout(repeat, 1000 * 60 * 60) // interval is 1 hour
         }
 
-        repeat().then();
+        repeat().then()
+    }
+
+
+    public async scheduleRecently() {
+        const that = this
+        async function repeat() {
+            await that.audit(true).catch(err=>{
+                console.log(`recently token audit fail: `, err)
+            })
+            setTimeout(repeat, 1000 * 5)  // interval is 5 sec
+        }
+
+        repeat().then()
     }
 }
+

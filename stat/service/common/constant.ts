@@ -1,3 +1,15 @@
+const lodash = require('lodash')
+
+const internalContracts = {
+  AdminControl: '0x0888000000000000000000000000000000000000',
+  SponsorWhitelistControl: '0x0888000000000000000000000000000000000001',
+  Staking: '0x0888000000000000000000000000000000000002',
+  ConfluxContext: '0x0888000000000000000000000000000000000004',
+  PoSRegister: '0x0888000000000000000000000000000000000005',
+  CrossSpaceCall: '0x0888000000000000000000000000000000000006',
+  ParamsControl: '0x0888000000000000000000000000000000000007',
+}
+
 export const CONST = {
   // https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
   CL: '\u001b[2K', // CLEAR line
@@ -84,15 +96,8 @@ export const CONST = {
 
   CODEHASH_NO_BYTECODE: '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470',
 
-  INTERNAL_CONTRACT: [
-    '0x0888000000000000000000000000000000000000', // AdminControl
-    '0x0888000000000000000000000000000000000001', // SponsorWhitelistControl
-    '0x0888000000000000000000000000000000000002', // Staking
-    '0x0888000000000000000000000000000000000004', // ConfluxContext
-    '0x0888000000000000000000000000000000000005', // PoSRegister
-    '0x0888000000000000000000000000000000000006', // CrossSpaceCall
-    '0x0888000000000000000000000000000000000007', // ParamsControl
-  ],
+  INTERNAL_CONTRACT_MAP: internalContracts,
+  INTERNAL_CONTRACT: lodash.values(internalContracts),
 
   LICENSE: {
     '1': {code: 'None', desc: 'No License'},
@@ -248,5 +253,10 @@ export const CONST = {
       C_ANNOUNCE: '0x623a0340bd4b0817379c8482c92dd26fb8c5316d', // placeholder
       C_META: '0x96c326866db1b879b2a25be4104fd1d2a7ffb108', // placeholder
     },
-  }
+  },
+
+  EIP165_INTERFACE_ID: {
+    ERC721: [0x80, 0xac, 0x58, 0xcd],
+    ERC1155: [0xd9, 0xb6, 0x7a, 0x26],
+  },
 };

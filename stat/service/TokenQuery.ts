@@ -15,10 +15,9 @@ import {TokenBalance} from "../model/Balance";
 import {StatApp} from "../StatApp";
 import {Desensitizer} from "./Desensitizer";
 import {CONST} from "./common/constant"
-import {EpochSync} from "./EpochSync";
+import {NAME_TAG_SPLIT} from "./EpochSync";
 import {Errors} from "./common/LogicError";
 import {NameTag} from "../model/NameTag";
-import {AccountQuery} from "./AccountQuery";
 
 const lodash = require('lodash');
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
@@ -162,7 +161,7 @@ export class TokenQuery {
             });
             eoaList?.forEach(nameTag => {
                 if(nameTag?.labels) {
-                    nameTag.labels = nameTag.labels.split(EpochSync.NAME_TAG_SPLIT);
+                    nameTag.labels = nameTag.labels.split(NAME_TAG_SPLIT);
                     const caution = nameTag.labels.find(label => accountQuery?.cautionSet.has(label));
                     delete nameTag.labels;
                     nameTag.caution = caution ? 1 : 0;
@@ -418,8 +417,8 @@ export class TokenQuery {
         const toolkit = tokenTool || cfx;
         let [tokenInfo, interface721, interface1155, typeInfo] = await Promise.all([
             toolkit.getToken(base32),
-            toolkit.supportsInterface(base32, EpochSync.erc721Interface),
-            toolkit.supportsInterface(base32, EpochSync.erc1155Interface),
+            toolkit.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC721),
+            toolkit.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC1155),
             TokenQuery.detectTokenType({base32}),
         ]);
 

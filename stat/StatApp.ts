@@ -23,7 +23,6 @@ import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
-import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
 import {
     IS_EVM2,
@@ -71,7 +70,6 @@ export class StatApp{
     public blockDataStatQuery: DailyBlockDataStatQuery;
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
-    public tokenSecurityAuditSync: TokenSecurityAuditSync;
     public fullBlockQuery: FullBlockQuery;
     public ensCheckerQuery: ENSCheckerQuery;
     public accountQuery: AccountQuery;
@@ -138,7 +136,6 @@ export class StatApp{
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
-        this.tokenSecurityAuditSync = new TokenSecurityAuditSync(this);
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)
         this.fullBlockQuery = new FullBlockQuery(this);
@@ -156,9 +153,6 @@ export class StatApp{
         }
         if (this.config.syncRecommendGasPrice) {
             await this.fullBlockQuery.schedule();
-        }
-        if (this.config.syncTokenSecurityAudit) {
-            await this.tokenSecurityAuditSync.schedule();
         }
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();

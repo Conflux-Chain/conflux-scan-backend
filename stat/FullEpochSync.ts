@@ -64,9 +64,12 @@ export class FullEpochSync{
         this.epochSync = new EpochSync(this);
 
         await this.epochSync.mustInit()
-        await this.epochSync.run(this.config.syncEpochNumber)
-        await this.epochSync.startRealtimeStat()
+        await this.epochSync.scheduleLatestEpoch()
         await this.epochSync.scheduleEvict()
+        await this.epochSync.startRealtimeStat()
+        await this.epochSync.run()
+
+
     }
 
     public async close() {
