@@ -40,7 +40,7 @@ import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
 import {BatchBlockTx} from "./BatchDBTx";
-import {SyncReporter} from "../monitor/InfluxWorker";
+import {SyncBlockSchema, SyncReporter} from "../monitor/InfluxWorker";
 
 const BigFixed = require('bigfixed');
 
@@ -101,7 +101,7 @@ export class FullBlockService {
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }
-        this.reporter.connect();
+        this.reporter.connect(SyncBlockSchema);
         await FullBlockService.checkBlockCountKV()
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()

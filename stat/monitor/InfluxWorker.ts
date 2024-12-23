@@ -85,6 +85,30 @@ class EpochMax {
     epoch: number; biz:string; createdAt: Date;
 }
 
+export const SyncBlockSchema = {
+    fields: {
+        epoch: FieldType.INTEGER,
+        ms : FieldType.INTEGER,
+        bulkSaveMs: FieldType.INTEGER,
+        executedTxCount : FieldType.INTEGER,
+        addressTxCount: FieldType.INTEGER,
+        blockCount: FieldType.INTEGER,
+        //
+        queryFullNodeTime: FieldType.INTEGER,
+        pureRpcTime: FieldType.INTEGER,
+        procTime: FieldType.INTEGER,
+        buildTime: FieldType.INTEGER,
+        saveBlockTime: FieldType.INTEGER,
+        saveTxTime: FieldType.INTEGER,
+        saveAddrTxTime: FieldType.INTEGER,
+        diffBlockCntTime: FieldType.INTEGER,
+        diffTxCntTime: FieldType.INTEGER,
+    },
+    tags: [
+        'biz'
+    ]
+}
+
 export class SyncReporter {
     influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
     private inf: InfluxDB;
@@ -92,11 +116,11 @@ export class SyncReporter {
         this.influxDB = influxDB;
         measurement = influxDB.measurement || measurement;
     }
-    connect() {
+    connect(schema?: any) {
         if (this.influxDB.disable) {
             return
         }
-        this.inf = connectInflux(this.influxDB as any);
+        this.inf = connectInflux(this.influxDB as any, schema);
     }
     write(row:any) {
         if (!this.inf) {
@@ -109,10 +133,11 @@ export class SyncReporter {
 }
 
 let measurement = 'sync_epoch_3';
-function connectInflux({host, database, username, password,  port, protocol}) {
+function connectInflux({host, database, username, password,  port, protocol}, schema?:any) {
     const influx = new InfluxDB({
         host,        database, username, password, port, protocol,
         schema: [
+            schema ? {...schema, measurement} :
             {
                 measurement,
                 fields: {
