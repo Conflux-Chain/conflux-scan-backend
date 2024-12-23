@@ -40,6 +40,7 @@ import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
 import {BatchBlockTx} from "./BatchDBTx";
+import {SyncReporter} from "../monitor/InfluxWorker";
 
 const BigFixed = require('bigfixed');
 
@@ -56,11 +57,13 @@ export class FullBlockService {
     preLoadMap:PreloadMap
     private powSidePosSync: PowSidePosSync;
     batchBlockTx: BatchBlockTx;
+    private reporter: SyncReporter;
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.preLoadMap = new PreloadMap(this.loadEpochData.bind(this), 50)
         this.powSidePosSync = new PowSidePosSync(cfx);
         this.batchBlockTx = new BatchBlockTx();
+        this.reporter = new SyncReporter(ConfigInstance.influxDB);
     }
     // sync metrics
     private metrics = {
@@ -587,12 +590,13 @@ export class FullBlockService {
             // console.log(`====`, blockList[0])
             const epochPerStat = this.batchBlockTx.enable ? 1000 : 100
             if((minEpochNumber % epochPerStat) === 0) {
-                console.info(`${fmtDtUTC(new Date())} block ${metrics.blockCount
+                console.log(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
                 }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms: rpc ${metrics.pureRpcTime}/${metrics.queryFullNodeTime
                     } build ${metrics.procTime}/${metrics.buildTime}, bulkSaveDB ${metrics.bulkSaveMs} Detail: block ${metrics.saveBlockTime} allTx ${metrics.saveTxTime} addrTx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime}   `)
+                this.reporter.write({biz: 'blockSync',  ...metrics})
                 if ((minEpochNumber % 1000) === 0) {
                     // insert a place holder
                     incDailyAddressCount(blockTime, 0).catch(e=>console.log(`${__filename}`, e));
