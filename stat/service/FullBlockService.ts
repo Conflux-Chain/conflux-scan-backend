@@ -101,6 +101,7 @@ export class FullBlockService {
         } else {
             await this.resetPreviousPivotHash(maxEpoch)
         }
+        this.reporter.connect();
         await FullBlockService.checkBlockCountKV()
         await FullBlockService.checkTxCountKV()
         await this.powSidePosSync.init()
