@@ -2,7 +2,7 @@ import {init} from "../service/tool/FixDailyTokenStat";
 
 process.env.TZ = 'UTC'
 // create monitor data in influx DB.
-import {FieldType, IHostConfig, InfluxDB} from 'influx'
+import {FieldType, IHostConfig, InfluxDB, ISingleHostConfig} from 'influx'
 import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
 import {HeartBeatBean} from "../model/HeartBeat";
@@ -84,6 +84,30 @@ async function copyAll(inf: InfluxDB) {
 class EpochMax {
     epoch: number; biz:string; createdAt: Date;
 }
+
+export class SyncReporter {
+    influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
+    private inf: InfluxDB;
+    constructor(influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}) {
+        this.influxDB = influxDB;
+        measurement = influxDB.measurement || measurement;
+    }
+    connect() {
+        if (this.influxDB.disable) {
+            return
+        }
+        this.inf = connectInflux(this.influxDB as any);
+    }
+    write(row:any) {
+        if (!this.inf) {
+            return
+        }
+        write(this.inf, measurement, row).catch(e=>{
+            console.log(`${__filename} failed to write metrics:`, e);
+        });
+    }
+}
+
 let measurement = 'sync_epoch_3';
 function connectInflux({host, database, username, password,  port, protocol}) {
     const influx = new InfluxDB({
