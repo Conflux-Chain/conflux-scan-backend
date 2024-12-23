@@ -88,6 +88,8 @@ class EpochMax {
 export const SyncBlockSchema = {
     fields: {
         biz: FieldType.STRING,
+        epochPerStat: FieldType.INTEGER,
+
         epoch: FieldType.INTEGER,
         ms : FieldType.INTEGER,
         bulkSaveMs: FieldType.INTEGER,
