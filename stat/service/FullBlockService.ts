@@ -597,7 +597,7 @@ export class FullBlockService {
                 }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms: rpc ${metrics.pureRpcTime}/${metrics.queryFullNodeTime
                     } build ${metrics.procTime}/${metrics.buildTime}, bulkSaveDB ${metrics.bulkSaveMs} Detail: block ${metrics.saveBlockTime} allTx ${metrics.saveTxTime} addrTx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime}   `)
-                this.reporter.write({biz: 'blockSync', epoch:minEpochNumber, epochPerStat,  ...metrics})
+                this.reporter.write({biz: 'blockSync', epoch:minEpochNumber, epochPerStat, batchSize: this.batchBlockTx.saveAtSize,  ...metrics})
                 if ((minEpochNumber % 1000) === 0) {
                     // insert a place holder
                     incDailyAddressCount(blockTime, 0).catch(e=>console.log(`${__filename}`, e));

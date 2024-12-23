@@ -89,6 +89,7 @@ export const SyncBlockSchema = {
     fields: {
         biz: FieldType.STRING,
         epochPerStat: FieldType.INTEGER,
+        batchSize: FieldType.INTEGER,
 
         epoch: FieldType.INTEGER,
         ms : FieldType.INTEGER,
