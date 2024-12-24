@@ -126,6 +126,7 @@ export async function onlineCache(obj: any, path: string ) {
     // console.log(`online cache ${path}`)
 }
 let hitCaches = 0
+let missCaches = 0;
 function readCache(method, params, cacheDir: string) : any {
     const parseParamFn = CacheConfig[method];
     if (parseParamFn) {
@@ -134,7 +135,9 @@ function readCache(method, params, cacheDir: string) : any {
         try {
             text = readFileSync(path, "utf-8").toString();
         } catch (e) {
-            console.log(`failed to load cache file`, e.message)
+            if (missCaches ++ % 1000 == 1) {
+                console.log(`failed to load cache file`, e.message)
+            }
             return undefined
         }
         try {
