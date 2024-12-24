@@ -2,6 +2,9 @@ import {FullBlock, loadMaxBlockEpoch} from "../../model/FullBlock";
 import {CLEAN_CACHE_CURSOR, KV} from "../../model/KV";
 import * as fs from "fs";
 import {init} from "../tool/FixDailyTokenStat";
+import {EpochHashCfxTransfer} from "../../CfxTransferSync";
+import {EpochHashTokenTransfer} from "../../TokenTransferSync";
+import {Epoch} from "../../model/Epoch";
 
 function rmFile(path: string, showLog: boolean) {
 	try {
@@ -33,7 +36,16 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 	if (isNaN(maxBlockEpoch)) {
 		return;
 	}
-	const bottomEpoch = maxBlockEpoch - keepEpochs;
+	let bottomEpoch = maxBlockEpoch - keepEpochs;
+	if (keepEpochs == 0) {
+		const tasks = [FullBlock, EpochHashCfxTransfer, EpochHashTokenTransfer, Epoch].map(
+			// @ts-ignore
+			m=>m.findOne({order:[['epoch', 'desc']]}).then(res=>res?.epoch || 0)
+		)
+		const epochArr = await Promise.all(tasks)
+		// @ts-ignore
+		bottomEpoch = Math.min(epochArr)
+	}
 	// remove caches with epoch < bottomEpoch
 	let cursor = await KV.getNumber(CLEAN_CACHE_CURSOR, bottomEpoch - keepEpochs);
 	if (cursor < 0) {
@@ -51,7 +63,7 @@ export async function evictCache(keepEpochs: number, cacheDir: string) {
 	}
 }
 export const DefaultCacheConf = {
-	keepEpochs: 10_000,
+	keepEpochs: 0,
 	cacheDir: "./cache/rpc",
 	delaySec: 10,
 	logPeriod: 100,
