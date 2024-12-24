@@ -2,6 +2,7 @@ import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../stat/service/common/utils";
 import {FullBlockService} from "../stat/service/FullBlockService";
 import {init} from "../stat/service/tool/FixDailyTokenStat";
+import {ConfluxOption} from "../stat/config/StatConfig";
 
 async function doIt(cfx: Conflux, workerId: number, start: number, step: number) {
 	let round = 0;
@@ -57,10 +58,42 @@ async function fetchDataTest(start: number) {
 	}
 }
 
+async function rpcCacheTest() {
+	const [,,cmd, url, cachePath = './cache/rpc', threads] = process.argv;
+	console.log(`cache path [${cachePath}]`);
+	const _cfxW = await initCfxSdk({url, cachePath, writeCache: true, writeTraceCache: true} as ConfluxOption);
+	const _cfxR = await initCfxSdk({url, cachePath, readCache:true,   readTraceCache: true} as ConfluxOption);
+	const epochNumber = 8;
+
+	async function read(cfx: Conflux) {
+		const arr = await cfx.getBlocksByEpochNumber(epochNumber);
+		console.log(`arr length ${arr.length} `)
+		const pHash = arr[arr.length-1];
+		for (let hash of arr) {
+			const block = await cfx.getBlockByHash(hash);
+			const block1 = await cfx.getBlockByHash(hash, true);
+			const block2 = await cfx.getBlockByHashWithPivotAssumption(hash, pHash, epochNumber);
+			const traces = await cfx.traceBlock(hash);
+			console.log(`block ${[block.hash,block1.hash, block2.hash].map(s=>s.substring(0, 6)).join(' ')} traces ${traces}`)
+		}
+		const rcptArr = await cfx.getEpochReceiptsByPivotBlockHash(pHash);
+		console.log(`receipts arr length ${rcptArr.length}`)
+	}
+
+	console.log(`write cache`)
+	await read(_cfxW); // should write cache
+	console.log(`\nread cache`)
+	await read(_cfxR); // should read cache
+
+	console.log(`ok`)
+}
+
 async function main() {
 	const [,,cmd, url, start, threads] = process.argv;
 	if ('rpcLoadTest' === cmd) {
 		await rpcLoadTest(url, parseInt(start||"1"), parseInt(threads||"8"));
+	} else if ('rpcCacheTest' === cmd) {
+		await rpcCacheTest()
 	} else if ('fetchDataTest' === cmd) {
 		await fetchDataTest(parseInt(start||"1"));
 	}

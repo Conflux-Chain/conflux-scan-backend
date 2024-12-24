@@ -282,10 +282,10 @@ export function removeLongData(obj) {
 }
 
 export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = undefined) {
-    let cfx: any;
+    let cfx: Conflux;
 
     if(confluxOption?.consortiumMode) {
-        cfx = new ConsortiumConflux(confluxOption);
+        cfx = new ConsortiumConflux(confluxOption) as any as Conflux;
     } else{
         cfx = new Conflux(confluxOption);
         confluxOption.url && await cfx.updateNetworkId();

@@ -1,7 +1,7 @@
 import * as fs from "fs";
+import {readFileSync} from "fs";
 import {URL} from "url";
 import {post} from "./http";
-import {readFileSync} from "fs";
 import {ConfluxOption, RpcCacheOption} from "../../config/StatConfig";
 
 const HttpProvider = require("js-conflux-sdk/src/provider/HttpProvider")
@@ -56,7 +56,6 @@ export class ScanHttpProvider extends HttpProvider {
         if (shouldReadCache) {
             const cache = readCache(data.method, data.params, this.conf.cachePath)
             if (cache) {
-                // console.log(`hit cache`)
                 return cache;
             }
         }
@@ -106,8 +105,12 @@ export const CacheConfig = {
     cfx_getBlockByHash: ([hash, detail])=>{
         return `${hash}_${detail}`
     },
-    cfx_getEpochReceipts: ([no])=>{
-        return no.blockHash ?? typeof no === 'string' ? no : BigInt(no);
+    cfx_getEpochReceipts: ([noOrPivotHashOrObj])=>{
+        // noOrPivotHashOrObj could be {
+        //   blockHash: '0x335b37e235c9d4d3163fe2549469e9847a1aac77e0d5efcfe6668bdfa7c6bbb2',
+        //   requirePivot: true
+        // }
+        return noOrPivotHashOrObj.blockHash ?? (typeof noOrPivotHashOrObj === 'string' ? noOrPivotHashOrObj : BigInt(noOrPivotHashOrObj));
     },
     trace_block:([hash])=>{
         return hash;
