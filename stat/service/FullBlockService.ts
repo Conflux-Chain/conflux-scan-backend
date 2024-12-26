@@ -600,7 +600,6 @@ export class FullBlockService {
         if (this.batchBlockTx.enable && this.batchBlockTx.batchSize < this.batchBlockTx.saveAtSize) {
             this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr, blockExtArr, posRegArr)
             skip = true;
-            this.metrics.ms += Date.now() - veryBegin;
             this.previousPivotHash = pivotBlock.hash
         }
         //
