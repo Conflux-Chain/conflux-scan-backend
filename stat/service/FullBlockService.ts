@@ -581,7 +581,7 @@ export class FullBlockService {
         }
 
         let now = Date.now();
-        preLoadResult.buildTime += now - start;
+        preLoadResult.buildTime = now - start;
     }
     async save(minEpochNumber: number, preLoadResult: any) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let metrics = this.metrics;
