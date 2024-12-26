@@ -387,7 +387,7 @@ export class FullBlockService {
 	    } else if (this.batchBlockTx.enable) {
 		    this.batchBlockTx.enable = false;
 	    }
-        return this.save(minEpochNumber, preLoadResult);
+        return this.save(minEpochNumber, preLoadResult, start);
     }
     public async checkReorg(minEpochNumber: number, preLoadResult: any) {
         // blockList = blockList.reverse(); // turn to asc order.
@@ -583,10 +583,9 @@ export class FullBlockService {
         let now = Date.now();
         preLoadResult.buildTime = now - start;
     }
-    async save(minEpochNumber: number, preLoadResult: any) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
+    async save(minEpochNumber: number, preLoadResult: any, veryBegin: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let metrics = this.metrics;
         let start = Date.now();
-        let veryBegin = start;
         const blockBeanArr = preLoadResult.fullBlock;
         const blockList = blockBeanArr;
         const executedTxArr = preLoadResult.fullTransaction;
