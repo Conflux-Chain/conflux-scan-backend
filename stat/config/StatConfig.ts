@@ -1,6 +1,7 @@
 // import {ConfluxOption} from "js-conflux-sdk";
 import {ISingleHostConfig} from "influx";
 import * as os from "os";
+import {Options} from "sequelize";
 
 const fs = require('fs')
 const templateConf = require('./Template')
@@ -45,21 +46,8 @@ export interface Database{
     syncSchema: boolean;
     readonly : boolean;
 }
-export interface DatabaseRW{
+export interface DatabaseRW extends Options {
     instanceName: string;
-    dialect: string;
-    port: number;
-    replication:Replication;
-    logging: boolean;
-}
-export interface Replication{
-    read: MySqlInstance[];
-    write: MySqlInstance;
-}
-export interface MySqlInstance{
-    host: string;
-    username: string;
-    password: string;
 }
 
 export interface OssConf {
