@@ -323,7 +323,9 @@ export class FullBlockService {
                 }
             }
         }
-        return {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start}
+        const preLoadResult = {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start}
+        await this.buildBlockByEpoch(minEpochNumber, preLoadResult)
+        return preLoadResult;
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
         const map = new Set<string>()
@@ -365,29 +367,32 @@ export class FullBlockService {
         gasFee: receipt["gasFee"], txExecErrorMsg: msg}
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
-        let start = Date.now()
-        let veryBegin = start
-        let preLoadResult = await this.preLoadMap.pop(minEpochNumber);
-        let now = Date.now();
-        let metrics = this.metrics;
-        metrics.queryFullNodeTime += now - start;  start = now; // =====================================================
-        metrics.pureRpcTime += preLoadResult.rpcTime;
-        metrics.procTime += preLoadResult.procTime;
-        if (preLoadResult.code !== 0) {
-            return preLoadResult
-        }
-        if (preLoadResult.latest_state - minEpochNumber > this.batchBlockTx.safeCatchupGap) {
-            this.preLoadMap.startNext();
-        } else if (this.batchBlockTx.enable) {
-            this.batchBlockTx.enable = false
-        }
+	    let start = Date.now()
+	    let preLoadResult = await this.preLoadMap.pop(minEpochNumber);
+	    let now = Date.now();
+	    let metrics = this.metrics;
+        metrics.queryFullNodeTime += now - start;
+	    metrics.pureRpcTime += preLoadResult.rpcTime;
+	    metrics.procTime += preLoadResult.procTime;
+	    metrics.buildTime += preLoadResult.buildTime;
+	    if (preLoadResult.code !== 0) {
+		    return preLoadResult
+	    }
+	    if (preLoadResult.latest_state - minEpochNumber > this.batchBlockTx.safeCatchupGap) {
+		    this.preLoadMap.startNext();
+	    } else if (this.batchBlockTx.enable) {
+		    this.batchBlockTx.enable = false
+	    }
+        return this.save(minEpochNumber, preLoadResult);
+    }
+    public async buildBlockByEpoch(minEpochNumber: number, preLoadResult: any) {
+        let start = Date.now();
         // blockList = blockList.reverse(); // turn to asc order.
         const blockList = preLoadResult.blockList
         const rewardList = preLoadResult.rewardList
-        let ok = true;
         let message = "ok";
         // the last one is pivot block.
-        let pivotBlock = blockList[blockList.length-1];
+        let pivotBlock = blockList[blockList.length - 1];
         if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > FirstBlockNo && this.checkReOrg) {
             if (this.batchBlockTx.batchSize > 0) {
                 console.log(`----- it should not happen. re-org detected at catchup ----`);
@@ -395,43 +400,44 @@ export class FullBlockService {
                 process.exit(0);
             }
             // pivot switch, pop and re-sync previous,
-            let preEpoch = minEpochNumber-1;
+            let preEpoch = minEpochNumber - 1;
             const addresses = new Set<number>();
-            const popEpochCondition = {[Op.gte]:preEpoch}
-            const [popTx,popBlockCount] = await Promise.all([
+            const popEpochCondition = {[Op.gte]: preEpoch}
+            const [popTx, popBlockCount] = await Promise.all([
                 FullTransaction.findAll({where: {epoch: popEpochCondition}}),
-                FullBlock.count({where:{epoch: popEpochCondition}})
+                FullBlock.count({where: {epoch: popEpochCondition}})
             ])
-            popTx.forEach(tx=>{
+            popTx.forEach(tx => {
                 addresses.add(tx.fromId)
                 addresses.add(tx.toId)
                 if (tx.contractCreatedId) {
                     addresses.add(tx.contractCreatedId)
                 }
             })
-					  await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true);
-					  await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true);
-            await FullBlock.sequelize.transaction(async (dbTx)=>{
+            await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true);
+            await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true);
+            await FullBlock.sequelize.transaction(async (dbTx) => {
                 await Promise.all([
-                    FailedTx.destroy({where:{epoch:popEpochCondition}, transaction: dbTx}),
-                    FullBlock.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
-                    FullTransaction.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
+                    FailedTx.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
+                    FullBlock.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
+                    FullTransaction.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                     AddressTransactionIndex.destroy({
-                        where:{epoch: popEpochCondition, addressId: [...addresses],},
-                        transaction: dbTx}),
-                    FullBlockExt.destroy({where:{epoch: popEpochCondition}, transaction: dbTx}),
+                        where: {epoch: popEpochCondition, addressId: [...addresses],},
+                        transaction: dbTx
+                    }),
+                    FullBlockExt.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                     diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
-                } = ${pivotBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
+            } = ${pivotBlock.hash}\n previous epoch ${preEpoch} = ${this.previousPivotHash}`
             console.log(`pivot switch detected: `, message)
-            await this.resetPreviousPivotHash(preEpoch-1)
+            await this.resetPreviousPivotHash(preEpoch - 1)
             return {code: CODE_REWIND, message}
         }
-        let blockTime = new Date(pivotBlock.timestamp*1000);
+        let blockTime = new Date(pivotBlock.timestamp * 1000);
         // build block template out of the transaction below.
         for (const [blockIdx, block] of blockList.entries()) {
             if (block.epochNumber !== minEpochNumber) {
@@ -447,7 +453,7 @@ export class FullBlockService {
             }
             block.epoch = minEpochNumber;
             block.pivot = false;
-            const reward = minEpochNumber == 0 ? {} : rewardList.find(r=>r.blockHash === block.hash) || {}
+            const reward = minEpochNumber == 0 ? {} : rewardList.find(r => r.blockHash === block.hash) || {}
             let minerBase32 = block.miner;
             let minerHex = format.hexAddress(minerBase32)
             //save address anyway, so use undefined transaction.
@@ -470,16 +476,14 @@ export class FullBlockService {
         pivotBlock.pivot = true
         // build transaction template
         const hexMap = await this.buildHexIds(blockList, blockTime);
-        const blockBeanArr = this.batchBlockTx.fullBlock;
+        const blockBeanArr = preLoadResult.fullBlock = [];
         blockBeanArr.push(...blockList);
-        const executedTxArr = this.batchBlockTx.fullTransaction;
-        const txByAddressArr = this.batchBlockTx.addressTransactionIndex;
-        const failedTxArr = this.batchBlockTx.failedTX;
-        const blockExtArr = this.batchBlockTx.fullBlockExt;
-        const posRegArr = this.batchBlockTx.posRegArr;
+        const executedTxArr = preLoadResult.fullTransaction =[];
+        const txByAddressArr = preLoadResult.addressTransactionIndex = [];
+        const failedTxArr = preLoadResult.failedTX = [];
+        const blockExtArr = preLoadResult.fullBlockExt = [];
+        const posRegArr = preLoadResult.posRegArr = [];
         await this.powSidePosSync.checkPosRegister(posRegArr, preLoadResult.receipts, minEpochNumber, blockTime, null)
-        const txCntPre = executedTxArr.length;
-        const addrTxCntPre = txByAddressArr.length;
 
         for (const block of blockList) {
             let sumGasPrice = BigInt(0)
@@ -495,17 +499,17 @@ export class FullBlockService {
                 const st = txInfo.receipt?.outcomeStatus
                 if (st == 0 || st == 1 || minEpochNumber === 0) {
                     txInfo.fromId = hexMap.get(txInfo.from) || 0
-                    txInfo.toId =  hexMap.get(txInfo.to) || 0
+                    txInfo.toId = hexMap.get(txInfo.to) || 0
                     txInfo.contractCreatedId = hexMap.get(txInfo.receipt?.contractCreated) || 0
                     if (txInfo.contractCreatedId) {
                         const contractBean = {
                             hex40id: txInfo.contractCreatedId, epoch: minEpochNumber,
-                            base32:  noVerboseAddr(txInfo.receipt.contractCreated),
+                            base32: noVerboseAddr(txInfo.receipt.contractCreated),
                             createdAt: blockTime,
                         }
                         await Contract.create(contractBean)
-                            .catch(err=>console.log(` save contract addr fail: tx ${txInfo.hash
-                            } ${JSON.stringify(contractBean)}, `, err))
+                        .catch(err => console.log(` save contract addr fail: tx ${txInfo.hash
+                        } ${JSON.stringify(contractBean)}, `, err))
                     }
                     txInfo.epoch = minEpochNumber;
                     txInfo.blockPosition = block.position
@@ -534,7 +538,7 @@ export class FullBlockService {
                     sumGasLimit += txInfo.gasLimit
                     sumBurntGasFee += BigInt(txInfo.receipt?.burntGasFee || 0)
                     sumTip += BigInt(txInfo?.maxPriorityFeePerGas || 0)
-                    txsInType[Number(txInfo?.type || 0)] ++
+                    txsInType[Number(txInfo?.type || 0)]++
                 }
                 if (st == 1) { // has value and is not zero: failed.
                     failedTxArr.push(FullBlockService.syncFailedTx(minEpochNumber, txInfo))
@@ -565,10 +569,31 @@ export class FullBlockService {
             const blockExt = buildBlockExt(minEpochNumber, block)
             blockExtArr.push(blockExt)
         }
-        this.batchBlockTx.batchSize ++
-        now = Date.now();    metrics.buildTime += now - start;  start = now; // =============================
+
+        let now = Date.now();
+        preLoadResult.buildTime += now - start;
+    }
+    async save(minEpochNumber: number, preLoadResult: any) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
+        let metrics = this.metrics;
+        let start = Date.now();
+        let veryBegin = start;
+        const blockBeanArr = preLoadResult.fullBlock;
+        const blockList = blockBeanArr;
+        const executedTxArr = preLoadResult.fullTransaction;
+        const txByAddressArr = preLoadResult.addressTransactionIndex;
+        const failedTxArr = preLoadResult.failedTX;
+        const blockExtArr = preLoadResult.fullBlockExt;
+        const posRegArr = preLoadResult.posRegArr;
         //
-        await ((this.batchBlockTx.enable && this.batchBlockTx.batchSize < this.batchBlockTx.saveAtSize) ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
+        let skip = false;
+        if (this.batchBlockTx.enable && this.batchBlockTx.batchSize < this.batchBlockTx.saveAtSize) {
+            this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr, blockExtArr, posRegArr)
+            skip = true;
+        }
+        const pivotBlock = blockList[blockList.length - 1];
+        const blockTime = pivotBlock.createdAt;
+        //
+        await ( skip ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 FailedTx.bulkCreate(failedTxArr, {transaction: dbTx, ignoreDuplicates: true}),
                 FullBlock.bulkCreate(blockBeanArr, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
@@ -585,8 +610,8 @@ export class FullBlockService {
             metrics.ms += now - veryBegin
             metrics.bulkSaveMs += now - start;
             this.previousPivotHash = pivotBlock.hash
-            metrics.executedTxCount += executedTxArr.length - txCntPre
-            metrics.addressTxCount += txByAddressArr.length - addrTxCntPre
+            metrics.executedTxCount += executedTxArr.length
+            metrics.addressTxCount += txByAddressArr.length
             metrics.blockCount += blockList.length
             // console.log(`====`, blockList[0])
             const epochPerStat = this.batchBlockTx.enable ? 1000 : 100
@@ -613,7 +638,7 @@ export class FullBlockService {
             }
         })
         return {
-            code: ok ? 0 : 500, message, blockCount: blockList.length,
+            code: 0, message:'ok', blockCount: blockList.length,
             epoch: minEpochNumber, executedTxnCount: executedTxArr.length
         };
     }
