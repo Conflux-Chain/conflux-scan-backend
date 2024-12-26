@@ -586,12 +586,13 @@ export class FullBlockService {
         const posRegArr = preLoadResult.posRegArr;
         //
         let skip = false;
+        const pivotBlock = blockList[blockList.length - 1];
+        const blockTime = pivotBlock.createdAt;
         if (this.batchBlockTx.enable && this.batchBlockTx.batchSize < this.batchBlockTx.saveAtSize) {
             this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr, blockExtArr, posRegArr)
             skip = true;
+            this.previousPivotHash = pivotBlock.hash
         }
-        const pivotBlock = blockList[blockList.length - 1];
-        const blockTime = pivotBlock.createdAt;
         //
         await ( skip ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
             await Promise.all([
