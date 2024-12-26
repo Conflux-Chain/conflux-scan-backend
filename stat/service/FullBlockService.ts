@@ -378,19 +378,20 @@ export class FullBlockService {
 	    if (preLoadResult.code !== 0) {
 		    return preLoadResult
 	    }
+        const chk = await this.checkReorg(minEpochNumber, preLoadResult);
+        if (chk.code != 0) {
+            return chk;
+        }
 	    if (preLoadResult.latest_state - minEpochNumber > this.batchBlockTx.safeCatchupGap) {
 		    this.preLoadMap.startNext();
 	    } else if (this.batchBlockTx.enable) {
-		    this.batchBlockTx.enable = false
+		    this.batchBlockTx.enable = false;
 	    }
         return this.save(minEpochNumber, preLoadResult);
     }
-    public async buildBlockByEpoch(minEpochNumber: number, preLoadResult: any) {
-        let start = Date.now();
+    public async checkReorg(minEpochNumber: number, preLoadResult: any) {
         // blockList = blockList.reverse(); // turn to asc order.
         const blockList = preLoadResult.blockList
-        const rewardList = preLoadResult.rewardList
-        let message = "ok";
         // the last one is pivot block.
         let pivotBlock = blockList[blockList.length - 1];
         if (pivotBlock.parentHash !== this.previousPivotHash && minEpochNumber > FirstBlockNo && this.checkReOrg) {
@@ -437,6 +438,15 @@ export class FullBlockService {
             await this.resetPreviousPivotHash(preEpoch - 1)
             return {code: CODE_REWIND, message}
         }
+        return {code: 0}
+    }
+    public async buildBlockByEpoch(minEpochNumber: number, preLoadResult: any) {
+        const blockList = preLoadResult.blockList
+        let start = Date.now();
+        const rewardList = preLoadResult.rewardList
+        let message = "ok";
+        let pivotBlock = blockList[blockList.length - 1];
+
         let blockTime = new Date(pivotBlock.timestamp * 1000);
         // build block template out of the transaction below.
         for (const [blockIdx, block] of blockList.entries()) {
