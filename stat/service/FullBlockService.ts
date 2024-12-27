@@ -586,21 +586,24 @@ export class FullBlockService {
     async save(minEpochNumber: number, preLoadResult: any, veryBegin: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let metrics = this.metrics;
         let start = Date.now();
-        const blockBeanArr = preLoadResult.fullBlock;
+        let {
+            fullBlock: blockBeanArr, fullTransaction: executedTxArr, addressTransactionIndex: txByAddressArr,
+            failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr
+        } = preLoadResult;
         const blockList = blockBeanArr;
-        const executedTxArr = preLoadResult.fullTransaction;
-        const txByAddressArr = preLoadResult.addressTransactionIndex;
-        const failedTxArr = preLoadResult.failedTX;
-        const blockExtArr = preLoadResult.fullBlockExt;
-        const posRegArr = preLoadResult.posRegArr;
+        this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr, blockExtArr, posRegArr)
         //
         let skip = false;
         const pivotBlock = blockList[blockList.length - 1];
         const blockTime = pivotBlock.createdAt;
         if (this.batchBlockTx.enable && this.batchBlockTx.batchSize < this.batchBlockTx.saveAtSize) {
-            this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr, blockExtArr, posRegArr)
             skip = true;
             this.previousPivotHash = pivotBlock.hash
+        } else {
+            ( {
+                fullBlock: blockBeanArr, fullTransaction: executedTxArr, addressTransactionIndex: txByAddressArr,
+                failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr
+            } = this.batchBlockTx );
         }
         //
         await ( skip ? Promise.resolve() : FullBlock.sequelize.transaction(async (dbTx) => {
