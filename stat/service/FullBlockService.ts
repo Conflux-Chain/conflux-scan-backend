@@ -373,6 +373,8 @@ export class FullBlockService {
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         const existence = await FullBlock.findOne({where: {epoch: minEpochNumber, pivot: true}})
         if (existence) {
+            this.preLoadMap.delete(minEpochNumber)
+            this.preLoadMap.startNext();
             this.previousPivotHash = existence.hash
             return {code: 0}
         }
