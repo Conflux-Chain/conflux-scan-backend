@@ -95,7 +95,7 @@ export class FullBlockService {
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) : Promise<void> {
-        let maxEpoch:number = await loadMaxBlockEpoch(NaN)
+        let maxEpoch:number = 40268300 - 1;//await loadMaxBlockEpoch(NaN)
         if (isNaN(maxEpoch)) {
            maxEpoch = FirstBlockNo - 1 // will +1 below
         } else {
@@ -123,6 +123,10 @@ export class FullBlockService {
         }
         const fnUnsafe = async ()=>{
             const wantEpoch = maxEpoch + 1;
+            if (wantEpoch >= 63409640) {
+                console.log(`finished`)
+                process.exit(0)
+            }
             let ret
             ret = await that.syncBlockByEpoch(wantEpoch).catch(err=>{
                 const errStr = `${err}`
@@ -367,7 +371,12 @@ export class FullBlockService {
         gasFee: receipt["gasFee"], txExecErrorMsg: msg}
     }
     public async syncBlockByEpoch(minEpochNumber: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
-	    let start = Date.now()
+        const existence = await FullBlock.findOne({where: {epoch: minEpochNumber, pivot: true}})
+        if (existence) {
+            this.previousPivotHash = existence.hash
+            return {code: 0}
+        }
+	    let start = Date.now();
 	    let preLoadResult = await this.preLoadMap.pop(minEpochNumber);
 	    let now = Date.now();
 	    let metrics = this.metrics;
