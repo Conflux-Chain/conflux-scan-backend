@@ -134,10 +134,12 @@ export class BlockService {
     if(NoCoreSpace) {
       // For non-cfx chains, use block's gasLIMIT and gasUsed
     } else {
-      // Some calculations are performed when syncing blocks
       result['gasUsed'] = gasUsed;
-      const block = await FullBlock.findOne({where:{hash}})
-      block && (result['gasLimit'] = block['gasLimit'])
+      if (!StatApp.isEVM) {
+        // Some calculations are performed when syncing blocks
+        const block = await FullBlock.findOne({where: {hash}})
+        block && (result['gasLimit'] = block['gasLimit'])
+      }
     }
     StatApp.isEVM && (result['crossSpaceTransactionCount'] = crossSpaceTransactionCount)
 
@@ -261,11 +263,9 @@ async function loadEvmBlockSpec(epochNumber: number, gasLimitBase: number) {
     // the other chains go here.
   } else if (StatApp.isEVM) {
     // E Space
-    const map = await queryEvmBlockCountInEachEpoch(epochNumber, epochNumber);
-    const evmBlockCount = map[epochNumber];
-    coreBlock = evmBlockCount ? 0 : 1;
-    const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
-    gasLimit = BigInt(gasLimitBase) * BigInt(100 * evmBlockCount * proportion) / BigInt(100);
+    // rpc returns accurate value now (near 2024.12.30)
+    gasLimit = BigInt(gasLimitBase);
+    coreBlock = gasLimit == BigInt(0) ? 1 : 0;
   } else {
     // core space, it was calculated when syncing blocks, and used in fn _getDetail
   }
