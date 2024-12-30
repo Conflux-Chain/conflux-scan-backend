@@ -327,8 +327,13 @@ export class FullBlockService {
                 }
             }
         }
-        const preLoadResult = {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start}
+        const preLoadResult = {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start, buildTime: 0}
+        if (code != 0) {
+            return preLoadResult;
+        }
+        start = Date.now();
         await this.buildBlockByEpoch(minEpochNumber, preLoadResult)
+        preLoadResult.buildTime = Date.now() - start;
         return preLoadResult;
     }
     async buildHexIds(blockList, dt:Date) : Promise<Map<string, number>> {
@@ -453,7 +458,6 @@ export class FullBlockService {
     }
     public async buildBlockByEpoch(minEpochNumber: number, preLoadResult: any) {
         const blockList = preLoadResult.blockList
-        let start = Date.now();
         const rewardList = preLoadResult.rewardList
         let message = "ok";
         let pivotBlock = blockList[blockList.length - 1];
@@ -590,9 +594,6 @@ export class FullBlockService {
             const blockExt = buildBlockExt(minEpochNumber, block)
             blockExtArr.push(blockExt)
         }
-
-        let now = Date.now();
-        preLoadResult.buildTime = now - start;
     }
     async save(minEpochNumber: number, preLoadResult: any, veryBegin: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
         let metrics = this.metrics;
