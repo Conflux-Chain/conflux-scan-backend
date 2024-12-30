@@ -11,6 +11,7 @@ import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {CfxTransfer} from "../model/CfxTransfer";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
 import {fmtDtUTC} from "../model/Utils";
+import {Measure} from "./common/Measure";
 
 const lodash = require('lodash');
 
@@ -18,19 +19,21 @@ const PRELOAD_SIZE_NORMAL = 8
 const PRELOAD_SIZE_CATCHUP = 300
 
 export abstract class SyncBase {
+    private epochLatestState: number
+    private preloadSize: number = PRELOAD_SIZE_CATCHUP
     private forwardQueue: PreloadMap
     protected app: any
     protected catchUp: CatchUp
-    public preloadSize: number = PRELOAD_SIZE_CATCHUP
-    private epochLatestState: number
+    protected measure: Measure
 
     protected constructor(app: any) {
         this.app = app;
         this.forwardQueue = new PreloadMap(this.getData.bind(this));
         this.catchUp = new CatchUp(app, this)
+        this.measure = new Measure()
     }
 
-    private async getDataForwardWithPreload(epochNumber): Promise<SyncData> {
+    private async getDataForwardWithPreload(epochNumber: number): Promise<SyncData> {
         const stateEpochNumber = this.epochLatestState
         lodash.range(this.preloadSize).forEach((i) => {
             if (epochNumber + i < stateEpochNumber) {
@@ -65,27 +68,31 @@ export abstract class SyncBase {
         let data: SyncData;
 
         try {
-            data = await this.getDataForwardWithPreload(epochNumber);
-            if (data.syncCode === SyncCode.RETRY) {
-                console.log(`[epoch=${epochNumber}]sync_forward fetch,retry: ${data.message}`);
-                await sleep(10_000);
-                return epochNumber;
-            }
+            data = await this.measure.call('preload', () => this.getDataForwardWithPreload(epochNumber))
         } catch (e) {
-            console.log(`[epoch=${epochNumber}]sync_forward fetch,error:`, e);
+            console.log(`[epoch=${epochNumber}]sync_forward fetch error:`, e);
+            await sleep(10_000);
+            return epochNumber;
+        }
+
+        if (data.syncCode === SyncCode.RETRY) {
+            console.log(`[epoch=${epochNumber}]sync_forward fetch retry: ${data.message}`);
             await sleep(10_000);
             return epochNumber;
         }
 
         try {
-            syncCode = await this.saveForward(epochNumber, data);
-            if (epochNumber % 100 === 0) {
-                console.log(`${fmtDtUTC(new Date())} Catch-up mode: ${this.catchUp.status()}, latest epoch ${epochNumber}`)
-            }
+            syncCode = await this.measure.call('save', () => this.saveForward(epochNumber, data))
         } catch (e) {
-            console.log(`[epoch=${epochNumber}]sync_forward sync,error:`, e);
+            console.log(`[epoch=${epochNumber}]sync_forward save error:`, e);
             await sleep(10_000);
             return epochNumber;
+        }
+
+        const catchup = this.catchUp.status()
+        if (epochNumber % (catchup ? 1000 : 100) === 0) {
+            console.log(`${fmtDtUTC(new Date())} Catch-up mode: ${catchup}, latest epoch ${epochNumber}`)
+            catchup && this.measure.dump(`${epochNumber}`, 1, 'save')
         }
 
         if (syncCode === SyncCode.SUCCESS) {
@@ -96,7 +103,7 @@ export abstract class SyncBase {
             this.forwardQueue.clear();
             epochNumber -= 1;
             await this.delete(epochNumber, data.modelData).catch((e) => {
-                console.log(`[epoch=${epochNumber}]sync_forward del,error`, e);
+                console.log(`[epoch=${epochNumber}]sync_forward del error:`, e);
                 throw e;
             });
         }
@@ -114,7 +121,7 @@ export abstract class SyncBase {
         const that = this
         async function repeat() {
             if (epoch <= latestStateEpoch - (that.preloadSize)) {
-                epoch = await that.syncForward(epoch);
+                epoch = await that.measure.taskWait('wait', () => that.syncForward(epoch))
                 setTimeout(repeat, 0)
             } else {
                 latestStateEpoch = that.epochLatestState

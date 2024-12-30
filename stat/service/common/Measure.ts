@@ -3,6 +3,7 @@ class CallTime {
     ms = 0
     veryStart = 0
     veryEnd = 0
+    taskEnd = 0
 }
 export class Measure {
     times = 0
@@ -48,6 +49,22 @@ export class Measure {
         this.times++
         this.m(tag, start)
         return ret;
+    }
+    async taskWait<T>(tag: string, fn:()=>Promise<T>) {
+        if (!tag) {
+            return fn();
+        }
+
+        const t = this.checkEntry(tag)
+        if (t.taskEnd) {
+            t.times += 1
+            t.ms += Date.now() - t.taskEnd
+        }
+
+        return fn().then(res=>{
+            t.taskEnd = Date.now()
+            return res;
+        })
     }
     dump(msg:string, mod = 1, ...specialKey:string[]) {
         if (this.times % mod !== 0) {
