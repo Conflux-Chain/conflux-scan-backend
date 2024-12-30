@@ -136,6 +136,25 @@ export class BatchBlockTx extends BatchDataBase{
 		super();
 		this.reset();
 	}
+
+	enqueue(
+		failedTX: IFailedTx[],
+		fullBlock: FullBlock[],
+		fullTransaction: FullTransaction[],
+		addressTransactionIndex: AddressTransactionIndex[],
+		fullBlockExt: FullBlockExt[],
+		posRegArr: IPosRegister[],
+	) {
+		this.failedTX.push(...failedTX)
+		this.fullBlock.push(...fullBlock)
+		this.fullTransaction.push(...fullTransaction)
+		this.addressTransactionIndex.push(...addressTransactionIndex)
+		this.fullBlockExt.push(...fullBlockExt)
+		this.posRegArr.push(...posRegArr)
+
+		this.batchSize++
+	}
+
 	//
 	reset() {
 		// https://stackoverflow.com/questions/1232040/how-do-i-empty-an-array-in-javascript

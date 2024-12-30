@@ -6,12 +6,15 @@ import {EpochHashCfxTransfer} from "../../CfxTransferSync";
 import {EpochHashTokenTransfer} from "../../TokenTransferSync";
 import {Epoch} from "../../model/Epoch";
 
+let rmFailureTimes = 0;
 function rmFile(path: string, showLog: boolean) {
 	try {
 		fs.rmSync(path)
 		showLog && console.log(`rm cache ${path}`)
 	} catch (e) {
-		showLog && console.log(`failed to remove ${path} , ${e}`)
+		if ((rmFailureTimes++) % 1000 == 1) {
+			showLog && console.log(`failed to remove ${path} , ${e}`)
+		}
 	}
 }
 
