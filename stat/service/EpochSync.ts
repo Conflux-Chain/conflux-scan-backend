@@ -1358,7 +1358,7 @@ export class EpochSync extends SyncBase {
 
     // `-------------------------- evict epoch address ---------------------------`
     public async scheduleEvict(delay: number = 1000) {
-        console.log(`schedule evict epoch address with delay: ${delay}`);
+        console.log(`schedule evict epoch address, interval: ${delay}`);
         const that = this;
 
         async function repeat() {

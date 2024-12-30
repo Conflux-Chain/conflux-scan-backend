@@ -215,7 +215,7 @@ export abstract class SyncBase {
 
     //------------------------- flush latest epoch ---------------------------
     public async scheduleLatestEpoch(delay: number = 10) {
-        console.log(`schedule latest epoch with delay: ${delay}`)
+        console.log(`schedule latest epoch, interval: ${delay}`)
 
         await this.latestStateEpoch()
 

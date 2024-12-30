@@ -17,7 +17,7 @@ export class StatOnRealtime {
 
     constructor() {}
 
-    public async schedule() {
+    public async schedule(delay = 1000) {
         const that = this
 
         async function repeat() {
@@ -30,11 +30,11 @@ export class StatOnRealtime {
             await that.statGasPriceTracker().catch(err=>{
                 console.log(`stat gas_price_tracker fail: `, err)
             })
-            setTimeout(repeat, 1000)
+            setTimeout(repeat, delay)
         }
 
         repeat().then()
-        console.log(`schedule stat_on_realtime service in 1s interval`)
+        console.log(`schedule realtime stat, interval: ${delay}`)
     }
 
     /*
