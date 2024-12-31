@@ -112,11 +112,12 @@ export class EpochSync extends SyncBase {
     public async getData(epochNumber): Promise<SyncData> {
 
         try {
-            const epochData = await this.getEpochData(epochNumber)
+            let epochData = await this.getEpochData(epochNumber)
             const {epoch, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts} = epochData
+            epochData = null
             const epochTimestamp = epoch.timestamp
 
-            const [minerBlockArray, txArray, adminDestroyTxArray, eventLogInfo, traceArray, tokenLogs,
+            let [minerBlockArray, txArray, adminDestroyTxArray, eventLogInfo, traceArray, tokenLogs,
                 censorItemArray, voteParamArray] = await Promise.all([
                 this.getMinerBlockArray(epochNumber, blockArray),
                 EpochSync.getTransactionArrayDB(blockArray, epochTimestamp),
@@ -128,19 +129,22 @@ export class EpochSync extends SyncBase {
                 StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
             ])
 
-            const [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray, createArray, crossSpaceArray,
-                tokenTransferArray, cfxTransferArray] = await Promise.all([
+            let [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray, createArray, crossSpaceArray,
+                cfxTransferArray, tokenTransferArray] = await Promise.all([
                 this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray),
                 this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray),
                 this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray),
                 this.getTokensAutoDetected(tokenLogs),
                 this.getTraceCreateArrayPlus(traceArray),
                 this.getTraceCrossSpaceArray(traceArray),
-                this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true),
                 this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray),
+                this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true),
             ])
+            eventLogInfo = null
+            traceArray = null
+            tokenLogs = null
 
-            const [announcedTokenArray, announcedContractArray, traceCreateArray, traceCrossSpaceArray,
+            let [announcedTokenArray, announcedContractArray, traceCreateArray, traceCrossSpaceArray,
                 {transfers: addrTransferArray, epochAddrIdArray}, nftTransferArray,
                 addrNftTransferArray] = await Promise.all([
                 this.getAnnouncedTokens(epochNumber, announceInfo.tokenArray),
@@ -151,14 +155,22 @@ export class EpochSync extends SyncBase {
                 this.getNftTransferArray(epochNumber, tokenTransferArray),
                 this.getAddrNftTransferArray(epochNumber, tokenTransferArray),
             ])
+            txArray = null
+            createArray = null
+            crossSpaceArray = null
+            cfxTransferArray = null
+            tokenTransferArray = null
 
-            const [evmAddressArray, addressNfts, transferredNftArray] = await Promise.all([
+
+            let [evmAddressArray, addressNfts, transferredNftArray] = await Promise.all([
                 this.getEvmAddressArray(traceCrossSpaceArray),
                 this.getAddressNft(epochNumber, epochTimestamp, addrNftTransferArray),
                 this.getTransferredNftArray(epochNumber, addrTransferArray),
                 this.saveTokenIcon(announceInfo),
                 this.saveContractVerify(traceCreateArray)
             ])
+            announceInfo = null
+            traceCrossSpaceArray = null
 
             const modelData: any = {
                 epoch,
@@ -250,8 +262,9 @@ export class EpochSync extends SyncBase {
 
         const {catchingUp, needStore} = await this.catchUp.enqueue(modelData, voteParamArray)
         if(needStore) {
-            const data = this.catchUp.data()
+            let data = this.catchUp.data()
             await this.saveOnce(data, data.voteParamArray).finally(() => this.catchUp.reset())
+            data = null
         }
         if(catchingUp) {
             return
@@ -264,7 +277,7 @@ export class EpochSync extends SyncBase {
 
     async saveOnce(modelData, voteParamArray) {
         const epochArray = modelData.epochArray?.length ? modelData.epochArray : [modelData.epoch]
-        return Epoch.sequelize.transaction(async (dbTx) => {
+        await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 Epoch.bulkCreate(epochArray, {transaction: dbTx}),
                 FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx}),
@@ -308,6 +321,8 @@ export class EpochSync extends SyncBase {
                 }): undefined as any,
             ])
         })
+        modelData = null
+        voteParamArray = null
     }
 
     async delete(epochNumber, modelData) {

@@ -16,7 +16,7 @@ import {Measure} from "./common/Measure";
 const lodash = require('lodash');
 
 const PRELOAD_SIZE_NORMAL = 8
-const PRELOAD_SIZE_CATCHUP = 64
+const PRELOAD_SIZE_CATCHUP = 50
 
 export abstract class SyncBase {
     private epochLatestState: number
