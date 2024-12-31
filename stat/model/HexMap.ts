@@ -120,18 +120,22 @@ export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESp
         )
     }
 }
-const base32toHexCache = new NodeCache()
+const cacheTtl = 60 * 10 // 10 minutes
+const base32toHexCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
 export function formatToHex(address:string) {
     let hex = base32toHexCache.get(address)
     if (hex) {
         return hex;
     }
     hex = format.hexAddress(address);
-    base32toHexCache.set(address, hex, cacheTtl)
+    try {
+        base32toHexCache.set(address, hex, cacheTtl)
+    } catch (e){
+        //error: Cache max keys amount exceeded
+    }
     return hex;
 }
-const dbCache = new NodeCache()
-const cacheTtl = 60 * 100 // 10 minutes
+const dbCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
 export async function makeIdV(hex: string, dbTxNotUsed: Transaction = undefined, p = undefined) : Promise<number>{
     return makeId(hex, undefined, p).then(res=>res.id)
 }
@@ -158,7 +162,11 @@ export async function makeId(hex: string, dbTxNotUsed: Transaction = undefined, 
     }
     const exists = await map.findOne({where:{hex}})
     if (exists) {
-        dbCache.set(hex, exists, cacheTtl);
+        try{
+            dbCache.set(hex, exists, cacheTtl);
+        } catch (e){
+            //error: Cache max keys amount exceeded
+        }
         return exists
     }
     const values:HexMapAttributes = {hex: hex};

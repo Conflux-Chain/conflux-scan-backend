@@ -16,7 +16,7 @@ import {Measure} from "./common/Measure";
 const lodash = require('lodash');
 
 const PRELOAD_SIZE_NORMAL = 8
-const PRELOAD_SIZE_CATCHUP = 300
+const PRELOAD_SIZE_CATCHUP = 64
 
 export abstract class SyncBase {
     private epochLatestState: number
@@ -92,7 +92,7 @@ export abstract class SyncBase {
         const catchup = this.catchUp.status()
         if (epochNumber % (catchup ? 1000 : 100) === 0) {
             console.log(`${fmtDtUTC(new Date())} Catch-up mode: ${catchup}, latest epoch ${epochNumber}`)
-            catchup && this.measure.dump(`${epochNumber}`, 1, 'save')
+            catchup && this.measure.dump(`${epochNumber}`, 1, 'wait', 'save')
         }
 
         if (syncCode === SyncCode.SUCCESS) {
