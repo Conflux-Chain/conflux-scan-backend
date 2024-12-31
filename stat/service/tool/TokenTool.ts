@@ -16,11 +16,15 @@ const fs = require('fs');
 const path = require('path');
 const lodash = require('lodash');
 const NodeCache = require( "node-cache" );
-const dbCache = new NodeCache()
-const cacheTtl = 60 * 50 // 50 minutes
+const cacheTtl = 60 * 10 // 10 minutes
+const dbCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
 
 export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base32:string}) {
-    dbCache.set(obj.base32 || '', obj, cacheTtl)
+    try {
+        dbCache.set(obj.base32 || '', obj, cacheTtl)
+    } catch (e){
+        //error: Cache max keys amount exceeded
+    }
 }
 
 export class TokenTool {
@@ -56,7 +60,11 @@ export class TokenTool {
                 .then(Number)
                 .catch(() => undefined),
         }).then(obj=>{
-            dbCache.set(address, obj, cacheTtl)
+            try {
+                dbCache.set(address, obj, cacheTtl)
+            } catch (e){
+                //error: Cache max keys amount exceeded
+            }
             return obj;
         });
     }
@@ -353,12 +361,6 @@ export class TokenTool {
             .catch(() => undefined);
     }
 
-    async isCustodianToken(address, custodianAddress, epochNumber) {
-        return this.contract.isToken(address)
-            .call({ to: custodianAddress }, epochNumber)
-            .catch(() => undefined);
-    }
-
     matchTrace(transactionTraceArray, transaction){
         if (!transactionTraceArray.length) {
             return[];
@@ -391,58 +393,7 @@ export class TokenTool {
             .sendTransaction(options)
             .executed();
     }
-
-    cacheErrorResult(err, key, value) {
-        const msg = err.message || '';
-        if (msg.includes('Transaction reverted') || msg.includes('Transaction execution failed')) {
-            // that contract doesnt have the method, do not call again.
-            dbCache.set(key, value);
-        }
-        return undefined;
-    }
-
-    async getTokenAccountCount(address, epochNumber) {
-        const key = `${address}_getTokenAccountCount`;
-        const cache = dbCache.get(key);
-        if (cache !== null && cache !== undefined) {
-            return cache;
-        }
-        return this.contract.accountCount()
-            .call({ to: address }, epochNumber)
-            .then(Number)
-            .catch((err) => { return this.cacheErrorResult(err, key, 0); });
-    }
-
-    async getBalances(account, contracts, utilContract) {
-        if (utilContract === undefined) {
-            console.log('util contract not set.');
-            return [];
-        }
-        return this.contract.getBalances(account, contracts)
-            .call({ to: utilContract })
-            .then((arr) => arr.map(BigInt))
-            .catch((err) => {
-                console.log('params:', account, contracts, utilContract);
-                console.log(`get balances from util contract fail: ${err}`);
-                return [];
-            });
-    }
-
-    async getEpochByEpochNumber(epochNumber) {
-        const now = Math.floor(Date.now() / 1000);
-        const pivotBlock = await this.cfx.getBlockByEpochNumber(epochNumber);
-
-        return {
-            epochNumber,
-            pivotHash: pivotBlock.hash,
-            parentHash: pivotBlock.parentHash,
-            timestamp: lodash.min([pivotBlock.timestamp, now]), // XXX: for filter negative timestamp
-        };
-    }
 }
-// 0x890e3feac4a2c33d7594bc5be62e7970ef5481e0
-export const CUSTODIAN_PROXY_CONTRACT = 'cfx:aceu6t9m2wvpgtnzww8f13vstf2s8zeb6a4eja1756'
-
 
 export async function base64ToPNG(token:Token, dir: string) {
     if (!token.icon) {
