@@ -412,7 +412,7 @@ export class CatchUp {
     }
 
     public reset() {
-        this.batchData = new BatchData()
+        this.batchData.reset()
         this.accumulatedSize = 0
     }
 
@@ -555,6 +555,32 @@ export class ModelData{
 
     blockArray = []
     transactionArray = []
+
+    public reset() {
+        this.epoch = {}
+        this.minerBlockArray = []
+        this.addrTransferArray = []
+        this.epochAddrIdArray = []
+        this.nftTransferArray = []
+        this.addrNftTransferArray = []
+        this.addressNfts = {}
+        this.voteParamArray = []
+
+        this.announcedTokenArray = []
+        this.announcedContractArray = []
+        this.evmAddressArray = []
+        this.traceCreateArray = []
+        this.adminDestroyTxArray = []
+        this.transferredNftArray = []
+        this.tokenArray = []
+        this.nameTagArray = []
+        this.bytes32NameTagArray = []
+
+        this.censorItemArray = []
+
+        this.blockArray = []
+        this.transactionArray = []
+    }
 }
 
 export class BatchData extends ModelData {
@@ -628,5 +654,15 @@ export class BatchData extends ModelData {
         })
 
         return itemArray
+    }
+
+    public reset() {
+        super.reset()
+
+        this.epochArray = []
+
+        this.addressNfts = {}
+        this.addressNftsPlaceholders = []
+        this.addressNftsReplacements = []
     }
 }

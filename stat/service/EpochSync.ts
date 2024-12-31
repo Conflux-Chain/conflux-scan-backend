@@ -1,5 +1,5 @@
 import {Epoch, VoteParams} from "../model/Epoch";
-import {ModelData, SyncBase, SyncCode, SyncData} from "./SyncBase";
+import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {ESpaceHex40Map, formatToBase32, formatToHex, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
@@ -160,7 +160,7 @@ export class EpochSync extends SyncBase {
                 this.saveContractVerify(traceCreateArray)
             ])
 
-            const modelData: ModelData = {
+            const modelData: any = {
                 epoch,
                 minerBlockArray,
                 addrTransferArray,
