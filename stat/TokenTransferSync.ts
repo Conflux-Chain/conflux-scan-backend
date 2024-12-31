@@ -147,6 +147,9 @@ export async function loadEpoch(epoch: number, cfx: Conflux) {
                 loadTxsByEpoch(epoch, tx),
                 FullBlock.findOne({where: {epoch: epoch-1}, transaction: tx})
             ]).finally(()=>tx.rollback());
+    if (dbBlocks.length < 1) {
+        return {code: 404}
+    }
     const blockHashes = dbBlocks.map(b=>b.hash);
     const block = dbBlocks[dbBlocks.length-1];
     const pivotHash = block.hash;
@@ -156,7 +159,7 @@ export async function loadEpoch(epoch: number, cfx: Conflux) {
 
     // simulatePivotSwitch(epoch, 3)
     const dt = dbBlocks[dbBlocks.length-1].createdAt;
-    return {pivotTime: dt, receipts, blockHashes, parentDbBlock, pivotHash}
+    return {pivotTime: dt, receipts, blockHashes, parentDbBlock, pivotHash, code: 0}
 }
 
 export async function validate(epoch:number, dbBlocks:FullBlock[], receipts:TransactionReceipt[][], dbTxArr: FullTransaction[]) {
@@ -232,7 +235,10 @@ async function run(cfx:Conflux, preFinished: number) {
         })
     }
     async function fetchAndBuild(epoch: number) {
-        const {pivotTime: dt, receipts, blockHashes, parentDbBlock, pivotHash} = await loadEpoch(epoch, cfx);
+        const {pivotTime: dt, receipts, blockHashes, parentDbBlock, pivotHash, code} = await loadEpoch(epoch, cfx);
+        if (code != 0) {
+            return {code}
+        }
         let {t20:t20raw, t721, t1155, approvals} = decodeTransferFromReceipts(receipts, tokenTool, dt, blockHashes);
         const t20 = aggregateTransfer(t20raw)
         approvals = aggregateTransfer(approvals, true);
@@ -283,9 +289,6 @@ async function run(cfx:Conflux, preFinished: number) {
     }
     const loader = new PreloadMap(fetchAndBuild, batchData.initialTaskCount);
     const stateEpoch = await cfx.getEpochNumber('latest_state')
-    if (batchData.enableByGap(epoch, stateEpoch)) {
-        loader.initTasks(epoch, batchData.initialTaskCount);
-    }
     // should not higher than block/tx sync, otherwise the transaction hash may not be found.
     let maxEpochOfBlock = 0;
     async function updateMaxDbEpoch() {
@@ -298,6 +301,9 @@ async function run(cfx:Conflux, preFinished: number) {
         console.log(` update max epoch of block to ${maxE} `)
     }
     await updateMaxDbEpoch()
+    if (batchData.enableByGap(epoch, stateEpoch)) {
+        loader.initTasks(epoch, Math.min(batchData.initialTaskCount, maxEpochOfBlock - fromEpoch));
+    }
     async function repeat() {
         return repeat0().catch(err=>{
             console.log(` repeat error at epoch ${epoch}: `, err)
@@ -331,6 +337,10 @@ async function run(cfx:Conflux, preFinished: number) {
                         } with PH ${data.parentHash} != ${parentHash} (parent)`)
                         await  localPop(epoch - 1)
                         delay = 10_000
+                        break;
+                    } else if (data.code != 0) {
+                        delay = 5_000
+                        console.log(`data is incorrect.`, data)
                         break;
                     }
                     await processData(epoch, data);
