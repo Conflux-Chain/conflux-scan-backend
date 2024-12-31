@@ -33,6 +33,9 @@ import {CONST as SDK_CONST} from "js-conflux-sdk";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
+const NodeCache = require( "node-cache" );
+
+const cacheTtl = 60 * 10
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
 const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl'];
@@ -58,12 +61,14 @@ export class EpochSync extends SyncBase {
     private transferTypeMap: object
     private latestVoteParams: VoteParams
     private statOnRealtime: StatOnRealtime
+    private nodeCache: any
 
     constructor(app: any) {
         super(app)
         this.app = app
         this.statOnRealtime = new StatOnRealtime()
         this.transferTypeMap = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name')
+        this.nodeCache = new NodeCache({ maxKeys: 1000,  stdTTL: cacheTtl, checkperiod: 60})
     }
 
     public async mustInit() {
@@ -588,6 +593,11 @@ export class EpochSync extends SyncBase {
             app: {tokenTool},
         } = this;
 
+        const cacheToken = this.nodeCache.get(hexAddress)
+        if (cacheToken) {
+            return cacheToken
+        }
+
         const hex40id = (await makeId(hexAddress)).id;
         const tokenDb = await Token.findOne({where: {hex40id}, raw: true});
         if (tokenDb && tokenDb.type) {
@@ -616,6 +626,12 @@ export class EpochSync extends SyncBase {
         const transferCount = (await EpochSync.countTransfer(hex40id, transferType)) || 1;
         const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
         token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult});
+
+        try {
+            this.nodeCache.set(hexAddress, token, cacheTtl)
+        } catch (e){
+            //error: Cache max keys amount exceeded
+        }
 
         return token;
     }
