@@ -50,6 +50,7 @@ export class Measure {
         this.m(tag, start)
         return ret;
     }
+    // time cost between two call
     async taskWait<T>(tag: string, fn:()=>Promise<T>) {
         if (!tag) {
             return fn();

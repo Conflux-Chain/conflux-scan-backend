@@ -104,3 +104,4 @@ if (module == require.main) {
 }
 
 // node tools/rpcLoadTest.js rpcLoadTest http:// 100 16
+// node tools/rpcLoadTest.js rpcCacheTest http://127.0.0.1:12537

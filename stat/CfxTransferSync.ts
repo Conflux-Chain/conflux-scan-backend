@@ -439,7 +439,7 @@ async function run(cfx:Conflux, preFinished: number) {
     }
     await updateMaxDbEpoch()
     if (batchData.enableByGap(epoch, stateEpoch)) {
-        loader.initTasks(epoch, batchData.initialTaskCount);
+        loader.initTasks(epoch, Math.min(batchData.initialTaskCount, maxEpochOfBlock - fromEpoch));
     }
     async function repeat() {
         return repeat0().catch(err=>{
@@ -482,9 +482,9 @@ async function run(cfx:Conflux, preFinished: number) {
                     epoch -= 1;
                     break;
                 }
-                delay = await measure.call('save', ()=>processEpoch(data));
-                parentHash = data.pivotHash
                 if (data.code === 0) {
+                    delay = await measure.call('save', ()=>processEpoch(data));
+                    parentHash = data.pivotHash
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
                         loader.startNext()
                     } else {
@@ -494,6 +494,10 @@ async function run(cfx:Conflux, preFinished: number) {
                         measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "NO "}batch, `, 1, 'save');
                     }
                     epoch++;
+                } else {
+                    console.log(`data is incorrect. epoch ${epoch}`, data);
+                    delay = 5_000;
+                    break;
                 }
                 break;
         }
