@@ -2,7 +2,7 @@ import {Epoch, VoteParams} from "../model/Epoch";
 import {ModelData, SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {fmtDtUTC} from "../model/Utils";
-import {ESpaceHex40Map, Hex40Map, makeId, makeIdV} from "../model/HexMap";
+import {ESpaceHex40Map, formatToBase32, formatToHex, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
@@ -31,6 +31,7 @@ import {
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
+import NodeCache from "node-cache";
 const {format, sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -87,8 +88,8 @@ export class EpochSync extends SyncBase {
             console.log(`Failed to load config for AddressMetadata contract!`)
             process.exit(9)
         }
-        this.announcementContract = format.hexAddress(announcement)
-        this.addressMetadataContract = format.hexAddress(addressMetadata)
+        this.announcementContract = formatToHex(announcement)
+        this.addressMetadataContract = formatToHex(addressMetadata)
 
         if (!CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId)) {
             StatApp.epochCIP1559Enabled = 0
@@ -349,7 +350,7 @@ export class EpochSync extends SyncBase {
         } = this;
 
         let minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
-            const hex40 = format.hexAddress(block.miner);
+            const hex40 = formatToHex(block.miner);
             const blockDt = new Date(block.timestamp * 1000);
             const hex40Id = (await makeId(hex40, undefined, {dt: blockDt})).id;
             const epoch = (epochNumber === 0 && config.conflux.consortiumMode) ? 0 : block.epochNumber;
@@ -374,9 +375,9 @@ export class EpochSync extends SyncBase {
                     continue;
                 }
 
-                const toHex = format.hexAddress(to);
+                const toHex = formatToHex(to);
                 if (toHex === CONST.INTERNAL_CONTRACT_MAP.AdminControl && data.substr(0, 10) === SELECTOR_DESTROY) {
-                    const fromHex = format.hexAddress(from);
+                    const fromHex = formatToHex(from);
                     const contract = this.decodeContractDestroy(data);
                     const destroyTx = {
                         epochNumber, blockTime, txHash: hash.substr(2), admin: fromHex.substr(2),
@@ -450,7 +451,7 @@ export class EpochSync extends SyncBase {
         for (const hex of tokenHexArray) {
             let token = tokenMap[hex];
             token.hex40id = (await makeId(hex)).id;
-            token.base32 = format.address(hex, StatApp.networkId);
+            token.base32 = formatToBase32(hex);
             const totalSupply = await tokenTool.getTokenTotalSupply(token.base32);
             const tokenInfo = await tokenTool.getToken(token.base32);
             token = lodash.defaults(token, {
@@ -464,7 +465,7 @@ export class EpochSync extends SyncBase {
         for (const hex of contractHexArray) {
             let contract = contractMap[hex];
             contract.hex40id = (await makeId(hex)).id;
-            contract.base32 = format.address(hex, StatApp.networkId);
+            contract.base32 = formatToBase32(hex);
             contractArray.push(contract);
         }
 
@@ -516,7 +517,7 @@ export class EpochSync extends SyncBase {
     }
 
     private async checkAnnounce(epochNumber, announcement, announcer, contract) {
-        const hexAnnouncement = format.hexAddress(announcement)
+        const hexAnnouncement = formatToHex(announcement)
         if (hexAnnouncement !== this.announcementContract) {
             console.log(`checkAnnounce epoch ${epochNumber} announcement ${announcement} not match with config ${this.announcementContract}`)
             return false
@@ -533,7 +534,7 @@ export class EpochSync extends SyncBase {
         }).then(array => {
             return array?.length ? array[0]['hex'] : undefined;
         });
-        const hexAnnouncer = format.hexAddress(announcer).substr(2)
+        const hexAnnouncer = formatToHex(announcer).substr(2)
         if (hexAnnouncer !== creator) {
             console.log(`checkAnnounce epoch ${epochNumber} announcer ${hexAnnouncer} not match with creator ${creator}`)
             return false
@@ -580,7 +581,7 @@ export class EpochSync extends SyncBase {
             return undefined;
         }
 
-        const base32 = format.address(hexAddress, StatApp.networkId);
+        const base32 = formatToBase32(hexAddress);
         const [totalSupply, tokenInfo, erc721Interface, erc1155Interface] = await Promise.all([
             tokenTool.getTokenTotalSupply(base32),
             tokenTool.getToken(base32),
@@ -635,7 +636,7 @@ export class EpochSync extends SyncBase {
     private async getNameTagInfo(epochNumber, nameTagArray, labelArray) {
         nameTagArray = nameTagArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
         labelArray = labelArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
-        const base32Array = [...nameTagArray, ...labelArray].map(i => format.address(i.addr, StatApp.networkId));
+        const base32Array = [...nameTagArray, ...labelArray].map(i => formatToBase32(i.addr));
         if (!base32Array?.length) {
             return [];
         }
@@ -649,7 +650,7 @@ export class EpochSync extends SyncBase {
 
         for (const item of nameTagArray) {
             const {auditor, addr, newNameTag, newWebsite, newDesc} = item;
-            const base32 = format.address(addr, StatApp.networkId);
+            const base32 = formatToBase32(addr);
             if (!nameTagMap[base32]) {
                 nameTagMap[base32] = {base32, auditor, epoch: epochNumber, labels: new Set()};
             }
@@ -659,7 +660,7 @@ export class EpochSync extends SyncBase {
         }
         for (const item of labelArray) {
             const {auditor, addr, oldLabel, newLabel} = item;
-            const base32 = format.address(addr, StatApp.networkId);
+            const base32 = formatToBase32(addr);
             if (!nameTagMap[base32]) {
                 nameTagMap[base32] = {base32, auditor, epoch: epochNumber, labels: new Set()};
             }
@@ -676,7 +677,7 @@ export class EpochSync extends SyncBase {
         }
 
         const addressInfoArray = await Promise.all(base32Array.map(async base32 => {
-            const hex40 = format.hexAddress(base32);
+            const hex40 = formatToHex(base32);
             const hex40id = (await makeId(hex40)).id;
             return {base32, hex40, hex40id};
         }));
@@ -689,7 +690,7 @@ export class EpochSync extends SyncBase {
         return Object.values(nameTagMap).map(item => {
             item['hex40id'] = addressInfoMap[item['base32']].hex40id;
             item['eoa'] = !contractIdSet.has(addressInfoMap[item['base32']].hex40id);
-            item['auditor'] = format.address(item['auditor'], StatApp.networkId);
+            item['auditor'] = formatToBase32(item['auditor']);
             item['labels'] = [...item['labels']].join(NAME_TAG_SPLIT);
             return item;
         });
@@ -719,13 +720,13 @@ export class EpochSync extends SyncBase {
         return Object.values(nameTagMap).map(item => {
             item['hex40id'] = 0
             item['eoa'] = false
-            item['auditor'] = format.address(item['auditor'], StatApp.networkId)
+            item['auditor'] = formatToBase32(item['auditor'])
             return item
         })
     }
 
     private checkAddrMeta(epochNumber, addrMeta) {
-        const hexAddrMeta = format.hexAddress(addrMeta)
+        const hexAddrMeta = formatToHex(addrMeta)
         if (hexAddrMeta !== this.addressMetadataContract) {
             console.log(`checkAddrMeta epoch ${epochNumber} addrMetadata ${hexAddrMeta} not match with config ${this.addressMetadataContract}`)
             return false
@@ -945,8 +946,8 @@ export class EpochSync extends SyncBase {
             const txHash = trace.transactionHash.substr(2);
             const from = (await makeId(trace.from, undefined, {dt: blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt: blockDt})).id;
-            const fromHex = format.hexAddress(trace.from);
-            const toHex = format.hexAddress(trace.to);
+            const fromHex = formatToHex(trace.from);
+            const toHex = formatToHex(trace.to);
             const toCreate = {
                 epochNumber: trace.epochNumber,
                 txHash,
@@ -1071,16 +1072,16 @@ export class EpochSync extends SyncBase {
 
     private static parseTrace(trace, detail = false) {
         if (trace.action.from) {
-            trace.action.from = format.hexAddress(trace.action.from);
+            trace.action.from = formatToHex(trace.action.from);
         }
         if (trace.action.value) {
             trace.action.value = BigInt(trace.action.value);
         }
         if (trace.action.to) {
-            trace.action.to = format.hexAddress(trace.action.to);
+            trace.action.to = formatToHex(trace.action.to);
         }
         if (trace.action.addr) {
-            trace.action.addr = format.hexAddress(trace.action.addr);
+            trace.action.addr = formatToHex(trace.action.addr);
         }
         if (trace.action.input) {
             trace.action.input = '';
@@ -1356,7 +1357,7 @@ export class EpochSync extends SyncBase {
         return params
     }
 
-    // `-------------------------- evict epoch address ---------------------------`
+    // -------------------------- evict epoch address ---------------------------
     public async scheduleEvict(delay: number = 1000) {
         console.log(`schedule evict epoch address, interval: ${delay}`);
         const that = this;

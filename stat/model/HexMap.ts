@@ -135,6 +135,20 @@ export function formatToHex(address:string) {
     }
     return hex;
 }
+const hexToBase32Cache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
+export function formatToBase32(address:string) {
+    let base32 = hexToBase32Cache.get(address)
+    if (base32) {
+        return base32
+    }
+    base32 = format.address(address, StatApp.networkId)
+    try {
+        hexToBase32Cache.set(address, base32, cacheTtl)
+    } catch (e){
+        //error: Cache max keys amount exceeded
+    }
+    return base32
+}
 const dbCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
 export async function makeIdV(hex: string, dbTxNotUsed: Transaction = undefined, p = undefined) : Promise<number>{
     return makeId(hex, undefined, p).then(res=>res.id)
