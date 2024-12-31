@@ -42,6 +42,8 @@ export class CfxTransferEpochData {
 	epoch?: number
 	pivotHash?: string
 	parentHash?: string
+	traceRpcMs?: number
+	buildTime?: number
 }
 
 export class BatchTokenTransfer extends BatchDataBase {

@@ -107,7 +107,10 @@ export async function getCfxTransferTraces(epoch: number)
     const hashes = blockArrDb.map(blk=>blk.hash);
     const result:ICfxTransfer[] = [];
     const addrBeans = []
+    let start = Date.now();
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
+    let now = Date.now();
+    const traceRpcMs = now - start; start = now;
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
@@ -230,7 +233,7 @@ export async function getCfxTransferTraces(epoch: number)
     }
     // removeLongData(traceArray2d);
     // console.log(JSON.stringify(traceArray2d, null, 4))
-    return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch}
+    return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch, buildTime: Date.now() - start, traceRpcMs}
 }
 async function setup() {
     const [, , cmd, fromEpoch, ] = process.argv
@@ -448,6 +451,7 @@ async function run(cfx:Conflux, preFinished: number) {
             setTimeout(repeat, 10_000)
         })
     }
+    let lastDump = Date.now();
     async function repeat0() {
         if (epoch > maxEpochOfBlock) {
             console.log(` reach max block/tx epoch ${maxEpochOfBlock}`)
@@ -483,6 +487,8 @@ async function run(cfx:Conflux, preFinished: number) {
                     break;
                 }
                 if (data.code === 0) {
+                    measure.count('build', data.buildTime);
+                    measure.count('traceRpcMs', data.traceRpcMs);
                     delay = await measure.call('save', ()=>processEpoch(data));
                     parentHash = data.pivotHash
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
@@ -491,7 +497,9 @@ async function run(cfx:Conflux, preFinished: number) {
                         batchData.enable = false
                     }
                     if (epoch % (batchData.enable ? 1000 : 100) === 0) {
-                        measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "NO "}batch, `, 1, 'save');
+                        const now = Date.now();
+                        measure.dump(` ${epoch} sync cfx trs ${batchData.enable ? "" : "NO "}batch, ms ${now - lastDump}`, 1, 'save');
+                        lastDump = now;
                     }
                     epoch++;
                 } else {

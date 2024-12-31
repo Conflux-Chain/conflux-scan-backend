@@ -366,7 +366,7 @@ export function isNewFormatTrace(traceArray2d:any[] = []) {
     return false;
 }
 
-function formatTrace(arr: (object | Error)[]) {
+export function formatTrace(arr: (object | Error)[]) {
     arr.forEach((t, idx) => {
         const isError = t instanceof Error;
         if (isError) {
