@@ -85,13 +85,18 @@ export class FullEpochSync{
 }
 
 async function start() {
-    const config = loadConfig('Prod');
     redirectLog({mainPath: tag});
+
+    const config = loadConfig('Prod');
+
     const server = new FullEpochSync(config);
     registerProcessHook(server);
     await server.run();
-    profile(10 * 60 * 1000);
-    heapDump(10 * 60 * 1000);
+
+    if (config?.enableProfile) {
+        profile()
+        heapDump()
+    }
 }
 
 function registerProcessHook(server: FullEpochSync) {
@@ -108,7 +113,7 @@ function exitOnSignal(server: FullEpochSync) {
     }
 }
 
-function profile(delay = 5 * 60 * 1000) {
+function profile(delay = 10 * 60 * 1000) {
     console.log(`schedule cpu profiling, interval: ${delay}`)
     const dest = `${path.dirname(__filename)}/${tag}.cpuprofile`
 
@@ -127,7 +132,7 @@ function profile(delay = 5 * 60 * 1000) {
     }, delay)
 }
 
-function heapDump(delay = 5 * 60 * 1000) {
+function heapDump(delay = 10 * 60 * 1000) {
     console.log(`schedule heap dump, interval: ${delay}`)
     const dest = `${path.dirname(__filename)}/${tag}.heapsnapshot`
 

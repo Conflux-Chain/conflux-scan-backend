@@ -1,7 +1,6 @@
 import {Epoch, VoteParams} from "../model/Epoch";
 import {ModelData, SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
-import {fmtDtUTC} from "../model/Utils";
 import {ESpaceHex40Map, formatToBase32, formatToHex, Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
@@ -31,8 +30,7 @@ import {
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 import {CONST as SDK_CONST} from "js-conflux-sdk";
-import NodeCache from "node-cache";
-const {format, sign} = require('js-conflux-sdk');
+const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
 
