@@ -16,6 +16,7 @@ import {CONST} from "./service/common/constant";
 const fs = require('fs');
 const path = require('path');
 const v8Profiler = require('v8-profiler-next');
+const heapdump = require('heapdump');
 
 const fileName = path.basename(__filename)
 const extName = path.extname(__filename)
@@ -90,6 +91,7 @@ async function start() {
     registerProcessHook(server);
     await server.run();
     profile(10 * 60 * 1000);
+    heapDump(10 * 60 * 1000);
 }
 
 function registerProcessHook(server: FullEpochSync) {
@@ -122,6 +124,16 @@ function profile(delay = 5 * 60 * 1000) {
         })
 
         console.log(`cpu profile writen to ${dest}`)
+    }, delay)
+}
+
+function heapDump(delay = 5 * 60 * 1000) {
+    console.log(`schedule heap dump, interval: ${delay}`)
+    const dest = `${path.dirname(__filename)}/${tag}.heapsnapshot`
+
+    setTimeout(() => {
+        heapdump.writeSnapshot(dest)
+        console.log(`heap dump writen to ${dest}`)
     }, delay)
 }
 
