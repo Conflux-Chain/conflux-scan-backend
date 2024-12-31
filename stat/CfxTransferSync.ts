@@ -487,8 +487,8 @@ async function run(cfx:Conflux, preFinished: number) {
                     break;
                 }
                 if (data.code === 0) {
-                    measure.count('build', data.buildTime);
-                    measure.count('traceRpcMs', data.traceRpcMs);
+                    measure.count('build', data.buildTime ?? 0);
+                    measure.count('traceRpcMs', data.traceRpcMs ?? 0);
                     delay = await measure.call('save', ()=>processEpoch(data));
                     parentHash = data.pivotHash
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
