@@ -495,7 +495,7 @@ async function run(cfx:Conflux, preFinished: number) {
                     }
                     epoch++;
                 } else {
-                    console.log(`data is incorrect.`, data);
+                    console.log(`data is incorrect. epoch ${epoch}`, data);
                     delay = 5_000;
                     break;
                 }

@@ -340,7 +340,7 @@ async function run(cfx:Conflux, preFinished: number) {
                         break;
                     } else if (data.code != 0) {
                         delay = 5_000
-                        console.log(`data is incorrect.`, data)
+                        console.log(`data is incorrect. epoch ${epoch}`, data)
                         break;
                     }
                     await processData(epoch, data);
