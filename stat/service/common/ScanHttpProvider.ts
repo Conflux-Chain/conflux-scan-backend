@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import {readFileSync} from "fs";
+import {existsSync, readFileSync} from "fs";
 import {URL} from "url";
 import {post} from "./http";
 import {ConfluxOption, RpcCacheOption} from "../../config/StatConfig";
@@ -111,6 +111,9 @@ export const CacheConfig = {
         //   requirePivot: true
         // }
         return noOrPivotHashOrObj.blockHash ?? (typeof noOrPivotHashOrObj === 'string' ? noOrPivotHashOrObj : BigInt(noOrPivotHashOrObj));
+    },
+    cfx_getBlockByHashWithPivotAssumption: ([bHash, pHash, epHex])=>{
+        return `${bHash}_${pHash}_${BigInt(epHex)}`
     },
     trace_block:([hash])=>{
         return hash;

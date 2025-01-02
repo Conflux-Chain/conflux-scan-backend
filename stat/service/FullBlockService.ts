@@ -257,7 +257,7 @@ export class FullBlockService {
             const msg = `block list length ${hashes.length} mismatch receipts length ${receipts?.length
             } at epoch ${minEpochNumber}`;
             // console.log(msg)
-            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch, rpcTime: Date.now() - start, procTime: 0,}
+            return {code: CODE_CONTINUE, message: msg, blockList:[], rewardList:[], latest_state: this.latestStateEpoch, rpcTime: Date.now() - start, procTime: 0, buildTime: 0}
         }
         const rpcTime = Date.now() - start; start = Date.now();
         // fill tx receipts to block-> tx
@@ -379,10 +379,10 @@ export class FullBlockService {
         metrics.queryFullNodeTime += now - start;
 	    metrics.pureRpcTime += preLoadResult.rpcTime;
 	    metrics.procTime += preLoadResult.procTime;
-	    metrics.buildTime += preLoadResult.buildTime;
 	    if (preLoadResult.code !== 0) {
 		    return preLoadResult
 	    }
+        metrics.buildTime += preLoadResult.buildTime;
         const chk = await this.checkReorg(minEpochNumber, preLoadResult);
         if (chk.code != 0) {
             return chk;

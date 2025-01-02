@@ -1,5 +1,6 @@
-import {Conflux} from "js-conflux-sdk";
-import {initCfxSdk} from "../stat/service/common/utils";
+require('../stat/test/benchmark.js')
+import {Conflux, format} from "js-conflux-sdk";
+import {formatTrace, initCfxSdk} from "../stat/service/common/utils";
 import {FullBlockService} from "../stat/service/FullBlockService";
 import {init} from "../stat/service/tool/FixDailyTokenStat";
 import {ConfluxOption} from "../stat/config/StatConfig";
@@ -58,6 +59,25 @@ async function fetchDataTest(start: number) {
 	}
 }
 
+async function rpcBenchmark() {
+	const [,,cmd, cntStr, url = "http://main.confluxrpc.com", blockHash, threads] = process.argv;
+	console.log(`rpc is ${url}`)
+	const _cfxR = await initCfxSdk({url} as ConfluxOption);
+	const blockTrace = await _cfxR.traceBlock(blockHash || "0x8045a12730c4fc7527ecf1ed3788015e00065d6ad96fa0019d97ccf99b8a5a02")
+	console.log(`trace of block :`, blockTrace)
+	const obj = JSON.parse(JSON.stringify(blockTrace));
+	let start = Date.now()
+	let i = 0;
+	let times = parseInt(cntStr)
+	while (i < times) {
+		// formatTrace(obj)
+		const v = format['blockTraces'](obj);
+		// console.log(`that is `, v)
+		i++
+	}
+	let cost = Date.now() - start
+	console.log(`format trace : run ${times} times , cost ${cost}ms, avg ${cost/times}`)
+}
 async function rpcCacheTest() {
 	const [,,cmd, url, cachePath = './cache/rpc', threads] = process.argv;
 	console.log(`cache path [${cachePath}]`);
@@ -92,6 +112,8 @@ async function main() {
 	const [,,cmd, url, start, threads] = process.argv;
 	if ('rpcLoadTest' === cmd) {
 		await rpcLoadTest(url, parseInt(start||"1"), parseInt(threads||"8"));
+	} else if ('rpcBenchmark' === cmd) {
+		await rpcBenchmark();
 	} else if ('rpcCacheTest' === cmd) {
 		await rpcCacheTest()
 	} else if ('fetchDataTest' === cmd) {
@@ -105,3 +127,4 @@ if (module == require.main) {
 
 // node tools/rpcLoadTest.js rpcLoadTest http:// 100 16
 // node tools/rpcLoadTest.js rpcCacheTest http://127.0.0.1:12537
+// node tools/rpcLoadTest.js rpcBenchmark 1000
