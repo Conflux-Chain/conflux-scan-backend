@@ -175,6 +175,8 @@ export interface StatConfig{
     asyncWrappedToken: boolean,
     wrappedCFX: string,
     wrappedUSDT: string,
+
+    enableProfile: boolean,
 }
 
 export var FirstBlockNo = 0

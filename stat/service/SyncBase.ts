@@ -16,7 +16,7 @@ import {Measure} from "./common/Measure";
 const lodash = require('lodash');
 
 const PRELOAD_SIZE_NORMAL = 8
-const PRELOAD_SIZE_CATCHUP = 300
+const PRELOAD_SIZE_CATCHUP = 50
 
 export abstract class SyncBase {
     private epochLatestState: number
@@ -92,7 +92,7 @@ export abstract class SyncBase {
         const catchup = this.catchUp.status()
         if (epochNumber % (catchup ? 1000 : 100) === 0) {
             console.log(`${fmtDtUTC(new Date())} Catch-up mode: ${catchup}, latest epoch ${epochNumber}`)
-            catchup && this.measure.dump(`${epochNumber}`, 1, 'save')
+            catchup && this.measure.dump(`${epochNumber}`, 1, 'wait', 'save')
         }
 
         if (syncCode === SyncCode.SUCCESS) {
@@ -215,7 +215,7 @@ export abstract class SyncBase {
 
     //------------------------- flush latest epoch ---------------------------
     public async scheduleLatestEpoch(delay: number = 10) {
-        console.log(`schedule latest epoch with delay: ${delay}`)
+        console.log(`schedule latest epoch, interval: ${delay}`)
 
         await this.latestStateEpoch()
 
@@ -412,7 +412,7 @@ export class CatchUp {
     }
 
     public reset() {
-        this.batchData = new BatchData()
+        this.batchData.reset()
         this.accumulatedSize = 0
     }
 
@@ -555,6 +555,32 @@ export class ModelData{
 
     blockArray = []
     transactionArray = []
+
+    public reset() {
+        this.epoch = {}
+        this.minerBlockArray = []
+        this.addrTransferArray = []
+        this.epochAddrIdArray = []
+        this.nftTransferArray = []
+        this.addrNftTransferArray = []
+        this.addressNfts = {}
+        this.voteParamArray = []
+
+        this.announcedTokenArray = []
+        this.announcedContractArray = []
+        this.evmAddressArray = []
+        this.traceCreateArray = []
+        this.adminDestroyTxArray = []
+        this.transferredNftArray = []
+        this.tokenArray = []
+        this.nameTagArray = []
+        this.bytes32NameTagArray = []
+
+        this.censorItemArray = []
+
+        this.blockArray = []
+        this.transactionArray = []
+    }
 }
 
 export class BatchData extends ModelData {
@@ -628,5 +654,15 @@ export class BatchData extends ModelData {
         })
 
         return itemArray
+    }
+
+    public reset() {
+        super.reset()
+
+        this.epochArray = []
+
+        this.addressNfts = {}
+        this.addressNftsPlaceholders = []
+        this.addressNftsReplacements = []
     }
 }

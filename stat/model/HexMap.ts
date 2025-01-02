@@ -25,7 +25,7 @@ export function patchPocketAddress(pocket: string, address: string, net = undefi
     const v = POCKET_ADDRESS_MAP[pocket];
     if (v) {
         if (net !== undefined) {
-            return format.address(v, net)
+            return formatToBase32(v)
         }
         return v;
     }
@@ -42,7 +42,7 @@ export async function makeVirtualContractInfo(netId: number) {
         }
         const contract = await Contract.findOne({where: {hex40id: hexId}})
         if (contract === null) {
-            const base32 = format.address(hex, netId)
+            const base32 = formatToBase32(hex)
             await Contract.create({epoch: 0, name, hex40id: hexId, base32})
         }
     }
@@ -120,18 +120,36 @@ export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESp
         )
     }
 }
-const base32toHexCache = new NodeCache()
+const cacheTtl = 60 * 10 // 10 minutes
+const base32toHexCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
 export function formatToHex(address:string) {
     let hex = base32toHexCache.get(address)
     if (hex) {
         return hex;
     }
     hex = format.hexAddress(address);
-    base32toHexCache.set(address, hex, cacheTtl)
+    try {
+        base32toHexCache.set(address, hex, cacheTtl)
+    } catch (e){
+        //error: Cache max keys amount exceeded
+    }
     return hex;
 }
-const dbCache = new NodeCache()
-const cacheTtl = 60 * 100 // 10 minutes
+const hexToBase32Cache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
+export function formatToBase32(address:string) {
+    let base32 = hexToBase32Cache.get(address)
+    if (base32) {
+        return base32
+    }
+    base32 = format.address(address, StatApp.networkId)
+    try {
+        hexToBase32Cache.set(address, base32, cacheTtl)
+    } catch (e){
+        //error: Cache max keys amount exceeded
+    }
+    return base32
+}
+const dbCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
 export async function makeIdV(hex: string, dbTxNotUsed: Transaction = undefined, p = undefined) : Promise<number>{
     return makeId(hex, undefined, p).then(res=>res.id)
 }
@@ -158,7 +176,11 @@ export async function makeId(hex: string, dbTxNotUsed: Transaction = undefined, 
     }
     const exists = await map.findOne({where:{hex}})
     if (exists) {
-        dbCache.set(hex, exists, cacheTtl);
+        try{
+            dbCache.set(hex, exists, cacheTtl);
+        } catch (e){
+            //error: Cache max keys amount exceeded
+        }
         return exists
     }
     const values:HexMapAttributes = {hex: hex};
@@ -179,7 +201,11 @@ export async function makeId(hex: string, dbTxNotUsed: Transaction = undefined, 
             throw new Error(`How could it happen?`)
         }
     }
-    dbCache.set(hex, bean, cacheTtl)
+    try{
+        dbCache.set(hex, bean, cacheTtl)
+    } catch (e){
+        //error: Cache max keys amount exceeded
+    }
     // console.info(`created ${created}`)
     return bean;
 }
@@ -189,7 +215,7 @@ export async function getAddrId(addr:string) {
     }
     if (addr.startsWith('0x')) {
     } else if (addr.startsWith('cfx') || addr.startsWith('net')){
-        addr = format.hexAddress(addr)
+        addr = formatToHex(addr)
     }
     return Hex40Map.findOne({
         where: {hex: addr.substr(2)}
@@ -302,7 +328,7 @@ export function convert2base32map(map: Map<any, string>) : Map<any, string> {
     // hex40 value to base32 value
     const base32map = new Map()
     for (const key of map.keys()) {
-        base32map.set(key, format.address('0x'+map.get(key), StatApp.networkId))
+        base32map.set(key, formatToBase32('0x'+map.get(key)))
     }
     return base32map
 }
@@ -341,7 +367,7 @@ export function patchBase32prop(list:any[], fromKey: string, toKey: string, isEv
             continue
         }
         if (isEvm) {
-            row[toKey] = format.address(row[fromKey], netId)
+            row[toKey] = formatToBase32(row[fromKey])
         } else {
             row[toKey] = row[fromKey]
         }
@@ -353,7 +379,7 @@ export async function getAddrIdArray(addressArray) {
     if(!lodash.isArray(addressArray)) {
         addressArray = [addressArray]
     }
-    const hexArray = addressArray.map(item => format.hexAddress(item));
+    const hexArray = addressArray.map(item => formatToHex(item));
     const hexIdMap = await hex40IdMap(hexArray);
     return [...hexIdMap.values()];
 }

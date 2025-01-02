@@ -13,6 +13,15 @@ import {redirectLog} from "./config/LoggerConfig";
 import {makeIdV} from "./model/HexMap";
 import {CONST} from "./service/common/constant";
 
+const fs = require('fs');
+const path = require('path');
+const v8Profiler = require('v8-profiler-next');
+const heapdump = require('heapdump');
+
+const fileName = path.basename(__filename)
+const extName = path.extname(__filename)
+const tag = fileName.substr(0, fileName.length - extName.length)
+
 patchFormat();
 
 export class FullEpochSync{
@@ -68,8 +77,6 @@ export class FullEpochSync{
         await this.epochSync.scheduleEvict()
         await this.epochSync.startRealtimeStat()
         await this.epochSync.run()
-
-
     }
 
     public async close() {
@@ -78,11 +85,18 @@ export class FullEpochSync{
 }
 
 async function start() {
+    redirectLog({mainPath: tag});
+
     const config = loadConfig('Prod');
-    redirectLog({mainPath: 'EpochSync'});
+
     const server = new FullEpochSync(config);
     registerProcessHook(server);
     await server.run();
+
+    if (config?.enableProfile) {
+        profile()
+        heapDump()
+    }
 }
 
 function registerProcessHook(server: FullEpochSync) {
@@ -97,6 +111,35 @@ function exitOnSignal(server: FullEpochSync) {
         console.log(`server shutdown.`);
         process.exit(0);
     }
+}
+
+function profile(delay = 10 * 60 * 1000) {
+    console.log(`schedule cpu profiling, interval: ${delay}`)
+    const dest = `${path.dirname(__filename)}/${tag}.cpuprofile`
+
+    v8Profiler.setGenerateType(1)
+    v8Profiler.startProfiling(tag, true)
+
+    setTimeout(() => {
+        const profile = v8Profiler.stopProfiling(tag)
+
+        profile.export(function (error, result) {
+            fs.writeFileSync(dest, result)
+            profile.delete()
+        })
+
+        console.log(`cpu profile writen to ${dest}`)
+    }, delay)
+}
+
+function heapDump(delay = 10 * 60 * 1000) {
+    console.log(`schedule heap dump, interval: ${delay}`)
+    const dest = `${path.dirname(__filename)}/${tag}.heapsnapshot`
+
+    setTimeout(() => {
+        heapdump.writeSnapshot(dest)
+        console.log(`heap dump writen to ${dest}`)
+    }, delay)
 }
 
 if (module === require.main) {
