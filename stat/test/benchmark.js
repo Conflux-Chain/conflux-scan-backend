@@ -1,3 +1,16 @@
+
+const _ = require("js-conflux-sdk/src/rpc/trace")
+const formatRaw = require("js-conflux-sdk/src/util/format")
+// console.log(`that is `, formatRaw.blockTraces);
+const origin = formatRaw.blockTraces;
+formatRaw.blockTraces = (v)=>{
+  // console.log(`call me`)
+  const start = Date.now();
+  const ret = origin(v)
+  ret.elapsedMs = Date.now() - start;
+  // console.log(`exit me`)
+  return ret;
+}
 const {format} = require("js-conflux-sdk")
 
 const args = process.argv.slice(2)
@@ -12,4 +25,7 @@ function testFormatHex(times) {
   let cost = Date.now() - start
   console.log(`run ${times} cost ${cost}ms, avg ${cost/times}`)
 }
-testFormatHex(Number(args[0]))
+
+if (module === require.main) {
+  testFormatHex(Number(args[0]))
+}

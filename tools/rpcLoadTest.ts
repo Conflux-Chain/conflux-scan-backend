@@ -1,3 +1,4 @@
+require('../stat/test/benchmark.js')
 import {Conflux, format} from "js-conflux-sdk";
 import {formatTrace, initCfxSdk} from "../stat/service/common/utils";
 import {FullBlockService} from "../stat/service/FullBlockService";
@@ -62,14 +63,16 @@ async function rpcBenchmark() {
 	const [,,cmd, cntStr, url = "http://main.confluxrpc.com", blockHash, threads] = process.argv;
 	console.log(`rpc is ${url}`)
 	const _cfxR = await initCfxSdk({url} as ConfluxOption);
-	const arr = await _cfxR.traceBlock(blockHash || "0x8045a12730c4fc7527ecf1ed3788015e00065d6ad96fa0019d97ccf99b8a5a02")
-	console.log(`trace of block :`, arr)
-	const obj = JSON.parse(JSON.stringify(arr["transactionTraces"]));
+	const blockTrace = await _cfxR.traceBlock(blockHash || "0x8045a12730c4fc7527ecf1ed3788015e00065d6ad96fa0019d97ccf99b8a5a02")
+	console.log(`trace of block :`, blockTrace)
+	const obj = JSON.parse(JSON.stringify(blockTrace));
 	let start = Date.now()
 	let i = 0;
 	let times = parseInt(cntStr)
 	while (i < times) {
-		formatTrace(obj)
+		// formatTrace(obj)
+		const v = format['blockTraces'](obj);
+		// console.log(`that is `, v)
 		i++
 	}
 	let cost = Date.now() - start
