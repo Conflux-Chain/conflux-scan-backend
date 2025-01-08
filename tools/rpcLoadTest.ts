@@ -39,6 +39,7 @@ async function doIt(cfx: Conflux, workerId: number) {
 			rr.forEach(r=>{
 				if (r.outcomeStatus == 1 || r.outcomeStatus == 0) {
 					context.txCount ++;
+					context.eventCount += r.logs.length
 				}
 			})
 		})
