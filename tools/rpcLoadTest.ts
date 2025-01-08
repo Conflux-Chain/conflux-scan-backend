@@ -28,7 +28,11 @@ async function doIt(cfx: Conflux, workerId: number) {
 		const traceInfoArr = await Promise.all(hashArr.map(hash=>{
 			return cfx.traceBlock(hash);
 		}))
-		traceInfoArr.forEach(t=>context.traceCount += t.length);
+		traceInfoArr.forEach(t=>{
+			t["transactionTraces"].forEach(tt=>{
+				context.traceCount += tt.traces.length
+			})
+		});
 
 		const r2d = await cfx.getEpochReceiptsByPivotBlockHash(p)
 		r2d.forEach(rr=>{
