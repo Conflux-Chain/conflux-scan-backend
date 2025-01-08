@@ -37,7 +37,7 @@ async function doIt(cfx: Conflux, workerId: number) {
 		const r2d = await cfx.getEpochReceiptsByPivotBlockHash(p)
 		r2d.forEach(rr=>{
 			rr.forEach(r=>{
-				if (r.outcomeStatus == 1 || r.outcomeStatus == 2) {
+				if (r.outcomeStatus == 1 || r.outcomeStatus == 0) {
 					context.txCount ++;
 				}
 			})
@@ -152,5 +152,8 @@ if (module == require.main) {
 
 // node tools/rpcLoadTest.js rpcLoadTest http:// 100 16 10000
 // node tools/rpcLoadTest.js rpcCacheTest http://127.0.0.1:12537
-// node tools/rpcLoadTest.js rpcBenchmark 1000 http://main-internal.confluxrpc.com
+// node tools/rpcLoadTest.js rpcBenchmark 1000 http://main.confluxrpc.com
 // node tools/rpcLoadTest.js rpcBenchmark 1000 http://172.16.2.240:12569
+
+// node tools/rpcLoadTest.js rpcLoadTest http://172.16.2.240:12569 1 8 10000
+// node tools/rpcLoadTest.js rpcLoadTest http://172.16.3.16:12537 1 8 10000
