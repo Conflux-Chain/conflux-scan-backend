@@ -5,9 +5,9 @@ import {ConfluxOption} from "../../config/StatConfig";
 import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
 import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
+import {useFastFormat} from "./fastFormatter";
 
 const lodash = require('lodash');
-const BigFixed = require('bigfixed');
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 
@@ -282,6 +282,12 @@ export function removeLongData(obj) {
 }
 
 export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = undefined) {
+    try {
+        const {setPRCMethodPatch} = require('js-conflux-sdk/src/rpc/rpcPatch');
+        setPRCMethodPatch(useFastFormat);
+    } catch (e) {
+        console.log(`failed to patch RPC: ${e.message}`);
+    }
     let cfx: Conflux;
 
     if(confluxOption?.consortiumMode) {

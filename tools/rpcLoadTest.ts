@@ -5,40 +5,59 @@ import {FullBlockService} from "../stat/service/FullBlockService";
 import {init} from "../stat/service/tool/FixDailyTokenStat";
 import {ConfluxOption} from "../stat/config/StatConfig";
 
-async function doIt(cfx: Conflux, workerId: number, start: number, step: number) {
-	let round = 0;
-	let totalMs = 0;
-	let eCnt = 0;
+let context = {
+	epoch: 0,
+	round: 0,
+	blockCount: 0, txCount: 0, eventCount: 0, traceCount: 0,
+}
+
+async function doIt(cfx: Conflux, workerId: number) {
 	while (true) {
-		const startT = Date.now();
-		const hashArr = await cfx.getBlocksByEpochNumber(start);
-		const p = hashArr[hashArr.length-1];
-		const blockInfoArr = await Promise.all(hashArr.map(hash=>{
-			return cfx.getBlockByHashWithPivotAssumption(hash, p, start);
-		}))
-		const blockTime = new Date(blockInfoArr[blockInfoArr.length-1].timestamp*1000);
-		await cfx.getEpochReceiptsByPivotBlockHash(p).catch(e=>{
-			if (e.message === 'block_number is missing for best_hash') {
-				eCnt ++;
-			} else {
-				throw e;
-			}
-		});
-		totalMs += Date.now() - startT;
-		start += step;
-		round++;
-		if (round % 100 == 1) {
-			console.log(`worker ${workerId} round ${round} position ${start} time ${blockTime.toISOString()} error ${eCnt} avg ms ${Math.round(totalMs / round)}`);
+		context.round --;
+		if (context.round < 0) {
+			break
 		}
+		let epoch = context.epoch ++;
+		const hashArr = await cfx.getBlocksByEpochNumber(epoch);
+		const p = hashArr[hashArr.length-1];
+
+		const blockInfoArr = await Promise.all(hashArr.map(hash=>{
+			return cfx.getBlockByHashWithPivotAssumption(hash, p, epoch);
+		}))
+
+		const traceInfoArr = await Promise.all(hashArr.map(hash=>{
+			return cfx.traceBlock(hash);
+		}))
+		traceInfoArr.forEach(t=>context.traceCount += t.length);
+
+		const r2d = await cfx.getEpochReceiptsByPivotBlockHash(p)
+		r2d.forEach(rr=>{
+			rr.forEach(r=>{
+				if (r.outcomeStatus == 1 || r.outcomeStatus == 2) {
+					context.txCount ++;
+				}
+			})
+		})
+		context.blockCount += hashArr.length;
 	}
 }
 
-export async function rpcLoadTest(url: string, start = 1, threads: number=8) {
+export async function rpcLoadTest(url: string, start = 1, threads: number=8, round = 1000) {
 	const cfx = await initCfxSdk({url});
 	console.log(`network `, cfx.networkId);
+	console.log(`worker ${threads} round ${round} from epoch ${start}`)
+
+	context.epoch = start;
+	context.round = round;
+	const begin = Date.now();
+	const workers = []
 	for (let i = 0; i < threads; i++) {
-		doIt(cfx, i, start+i, threads).then();
+		workers.push(doIt(cfx, i));
 	}
+	await Promise.all(workers);
+	const elapse = Date.now() - begin;
+	console.log(`it took ${elapse/1000}s , average ${elapse/round}ms per epoch , block ${
+		context.blockCount} TX ${context.txCount} event ${context.eventCount} trace ${context.traceCount}`)
 }
 
 async function fetchDataTest(start: number) {
@@ -71,11 +90,13 @@ async function rpcBenchmark() {
 	let times = parseInt(cntStr)
 	while (i < times) {
 		// formatTrace(obj)
-		const v = format['blockTraces'](obj);
+		format['blockTraces'](obj);
 		// console.log(`that is `, v)
 		i++
 	}
 	let cost = Date.now() - start
+	const reCreatedV = format['blockTraces'](obj);
+	console.log(`\n created trace:`, reCreatedV);
 	console.log(`format trace : run ${times} times , cost ${cost}ms, avg ${cost/times}`)
 }
 async function rpcCacheTest() {
@@ -109,9 +130,9 @@ async function rpcCacheTest() {
 }
 
 async function main() {
-	const [,,cmd, url, start, threads] = process.argv;
+	const [,,cmd, url, start = "1", threads = "8", round = "1000"] = process.argv;
 	if ('rpcLoadTest' === cmd) {
-		await rpcLoadTest(url, parseInt(start||"1"), parseInt(threads||"8"));
+		await rpcLoadTest(url, parseInt(start), parseInt(threads), parseInt(round));
 	} else if ('rpcBenchmark' === cmd) {
 		await rpcBenchmark();
 	} else if ('rpcCacheTest' === cmd) {
@@ -125,6 +146,7 @@ if (module == require.main) {
 	main().then()
 }
 
-// node tools/rpcLoadTest.js rpcLoadTest http:// 100 16
+// node tools/rpcLoadTest.js rpcLoadTest http:// 100 16 10000
 // node tools/rpcLoadTest.js rpcCacheTest http://127.0.0.1:12537
-// node tools/rpcLoadTest.js rpcBenchmark 1000
+// node tools/rpcLoadTest.js rpcBenchmark 1000 http://main-internal.confluxrpc.com
+// node tools/rpcLoadTest.js rpcBenchmark 1000 http://172.16.2.240:12569

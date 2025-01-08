@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import {existsSync, readFileSync} from "fs";
+import {readFileSync} from "fs";
 import {URL} from "url";
 import {post} from "./http";
 import {ConfluxOption, RpcCacheOption} from "../../config/StatConfig";
@@ -8,11 +8,13 @@ const HttpProvider = require("js-conflux-sdk/src/provider/HttpProvider")
 const superagent = require('superagent');
 const Agent = require('agentkeepalive');
 const pLimit = require('p-limit');
-const limit = pLimit(1000); // could increase it when connection issues are fixed completely.
+
+const limit = pLimit(100); // could increase it when connection issues are fixed completely.
+
 export class ScanHttpProvider extends HttpProvider {
     tag: string
     times = 0
-    agent = new Agent({maxSockets: 100, timeout:73000})
+    agent = new Agent({maxSockets: 100, timeout:73000, keepAlive: true, })
     conf: ConfluxOption & RpcCacheOption
     methodTimes = {}
     constructor(conf: ConfluxOption & RpcCacheOption, tag: string) {

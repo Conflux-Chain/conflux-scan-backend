@@ -393,17 +393,6 @@ async function marker() {
     preMarkEpoch = top.epoch;
     console.log(`mark done. epoch ${top.epoch}`)
 }
-// counter , handle multiple task situation.
-async function processEpoch(data:CfxTransferEpochData) {
-    const {code} = data;
-    if (code === 404) {
-        return 5_000;
-    } else if (code !== 0) {
-        return 10_000
-    }
-    await save(data)
-    return 0;
-}
 
 export async function loadParentHash(fromEpoch: number, preFinished: number, model:{findOne:(p:{where: { epoch: number }})=>Promise<{hash: string}>}) {
     let parentHash = '-'
@@ -489,7 +478,9 @@ async function run(cfx:Conflux, preFinished: number) {
                 if (data.code === 0) {
                     measure.count('build', data.buildTime ?? 0);
                     measure.count('traceRpcMs', data.traceRpcMs ?? 0);
-                    delay = await measure.call('save', ()=>processEpoch(data));
+
+                    await measure.call('save', ()=>save(data));
+
                     parentHash = data.pivotHash
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
                         loader.startNext()
