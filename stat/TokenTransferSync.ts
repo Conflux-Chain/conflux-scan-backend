@@ -310,6 +310,7 @@ async function run(cfx:Conflux, preFinished: number) {
             setTimeout(repeat, 5_000)
         })
     }
+    let lastDump = Date.now();
     async function repeat0() {
         if (epoch>maxEpochOfBlock) {
             await updateMaxDbEpoch();
@@ -350,7 +351,9 @@ async function run(cfx:Conflux, preFinished: number) {
                         batchData.enable = false
                     }
                     if (epoch % (batchData.enable ? 1000 : 100) === 0) {
-                        measure.dump(`${epoch} ${batchData.enable ? "" : "NO "}batch `, 1, 'save');
+                        const now = Date.now();
+                        measure.dump(`${epoch} Elapsed ${now - lastDump} ${batchData.enable ? "" : "NO "}batch `, 1, 'save');
+                        lastDump = now;
                     }
                     epoch ++
                 } catch (e) {
