@@ -92,6 +92,7 @@ export const SyncBlockSchema = {
         batchSize: FieldType.INTEGER,
 
         epoch: FieldType.INTEGER,
+        elapsedMs : FieldType.INTEGER,
         ms : FieldType.INTEGER,
         bulkSaveMs: FieldType.INTEGER,
         executedTxCount : FieldType.INTEGER,

@@ -15,8 +15,6 @@ import {CONST} from "./service/common/constant";
 
 const fs = require('fs');
 const path = require('path');
-const v8Profiler = require('v8-profiler-next');
-const heapdump = require('heapdump');
 
 const fileName = path.basename(__filename)
 const extName = path.extname(__filename)
@@ -114,6 +112,8 @@ function exitOnSignal(server: FullEpochSync) {
 }
 
 function profile(delay = 10 * 60 * 1000) {
+    const v8Profiler = require('v8-profiler-next');
+
     console.log(`schedule cpu profiling, interval: ${delay}`)
     const dest = `${path.dirname(__filename)}/${tag}.cpuprofile`
 
@@ -133,6 +133,7 @@ function profile(delay = 10 * 60 * 1000) {
 }
 
 function heapDump(delay = 10 * 60 * 1000) {
+    const heapdump = require('heapdump');
     console.log(`schedule heap dump, interval: ${delay}`)
     const dest = `${path.dirname(__filename)}/${tag}.heapsnapshot`
 

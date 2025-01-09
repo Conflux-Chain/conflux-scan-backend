@@ -203,9 +203,12 @@ export function aggregateTransfer(array: any[], overwrite = false) {
     if (!array.length) {
         return []
     }
-    const keyArr = []
-    const map = new Map<string, any>();
     const transStr = typeof array[0].value === 'string'
+    if (!overwrite && !transStr && array.length < 10) {
+        return array
+    }
+    const keyArr = [];
+    const map = new Map<string, any>();
     for (const obj of array) {
         if (transStr) {
             obj.value = BigInt(obj.value)

@@ -254,7 +254,7 @@ async function run(cfx:Conflux, preFinished: number) {
         buildNfts(t1155, nfts)
         // build data out of transaction, reduce tx time.
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
-        return {t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, approvals, relations, dt, pivotHash, parentHash: parentDbBlock?.hash}
+        return {code: 0, t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, approvals, relations, dt, pivotHash, parentHash: parentDbBlock?.hash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
@@ -310,6 +310,7 @@ async function run(cfx:Conflux, preFinished: number) {
             setTimeout(repeat, 5_000)
         })
     }
+    let lastDump = Date.now();
     async function repeat0() {
         if (epoch>maxEpochOfBlock) {
             await updateMaxDbEpoch();
@@ -350,7 +351,9 @@ async function run(cfx:Conflux, preFinished: number) {
                         batchData.enable = false
                     }
                     if (epoch % (batchData.enable ? 1000 : 100) === 0) {
-                        measure.dump(`${epoch} ${batchData.enable ? "" : "NO "}batch `, 1, 'save');
+                        const now = Date.now();
+                        measure.dump(`${epoch} Elapsed ${now - lastDump} ${batchData.enable ? "" : "NO "}batch `, 1, 'save');
+                        lastDump = now;
                     }
                     epoch ++
                 } catch (e) {
