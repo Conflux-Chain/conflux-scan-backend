@@ -65,8 +65,10 @@ export class FullBlockService {
         this.batchBlockTx = new BatchBlockTx();
         this.reporter = new SyncReporter(ConfigInstance.influxDB);
     }
+    lastReportTime = 0;
     // sync metrics
     private metrics = {
+        elapsedMs: 0,
         ms : 0,
         bulkSaveMs: 0,
         executedTxCount : 0,
@@ -112,6 +114,7 @@ export class FullBlockService {
             this.batchBlockTx.enable = true;
         }
         const that = this
+        this.lastReportTime = Date.now();
         const repeat = async ()=>{
 			try {
                 await fnUnsafe();
@@ -630,10 +633,12 @@ export class FullBlockService {
             // console.log(`====`, blockList[0])
             const epochPerStat = this.batchBlockTx.enable ? 1000 : 100
             if((minEpochNumber % epochPerStat) === 0) {
+                metrics.elapsedMs = now - this.lastReportTime;
+                this.lastReportTime = now;
                 console.log(`${fmtDtUTC(new Date())} block ${metrics.blockCount
                 } tx ${metrics.executedTxCount} (${metrics.addressTxCount}), epoch ${
                     minEpochNumber
-                }, time ${blockTime.toISOString()} \n cost ${metrics.ms}ms: rpc ${metrics.pureRpcTime}/${metrics.queryFullNodeTime
+                }, time ${blockTime.toISOString()} \n Elapsed ${metrics.elapsedMs} spent ${metrics.ms}ms: rpc ${metrics.pureRpcTime}/${metrics.queryFullNodeTime
                     } build ${metrics.procTime}/${metrics.buildTime}, bulkSaveDB ${metrics.bulkSaveMs} Detail: block ${metrics.saveBlockTime} allTx ${metrics.saveTxTime} addrTx ${metrics.saveAddrTxTime
                     } upBlkCnt ${metrics.diffBlockCntTime} upTxCnt ${metrics.diffTxCntTime}   `)
                 this.reporter.write({biz: 'blockSync', epoch:minEpochNumber, epochPerStat, batchSize: this.batchBlockTx.saveAtSize,  ...metrics})
