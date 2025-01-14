@@ -9,9 +9,15 @@ import {sleep} from "./ProcessTool";
 
 const limit = pLimit(100);
 
+interface IJob {
+	fromEpoch: number
+	toEpoch: number
+	range: number
+}
+
 class LogsJob {
 	fromEpoch: number
-	toEpoch?: number
+	toEpoch: number
 	range: number
 	forked: boolean
 
@@ -20,6 +26,12 @@ class LogsJob {
 
 	pre?: LogsJob
 	next?: LogsJob
+
+	constructor({fromEpoch, toEpoch, range}: IJob) {
+		this.fromEpoch = fromEpoch;
+		this.toEpoch = toEpoch;
+		this.range = range;
+	}
 
 	start(cfx: Conflux) {
 		this.logs = cfx.getLogs({fromEpoch: this.fromEpoch, toEpoch: this.toEpoch});
@@ -44,7 +56,7 @@ class LogsJobStream {
 		this.dataSizeLimit = 20_000;
 		this.rpcSizeLimit = 50_000;
 		this.cfx = cfx;
-		let curJob = {fromEpoch: from, range, toEpoch: from + range} as LogsJob;
+		let curJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range});
 		curJob.start(cfx)
 
 		this.head = this.runningJob = this.buildingJob = curJob;
@@ -52,7 +64,7 @@ class LogsJobStream {
 		for (let i = 1; i < jobCount; i++) {
 			from = curJob.toEpoch + 1;
 
-			const tmpJob = {fromEpoch: from, range, toEpoch: from + range} as LogsJob;
+			const tmpJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range});
 			tmpJob.start(cfx)
 
 			curJob.next = tmpJob;
@@ -91,7 +103,7 @@ class LogsJobStream {
 				this.runningJob.start(cfx);
 
 				const newFe = this.runningJob.toEpoch + 1
-				const tmpJob = {fromEpoch: newFe, range: toEpoch - newFe, toEpoch: toEpoch} as LogsJob;
+				const tmpJob = new LogsJob({fromEpoch: newFe, range: toEpoch - newFe, toEpoch: toEpoch});
 				// right link
 				if (this.runningJob === this.tail) {
 					this.tail = tmpJob;
@@ -115,7 +127,7 @@ class LogsJobStream {
 				}
 			} else {
 				const newFe = tail.toEpoch + 1
-				const tmpJob = {fromEpoch: newFe, range, toEpoch: newFe + range} as LogsJob;
+				const tmpJob = new LogsJob({fromEpoch: newFe, range, toEpoch: newFe + range});
 				tail.next = tmpJob;
 				tmpJob.pre = tail;
 				this.tail = tmpJob;
