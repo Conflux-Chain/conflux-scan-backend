@@ -55,9 +55,10 @@ implements IEpochHashTokenTransfer{
 export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date) {
     const result = {t20:[],t721:[],t1155:[], approvals:[]}
-    function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txPos) {
+    function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex, txPos) {
         transfer['epoch'] = tx.epochNumber;
         transfer['transactionIndex'] = txPos;//tx.index;
+        transfer['transactionLogIndex'] = txLogIndex;
         transfer['blockIndex'] = blockIdx;
         transfer['createdAt'] = dt;
         arr.push(transfer)
@@ -76,7 +77,9 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
                 continue;
             }
 
+            let txLogIndex = -1; // epoch receipts do not have transactionLogIndex, but get logs DO.
             for (let log of txReceipt.logs) {
+                txLogIndex ++
                 if (log.topics.length < 3) {
                     continue;
                 }
@@ -86,17 +89,17 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
                 }
                 let transfer;
                 if ((transfer = tokenTool.decodeERC20TransferPlus(log, false))) {
-                    push(result.t20, transfer, blockIdx, txReceipt, txPos)
+                    push(result.t20, transfer, blockIdx, txReceipt, txLogIndex, txPos)
                 } else if ((transfer = tokenTool.decodeERC721Transfer(log, false))) {
-                    push(result.t721, transfer, blockIdx, txReceipt, txPos);
+                    push(result.t721, transfer, blockIdx, txReceipt, txLogIndex, txPos);
                 } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log)) && transfer.length) {
                     transfer.forEach(e=>{
-                        push(result.t1155, e, blockIdx, txReceipt, txPos);
+                        push(result.t1155, e, blockIdx, txReceipt, txLogIndex, txPos);
                     })
                 } else if ((transfer = tokenTool.decode721_1155_ApprovalForAll(log, false))) {
-                    push(result.approvals, transfer, blockIdx, txReceipt, txPos)
+                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos)
                 } else if ((transfer = tokenTool.decodeERC721_ERC20Approval(log, false))) {
-                    push(result.approvals, transfer, blockIdx, txReceipt, txPos);
+                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos);
                 }
             }
         }
@@ -258,7 +261,6 @@ async function run(cfx:Conflux, preFinished: number) {
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
         return {code: 0, t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, approvals, relations, dt, pivotHash, parentHash}
     }
-    const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
         try {
             await measure.call('save', () => save(epoch, finalData as any))
@@ -355,7 +357,7 @@ async function run(cfx:Conflux, preFinished: number) {
                         console.log(`data is incorrect. epoch ${epoch}`, data)
                         break;
                     }
-                    await processData(epoch, data);
+                    await processData(data.nextEpoch ?? epoch, data);
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
                         loader0.startNext()
                     } else if (useGetLogs) {
