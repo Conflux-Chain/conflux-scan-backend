@@ -139,8 +139,6 @@ export class LogFetcher {
 		this.cfx = cfx;
 		this.logJobStream = new LogsJobStream();
 		this.logJobStream.start(fromEpoch, range, 10, cfx);
-
-		this.building().then()
 	}
 
 	async next(epoch: number) {

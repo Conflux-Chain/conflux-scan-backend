@@ -309,6 +309,7 @@ async function run(cfx:Conflux, preFinished: number) {
         useGetLogs = true;
         const fetcher = new LogFetcher(cfx, fromEpoch, 1_000);
         fetcher.extBuilder = buildTransferInfo;
+        fetcher.building().then()
         dataFn = e=>fetcher.next(e);
         loader0.startNext = ()=>{};
     } else if (batchData.enableByGap(epoch, stateEpoch)) {
