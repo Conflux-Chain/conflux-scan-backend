@@ -30,6 +30,7 @@ import {ApprovalRelation, batchSaveApproval, buildRelation, TaskEpochApproval, T
 import {EpochHashCfxTransfer, loadParentHash} from "./CfxTransferSync";
 import {PreloadMap} from "./service/SyncBase";
 import {BatchTokenTransfer} from "./service/BatchDBTx";
+import {LogFetcher} from "./service/tool/LogFetcher";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -52,12 +53,11 @@ implements IEpochHashTokenTransfer{
 }
 
 export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
-                                    dt:Date, blockHashes:string[]) {
+                                    dt:Date) {
     const result = {t20:[],t721:[],t1155:[], approvals:[]}
-    function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txLogIndex, txPos) {
+    function push(arr:any[], transfer, blockIdx, tx:TransactionReceipt, txPos) {
         transfer['epoch'] = tx.epochNumber;
         transfer['transactionIndex'] = txPos;//tx.index;
-        transfer['transactionLogIndex'] = txLogIndex;
         transfer['blockIndex'] = blockIdx;
         transfer['createdAt'] = dt;
         arr.push(transfer)
@@ -76,9 +76,7 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
                 continue;
             }
 
-            let txLogIndex = -1;
             for (let log of txReceipt.logs) {
-                txLogIndex ++
                 if (log.topics.length < 3) {
                     continue;
                 }
@@ -88,17 +86,17 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
                 }
                 let transfer;
                 if ((transfer = tokenTool.decodeERC20TransferPlus(log, false))) {
-                    push(result.t20, transfer, blockIdx, txReceipt, txLogIndex, txPos)
+                    push(result.t20, transfer, blockIdx, txReceipt, txPos)
                 } else if ((transfer = tokenTool.decodeERC721Transfer(log, false))) {
-                    push(result.t721, transfer, blockIdx, txReceipt, txLogIndex, txPos);
+                    push(result.t721, transfer, blockIdx, txReceipt, txPos);
                 } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log)) && transfer.length) {
                     transfer.forEach(e=>{
-                        push(result.t1155, e, blockIdx, txReceipt, txLogIndex, txPos);
+                        push(result.t1155, e, blockIdx, txReceipt, txPos);
                     })
                 } else if ((transfer = tokenTool.decode721_1155_ApprovalForAll(log, false))) {
-                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos)
+                    push(result.approvals, transfer, blockIdx, txReceipt, txPos)
                 } else if ((transfer = tokenTool.decodeERC721_ERC20Approval(log, false))) {
-                    push(result.approvals, transfer, blockIdx, txReceipt, txLogIndex, txPos);
+                    push(result.approvals, transfer, blockIdx, txReceipt, txPos);
                 }
             }
         }
@@ -106,7 +104,7 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
     return result;
 }
 
-export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number, pivotHash: string = '') {
+export async function cfxSafeEpochReceipts(cfx: Conflux, epoch: number, pivotHash: string = '') : Promise<TransactionReceipt[][]> {
     if (ConfigInstance.noCoreSpace) {
         return cfx.getEpochReceipts(epoch);
     }
@@ -239,7 +237,11 @@ async function run(cfx:Conflux, preFinished: number) {
         if (code != 0) {
             return {code}
         }
-        let {t20:t20raw, t721, t1155, approvals} = decodeTransferFromReceipts(receipts, tokenTool, dt, blockHashes);
+        const info = decodeTransferFromReceipts(receipts, tokenTool, dt);
+        return buildTransferInfo(dt, info, pivotHash, parentDbBlock?.hash);
+    }
+    async function buildTransferInfo(dt: Date, info, pivotHash: string, parentHash: string) {
+        let {t20:t20raw, t721, t1155, approvals} = info;
         const t20 = aggregateTransfer(t20raw)
         approvals = aggregateTransfer(approvals, true);
         const relations = []
@@ -254,7 +256,7 @@ async function run(cfx:Conflux, preFinished: number) {
         buildNfts(t1155, nfts)
         // build data out of transaction, reduce tx time.
         const [t20addr, t721addr, t1155addr] = [t20, t721, t1155].map(buildTransferList2address)
-        return {code: 0, t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, approvals, relations, dt, pivotHash, parentHash: parentDbBlock?.hash}
+        return {code: 0, t20, t20addr, t721, t721addr, t1155, t1155addr, nfts, approvals, relations, dt, pivotHash, parentHash}
     }
     const fetchAndBuildTag = 'fetchAndBuild';
     async function processData(epoch, finalData) {
@@ -287,7 +289,7 @@ async function run(cfx:Conflux, preFinished: number) {
         console.log(` set cursor to ${epoch} local pop ${ep} end -`)
         return ep
     }
-    const loader = new PreloadMap(fetchAndBuild, batchData.initialTaskCount);
+    const loader0 = new PreloadMap(fetchAndBuild, batchData.initialTaskCount);
     const stateEpoch = await cfx.getEpochNumber('latest_state')
     // should not higher than block/tx sync, otherwise the transaction hash may not be found.
     let maxEpochOfBlock = 0;
@@ -301,8 +303,16 @@ async function run(cfx:Conflux, preFinished: number) {
         console.log(` update max epoch of block to ${maxE} `)
     }
     await updateMaxDbEpoch()
-    if (batchData.enableByGap(epoch, stateEpoch)) {
-        loader.initTasks(epoch, Math.min(batchData.initialTaskCount, maxEpochOfBlock - fromEpoch));
+    let dataFn = e=>loader0.pop(e);
+    let useGetLogs = false;
+    if (ConfigInstance.useGetLogs && stateEpoch - epoch > 10_000) {
+        useGetLogs = true;
+        const fetcher = new LogFetcher(cfx, fromEpoch, 1_000);
+        fetcher.extBuilder = buildTransferInfo;
+        dataFn = e=>fetcher.next(e);
+        loader0.startNext = ()=>{};
+    } else if (batchData.enableByGap(epoch, stateEpoch)) {
+        loader0.initTasks(epoch, Math.min(batchData.initialTaskCount, maxEpochOfBlock - fromEpoch));
     }
     async function repeat() {
         return repeat0().catch(err=>{
@@ -319,7 +329,7 @@ async function run(cfx:Conflux, preFinished: number) {
             return;
         }
         let action = 'ok'
-        let data = await measure.call('fetch', ()=>loader.pop(epoch));
+        let data = await measure.call('fetch', ()=>dataFn(epoch));
         let delay = 0
         switch (action) {
             case "ok":
@@ -346,7 +356,11 @@ async function run(cfx:Conflux, preFinished: number) {
                     }
                     await processData(epoch, data);
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
-                        loader.startNext()
+                        loader0.startNext()
+                    } else if (useGetLogs) {
+                        console.log(`should switch to non-get-logs-mod`)
+                        await sleep(10_000)
+                        process.exit(0)
                     } else {
                         batchData.enable = false
                     }
@@ -355,7 +369,11 @@ async function run(cfx:Conflux, preFinished: number) {
                         measure.dump(`${epoch} Elapsed ${now - lastDump} ${batchData.enable ? "" : "NO "}batch `, 1, 'save');
                         lastDump = now;
                     }
-                    epoch ++
+                    if (useGetLogs) { // use get logs
+                        epoch = data.nextEpoch
+                    } else {
+                        epoch++
+                    }
                 } catch (e) {
                     if (e instanceof UniqueConstraintError) {
                         console.log(` UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
@@ -464,7 +482,7 @@ async function updateAllTokenTransferCount(lt = 100_000) {
 }
 let notifyError:Function
 // noinspection DuplicatedCode
-async function setup(cfxUrl:string, fromEpoch = '30495000', taskLen = '3000') {
+async function setup(cfxUrl:string) {
     const config = await init();
     if (process.argv.includes('updateAllTokenTransferCount')) {
         await updateAllTokenTransferCount()
@@ -516,6 +534,7 @@ async function runTask(cfx:Conflux) {
     console.log(` start token transfer task, first epoch ${preFinished + 1}`)
 	return run(cfx, preFinished)
 }
+
 if (module === require.main) {
     redirectLog()
     regExitHook()
@@ -523,8 +542,8 @@ if (module === require.main) {
     // -1 : use former unfinished task; exclude mode.
     // N  : use task N if it's not finished, fallback to *.
     // *  : auto create based on max task.
-    const [, , cfxUrl, fromEpoch, taskLen] = process.argv
-    setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
+    const [, , cfxUrl] = process.argv
+    setup(cfxUrl).then().catch(err => {
         console.log(`${process.argv[1]}\n`, err)
         process.exit(1)
     });

@@ -71,6 +71,7 @@ export interface SyncQuoteOption{
     },
 }
 export interface StatConfig{
+    useGetLogs: boolean;
     influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
     oss: OssConf
     firstBlockNo: number
