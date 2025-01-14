@@ -147,7 +147,11 @@ export class LogFetcher {
 	extBuilder: Function
 	private maxBlockEpoch: number;
 
+	// The gap between from_epoch and to_epoch is larger than max_gap (from: ..., to: ..., max_gap: 1000)
 	constructor(cfx: Conflux, fromEpoch: number, range: number) {
+		if (range >= 1000) {
+			throw new Error(`logs range exceeds , should < 1000`)
+		}
 		this.cfx = cfx;
 		this.logJobStream = new LogsJobStream();
 		this.logJobStream.start(fromEpoch, range, 10, cfx);
