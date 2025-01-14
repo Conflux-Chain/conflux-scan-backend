@@ -178,6 +178,7 @@ export class LogFetcher {
 					return this.extBuilder(undefined, info, '', '')
 				}).then(res => {
 					res.nextEpoch = head.toEpoch + 1;
+					res.toEpoch = head.toEpoch;
 					return res;
 				});
 				this.logJobStream.buildingJob = this.logJobStream.buildingJob.next;

@@ -357,7 +357,7 @@ async function run(cfx:Conflux, preFinished: number) {
                         console.log(`data is incorrect. epoch ${epoch}`, data)
                         break;
                     }
-                    await processData(data.nextEpoch ?? epoch, data);
+                    await processData(data.toEpoch ?? epoch, data);
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
                         loader0.startNext()
                     } else if (useGetLogs) {
@@ -367,9 +367,9 @@ async function run(cfx:Conflux, preFinished: number) {
                     } else {
                         batchData.enable = false
                     }
-                    if (epoch % (batchData.enable ? 1000 : 100) === 0) {
+                    if ( useGetLogs || (epoch % (batchData.enable ? 1000 : 100)) === 0) {
                         const now = Date.now();
-                        measure.dump(`${epoch} Elapsed ${now - lastDump} ${batchData.enable ? "" : "NO "}batch `, 1, 'save');
+                        measure.dump(`${data.toEpoch ?? epoch} Elapsed ${now - lastDump} ${useGetLogs ? "getLogs " : ""}${batchData.enable ? "" : "NO "}batch `, 1, 'save');
                         lastDump = now;
                     }
                     if (useGetLogs) { // use get logs
