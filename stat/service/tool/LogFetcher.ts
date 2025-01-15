@@ -168,7 +168,7 @@ class LogsJobStream {
 		tmpJob.start(cfx)
 	}
 
-	private async waitDbBlock(lastEp: number) {
+	public async waitDbBlock(lastEp: number) {
 		let times = 0;
 		do {
 			if (lastEp <= this.maxBlockEpoch) {
@@ -206,7 +206,7 @@ export class LogFetcher {
 
 	async next(epoch: number) {
 		let {head, runningJob} = this.logJobStream;
-		if (epoch !== head.fromEpoch) {
+		if (epoch !== head?.fromEpoch) {
 			return Promise.reject(`want epoch ${epoch} != head epoch ${head.fromEpoch}`)
 		}
 		while (head === runningJob) {
