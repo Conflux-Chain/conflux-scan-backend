@@ -88,6 +88,7 @@ class LogsJobStream {
 		const {cfx, runningJob: {fromEpoch, toEpoch, range: rangeC, logs}, range, tail} = this
 		let startNewJob = true
 		if (fromEpoch - this.head.fromEpoch > this.rpcSizeLimit) {
+			console.log(`wait for consumer.`)
 			await sleep(2_000)
 			startNewJob = false
 		}
@@ -162,15 +163,14 @@ export class LogFetcher {
 	}
 
 	async next(epoch: number) {
-		const {head, buildingJob} = this.logJobStream;
+		let {head, buildingJob} = this.logJobStream;
 		if (epoch !== head.fromEpoch) {
 			return Promise.reject(`want epoch ${epoch} != head epoch ${head.fromEpoch}`)
 		}
 		while (head === buildingJob) {
-			if (Date.now() % 60_000 === 0) {
-				console.log(`final data not ready, want ${epoch}`)
-			}
+			console.log(`final data not ready, want ${epoch}`)
 			await sleep(1_000);
+			({head, buildingJob} = this.logJobStream);
 		}
 		this.logJobStream.head = head.next;
 		head.next.pre = undefined;
@@ -199,7 +199,7 @@ export class LogFetcher {
 				return []
 			});
 			try {
-				buildingJob.result = logsReady ? null : await this.assemble(logs).then(info => {
+				buildingJob.result = logsReady ? null : await this.assemble(buildingJob, logs).then(info => {
 					// token transfer sync -> buildTransferInfo
 					return this.extBuilder(undefined, info, '', '')
 				}).then(res => {
@@ -216,7 +216,8 @@ export class LogFetcher {
 		setTimeout(() => this.building(), delay);
 	}
 
-	async assemble(logs: Log[]) {
+	async assemble(job: LogsJob, logs: Log[]) {
+		console.log(`assemble [${job.fromEpoch},${job.toEpoch}](${job.range}) logs ${logs.length}`)
 		const receipts = this.buildAsReceipts(logs);
 		if (logs.length) {
 			const lastEp = logs[logs.length - 1].epochNumber;
