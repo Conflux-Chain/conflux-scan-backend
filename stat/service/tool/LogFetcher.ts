@@ -56,6 +56,10 @@ class LogsJob {
 		this.logs = cfx.getLogs({fromEpoch: this.fromEpoch, toEpoch: this.toEpoch});
 		this.logs.then(logs=>{
 			return this.patchFn(this, logs)
+		}).then(res=>{
+			res.nextEpoch = this.toEpoch + 1;
+			res.toEpoch = this.toEpoch;
+			return res;
 		}).then(v=>this.resultResolver(v));
 	}
 }
