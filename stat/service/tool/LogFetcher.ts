@@ -34,7 +34,7 @@ class LogsJob {
 		if (isNaN(toEpoch) || isNaN(range) || isNaN(fromEpoch)) {
 			throw new Error(`bad params ${fromEpoch} , ${toEpoch} , ${range}`)
 		}
-		console.log(`new job [${fromEpoch} , ${toEpoch}], ${range}`)
+		// console.log(`new job [${fromEpoch} , ${toEpoch}], ${range}`)
 		this.fromEpoch = fromEpoch;
 		this.toEpoch = toEpoch;
 		this.range = range;
@@ -218,7 +218,7 @@ export class LogFetcher {
 	}
 
 	async assemble(job: LogsJob, logs: Log[]) {
-		console.log(`assemble [${job.fromEpoch},${job.toEpoch}](${job.range}) logs ${logs.length}`)
+		// console.log(`assemble [${job.fromEpoch},${job.toEpoch}](${job.range}) logs ${logs.length}`)
 		const receipts = this.buildAsReceipts(logs);
 		if (logs.length) {
 			const lastEp = logs[logs.length - 1].epochNumber;
