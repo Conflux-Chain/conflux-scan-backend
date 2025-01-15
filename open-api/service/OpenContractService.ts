@@ -248,7 +248,7 @@ export async function checkProxyVerification(ctx) {
             setBody(ctx, undefined, 1, `verify with GUID ${guid} not found` );
             return;
         }
-        if(!verify.proxy || (verify.expectedImpl && verify.implementation !== verify.expectedImpl)){
+        if(!verify.proxy || (verify.expectedImpl && toBase32(verify.implementation) !== verify.expectedImpl)){
             setBody(ctx, MSG_IMPL_NO_MATCH, 1, 'NOTOK');
             return;
         }
