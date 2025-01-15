@@ -157,6 +157,7 @@ export class LogFetcher {
 		if (range >= 1000) {
 			throw new Error(`logs range exceeds , should < 1000`)
 		}
+		this.tokenTool = new TokenTool(cfx);
 		this.cfx = cfx;
 		this.logJobStream = new LogsJobStream();
 		this.logJobStream.start(fromEpoch, range, 10, cfx);
