@@ -55,7 +55,7 @@ class LogsJob {
 		this.rpcBeginMs = Date.now();
 		this.logs = cfx.getLogs({fromEpoch: this.fromEpoch, toEpoch: this.toEpoch});
 		this.logs.then(logs=>{
-			return this.patchFn(logs)
+			return this.patchFn(this, logs)
 		}).then(v=>this.resultResolver(v));
 	}
 }
