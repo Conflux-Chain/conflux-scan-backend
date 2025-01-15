@@ -23,7 +23,9 @@ class LogsJob {
 	forked: boolean
 	waitPre?: boolean
 
-	beginMs: number;
+	rpcBeginMs: number;
+	buildBeginMs: number;
+	buildEndMs: number
 	logs?: Promise<Log[]>
 	result?: any;
 
@@ -41,7 +43,7 @@ class LogsJob {
 	}
 
 	start(cfx: Conflux) {
-		this.beginMs = Date.now();
+		this.rpcBeginMs = Date.now();
 		this.logs = cfx.getLogs({fromEpoch: this.fromEpoch, toEpoch: this.toEpoch});
 	}
 }
@@ -169,7 +171,7 @@ export class LogFetcher {
 			return Promise.reject(`want epoch ${epoch} != head epoch ${head.fromEpoch}`)
 		}
 		while (head === buildingJob) {
-			console.log(`final data not ready, want ${epoch}`)
+			// console.log(`final data not ready, want ${epoch}`)
 			await sleep(1_000);
 			({head, buildingJob} = this.logJobStream);
 		}
@@ -184,7 +186,7 @@ export class LogFetcher {
 		const {logJobStream: {buildingJob, head, runningJob, dataSizeLimit}} = this;
 		if (runningJob === buildingJob) {
 			// RPC data is not ready yet.
-			console.log(`RPC data is not ready yet. [${runningJob.fromEpoch} , ${runningJob.toEpoch}] elapsed ${Date.now() - runningJob.beginMs}ms`)
+			// console.log(`RPC data is not ready yet. [${runningJob.fromEpoch} , ${runningJob.toEpoch}] elapsed ${Date.now() - runningJob.rpcBeginMs}ms`)
 			delay = 1_000
 		} else if (buildingJob.fromEpoch - head.fromEpoch > dataSizeLimit) {
 			// The data queue is waiting for persistence
@@ -218,6 +220,7 @@ export class LogFetcher {
 	}
 
 	async assemble(job: LogsJob, logs: Log[]) {
+		job.buildBeginMs = Date.now();
 		// console.log(`assemble [${job.fromEpoch},${job.toEpoch}](${job.range}) logs ${logs.length}`)
 		const receipts = this.buildAsReceipts(logs);
 		if (logs.length) {
@@ -260,6 +263,7 @@ export class LogFetcher {
 		})
 		txCache.clear();
 		await Promise.all(fillTxInfoTaskArr)
+		job.buildEndMs = Date.now();
 		return transferInfo;
 	}
 
