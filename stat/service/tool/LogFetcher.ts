@@ -207,7 +207,7 @@ export class LogFetcher {
 	async next(epoch: number) {
 		let {head, runningJob} = this.logJobStream;
 		if (epoch !== head?.fromEpoch) {
-			return Promise.reject(`want epoch ${epoch} != head epoch ${head.fromEpoch}`)
+			return Promise.reject(`want epoch ${epoch} != head epoch ${head?.fromEpoch}`)
 		}
 		while (head === runningJob) {
 			// console.log(`final data not ready, want ${epoch}`)
