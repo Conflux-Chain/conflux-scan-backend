@@ -6,6 +6,7 @@ import {TokenTool} from "./TokenTool";
 import pLimit from "p-limit";
 import {FullTransaction, loadMaxBlockEpoch} from "../../model/FullBlock";
 import {sleep} from "./ProcessTool";
+import {patchCfxGetLogs} from "../common/fastFormatter";
 
 const limit = pLimit(100);
 
@@ -20,6 +21,7 @@ class LogsJob {
 	toEpoch: number
 	range: number
 	forked: boolean
+	waitPre?: boolean
 
 	logs?: Promise<Log[]>
 	result?: any;
@@ -82,10 +84,8 @@ class LogsJobStream {
 			await sleep(2_000)
 			startNewJob = false
 		}
-		let logsCount = 0
 		try {
-			const logsV = await logs
-			logsCount = logsV.length;
+			await logs
 		} catch (e) {
 			startNewJob = false;
 			console.log(`${__filename} failed to get logs [${fromEpoch}, ${toEpoch}]:`, e.message);
@@ -104,6 +104,7 @@ class LogsJobStream {
 
 				const newFe = this.runningJob.toEpoch + 1
 				const tmpJob = new LogsJob({fromEpoch: newFe, range: toEpoch - newFe, toEpoch: toEpoch});
+				tmpJob.waitPre = true;
 				// right link
 				if (this.runningJob === this.tail) {
 					this.tail = tmpJob;
@@ -118,13 +119,8 @@ class LogsJobStream {
 			}
 		}
 		if (startNewJob) {
-			if (this.runningJob.forked) {
-				if (logsCount > 500) {
-					// indicate that the next job should fork
-					this.runningJob.next.logs = Promise.reject("previous forked job has too many logs")
-				} else {
-					this.runningJob.next.start(cfx); //
-				}
+			if (this.runningJob.next?.waitPre) {
+				this.runningJob.next.start(cfx); //
 			} else {
 				const newFe = tail.toEpoch + 1
 				const tmpJob = new LogsJob({fromEpoch: newFe, range, toEpoch: newFe + range});
@@ -149,6 +145,7 @@ export class LogFetcher {
 
 	// The gap between from_epoch and to_epoch is larger than max_gap (from: ..., to: ..., max_gap: 1000)
 	constructor(cfx: Conflux, fromEpoch: number, range: number) {
+		patchCfxGetLogs(cfx);
 		if (range >= 1000) {
 			throw new Error(`logs range exceeds , should < 1000`)
 		}
@@ -187,17 +184,23 @@ export class LogFetcher {
 			} head from epoch ${head.fromEpoch}`)
 			delay = 1_000
 		} else {
-			const logs = await this.logJobStream.head.logs;
+			let logsReady = true;
+			const logs = await buildingJob.logs.catch(e=>{
+				logsReady = false;
+				console.log(`logs are not ready when building them. `, e.message)
+				delay = 10_000;
+				return []
+			});
 			try {
-				this.logJobStream.head.result = await this.assemble(logs).then(info => {
+				buildingJob.result = logsReady ? null : await this.assemble(logs).then(info => {
 					// token transfer sync -> buildTransferInfo
 					return this.extBuilder(undefined, info, '', '')
 				}).then(res => {
-					res.nextEpoch = head.toEpoch + 1;
-					res.toEpoch = head.toEpoch;
+					res.nextEpoch = buildingJob.toEpoch + 1;
+					res.toEpoch = buildingJob.toEpoch;
 					return res;
 				});
-				this.logJobStream.buildingJob = this.logJobStream.buildingJob.next;
+				logsReady && (this.logJobStream.buildingJob = this.logJobStream.buildingJob.next);
 			} catch (e) {
 				console.log(`${__filename} assemble failure`, e)
 				delay = 10_000;

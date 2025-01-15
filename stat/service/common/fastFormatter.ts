@@ -1,3 +1,5 @@
+import {Conflux} from "js-conflux-sdk";
+
 const cfxFormat = require('js-conflux-sdk/src/rpc/types/formatter');
 
 function maybeBigInt(v, prop) {
@@ -74,6 +76,19 @@ function fastFormatTx(v) {
 	v.transactionIndex = v.transactionIndex ? parseInt16(v.transactionIndex) : null;
 }
 
+export function fastFormatLog(v) {
+	v.epochNumber = v.epochNumber ? parseInt16(v.epochNumber) : null;
+	v.logIndex = v.logIndex ? parseInt16(v.logIndex) : null;
+	v.transactionIndex = v.transactionIndex ? parseInt16(v.transactionIndex) : null;
+	v.transactionLogIndex = v.transactionLogIndex ? parseInt16(v.transactionLogIndex) : null;
+	return v;
+}
+
+export function fastFormatLogArray(v: any[]) {
+	v.forEach(fastFormatLog);
+	return v;
+}
+
 export function fastFormatBlock(v) {
 	v.baseFeePerGas = v.baseFeePerGas ? BigInt(v.baseFeePerGas) : null;
 	v.epochNumber = v.epochNumber ? parseInt16(v.epochNumber) : null;
@@ -109,4 +124,11 @@ export function useFastFormat(rpcDef) {
 		default:
 			break;
 	}
+}
+
+export function patchCfxGetLogs(cfx: Conflux) {
+	cfx["_formatGetLogs"] = ({fromEpoch, toEpoch})=>{
+		return {fromEpoch: `0x${fromEpoch.toString(16)}`, toEpoch: `0x${toEpoch.toString(16)}`}
+	}
+	cfxFormat.logs = fastFormatLogArray;
 }
