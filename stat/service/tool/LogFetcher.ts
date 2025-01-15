@@ -71,6 +71,7 @@ class LogsJobStream {
 	dataSizeLimit: number
 	rpcSizeLimit: number
 	cfx: Conflux
+	private maxBlockEpoch: number;
 
 	runningJob: LogsJob
 	patchFn: Function;
@@ -154,12 +155,27 @@ class LogsJobStream {
 				tail.next = tmpJob;
 				tmpJob.pre = tail;
 				this.tail = tmpJob;
+				await this.waitDbBlock(tmpJob.toEpoch);
 				tmpJob.start(cfx)
 			}
 
 			this.runningJob = this.runningJob.next
 		}
 		setTimeout(() => this.checkRPC(), 0);
+	}
+	private async waitDbBlock(lastEp: number) {
+		let times = 0;
+		do {
+			if (lastEp <= this.maxBlockEpoch) {
+				break;
+			}
+			if (times > 0) {
+				console.log(`${__filename} block/tx not ready, want ${lastEp} , got ${this.maxBlockEpoch}`)
+				await sleep(5_000)
+			}
+			this.maxBlockEpoch = await loadMaxBlockEpoch();
+			times++
+		} while (true)
 	}
 }
 
@@ -168,7 +184,6 @@ export class LogFetcher {
 	tokenTool: TokenTool
 	logJobStream: LogsJobStream
 	extBuilder: Function
-	private maxBlockEpoch: number;
 
 	// The gap between from_epoch and to_epoch is larger than max_gap (from: ..., to: ..., max_gap: 1000)
 	constructor(cfx: Conflux, fromEpoch: number, range: number, jobCount: number) {
@@ -207,21 +222,6 @@ export class LogFetcher {
 		job.buildBeginMs = Date.now();
 		// console.log(`assemble [${job.fromEpoch},${job.toEpoch}](${job.range}) logs ${logs.length}`)
 		const receipts = buildAsReceipts(logs);
-		if (logs.length) {
-			const lastEp = logs[logs.length - 1].epochNumber;
-			let times = 0;
-			do {
-				if (lastEp <= this.maxBlockEpoch) {
-					break;
-				}
-				if (times > 0) {
-					console.log(`${__filename} block/tx not ready, want ${lastEp} , got ${this.maxBlockEpoch}`)
-					await sleep(5_000)
-				}
-				this.maxBlockEpoch = await loadMaxBlockEpoch();
-				times ++
-			} while (true)
-		}
 		const transferInfo = decodeTransferFromReceipts(receipts, this.tokenTool, null);
 		const {t20, t721, t1155, approvals} = transferInfo;
 		const fillTxInfoTaskArr = [];
@@ -250,8 +250,6 @@ export class LogFetcher {
 		job.buildEndMs = Date.now();
 		return transferInfo;
 	}
-
-
 }
 
 function buildAsReceipts(logs: Log[]) {
