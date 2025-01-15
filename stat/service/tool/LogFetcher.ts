@@ -23,6 +23,7 @@ class LogsJob {
 	forked: boolean
 	waitPre?: boolean
 
+	beginMs: number;
 	logs?: Promise<Log[]>
 	result?: any;
 
@@ -30,12 +31,16 @@ class LogsJob {
 	next?: LogsJob
 
 	constructor({fromEpoch, toEpoch, range}: IJob) {
+		if (isNaN(toEpoch) || isNaN(range) || isNaN(fromEpoch)) {
+			throw new Error(`bad params ${fromEpoch} , ${toEpoch} , ${range}`)
+		}
 		this.fromEpoch = fromEpoch;
 		this.toEpoch = toEpoch;
 		this.range = range;
 	}
 
 	start(cfx: Conflux) {
+		this.beginMs = Date.now();
 		this.logs = cfx.getLogs({fromEpoch: this.fromEpoch, toEpoch: this.toEpoch});
 	}
 }
@@ -176,7 +181,7 @@ export class LogFetcher {
 		const {logJobStream: {buildingJob, head, runningJob, dataSizeLimit}} = this;
 		if (runningJob === buildingJob) {
 			// RPC data is not ready yet.
-			console.log(`RPC data is not ready yet. rpc from epoch ${runningJob.fromEpoch}`)
+			console.log(`RPC data is not ready yet. [${runningJob.fromEpoch} , ${runningJob.toEpoch}] elapsed ${Date.now() - runningJob.beginMs}ms`)
 			delay = 1_000
 		} else if (buildingJob.fromEpoch - head.fromEpoch > dataSizeLimit) {
 			// The data queue is waiting for persistence
