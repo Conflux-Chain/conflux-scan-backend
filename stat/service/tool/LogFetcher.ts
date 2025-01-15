@@ -238,10 +238,16 @@ export class LogFetcher {
 		const transferInfo = decodeTransferFromReceipts(receipts, this.tokenTool, null);
 		const {t20, t721, t1155, approvals} = transferInfo;
 		const fillTxInfoTaskArr = [];
+		const txCache = new Map<string, Promise<FullTransaction>>();
 		[t20, t721, t1155, approvals].forEach(arr => {
 			arr.forEach(transfer => {
 				fillTxInfoTaskArr.push(limit(async () => {
-					const tx = await FullTransaction.findOne({where: {hash: transfer.transactionHash}});
+					let p = txCache.get(transfer.transactionHash);
+					if (!p) {
+						p = FullTransaction.findOne({where: {hash: transfer.transactionHash, epoch: transfer.epochNumber}});
+						txCache.set(transfer.transactionHash, p);
+					}
+					const tx = await p;
 					if (!tx) {
 						return Promise.reject(`tx not found for ${JSON.stringify(transfer)}`);
 					} else {
@@ -252,6 +258,7 @@ export class LogFetcher {
 				}))
 			})
 		})
+		txCache.clear();
 		await Promise.all(fillTxInfoTaskArr)
 		return transferInfo;
 	}
