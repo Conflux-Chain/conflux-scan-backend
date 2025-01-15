@@ -307,14 +307,17 @@ async function run(cfx:Conflux, preFinished: number) {
     await updateMaxDbEpoch()
     let dataFn = e=>loader0.pop(e);
     let useGetLogs = false;
+    batchData.enableByGap(epoch, stateEpoch)
     if (ConfigInstance.useGetLogs && stateEpoch - epoch > 10_000) {
         useGetLogs = true;
-        const fetcher = new LogFetcher(cfx, fromEpoch, 99);
+        const fetcher = new LogFetcher(cfx, fromEpoch,
+            ConfigInstance.getLogsRange ?? 99, ConfigInstance.getLogsJobCount ?? 20);
         fetcher.extBuilder = buildTransferInfo;
         fetcher.building().then()
         dataFn = e=>fetcher.next(e);
         loader0.startNext = ()=>{};
-    } else if (batchData.enableByGap(epoch, stateEpoch)) {
+        batchData.saveAtSize = ConfigInstance.getLogsDbBatchSize || 1;
+    } else if (batchData.enable) {
         loader0.initTasks(epoch, Math.min(batchData.initialTaskCount, maxEpochOfBlock - fromEpoch));
     }
     async function repeat() {
@@ -367,9 +370,9 @@ async function run(cfx:Conflux, preFinished: number) {
                     } else {
                         batchData.enable = false
                     }
-                    if ( useGetLogs || (epoch % (batchData.enable ? 1000 : 100)) === 0) {
+                    if ( (useGetLogs && batchData.batchSize == 0) || (epoch % (batchData.enable ? 1000 : 100)) === 0) {
                         const now = Date.now();
-                        measure.dump(`${data.toEpoch ?? epoch} Elapsed ${now - lastDump} ${useGetLogs ? "getLogs " : ""}${batchData.enable ? "" : "NO "}batch `, 1, 'save');
+                        measure.dump(`${data.toEpoch ?? epoch} Elapsed ${now - lastDump} ${useGetLogs ? "getLogs " : ""}${batchData.enable ? batchData.saveAtSize : "NO "}batch `, 1, 'save');
                         lastDump = now;
                     }
                     if (useGetLogs) { // use get logs

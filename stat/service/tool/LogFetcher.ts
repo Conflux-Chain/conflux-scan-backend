@@ -152,7 +152,7 @@ export class LogFetcher {
 	private maxBlockEpoch: number;
 
 	// The gap between from_epoch and to_epoch is larger than max_gap (from: ..., to: ..., max_gap: 1000)
-	constructor(cfx: Conflux, fromEpoch: number, range: number) {
+	constructor(cfx: Conflux, fromEpoch: number, range: number, jobCount: number) {
 		patchCfxGetLogs(cfx);
 		if (range >= 1000) {
 			throw new Error(`logs range exceeds , should < 1000`)
@@ -160,7 +160,7 @@ export class LogFetcher {
 		this.tokenTool = new TokenTool(cfx);
 		this.cfx = cfx;
 		this.logJobStream = new LogsJobStream();
-		this.logJobStream.start(fromEpoch, range, 10, cfx);
+		this.logJobStream.start(fromEpoch, range, jobCount, cfx);
 	}
 
 	async next(epoch: number) {
