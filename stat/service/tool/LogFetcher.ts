@@ -34,6 +34,7 @@ class LogsJob {
 		if (isNaN(toEpoch) || isNaN(range) || isNaN(fromEpoch)) {
 			throw new Error(`bad params ${fromEpoch} , ${toEpoch} , ${range}`)
 		}
+		console.log(`new job [${fromEpoch} , ${toEpoch}], ${range}`)
 		this.fromEpoch = fromEpoch;
 		this.toEpoch = toEpoch;
 		this.range = range;
@@ -63,6 +64,7 @@ class LogsJobStream {
 		this.dataSizeLimit = 20_000;
 		this.rpcSizeLimit = 50_000;
 		this.cfx = cfx;
+		this.range = range;
 		let curJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range});
 		curJob.start(cfx)
 
