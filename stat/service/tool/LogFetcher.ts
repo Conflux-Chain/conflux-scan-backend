@@ -199,7 +199,7 @@ export class LogFetcher {
 				return []
 			});
 			try {
-				buildingJob.result = logsReady ? null : await this.assemble(buildingJob, logs).then(info => {
+				buildingJob.result = !logsReady ? null : await this.assemble(buildingJob, logs).then(info => {
 					// token transfer sync -> buildTransferInfo
 					return this.extBuilder(undefined, info, '', '')
 				}).then(res => {
