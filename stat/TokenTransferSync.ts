@@ -309,7 +309,7 @@ async function run(cfx:Conflux, preFinished: number) {
     let useGetLogs = false;
     if (ConfigInstance.useGetLogs && stateEpoch - epoch > 10_000) {
         useGetLogs = true;
-        const fetcher = new LogFetcher(cfx, fromEpoch, 900);
+        const fetcher = new LogFetcher(cfx, fromEpoch, 99);
         fetcher.extBuilder = buildTransferInfo;
         fetcher.building().then()
         dataFn = e=>fetcher.next(e);
