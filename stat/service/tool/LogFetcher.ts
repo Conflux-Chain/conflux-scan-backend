@@ -14,6 +14,7 @@ interface IJob {
 	fromEpoch: number
 	toEpoch: number
 	range: number
+	patchFn: Function;
 }
 
 class LogsJob {
@@ -27,12 +28,15 @@ class LogsJob {
 	buildBeginMs: number;
 	buildEndMs: number
 	logs?: Promise<Log[]>
-	result?: any;
+	patchFn: Function;
+	result?: Promise<any>;
+	resultResolver: Function;
+	resultRejecter: Function;
 
 	pre?: LogsJob
 	next?: LogsJob
 
-	constructor({fromEpoch, toEpoch, range}: IJob) {
+	constructor({fromEpoch, toEpoch, range, patchFn}: IJob) {
 		if (isNaN(toEpoch) || isNaN(range) || isNaN(fromEpoch)) {
 			throw new Error(`bad params ${fromEpoch} , ${toEpoch} , ${range}`)
 		}
@@ -40,11 +44,19 @@ class LogsJob {
 		this.fromEpoch = fromEpoch;
 		this.toEpoch = toEpoch;
 		this.range = range;
+		this.patchFn = patchFn;
+		this.result = new Promise((ok, fail)=>{
+			this.resultResolver = ok;
+			this.resultRejecter = fail;
+		})
 	}
 
 	start(cfx: Conflux) {
 		this.rpcBeginMs = Date.now();
 		this.logs = cfx.getLogs({fromEpoch: this.fromEpoch, toEpoch: this.toEpoch});
+		this.logs.then(logs=>{
+			return this.patchFn(logs)
+		}).then(v=>this.resultResolver(v));
 	}
 }
 
@@ -57,9 +69,10 @@ class LogsJobStream {
 	cfx: Conflux
 
 	runningJob: LogsJob
-	buildingJob: LogsJob
+	patchFn: Function;
 
-	constructor() {
+	constructor(patchFn: Function) {
+		this.patchFn = patchFn;
 	}
 
 	start(from: number, range: number, jobCount: number, cfx: Conflux) {
@@ -67,15 +80,15 @@ class LogsJobStream {
 		this.rpcSizeLimit = 50_000;
 		this.cfx = cfx;
 		this.range = range;
-		let curJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range});
+		let curJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range, patchFn: this.patchFn});
 		curJob.start(cfx)
 
-		this.head = this.runningJob = this.buildingJob = curJob;
+		this.head = this.runningJob = curJob;
 
 		for (let i = 1; i < jobCount; i++) {
 			from = curJob.toEpoch + 1;
 
-			const tmpJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range});
+			const tmpJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range, patchFn: this.patchFn});
 			tmpJob.start(cfx)
 
 			curJob.next = tmpJob;
@@ -113,7 +126,7 @@ class LogsJobStream {
 				this.runningJob.start(cfx);
 
 				const newFe = this.runningJob.toEpoch + 1
-				const tmpJob = new LogsJob({fromEpoch: newFe, range: toEpoch - newFe, toEpoch: toEpoch});
+				const tmpJob = new LogsJob({fromEpoch: newFe, range: toEpoch - newFe, toEpoch: toEpoch, patchFn: this.patchFn});
 				tmpJob.waitPre = true;
 				// right link
 				if (this.runningJob === this.tail) {
@@ -133,7 +146,7 @@ class LogsJobStream {
 				this.runningJob.next.start(cfx); //
 			} else {
 				const newFe = tail.toEpoch + 1
-				const tmpJob = new LogsJob({fromEpoch: newFe, range, toEpoch: newFe + range});
+				const tmpJob = new LogsJob({fromEpoch: newFe, range, toEpoch: newFe + range, patchFn: this.patchFn});
 				tail.next = tmpJob;
 				tmpJob.pre = tail;
 				this.tail = tmpJob;
@@ -161,68 +174,35 @@ export class LogFetcher {
 		}
 		this.tokenTool = new TokenTool(cfx);
 		this.cfx = cfx;
-		this.logJobStream = new LogsJobStream();
+		this.logJobStream = new LogsJobStream((job: LogsJob, logs: Log[])=>this.assemble(job, logs).then(info=>{
+			return this.extBuilder(undefined, info, '', '');
+		}));
 		this.logJobStream.start(fromEpoch, range, jobCount, cfx);
 	}
 
 	async next(epoch: number) {
-		let {head, buildingJob} = this.logJobStream;
+		let {head, runningJob} = this.logJobStream;
 		if (epoch !== head.fromEpoch) {
 			return Promise.reject(`want epoch ${epoch} != head epoch ${head.fromEpoch}`)
 		}
-		while (head === buildingJob) {
+		while (head === runningJob) {
 			// console.log(`final data not ready, want ${epoch}`)
-			await sleep(1_000);
-			({head, buildingJob} = this.logJobStream);
+			await head.logs.catch(()=>{
+				return sleep(1_000)
+			});
+			({head, runningJob} = this.logJobStream);
 		}
+		await head.result;
 		this.logJobStream.head = head.next;
 		head.next.pre = undefined;
 		head.next = undefined;
 		return head.result;
 	}
 
-	async building() {
-		let delay = 0;
-		const {logJobStream: {buildingJob, head, runningJob, dataSizeLimit}} = this;
-		if (runningJob === buildingJob) {
-			// RPC data is not ready yet.
-			// console.log(`RPC data is not ready yet. [${runningJob.fromEpoch} , ${runningJob.toEpoch}] elapsed ${Date.now() - runningJob.rpcBeginMs}ms`)
-			delay = 1_000
-		} else if (buildingJob.fromEpoch - head.fromEpoch > dataSizeLimit) {
-			// The data queue is waiting for persistence
-			console.log(`The data queue is waiting for persistence. built from epoch ${buildingJob.fromEpoch
-			} head from epoch ${head.fromEpoch}`)
-			delay = 1_000
-		} else {
-			let logsReady = true;
-			const logs = await buildingJob.logs.catch(e=>{
-				logsReady = false;
-				console.log(`logs are not ready when building them. `, e.message)
-				delay = 10_000;
-				return []
-			});
-			try {
-				buildingJob.result = !logsReady ? null : await this.assemble(buildingJob, logs).then(info => {
-					// token transfer sync -> buildTransferInfo
-					return this.extBuilder(undefined, info, '', '')
-				}).then(res => {
-					res.nextEpoch = buildingJob.toEpoch + 1;
-					res.toEpoch = buildingJob.toEpoch;
-					return res;
-				});
-				logsReady && (this.logJobStream.buildingJob = this.logJobStream.buildingJob.next);
-			} catch (e) {
-				console.log(`${__filename} assemble failure`, e)
-				delay = 10_000;
-			}
-		}
-		setTimeout(() => this.building(), delay);
-	}
-
 	async assemble(job: LogsJob, logs: Log[]) {
 		job.buildBeginMs = Date.now();
 		// console.log(`assemble [${job.fromEpoch},${job.toEpoch}](${job.range}) logs ${logs.length}`)
-		const receipts = this.buildAsReceipts(logs);
+		const receipts = buildAsReceipts(logs);
 		if (logs.length) {
 			const lastEp = logs[logs.length - 1].epochNumber;
 			let times = 0;
@@ -267,26 +247,28 @@ export class LogFetcher {
 		return transferInfo;
 	}
 
-	buildAsReceipts(logs: Log[]) {
-		const ret = [] as TransactionReceipt[][];
-		let lastBlock = '';
-		let blockReceipts = undefined as TransactionReceipt[]
-		let lastTx = undefined as TransactionReceipt;
-		for (const log of logs) {
-			if (log.blockHash != lastBlock) {
-				lastBlock = log.blockHash
-				blockReceipts = []
-				ret.push(blockReceipts);
-			}
-			if (lastTx?.transactionHash != log.transactionHash) {
-				lastTx = {
-					logs: [], outcomeStatus: 0, transactionHash: log.transactionHash,
-					epochNumber: log.epochNumber,
-				} as TransactionReceipt;
-				blockReceipts.push(lastTx)
-			}
-			lastTx.logs.push(log);
+
+}
+
+function buildAsReceipts(logs: Log[]) {
+	const ret = [] as TransactionReceipt[][];
+	let lastBlock = '';
+	let blockReceipts = undefined as TransactionReceipt[]
+	let lastTx = undefined as TransactionReceipt;
+	for (const log of logs) {
+		if (log.blockHash != lastBlock) {
+			lastBlock = log.blockHash
+			blockReceipts = []
+			ret.push(blockReceipts);
 		}
-		return ret;
+		if (lastTx?.transactionHash != log.transactionHash) {
+			lastTx = {
+				logs: [], outcomeStatus: 0, transactionHash: log.transactionHash,
+				epochNumber: log.epochNumber,
+			} as TransactionReceipt;
+			blockReceipts.push(lastTx)
+		}
+		lastTx.logs.push(log);
 	}
+	return ret;
 }
