@@ -80,13 +80,13 @@ class LogsJobStream {
 		this.patchFn = patchFn;
 	}
 
-	start(from: number, range: number, jobCount: number, cfx: Conflux) {
+	async start(from: number, range: number, jobCount: number, cfx: Conflux) {
 		this.dataSizeLimit = 20_000;
 		this.rpcSizeLimit = 50_000;
 		this.cfx = cfx;
 		this.range = range;
 		let curJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range, patchFn: this.patchFn});
-		curJob.start(cfx)
+		await this.safeStartJob(curJob, cfx);
 
 		this.head = this.runningJob = curJob;
 
@@ -94,7 +94,7 @@ class LogsJobStream {
 			from = curJob.toEpoch + 1;
 
 			const tmpJob = new LogsJob({fromEpoch: from, range, toEpoch: from + range, patchFn: this.patchFn});
-			tmpJob.start(cfx)
+			await this.safeStartJob(tmpJob, cfx);
 
 			curJob.next = tmpJob;
 			tmpJob.pre = curJob;
@@ -148,21 +148,26 @@ class LogsJobStream {
 		}
 		if (startNewJob) {
 			if (this.runningJob.next?.waitPre) {
-				this.runningJob.next.start(cfx); //
+				await this.safeStartJob(this.runningJob.next, cfx);
 			} else {
 				const newFe = tail.toEpoch + 1
 				const tmpJob = new LogsJob({fromEpoch: newFe, range, toEpoch: newFe + range, patchFn: this.patchFn});
 				tail.next = tmpJob;
 				tmpJob.pre = tail;
 				this.tail = tmpJob;
-				await this.waitDbBlock(tmpJob.toEpoch);
-				tmpJob.start(cfx)
+				await this.safeStartJob(tmpJob, cfx);
 			}
 
 			this.runningJob = this.runningJob.next
 		}
 		setTimeout(() => this.checkRPC(), 0);
 	}
+
+	private async safeStartJob(tmpJob: LogsJob, cfx: Conflux) {
+		await this.waitDbBlock(tmpJob.toEpoch);
+		tmpJob.start(cfx)
+	}
+
 	private async waitDbBlock(lastEp: number) {
 		let times = 0;
 		do {
@@ -196,7 +201,7 @@ export class LogFetcher {
 		this.logJobStream = new LogsJobStream((job: LogsJob, logs: Log[])=>this.assemble(job, logs).then(info=>{
 			return this.extBuilder(undefined, info, '', '');
 		}));
-		this.logJobStream.start(fromEpoch, range, jobCount, cfx);
+		this.logJobStream.start(fromEpoch, range, jobCount, cfx).then();
 	}
 
 	async next(epoch: number) {
