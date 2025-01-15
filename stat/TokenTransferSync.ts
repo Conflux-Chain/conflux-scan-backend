@@ -313,7 +313,6 @@ async function run(cfx:Conflux, preFinished: number) {
         const fetcher = new LogFetcher(cfx, fromEpoch,
             ConfigInstance.getLogsRange ?? 99, ConfigInstance.getLogsJobCount ?? 20);
         fetcher.extBuilder = buildTransferInfo;
-        fetcher.building().then()
         dataFn = e=>fetcher.next(e);
         loader0.startNext = ()=>{};
         batchData.saveAtSize = ConfigInstance.getLogsDbBatchSize || 1;
