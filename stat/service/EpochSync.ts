@@ -936,7 +936,7 @@ export class EpochSync extends SyncBase {
             if (trace.status === CONST.TX_STATUS.SUCCESS
                 && trace.valid
                 && (trace.action.fromSpace === 'evm' || trace.action.toSpace === 'evm')) {
-                crossSpaceTraceArray.push(...(await EpochSync.parseTraceCrossSpace(trace, blockDt)));
+                crossSpaceTraceArray.push(...(await EpochSync.parseTraceCrossSpace(trace.action, blockDt)));
             }
         }
         return crossSpaceTraceArray;
