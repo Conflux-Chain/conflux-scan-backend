@@ -71,6 +71,10 @@ export interface SyncQuoteOption{
     },
 }
 export interface StatConfig{
+    useGetLogs: boolean;
+    getLogsRange?: number;
+    getLogsJobCount?: number;
+    getLogsDbBatchSize?: number;
     influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
     oss: OssConf
     firstBlockNo: number

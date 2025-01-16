@@ -175,29 +175,20 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
 }
 
 export async function buildErc20Transfer(obj, date) {
+    if (!date) {
+        date = obj['createdAt'];
+    }
     const [fromId, toId, contractId] = await Promise.all([
         makeIdV(obj.from, undefined, {dt:date}),
         makeIdV(obj.to, undefined, {dt:date}),
         makeIdV(obj.address, undefined, {dt:date}),
-    ])
+    ]);
     obj['txIndex'] = obj.transactionIndex;
     obj['contractId'] = contractId
     obj['fromId'] = fromId
     obj['toId'] = toId
     obj.value = obj.value.toString()
     obj.txLogIndex = obj.transactionLogIndex;
-    // let erc20Transfer:IErc20Transfer = {
-    //     blockIndex: obj.blockIndex, //
-    //     txIndex: obj.transactionIndex,
-    //     contractId: contractId,
-    //     fromId: fromId,
-    //     toId: toId,
-    //     value: (obj.value || 0).toString(),
-    //     createdAt: date,
-    //     epoch: obj.epochNumber,
-    //     txLogIndex: obj.transactionLogIndex,
-    // };
-    // return erc20Transfer
 }
 export function aggregateTransfer(array: any[], overwrite = false) {
     if (!array.length) {

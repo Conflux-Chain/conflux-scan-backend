@@ -650,7 +650,7 @@ export class EpochSync extends SyncBase {
             app: {tokenTool},
         } = this
 
-        const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp, blockHashArray)
+        const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp)
 
         const t20Aggregated = aggregateTransfer(t20)
 
