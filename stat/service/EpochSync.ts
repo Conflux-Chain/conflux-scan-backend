@@ -10,7 +10,7 @@ import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool"
 import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
-import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
+import {TraceCreateContract, ContractDestroy, ITraceCreateContract} from "../model/TraceCreateContract";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
@@ -916,8 +916,6 @@ export class EpochSync extends SyncBase {
                 return this.app.cfx.traceBlock(hash)
             }));
             traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
-            // This function will repeatedly fetch block hashes and details.
-            // await this.getTraceArray(epochNumber);
         }
 
         return traceArray
@@ -966,37 +964,36 @@ export class EpochSync extends SyncBase {
     public static async getTraceCreateArrayPlus(traceArray, blockDt: Date, cfx: Conflux) {
         // filter
         const createTraceArray = [];
-        traceArray.forEach((trace) => {
+        for (const trace of traceArray) {
             if (trace.status === CONST.TX_STATUS.SUCCESS && trace.type === CONST.TRACE_TYPE.CREATE && trace.valid) {
                 /**
                  * create:{from,gas,init,value}
                  * create_result:{addr,gasLeft,outcome,returnData}
                  */
-                createTraceArray.push(EpochSync.buildTraceCreate({
+                createTraceArray.push(await EpochSync.buildTraceCreate({
                     epochNumber: trace.epochNumber,
                     transactionHash: trace.transactionHash,
                     transactionTraceIndex: trace.transactionTraceIndex,
-                    type: trace.type,
                     from: trace.action.from,
                     to: trace.action.to,
                     value: trace.action.value,
                     outcome: trace.action.outcome,
                     blockTime: trace.blockTime,
-                    valid: trace.valid,
-                    init: trace.action.init,
                 }, blockDt, cfx));
             }
-        });
+        }
         return createTraceArray;
     }
 
-    static async buildTraceCreate(trace, blockDt: Date, cfx: Conflux) {
+    static async buildTraceCreate(trace: {transactionHash: string, epochNumber: number, from: string, to: string,
+                                      transactionTraceIndex: number, value: number, outcome: string, blockTime: number},
+                                  blockDt: Date, cfx: Conflux) {
             const txHashId = 0; // (await makeId(trace.transactionHash)).id;
             const txHash = trace.transactionHash.substr(2);
             const from = (await makeId(trace.from, undefined, {dt: blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt: blockDt})).id;
             const codeHash = await EpochSync.getCodeHash(trace.to, cfx);
-            const toCreate = {
+            const toCreate: ITraceCreateContract = {
                 epochNumber: trace.epochNumber,
                 txHashId,
                 txHash,
