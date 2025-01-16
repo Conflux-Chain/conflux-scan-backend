@@ -1,7 +1,15 @@
 import {Epoch, VoteParams} from "../model/Epoch";
 import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
-import {ESpaceHex40Map, formatToBase32, formatToHex, Hex40Map, makeId, makeIdV} from "../model/HexMap";
+import {
+	ESpaceHex40Map,
+	ESpaceHexMapAttributes,
+	formatToBase32,
+	formatToHex,
+	Hex40Map,
+	makeId,
+	makeIdV
+} from "../model/HexMap";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
@@ -923,19 +931,19 @@ export class EpochSync extends SyncBase {
 
     public static async getTraceCrossSpaceArray(traceArray, blockDt: Date) {
         // filter
-        const crossSpaceTraceArray = [];
-        traceArray.forEach((trace) => {
+        const crossSpaceTraceArray: ESpaceHexMapAttributes[] = [];
+        for (const trace of traceArray) {
             if (trace.status === CONST.TX_STATUS.SUCCESS
                 && trace.valid
                 && (trace.action.fromSpace === 'evm' || trace.action.toSpace === 'evm')) {
-                crossSpaceTraceArray.push(EpochSync.parseTraceCrossSpace(trace, blockDt));
+                crossSpaceTraceArray.push(...(await EpochSync.parseTraceCrossSpace(trace, blockDt)));
             }
-        });
+        }
         return crossSpaceTraceArray;
     }
 
     public static parseEvmAddress(traceCrossSpace:{fromSpace: string, toSpace: string, from: number, fromHex: string, to: number, toHex: string}) {
-        const evmAddresses = []
+        const evmAddresses: ESpaceHexMapAttributes[] = []
             if (traceCrossSpace.fromSpace === 'evm') {
                 evmAddresses.push({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
             }
