@@ -86,6 +86,15 @@ export class Hex40Map extends Model<HexMapAttributes> implements HexMapAttribute
         )
     }
 }
+
+export async function buildCrossAddr(space: string, addr: string, dt: Date, resultArr: ESpaceHexMapAttributes[]) {
+    if (space !== 'evm') {
+        return;
+    }
+    const {id, hex} = (await makeId(addr, undefined, {dt}));
+    resultArr.push({hex, hexId: id, createdAt: dt});
+}
+
 export interface ESpaceHexMapAttributes {
     id?: number;
     hexId: number;

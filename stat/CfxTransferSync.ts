@@ -1,17 +1,29 @@
 import {redirectLog} from "./config/LoggerConfig";
-import {Model,DataTypes, Sequelize, Op} from "sequelize";
+import {DataTypes, Model, Op, Sequelize} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
 import {batchTraceBlock, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
-import {idHex40Map, makeIdV, makeVirtualContractInfo, patchPocketAddress, POCKET_ADDRESS_MAP} from "./model/HexMap";
 import {
-    AddressCfxTransfer, CFX_TRANSFER_PAGE_MARK_SIZE,
-    CfxTransfer, checkCfxTransferCountKV,
+    buildCrossAddr, ESpaceHex40Map,
+    ESpaceHexMapAttributes,
+    idHex40Map,
+    makeId,
+    makeIdV,
+    makeVirtualContractInfo,
+    patchPocketAddress,
+    POCKET_ADDRESS_MAP
+} from "./model/HexMap";
+import {
+    AddressCfxTransfer,
+    CFX_TRANSFER_PAGE_MARK_SIZE,
+    CfxTransfer,
+    checkCfxTransferCountKV,
     ICfxTransfer,
     markCfxTransferPosition,
-    popPartitionCfxTransfer, scheduleRollupDailyCfxTxn
+    popPartitionCfxTransfer,
+    scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT} from "./model/KV";
@@ -21,6 +33,8 @@ import {rmCache} from "./service/common/RpcCacheManager";
 import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
+import {ITraceCreateContract, TraceCreateContract} from "./model/TraceCreateContract";
+import {EpochSync} from "./service/EpochSync";
 
 export interface ICfxUser {
     id?: number
@@ -93,7 +107,8 @@ export async function getCfxTransferTraces(epoch: number)
         console.log(`no block in db, epoch ${epoch}`);
         return {code: 404};
     }
-    const dbPBH = blockArrDb[blockArrDb.length-1].hash;
+    const dbPivotBlock = blockArrDb[blockArrDb.length-1];
+    const dbPBH = dbPivotBlock.hash;
     if (pivotBlock.hash != dbPBH) {
         console.log(`rpc pivotBlock.hash ${pivotBlock.hash}`)
         console.log(`db  pivot has ${dbPBH} mismatch , epoch ${epoch}`)
@@ -111,6 +126,9 @@ export async function getCfxTransferTraces(epoch: number)
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
     let now = Date.now();
     const traceRpcMs = now - start; start = now;
+    const contractCreationArr:ITraceCreateContract[] = [];
+    const contractCreationStack:ITraceCreateContract[] = [];
+    const crossSpaceAddrArr:ESpaceHexMapAttributes[] = [];
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
@@ -167,12 +185,27 @@ export async function getCfxTransferTraces(epoch: number)
             }
             const traceArr = traces as any[];
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
-                let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space}, type, valid} = traceArr[traceIdx]
+                let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space, addr}, type, valid} = traceArr[traceIdx]
                 if (!valid) {
                     continue
                 }
                 from = patchPocketAddress(fromPocket, from);
                 to = patchPocketAddress(toPocket, to)
+                if (type === 'create') {
+                    const fromId = (await makeId(from, undefined, {dt: dbPivotBlock.createdAt})).id;
+                    const codeHash = await EpochSync.getCodeHash(addr, cfx);
+                    const tcc: ITraceCreateContract = {
+                        epochNumber, txHashId: 0, txHash: transactionHash, traceIndex: traceIdx, from: fromId,to: 0,
+                        value: value, outcome: outcome, blockTime: pivotBlock.timestamp, codeHash,
+                    }
+                    contractCreationArr.push(tcc);
+                    contractCreationStack.push(tcc);
+                } else if (type === 'create_result') {
+                    const tcc: ITraceCreateContract = contractCreationStack.pop();
+                    tcc.to = (await makeId(addr, undefined, {dt: dbPivotBlock.createdAt})).id;
+                }
+                await buildCrossAddr(fromSpace, from, dbPivotBlock.createdAt, crossSpaceAddrArr);
+                await buildCrossAddr(toSpace,   to,   dbPivotBlock.createdAt, crossSpaceAddrArr);
                 // doc https://github.com/Conflux-Chain/CIPs/issues/88
                 if (!value
                     || callType === 'none'
@@ -233,7 +266,10 @@ export async function getCfxTransferTraces(epoch: number)
     }
     // removeLongData(traceArray2d);
     // console.log(JSON.stringify(traceArray2d, null, 4))
-    return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch, buildTime: Date.now() - start, traceRpcMs}
+    return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch,
+        contractCreationArr, crossSpaceAddrArr,
+        buildTime: Date.now() - start, traceRpcMs
+    }
 }
 async function setup() {
     const [, , cmd, fromEpoch, ] = process.argv
@@ -294,6 +330,10 @@ async function save(data:CfxTransferEpochData) {
             CfxTransfer.bulkCreate(batchData.cfxTransArr, {transaction: dbTx}),
             AddressCfxTransfer.bulkCreate(batchData.addrBeans, {transaction: dbTx}),
             EpochHashCfxTransfer.bulkCreate(batchData.pivotHashArr,{transaction: dbTx}),
+            ESpaceHex40Map.bulkCreate(batchData.crossSpaceAddrArr, {transaction: dbTx,
+                updateOnDuplicate: ['createdAt']}),
+            TraceCreateContract.bulkCreate(batchData.crossSpaceAddrArr, { transaction: dbTx,
+                updateOnDuplicate: ["epochNumber", "blockTime", "txHash", "traceIndex"]}),
         ]).then(()=>{
             batchData.reset();
         })

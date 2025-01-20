@@ -361,12 +361,13 @@ async function run(cfx:Conflux, preFinished: number) {
                     }
                     await processData(data.toEpoch ?? epoch, data);
                     if (stateEpoch - epoch > batchData.safeCatchupGap) {
+                        // it's safe, continue under batch mode
                         loader0.startNext()
-                    } else if (useGetLogs) {
+                    } else if (useGetLogs) { // not safe, exit if using GetLogs
                         console.log(`should switch to non-get-logs-mod`)
                         await sleep(10_000)
                         process.exit(0)
-                    } else {
+                    } else { // not safe, disable batch
                         batchData.enable = false
                     }
                     if ( (useGetLogs && batchData.batchSize == 0) || (epoch % (batchData.enable ? 1000 : 100)) === 0) {

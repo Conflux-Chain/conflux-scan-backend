@@ -8,6 +8,8 @@ import {
 import {IPosRegister} from "../model/PoS";
 import {IAddressCfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
 import {IEpochHashCfxTransfer} from "../CfxTransferSync";
+import {ITraceCreateContract} from "../model/TraceCreateContract";
+import {ESpaceHexMapAttributes} from "../model/HexMap";
 
 export class BatchDataBase {
 	batchSize: number
@@ -44,6 +46,8 @@ export class CfxTransferEpochData {
 	parentHash?: string
 	traceRpcMs?: number
 	buildTime?: number
+	contractCreationArr?: ITraceCreateContract[]
+	crossSpaceAddrArr?: ESpaceHexMapAttributes[]
 }
 
 export class BatchTokenTransfer extends BatchDataBase {
@@ -94,6 +98,8 @@ export class BatchCfxTransfer extends BatchDataBase {
 	cfxTransArr: ICfxTransfer[]
 	addrBeans: IAddressCfxTransfer[]
 	pivotHashArr: IEpochHashCfxTransfer[]
+	contractCreationArr: ITraceCreateContract[]
+	crossSpaceAddrArr: ESpaceHexMapAttributes[]
 	transferCount: number
 	lastEpoch: number
 
@@ -103,11 +109,13 @@ export class BatchCfxTransfer extends BatchDataBase {
 	}
 
 	enqueue(data: CfxTransferEpochData) {
-		const {result, addrBeans, pivotHash, epoch} = data;
+		const {result, addrBeans, pivotHash, epoch, contractCreationArr, crossSpaceAddrArr} = data;
 		if (result.length) {
 			this.transferCount += result.length;
 			this.cfxTransArr.push(...result);
 			this.addrBeans.push(...addrBeans);
+			this.contractCreationArr.push(...contractCreationArr);
+			this.crossSpaceAddrArr.push(...crossSpaceAddrArr);
 		}
 		this.pivotHashArr.push({epoch, hash: pivotHash});
 		this.lastEpoch = epoch;
