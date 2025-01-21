@@ -334,7 +334,7 @@ async function save(data:CfxTransferEpochData) {
             EpochHashCfxTransfer.bulkCreate(batchData.pivotHashArr,{transaction: dbTx}),
             ESpaceHex40Map.bulkCreate(batchData.crossSpaceAddrArr, {transaction: dbTx,
                 updateOnDuplicate: ['createdAt']}),
-            TraceCreateContract.bulkCreate(batchData.crossSpaceAddrArr, { transaction: dbTx,
+            TraceCreateContract.bulkCreate(batchData.contractCreationArr, { transaction: dbTx,
                 updateOnDuplicate: ["epochNumber", "blockTime", "txHash", "traceIndex"]}),
         ]).then(()=>{
             batchData.reset();
