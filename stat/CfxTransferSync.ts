@@ -114,9 +114,13 @@ export async function getCfxTransferTraces(epoch: number)
         console.log(`db  pivot has ${dbPBH} mismatch , epoch ${epoch}`)
         return {code: 404}
     }
+    const contractCreationArr:ITraceCreateContract[] = [];
+    const crossSpaceAddrArr:ESpaceHexMapAttributes[] = [];
     if (txMapByHash.size === 0 && batchData.enable) {
         // catchup mode, shortcut when tx in db was empty.
-        return {result: [], addrBeans: [], code: 0, pivotHash: dbPBH, parentHash: pivotBlock.parentHash, epoch};
+        return {result: [], addrBeans: [], code: 0,
+            contractCreationArr, crossSpaceAddrArr,
+            pivotHash: dbPBH, parentHash: pivotBlock.parentHash, epoch};
     }
 
     const hashes = blockArrDb.map(blk=>blk.hash);
@@ -126,9 +130,7 @@ export async function getCfxTransferTraces(epoch: number)
     const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
     let now = Date.now();
     const traceRpcMs = now - start; start = now;
-    const contractCreationArr:ITraceCreateContract[] = [];
     const contractCreationStack:ITraceCreateContract[] = [];
-    const crossSpaceAddrArr:ESpaceHexMapAttributes[] = [];
     for (let blkIdx = 0; blkIdx < traceArray2d.length; blkIdx++) {
         let traceOfBlock = traceArray2d[blkIdx];
         if (traceOfBlock === null) {
