@@ -197,12 +197,13 @@ export async function getCfxTransferTraces(epoch: number)
                     const fromId = (await makeId(from, undefined, {dt: dbPivotBlock.createdAt})).id;
                     const tcc: ITraceCreateContract = {
                         epochNumber, txHashId: 0, txHash: transactionHash.substr(2), traceIndex: traceIdx, from: fromId,to: 0,
-                        value: value, outcome: outcome, blockTime: pivotBlock.timestamp, codeHash: '',
+                        value: value, outcome: '', blockTime: pivotBlock.timestamp, codeHash: '',
                     }
                     contractCreationArr.push(tcc);
                     contractCreationStack.push(tcc);
                 } else if (type === 'create_result') {
                     const tcc: ITraceCreateContract = contractCreationStack.pop();
+                    tcc.outcome = outcome;
                     tcc.codeHash = await EpochSync.getCodeHash(addr, cfx);
                     tcc.to = (await makeId(addr, undefined, {dt: dbPivotBlock.createdAt})).id;
                 }
