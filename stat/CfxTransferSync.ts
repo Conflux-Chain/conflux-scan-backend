@@ -196,7 +196,7 @@ export async function getCfxTransferTraces(epoch: number)
                 if (type === 'create') {
                     const fromId = (await makeId(from, undefined, {dt: dbPivotBlock.createdAt})).id;
                     const tcc: ITraceCreateContract = {
-                        epochNumber, txHashId: 0, txHash: transactionHash, traceIndex: traceIdx, from: fromId,to: 0,
+                        epochNumber, txHashId: 0, txHash: transactionHash.substr(2), traceIndex: traceIdx, from: fromId,to: 0,
                         value: value, outcome: outcome, blockTime: pivotBlock.timestamp, codeHash: '',
                     }
                     contractCreationArr.push(tcc);
