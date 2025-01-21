@@ -114,9 +114,10 @@ export class BatchCfxTransfer extends BatchDataBase {
 			this.transferCount += result.length;
 			this.cfxTransArr.push(...result);
 			this.addrBeans.push(...addrBeans);
-			this.contractCreationArr.push(...contractCreationArr);
-			this.crossSpaceAddrArr.push(...crossSpaceAddrArr);
 		}
+		this.contractCreationArr.push(...contractCreationArr);
+		this.crossSpaceAddrArr.push(...crossSpaceAddrArr);
+
 		this.pivotHashArr.push({epoch, hash: pivotHash});
 		this.lastEpoch = epoch;
 
@@ -127,6 +128,8 @@ export class BatchCfxTransfer extends BatchDataBase {
 		this.cfxTransArr = []
 		this.addrBeans = []
 		this.pivotHashArr = []
+		this.contractCreationArr = []
+		this.crossSpaceAddrArr = []
 		this.transferCount = 0
 		this.lastEpoch = -1
 
