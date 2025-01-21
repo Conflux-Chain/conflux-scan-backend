@@ -19,6 +19,7 @@ import {EpochSync} from "./EpochSync";
 import {ProxyVerify} from "../model/ContractVerify";
 import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
+import {ConfigInstance} from "../config/StatConfig";
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -714,6 +715,10 @@ export class ContractQuery {
         const transactionHash = array?.length ? '0x' + array[0].txHash : undefined;
 
         const transaction = await cfx.getTransactionByHash(transactionHash);
+        if (ConfigInstance.traceNotAvailable) {
+            return transaction.data;
+        }
+
         const transactionTraceArray = await cfx.traceTransaction(transaction.hash);
         const traceArray = await tokenTool.matchTrace(transactionTraceArray, transaction);
         const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
