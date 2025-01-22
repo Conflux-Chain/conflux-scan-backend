@@ -1,4 +1,4 @@
-import {Conflux, format as sdk_format} from "js-conflux-sdk";
+import {Conflux, format as sdk_format, sign} from "js-conflux-sdk";
 import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
@@ -381,6 +381,11 @@ export function formatTrace(arr: (object | Error)[]) {
         // @ts-ignore
         arr[idx] = sdk_format.blockTraces(t);
     })
+}
+
+export async function getCodeHash(address: string, cfx: Conflux) {
+	const code = await cfx.getCode(address);
+	return sign.keccak256(Buffer.from(code)).toString('hex');
 }
 
 export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
