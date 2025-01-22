@@ -38,6 +38,7 @@ import {
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
+import { getCodeHash } from "./common/utils";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -1000,7 +1001,7 @@ export class EpochSync extends SyncBase {
             const txHash = trace.transactionHash.substr(2);
             const from = (await makeId(trace.from, undefined, {dt: blockDt})).id;
             const to = (await makeId(trace.to, undefined, {dt: blockDt})).id;
-            const codeHash = await EpochSync.getCodeHash(trace.to, cfx);
+            const codeHash = await getCodeHash(trace.to, cfx);
             const toCreate: ITraceCreateContract = {
                 epochNumber: trace.epochNumber,
                 txHashId,
@@ -1086,11 +1087,6 @@ export class EpochSync extends SyncBase {
             }
         }
         return trace;
-    }
-
-    public static async getCodeHash(address, cfx: Conflux) {
-        const code = await cfx.getCode(address);
-        return sign.keccak256(Buffer.from(code)).toString('hex');
     }
 
     // ---------------------------- contract verify -----------------------------

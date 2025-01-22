@@ -2,7 +2,7 @@ import {redirectLog} from "./config/LoggerConfig";
 import {DataTypes, Model, Op, Sequelize} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchTraceBlock, initCfxSdk} from "./service/common/utils";
+import {batchTraceBlock, getCodeHash, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
@@ -34,7 +34,6 @@ import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
 import {ITraceCreateContract, TraceCreateContract} from "./model/TraceCreateContract";
-import {EpochSync} from "./service/EpochSync";
 
 export interface ICfxUser {
     id?: number
@@ -204,7 +203,7 @@ export async function getCfxTransferTraces(epoch: number)
                 } else if (type === 'create_result') {
                     const tcc: ITraceCreateContract = contractCreationStack.pop();
                     tcc.outcome = outcome;
-                    tcc.codeHash = await EpochSync.getCodeHash(addr, cfx);
+                    tcc.codeHash = await getCodeHash(addr, cfx);
                     tcc.to = (await makeId(addr, undefined, {dt: dbPivotBlock.createdAt})).id;
                 }
                 await buildCrossAddr(fromSpace, from, dbPivotBlock.createdAt, crossSpaceAddrArr);

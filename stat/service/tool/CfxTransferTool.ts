@@ -70,3 +70,5 @@ async function main() {
 if (module === require.main) {
     main().then()
 }
+
+// node stat/service/tool/CfxTransferTool.js fix-daily-cfx-txn 2020-10-29
