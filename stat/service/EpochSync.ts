@@ -287,7 +287,7 @@ export class EpochSync extends SyncBase {
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 Epoch.bulkCreate(epochArray, {transaction: dbTx}),
-                FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx}),
+                FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx, ignoreDuplicates: true}),
                 AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx}),
                 EpochAddressIds.bulkCreate(modelData.epochAddrIdArray, {transaction: dbTx}),
                 NftTransfer.bulkCreate(modelData.nftTransferArray, {transaction: dbTx}),

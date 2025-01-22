@@ -41,8 +41,7 @@ import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
 import {BatchBlockTx} from "./BatchDBTx";
 import {SyncBlockSchema, SyncReporter} from "../monitor/InfluxWorker";
-
-const BigFixed = require('bigfixed');
+import {FullMinerBlock} from "../model/FullMinerBlock";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -412,10 +411,11 @@ export class FullBlockService {
             let preEpoch = minEpochNumber - 1;
             const addresses = new Set<number>();
             const popEpochCondition = {[Op.gte]: preEpoch}
-            const [popTx, popBlockCount] = await Promise.all([
+            const [popTx, blocks] = await Promise.all([
                 FullTransaction.findAll({where: {epoch: popEpochCondition}}),
-                FullBlock.count({where: {epoch: popEpochCondition}})
+                FullBlock.findAll({where: {epoch: popEpochCondition}})
             ])
+            const popBlockCount = blocks.length;
             popTx.forEach(tx => {
                 addresses.add(tx.fromId)
                 addresses.add(tx.toId)
@@ -429,6 +429,9 @@ export class FullBlockService {
                 await Promise.all([
                     FailedTx.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                     FullBlock.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
+                    Promise.all(blocks.map(b=>FullMinerBlock.destroy({
+                        where: {minerId: b.minerId, epoch: b.epoch}, transaction: dbTx,
+                    }))),
                     FullTransaction.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                     AddressTransactionIndex.destroy({
                         where: {epoch: popEpochCondition, addressId: [...addresses],},
@@ -614,6 +617,7 @@ export class FullBlockService {
             await Promise.all([
                 FailedTx.bulkCreate(failedTxArr, {transaction: dbTx, ignoreDuplicates: true}),
                 FullBlock.bulkCreate(blockBeanArr, {transaction: dbTx}).then(()=>metrics.saveBlockTime += Date.now() - start),
+	            FullMinerBlock.bulkCreate(blockBeanArr, {transaction: dbTx, ignoreDuplicates: true}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
                 FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
