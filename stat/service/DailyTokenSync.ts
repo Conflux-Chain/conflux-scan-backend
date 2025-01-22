@@ -182,9 +182,9 @@ export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = fals
         const [updatedCnt] = await DailyToken.update(stat, {where: {hexId: tokenHexId, day: start}})
         if (updatedCnt === 0) {
             await DailyToken.create(stat as DailyToken)
-            showDebugLog && console.log(` create daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && console.log(` create daily token stat : ${tokenBean.symbol} ${tokenHexId}`)
         } else {
-            showDebugLog && console.log(` update daily token stat : ${tokenBean.symbol}`)
+            showDebugLog && console.log(` update daily token stat : ${tokenBean.symbol} ${tokenHexId}`)
         }
         if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
              await calcDailyTokenAmount(dt, tokenHexId).catch(err=>{

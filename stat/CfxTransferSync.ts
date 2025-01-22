@@ -34,7 +34,6 @@ import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
 import {ITraceCreateContract, TraceCreateContract} from "./model/TraceCreateContract";
-import {EpochSync} from "./service/EpochSync";
 
 export interface ICfxUser {
     id?: number
