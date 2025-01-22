@@ -138,11 +138,11 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
                 console.log(`token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
                 } transfer records:${list.length}  `)
             } else {
-                startE = endE;
+                startE = endE + 1;
             }
         }).catch(err=>{
             console.log(`query transfer fail: ${sql}`, err)
-            startE = endE;
+            startE = endE + 1;
         })
     } while (startE <= endE);
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
