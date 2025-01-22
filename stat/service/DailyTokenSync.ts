@@ -109,7 +109,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     let start = new Date(dt); start.setUTCHours(0,0,0,0)
     let end = new Date(dt);   end.setUTCHours(23,59,59,999);
     adjustTodayEndTime(end)
-    const [startE, endE] = await getEpochRange(start, end)
+    let [startE, endE] = await getEpochRange(start, end)
     if (showDebugLog) {
         console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
         console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
@@ -122,31 +122,29 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
         console.log(`daily token not found ${tokenHexId}, ${start}`)
         return;
     }
-    let preId = 0;
-    const sql = `select id,\`value\` from ${model.getTableName()} where contractId=?
-            and epoch between ? and ? and id > ? order by id asc limit ?`
-    const pageSize = 1000;
+    const sql = `select epoch,\`value\` from ${model.getTableName()} where contractId=?
+            and epoch between ? and ? order by epoch asc limit ?`
+    const pageSize = 10000;
     let sum = BigInt(0)
     do {
         await model.sequelize.query(sql,{type:QueryTypes.SELECT,
             logging: showDebugLog ? console.log:false,
-            replacements:[tokenHexId, startE, endE, preId, pageSize]}).then(list=>{
+            replacements:[tokenHexId, startE, endE, pageSize]}).then(list=>{
                 list.forEach(row=>{
                     sum += BigInt(row.value)
                 })
             if (list.length > 0) {
-                preId = list[list.length-1].id
+                startE = list[list.length-1].epoch + 1;
                 console.log(`token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
                 } transfer records:${list.length}  `)
-
-                } else {
-                preId = -1 // stop while
+            } else {
+                startE = endE;
             }
         }).catch(err=>{
             console.log(`query transfer fail: ${sql}`, err)
-            preId = -1
+            startE = endE;
         })
-    } while (preId > 0)
+    } while (startE <= endE);
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
         .then(([cnt])=>{
             // console.log(` update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)

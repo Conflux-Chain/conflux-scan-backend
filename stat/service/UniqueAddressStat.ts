@@ -196,7 +196,7 @@ export async function calcDailyTokenOnChain(timeBegin: Date, timeEnd: Date) {
         where: {day: timeBegin}, raw: true,
         // logging: sqlLogFn(`${__filename} calc daily token`),
     }).then(res=>{
-        return isNaN(res) ? 0: res;
+        return res ?? 0;
     })
     const userCount = await UniqueAddress.count({
             distinct: true, col: 'addr',
@@ -513,3 +513,5 @@ if (module === require.main) {
         process.exit(1)
     })
 }
+
+// node stat/service/tool/FixDailyTokenStat.js dailyTokenTxn 2020-10-29

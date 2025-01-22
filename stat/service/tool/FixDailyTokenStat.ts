@@ -21,6 +21,7 @@ import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {adjustTodayEndTime, getEpochRange} from "../../model/Utils";
+import {FullBlock} from "../../model/FullBlock";
 
 let configCache: StatConfig|null = null;
 
@@ -94,7 +95,8 @@ async function fixDateAmount(hexId=0) {
 
 // alter table daily_token add column participants bigint unsigned not null default 0;
 async function fixParticipants() {
-    let dt = new Date('2021-12-16')
+    const blk = await FullBlock.findOne({where: {epoch: 1}})
+    let dt = blk.createdAt;
     let now = new Date()
     while( dt < now) {
         let start = new Date(dt);
@@ -184,4 +186,6 @@ async function main() {
     })
 }
 
-// node stat/service/tool/FixDailyTokenStat.js fix-dt 2024-09-03
+// node stat/service/tool/FixDailyTokenStat.js fix-dt 2022-02-20
+// node stat/service/tool/FixDailyTokenStat.js participants
+// node stat/service/tool/FixDailyTokenStat.js dailyTokenTxn 2020-10-29
