@@ -11,7 +11,8 @@ async function init() {
     await initModel(seq)
 }
 export async function fixDate() {
-    const epoch = await Epoch.findOne({where: {epoch: 1}});
+    const epoch = await Epoch.findOne({where: {epoch: 1}})
+        .then(res=> res ?? Epoch.findOne({order: [['epoch', 'asc']]}));
     let dt = epoch.timestamp;
     let now = new Date()
     await DailyActiveAddress.destroy({where: {day: {[Op.lt]: dt}}})
