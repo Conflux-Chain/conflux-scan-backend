@@ -124,7 +124,7 @@ export async function getSourceCode(ctx) {
         Runs: contract.optimizeRuns,
         ConstructorArguments: contract.constructorArgs,
         EVMVersion: "Default",
-        Library: "",
+        Library: contract.libraries,
         LicenseType: contract.license,
         Proxy: contract.proxy ? '1' : '0',
         Implementation: impl,
@@ -156,13 +156,14 @@ export async function verifySourcecode(ctx) {
     };
     checkPresent({contractaddress, sourceCode, contractname, compilerversion/*, optimizationUsed, runs, licenseType*/},
         ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
-    const libraries = checkLibrary(libMap);
+    let libraries = checkLibrary(libMap);
     const evmVersion = await checkEVMVersion(evmversion);
 
     if(codeformat === 'solidity-standard-json-input'){
         const sc = JSON.parse(sourceCode);
         optimizationUsed = sc.settings.optimizer.enabled;
         runs = sc.settings.optimizer.runs;
+        libraries = sc.settings.libraries;
     }
     if(codeformat === 'solidity-single-file'){
         sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');

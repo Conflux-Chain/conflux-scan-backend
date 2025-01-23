@@ -254,18 +254,19 @@ export class ContractQuery {
         const base32 = toBase32(address);
 
         // own verified info
-        let verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, useMaster: true, raw: true});
+        const verified = await ContractVerify.findOne({where: {base32, verifyResult: true}, useMaster: true, raw: true});
+        if(!verified) {
+            return verified
+        }
 
         // real-time impl info
-        if(verified !== null){
-            const proxyInfo = await this.queryImplementation(base32)
-                .catch((e) => logger?.error({ src: 'queryVerify', msg: e.toString() }));
-            if(proxyInfo?.implementation){
-                verified.beacon = proxyInfo.beacon;
-                verified.implementation = proxyInfo.implementation;
-                verified.proxy = true
-                verified.proxyPattern = proxyInfo.proxyPattern;
-            }
+        const proxyInfo = await this.queryImplementation(base32)
+            .catch((e) => logger?.error({ src: 'queryVerify', msg: e.toString() }));
+        if(proxyInfo?.implementation){
+            verified.beacon = proxyInfo.beacon;
+            verified.implementation = proxyInfo.implementation;
+            verified.proxy = true
+            verified.proxyPattern = proxyInfo.proxyPattern;
         }
 
         // extra info
@@ -280,8 +281,22 @@ export class ContractQuery {
             verified.implementationVerified = verifiedInfo != null;
         }
         if(verified?.libraries && verified?.libraries?.length > 2){
-            const json = JSON.parse(verified.libraries);
-            const libs = Object.keys(json).map(name => ({name, address: format.address(json[name], StatApp.networkId)}));
+            const libs = [];
+            lodash.forIn(JSON.parse(verified.libraries), (lib, libKey) =>{
+                if(typeof lib === 'object'){
+                    Object.keys(lib).forEach(libName => {
+                        libs.push({
+                            name: `${libKey}:${libName}`,
+                            address: format.address(lib[libName], StatApp.networkId)
+                        });
+                    })
+                } else{
+                    libs.push({
+                        name: libKey,
+                        address: lib
+                    });
+                }
+            });
             const verifyMap = {};
             const verifyArray = await ContractVerify.findAll({ attributes: ['base32'],
                 where: {base32: {[Op.in]: libs.map(item => item.address)}, verifyResult: true}, raw: true});
@@ -289,7 +304,7 @@ export class ContractQuery {
             libs.forEach(item => ( item['exactMatch'] = !!verifyMap[item.address]));
             verified.libraries = libs;
         } else{
-            verified && (verified.libraries = {});
+            verified.libraries = {};
         }
 
         return verified;

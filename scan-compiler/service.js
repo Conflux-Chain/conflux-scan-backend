@@ -221,9 +221,21 @@ class SolCompileService {
     const encodedConstructorArgs = extractEncodedConstructorArgs(creationData, recompiled.creationBytecode);
     lodash.assign(match, {encodedConstructorArgs});
 
+    console.log(`recompiled.deployedBytecode ===1=== ${recompiled.deployedBytecode}`)
     const { replaced, libraryMap} = this._addLibraryAddresses(recompiled.deployedBytecode, deployedBytecode);
+    console.log(`deployed libraries == `)
+    Object.keys(libraries).forEach(key => {
+      console.log(`${key} ${JSON.stringify(libraries[key])}`)
+    })
+    console.log(`metadata libraries == `)
+    Object.keys(libraryMap).forEach(key => {
+      console.log(`${key} ${JSON.stringify(libraryMap[key])}`)
+    })
     this._checkLibrary(libraries, libraryMap);
     recompiled.deployedBytecode = replaced;
+    console.log(`recompiled.replaced ===2=== ${replaced}`)
+    console.log(`deployedBytecode ===3=== ${deployedBytecode}`)
+    console.log(`recompiled.creationBytecode ===4=== ${recompiled.creationBytecode}`)
     if (deployedBytecode === recompiled.deployedBytecode) {
       lodash.assign(match, MATCH_STATUS.DEPLOYED_FULL);
       return match;
@@ -344,16 +356,18 @@ class SolCompileService {
       return;
     }
 
+    libraries = this._toMetadataLibraries(libraries);
+
     Object.keys(libraries).forEach(libName => {
       const libAddress = libraries[libName];
-      const placeholder = `__$${sign.keccak256(`undefined:${libName}`).toString('hex').substring(0, 34)}$__`
+      const placeholder = `__$${sign.keccak256(libName.includes(':') ? libName : `undefined:${libName}`).toString('hex').substring(0, 34)}$__`
       const replacedAddress = libraryMap[placeholder];
       delete libraryMap[placeholder];
 
       if (!replacedAddress) {
         throw new Error(`library ${libName} name not match`);
       }
-      if (libAddress.substring(2) !== replacedAddress) {
+      if (libAddress.substring(2).toLowerCase() !== replacedAddress) {
         throw new Error(`library ${libName} address not match`);
       }
     });
@@ -361,6 +375,20 @@ class SolCompileService {
     if(Object.keys(libraryMap).length) {
       throw new Error(`more libraries are needed`);
     }
+  }
+
+  _toMetadataLibraries(settingLibraries) {
+    const libraries = {};
+    lodash.forIn(settingLibraries, (lib, libKey) =>{
+      if(typeof lib === 'object'){
+        Object.keys(lib).forEach(libName => {
+          libraries[`${libKey}:${libName}`] = lib[libName]
+        })
+      } else{
+        libraries[libKey] = lib
+      }
+    });
+    return libraries;
   }
 }
 
