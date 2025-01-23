@@ -10,11 +10,13 @@ async function init() {
     await initModel(seq)
 }
 export async function fixDate() {
-    let dt = new Date('2020-10-28')
+    const epoch = await Epoch.findOne({where: {epoch: 1}});
+    let dt = epoch.timestamp;
     let now = new Date()
     while( dt < now) {
+        console.log(`fix date ${dt.toISOString()}`);
         await calcDailyActiveAddress(dt)
-        dt = new Date(dt.getTime() + 1000*3600*24)
+        dt = new Date(dt.getDate() + 1)
     }
     console.log(`done.`)
 }
