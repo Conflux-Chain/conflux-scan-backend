@@ -8,6 +8,7 @@ import {StatConfig} from "../../config/StatConfig";
 import {initCfxSdk} from "../common/utils";
 import {ContractQuery} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
+
 const fs = require('fs');
 const AdminControl = require("../abi/AdminControl");
 const SponsorWhitelistControl = require("../abi/SponsorWhitelistControl");
@@ -25,26 +26,14 @@ const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0])
 const type = Number(args[1])
 let contractAddress
-let apiURL
-let constructorArguements
-let apikey
 if(type === 2) {
     contractAddress = args[2]
 }
-if(type === 3 || type === 4) {
+let apiURL
+let pathToRequestJson
+if(type === 3) {
     apiURL = args[2]
-    contractAddress = args[3]
-    constructorArguements = args[4]
-    if(args.length > 5) {
-        apikey = args[5]
-    }
-}
-if(type === 5) {
-    apiURL = args[2]
-    contractAddress = args[3]
-    if(args.length > 4) {
-        apikey = args[4]
-    }
+    pathToRequestJson = args[3]
 }
 
 /**
@@ -60,13 +49,7 @@ async function run() {
         await implementation(contractAddress)
     }
     if(type === 3){
-        await verifyBeaconProxy(apiURL, contractAddress, constructorArguements, apikey)
-    }
-    if(type === 4){
-        await verifyUpgradeableBeacon(apiURL, contractAddress, constructorArguements, apikey)
-    }
-    if(type === 5){
-        await verifyFixedPriceImpl(apiURL, contractAddress, apikey)
+        await sendVerifyRequest(apiURL, pathToRequestJson)
     }
     await close();
 }
@@ -197,91 +180,22 @@ async function implementation(address) {
 /**
  * verify
  */
-/*
-zg-testnet-turbo(FixedPrice)
-contractaddress: "0xBa697dB4e9293e6d7674045373508823A85d0798",
-constructorArguements: "0000000000000000000000004d8e71b128e2d5b3c24034009d6103133d59374700000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000",
-etherum-testnet-holesky(ChunkLinearReward)
-contractaddress: "0x73C06F10568C5b466E1Cd77Fd8ff34Ab595aDEa8",
-constructorArguements: "0000000000000000000000000d43cab9a38a2b65f756d36b40f6eed60d0d636500000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000",
-*/
-async function verifyBeaconProxy(apiURL, contractAddress, constructorArguements, apikey) {
-    const contractname = "%40openzeppelin%2Fcontracts%2Fproxy%2Fbeacon%2FBeaconProxy.sol%3ABeaconProxy"
-    const sourceCode = ""
-    return verify(apiURL, contractname, contractAddress, sourceCode, constructorArguements, apikey)
-}
-
-/*
-zg-testnet-turbo(FixedPriceBeacon)
-contractaddress: "0x4D8e71B128E2D5B3c24034009d6103133D593747",
-constructorArguements: "00000000000000000000000046b8579872dc1b8bd35f79e1a393c5ccac904e51",
-etherum-testnet-holesky(ChunkLinearRewardBeacon)
-contractaddress: "0x0D43CaB9a38a2b65f756D36b40f6eed60D0D6365",
-constructorArguements: "00000000000000000000000083fc54521e3cd47f5b4f7176385153ec405fe6c6",
-*/
-async function verifyUpgradeableBeacon(apiURL, contractAddress, constructorArguements, apikey) {
-    const contractname = "%40openzeppelin%2Fcontracts%2Fproxy%2Fbeacon%2FUpgradeableBeacon.sol%3AUpgradeableBeacon"
-    const sourceCode = ""
-    return verify(apiURL, contractname, contractAddress, sourceCode, constructorArguements, apikey)
-}
-
-/*
-zg-testnet-turbo(FixedPriceImpl)
-contractaddress: "0x46B8579872DC1B8BD35F79e1A393C5CCAc904E51",
-constructorArguements: "",
-etherum-testnet-holesky(FixedPriceImpl)
-contractaddress: "0x8D53B61F044eBfE35E68dB9C998a5555c61d622F",
-constructorArguements: "",
-*/
-async function verifyFixedPriceImpl(apiURL, contractAddress, apikey) {
-    const contractname = "contracts%2Fmarket%2FFixedPrice.sol%3AFixedPrice"
-    const sourceCode = ""
-    return verify(apiURL, contractname, contractAddress, sourceCode, null, apikey)
+async function sendVerifyRequest(apiURL, pathToRequestJson) {
+    const request = require(pathToRequestJson);
+    console.log(`pathToRequestJson ${pathToRequestJson}`)
+    console.log(`request ${JSON.stringify(request)}`)
+    return verify(apiURL, request)
 }
 
 const superagent = require('superagent');
 require('superagent-proxy')(superagent);
-/*
-https://chainscan-test.0g.ai/open/api  zg-testnet
-https://api-holesky.etherscan.io/api   etherum-testnet-holesky
-*/
-async function verify(apiURL, contractname, contractAddress, sourceCode, constructorArguements, apikey) {
-    const req = {
-        apikey: "",
-        module: "contract",
-        action: "verifysourcecode",
-        codeformat: "solidity-standard-json-input",
-        compilerversion: "v0.8.16%2Bcommit.07a7930e",
-        contractname: "",
-        contractaddress: "",
-        sourceCode: "",
-        constructorArguements: "",
-    }
-    req.contractname = contractname
-    req.contractaddress = contractAddress
-    req.sourceCode = sourceCode
-    if(constructorArguements) {
-        req.constructorArguements = constructorArguements
-    }
-    if(apikey) {
-        req.apikey = apikey
-    }
 
-    Object.keys(req).forEach(key => {
-        let val = req[key]
-        val = decodeURIComponent(val)
-        if(key === "compilerversion") {
-            req[key] = val
-        } else{
-            req[key] = val.replaceAll("+", " ")
-        }
-    })
-
+async function verify(apiURL, request) {
     return superagent
         .post(apiURL)
         //.proxy("http://127.0.0.1:7890")
         .set('Content-Type','application/x-www-form-urlencoded')
-        .send(req)
+        .send(request)
         .timeout(600 * 1000).then(
             response => {
                 if(response.status === 200) {

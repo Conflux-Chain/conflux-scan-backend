@@ -83,6 +83,21 @@ export class TokenTool {
             .catch(() => undefined);
     }
 
+    async getBalances(account, contracts, utilContract) {
+        if (utilContract === undefined) {
+            console.log('util contract not set.');
+            return [];
+        }
+        return this.contract.getBalances(account, contracts)
+            .call({ to: utilContract })
+            .then((arr) => arr.map(BigInt))
+            .catch((err) => {
+                console.log('params:', account, contracts, utilContract);
+                console.log(`get balances from util contract fail: ${err}`);
+                return [];
+            });
+    }
+
     async awaitObject(object): Promise<any> {
         const result = {};
         await Promise.all(lodash.map(object, async (promise, key) => {
