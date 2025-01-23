@@ -3,6 +3,7 @@ import {AddressStat, calcDailyActiveAddress, DailyActiveAddress, incDailyAddress
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {Epoch} from "../../model/Epoch";
+import {Op} from "sequelize";
 async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.databaseRW)
@@ -13,10 +14,11 @@ export async function fixDate() {
     const epoch = await Epoch.findOne({where: {epoch: 1}});
     let dt = epoch.timestamp;
     let now = new Date()
+    await DailyActiveAddress.destroy({where: {day: {[Op.lt]: dt}}})
     while( dt < now) {
         console.log(`fix date ${dt.toISOString()}`);
         await calcDailyActiveAddress(dt)
-        dt = new Date(dt.getDate() + 1)
+        dt.setDate(dt.getDate() + 1)
     }
     console.log(`done.`)
 }

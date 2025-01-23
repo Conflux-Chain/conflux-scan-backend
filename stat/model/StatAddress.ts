@@ -84,10 +84,5 @@ export async function calcDailyActiveAddress(dt:Date) {
     });
     const count = result[0]['uniqueAddrCount'];
     // expect that record exists
-    const [updatedRows] = await DailyActiveAddress.update({cnt: count},{
-        where: {day: dt}
-    })
-    if (updatedRows === 0) {
-        await DailyActiveAddress.create({day:dt, cnt: count})
-    }
+    await DailyActiveAddress.bulkCreate([{day:dt, cnt: count}], {updateOnDuplicate: ['cnt']})
 }
