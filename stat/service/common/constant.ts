@@ -195,6 +195,12 @@ export const CONST = {
         GET_BLOCK_NO_BY_TIME: 'getblocknobytime',
       }
     },
+    LOGS: {
+      module: 'logs',
+      action: {
+        GET_LOGS: 'getLogs',
+      }
+    },
     TOKEN: {
       module: 'token',
       action: {

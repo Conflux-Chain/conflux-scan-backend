@@ -89,6 +89,9 @@ class SolCompileService {
     };
     if(compilerType === 'solidity-standard-json-input') {
       input = JSON.parse(sourceCode);
+      if(!input.settings?.outputSelection) {
+        input.settings.outputSelection = { '*': { '*': ['*'] } }
+      }
     }
     const options = {
       import: (path) => {

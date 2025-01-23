@@ -85,7 +85,7 @@ function checksum_hexAddress(addr: string) {
     return addr ? ethers.utils.getAddress(format.hexAddress(addr)) : addr
 }
 async function gateway(ctx) {
-    const {E_SPACE_OPENAPI: {ACCOUNT, CONTRACT, TRANSACTION, BLOCK, TOKEN, STATS}} = CONST;
+    const {E_SPACE_OPENAPI: {ACCOUNT, CONTRACT, TRANSACTION, BLOCK, LOGS, TOKEN, STATS}} = CONST;
     const {module, action} = parseGatewayParam(ctx);
 
     let handler;
@@ -166,6 +166,15 @@ async function gateway(ctx) {
             switch (action) {
                 case BLOCK.action.GET_BLOCK_NO_BY_TIME:
                     handler = getBlockNoByTime;
+                    break;
+                default:
+                    return Promise.reject(`unknown action:${action} of module:${module}`);
+            }
+            break;
+        case LOGS.module:
+            switch (action) {
+                case LOGS.action.GET_LOGS:
+                    handler = getLogs;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -466,6 +475,14 @@ async function getLogs(ctx) {
         fromBlock, toBlock, address,
         topic0, topic1, topic2, topic3,
     } = ctx.request.query;
+
+    // hack code: just used for hardhat verify plugin
+    if(fromBlock === "0" && toBlock === "latest") {
+        const traceCreate = await getApiService().traceCreateQuery.query(address)
+        const blockNumber = traceCreate.epochNumber
+        fromBlock = blockNumber
+        toBlock = blockNumber
+    }
 
     // check block range param
     if(fromBlock === undefined || (!/^[0-9]+$/.test(fromBlock) && fromBlock !== 'latest')) {

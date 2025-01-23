@@ -4,18 +4,16 @@ import {toBase32} from "./tool/AddressTool";
 import {
     Hex40Map,
     hex40IdMap,
-    makeId,
     POCKET_ADDRESS_MAP,
     idHex40Map,
     convert2base32map,
-    ESpaceHex40Map, Hex64Map
+    ESpaceHex40Map,
 } from "../model/HexMap";
-import {json, Op, QueryTypes} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {Desensitizer} from "./Desensitizer";
 import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
-import {EpochSync} from "./EpochSync";
 import {ProxyVerify} from "../model/ContractVerify";
 import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"

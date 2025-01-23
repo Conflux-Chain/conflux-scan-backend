@@ -39,6 +39,7 @@ import {KEY_OPEN_API, repeatHeartBeat} from "../stat/model/HeartBeat";
 import {TxnQuery} from "../stat/service/TxnQuery";
 import {TxnSync} from "../stat/service/TxnSync";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
+import {BlockTraceCreateQuery} from "../stat/service/BlockTraceCreateQuery";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -75,6 +76,7 @@ export class ApiService {
     ipfsGatewaySync: IPFSGatewaySync;
     txnQuery: TxnQuery;
     txnSync: TxnSync;
+    traceCreateQuery: BlockTraceCreateQuery;
     cfx: Conflux;
     eth;
     jsonRpc;
@@ -144,6 +146,7 @@ export class ApiServer {
         apiService.ipfsGatewaySync = new IPFSGatewaySync(apiApp);
         apiService.txnQuery = new TxnQuery()
         apiService.txnSync = new TxnSync({cfx: this.cfx, accountQuery})
+        apiService.traceCreateQuery = new BlockTraceCreateQuery({cfx: this.cfx});
         apiService.cfx = this.cfx;
         apiService.eth = this.eth;
         apiService.logger = logger;
