@@ -5,9 +5,9 @@ import {init} from "./tool/FixDailyTokenStat";
 import {Hex40Map, makeIdV} from "../model/HexMap";
 import {FullTransaction} from "../model/FullBlock";
 import {IS_EVM2, KV} from "../model/KV";
-import {scheduleDaily} from "./pos/PosStat";
 import {initCfxSdk} from "./common/utils";
 import {EvmDB} from "../config/StatConfig";
+import {findCfxSyncMaxDate} from "./tool/CfxTransferTool";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
     | 'DailyCfxCountToEVM' | 'DailyCfxCountFromEVM'
@@ -121,9 +121,8 @@ export async function scheduleCrossSpaceStat(cfx:Conflux) {
     if (isEvm) {
         return;
     }
-    return scheduleDaily(async (dt)=>{
-        await calcDailyCfxToEvm(dt)
-        await calcDailyCfxFromEvm(dt).catch(e=>{
+    setInterval(()=>{
+        checkLatestToEvm().catch(e=>{
             const str = `${e}`;
             if (str.includes('Unknown database')) {
                 console.log(`evm db not exist ${EvmDB}`)
@@ -131,31 +130,32 @@ export async function scheduleCrossSpaceStat(cfx:Conflux) {
                 console.log(`${__filename} cfx from evm error:`, e)
             }
         })
-    })
+    }, 600_000);
 }
+
+async function checkLatestToEvm() {
+    let latest = await CrossSpaceStat.findOne({order: [['day','asc']]})
+    let dt = latest?.day || new Date('2022-02-20')
+    const cfxSyncMaxDate = await findCfxSyncMaxDate();
+    if (!cfxSyncMaxDate) {
+        return;
+    }
+    const nowMs = cfxSyncMaxDate.getTime();
+    while (dt.getTime() < nowMs) {
+        await calcDailyCfxToEvm(dt)
+        await calcDailyCfxFromEvm(dt)
+        dt.setDate(dt.getDate() + 1)
+    }
+}
+
 async function main() {
     const config = await init()
     const cfx = await initCfxSdk(config.conflux);
     await setup(cfx)
     const [,,cmd] = process.argv
-    if (cmd === 'calcDailyCfxToEvm') {
-        // node stat/service/CrossSpaceStat.js calcDailyCfxToEvm
-        let dt = new Date('2022-02-20')
-        // let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
-        dt = new Date(dt)
-        while(dt.getTime() < Date.now()) {
-            await calcDailyCfxToEvm(dt)
-            dt.setDate(dt.getDate() + 1)
-        }
-    } else if (cmd === 'calcDailyCfxFromEvm') {
-        // node stat/service/CrossSpaceStat.js calcDailyCfxFromEvm
-        let dt = new Date('2022-02-20')
-        // let {day: dt} = await CrossSpaceStat.findOne({order: [['day','asc']]})
-        dt = new Date(dt)
-        while(dt.getTime() < Date.now()) {
-            await calcDailyCfxFromEvm(dt)
-            dt.setDate(dt.getDate() + 1)
-        }
+    if (cmd === 'checkLatestToEvm') {
+        // node stat/service/CrossSpaceStat.js checkLatestToEvm
+        await checkLatestToEvm();
     } else {
         console.log(`unknown command [${cmd}]`)
     }
