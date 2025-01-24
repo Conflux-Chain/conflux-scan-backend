@@ -3,33 +3,33 @@ import {
     calcAllTokenUniqueUser,
     DailyTokenTxn,
     Erc20Transfer,
-    T_ERC20_TRANSFER,
     TOKEN_TYPE_ALL_4
 } from "../model/Erc20Transfer";
 import {DailyToken, Token} from "../model/Token";
-import {Erc721Transfer, T_ERC721_TRANSFER} from "../model/Erc721Transfer";
-import {Erc1155Transfer, T_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
+import {Erc721Transfer} from "../model/Erc721Transfer";
+import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {QueryTypes} from "sequelize";
 import {BalanceWatcher} from "./watcher/BalanceWatcher";
 import {adjustTodayEndTime, getEpochRange} from "../model/Utils";
 import {TxnQuery} from "./TxnQuery";
+import {getMaxTokenSyncDate} from "./tool/FixDailyTokenStat";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
     showDebugLog = false
-    const now = new Date();
-    await calcAllRegisteredTokenDailyStat(now).catch(e=>{
-        console.log(`failed to calcAllRegisteredTokenDaily Stat`, e)
-    })
-    if (now.getHours() == 0 && now.getMinutes() <= 20) {
-        now.setDate(now.getDate() - 1); // previous day
-        now.setHours(23, 59, 59, 999);
-        await calcAllRegisteredTokenDailyStat(now).catch(e=>{
-            console.log(`failed to calcAllRegisteredTokenDaily Stat previous day`, e)
+
+    const endT = await getMaxTokenSyncDate();
+    const fromT = await DailyToken.findOne({order:[['day', 'desc']]}).then(res=>res?.day);
+    while (fromT < endT) {
+        await calcAllRegisteredTokenDailyStat(fromT).catch(e=>{
+            console.log(`failed to calcAllRegisteredTokenDaily Stat`, e)
         });
+        fromT.setDate(fromT.getDate()+1);
     }
-    setTimeout(scheduleDailyTokenStat, 1000*60*10) //
+
+    setTimeout(scheduleDailyTokenStat, 1000*60*10)
 }
+
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     const tokenList = await Token.findAll({
         attributes: ['hex40id','symbol','name','base32'],
@@ -37,19 +37,20 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
     })
     console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
     for(const token of tokenList) {
-        await calcDailyToken(dt, token.hex40id, showDebugLog)
+        await calcDailyTokenEach(dt, token.hex40id, showDebugLog)
         showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
     }
     console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
 }
-export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount, userCount}> {
+
+export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount:number, userCount:number}> {
     const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
     if (days == -1) {
         //recent 24 hours
         const [txnCount, userCount] = await  calcAllTokenUniqueUser(beginTime, endTime);
         return {txnCount, userCount}
     }
-    const sum = await DailyTokenTxn.findOne({
+    return DailyTokenTxn.findOne({
         attributes: [
             [fn('sum', col('txnCount')),'txnCount'],
             [fn('sum', col('userCount')),'userCount'],
@@ -60,27 +61,6 @@ export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount
             },
         logging: msg=>console.log(` countRecentTokenTransfer: ${msg}`),
     })
-    return sum;
-}
-export async  function countRecentTokenTransferAccount(days:number) {
-    // const options = {where:{createdAt:{[Op.gt]: fn('addtime', fn('now'), `${days} 0:0:0`)}}}
-    const timeWhere = `where createdAt >= addTime(now(),'${days} 0:0:0')`
-    function countAccount(t:string) : Promise<number> {
-        const sql = `select count(*) as cnt from (select fromId from ${t} ${timeWhere} union select toId from ${t} ${timeWhere} ) t`
-        return Erc20Transfer.sequelize.query(sql,{
-                // logging: console.log,
-                type:QueryTypes.SELECT,})
-            .then(arr=> {
-                // console.log(`result is ${JSON.stringify(arr)}`)
-                return Number(arr[0]['cnt'])
-            })
-    }
-    return Promise.all([
-        countAccount(T_ERC20_TRANSFER),
-        countAccount(T_ERC721_TRANSFER),
-        // countAccount(T_ERC777_TRANSFER),
-        countAccount(T_ERC1155_TRANSFER),
-    ]).then(arr=>arr.reduce((a,b)=>a+b))
 }
 
 export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
@@ -93,7 +73,6 @@ export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
         switch(tokenBean.type.toLowerCase()) {
             case 'erc20': model = Erc20Transfer; break;
             case 'erc721': model = Erc721Transfer; break;
-            // case 'erc777': model = Erc777Transfer; break;
             case 'erc1155': model = Erc1155Transfer; break;
             default:
                 // console.log(`unknown token type [${tokenBean.type}], ${tokenBean.base32}, ${tokenBean.symbol}`)
@@ -101,14 +80,12 @@ export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
         }
         return [model, tokenBean]
 }
+
 export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
-    const [model, tokenBean] = await getTokenModel(tokenHexId);
-    if (model === null) {
-        return;
+    const [model, tokenBean, start, end] = await checkModelAndTime(dt, tokenHexId);
+    if (!model) {
+        return
     }
-    let start = new Date(dt); start.setUTCHours(0,0,0,0)
-    let end = new Date(dt);   end.setUTCHours(23,59,59,999);
-    adjustTodayEndTime(end)
     let [startE, endE] = await getEpochRange(start, end)
     if (showDebugLog) {
         console.log(`${__filename} calcDailyTokenAmount ${tokenHexId}`)
@@ -146,20 +123,28 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
         })
     } while (startE <= endE);
     await DailyToken.update({transferAmount: sum.toString()},dailyTokenWhere)
-        .then(([cnt])=>{
+        .then(([_])=>{
             // console.log(` update daily token transfer amount to ${sum} affect rows ${cnt}, day ${start.toISOString()}`)
         })
 }
-export async  function calcDailyToken(dt:Date, tokenHexId:number, showLog = false) {
-    const [model, tokenBean] = await getTokenModel(tokenHexId)
+
+async function checkModelAndTime(dt:Date, tokenHexId:number) {
+    const [model, tokenBean] = await getTokenModel(tokenHexId);
     if (model === null) {
-        return;
+        return [];
     }
-    //
-        let start = new Date(dt); start.setUTCHours(0,0,0,0)
-        let end = new Date(dt);   end.setUTCHours(23,59,59,999);
-        adjustTodayEndTime(end)
-        const [startE, endE] = await getEpochRange(start, end)
+    let start = new Date(dt); start.setUTCHours(0,0,0,0)
+    let end = new Date(dt);   end.setUTCHours(23,59,59,999);
+    adjustTodayEndTime(end)
+    return [model, tokenBean, start, end];
+}
+
+export async  function calcDailyTokenEach(dt:Date, tokenHexId:number, showLog = false) {
+    const [model, tokenBean, start, end] = await checkModelAndTime(dt, tokenHexId);
+    if (!model) {
+        return
+    }
+        const [startE, endE] = await getEpochRange(start, end);
         if (showLog) {
             console.log(` time range ${start.toISOString()}  ${end.toISOString()}`)
             console.log(` epoch range ${startE}  ${endE}`)

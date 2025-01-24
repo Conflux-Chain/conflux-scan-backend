@@ -3,7 +3,7 @@ import {init} from "./service/tool/FixDailyTokenStat";
 import {initCfxSdk} from "./service/common/utils";
 import {StatApp} from "./StatApp";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
-import {scheduleDailyActiveAddress} from "./model/StatAddress";
+import {removeDate1970, scheduleDailyActiveAddress} from "./model/StatAddress";
 import {scheduleDailyTokenStat} from "./service/DailyTokenSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
@@ -35,6 +35,7 @@ import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
 import {scheduleGasConsumerStat} from "./service/TxnQuery";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {TokenQuery} from "./service/TokenQuery";
+import {scheduleRollupDailyCfxTxn} from "./model/CfxTransfer";
 
 async function main() {
     redirectLog()
@@ -43,6 +44,7 @@ async function main() {
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+    removeDate1970().then();
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     await blockAndMinerSync.schedule()
@@ -57,6 +59,7 @@ async function main() {
     scheduleDailyTokenStat().then()
     await scheduleDailyActiveAddress()
     calcDailyUniqueAddrSchedule().then()
+    scheduleRollupDailyCfxTxn().then();
     //
     const reporter = new Reporter({config, cfx});
     await reporter.start();

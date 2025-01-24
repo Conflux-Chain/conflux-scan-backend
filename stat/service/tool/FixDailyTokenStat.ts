@@ -8,8 +8,7 @@ import {getYesterday} from "./DateTool";
 import {loadConfig, StatConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {
-    calcAllRegisteredTokenDailyStat,
-    calcDailyToken,
+    calcDailyTokenEach,
     calcDailyTokenAmount,
 } from "../DailyTokenSync";
 import {Op, Sequelize, Options, QueryTypes} from "sequelize"
@@ -17,11 +16,12 @@ import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
 import {ContractService} from "../contract/ContractService";
-import {calcDailyTokenOnChain, calcOneDayUniqueArr} from "../UniqueAddressStat";
+import {calcDailyTokenTxn, calcOneDayUniqueAddrAndTokenTxn} from "../UniqueAddressStat";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {adjustTodayEndTime, getEpochRange} from "../../model/Utils";
 import {FullBlock} from "../../model/FullBlock";
+import {EpochHashTokenTransfer} from "../../TokenTransferSync";
 
 let configCache: StatConfig|null = null;
 
@@ -38,41 +38,59 @@ export async function init() {
     configCache = config;
     return config
 }
-export async function fixDate(hexId=0, dtStr = '2020-10-28') {
-    let dt = new Date(dtStr)
-    let now = new Date()
 
-    while( dt < now) {
+export async function getMaxTokenSyncDate() {
+    const latestSync = await EpochHashTokenTransfer.findOne({order:[['epoch', 'desc']]});
+    if (!latestSync) {
+        return null;
+    }
+    const blk = await FullBlock.findOne({where: {epoch: latestSync.epoch}});
+    if (!blk) {
+        return null;
+    }
+    return blk.createdAt;
+}
+
+async function fixDailyTokenTxnOverall(hexId=0, fromDtStr = '') {
+    if (!fromDtStr) {
+        fromDtStr = await FullBlock.findOne({order:[['epoch', 'asc']], offset: 1}).then(res=>res?.createdAt.toISOString());
+    }
+    let dt = new Date(fromDtStr || '2020-10-28');
+    let maxSyncDate = await getMaxTokenSyncDate();
+    if (!maxSyncDate) {
+        return;
+    }
+
+    while( dt < maxSyncDate) {
         let endDt = new Date(dt);
-        endDt.setDate(endDt.getDate()+1)
-        const [epS, epE] = await getEpochRange(dt, endDt, true)
+        endDt.setDate(endDt.getDate()+1);
+        const [epS, epE] = await getEpochRange(dt, endDt, true);
         const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(
             t=>{
                 return `select distinct(contractId) as cid from ${t.getTableName()} where epoch between ${epS} and ${epE}`
             }
-        ).join(" union ")
+        ).join(" union ");
         const contractArr = await Erc20Transfer.sequelize.query(sql, {
             logging: console.log, benchmark: true, raw: true,
             type: QueryTypes.SELECT,
-        })
-        console.log(`recent contracts : ${contractArr.map(c=>c["cid"]).join(',')}`)
+        });
+        console.log(`recent contracts : ${contractArr.map(c=>c["cid"]).join(',')}`);
         // ==
         if (hexId) {
-            await calcDailyToken(dt, hexId)
+            await calcDailyTokenEach(dt, hexId)
         } else {
             for(const row of contractArr) {
-                await calcDailyToken(dt, row['cid'])
+                await calcDailyTokenEach(dt, row['cid'])
             }
-            // await calcAllRegisteredTokenDailyStat(dt)
             const endT = new Date(dt);
             endT.setHours(23, 59, 59, 999);
             adjustTodayEndTime(endT);
-            await calcDailyTokenOnChain(dt, endT)
+            await calcDailyTokenTxn(dt, endT)
         }
-        console.log(`fixed ${dt.toISOString()}`)
-        dt.setDate(dt.getDate()+1)
+        console.log(`fixed ${dt.toISOString()}`);
+        dt.setDate(dt.getDate()+1);
     }
-    console.log(`done.`)
+    console.log(`${__filename} done.`)
 }
 async function fixDateAmount(hexId=0) {
     let dt = new Date('2020-10-28')
@@ -94,13 +112,16 @@ async function fixDateAmount(hexId=0) {
 }
 
 // alter table daily_token add column participants bigint unsigned not null default 0;
-async function fixParticipants() {
-    const blk = await FullBlock.findOne({where: {epoch: 1}})
-    let dt = blk.createdAt;
-    let now = new Date()
+export async function fixParticipants(fromT: Date) {
+    if (fromT == null) {
+        const blk = await FullBlock.findOne({order: [['epoch', 'asc']], offset: 1});
+        fromT = blk.createdAt;
+    }
+    let dt = fromT;
+    let now = await getMaxTokenSyncDate();
     while( dt < now) {
         let start = new Date(dt);
-        await calcOneDayUniqueArr(start)
+        await calcOneDayUniqueAddrAndTokenTxn(start)
         dt.setDate(dt.getDate()+1)
     }
     console.log(`done.`)
@@ -137,21 +158,7 @@ async function checkAllTokenHolderTop() {
 
 }
 
-async function dailyTokenTxn() {
-    const [,,cmd,dtStr] = process.argv;
-    const dt = new Date(dtStr)
-    let now = new Date()
-    while( dt < now) {
-        console.log(` that is ${dt.toISOString()}`)
-        const endT = new Date(dt);
-        endT.setHours(23, 59, 59, 999);
-        adjustTodayEndTime(endT);
-        await calcDailyTokenOnChain(dt, endT);
-        dt.setDate(dt.getDate()+1)
-    }
-    console.log(`ok.`)
-    await Erc721Transfer.sequelize.close()
-}
+
 if (require.main === module) {
     main().then()
 }
@@ -160,11 +167,9 @@ async function main() {
     init().then(async ()=>{
         if (cmd === 'participants') {
             // node stat/dist/service/tool/ participants
-            return fixParticipants()
+            return fixParticipants(null)
         } else if (cmd === 'topTokens') {
             return checkAllTokenHolderTop()
-        } else if (cmd === 'dailyTokenTxn') {
-            return dailyTokenTxn()
         } else if (cmd === 'test') {
             return testRank()
         } else if (cmd === 'amount-dt-hex') {
@@ -174,12 +179,12 @@ async function main() {
             return fixDateAmount(Number(arg1));
         } else if (cmd === 'fix-date') {
             // node this 123
-            return fixDate(Number(arg1))
+            return fixDailyTokenTxnOverall(Number(arg1))
         } else if (cmd === 'fix-dt-hex') {
             // node this '2021-04-29' 123
-            return calcDailyToken(new Date(arg1), Number(arg2), true)
+            return calcDailyTokenEach(new Date(arg1), Number(arg2), true)
         } else if (cmd ==='fix-dt'){
-            await fixDate(0, arg1)
+            await fixDailyTokenTxnOverall(0, arg1/*fromDt*/)
         }
     }).then(()=>{
         DailyActiveAddress.sequelize.close().then()
@@ -188,4 +193,4 @@ async function main() {
 
 // node stat/service/tool/FixDailyTokenStat.js fix-dt 2022-02-20
 // node stat/service/tool/FixDailyTokenStat.js participants
-// node stat/service/tool/FixDailyTokenStat.js dailyTokenTxn 2020-10-29
+// node stat/service/tool/FixDailyTokenStat.js dailyTokenTxn 2020-10-28

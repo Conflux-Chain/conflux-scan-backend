@@ -9,7 +9,7 @@ import {regExitHook, sleep} from "./tool/ProcessTool";
 import {col, DataTypes, literal, Model, Op, QueryTypes, Sequelize} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux} from "js-conflux-sdk";
-import {init} from "./tool/FixDailyTokenStat";
+import {fixParticipants, init} from "./tool/FixDailyTokenStat";
 import {initCfxSdk} from "./common/utils";
 import {TokenTool} from "./tool/TokenTool";
 import {Measure} from "./common/Measure";
@@ -179,18 +179,13 @@ export async function calcDailyUniqueAddrSchedule() {
     setTimeout(()=>calcDailyUniqueAddr(), 10_000); // delay when startup.
     setTimeout(()=>calcDailyUniqueAddrSchedule(), MINUTES_SPAN*60_000)//
 }
-export async function calcDailyUniqueAddr() {
-    const dt = new Date();
-    const hour = dt.getHours();
-    if (hour === 1 && dt.getMinutes() < MINUTES_SPAN * 2) {
-        //
-        const preDay = new Date(dt);
-        preDay.setDate(preDay.getDate() - 1)
-        await calcOneDayUniqueArr(preDay)
-    }
-    await calcOneDayUniqueArr(dt)
+
+async function calcDailyUniqueAddr() {
+    const latestOne = await UniqueAddress.findOne({order: [['day', 'desc']]});
+    await fixParticipants(latestOne?.timeStart);
 }
-export async function calcDailyTokenOnChain(timeBegin: Date, timeEnd: Date) {
+
+export async function calcDailyTokenTxn(timeBegin: Date, timeEnd: Date) {
     adjustTodayEndTime(timeEnd)
     const transferCount = await DailyToken.sum('transferCount',{
         where: {day: timeBegin}, raw: true,
@@ -210,10 +205,16 @@ export async function calcDailyTokenOnChain(timeBegin: Date, timeEnd: Date) {
         createdAt: timeEnd,
     })
 }
-export async function calcOneDayUniqueArr(dt:Date) {
-    const timeBegin = new Date(dt); timeBegin.setHours(0,0,0,0)
-    const timeEnd = new Date(timeBegin); timeEnd.setHours(23,59,59,999);
+export async function calcOneDayUniqueAddrAndTokenTxn(dt:Date) {
+    const timeBegin = new Date(dt);
+    timeBegin.setHours(0, 0, 0, 0)
+    const timeEnd = new Date(timeBegin);
+    timeEnd.setHours(23, 59, 59, 999);
     adjustTodayEndTime(timeEnd)
+    await calcOneDayUniqueAddr(timeBegin, timeEnd);
+    await calcDailyTokenTxn(timeBegin, timeEnd);
+}
+async function calcOneDayUniqueAddr(timeBegin: Date, timeEnd: Date) {
     const showSql = false;
     const list = await UniqueAddress.findAll(({
         attributes: [
@@ -240,7 +241,6 @@ export async function calcOneDayUniqueArr(dt:Date) {
         })
     }
     console.log(`UniqueAddr calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
-    await calcDailyTokenOnChain(timeBegin, timeEnd);
 }
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index is on timeStart, not timeEnd.
@@ -428,54 +428,12 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     }
     repeat().then()
 }
-async function benchmark() {
-    const [,,cmd, timesStr] = process.argv
-    if (cmd !== 'benchmark') {
-        return
-    }
-    const times = parseInt(timesStr || '1000' );
-    const dt = new Date()
-    const start = Date.now()
-    const aggregator = new Aggregator();
-    for (let i = 0; i < times; i++) {
-        const rnd = Math.round(Math.random() * 1000)
-        const m = aggregator.buildMap([{from:rnd, to: rnd+1, contractId: rnd}], i, dt)
-    }
-    const ms = Date.now() - start
-    console.log(`UniqueAddr times ${times}, avg ${(ms / times).toPrecision(5)}`)
-    measure.dump(`UniqueAddr ----`)
-    process.exit(0);
-}
-async function testTop() {
-    const [,,cmd,d] = process.argv
-    if (cmd !== 'test-top') {
-        return
-    }
-    const {maxTimeStart, list:{sender,receiver,all}, timeBegin} = await topUnique({limit: 10, day: parseInt(d||'7')})
-    // @ts-ignore
-    const table = (topList)=>topList.map((r,idx)=>`${idx} ${r.contractId} s ${r.sender} r ${r.receiver} a ${r.all}`).join('\n')
-    console.log(`timeBegin ${timeBegin.toISOString()} - maxTimeStart ${maxTimeStart.toISOString()}`)
-    console.log(`${table(sender)}\n`)
-    console.log(`${table(receiver)}\n`)
-    console.log(`${table(all)}`)
-    process.exit(0)
-}
-async function testDaily() {
-    const [,,cmd,d] = process.argv
-    if (cmd !== 'test-daily') {
-        return
-    }
-    await calcOneDayUniqueArr( d ? new Date(d) : new Date())
-    process.exit(0)
-}
+
 // 3000 epoch is about an hour.
 // noinspection DuplicatedCode
 async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     const config = await init();
     console.log(`UniqueAddr --------------------`)
-    await testTop();
-    await testDaily();
-    await benchmark();
     const confluxOption = cfxUrl === 'useConfigRpc' ? config.conflux : {url: cfxUrl}
 
     let cfx = await initCfxSdk(confluxOption);
