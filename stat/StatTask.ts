@@ -93,7 +93,7 @@ async function main() {
     await statDailyPowReward.schedule(1000 * 1);
     //
     if (config.syncTokenSecurityAudit) {
-        const tokenQuery = new TokenQuery({cfx})
+        const tokenQuery = new TokenQuery({cfx, config})
         const tokenAudit = new TokenSecurityAuditSync({tokenQuery})
         await tokenAudit.schedule()
         await tokenAudit.scheduleRecently()
