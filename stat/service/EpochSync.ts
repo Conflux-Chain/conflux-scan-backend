@@ -10,7 +10,6 @@ import {
 	makeId,
 	makeIdV
 } from "../model/HexMap";
-import {FullMinerBlock} from "../model/FullMinerBlock";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Op, QueryTypes, Transaction} from "sequelize";
@@ -131,9 +130,8 @@ export class EpochSync extends SyncBase {
             epochData = null
             const epochTimestamp = epoch.timestamp
 
-            let [minerBlockArray, txArray, adminDestroyTxArray, eventLogInfo, traceArray, tokenLogs,
+            let [txArray, adminDestroyTxArray, eventLogInfo, traceArray, tokenLogs,
                 censorItemArray, voteParamArray] = await Promise.all([
-                this.getMinerBlockArray(epochNumber, blockArray),
                 EpochSync.getTransactionArrayDB(blockArray, epochTimestamp),
                 EpochSync.getAdminDestroyTxArray(blockArray, epochTimestamp),
                 this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray),
@@ -182,7 +180,6 @@ export class EpochSync extends SyncBase {
 
             const modelData: any = {
                 epoch,
-                minerBlockArray,
                 addrTransferArray,
                 epochAddrIdArray,
                 nftTransferArray,
@@ -288,7 +285,6 @@ export class EpochSync extends SyncBase {
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 Epoch.bulkCreate(epochArray, {transaction: dbTx}),
-                FullMinerBlock.bulkCreate(modelData.minerBlockArray, {transaction: dbTx, ignoreDuplicates: true}),
                 AddressTransfer.bulkCreate(modelData.addrTransferArray, {transaction: dbTx}),
                 EpochAddressIds.bulkCreate(modelData.epochAddrIdArray, {transaction: dbTx}),
                 NftTransfer.bulkCreate(modelData.nftTransferArray, {transaction: dbTx}),
@@ -338,10 +334,9 @@ export class EpochSync extends SyncBase {
         const addrIds = epochAddressIds.map(epochAddressId => epochAddressId.addressId)
 
         await Epoch.sequelize.transaction(async (dbTx) => {
-            const [epochDel, minerBlockDel, traceCreateDel, addrTransferDel, epochAddressDel, contractDestroyDel,
+            const [epochDel, traceCreateDel, addrTransferDel, epochAddressDel, contractDestroyDel,
                 censorItemDel, addrNftDel, nftTransferDel, addrNftTransferDel, voteParamsDel] = await Promise.all([
                 Epoch.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
-                FullMinerBlock.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
                 TraceCreateContract.destroy({where: {epochNumber}, transaction: dbTx}),
                 addrIds?.length ? AddressTransfer.destroy({
                     where: {addressId: {[Op.in]: addrIds}, epoch: epochNumber},
@@ -355,7 +350,7 @@ export class EpochSync extends SyncBase {
                 AddressNftTransfer.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
                 VoteParams.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
             ])
-            console.log(`epoch-sync.delete epoch ${epochNumber} epochDel ${epochDel} minerBlockDel ${minerBlockDel}
+            console.log(`epoch-sync.delete epoch ${epochNumber} epochDel ${epochDel} 
                 traceCreateDel ${traceCreateDel} addrTransferDel ${addrTransferDel} epochAddressDel ${epochAddressDel} 
                 contractDestroyDel ${contractDestroyDel} censorItemDel ${censorItemDel} addrNftDel ${addrNftDel} 
                 nftTransferDel ${nftTransferDel} addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
@@ -364,22 +359,7 @@ export class EpochSync extends SyncBase {
         this.realtimeStat(modelData.epoch, 'pop')
     }
 
-    //------------------- business method for miner block --------------------
-    public async getMinerBlockArray(epochNumber, blockArray) {
-        const {
-            app: {config},
-        } = this;
 
-        let minerBlockArray = await Promise.all(blockArray.map(async (block: any, position) => {
-            const hex40 = formatToHex(block.miner);
-            const blockDt = new Date(block.timestamp * 1000);
-            const hex40Id = (await makeId(hex40, undefined, {dt: blockDt})).id;
-            const epoch = (epochNumber === 0 && config.conflux.consortiumMode) ? 0 : block.epochNumber;
-            return {minerId: hex40Id, epoch, position, createdAt: blockDt};
-        }));
-
-        return lodash.orderBy(minerBlockArray, 'position', 'desc');
-    }
 
     //---------------- business method for admin destroy tx ------------------
     public static async getAdminDestroyTxArray(blockArray, blockTime) {
