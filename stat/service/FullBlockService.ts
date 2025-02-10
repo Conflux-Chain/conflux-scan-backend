@@ -169,7 +169,15 @@ export class FullBlockService {
     }
 
     public async updateEpochNumber() {
-        this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
+        while(true) {
+            try {
+                this.latestStateEpoch = await this.cfx.getEpochNumber('latest_state');
+                break
+            } catch (e) {
+                console.log(`failed to update epoch number: ${e.message}`);
+                await sleep(1_000);
+            }
+        }
     }
 
     public static async checkTxCountKV(update = false) {
