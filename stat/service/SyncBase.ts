@@ -4,7 +4,7 @@ import {batchFetchBlock} from "./common/utils";
 import {Epoch} from "../model/Epoch";
 import {makeIdV} from "../model/HexMap";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
-import {FirstBlockNo, RpcCacheOption} from "../config/StatConfig";
+import {FirstBlockNo, NoCoreSpace, RpcCacheOption} from "../config/StatConfig";
 import {FullBlock, loadMaxBlockEpoch} from "../model/FullBlock";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
@@ -428,7 +428,7 @@ export class CatchUp {
             return false
         }
 
-        if (epoch <= this.finalizedEpoch) { // in catchup mode
+        if (epoch <= this.finalizedEpoch - (NoCoreSpace ? this.batchSizeOnSave : 0)) { // in catchup mode
             return true
         }
 
@@ -441,7 +441,7 @@ export class CatchUp {
         } = this
 
         this.finalizedEpoch = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
-        this.catchingUp = epoch <= this.finalizedEpoch
+        this.catchingUp = epoch <= this.finalizedEpoch - (NoCoreSpace ? this.batchSizeOnSave : 0);
 
         if(!this.catchingUp) {
             this.syncer.preloadSize = PRELOAD_SIZE_NORMAL
