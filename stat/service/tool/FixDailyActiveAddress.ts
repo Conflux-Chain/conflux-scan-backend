@@ -3,18 +3,23 @@ import {AddressStat, calcDailyActiveAddress, DailyActiveAddress, incDailyAddress
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {Epoch} from "../../model/Epoch";
+import {Op} from "sequelize";
 async function init() {
     const config = loadConfig('Prod')
     let seq = createDB(config.databaseRW)
     await seq.sync({})
     await initModel(seq)
 }
-export async function fixDate() {
-    let dt = new Date('2020-10-28')
+export async function fixAllDailyAddrDate() {
+    const epoch = await Epoch.findOne({where: {epoch: 1}})
+        .then(res=> res ?? Epoch.findOne({order: [['epoch', 'asc']]}));
+    let dt = epoch.timestamp;
     let now = new Date()
+    await DailyActiveAddress.destroy({where: {day: {[Op.lt]: dt}}})
     while( dt < now) {
+        console.log(`fix date ${dt.toISOString()}`);
         await calcDailyActiveAddress(dt)
-        dt = new Date(dt.getTime() + 1000*3600*24)
+        dt.setDate(dt.getDate() + 1)
     }
     console.log(`done.`)
 }
@@ -40,7 +45,7 @@ function main() {
         if ('fixDailyAddr' == cmd) {
             return fixDailyAddrCount();
         } else if ('fixDate' == cmd) {
-            return fixDate()
+            return fixAllDailyAddrDate()
         }
     }).then(() => {
         DailyActiveAddress.sequelize.close().then()
