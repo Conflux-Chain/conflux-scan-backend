@@ -3,7 +3,7 @@ import {buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {adjustTodayEndTime} from "./Utils";
-import {findCfxSyncMaxDate, fixDailyCfxTxn} from "../service/tool/CfxTransferTool";
+import {findCfxSyncMaxDate, calcDailyCfxTxn} from "../service/tool/CfxTransferTool";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {
@@ -510,10 +510,14 @@ export async function rollupDailyCfxTxnCurrent() {
     }
     const lastStat = await DailyCfxTxn.findOne({order:[['day', 'desc']]});
     if (!lastStat) {
-        await fixDailyCfxTxn(null, endT)
-    } else if (endT.getDate() != lastStat.day.getDate()) {
+        await calcDailyCfxTxn(null, endT)
+    } else if (
+        endT.getDate() != lastStat.day.getDate()
+        || endT.getMonth() != lastStat.day.getMonth()
+        || endT.getFullYear() != lastStat.day.getFullYear()
+    ) {
         // fix day gap
-        await fixDailyCfxTxn(lastStat.day, endT);
+        await calcDailyCfxTxn(lastStat.day, endT);
     } else {
         await rollupDailyCfxTxn(endT, true);
     }

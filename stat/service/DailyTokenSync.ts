@@ -13,13 +13,15 @@ import {BalanceWatcher} from "./watcher/BalanceWatcher";
 import {adjustTodayEndTime, getEpochRange} from "../model/Utils";
 import {TxnQuery} from "./TxnQuery";
 import {getMaxTokenSyncDate} from "./tool/FixDailyTokenStat";
+import {FullBlock} from "../model/FullBlock";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
     showDebugLog = false
 
     const endT = await getMaxTokenSyncDate();
-    const fromT = await DailyToken.findOne({order:[['day', 'desc']]}).then(res=>res?.day);
+    const minBlockDt = await FullBlock.findOne({order:[['epoch', 'asc']], offset: 1})
+    const fromT = await DailyToken.findOne({order:[['day', 'desc']]}).then(res=>res?.day || minBlockDt?.createdAt);
     while (fromT < endT) {
         await calcAllRegisteredTokenDailyStat(fromT).catch(e=>{
             console.log(`failed to calcAllRegisteredTokenDaily Stat`, e)

@@ -10,7 +10,7 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 }
-export async function fixAllDailyAddrDate() {
+export async function calcAllDailyAddrDate() {
     const epoch = await Epoch.findOne({where: {epoch: 1}})
         .then(res=> res ?? Epoch.findOne({order: [['epoch', 'asc']]}));
     let dt = epoch.timestamp;
@@ -45,7 +45,7 @@ function main() {
         if ('fixDailyAddr' == cmd) {
             return fixDailyAddrCount();
         } else if ('fixDate' == cmd) {
-            return fixAllDailyAddrDate()
+            return calcAllDailyAddrDate()
         }
     }).then(() => {
         DailyActiveAddress.sequelize.close().then()

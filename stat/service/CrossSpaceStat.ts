@@ -140,8 +140,8 @@ async function checkLatestToEvm() {
     if (!cfxSyncMaxDate) {
         return;
     }
-    const nowMs = cfxSyncMaxDate.getTime();
-    while (dt.getTime() < nowMs) {
+    const syncMaxMs = cfxSyncMaxDate.getTime();
+    while (dt.getTime() < syncMaxMs) {
         await calcDailyCfxToEvm(dt)
         await calcDailyCfxFromEvm(dt)
         dt.setDate(dt.getDate() + 1)

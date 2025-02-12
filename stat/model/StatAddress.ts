@@ -4,7 +4,7 @@ import {Erc20Transfer, T_ERC20_TRANSFER} from "./Erc20Transfer";
 import {getEpochRange} from "./Utils";
 import {T_ERC721_TRANSFER} from "./Erc721Transfer";
 import {T_ERC1155_TRANSFER} from "./Erc1155Transfer";
-import {fixAllDailyAddrDate} from "../service/tool/FixDailyActiveAddress";
+import {calcAllDailyAddrDate} from "../service/tool/FixDailyActiveAddress";
 import {getMaxTokenSyncDate} from "../service/tool/FixDailyTokenStat";
 
 export interface IAddressStat {
@@ -68,7 +68,7 @@ export class DailyActiveAddress extends Model<IDailyActiveAddress> implements ID
 async function checkLastDate(endT: Date) {
     const latestOne = await DailyActiveAddress.findOne({order:[['day', 'desc']]});
     if (!latestOne) {
-        await fixAllDailyAddrDate();
+        await calcAllDailyAddrDate();
     } else {
         const fromT = latestOne.day;
         while(fromT <=  endT) {

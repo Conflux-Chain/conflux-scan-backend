@@ -56,7 +56,7 @@ export async function findCfxSyncMaxDate() {
 }
 
 
-export async function fixDailyCfxTxn(fromT: Date = null, endT: Date) {
+export async function calcDailyCfxTxn(fromT: Date = null, endT: Date) {
     if (!fromT) {
         const blk = await FullBlock.findOne({order: [['epoch', 'asc']], offset: 1});
         if (!blk) {
@@ -75,7 +75,7 @@ async function main() {
     const config = await init()
     const [, , cmd] = process.argv
     if (cmd === 'fix-daily-cfx-txn') {
-        fixDailyCfxTxn(null, await findCfxSyncMaxDate()).then(() => {
+        calcDailyCfxTxn(null, await findCfxSyncMaxDate()).then(() => {
             process.exit(0)
         })
     } else if (cmd === 'fix-staking') {
