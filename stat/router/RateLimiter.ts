@@ -177,6 +177,7 @@ export async function checkApiKey(path: string, key: string, dryRun = false) {
         const vipInfo = await getVipInfo(account);
         const expireSecond = vipInfo.expireAt;
         const ret = {ok: false, result: {...vipInfo, account, app, now: Math.floor(Date.now() / 1000)}}
+        // @ts-ignore
         if (expireSecond * 1000 > Date.now()) {
             ret.ok = true;
         }
@@ -417,6 +418,7 @@ export async function checkApiKeyByLevel(path, apiKey: string) {
         const vipInfo = await getVipInfo(account);
         const expireSecond = vipInfo.expireAt;
         const ret = {ok: false, result: {...vipInfo, account, app, now: Math.floor(Date.now() / 1000)}};
+        // @ts-ignore
         if (expireSecond * 1000 > Date.now()) {
             ret.ok = true;
             if (lodash.findIndex(ret.result['keys'], key => key === 'qps') === -1 ||
