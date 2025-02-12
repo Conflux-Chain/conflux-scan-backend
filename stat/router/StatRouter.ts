@@ -241,11 +241,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
 
         await Promise.all([
-            // sumRecentCfxTxn(days),
             sumRecentCfxAmount(days).then((res)=>timeCost(res,'sumRecentCfxAmount')),
             TxnQuery.gasUsedSum(-days).then((res)=>timeCost(res,'gasUsedSum')),
             countRecentTokenTransfer(-days).then((res)=>timeCost(res,'countRecentTokenTransfer')),
-            // countRecentTokenTransferAccount(-days),
             countRecentMiner(-days).then((res)=>timeCost(res,'countRecentMiner')),
         ]).then((arr)=>{
             console.log(` time cost for overview stat :, ${JSON.stringify(timeCosts)}`)

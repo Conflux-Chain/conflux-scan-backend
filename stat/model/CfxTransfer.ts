@@ -1,8 +1,9 @@
-import {DataTypes, fn, Model, Op, Sequelize, QueryTypes} from "sequelize";
-import {batchBuildId, buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
+import {DataTypes, Model, Op, Sequelize, QueryTypes} from "sequelize";
+import {buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {adjustTodayEndTime} from "./Utils";
+import {findCfxSyncMaxDate, calcDailyCfxTxn} from "../service/tool/CfxTransferTool";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {
@@ -503,12 +504,23 @@ export async function rollupDailyCfxTxn(dt:Date, adjustEndTime = false) {
 }
 
 export async function rollupDailyCfxTxnCurrent() {
-    const cur = new Date()
-    if (cur.getHours() === 0 && cur.getMinutes() < 30) {
-        // rollup previous day, time point is an hour ago.
-        await rollupDailyCfxTxn(new Date(cur.getTime() - 1000*3600))
+    const endT = await findCfxSyncMaxDate();
+    if (!endT) {
+        return;
     }
-    await rollupDailyCfxTxn(cur, true);
+    const lastStat = await DailyCfxTxn.findOne({order:[['day', 'desc']]});
+    if (!lastStat) {
+        await calcDailyCfxTxn(null, endT)
+    } else if (
+        endT.getDate() != lastStat.day.getDate()
+        || endT.getMonth() != lastStat.day.getMonth()
+        || endT.getFullYear() != lastStat.day.getFullYear()
+    ) {
+        // fix day gap
+        await calcDailyCfxTxn(lastStat.day, endT);
+    } else {
+        await rollupDailyCfxTxn(endT, true);
+    }
 }
 
 export async function scheduleRollupDailyCfxTxn() {

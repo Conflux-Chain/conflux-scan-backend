@@ -23,7 +23,6 @@ import {
     ICfxTransfer,
     markCfxTransferPosition,
     popPartitionCfxTransfer,
-    scheduleRollupDailyCfxTxn
 } from "./model/CfxTransfer";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT} from "./model/KV";
@@ -294,7 +293,6 @@ async function setup() {
     runMarker().then();
     cfx0 = cfx;
     await makeVirtualContractInfo(cfx.networkId);
-    scheduleRollupDailyCfxTxn().then();
     console.log(`---------- ${cfxOpt.url} ${cfx.networkId} ---------`)
     if (process.argv.includes('test')) {
         await test(parseInt(fromEpoch))

@@ -1,9 +1,9 @@
 import {init} from "./FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
-import {AddressTransactionIndex} from "../../model/FullBlock";
+import {AddressTransactionIndex, FullBlock} from "../../model/FullBlock";
 import {AddressCfxTransfer, CfxTransfer, rollupDailyCfxTxn} from "../../model/CfxTransfer";
 import {getAddrId} from "../../model/HexMap";
-import {getCfxTransferTraces, setCfxSync} from "../../CfxTransferSync";
+import {EpochHashCfxTransfer, getCfxTransferTraces, setCfxSync} from "../../CfxTransferSync";
 
 async function fixStaking(config) {
     const cfx = await initCfxSdk(config.conflux);
@@ -43,22 +43,39 @@ async function fixStaking(config) {
     console.log(`done. fixed ${fixed}`)
 }
 
-async function fixDailyCfxTxn() {
-    const[,,cmd,dt] = process.argv
-    const date = new Date(dt)
-    const now = new Date();
-    while (date <= now) {
+export async function findCfxSyncMaxDate() {
+    const maxTag = await EpochHashCfxTransfer.findOne({order:[['epoch', 'desc']]});
+    if (!maxTag) {
+        return null;
+    }
+    const blk = await FullBlock.findOne({where: {epoch: maxTag.epoch}});
+    if (!blk) {
+        return null;
+    }
+    return blk.createdAt;
+}
+
+
+export async function calcDailyCfxTxn(fromT: Date = null, endT: Date) {
+    if (!fromT) {
+        const blk = await FullBlock.findOne({order: [['epoch', 'asc']], offset: 1});
+        if (!blk) {
+            return;
+        }
+        fromT = blk.createdAt;
+    }
+    const date = fromT;
+    while (date <= endT) {
         await rollupDailyCfxTxn(date)
         console.log(`fixed ${date.toISOString()}`)
         date.setDate(date.getDate()+1)
     }
-    console.log(`done`)
 }
 async function main() {
     const config = await init()
     const [, , cmd] = process.argv
     if (cmd === 'fix-daily-cfx-txn') {
-        fixDailyCfxTxn().then(() => {
+        calcDailyCfxTxn(null, await findCfxSyncMaxDate()).then(() => {
             process.exit(0)
         })
     } else if (cmd === 'fix-staking') {
