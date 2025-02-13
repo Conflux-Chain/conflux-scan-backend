@@ -181,7 +181,7 @@ export async function calcDailyUniqueAddrSchedule() {
 }
 
 async function calcDailyUniqueAddr() {
-    const latestOne = await UniqueAddress.findOne({order: [['day', 'desc']]});
+    const latestOne = await UniqueAddress.findOne({order: [['day', 'desc']], raw: true});
     patchDateOnlyField(latestOne);
     await fixParticipants(latestOne?.timeStart);
 }

@@ -135,7 +135,7 @@ export async function scheduleCrossSpaceStat(cfx:Conflux) {
 }
 
 async function checkLatestToEvm() {
-    let latest = await CrossSpaceStat.findOne({order: [['day','asc']]})
+    let latest = await CrossSpaceStat.findOne({order: [['day','asc']], raw: true})
     patchDateOnlyField(latest);
     let dt = latest?.day || new Date('2022-02-20')
     const cfxSyncMaxDate = await findCfxSyncMaxDate();

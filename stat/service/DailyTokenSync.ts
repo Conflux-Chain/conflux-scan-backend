@@ -21,7 +21,7 @@ export async  function scheduleDailyTokenStat() {
 
     const endT = await getMaxTokenSyncDate();
     const minBlockDt = await FullBlock.findOne({order:[['epoch', 'asc']], offset: 1})
-    const fromT = await DailyToken.findOne({order:[['day', 'desc']]}).then(patchDateOnlyField)
+    const fromT = await DailyToken.findOne({order:[['day', 'desc']], raw: true}).then(patchDateOnlyField)
         .then(res=>res?.day || minBlockDt?.createdAt);
     while (fromT < endT) {
         await calcAllRegisteredTokenDailyStat(fromT).catch(e=>{

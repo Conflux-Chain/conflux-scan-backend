@@ -508,7 +508,7 @@ export async function rollupDailyCfxTxnCurrent() {
     if (!endT) {
         return;
     }
-    const lastStat = await DailyCfxTxn.findOne({order:[['day', 'desc']]});
+    const lastStat = await DailyCfxTxn.findOne({order:[['day', 'desc']], raw: true});
     patchDateOnlyField(lastStat);
     if (!lastStat) {
         await calcDailyCfxTxn(null, endT)
