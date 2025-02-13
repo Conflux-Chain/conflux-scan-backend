@@ -1,7 +1,7 @@
 import {QueryTypes, DataTypes, Model, Op} from "sequelize";
 import {FullBlock, FullTransaction} from "./FullBlock";
 import {Erc20Transfer, T_ERC20_TRANSFER} from "./Erc20Transfer";
-import {getEpochRange} from "./Utils";
+import {getEpochRange, patchDateOnlyField} from "./Utils";
 import {T_ERC721_TRANSFER} from "./Erc721Transfer";
 import {T_ERC1155_TRANSFER} from "./Erc1155Transfer";
 import {calcAllDailyAddrDate} from "../service/tool/FixDailyActiveAddress";
@@ -15,6 +15,8 @@ export interface IAddressStat {
 
 export async function removeDate1970() {
     const [one, two] = await AddressStat.findAll({order: [['day', 'asc']], limit: 2});
+    patchDateOnlyField(one);
+    patchDateOnlyField(two);
     if (one?.day.getFullYear() < 1971 && two) {
         await AddressStat.destroy(one);
         await incDailyAddressCount(two.day, one.cnt);
@@ -67,6 +69,7 @@ export class DailyActiveAddress extends Model<IDailyActiveAddress> implements ID
 
 async function checkLastDate(endT: Date) {
     const latestOne = await DailyActiveAddress.findOne({order:[['day', 'desc']]});
+    patchDateOnlyField(latestOne);
     if (!latestOne) {
         await calcAllDailyAddrDate();
     } else {

@@ -2,7 +2,7 @@
  * Unique address for each token.
  */
 
-import {adjustTodayEndTime} from "../model/Utils";
+import {adjustTodayEndTime, patchDateOnlyField} from "../model/Utils";
 import {redirectLog} from "../config/LoggerConfig";
 import {DailyTokenTxn, Erc20Transfer, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
 import {regExitHook, sleep} from "./tool/ProcessTool";
@@ -182,6 +182,7 @@ export async function calcDailyUniqueAddrSchedule() {
 
 async function calcDailyUniqueAddr() {
     const latestOne = await UniqueAddress.findOne({order: [['day', 'desc']]});
+    patchDateOnlyField(latestOne);
     await fixParticipants(latestOne?.timeStart);
 }
 

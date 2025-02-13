@@ -1,6 +1,19 @@
 import {Epoch} from "./Epoch";
 import {Op} from "sequelize";
 
+export function fmtDateOnly(v: string|Date) {
+    if (typeof(v) == 'string') {
+        return new Date(v);
+    }
+    return v;
+}
+export function patchDateOnlyField(v: any, field = 'day') {
+    if (!v[field]) {
+        return v;
+    }
+    v[field] = fmtDateOnly(v[field]);
+    return v;
+}
 /**
  * When using raw query, there is an issue about timezone, under sqlite3.
  * Avoid passing date directly, convert it to utc string.
