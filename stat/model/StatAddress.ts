@@ -18,7 +18,7 @@ export async function removeDate1970() {
     patchDateOnlyField(one);
     patchDateOnlyField(two);
     if (one?.day.getFullYear() < 1971 && two) {
-        await AddressStat.destroy(one);
+        await AddressStat.destroy({where: {id: one.id}});
         await incDailyAddressCount(two.day, one.cnt);
     }
 }
