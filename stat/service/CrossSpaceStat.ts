@@ -8,6 +8,7 @@ import {IS_EVM2, KV} from "../model/KV";
 import {initCfxSdk} from "./common/utils";
 import {EvmDB} from "../config/StatConfig";
 import {findCfxSyncMaxDate} from "./tool/CfxTransferTool";
+import {patchDateOnlyField} from "../model/Utils";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
     | 'DailyCfxCountToEVM' | 'DailyCfxCountFromEVM'
@@ -134,7 +135,8 @@ export async function scheduleCrossSpaceStat(cfx:Conflux) {
 }
 
 async function checkLatestToEvm() {
-    let latest = await CrossSpaceStat.findOne({order: [['day','asc']]})
+    let latest = await CrossSpaceStat.findOne({order: [['day','asc']], raw: true})
+    patchDateOnlyField(latest);
     let dt = latest?.day || new Date('2022-02-20')
     const cfxSyncMaxDate = await findCfxSyncMaxDate();
     if (!cfxSyncMaxDate) {

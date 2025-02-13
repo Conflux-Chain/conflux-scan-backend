@@ -403,7 +403,7 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
         if (list.length < 2) {
             return [0,list[0],null]
         }
-        // two or three record, d1 is latest day and may be in progress.
+        // two or three record, d1 is the latest day and may be in progress.
         const [d1,d2,d3] = list
         // recent 1 >= recent 2
         if (d1.holderCount && d2.holderCount && d1.holderCount >= d2.holderCount) {

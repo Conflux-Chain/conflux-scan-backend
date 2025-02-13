@@ -2,7 +2,7 @@ import {DataTypes, Model, Op, Sequelize, QueryTypes} from "sequelize";
 import {buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
-import {adjustTodayEndTime} from "./Utils";
+import {adjustTodayEndTime, patchDateOnlyField} from "./Utils";
 import {findCfxSyncMaxDate, calcDailyCfxTxn} from "../service/tool/CfxTransferTool";
 
 // ============= partition by address table ==============
@@ -508,7 +508,8 @@ export async function rollupDailyCfxTxnCurrent() {
     if (!endT) {
         return;
     }
-    const lastStat = await DailyCfxTxn.findOne({order:[['day', 'desc']]});
+    const lastStat = await DailyCfxTxn.findOne({order:[['day', 'desc']], raw: true});
+    patchDateOnlyField(lastStat);
     if (!lastStat) {
         await calcDailyCfxTxn(null, endT)
     } else if (
