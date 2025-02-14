@@ -140,7 +140,7 @@ export class ConfluxService {
   async getBalances(account, contracts, utilContract) {
     const {
       app: { ttlMap, tokenTool },
-    } = this;
+    } = this as ScanCtx;
 
     return ttlMap.cache(`ConfluxService.getBalances(${account})`,
       () => tokenTool.getBalances(account, contracts, utilContract),
@@ -174,7 +174,7 @@ export class ConfluxService {
   async getEpochByEpochNumber(epochNumber) {
     const {
       app: { ttlMap, tokenTool },
-    } = this;
+    } = this as ScanCtx;
 
     return ttlMap.cache(`ConfluxService.getEpochByEpochNumber(${epochNumber})`,
       () => tokenTool.getEpochByEpochNumber(epochNumber),

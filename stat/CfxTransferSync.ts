@@ -101,8 +101,8 @@ export async function getCfxTransferTraces(epoch: number)
     if (_dbTx) {
         _dbTx.rollback().catch()
     }
-    if (blockArrDb.length == 0) {
-        console.log(`no block in db, epoch ${epoch}`);
+    if (blockArrDb.length == 0 || !pivotBlock) {
+        console.log(`block in db ${blockArrDb.length} , has pivot ${Boolean(pivotBlock)}, epoch ${epoch}`);
         return {code: 404};
     }
     const dbPivotBlock = blockArrDb[blockArrDb.length-1];

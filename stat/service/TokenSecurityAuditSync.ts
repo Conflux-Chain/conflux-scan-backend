@@ -34,7 +34,7 @@ export class TokenSecurityAuditSync{
             await tokenQuery.audit({address})
         }
 
-        console.log(`token audit start ${now} end ${new Date()} recently ${recently}`)
+        console.log(`token audit start ${now.toISOString()} end ${new Date().toISOString()} recently ${recently}`)
     }
 
     public async schedule() {
