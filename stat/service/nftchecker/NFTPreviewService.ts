@@ -21,8 +21,10 @@ const legacyNFTs = new Set(Object.values(NFTMap).map(item => item.address));
 export class NFTPreviewService {
     private app;
     private cfx;
-    private TIMEOUT_CONN = 3000;
-    private TIMEOUT_READ = 3000;
+    // set a deadline for the entire request (including all uploads, redirects, server processing time) to complete
+    private TIMEOUT_OVERALL = 1000;
+    // set maximum time to wait for the first byte to arrive from the server
+    private TIMEOUT_RESP = 200;
 
     constructor(app: any) {
         this.app = app;
@@ -369,7 +371,7 @@ export class NFTPreviewService {
                         if (meta?.localization?.uri) { // try 1155
                             const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
                             const response = await superagent.get(zhUri)
-                                .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
+                                .timeout({response: this.TIMEOUT_RESP, deadline: this.TIMEOUT_OVERALL})
                                 .catch(e => {throw new Errors.QueryNFTLocalNameError(`${zhUri} ${e.message}`)});
                             const responseObj = JSON.parse(response.text);
                             zh = responseObj.name;
@@ -435,7 +437,7 @@ export class NFTPreviewService {
                 rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
             } else {
                 const resp = await superagent.get(gatewayUrl)
-                .timeout({response: this.TIMEOUT_CONN, deadline: this.TIMEOUT_READ})
+                .timeout({response: this.TIMEOUT_RESP, deadline: this.TIMEOUT_OVERALL})
                 .catch(e => {throw new Errors.QueryNFTMetadataError(
                     JSON.stringify(lodash.assign(err, {message: `request third-party tokenURI ${gatewayUrl} occurs ${e.message}, try again later`}))
                 )});
