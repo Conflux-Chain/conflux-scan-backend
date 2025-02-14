@@ -98,6 +98,18 @@ export class TokenTool {
             });
     }
 
+    async getEpochByEpochNumber(epochNumber) {
+        const now = Math.floor(Date.now() / 1000);
+        const pivotBlock = await this.cfx.getBlockByEpochNumber(epochNumber);
+
+        return {
+            epochNumber,
+            pivotHash: pivotBlock.hash,
+            parentHash: pivotBlock.parentHash,
+            timestamp: lodash.min([pivotBlock.timestamp, now]), // XXX: for filter negative timestamp
+        };
+    }
+
     async awaitObject(object): Promise<any> {
         const result = {};
         await Promise.all(lodash.map(object, async (promise, key) => {
