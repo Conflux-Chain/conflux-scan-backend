@@ -35,7 +35,7 @@ import {
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
-import {CONST as SDK_CONST} from "js-conflux-sdk";
+import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -92,8 +92,12 @@ export class EpochSync extends SyncBase {
                 if (cv) {
                     const hexId = await makeIdV(cv.base32);
                     const trace = await TraceCreateContract.findOne({where: {to: hexId}, raw: true});
+                    const hex = format.hexAddress(cv.base32);
+                    const isInternal = CONST.INTERNAL_CONTRACT.includes(hex);
                     if (trace) {
                         lastTraceId = trace.id;
+                    } else if (isInternal) {
+                        lastTraceId = -1;
                     } else {
                         lastTraceId = NaN;
                         console.log(`max contract verify without trace: [${cv.name}] ${cv.base32} hex id ${hexId}`)

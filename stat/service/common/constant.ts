@@ -97,7 +97,7 @@ export const CONST = {
   CODEHASH_NO_BYTECODE: '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470',
 
   INTERNAL_CONTRACT_MAP: internalContracts,
-  INTERNAL_CONTRACT: lodash.values(internalContracts),
+  INTERNAL_CONTRACT: lodash.values(internalContracts) as string[],
 
   LICENSE: {
     '1': {code: 'None', desc: 'No License'},
