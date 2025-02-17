@@ -2,8 +2,6 @@ import {Epoch, VoteParams} from "../model/Epoch";
 import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {
-	ESpaceHex40Map,
-	ESpaceHexMapAttributes,
 	formatToBase32,
 	formatToHex,
 	Hex40Map,
@@ -17,7 +15,7 @@ import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool"
 import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
-import {TraceCreateContract, ContractDestroy, ITraceCreateContract} from "../model/TraceCreateContract";
+import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
@@ -30,14 +28,14 @@ import {decodeTransferFromReceipts} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts, T_ADDRESS_NFTS} from "../model/AddrNft";
 import {
+    AUTO_VERIFY_CURSOR,
     CONTRACT_ADDRESS_METADATA,
     CONTRACT_ANNOUNCEMENT,
     KEY_EPOCH_CIP1559_ENABLED,
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
-import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
-import { getCodeHash } from "./common/utils";
+import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -82,6 +80,33 @@ export class EpochSync extends SyncBase {
     public async mustInit() {
         await this.checkConfig()
         await this.loadLatestVoteParam()
+        this.startAutoVerify().then();
+    }
+
+    async startAutoVerify() {
+        let delaySec = 0;
+        try {
+            let lastTraceId = await KV.getNumber(AUTO_VERIFY_CURSOR, -1);
+            if (lastTraceId == -1) {
+                const cv = await TraceCreateContract.findOne({order: [['id', 'desc']], raw: true});
+                if (cv) {
+                    lastTraceId = cv.id;
+                }
+            }
+            const tcc = isNaN(lastTraceId) ? null : await TraceCreateContract.findOne({
+                where: {id: {[Op.gt]: lastTraceId}}, order: [['id', 'asc']]
+            });
+            if (!tcc) {
+                delaySec = 10;
+            } else {
+                await this.doContractVerify([tcc]);
+                await KV.saveNumber(AUTO_VERIFY_CURSOR, tcc.id, null);
+            }
+        } catch (e) {
+            delaySec = 30;
+            console.log(`${__filename} failed to auto verify.`, e)
+        }
+        setTimeout(()=>this.startAutoVerify(), delaySec * 1000);
     }
 
     private async checkConfig() {
@@ -141,19 +166,16 @@ export class EpochSync extends SyncBase {
                 StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
             ])
 
-            let [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray, traceCreateArray, evmAddressArray,
+            let [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray,
                 cfxTransferArray, tokenTransferArray] = await Promise.all([
                 this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray),
                 this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray),
                 this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray),
                 this.getTokensAutoDetected(tokenLogs),
-                EpochSync.getTraceCreateArrayPlus(traceArray, epochTimestamp, this.app.cfx),
-                EpochSync.getTraceCrossSpaceArray(traceArray, epochTimestamp),
                 this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray),
                 this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true),
             ])
             eventLogInfo = null
-            traceArray = null
             tokenLogs = null
 
             let [announcedTokenArray, announcedContractArray,
@@ -174,7 +196,6 @@ export class EpochSync extends SyncBase {
                 this.getAddressNft(epochNumber, epochTimestamp, addrNftTransferArray),
                 this.getTransferredNftArray(epochNumber, addrTransferArray),
                 this.saveTokenIcon(announceInfo),
-                this.doContractVerify(traceCreateArray)
             ])
             announceInfo = null
 
@@ -189,8 +210,6 @@ export class EpochSync extends SyncBase {
 
                 announcedTokenArray,
                 announcedContractArray,
-                evmAddressArray,
-                traceCreateArray,
                 adminDestroyTxArray,
                 transferredNftArray,
                 tokenArray,
@@ -295,10 +314,6 @@ export class EpochSync extends SyncBase {
                     updateOnDuplicate: FIELDS_TOKEN as any}),
                 Contract.bulkCreate(modelData.announcedContractArray, {transaction: dbTx,
                     updateOnDuplicate: FIELDS_CONTRACT as any}),
-                ESpaceHex40Map.bulkCreate(modelData.evmAddressArray, {transaction: dbTx,
-                    updateOnDuplicate: ['hexId']}),
-                TraceCreateContract.bulkCreate(modelData.traceCreateArray, { transaction: dbTx,
-                    updateOnDuplicate: ["epochNumber", "blockTime", "txHash", "traceIndex"]}),
                 ContractDestroy.bulkCreate(modelData.adminDestroyTxArray, { transaction: dbTx,
                     updateOnDuplicate: ["epochNumber", "blockTime", "txHash", "admin"]}),
                 NftMeta.bulkCreate(modelData.transferredNftArray, { transaction: dbTx,
@@ -334,10 +349,9 @@ export class EpochSync extends SyncBase {
         const addrIds = epochAddressIds.map(epochAddressId => epochAddressId.addressId)
 
         await Epoch.sequelize.transaction(async (dbTx) => {
-            const [epochDel, traceCreateDel, addrTransferDel, epochAddressDel, contractDestroyDel,
+            const [epochDel, addrTransferDel, epochAddressDel, contractDestroyDel,
                 censorItemDel, addrNftDel, nftTransferDel, addrNftTransferDel, voteParamsDel] = await Promise.all([
                 Epoch.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
-                TraceCreateContract.destroy({where: {epochNumber}, transaction: dbTx}),
                 addrIds?.length ? AddressTransfer.destroy({
                     where: {addressId: {[Op.in]: addrIds}, epoch: epochNumber},
                     transaction: dbTx
@@ -351,7 +365,7 @@ export class EpochSync extends SyncBase {
                 VoteParams.destroy({where: {epoch: epochNumber}, transaction: dbTx}),
             ])
             console.log(`epoch-sync.delete epoch ${epochNumber} epochDel ${epochDel} 
-                traceCreateDel ${traceCreateDel} addrTransferDel ${addrTransferDel} epochAddressDel ${epochAddressDel} 
+                addrTransferDel ${addrTransferDel} epochAddressDel ${epochAddressDel} 
                 contractDestroyDel ${contractDestroyDel} censorItemDel ${censorItemDel} addrNftDel ${addrNftDel} 
                 nftTransferDel ${nftTransferDel} addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
         });
@@ -908,93 +922,6 @@ export class EpochSync extends SyncBase {
         }
 
         return traceArray
-    }
-
-    public static async getTraceCrossSpaceArray(traceArray, blockDt: Date) {
-        // filter
-        const crossSpaceTraceArray: ESpaceHexMapAttributes[] = [];
-        for (const trace of traceArray) {
-            if (trace.status === CONST.TX_STATUS.SUCCESS
-                && trace.valid
-                && (trace.action.fromSpace === 'evm' || trace.action.toSpace === 'evm')) {
-                crossSpaceTraceArray.push(...(await EpochSync.parseTraceCrossSpace(trace.action, blockDt)));
-            }
-        }
-        return crossSpaceTraceArray;
-    }
-
-    public static parseEvmAddress(traceCrossSpace:{fromSpace: string, toSpace: string, from: number, fromHex: string, to: number, toHex: string}) {
-        const evmAddresses: ESpaceHexMapAttributes[] = []
-            if (traceCrossSpace.fromSpace === 'evm') {
-                evmAddresses.push({hexId: traceCrossSpace.from, hex: traceCrossSpace.fromHex.substr(2)})
-            }
-            if (traceCrossSpace.toSpace === 'evm' && traceCrossSpace.to !== traceCrossSpace.from) {
-                evmAddresses.push({hexId: traceCrossSpace.to, hex: traceCrossSpace.toHex.substr(2)})
-            }
-        return evmAddresses
-    }
-
-    public static async parseTraceCrossSpace(trace, blockDt: Date) {
-            const from = (await makeId(trace.from, undefined, {dt: blockDt})).id;
-            const to = (await makeId(trace.to, undefined, {dt: blockDt})).id;
-            const fromHex = formatToHex(trace.from);
-            const toHex = formatToHex(trace.to);
-            const toCreate = {
-                from,
-                to,
-                fromHex,
-                toHex,
-                fromSpace: trace.fromSpace,
-                toSpace: trace.toSpace,
-            };
-        return EpochSync.parseEvmAddress(toCreate);
-    }
-
-    public static async getTraceCreateArrayPlus(traceArray, blockDt: Date, cfx: Conflux) {
-        // filter
-        const createTraceArray = [];
-        for (const trace of traceArray) {
-            if (trace.status === CONST.TX_STATUS.SUCCESS && trace.type === CONST.TRACE_TYPE.CREATE && trace.valid) {
-                /**
-                 * create:{from,gas,init,value}
-                 * create_result:{addr,gasLeft,outcome,returnData}
-                 */
-                createTraceArray.push(await EpochSync.buildTraceCreate({
-                    epochNumber: trace.epochNumber,
-                    transactionHash: trace.transactionHash,
-                    transactionTraceIndex: trace.transactionTraceIndex,
-                    from: trace.action.from,
-                    to: trace.action.to,
-                    value: trace.action.value,
-                    outcome: trace.action.outcome,
-                    blockTime: trace.blockTime,
-                }, blockDt, cfx));
-            }
-        }
-        return createTraceArray;
-    }
-
-    static async buildTraceCreate(trace: {transactionHash: string, epochNumber: number, from: string, to: string,
-                                      transactionTraceIndex: number, value: number, outcome: string, blockTime: number},
-                                  blockDt: Date, cfx: Conflux) {
-            const txHashId = 0; // (await makeId(trace.transactionHash)).id;
-            const txHash = trace.transactionHash.substr(2);
-            const from = (await makeId(trace.from, undefined, {dt: blockDt})).id;
-            const to = (await makeId(trace.to, undefined, {dt: blockDt})).id;
-            const codeHash = await getCodeHash(trace.to, cfx);
-            const toCreate: ITraceCreateContract = {
-                epochNumber: trace.epochNumber,
-                txHashId,
-                txHash,
-                traceIndex: trace.transactionTraceIndex,
-                from,
-                to,
-                value: trace.value,
-                outcome: trace.outcome,
-                blockTime: trace.blockTime,
-                codeHash,
-            };
-            return toCreate;
     }
 
     public composeTraceAndBock(epochNumber, blockArray, traceArray2d, detail = false) {

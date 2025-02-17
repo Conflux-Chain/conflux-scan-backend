@@ -197,11 +197,11 @@ export class TokenService {
   async _listByAccountPlus({ accountAddress, ...options }) {
     const {
       app: { service, config },
-    } = this;
+    } = this as ScanCtx;
 
     const { balanceMap: dbBalanceMap, tokenArray: tokens } = await TokenQuery.listAccountTokens({ accountAddress });
     const addressArray = tokens.map((t) => t.base32);
-
+    // this config is from scan-api/config, not statConfig.
     let utilContract = config.scanUtilContract;
     const utilInDb = await KV.getString(SCAN_UTIL_CONTRACT, '');
     if (utilInDb !== '') {

@@ -533,7 +533,6 @@ export enum SyncCode {
 
 export class ModelData{
     epoch: any = {}
-    minerBlockArray = []
     addrTransferArray = []
     epochAddrIdArray = []
     nftTransferArray = []
@@ -543,8 +542,6 @@ export class ModelData{
 
     announcedTokenArray = []
     announcedContractArray = []
-    evmAddressArray = []
-    traceCreateArray = []
     adminDestroyTxArray = []
     transferredNftArray = []
     tokenArray = []
@@ -558,7 +555,6 @@ export class ModelData{
 
     public reset() {
         this.epoch = {}
-        this.minerBlockArray = []
         this.addrTransferArray = []
         this.epochAddrIdArray = []
         this.nftTransferArray = []
@@ -568,8 +564,6 @@ export class ModelData{
 
         this.announcedTokenArray = []
         this.announcedContractArray = []
-        this.evmAddressArray = []
-        this.traceCreateArray = []
         this.adminDestroyTxArray = []
         this.transferredNftArray = []
         this.tokenArray = []
@@ -592,7 +586,6 @@ export class BatchData extends ModelData {
 
     public enqueue(data: ModelData, voteParamArray) {
         this.epochArray.push(data.epoch)
-        this.minerBlockArray.push(...data.minerBlockArray)
         this.addrTransferArray.push(...data.addrTransferArray)
         this.epochAddrIdArray.push(...data.epochAddrIdArray)
         this.nftTransferArray.push(...data.nftTransferArray)
@@ -601,8 +594,6 @@ export class BatchData extends ModelData {
 
         this.announcedTokenArray.push(...data.announcedTokenArray)
         this.announcedContractArray.push(...data.announcedContractArray)
-        this.evmAddressArray.push(...data.evmAddressArray)
-        this.traceCreateArray.push(...data.traceCreateArray)
         this.adminDestroyTxArray.push(...data.adminDestroyTxArray)
         this.transferredNftArray.push(...data.transferredNftArray)
         this.tokenArray.push(...data.tokenArray)

@@ -5,6 +5,7 @@ export interface IKV {
     key: string;
     value: string
 }
+export const AUTO_VERIFY_CURSOR = "AUTO_VERIFY_CURSOR"
 export const SCAN_UTIL_CONTRACT = 'SCAN_UTIL_CONTRACT'
 export const CONTRACT_ANNOUNCEMENT = 'CONTRACT_ANNOUNCEMENT'
 export const CONTRACT_ADDRESS_METADATA = 'CONTRACT_ADDRESS_METADATA'
