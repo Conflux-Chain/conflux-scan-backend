@@ -88,20 +88,9 @@ export class EpochSync extends SyncBase {
         try {
             let lastTraceId = await KV.getNumber(AUTO_VERIFY_CURSOR, -1);
             if (lastTraceId == -1) {
-                const cv = await ContractVerify.findOne({order: [['id', 'desc']], raw: true});
+                const cv = await TraceCreateContract.findOne({order: [['id', 'desc']], raw: true});
                 if (cv) {
-                    const hexId = await makeIdV(cv.base32);
-                    const trace = await TraceCreateContract.findOne({where: {to: hexId}, raw: true});
-                    const hex = format.hexAddress(cv.base32);
-                    const isInternal = CONST.INTERNAL_CONTRACT.includes(hex);
-                    if (trace) {
-                        lastTraceId = trace.id;
-                    } else if (isInternal) {
-                        lastTraceId = -1;
-                    } else {
-                        lastTraceId = NaN;
-                        console.log(`max contract verify without trace: [${cv.name}] ${cv.base32} hex id ${hexId}`)
-                    }
+                    lastTraceId = cv.id;
                 }
             }
             const tcc = isNaN(lastTraceId) ? null : await TraceCreateContract.findOne({
