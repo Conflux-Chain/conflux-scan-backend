@@ -6,6 +6,7 @@ import {Epoch} from "../../model/Epoch";
 import {Op} from "sequelize";
 import {PosQuery} from "./PosQuery";
 import {fixPosRewardAll, fixRewardByEpoch} from "./FixPosReward";
+import {initCfxSdk} from "../common/utils";
 
 async function fixDailyPosReward() {
     const {createdAt: firstDay} = await PosReward.findOne({order:[['id','asc']]})
@@ -116,7 +117,8 @@ async function main() {
     if (cmd === 'fixDailyPosReward') {
         await fixDailyPosReward()
     } else if (cmd === 'fixReward') {
-        await fixPosRewardAll(param1 ? parseInt(param1) : undefined);
+        const cfx = await initCfxSdk(cfg.conflux);
+        await fixPosRewardAll(param1 ? parseInt(param1) : undefined, cfx, true);
     } else if (cmd === 'fixTotalReward') {
         await fixTotalReward();
     } else if (cmd === 'fixDailyStaking' || cmd === 'fixDailyApy') {
@@ -160,6 +162,7 @@ where day<'2024-03-06' and biz='finalize_second_gap';
 // node stat/service/pos/FixPosHistoryStat.js fixDailyStaking
 // node stat/service/pos/FixPosHistoryStat.js fixDailyApy
 // node stat/service/pos/FixPosHistoryStat.js fixTotalReward
+// node stat/service/pos/FixPosHistoryStat.js fixReward | tee pos-reward.2025.2.17.log
 if (module === require.main) {
     main().then()
 }

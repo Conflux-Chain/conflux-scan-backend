@@ -1,17 +1,18 @@
 import {IPosReward, PosAccount, PosEpochRewardHash, PosReward} from "../../model/PoS";
 import {Op} from "sequelize";
+import {Conflux} from "js-conflux-sdk";
 
-export async function fixPosRewardAll(epoch:number = 0, dryRun = true) {
+export async function fixPosRewardAll(epoch:number = 0, cfx: Conflux, dryRun = true) {
 	do {
-		const n = await fixRewardByEpoch(epoch, dryRun);
+		const n = await fixRewardByEpoch(epoch, cfx, dryRun);
 		if (n != 1) {
 			break;
 		}
 	} while(true);
 	console.log(`ok`)
 }
-export async function fixRewardByEpoch(epoch:number, dryRun: boolean) {
-	let rewardInfo = await this.cfx.pos.getRewardsByEpoch(epoch)
+export async function fixRewardByEpoch(epoch:number, cfx: Conflux, dryRun: boolean) {
+	let rewardInfo = await cfx.pos.getRewardsByEpoch(epoch)
 	if (!rewardInfo) {
 		console.log(` pos reward is ${rewardInfo} at epoch ${epoch}`);
 		return -1;
