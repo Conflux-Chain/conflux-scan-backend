@@ -5,6 +5,7 @@ import {Conflux, Drip} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {Op} from "sequelize";
 import {PosQuery} from "./PosQuery";
+import {fixPosRewardAll, fixRewardByEpoch} from "./FixPosReward";
 
 async function fixDailyPosReward() {
     const {createdAt: firstDay} = await PosReward.findOne({order:[['id','asc']]})
@@ -114,6 +115,8 @@ async function main() {
     const cfg = await init();
     if (cmd === 'fixDailyPosReward') {
         await fixDailyPosReward()
+    } else if (cmd === 'fixReward') {
+        await fixPosRewardAll(param1 ? parseInt(param1) : undefined);
     } else if (cmd === 'fixTotalReward') {
         await fixTotalReward();
     } else if (cmd === 'fixDailyStaking' || cmd === 'fixDailyApy') {
