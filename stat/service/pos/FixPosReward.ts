@@ -3,11 +3,17 @@ import {Op} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 
 export async function fixPosRewardAll(epoch:number = 0, cfx: Conflux, dryRun = true) {
+	epoch -= 1;
 	do {
-		const n = await fixRewardByEpoch(epoch, cfx, dryRun);
+		const base = await PosReward.findOne({where: {epoch: {[Op.gt]: epoch}}, order: [['epoch', 'asc']]}).then(res=>res?.epoch);
+		if (!base) {
+			break;
+		}
+		const n = await fixRewardByEpoch(base, cfx, dryRun);
 		if (n != 1) {
 			break;
 		}
+		epoch = base;
 	} while(true);
 	console.log(`ok`)
 }
@@ -38,33 +44,39 @@ export async function fixRewardByEpoch(epoch:number, cfx: Conflux, dryRun: boole
 			epoch,
 		}
 	})
-	const dbBeanArr = await PosReward.findAll({where: {epoch}, order: [['id', 'asc']]});
+	const dbBeanArr = await PosReward.findAll({where: {epoch}});
 	if (dbBeanArr.length != rewardBeans.length) {
 		console.log(`bean length is wrong ${dbBeanArr.length} reward ${rewardBeans.length} epoch ${epoch}`);
 		process.exit(1)
 	}
+	const rMap = new Map<number, IPosReward>();
+	dbBeanArr.forEach(r=>rMap.set(r.accountId, r));
 	await PosReward.sequelize.transaction(async (dbTx)=>{
 		for (let i=0; i<dbBeanArr.length; i++) {
-			const dbV = dbBeanArr[i];
 			const newV = rewardBeans[i];
-			if (dbV.reward == newV.reward) {
-				continue
+			const dbV = rMap.get(newV.accountId);
+			if (dbV.accountId != newV.accountId) {
+				console.log(`account id is wrong ${dbV.accountId} vs ${newV.accountId}`);
+				process.exit(1);
 			}
-			const diff = newV.reward - dbV.reward;
+			if (dbV.reward == newV.reward) {
+				continue;
+			}
+			const diff = BigInt(newV.reward) - BigInt(dbV.reward);
 			console.log(`different epoch ${epoch} account ${dbV.accountId} db ${dbV.reward} new ${newV.reward} diff ${diff}`);
 			if (dryRun) {
 				continue
 			}
 			await PosReward.update({reward: newV.reward}, {where: {id: dbV.id}, transaction: dbTx});
 			await PosAccount.increment('totalReward',
-				{by: diff,
+				{by: diff as any as number,
 					where: {id: dbV.accountId},
 					transaction: dbTx,
 				})
 		}
 	})
 	if (epoch % 100 == 0) {
-		console.log(`progress epoch `, epoch)
+		console.log(`${new Date().toISOString()} progress epoch `, epoch)
 	}
 	return 1; // indicate increase epoch by 1
 }
