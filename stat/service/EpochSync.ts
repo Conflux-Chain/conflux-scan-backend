@@ -839,25 +839,37 @@ export class EpochSync extends SyncBase {
         return result;
     }
 
+    private nextCfxTxAbsentLogMs = 0;
+    private logCfxTxAbsent(str: string) {
+        const now = Date.now();
+        if (now > this.nextCfxTxAbsentLogMs) {
+            this.nextCfxTxAbsentLogMs = now + 5_000;
+            console.log(str);
+        }
+    }
     public async getCFXTransferArrayDB(pivotHash: string, epoch: number) {
         if (this.app.config?.traceNotAvailable) {
             return [];
         }
         let cfxTxArr: ICfxTransfer[];
         do {
-            const [hash, tArr] = await CfxTransfer.sequelize.transaction(async (dbTx)=>{
+            const [cfxPivotBean, tArr] = await CfxTransfer.sequelize.transaction(async (dbTx)=>{
                 return Promise.all([
-                    EpochHashCfxTransfer.findOne({where: {hash: pivotHash}, transaction: dbTx, raw: true,}),
+                    EpochHashCfxTransfer.findOne({where: {epoch}, transaction: dbTx, raw: true,}),
                     CfxTransfer.findAll({where: {epoch}, transaction: dbTx, raw: true}),
                 ])
             })
-            if (!hash) { // deleted, or not ready
+            if (!cfxPivotBean) { // pruned, or not ready
 	            const minPos = await EpochHashCfxTransfer.findOne({order: [['epoch', 'asc']]});
                 if (!minPos || minPos.epoch < epoch) {
-	                console.log(`cfx tx not ready at epoch ${epoch}`);
+	                this.logCfxTxAbsent(`cfx tx not ready at epoch ${epoch}`);
                     await sleep(5_000);
                     continue
                 }
+            } else if (cfxPivotBean.hash != pivotHash) {
+                this.logCfxTxAbsent(`cfx tx with different pivot hash ${cfxPivotBean.hash} , want \n ${pivotHash} epoch ${epoch}`)
+                await sleep(5_000);
+                continue;
             }
 	        cfxTxArr = tArr;
 	        break;
