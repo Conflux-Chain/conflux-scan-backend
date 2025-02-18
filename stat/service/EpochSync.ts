@@ -36,6 +36,9 @@ import {
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
 import {CONST as SDK_CONST, format} from "js-conflux-sdk";
+import {CfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
+import {EpochHashCfxTransfer} from "../CfxTransferSync";
+import {sleep} from "./tool/ProcessTool";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -154,13 +157,13 @@ export class EpochSync extends SyncBase {
             const {epoch, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts} = epochData
             epochData = null
             const epochTimestamp = epoch.timestamp
+            const pivotHash = blockHashArray[blockHashArray.length - 1];
 
-            let [txArray, adminDestroyTxArray, eventLogInfo, traceArray, tokenLogs,
+            let [txArray, adminDestroyTxArray, eventLogInfo, tokenLogs,
                 censorItemArray, voteParamArray] = await Promise.all([
                 EpochSync.getTransactionArrayDB(blockArray, epochTimestamp),
                 EpochSync.getAdminDestroyTxArray(blockArray, epochTimestamp),
                 this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray),
-                this.getTraceArray(epochNumber, blockHashArray, blockArray),
                 this.getTokenLogs(epochTimestamp, blockHashArray, receipts),
                 this.getCensorItemArray(epoch, transactionHashArray),
                 StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
@@ -172,7 +175,7 @@ export class EpochSync extends SyncBase {
                 this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray),
                 this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray),
                 this.getTokensAutoDetected(tokenLogs),
-                this.getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray),
+                this.getCFXTransferArrayDB(pivotHash, epochNumber),
                 this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true),
             ])
             eventLogInfo = null
@@ -836,50 +839,40 @@ export class EpochSync extends SyncBase {
         return result;
     }
 
-    public async getCFXTransferArrayDB(epochTimestamp, blockHashArray, traceArray) {
-        const blockHashMap = {};
-        lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
-
-        const result = [];
-        for (const trace of traceArray) {
-            if (trace.valid && trace.action.value &&
-                (
-                    trace.type === CONST.TRACE_TYPE.CREATE ||
-                    (trace.type === CONST.TRACE_TYPE.CALL && trace.action.callType === 'call') ||
-                    (trace.type === CONST.TRACE_TYPE.INTERNAL_TRANSFER_ACTION && (
-                        (trace.action.fromPocket === 'balance' && lodash.includes(POCKET_TYPES, trace.action.toPocket)) ||
-                        (trace.action.toPocket === 'balance' && lodash.includes(POCKET_TYPES, trace.action.fromPocket))
-                    ))
-                )
-            ) {
-
-                const transfer = {} as any;
-                transfer.epoch = trace.epochNumber;
-                transfer.blockIndex = blockHashMap[trace.blockHash];
-                transfer.txIndex = trace.transactionIndex;
-                transfer.txLogIndex = trace.transactionTraceIndex;
-
-                const [fromId, toId] = await Promise.all([
-                    makeIdV(trace.action.from, undefined, {dt: epochTimestamp}),
-                    makeIdV(trace.action.to, undefined, {dt: epochTimestamp}),
-                ]);
-                transfer.fromId = fromId;
-                transfer.toId = toId;
-                transfer.value = trace.action.value.toString();
-
-                transfer.type = this.getCFXTransferType(trace.type, trace.action.fromPocket, trace.action.toPocket);
-                transfer.createdAt = epochTimestamp;
-                result.push(lodash.defaults(transfer, {batchIndex: 0, contractId: 0, tokenId: 0}));
-            }
+    public async getCFXTransferArrayDB(pivotHash: string, epoch: number) {
+        if (this.app.config?.traceNotAvailable) {
+            return [];
         }
-        return result;
+        let cfxTxArr: ICfxTransfer[];
+        do {
+            const [hash, tArr] = await CfxTransfer.sequelize.transaction(async (dbTx)=>{
+                return Promise.all([
+                    EpochHashCfxTransfer.findOne({where: {hash: pivotHash}, transaction: dbTx, raw: true,}),
+                    CfxTransfer.findAll({where: {epoch}, transaction: dbTx, raw: true}),
+                ])
+            })
+            if (!hash) { // deleted, or not ready
+	            const minPos = await EpochHashCfxTransfer.findOne({order: [['epoch', 'asc']]});
+                if (!minPos || minPos.epoch < epoch) {
+	                console.log(`cfx tx not ready at epoch ${epoch}`);
+                    await sleep(5_000);
+                    continue
+                }
+            }
+	        cfxTxArr = tArr;
+	        break;
+        } while (true);
+        for (const transfer of cfxTxArr) {
+                transfer.type = this.getCFXTransferType(transfer.type);
+                transfer['batchIndex'] = 0;
+                transfer['contractId'] = 0;
+                transfer['tokenId'] = 0;
+        }
+        return cfxTxArr;
     }
 
-    private getCFXTransferType(type, fromPocket, toPocket) {
-        const typeName = (type === CONST.TRACE_TYPE.CALL || type === CONST.TRACE_TYPE.CREATE) ? type :
-            (fromPocket !== 'balance' ? fromPocket : toPocket);
-
-        return this.transferTypeMap[typeName].code;
+    private getCFXTransferType(type:string) {
+        return this.transferTypeMap[type].code;
     }
 
     // ----------------------------- nft transfer -------------------------------
@@ -907,94 +900,6 @@ export class EpochSync extends SyncBase {
         return nftArray;
     }
 
-    // ------------------------------ trace create ------------------------------
-    public async getTraceArray(epochNumber, blockHashArray, blockArray) {
-        let traceArray = [];
-
-        if (!this.app.config?.traceNotAvailable) {
-            const traces = await Promise.all(blockHashArray.map((hash, idx) => {
-                if (blockArray[idx].transactions.length == 0) {
-                    return null;
-                }
-                return this.app.cfx.traceBlock(hash)
-            }));
-            traceArray = this.composeTraceAndBock(epochNumber, blockArray, traces);
-        }
-
-        return traceArray
-    }
-
-    public composeTraceAndBock(epochNumber, blockArray, traceArray2d, detail = false) {
-        if (this.app.config?.traceNotAvailable) {
-            return []
-        }
-        const {app: {tokenTool},} = this;
-        let traceArray = [];
-        blockArray.forEach((block, idx) => {
-            if (!block.transactions.length) {
-                return;
-            }
-
-            const blockTrace: any = traceArray2d[idx]
-            if (!blockTrace) {
-                // no trace at block
-                return;
-            }
-
-            // add check
-            if (block.epochNumber !== epochNumber || blockTrace.epochNumber !== epochNumber) {
-                throw new Error(`[epoch=${epochNumber}]mismatch between block and blockTrace`);
-            }
-
-            // assemble traces
-            let txPosition = 0;
-            // @ts-ignore
-            lodash.zip(block.transactions, blockTrace.transactionTraces)
-                .forEach(([transaction, transactionTracesItem], transactionIndex) => {
-                    const transactionTraceArray = [];
-                    transactionTracesItem?.traces?.forEach((trace, transactionTraceIndex) => {
-                        transactionTraceArray.push({
-                            epochNumber: block.epochNumber,
-                            blockHash: block.hash,
-                            blockTime: block.timestamp,
-                            transactionHash: transaction.hash,
-                            transactionIndex: txPosition,
-                            transactionTraceIndex,
-                            status: transaction.status,
-                            ...EpochSync.parseTrace(trace, detail),
-                        });
-                    });
-                    const matchedTrace = tokenTool.matchTrace(transactionTraceArray, transaction);
-                    traceArray.push(...matchedTrace);
-                    transaction.blockHash && txPosition++;
-                });
-        });
-        return traceArray;
-    }
-
-    private static parseTrace(trace, detail = false) {
-        if (trace.action.from) {
-            trace.action.from = formatToHex(trace.action.from);
-        }
-        if (trace.action.value) {
-            trace.action.value = BigInt(trace.action.value);
-        }
-        if (trace.action.to) {
-            trace.action.to = formatToHex(trace.action.to);
-        }
-        if (trace.action.addr) {
-            trace.action.addr = formatToHex(trace.action.addr);
-        }
-        if (trace.action.input) {
-            trace.action.input = '';
-        }
-        if (trace.action.init) {
-            if (!detail) {
-                trace.action.init = '';
-            }
-        }
-        return trace;
-    }
 
     // ---------------------------- contract verify -----------------------------
     public async linkVerify({address, codeHash}) {
