@@ -868,9 +868,9 @@ export class EpochSync extends SyncBase {
                     continue
                 }
             } else if (cfxPivotBean.hash != pivotHash) {
-                this.logCfxTxAbsent(`cfx tx with different pivot hash ${cfxPivotBean.hash} , want \n ${pivotHash} epoch ${epoch}`)
-                await sleep(5_000);
-                continue;
+                this.logCfxTxAbsent(`cfx tx with different pivot hash ${cfxPivotBean.hash} , want \n ${pivotHash} epoch ${epoch}`);
+                // the `pivotHash` may be incorrect.
+                throw new Error(`CfxTxPivotMismatch`)
             }
 	        cfxTxArr = tArr;
 	        break;
