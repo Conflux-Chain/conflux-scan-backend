@@ -77,6 +77,7 @@ export class EpochSync extends SyncBase {
         this.app = app
         this.statOnRealtime = new StatOnRealtime()
         this.transferTypeMap = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name')
+	    this.transferTypeMap['internal_transfer_action'] = CONST.ADDRESS_TRANSFER_TYPE.CFX_IN_INTERNAL_BY_BALANCE;
         this.nodeCache = new NodeCache({ maxKeys: 1000,  stdTTL: cacheTtl, checkperiod: 60})
     }
 
@@ -875,10 +876,10 @@ export class EpochSync extends SyncBase {
 	        break;
         } while (true);
         for (const transfer of cfxTxArr) {
-                transfer.type = this.getCFXTransferType(transfer.type);
-                transfer['batchIndex'] = 0;
-                transfer['contractId'] = 0;
-                transfer['tokenId'] = 0;
+            transfer.type = this.getCFXTransferType(transfer.type);
+            transfer['batchIndex'] = 0;
+            transfer['contractId'] = 0;
+            transfer['tokenId'] = 0;
         }
         return cfxTxArr;
     }
