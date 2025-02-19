@@ -8,7 +8,7 @@ export function fmtDateOnly(v: string|Date) {
     return v;
 }
 export function patchDateOnlyField(v: any, field = 'day') {
-    if (!v[field]) {
+    if (!v || !v[field]) {
         return v;
     }
     v[field] = fmtDateOnly(v[field]);
