@@ -662,8 +662,8 @@ export async function check721OwnerInDb() {
         }
     }
     await NftMint.sequelize.close()
+    console.log(`${__filename} done`)
     process.exit(0)
-    console.log(`done`)
 }
 async function checkNftMintForContract(contractId: number, cfx, token:Token) {
     if (!token) {
