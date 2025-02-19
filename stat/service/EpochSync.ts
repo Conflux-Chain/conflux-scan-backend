@@ -844,7 +844,7 @@ export class EpochSync extends SyncBase {
     private logCfxTxAbsent(str: string) {
         const now = Date.now();
         if (now > this.nextCfxTxAbsentLogMs) {
-            this.nextCfxTxAbsentLogMs = now + 5_000;
+            this.nextCfxTxAbsentLogMs = now + 15_000;
             console.log(str);
         }
     }
