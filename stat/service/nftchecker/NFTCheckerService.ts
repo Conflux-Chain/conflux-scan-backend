@@ -171,6 +171,9 @@ export class NFTCheckerService {
                 const count = await model.count(options);
                 page = {count, rows};
             } else{
+                if(cursorField === 'id') {
+                    options.order.unshift(['updatedAt', sort]); // Using 'order by updatedAt desc, id desc' in case of duplicate updatedAt
+                }
                 page = await model.findAndCountAll(options);
             }
             return page;
