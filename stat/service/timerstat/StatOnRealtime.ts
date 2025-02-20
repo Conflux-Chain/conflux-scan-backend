@@ -6,6 +6,7 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {StatApp} from "../../StatApp";
 import {CONST} from "../common/constant";
+import {Epoch} from "../../model/Epoch";
 
 const lodash = require('lodash')
 
@@ -223,10 +224,15 @@ export class StatOnRealtime {
         const transferTotal = await Erc20Transfer.sequelize.query(sql, {
             type: QueryTypes.SELECT, replacements: {minEpoch, maxEpoch}}).then(arr => (arr[0]['total']))
 
-        const epochRange = await EpochHashTokenTransfer.findAll({where: {epoch: {[Op.in]: [minEpoch, maxEpoch]}}})
-            .then(epochs => lodash.keyBy(epochs, 'epoch'))
-        const maxTime = epochRange[maxEpoch]['createdAt']
-        const minTime = epochRange[minEpoch]['createdAt']
+        const [minE, maxE] = await Promise.all([
+            Epoch.findByPk(minEpoch),
+            Epoch.findByPk(maxEpoch),
+        ])
+        if (!minE || !maxE) {
+            return
+        }
+        const maxTime = maxE.timestamp;
+        const minTime = minE.timestamp;
         const timeInterval = (maxTime.getTime() - minTime.getTime())/1000
         const tps = transferTotal / timeInterval
 
