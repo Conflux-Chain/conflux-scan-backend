@@ -661,10 +661,9 @@ export class EpochSync extends SyncBase {
                 ])
             })
         if (!pb) { // pruned, or not ready
-            const minPos = await EpochHashTokenTransfer.findOne({order: [['epoch', 'asc']]});
-            if (!minPos || minPos.epoch < epoch) {
-                this.logCfxTxAbsent(`token tx not ready at epoch ${epoch}`);
-                throw new Error(`token tx not ready`)
+            const maxPos = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]});
+            if (!maxPos || maxPos.epoch < epoch) {
+                throw new Error(`token tx not ready at epoch ${epoch} , max [${maxPos?.epoch}]`)
             }
         } else if (pb.hash != pivotHash) {
             this.logCfxTxAbsent(`token tx with different pivot hash ${pb.hash} , want \n ${pivotHash} epoch ${epoch}`);
@@ -877,9 +876,9 @@ export class EpochSync extends SyncBase {
                 ])
             })
             if (!cfxPivotBean) { // pruned, or not ready
-	            const minPos = await EpochHashCfxTransfer.findOne({order: [['epoch', 'asc']]});
-                if (!minPos || minPos.epoch < epoch) {
-	                this.logCfxTxAbsent(`cfx tx not ready at epoch ${epoch}`);
+	            const maxPos = await EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']]});
+                if (!maxPos || maxPos.epoch < epoch) {
+	                this.logCfxTxAbsent(`cfx tx not ready at epoch ${epoch} max [${maxPos?.epoch}]`);
                     await sleep(5_000);
                     continue
                 }
