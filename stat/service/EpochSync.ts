@@ -2,11 +2,11 @@ import {Epoch, VoteParams} from "../model/Epoch";
 import {SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {
-	formatToBase32,
-	formatToHex,
-	Hex40Map,
-	makeId,
-	makeIdV
+    formatToBase32,
+    formatToHex,
+    Hex40Map, idHex40Map,
+    makeId,
+    makeIdV
 } from "../model/HexMap";
 import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
@@ -24,7 +24,7 @@ import {NftMeta} from "./nftchecker/NftMetaStorage";
 import {CensorItem} from "../model/CensorItem";
 import {CENSOR_TYPE} from "./censor/CensorService";
 import {NameTag} from "../model/NameTag";
-import {decodeTransferFromReceipts} from "../TokenTransferSync";
+import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts, T_ADDRESS_NFTS} from "../model/AddrNft";
 import {
@@ -165,7 +165,7 @@ export class EpochSync extends SyncBase {
                 EpochSync.getTransactionArrayDB(blockArray, epochTimestamp),
                 EpochSync.getAdminDestroyTxArray(blockArray, epochTimestamp),
                 this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray),
-                this.getTokenLogs(epochTimestamp, blockHashArray, receipts),
+                this.getTokenLogs(pivotHash, epochNumber),
                 this.getCensorItemArray(epoch, transactionHashArray),
                 StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
             ])
@@ -177,7 +177,7 @@ export class EpochSync extends SyncBase {
                 this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray),
                 this.getTokensAutoDetected(tokenLogs),
                 this.getCFXTransferArrayDB(pivotHash, epochNumber),
-                this.getTokenTransferArrayDB(epochTimestamp, blockHashArray, tokenLogs, true),
+                this.getTokenTransferArrayDB(tokenLogs),
             ])
             eventLogInfo = null
             tokenLogs = null
@@ -584,12 +584,17 @@ export class EpochSync extends SyncBase {
         return tokenArray;
     }
 
-    private getTokenTask(transferArray, transferType) {
-        return [...new Set(transferArray.map(transfer => transfer.address).filter(Boolean))]
-            .map(hex40 => this.getToken(hex40, transferType))
+    private async getTokenTask(transferArray, transferType) {
+        const ids = [...new Set(transferArray.map(transfer => transfer.contractId))] as number[];
+        const hexMap = await idHex40Map(ids, true);
+        const tasks = []
+        for (const id of hexMap.keys()) {
+            tasks.push(this.getToken(id, hexMap.get(id), transferType));
+        }
+        return tasks;
     }
 
-    private async getToken(hexAddress, transferType) {
+    private async getToken(hex40id, hexAddress, transferType) {
         const {
             app: {tokenTool},
         } = this;
@@ -599,7 +604,6 @@ export class EpochSync extends SyncBase {
             return cacheToken
         }
 
-        const hex40id = (await makeId(hexAddress)).id;
         const tokenDb = await Token.findOne({where: {hex40id}, raw: true});
         if (tokenDb && tokenDb.type) {
             return undefined;
@@ -646,19 +650,31 @@ export class EpochSync extends SyncBase {
             return Erc1155Transfer.count({where: {contractId: addressId}});
     }
 
-    private getTokenLogs(epochTimestamp, blockHashArray, receipts) {
-        const {
-            app: {tokenTool},
-        } = this
-
-        const {t20, t721, t1155} = decodeTransferFromReceipts(receipts, tokenTool, epochTimestamp)
-
-        const t20Aggregated = aggregateTransfer(t20)
-
+    private async getTokenLogs(pivotHash: string, epoch: number) {
+        const [pb, t20, t721, t1155] =
+            await Erc20Transfer.sequelize.transaction(async tx=>{
+                return Promise.all([
+                    EpochHashTokenTransfer.findOne({where: {epoch}, raw: true, transaction: tx}),
+                    Erc20Transfer.findAll({where: {epoch}, raw: true, transaction: tx}),
+                    Erc721Transfer.findAll({where: {epoch}, raw: true, transaction: tx}),
+                    Erc1155Transfer.findAll({where: {epoch}, raw: true, transaction: tx}),
+                ])
+            })
+        if (!pb) { // pruned, or not ready
+            const minPos = await EpochHashTokenTransfer.findOne({order: [['epoch', 'asc']]});
+            if (!minPos || minPos.epoch < epoch) {
+                this.logCfxTxAbsent(`token tx not ready at epoch ${epoch}`);
+                throw new Error(`token tx not ready`)
+            }
+        } else if (pb.hash != pivotHash) {
+            this.logCfxTxAbsent(`token tx with different pivot hash ${pb.hash} , want \n ${pivotHash} epoch ${epoch}`);
+            // the `pivotHash` may be incorrect.
+            throw new Error(`TokenTxPivotMismatch`)
+        }
         return {
-            transfer20Array: t20Aggregated.filter(t => t.value && t.value > BigInt(0)),
+            transfer20Array: t20.filter(t => t.value != "0"),
             transfer721Array: t721,
-            transfer1155Array: t1155.filter(t => t.value && t.value > BigInt(0)),
+            transfer1155Array: t1155.filter(t => t.value != "0"),
         }
     }
 

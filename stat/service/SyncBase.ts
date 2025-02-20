@@ -301,58 +301,31 @@ export abstract class SyncBase {
     }
 
     //---------------------------- token transfer ----------------------------
-    public async getTokenTransferArrayDB(epochTimestamp, blockHashArray, {
+    public async getTokenTransferArrayDB({
         transfer20Array, transfer721Array,
         transfer1155Array
-    }, byRcpt = false) {
+    }) {
         const {
             ADDRESS_TRANSFER_TYPE: {ERC20, ERC721, ERC1155}
         } = CONST;
-
-        const blockHashMap = {};
-        lodash.forEach(blockHashArray, (blockHash, index) => blockHashMap[blockHash] = index);
-
         let result = [];
-        const tsArray = [
-            {list: transfer20Array, type: ERC20.code},
-            {list: transfer721Array, type: ERC721.code},
-            {list: transfer1155Array, type: ERC1155.code},
-        ];
-        for (const ts of tsArray) {
-            if (!ts.list.length) {
-                continue;
-            }
-            result = [...result, ...await SyncBase.buildTokenTransferArray(ts.type, ts.list, epochTimestamp, blockHashMap, byRcpt)];
-        }
+        SyncBase.buildTokenTransferArray(result, ERC20.code, transfer20Array);
+        SyncBase.buildTokenTransferArray(result, ERC721.code, transfer721Array);
+        SyncBase.buildTokenTransferArray(result, ERC1155.code, transfer1155Array);
         return result;
     }
 
-    public static async buildTokenTransferArray(type, transferArray, epochTimestamp, blockHashMap, byRcpt = false) {
-        const result = [];
-        for (const item of transferArray) {
-            const transfer = {} as any;
-            transfer.epoch = byRcpt ? item.epoch : item.epochNumber;
-            transfer.blockIndex = byRcpt ? item.blockIndex : blockHashMap[item.blockHash];
-            transfer.txIndex = item.transactionIndex;
-            transfer.txLogIndex = item.transactionLogIndex;
-            transfer.batchIndex = item.batchIndex;
-
-            const [fromId, toId, contractId] = await Promise.all([
-                makeIdV(item.from, undefined, {dt: epochTimestamp}),
-                makeIdV(item.to, undefined, {dt: epochTimestamp}),
-                makeIdV(item.address, undefined, {dt: epochTimestamp}),
-            ]);
-            transfer.fromId = fromId;
-            transfer.toId = toId;
-            transfer.contractId = contractId;
-            transfer.tokenId = `${item.tokenId || 0}`;
-            transfer.value = item.value?.toString();
-
+    public static buildTokenTransferArray(result, type, transferArray) {
+        for (const transfer of transferArray) {
             transfer.type = type;
-            transfer.createdAt = epochTimestamp;
-            result.push(lodash.defaults(transfer, {batchIndex: 0, tokenId: 0, value: 1}));
+
+            transfer.contractId = transfer.contractId ?? 0;
+            transfer.tokenId = transfer.tokenId ?? '0';
+            transfer.batchIndex = transfer.batchIndex ?? 0;
+            transfer.value = transfer.value ?? 0;
+
+            result.push(transfer);
         }
-        return result;
     }
 
     //-------------------- methods subclass to implement ---------------------
