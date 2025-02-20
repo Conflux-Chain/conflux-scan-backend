@@ -665,7 +665,9 @@ export class EpochSync extends SyncBase {
             if (!maxPos || maxPos.epoch < epoch) {
                 throw new Error(`token tx not ready at epoch ${epoch} , max [${maxPos?.epoch}]`)
             }
-        } else if (pb.hash != pivotHash) {
+        } else if (pb.hash != pivotHash
+            && pb.hash != '' // token transfer under catch-up and getLogs mod, pivot = ''
+        ) { //
             this.logCfxTxAbsent(`token tx with different pivot hash ${pb.hash} , want \n ${pivotHash} epoch ${epoch}`);
             // the `pivotHash` may be incorrect.
             throw new Error(`TokenTxPivotMismatch`)
