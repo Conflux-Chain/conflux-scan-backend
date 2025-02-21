@@ -655,7 +655,7 @@ export class EpochSync extends SyncBase {
             await Erc20Transfer.sequelize.transaction(async tx=>{
                 const opt = {where: {epoch}, raw: true, transaction: tx, attributes: {exclude: ['id']}};
                 return Promise.all([
-                    EpochHashTokenTransfer.findOne(),
+                    EpochHashTokenTransfer.findOne({where: {epoch}, raw: true, transaction: tx}),
                     Erc20Transfer.findAll(opt),
                     Erc721Transfer.findAll(opt),
                     Erc1155Transfer.findAll(opt),
