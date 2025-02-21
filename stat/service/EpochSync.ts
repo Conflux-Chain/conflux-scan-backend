@@ -669,7 +669,7 @@ export class EpochSync extends SyncBase {
         } else if (pb.hash != pivotHash
             && pb.hash != '' // token transfer under catch-up and getLogs mod, pivot = ''
         ) { //
-            this.logCfxTxAbsent(`token tx with different pivot hash ${pb.hash} , want \n ${pivotHash} epoch ${epoch}`);
+            this.logSample(`token tx with different pivot hash ${pb.hash} , want \n ${pivotHash} epoch ${epoch}`);
             // the `pivotHash` may be incorrect.
             throw new Error(`TokenTxPivotMismatch`)
         }
@@ -858,12 +858,16 @@ export class EpochSync extends SyncBase {
         return result;
     }
 
-    private nextCfxTxAbsentLogMs = 0;
-    private logCfxTxAbsent(str: string) {
+    private nextLogMs = 0;
+    private skipLogCount = 0;
+    private logSample(str: string) {
         const now = Date.now();
-        if (now > this.nextCfxTxAbsentLogMs) {
-            this.nextCfxTxAbsentLogMs = now + 15_000;
-            console.log(str);
+        if (now > this.nextLogMs) {
+            this.nextLogMs = now + 15_000;
+            console.log(`sample log (skipped ${this.skipLogCount})`, str);
+            this.skipLogCount = 0;
+        } else {
+            this.skipLogCount ++
         }
     }
     public async getCFXTransferArrayDB(pivotHash: string, epoch: number) {
@@ -881,12 +885,12 @@ export class EpochSync extends SyncBase {
             if (!cfxPivotBean) { // pruned, or not ready
 	            const maxPos = await EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']]});
                 if (!maxPos || maxPos.epoch < epoch) {
-	                this.logCfxTxAbsent(`cfx tx not ready at epoch ${epoch} max [${maxPos?.epoch}]`);
+	                this.logSample(`cfx tx not ready at epoch ${epoch} max [${maxPos?.epoch}]`);
                     await sleep(5_000);
                     continue
                 }
             } else if (cfxPivotBean.hash != pivotHash) {
-                this.logCfxTxAbsent(`cfx tx with different pivot hash ${cfxPivotBean.hash} , want \n ${pivotHash} epoch ${epoch}`);
+                this.logSample(`cfx tx with different pivot hash ${cfxPivotBean.hash} , want \n ${pivotHash} epoch ${epoch}`);
                 // the `pivotHash` may be incorrect.
                 throw new Error(`CfxTxPivotMismatch`)
             }
