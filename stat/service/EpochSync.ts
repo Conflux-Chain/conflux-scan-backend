@@ -653,11 +653,12 @@ export class EpochSync extends SyncBase {
     private async getTokenLogs(pivotHash: string, epoch: number) {
         const [pb, t20, t721, t1155] =
             await Erc20Transfer.sequelize.transaction(async tx=>{
+                const opt = {where: {epoch}, raw: true, transaction: tx, attributes: {exclude: ['id']}};
                 return Promise.all([
-                    EpochHashTokenTransfer.findOne({where: {epoch}, raw: true, transaction: tx}),
-                    Erc20Transfer.findAll({where: {epoch}, raw: true, transaction: tx}),
-                    Erc721Transfer.findAll({where: {epoch}, raw: true, transaction: tx}),
-                    Erc1155Transfer.findAll({where: {epoch}, raw: true, transaction: tx}),
+                    EpochHashTokenTransfer.findOne(),
+                    Erc20Transfer.findAll(opt),
+                    Erc721Transfer.findAll(opt),
+                    Erc1155Transfer.findAll(opt),
                 ])
             })
         if (!pb) { // pruned, or not ready
