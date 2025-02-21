@@ -651,32 +651,36 @@ export class EpochSync extends SyncBase {
     }
 
     private async getTokenLogs(pivotHash: string, epoch: number) {
-        const [pb, t20, t721, t1155] =
-            await Erc20Transfer.sequelize.transaction(async tx=>{
-                const opt = {where: {epoch}, raw: true, transaction: tx, attributes: {exclude: ['id']}};
-                return Promise.all([
-                    EpochHashTokenTransfer.findOne({where: {epoch}, raw: true, transaction: tx}),
-                    Erc20Transfer.findAll(opt),
-                    Erc721Transfer.findAll(opt),
-                    Erc1155Transfer.findAll(opt),
-                ])
-            })
-        if (!pb) { // pruned, or not ready
-            const maxPos = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]});
-            if (!maxPos || maxPos.epoch < epoch) {
-                throw new Error(`token tx not ready at epoch ${epoch} , max [${maxPos?.epoch}]`)
+        while(true) {
+            const [pb, t20, t721, t1155] =
+                await Erc20Transfer.sequelize.transaction(async tx => {
+                    const opt = {where: {epoch}, raw: true, transaction: tx, attributes: {exclude: ['id']}};
+                    return Promise.all([
+                        EpochHashTokenTransfer.findOne({where: {epoch}, raw: true, transaction: tx}),
+                        Erc20Transfer.findAll(opt),
+                        Erc721Transfer.findAll(opt),
+                        Erc1155Transfer.findAll(opt),
+                    ])
+                })
+            if (!pb) { // pruned, or not ready
+                const maxPos = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]});
+                if (!maxPos || maxPos.epoch < epoch) {
+                    this.logSample(`token tx not ready at epoch ${epoch} , max [${maxPos?.epoch}]`)
+                    await sleep(5_000)
+                    continue
+                }
+            } else if (pb.hash != pivotHash
+                && pb.hash != '' // token transfer under catch-up and getLogs mod, pivot = ''
+            ) { //
+                this.logSample(`token tx with different pivot hash ${pb.hash} , want \n ${pivotHash} epoch ${epoch}`);
+                // the `pivotHash` may be incorrect.
+                throw new Error(`TokenTxPivotMismatch`)
             }
-        } else if (pb.hash != pivotHash
-            && pb.hash != '' // token transfer under catch-up and getLogs mod, pivot = ''
-        ) { //
-            this.logSample(`token tx with different pivot hash ${pb.hash} , want \n ${pivotHash} epoch ${epoch}`);
-            // the `pivotHash` may be incorrect.
-            throw new Error(`TokenTxPivotMismatch`)
-        }
-        return {
-            transfer20Array: t20.filter(t => t.value != "0"),
-            transfer721Array: t721,
-            transfer1155Array: t1155.filter(t => t.value != "0"),
+            return {
+                transfer20Array: t20.filter(t => t.value != "0"),
+                transfer721Array: t721,
+                transfer1155Array: t1155.filter(t => t.value != "0"),
+            }
         }
     }
 
