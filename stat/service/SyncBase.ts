@@ -322,7 +322,7 @@ export abstract class SyncBase {
             transfer.contractId = transfer.contractId ?? 0;
             transfer.tokenId = transfer.tokenId ?? '0';
             transfer.batchIndex = transfer.batchIndex ?? 0;
-            transfer.value = transfer.value ?? 0;
+            transfer.value = transfer.value ?? 1; // nft 721
 
             result.push(transfer);
         }
