@@ -5,12 +5,11 @@ import {check721OwnerInDb} from "./TokenTool";
 import {initCfxSdk} from "../common/utils";
 import {Epoch} from "../../model/Epoch";
 import {Op} from "sequelize";
-import {EpochHashTokenTransfer} from "../../TokenTransferSync";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressNftTransfer, NftTransfer} from "../../model/NftTransfer";
 import {CONST} from "../common/constant";
 import {AddressTransfer} from "../../model/AddrTransfer";
-import {AddressNfts} from "../../model/AddrNft";
+import {AddressNfts, IAddressNfts} from "../../model/AddrNft";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 const abi = require('./abi');
@@ -172,10 +171,16 @@ async function fixToken721WithAddr(list: Erc721Transfer[], e: number) {
         await fixNftTx(addrId, e);
     }
 }
-
+function pad(val, len, isEnd = false) {
+	const v = val.toString()
+	return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
+}
+function buildAddrNftCursor(epochNumber, index) {
+	return `${epochNumber}${pad(index, 8)}`
+}
 async function fix721addrNftHolder(list: Erc721Transfer[]) {
     for (const erc721Transfer of list) {
-        const {tokenId, toId, contractId,} = erc721Transfer;
+        const {tokenId, toId, contractId, createdAt, epoch, txLogIndex } = erc721Transfer;
         const tokenHolder = await AddressNfts.findOne({
             where: {
                 addressId: erc721Transfer.toId, tokenId: erc721Transfer.tokenId,
@@ -183,6 +188,18 @@ async function fix721addrNftHolder(list: Erc721Transfer[]) {
             }
         })
         if (!tokenHolder) {
+            const bean:IAddressNfts = {
+                addressId: toId,
+                contractId: contractId,
+                createdAt,
+                tokenId: "0",
+                type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+                updatedAt: createdAt,
+                updatedCursor: Number(buildAddrNftCursor(epoch, txLogIndex)),
+                value: 1
+            }
+            await AddressNfts.create(bean);
+            console.log(`CREATE token 721 holder , addr ${toId} contract ${contractId} token id ${tokenId}`)
             continue
         }
         if (tokenHolder.value.toString() != '0') {
