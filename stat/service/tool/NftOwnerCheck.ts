@@ -186,14 +186,33 @@ async function fix721addrNftHolder(list: Erc721Transfer[]) {
                 addressId: erc721Transfer.toId, tokenId: erc721Transfer.tokenId,
                 type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
             }
-        })
+        });
+        const preHolder = await AddressNfts.findOne({
+            where: {
+                addressId: erc721Transfer.fromId, tokenId: erc721Transfer.tokenId,
+                type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+            }
+        });
+        if (preHolder && preHolder.value.toString() != '0') {
+            console.log(` contractId ${contractId} token ${tokenId} , remove pre holder ${preHolder.addressId} , cur toId ${toId}`);
+            preHolder.value = 0;
+            await preHolder.save();
+        }
+        const nftMint = await NftMint.findOne({
+            where: {contractId, tokenId},
+        });
+        if (nftMint.toId != toId) {
+            console.log(` contractId ${contractId} token ${tokenId} , nft mint hints owner ${nftMint.toId} , skip cur ${toId}`);
+            continue;
+        }
         if (!tokenHolder) {
             const maybeOther = await AddressNfts.findOne({
                 where: {
                     contractId, tokenId: erc721Transfer.tokenId,
                     type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+                    value: 1,
                 }
-            })
+            });
             if (maybeOther) {
                 console.log(`it's hold by other , contractId ${contractId} token ${tokenId} , by ${maybeOther.addressId}`)
                 continue;
@@ -209,8 +228,8 @@ async function fix721addrNftHolder(list: Erc721Transfer[]) {
                 value: 1
             };
             await AddressNfts.create(bean);
-            console.log(`CREATE token 721 holder , addr ${toId} contract ${contractId} token id ${tokenId}`)
-            continue
+            console.log(`CREATE token 721 holder , addr ${toId} contract ${contractId} token id ${tokenId}`);
+            continue;
         }
         if (tokenHolder.value.toString() != '0') {
             continue
