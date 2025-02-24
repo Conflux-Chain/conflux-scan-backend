@@ -188,16 +188,26 @@ async function fix721addrNftHolder(list: Erc721Transfer[]) {
             }
         })
         if (!tokenHolder) {
+            const maybeOther = await AddressNfts.findOne({
+                where: {
+                    contractId, tokenId: erc721Transfer.tokenId,
+                    type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+                }
+            })
+            if (maybeOther) {
+                console.log(`it's hold by other , contractId ${contractId} token ${tokenId} , by ${maybeOther.addressId}`)
+                continue;
+            }
             const bean:IAddressNfts = {
                 addressId: toId,
                 contractId: contractId,
                 createdAt,
-                tokenId: "0",
+                tokenId: tokenId,
                 type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
                 updatedAt: createdAt,
                 updatedCursor: Number(buildAddrNftCursor(epoch, txLogIndex)),
                 value: 1
-            }
+            };
             await AddressNfts.create(bean);
             console.log(`CREATE token 721 holder , addr ${toId} contract ${contractId} token id ${tokenId}`)
             continue
