@@ -127,7 +127,7 @@ async function fixNftTx(addrId: number, e: number) {
 }
 async function fixAdrNftTx(addrId: number, e: number) {
     const adrNftArr = await AddressNftTransfer.findAll({
-        where: {addressId: addrId, value: '0', epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
+        where: {addressId: addrId, epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
     })
     let goodCount = 0;
     for (const addressNftTransfer of adrNftArr) {
@@ -144,7 +144,7 @@ async function fixAdrNftTx(addrId: number, e: number) {
 }
 async function fixAdrTokenTx(addrId: number, e: number) {
     const adrNftArr = await AddressTransfer.findAll({
-        where: {addressId: addrId, value: '0', epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
+        where: {addressId: addrId, epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
     })
     let goodCount = 0;
     for (const addressNftTransfer of adrNftArr) {
