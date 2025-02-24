@@ -34,7 +34,6 @@ const BigFixed = require('bigfixed');
 export class FullBlockQuery {
     protected app;
     protected sponsorContract;
-    protected recommendGasPrice = BigInt(0);
     public constructor(app: any) {
         this.app = app;
         this.sponsorContract = app.cfx.InternalContract('SponsorWhitelistControl');
@@ -893,34 +892,6 @@ export class FullBlockQuery {
         }
 
         return result;
-    }
-
-    public async schedule(delay: number = 1000) {
-        console.log(`schedule recommend_gas_price with delay:${delay}`)
-        const that = this
-
-        async function repeat() {
-            await that.getRecommendGasPrice().catch(err =>{
-                console.log(`schedule recommend_gas_price error:${err}`)
-            })
-            setTimeout(repeat, delay)
-        }
-
-        repeat().then()
-    }
-
-    private async getRecommendGasPrice() {
-        const txList = await FullTransaction.findAll({
-            attributes:['hash','gasPrice'],
-            where:{status: 0},
-            order: [['createdAt', 'desc']],
-            limit: 100
-        });
-        if(!txList?.length) return;
-
-        let sumGasPrice = BigInt(0);
-        txList.forEach(tx => sumGasPrice = sumGasPrice + BigInt(tx.gasPrice));
-        this.recommendGasPrice = sumGasPrice / BigInt(txList.length);
     }
 }
 
