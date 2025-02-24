@@ -10,6 +10,7 @@ import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {AddressNftTransfer, NftTransfer} from "../../model/NftTransfer";
 import {CONST} from "../common/constant";
 import {AddressTransfer} from "../../model/AddrTransfer";
+import {AddressNfts} from "../../model/AddrNft";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 const abi = require('./abi');
@@ -160,6 +161,39 @@ async function fixAdrTokenTx(addrId: number, e: number) {
     console.log(`adr token nft  aid ${addrId} epoch ${e} `, adrNftArr.length, ` ${goodCount ? '' : "----- ??? -----"}`);
 }
 
+async function fixToken721WithAddr(list: Erc721Transfer[], e: number) {
+    const addrIdSet = new Set<number>();
+    list.forEach(e => addrIdSet.add(e.fromId));
+    list.forEach(e => addrIdSet.add(e.toId));
+    const addrIds = [...addrIdSet];
+    for (const addrId of addrIds) {
+        await fixAdrNftTx(addrId, e);
+        await fixAdrTokenTx(addrId, e);
+        await fixNftTx(addrId, e);
+    }
+}
+
+async function fix721addrNftHolder(list: Erc721Transfer[]) {
+    for (const erc721Transfer of list) {
+        const {tokenId, toId, contractId,} = erc721Transfer;
+        const tokenHolder = await AddressNfts.findOne({
+            where: {
+                addressId: erc721Transfer.toId, tokenId: erc721Transfer.tokenId,
+                type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+            }
+        })
+        if (!tokenHolder) {
+            continue
+        }
+        if (tokenHolder.value.toString() != '0') {
+            continue
+        }
+        console.log(`fix token 721 holder , addr ${toId} contract ${contractId} token id ${tokenId}`)
+        tokenHolder.value = 1;
+        await tokenHolder.save();
+    }
+}
+
 async function fix721value() {
     const ep = await Epoch.findOne({
         where: {timestamp: {[Op.gt]: '2025-02-20'}},
@@ -183,15 +217,8 @@ async function fix721value() {
         });
 
         console.log(`epoch ${e} 721 count `, list.length);
-        const addrIdSet = new Set<number>();
-        list.forEach(e=>addrIdSet.add(e.fromId));
-        list.forEach(e=>addrIdSet.add(e.toId));
-        const addrIds = [...addrIdSet];
-        for (const addrId of addrIds) {
-            await fixAdrNftTx(addrId, e);
-            await fixAdrTokenTx(addrId, e);
-            await fixNftTx(addrId, e);
-        }
+        // await fixToken721WithAddr(list, e);
+        await fix721addrNftHolder(list);
     }
 }
 
