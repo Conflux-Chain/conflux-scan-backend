@@ -100,7 +100,7 @@ async function main() {
     if (cmd === 'checkNftMint') {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)
-    } else if (cmd === 'fix72value') {
+    } else if (cmd === 'fix721value') {
         await fix721value();
     } else {
         console.log(`unknown command [${cmd}]`)
@@ -110,54 +110,78 @@ async function main() {
 }
 async function fixNftTx(addrId: number, e: number) {
     const adrNftArr = await NftTransfer.findAll({
-        where: {value: '0', epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
+        where: {epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
     })
-    console.log(` nft `, adrNftArr.length, ` ${adrNftArr.length ? '' : "----- ??? -----"}`);
+    let goodCount = 0;
     for (const addressNftTransfer of adrNftArr) {
+        if (addressNftTransfer.value == '1') {
+            console.log(`ok`);
+            goodCount ++;
+            continue;
+        }
         addressNftTransfer.value = '1';
         await addressNftTransfer.save();
         console.log(`fix nft ${addrId} epoch ${e} contract ${addressNftTransfer.contractId} time ${addressNftTransfer.createdAt.toISOString()}`)
     }
+    console.log(` nft  aid ${addrId} epoch ${e}`, adrNftArr.length, ` ${goodCount ? '' : "----- ??? -----"}`);
 }
 async function fixAdrNftTx(addrId: number, e: number) {
     const adrNftArr = await AddressNftTransfer.findAll({
         where: {addressId: addrId, value: '0', epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
     })
-    console.log(`adr nft `, adrNftArr.length, ` ${adrNftArr.length ? '' : "----- ??? -----"}`);
+    let goodCount = 0;
     for (const addressNftTransfer of adrNftArr) {
+        if (addressNftTransfer.value == '1') {
+            console.log(`ok`);
+            goodCount ++;
+            continue;
+        }
         addressNftTransfer.value = '1';
         await addressNftTransfer.save();
         console.log(`fix adr nft ${addrId} epoch ${e} contract ${addressNftTransfer.contractId} time ${addressNftTransfer.createdAt.toISOString()}`)
     }
+    console.log(`adr nft aid ${addrId} epoch ${e} `, adrNftArr.length, ` ${goodCount ? '' : "----- ??? -----"}`);
 }
 async function fixAdrTokenTx(addrId: number, e: number) {
     const adrNftArr = await AddressTransfer.findAll({
         where: {addressId: addrId, value: '0', epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
     })
-    console.log(`adr token nft `, adrNftArr.length, ` ${adrNftArr.length ? '' : "----- ??? -----"}`);
+    let goodCount = 0;
     for (const addressNftTransfer of adrNftArr) {
+        if (addressNftTransfer.value == '1') {
+            console.log(`ok`);
+            goodCount ++;
+            continue;
+        }
         addressNftTransfer.value = '1';
         await addressNftTransfer.save();
         console.log(`fix adr token ${addrId} epoch ${e} contract ${addressNftTransfer.contractId} time ${addressNftTransfer.createdAt.toISOString()}`)
     }
+    console.log(`adr token nft  aid ${addrId} epoch ${e} `, adrNftArr.length, ` ${goodCount ? '' : "----- ??? -----"}`);
 }
 
 async function fix721value() {
     const ep = await Epoch.findOne({
         where: {timestamp: {[Op.gt]: '2025-02-20'}},
-        order: [['epoch', 'asc']], raw: true,
+        order: [['timestamp', 'asc']], raw: true,
     })
     console.log(`epoch `, ep);
-    const endEp = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']], raw: true});
-    let e = ep.epoch;
+    const endEp = await Epoch.findOne({order: [['epoch', 'desc']], raw: true});
+    let e = ep.epoch - 1;
     while(e<=endEp.epoch) {
-        const list = await Erc721Transfer.findAll({
-            where: {epoch: e}, raw: true,
+        const next = await Erc721Transfer.findOne({
+            where: {epoch: {[Op.gt]: e}}, raw: true,
+            order: [['epoch', 'asc']],
         })
-        e ++;
-        if (!list.length) {
-            continue
+        if (!next) {
+            break;
         }
+        e = next.epoch;
+        const list = await Erc721Transfer.findAll({
+            where: {epoch: {[Op.eq]: e}}, raw: true,
+            order: [['epoch', 'asc']],
+        });
+
         console.log(`epoch ${e} 721 count `, list.length);
         const addrIdSet = new Set<number>();
         list.forEach(e=>addrIdSet.add(e.fromId));
@@ -168,7 +192,6 @@ async function fix721value() {
             await fixAdrTokenTx(addrId, e);
             await fixNftTx(addrId, e);
         }
-
     }
 }
 
@@ -176,6 +199,6 @@ if (module === require.main) {
     main().then()
 }
 /*
- node stat/dist/service/tool/NftOwnerCheck.js checkNftMint 996251
- node stat/dist/service/tool/NftOwnerCheck.js checkNftMint721 71452195
+ node stat/service/tool/NftOwnerCheck.js checkNftMint 996251
+ node stat/service/tool/NftOwnerCheck.js fix721value
  */
