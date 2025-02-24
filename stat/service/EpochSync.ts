@@ -851,9 +851,15 @@ export class EpochSync extends SyncBase {
             break;
         }
         for (const dbTx of dbTxArr) {
-            dbTx["type"] = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
             // for gas price stat
             dbTx['receipt'] = {effectiveGasPrice: dbTx.gasPrice};
+            // for address transfer
+            dbTx['blockIndex'] = dbTx.blockPosition;
+            dbTx['txIndex'] = dbTx.txPosition;
+            dbTx['txLogIndex'] = 0;
+            dbTx['batchIndex'] = 0;
+            dbTx['value'] = dbTx.dripValue;
+            dbTx["type"] = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
         }
         return dbTxArr;
     }
