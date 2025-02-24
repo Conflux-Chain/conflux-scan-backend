@@ -3,6 +3,13 @@ import {Hex40Map} from "../../model/HexMap";
 import {init} from "./FixDailyTokenStat";
 import {check721OwnerInDb} from "./TokenTool";
 import {initCfxSdk} from "../common/utils";
+import {Epoch} from "../../model/Epoch";
+import {Op} from "sequelize";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {AddressNftTransfer, NftTransfer} from "../../model/NftTransfer";
+import {CONST} from "../common/constant";
+import {AddressTransfer} from "../../model/AddrTransfer";
+import {AddressNfts, IAddressNfts} from "../../model/AddrNft";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 const abi = require('./abi');
@@ -93,17 +100,159 @@ async function main() {
     if (cmd === 'checkNftMint') {
         await checkNftMint(parseInt(contractId))
         console.log(`done`)
+    } else if (cmd === 'fix721value') {
+        await fix721value();
     } else {
         console.log(`unknown command [${cmd}]`)
     }
     await NftMint.sequelize.close()
     process.exit(0)
 }
+async function fixNftTx(addrId: number, e: number) {
+    const adrNftArr = await NftTransfer.findAll({
+        where: {epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
+    })
+    let goodCount = 0;
+    for (const addressNftTransfer of adrNftArr) {
+        if (addressNftTransfer.value == '1') {
+            console.log(`ok`);
+            goodCount ++;
+            continue;
+        }
+        addressNftTransfer.value = '1';
+        await addressNftTransfer.save();
+        console.log(`fix nft ${addrId} epoch ${e} contract ${addressNftTransfer.contractId} time ${addressNftTransfer.createdAt.toISOString()}`)
+    }
+    console.log(` nft  aid ${addrId} epoch ${e}`, adrNftArr.length, ` ${goodCount ? '' : "----- ??? -----"}`);
+}
+async function fixAdrNftTx(addrId: number, e: number) {
+    const adrNftArr = await AddressNftTransfer.findAll({
+        where: {addressId: addrId, epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
+    })
+    let goodCount = 0;
+    for (const addressNftTransfer of adrNftArr) {
+        if (addressNftTransfer.value == '1') {
+            console.log(`ok`);
+            goodCount ++;
+            continue;
+        }
+        addressNftTransfer.value = '1';
+        await addressNftTransfer.save();
+        console.log(`fix adr nft ${addrId} epoch ${e} contract ${addressNftTransfer.contractId} time ${addressNftTransfer.createdAt.toISOString()}`)
+    }
+    console.log(`adr nft aid ${addrId} epoch ${e} `, adrNftArr.length, ` ${goodCount ? '' : "----- ??? -----"}`);
+}
+async function fixAdrTokenTx(addrId: number, e: number) {
+    const adrNftArr = await AddressTransfer.findAll({
+        where: {addressId: addrId, epoch: e, type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code},
+    })
+    let goodCount = 0;
+    for (const addressNftTransfer of adrNftArr) {
+        if (addressNftTransfer.value == '1') {
+            console.log(`ok`);
+            goodCount ++;
+            continue;
+        }
+        addressNftTransfer.value = '1';
+        await addressNftTransfer.save();
+        console.log(`fix adr token ${addrId} epoch ${e} contract ${addressNftTransfer.contractId} time ${addressNftTransfer.createdAt.toISOString()}`)
+    }
+    console.log(`adr token nft  aid ${addrId} epoch ${e} `, adrNftArr.length, ` ${goodCount ? '' : "----- ??? -----"}`);
+}
+
+async function fixToken721WithAddr(list: Erc721Transfer[], e: number) {
+    const addrIdSet = new Set<number>();
+    list.forEach(e => addrIdSet.add(e.fromId));
+    list.forEach(e => addrIdSet.add(e.toId));
+    const addrIds = [...addrIdSet];
+    for (const addrId of addrIds) {
+        await fixAdrNftTx(addrId, e);
+        await fixAdrTokenTx(addrId, e);
+        await fixNftTx(addrId, e);
+    }
+}
+function pad(val, len, isEnd = false) {
+	const v = val.toString()
+	return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
+}
+function buildAddrNftCursor(epochNumber, index) {
+	return `${epochNumber}${pad(index, 8)}`
+}
+async function fix721addrNftHolder(list: Erc721Transfer[]) {
+    for (const erc721Transfer of list) {
+        const {tokenId, toId, contractId, createdAt, epoch, txLogIndex } = erc721Transfer;
+        const tokenHolder = await AddressNfts.findOne({
+            where: {
+                addressId: erc721Transfer.toId, tokenId: erc721Transfer.tokenId,
+                type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+            }
+        })
+        if (!tokenHolder) {
+            const maybeOther = await AddressNfts.findOne({
+                where: {
+                    contractId, tokenId: erc721Transfer.tokenId,
+                    type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+                }
+            })
+            if (maybeOther) {
+                console.log(`it's hold by other , contractId ${contractId} token ${tokenId} , by ${maybeOther.addressId}`)
+                continue;
+            }
+            const bean:IAddressNfts = {
+                addressId: toId,
+                contractId: contractId,
+                createdAt,
+                tokenId: tokenId,
+                type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+                updatedAt: createdAt,
+                updatedCursor: Number(buildAddrNftCursor(epoch, txLogIndex)),
+                value: 1
+            };
+            await AddressNfts.create(bean);
+            console.log(`CREATE token 721 holder , addr ${toId} contract ${contractId} token id ${tokenId}`)
+            continue
+        }
+        if (tokenHolder.value.toString() != '0') {
+            continue
+        }
+        console.log(`fix token 721 holder , addr ${toId} contract ${contractId} token id ${tokenId}`)
+        tokenHolder.value = 1;
+        await tokenHolder.save();
+    }
+}
+
+async function fix721value() {
+    const ep = await Epoch.findOne({
+        where: {timestamp: {[Op.gt]: '2025-02-20'}},
+        order: [['timestamp', 'asc']], raw: true,
+    })
+    console.log(`epoch `, ep);
+    const endEp = await Epoch.findOne({order: [['epoch', 'desc']], raw: true});
+    let e = ep.epoch - 1;
+    while(e<=endEp.epoch) {
+        const next = await Erc721Transfer.findOne({
+            where: {epoch: {[Op.gt]: e}}, raw: true,
+            order: [['epoch', 'asc']],
+        })
+        if (!next) {
+            break;
+        }
+        e = next.epoch;
+        const list = await Erc721Transfer.findAll({
+            where: {epoch: {[Op.eq]: e}}, raw: true,
+            order: [['epoch', 'asc']],
+        });
+
+        console.log(`epoch ${e} 721 count `, list.length);
+        // await fixToken721WithAddr(list, e);
+        await fix721addrNftHolder(list);
+    }
+}
 
 if (module === require.main) {
     main().then()
 }
 /*
- node stat/dist/service/tool/NftOwnerCheck.js checkNftMint 996251
- node stat/dist/service/tool/NftOwnerCheck.js checkNftMint721 71452195
+ node stat/service/tool/NftOwnerCheck.js checkNftMint 996251
+ node stat/service/tool/NftOwnerCheck.js fix721value
  */
