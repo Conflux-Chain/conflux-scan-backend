@@ -205,11 +205,12 @@ async function fix721addrNftHolder(list: Erc721Transfer[]) {
             console.log(` contractId ${contractId} token ${tokenId} , nft mint hints owner ${nftMint.toId} , skip cur ${toId}`);
             continue;
         }
-        if (!tokenHolder && nftMint.toId == toId) {
+        if (!tokenHolder) {
             const maybeOther = await AddressNfts.findOne({
                 where: {
                     contractId, tokenId: erc721Transfer.tokenId,
                     type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
+                    value: 1,
                 }
             });
             if (maybeOther) {
