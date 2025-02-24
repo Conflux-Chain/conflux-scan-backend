@@ -133,8 +133,6 @@ export interface StatConfig{
     marketCapToken: string,
     binanceToken: string,
 
-    syncRecommendGasPrice: boolean,
-
     syncMinerBlock: boolean,
     syncMinerBlockEpochNumber: number,
 

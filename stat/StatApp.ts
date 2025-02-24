@@ -15,7 +15,6 @@ import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenQuery} from "./service/TokenQuery";
 import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
 import {ReportService} from "./service/ReportService";
-import {QuoteSync} from "./service/QuoteSync";
 import {IPFSGatewaySync} from "./service/IPFSGatewaySync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
@@ -62,7 +61,6 @@ export class StatApp{
     public tokenQuery: TokenQuery;
     public traceCreateQuery: BlockTraceCreateQuery;
     public siteVerify: ReportService;
-    public quoteSync: QuoteSync;
     public ipfsGatewaySync: IPFSGatewaySync;
     public homeDashboardService: HomeDashboardService;
     public contractQuery: ContractQuery;
@@ -128,7 +126,6 @@ export class StatApp{
         this.tokenQuery = new TokenQuery(this);
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
         this.siteVerify = new ReportService(this);
-        this.quoteSync = new QuoteSync(this);
         this.ipfsGatewaySync = new IPFSGatewaySync(this);
         this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
@@ -144,15 +141,9 @@ export class StatApp{
         this.statOnRealtime = new StatOnRealtime()
         this.txnQuery = new TxnQuery()
         this.txnSync.scheduleCache()
-        if (this.config?.syncQuote?.open) {
-            await this.quoteSync.schedule();
-        }
         if (this.config.syncIPFSGateway) {
             IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
             await this.ipfsGatewaySync.schedule(this.config.syncIPFSGatewayDelay);
-        }
-        if (this.config.syncRecommendGasPrice) {
-            await this.fullBlockQuery.schedule();
         }
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
