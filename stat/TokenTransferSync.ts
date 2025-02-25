@@ -27,7 +27,7 @@ import {dingMsg} from "./monitor/Monitor";
 import {ConfigInstance, FirstBlockNo} from "./config/StatConfig";
 import {loadBlocksByEpoch, loadTxsByEpoch} from "./service/FullBlockService";
 import {ApprovalRelation, batchSaveApproval, buildRelation, TaskEpochApproval, TokenApproval} from "./ApprovalSync";
-import {EpochHashCfxTransfer, loadParentHash} from "./CfxTransferSync";
+import {loadParentHash} from "./CfxTransferSync";
 import {PreloadMap} from "./service/SyncBase";
 import {BatchTokenTransfer} from "./service/BatchDBTx";
 import {LogFetcher} from "./service/tool/LogFetcher";
@@ -287,8 +287,9 @@ async function run(cfx:Conflux, preFinished: number) {
         console.log(` local pop ${ep}`)
         await pop(ep)
         epoch = ep
-        parentHash = await loadParentHash(fromEpoch, ep - 1, EpochHashCfxTransfer)
+        parentHash = await loadParentHash(fromEpoch, ep - 1, EpochHashTokenTransfer)
         console.log(` set cursor to ${epoch} local pop ${ep} end -`)
+        console.log(` new parent hash ${parentHash}`);
         return ep
     }
     const loader0 = new PreloadMap(fetchAndBuild, batchData.initialTaskCount);
