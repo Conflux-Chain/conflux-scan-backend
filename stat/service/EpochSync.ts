@@ -39,6 +39,7 @@ import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {CfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {sleep} from "./tool/ProcessTool";
+import {FullBlock, FullTransaction} from "../model/FullBlock";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -162,7 +163,7 @@ export class EpochSync extends SyncBase {
 
             let [txArray, adminDestroyTxArray, eventLogInfo, tokenLogs,
                 censorItemArray, voteParamArray] = await Promise.all([
-                EpochSync.getTransactionArrayDB(blockArray, epochTimestamp),
+                this.getTransactionArrayDB(pivotHash, epochNumber),
                 EpochSync.getAdminDestroyTxArray(blockArray, epochTimestamp),
                 this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray),
                 this.getTokenLogs(pivotHash, epochNumber),
@@ -825,41 +826,42 @@ export class EpochSync extends SyncBase {
         return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
     }
 
-    public static async getTransactionArrayDB(blockArray, epochTimestamp) {
-        const result = [];
-        for (const [blockIndex, block] of blockArray.entries()) {
-            if (!block.transactions?.length) {
+    public async getTransactionArrayDB(pivotHash: string, epoch: number) {
+        let dbTxArr: FullTransaction[];
+        while(true) {
+            const [pb, txArr] = await FullTransaction.sequelize.transaction( async dbTx=>{
+                return Promise.all([
+                    FullBlock.findOne({where: {epoch, pivot: true}, transaction: dbTx, raw: true}),
+                    FullTransaction.findAll({
+                        attributes: {exclude: ['hash']},
+                        where: {epoch}, transaction: dbTx, raw: true
+                    }),
+                ])
+            })
+            if (!pb) {
+                this.logSample(`block not ready , ${epoch}`);
+                await sleep(5_000);
                 continue;
             }
-
-            let txPosition = 0;
-            for (const [_, item] of block.transactions.entries()) {
-                const receiptStatus = item.receipt?.outcomeStatus;
-                if (receiptStatus != 0 && receiptStatus != 1 && block.epochNumber !== 0) {
-                    continue;
-                }
-
-                const tx = {} as any;
-                tx.epoch = block.epochNumber;
-                tx.blockIndex = blockIndex;
-                tx.txIndex = txPosition++;
-
-                const [fromId, toId, contractCreatedId] = await Promise.all([
-                    makeIdV(item.from, undefined, {dt: epochTimestamp}),
-                    makeIdV(item.to, undefined, {dt: epochTimestamp}),
-                    makeIdV(item.contractCreated, undefined, {dt: epochTimestamp}),
-                ]);
-                tx.fromId = fromId;
-                tx.toId = toId;
-                tx.value = item.value.toString();
-                tx.contractCreatedId = contractCreatedId;
-
-                tx.type = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
-                tx.createdAt = epochTimestamp;
-                result.push(lodash.defaults(tx, {txLogIndex: 0, batchIndex: 0, contractId: 0, tokenId: 0}));
+            if (pb.hash != pivotHash) {
+                console.log(`block with hash ${pb.hash} \n epoch ${epoch} want ${pivotHash}`);
+                throw new Error(`BlockPivotMismatch`);
             }
+            dbTxArr = txArr;
+            break;
         }
-        return result;
+        for (const dbTx of dbTxArr) {
+            // for gas price stat
+            dbTx['receipt'] = {effectiveGasPrice: dbTx.gasPrice};
+            // for address transfer
+            dbTx['blockIndex'] = dbTx.blockPosition;
+            dbTx['txIndex'] = dbTx.txPosition;
+            dbTx['txLogIndex'] = 0;
+            dbTx['batchIndex'] = 0;
+            dbTx['value'] = dbTx.dripValue;
+            dbTx["type"] = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
+        }
+        return dbTxArr;
     }
 
     private nextLogMs = 0;
