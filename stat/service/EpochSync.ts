@@ -859,6 +859,8 @@ export class EpochSync extends SyncBase {
             dbTx['txLogIndex'] = 0;
             dbTx['batchIndex'] = 0;
             dbTx['value'] = dbTx.dripValue;
+            dbTx['contractId'] = 0;
+            dbTx['tokenId'] = 0;
             dbTx["type"] = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
         }
         return dbTxArr;
