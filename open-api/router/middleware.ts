@@ -100,10 +100,14 @@ export function setBody(ctx, data: any, code = 0, message = 'OK') {
 }
 function patchStatsLib() {
     const sFn = swsProcessor.apiStats.countResponse;
+    let skipCount = 0;
     swsProcessor.apiStats.countResponse = (res)=>{
         if (res.statusCode == 404) {
             // skip
-            console.log(`skip doing stat for 404 url [${res._swsReq.sws.api_path}]`);
+            if (skipCount % 1000 == 0) {
+                console.log(`skip doing stat for 404 url [${res._swsReq.sws.api_path}] . count ${skipCount} `);
+            }
+            skipCount ++;
         } else {
             sFn(res);
         }
