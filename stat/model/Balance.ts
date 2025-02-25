@@ -18,8 +18,7 @@ export class TokenBalance extends Model<ITokenBalance> implements ITokenBalance 
         }, {
             sequelize: seq, tableName: 'token_balance',
             indexes: [
-                // It's a partition table. See its creation sql.
-                // {name: 'uk_contract_addr', fields: ['contractId', 'addressId']}
+                {name: 'idx_addr_updatedAt', fields: ['addressId', {name: 'updatedAt', order: "DESC"}]}
             ]
         })
     }
