@@ -12,6 +12,7 @@ const yamljs = require('yamljs');
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
 const Limiter = require('ratelimiter')
+const swsProcessor = require('swagger-stats/lib/swsProcessor.js');
 
 let db
 
@@ -97,6 +98,21 @@ export function setBody(ctx, data: any, code = 0, message = 'OK') {
 
     ctx.body = {code, message, data};
 }
+function patchStatsLib() {
+    const sFn = swsProcessor.apiStats.countResponse;
+    let skipCount = 0;
+    swsProcessor.apiStats.countResponse = (res)=>{
+        if (res.statusCode == 404) {
+            // skip
+            if (skipCount % 1000 == 0) {
+                console.log(`skip doing stat for 404 url [${res._swsReq.sws.api_path}] . count ${skipCount} `);
+            }
+            skipCount ++;
+        } else {
+            sFn(res);
+        }
+    }
+}
 // https://swaggerstats.io/guide/conf.html#options
 export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
     console.log(` loading swaggerYaml:${swaggerYaml}`)
@@ -104,6 +120,7 @@ export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
     spec.info.description = spec.info.description.replace(/__tld__/gi, tld)
     console.log(` loading swaggerYaml:${swaggerYaml} done`)
     // metrics
+    patchStatsLib();
     app.use(e2k(swStats.getMiddleware({
         uriPath: `${prefix}/swagger-stats`,
         hostname: 'OpenApi', // Prevent exposure of server ip
