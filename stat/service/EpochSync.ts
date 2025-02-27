@@ -234,7 +234,7 @@ export class EpochSync extends SyncBase {
                 modelData,
             }
         } catch (error) {
-            return {syncCode: SyncCode.RETRY, message: `${error}`}
+            return {syncCode: SyncCode.RETRY, message: `${error}`, error}
         }
     }
 

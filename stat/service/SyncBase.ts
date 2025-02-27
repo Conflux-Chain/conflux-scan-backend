@@ -76,7 +76,7 @@ export abstract class SyncBase {
         }
 
         if (data.syncCode === SyncCode.RETRY) {
-            console.log(`[epoch=${epochNumber}]sync_forward fetch retry: ${data.message}`);
+            console.log(`[epoch=${epochNumber}]sync_forward fetch retry: ${data.message}`, data.error);
             await sleep(10_000);
             return epochNumber;
         }
@@ -412,6 +412,7 @@ export class SyncData {
     parentHash?: string;
     pivotHash?: string;
     modelData?: any;
+    error?: Error
 }
 
 export class PreloadMap extends Map {
