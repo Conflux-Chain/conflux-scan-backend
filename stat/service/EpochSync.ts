@@ -204,7 +204,7 @@ export class EpochSync extends SyncBase {
                 this.saveTokenIcon(announceInfo),
             ])
             announceInfo = null
-
+            epoch['sumRawTxGas'] = sumRawTxGas;
             const modelData: any = {
                 epoch,
                 addrTransferArray,
@@ -223,7 +223,7 @@ export class EpochSync extends SyncBase {
                 bytes32NameTagArray,
 
                 censorItemArray,
-                pivotBlock, sumRawTxGas,
+                pivotBlock,
                 transactionArray,
             }
 
