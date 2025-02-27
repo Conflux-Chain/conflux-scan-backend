@@ -160,11 +160,8 @@ export abstract class SyncBase {
         }
 
         const transactionArray = []
-        for (const [blockIndex, blockReceipts] of receipts) {
-            if (epochNumber === 0) {
-                break;
-            }
-            for (const receipt of blockReceipts) {
+        for (const blockReceipt of receipts) {
+            for (const receipt of blockReceipt) {
                 const receiptStatus = receipt.outcomeStatus;
                 if (receiptStatus === 0 || receiptStatus === 1) {
                     transactionArray.push(receipt);
