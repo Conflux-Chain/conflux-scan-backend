@@ -159,16 +159,6 @@ export abstract class SyncBase {
             throw new Error(`[epoch=${epochNumber}]not ready, receipts is null`);
         }
 
-        const transactionArray = []
-        for (const blockReceipt of receipts) {
-            for (const receipt of blockReceipt) {
-                const receiptStatus = receipt.outcomeStatus;
-                if (receiptStatus === 0 || receiptStatus === 1) {
-                    transactionArray.push(receipt);
-                }
-            }
-        }
-
         const pivotBlock = pivotBlockRPC;
         const epoch = {
             epoch: epochNumber,
@@ -178,7 +168,7 @@ export abstract class SyncBase {
             timestamp: new Date(pivotBlock.timestamp * 1000),
         };
 
-        return {epoch, latestState, pivotBlock, transactionArray, receipts};
+        return {epoch, latestState, pivotBlock, receipts};
     }
 
     private async nextEpochNumber() {
@@ -492,8 +482,6 @@ export class ModelData{
 
     censorItemArray = []
 
-    transactionArray = []
-
     public reset() {
         this.epoch = {}
         this.addrTransferArray = []
@@ -512,8 +500,6 @@ export class ModelData{
         this.bytes32NameTagArray = []
 
         this.censorItemArray = []
-
-        this.transactionArray = []
     }
 }
 

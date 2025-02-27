@@ -160,7 +160,7 @@ export class EpochSync extends SyncBase {
             const {dbTxArr: txArray, dbPivotBlock, sumRawTxGas} = await this.getTransactionArrayDB(epochNumber);
             const pivotHash = dbPivotBlock.hash;
             let epochData = await this.getEpochData(epochNumber, pivotHash, this.app.cfx);
-            const {epoch, transactionArray, receipts, pivotBlock} = epochData
+            const {epoch, receipts, pivotBlock} = epochData
             epochData = null
             const epochTimestamp = epoch.timestamp
             const censorItemArray = this.getCensorItemArray(txArray);
@@ -224,7 +224,7 @@ export class EpochSync extends SyncBase {
 
                 censorItemArray,
                 pivotBlock,
-                transactionArray,
+                txArray,
             }
 
             return {
@@ -301,7 +301,7 @@ export class EpochSync extends SyncBase {
 
         await this.saveOnce(modelData, voteParamArray)
 
-        this.statOnRealtime.setGasInfo(modelData.epoch, modelData.transactionArray, modelData.pivotBlock)
+        this.statOnRealtime.setGasInfo(modelData.epoch, modelData.txArray, modelData.pivotBlock)
     }
 
     async saveOnce(modelData, voteParamArray) {
