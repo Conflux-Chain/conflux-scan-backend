@@ -157,7 +157,7 @@ export class EpochSync extends SyncBase {
     public async getData(epochNumber: number): Promise<SyncData> {
 
         try {
-            const {dbTxArr: txArray, dbPivotBlock} = await this.getTransactionArrayDB(epochNumber);
+            const {dbTxArr: txArray, dbPivotBlock, sumRawTxGas} = await this.getTransactionArrayDB(epochNumber);
             const pivotHash = dbPivotBlock.hash;
             let epochData = await this.getEpochData(epochNumber, pivotHash, this.app.cfx);
             const {epoch, transactionArray, receipts, pivotBlock} = epochData
@@ -223,7 +223,7 @@ export class EpochSync extends SyncBase {
                 bytes32NameTagArray,
 
                 censorItemArray,
-                pivotBlock,
+                pivotBlock, sumRawTxGas,
                 transactionArray,
             }
 
@@ -301,7 +301,7 @@ export class EpochSync extends SyncBase {
 
         await this.saveOnce(modelData, voteParamArray)
 
-        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.pivotBlock)
+        this.statOnRealtime.setGasInfo(modelData.epoch, modelData.transactionArray, modelData.pivotBlock)
     }
 
     async saveOnce(modelData, voteParamArray) {
@@ -375,7 +375,7 @@ export class EpochSync extends SyncBase {
                 nftTransferDel ${nftTransferDel} addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
         });
 
-        this.realtimeStat(modelData.epoch, 'pop')
+        this.statOnRealtime.popGasInfo(epochNumber);
     }
 
 
@@ -826,13 +826,15 @@ export class EpochSync extends SyncBase {
     public async getTransactionArrayDB(epoch: number) {
         let dbTxArr: FullTransaction[];
         let dbPivotBlock: FullBlock;
+        let sumRawTxGas: BigInt;
         while(true) {
-            const [pb, txArr] = await FullTransaction.sequelize.transaction( async dbTx=>{
+            const [pb, txArr, sumRawTxGas0] = await FullTransaction.sequelize.transaction( async dbTx=>{
                 return Promise.all([
                     FullBlock.findOne({where: {epoch, pivot: true}, transaction: dbTx, raw: true}),
                     FullTransaction.findAll({
                         where: {epoch}, transaction: dbTx, raw: true
                     }),
+                    FullBlock.sum('gasUsed', {where: {epoch}}).then(BigInt),
                 ])
             })
             if (!pb) {
@@ -842,6 +844,7 @@ export class EpochSync extends SyncBase {
             }
             dbPivotBlock = pb;
             dbTxArr = txArr;
+            sumRawTxGas = sumRawTxGas0;
             break;
         }
         for (const dbTx of dbTxArr) {
@@ -857,7 +860,7 @@ export class EpochSync extends SyncBase {
             dbTx['tokenId'] = 0;
             dbTx["type"] = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
         }
-        return {dbTxArr, dbPivotBlock};
+        return {dbTxArr, dbPivotBlock, sumRawTxGas};
     }
 
     private nextLogMs = 0;
@@ -1169,10 +1172,6 @@ export class EpochSync extends SyncBase {
     // ----------------------------- realtime stat ------------------------------
     public async startRealtimeStat() {
         await this.statOnRealtime.schedule()
-    }
-
-    private realtimeStat(epoch, action, txArray?, pivotBlock?) {
-        this.statOnRealtime.setGasInfo(epoch, action, txArray, pivotBlock)
     }
 
     // ------------------------------ vote params -------------------------------
