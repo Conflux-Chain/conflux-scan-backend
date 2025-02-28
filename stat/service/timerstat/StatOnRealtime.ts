@@ -6,7 +6,7 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {StatApp} from "../../StatApp";
 import {CONST} from "../common/constant";
-import {Epoch} from "../../model/Epoch";
+import {FullBlock} from "../../model/FullBlock";
 
 const lodash = require('lodash')
 
@@ -219,14 +219,14 @@ export class StatOnRealtime {
             type: QueryTypes.SELECT, replacements: {minEpoch, maxEpoch}}).then(arr => (arr[0]['total']))
 
         const [minE, maxE] = await Promise.all([
-            Epoch.findByPk(minEpoch),
-            Epoch.findByPk(maxEpoch),
+            FullBlock.findOne({where:{epoch:minEpoch}}),
+            FullBlock.findOne({where:{epoch:maxEpoch}}),
         ])
         if (!minE || !maxE) {
             return
         }
-        const maxTime = maxE.timestamp;
-        const minTime = minE.timestamp;
+        const maxTime = maxE.createdAt;
+        const minTime = minE.createdAt;
         const timeInterval = (maxTime.getTime() - minTime.getTime())/1000
         const tps = transferTotal / timeInterval
 
