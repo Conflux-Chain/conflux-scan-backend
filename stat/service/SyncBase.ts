@@ -5,11 +5,11 @@ import {Epoch} from "../model/Epoch";
 import {makeIdV} from "../model/HexMap";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {FirstBlockNo, NoCoreSpace, RpcCacheOption} from "../config/StatConfig";
-import {FullBlock, loadMaxBlockEpoch} from "../model/FullBlock";
+import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "../model/FullBlock";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {CfxTransfer} from "../model/CfxTransfer";
-import {CONST as SDK_CONST} from "js-conflux-sdk";
+import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
 import {fmtDtUTC} from "../model/Utils";
 import {Measure} from "./common/Measure";
 
@@ -76,7 +76,7 @@ export abstract class SyncBase {
         }
 
         if (data.syncCode === SyncCode.RETRY) {
-            console.log(`[epoch=${epochNumber}]sync_forward fetch retry: ${data.message}`);
+            console.log(`[epoch=${epochNumber}]sync_forward fetch retry: ${data.message}`, data.error);
             await sleep(10_000);
             return epochNumber;
         }
@@ -133,66 +133,33 @@ export abstract class SyncBase {
     }
 
     //---------------------- business method for epoch -----------------------
-    public async getEpochData(epochNumber) {
-        const {
-            app: {cfx},
-        } = this;
-
-        const [latestState, blockHashArray, receipts] = await Promise.all([
+    public async getEpochData(epochNumber: number, pivotHash: string, cfx: Conflux) {
+        const [latestState, pivotBlockRPC, receipts] = await Promise.all([
             this.epochLatestState,
-            cfx.getBlocksByEpochNumber(epochNumber)
-                .catch(() => {return []}),
-            cfxSafeEpochReceipts(cfx, epochNumber)
+            cfx.getBlockByEpochNumber(epochNumber),
+            cfxSafeEpochReceipts(cfx, epochNumber, pivotHash)
                 .then(res => {
-                    if (epochNumber === 0) res = [];
-                    return res;})
+                    if (epochNumber === 0) {
+                        res = []
+                    }
+                    return res;
+                })
                 .catch(() => {return []})
         ]);
+        if (pivotHash !== pivotBlockRPC?.hash) {
+            throw new Error(`epoch ${epochNumber} want pivot hash ${pivotHash
+            } , \n but rpc got ${pivotBlockRPC?.hash}`);
+        }
 
         if (latestState < epochNumber) {
             await sleep(1000);
             throw new Error(`[epoch=${epochNumber}]not ready, latestState=${latestState}`);
         }
-        if (blockHashArray.length === 0) {
-            throw new Error(`[epoch=${epochNumber}]no block`);
-        }
         if (epochNumber != 0 && receipts === null) {
             throw new Error(`[epoch=${epochNumber}]not ready, receipts is null`);
         }
-        const blockArray = await batchFetchBlock(cfx, blockHashArray, null, epochNumber);
-        if (epochNumber !== 0 && blockArray.length !== receipts.length) {
-            throw new Error(`[epoch=${epochNumber}]mismatch between blocks and receipts`);
-        }
-        const revertBlockArray = blockArray.filter(block => block.epochNumber !== epochNumber);
-        if (revertBlockArray.length && epochNumber !== 0) { // epochNumber is null in epoch 0 under consortium mode
-            throw new Error(`[epoch=${epochNumber}]mismatch between blocks' epochNumber and target epochNumber`);
-        }
 
-        const transactionArray = []
-        const transactionHashArray = [];
-        for (const [blockIndex, block] of blockArray.entries()) {
-            if (epochNumber === 0) {
-                break;
-            }
-            if (block.transactions.length !== receipts[blockIndex].length) {
-                throw new Error(`[epoch=${epochNumber}]mismatch between transactions and receipts`);
-            }
-            // @ts-ignore
-            for (const [txIndex, tx] of block.transactions.entries()) {
-                tx.receipt = receipts[blockIndex][txIndex];
-                const receiptStatus = tx.receipt?.outcomeStatus;
-                if ((receiptStatus === 0 || receiptStatus === 1) &&
-                    (tx.receipt.blockHash !== tx.blockHash || tx.receipt.transactionHash !== tx.hash)) {
-                    throw new Error(`[epoch=${epochNumber}]mismatch between
-                    transaction:${JSON.stringify(lodash.pick(tx.receipt, ['blockHash', 'transactionHash']))} and
-                    receipt:${JSON.stringify(lodash.pick(tx, ['blockHash', 'hash']))}`);
-                }
-                transactionArray.push(tx);
-                transactionHashArray.push(tx.receipt.transactionHash);
-            }
-        }
-
-        const pivotBlock = blockArray[blockArray.length - 1];
+        const pivotBlock = pivotBlockRPC;
         const epoch = {
             epoch: epochNumber,
             pivotHash: pivotBlock.hash.substr(2),
@@ -201,7 +168,7 @@ export abstract class SyncBase {
             timestamp: new Date(pivotBlock.timestamp * 1000),
         };
 
-        return {epoch, latestState, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts};
+        return {epoch, latestState, pivotBlock, receipts};
     }
 
     private async nextEpochNumber() {
@@ -254,7 +221,7 @@ export abstract class SyncBase {
     }
 
     //------------------------------- event log ------------------------------
-    public async decodeLogFromReceipts(epochNumber, receipts2d: TransactionReceipt[][], blockHashes: string[]) {
+    public decodeLogFromReceipts(epochNumber, receipts2d: TransactionReceipt[][]) {
         const {
             app: {tokenTool},
         } = this;
@@ -267,19 +234,10 @@ export abstract class SyncBase {
             byte32NameTagArray: [],
         };
 
-        let blockIdx = -1;
         for (let receiptsInBlock of receipts2d) {
-            blockIdx++
-
             for (let txReceipt of receiptsInBlock) {
                 if (txReceipt.outcomeStatus !== 0) {
                     continue;
-                }
-
-                if (txReceipt.blockHash !== blockHashes[blockIdx]) {
-                    throw new Error(`tx receipt has mismatch block hash, epoch ${txReceipt.epochNumber
-                    }, ${txReceipt.blockHash
-                    } vs block hashes ${blockHashes[blockIdx]}`)
                 }
 
                 for (let log of txReceipt.logs) {
@@ -444,6 +402,7 @@ export class SyncData {
     parentHash?: string;
     pivotHash?: string;
     modelData?: any;
+    error?: Error
 }
 
 export class PreloadMap extends Map {
@@ -523,9 +482,6 @@ export class ModelData{
 
     censorItemArray = []
 
-    blockArray = []
-    transactionArray = []
-
     public reset() {
         this.epoch = {}
         this.addrTransferArray = []
@@ -544,9 +500,6 @@ export class ModelData{
         this.bytes32NameTagArray = []
 
         this.censorItemArray = []
-
-        this.blockArray = []
-        this.transactionArray = []
     }
 }
 

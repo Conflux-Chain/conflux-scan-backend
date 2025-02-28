@@ -6,7 +6,7 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {StatApp} from "../../StatApp";
 import {CONST} from "../common/constant";
-import {Epoch} from "../../model/Epoch";
+import {FullBlock} from "../../model/FullBlock";
 
 const lodash = require('lodash')
 
@@ -55,41 +55,35 @@ export class StatOnRealtime {
         gasLimit: "90819949",
     }
     */
-    public setGasInfo(epochInfo, action, txArray?, pivotBlock?) {
-        const {epoch, blockHeight, timestamp} = epochInfo
-        if(action === 'pop'){
-            delete this.GAS_PRICE_COUNTER[epoch]
-            delete this.GAS_USED_COUNTER[epoch]
-            return
-        }
+	public popGasInfo(epoch: number) {
+		delete this.GAS_PRICE_COUNTER[epoch]
+		delete this.GAS_USED_COUNTER[epoch]
+    }
+    public setGasInfo(epochInfo, txArray, pivotBlock) {
+        const {epoch, blockHeight, timestamp, sumRawTxGas} = epochInfo
 
         if(CONST.NETWORKS_CIP1559_ENABLED.includes(StatApp.networkId) && !this.CIP1559_ENABLED) {
             this.CIP1559_ENABLED = pivotBlock.epochNumber >= StatApp.epochCIP1559Enabled
         }
 
-        if(!txArray?.length){
-            return
-        }
 
         const gasPrices = new Set()
-        let gasLimit = BigInt(0)
         for (const tx of txArray) {
             if(this.CIP1559_ENABLED) {
-                const priority = Math.max(Number(tx?.receipt?.effectiveGasPrice??0)
+                const priority = Math.max(Number(tx.receipt.effectiveGasPrice??0)
                     - Number(pivotBlock?.baseFeePerGas??0), 0)
                 gasPrices.add({
-                    base: Number(pivotBlock?.baseFeePerGas || tx?.gasPrice || 0),
+                    base: Number(pivotBlock.baseFeePerGas || tx.gasPrice || 0),
                     priority: Number(priority)
                 })
             } else{
                 gasPrices.add(Number(tx.gasPrice))
             }
-            gasLimit = gasLimit + tx.gas
         }
 
         const msg = {epoch, timestamp, blockHeight};
         this.checkLength(this.GAS_USED_COUNTER, this.STAT_EPOCHS_AGAINST_LATEST_STATE)
-        this.GAS_USED_COUNTER[epoch] = lodash.defaults(msg, {gasLimit})
+        this.GAS_USED_COUNTER[epoch] = lodash.defaults(msg, {gasLimit: BigInt(sumRawTxGas)})
 
         if(gasPrices.size) {
             this.checkLength(this.GAS_PRICE_COUNTER, this.STAT_EPOCHS_AGAINST_LATEST_STATE)
@@ -225,14 +219,14 @@ export class StatOnRealtime {
             type: QueryTypes.SELECT, replacements: {minEpoch, maxEpoch}}).then(arr => (arr[0]['total']))
 
         const [minE, maxE] = await Promise.all([
-            Epoch.findByPk(minEpoch),
-            Epoch.findByPk(maxEpoch),
+            FullBlock.findOne({where:{epoch:minEpoch}}),
+            FullBlock.findOne({where:{epoch:maxEpoch}}),
         ])
         if (!minE || !maxE) {
             return
         }
-        const maxTime = maxE.timestamp;
-        const minTime = minE.timestamp;
+        const maxTime = maxE.createdAt;
+        const minTime = minE.createdAt;
         const timeInterval = (maxTime.getTime() - minTime.getTime())/1000
         const tps = transferTotal / timeInterval
 

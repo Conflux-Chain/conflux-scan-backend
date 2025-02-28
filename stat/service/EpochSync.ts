@@ -12,16 +12,16 @@ import {Contract} from "../model/Contract";
 import {Token} from "../model/Token";
 import {Op, QueryTypes, Transaction} from "sequelize";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
-import {aggregateTransfer, Erc20Transfer} from "../model/Erc20Transfer";
+import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
-import {TraceCreateContract, ContractDestroy} from "../model/TraceCreateContract";
+import {TraceCreateContract, ContractDestroy, IContractDestroy} from "../model/TraceCreateContract";
 import {ContractVerify} from "../model/ContractVerify";
 import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
 import {AddressTransfer, EpochAddressIds} from "../model/AddrTransfer";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
-import {CensorItem} from "../model/CensorItem";
+import {CensorItem, ICensorItem} from "../model/CensorItem";
 import {CENSOR_TYPE} from "./censor/CensorService";
 import {NameTag} from "../model/NameTag";
 import {EpochHashTokenTransfer} from "../TokenTransferSync";
@@ -35,7 +35,7 @@ import {
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
-import {CONST as SDK_CONST, format} from "js-conflux-sdk";
+import {Conflux, CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {CfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {sleep} from "./tool/ProcessTool";
@@ -72,6 +72,7 @@ export class EpochSync extends SyncBase {
     private latestVoteParams: VoteParams
     private statOnRealtime: StatOnRealtime
     private nodeCache: any
+    private adminContractId: number;
 
     constructor(app: any) {
         super(app)
@@ -83,6 +84,7 @@ export class EpochSync extends SyncBase {
     }
 
     public async mustInit() {
+        this.adminContractId = await makeIdV(CONST.INTERNAL_CONTRACT_MAP.AdminControl);
         await this.checkConfig()
         await this.loadLatestVoteParam()
         this.startAutoVerify().then();
@@ -152,22 +154,22 @@ export class EpochSync extends SyncBase {
     }
 
     //----------------- implementation method from SyncBase -----------------
-    public async getData(epochNumber): Promise<SyncData> {
+    public async getData(epochNumber: number): Promise<SyncData> {
 
         try {
-            let epochData = await this.getEpochData(epochNumber)
-            const {epoch, blockHashArray, blockArray, transactionArray, transactionHashArray, receipts} = epochData
+            const {dbTxArr: txArray, dbPivotBlock, sumRawTxGas} = await this.getTransactionArrayDB(epochNumber);
+            const pivotHash = dbPivotBlock.hash;
+            let epochData = await this.getEpochData(epochNumber, pivotHash, this.app.cfx);
+            const {epoch, receipts, pivotBlock} = epochData
             epochData = null
             const epochTimestamp = epoch.timestamp
-            const pivotHash = blockHashArray[blockHashArray.length - 1];
+            const censorItemArray = this.getCensorItemArray(txArray);
 
-            let [txArray, adminDestroyTxArray, eventLogInfo, tokenLogs,
-                censorItemArray, voteParamArray] = await Promise.all([
-                this.getTransactionArrayDB(pivotHash, epochNumber),
-                EpochSync.getAdminDestroyTxArray(blockArray, epochTimestamp),
-                this.decodeLogFromReceipts(epochNumber, receipts, blockHashArray),
+            let [adminDestroyTxArray, eventLogInfo, tokenLogs,
+                voteParamArray] = await Promise.all([
+                this.getAdminDestroyTxArray(txArray, this.app.cfx),
+                this.decodeLogFromReceipts(epochNumber, receipts),
                 this.getTokenLogs(pivotHash, epochNumber),
-                this.getCensorItemArray(epoch, transactionHashArray),
                 StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
             ])
 
@@ -192,7 +194,6 @@ export class EpochSync extends SyncBase {
                 this.getNftTransferArray(epochNumber, tokenTransferArray),
                 this.getAddrNftTransferArray(epochNumber, tokenTransferArray),
             ])
-            txArray = null
             cfxTransferArray = null
             tokenTransferArray = null
 
@@ -203,7 +204,7 @@ export class EpochSync extends SyncBase {
                 this.saveTokenIcon(announceInfo),
             ])
             announceInfo = null
-
+            epoch['sumRawTxGas'] = sumRawTxGas;
             const modelData: any = {
                 epoch,
                 addrTransferArray,
@@ -222,9 +223,8 @@ export class EpochSync extends SyncBase {
                 bytes32NameTagArray,
 
                 censorItemArray,
-
-                blockArray,
-                transactionArray,
+                pivotBlock,
+                txArray,
             }
 
             return {
@@ -234,7 +234,7 @@ export class EpochSync extends SyncBase {
                 modelData,
             }
         } catch (error) {
-            return {syncCode: SyncCode.RETRY, message: `${error}`}
+            return {syncCode: SyncCode.RETRY, message: `${error}`, error}
         }
     }
 
@@ -301,7 +301,7 @@ export class EpochSync extends SyncBase {
 
         await this.saveOnce(modelData, voteParamArray)
 
-        this.realtimeStat(modelData.epoch, 'push', modelData.transactionArray, modelData.blockArray.pop())
+        this.statOnRealtime.setGasInfo(modelData.epoch, modelData.txArray, modelData.pivotBlock)
     }
 
     async saveOnce(modelData, voteParamArray) {
@@ -375,36 +375,33 @@ export class EpochSync extends SyncBase {
                 nftTransferDel ${nftTransferDel} addrNftTransferDel ${addrNftTransferDel} voteParamsDel${voteParamsDel}`);
         });
 
-        this.realtimeStat(modelData.epoch, 'pop')
+        this.statOnRealtime.popGasInfo(epochNumber);
     }
 
 
 
     //---------------- business method for admin destroy tx ------------------
-    public static async getAdminDestroyTxArray(blockArray, blockTime) {
-        const adminDestroyTxArray = [];
-        for (const block of blockArray) {
-            const {epochNumber, transactions} = block;
-            if (!transactions?.length) {
+    async getAdminDestroyTxArray(txArray:FullTransaction[], cfx: Conflux) {
+        const adminDestroyTxArray:IContractDestroy[] = [];
+        for (const dbTx of txArray) {
+            const {createdAt, hash, fromId, toId, epoch, blockPosition, txPosition, status} = dbTx;
+            if (toId !== this.adminContractId || status !== 0) {
                 continue;
             }
-
-            for (const transaction of transactions) {
-                const {hash, from, to, data, status} = transaction;
-                if (status !== 0 || to === null) {
+            let useHash = hash;
+            const rawTx = await cfx.getTransactionByHash(useHash);
+            const data = rawTx.data;
+            if (data.startsWith(SELECTOR_DESTROY)) {
+                const fromHex = await Hex40Map.findByPk(fromId).then(res=>res?.hex);
+                const contract = EpochSync.decodeContractDestroy(data);
+                if (!contract) {
                     continue;
                 }
-
-                const toHex = formatToHex(to);
-                if (toHex === CONST.INTERNAL_CONTRACT_MAP.AdminControl && data.substr(0, 10) === SELECTOR_DESTROY) {
-                    const fromHex = formatToHex(from);
-                    const contract = EpochSync.decodeContractDestroy(data);
-                    const destroyTx = {
-                        epochNumber, blockTime, txHash: hash.substr(2), admin: fromHex.substr(2),
-                        contract: contract.substr(2)
-                    };
-                    adminDestroyTxArray.push(destroyTx);
-                }
+                const destroyTx: IContractDestroy = {
+                    epochNumber: epoch, blockTime: createdAt, txHash: useHash.substr(2), admin: fromHex,
+                    contract: contract.substr(2)
+                };
+                adminDestroyTxArray.push(destroyTx);
             }
         }
 
@@ -416,7 +413,7 @@ export class EpochSync extends SyncBase {
         // data : 0x00f55d9d000000000000000000000000896cf0fc19b6c045d287391969cad1477512eebf
         // 0x  method    (bytes32     address)
         // 2 +   8 +     (64        -  40)
-        return '0x' + data.substr(34)
+        return data?.length == 74 ? '0x' + data.substr(34) : '';
     }
 
     //--------------------- business method for announce ---------------------
@@ -826,16 +823,18 @@ export class EpochSync extends SyncBase {
         return isEnd ? v.padEnd(len, '0') : v.padStart(len, '0');
     }
 
-    public async getTransactionArrayDB(pivotHash: string, epoch: number) {
+    public async getTransactionArrayDB(epoch: number) {
         let dbTxArr: FullTransaction[];
+        let dbPivotBlock: FullBlock;
+        let sumRawTxGas: BigInt;
         while(true) {
-            const [pb, txArr] = await FullTransaction.sequelize.transaction( async dbTx=>{
+            const [pb, txArr, sumRawTxGas0] = await FullTransaction.sequelize.transaction( async dbTx=>{
                 return Promise.all([
                     FullBlock.findOne({where: {epoch, pivot: true}, transaction: dbTx, raw: true}),
                     FullTransaction.findAll({
-                        attributes: {exclude: ['hash']},
                         where: {epoch}, transaction: dbTx, raw: true
                     }),
+                    FullBlock.sum('gasUsed', {where: {epoch}}).then(BigInt),
                 ])
             })
             if (!pb) {
@@ -843,11 +842,9 @@ export class EpochSync extends SyncBase {
                 await sleep(5_000);
                 continue;
             }
-            if (pb.hash != pivotHash) {
-                console.log(`block with hash ${pb.hash} \n epoch ${epoch} want ${pivotHash}`);
-                throw new Error(`BlockPivotMismatch`);
-            }
+            dbPivotBlock = pb;
             dbTxArr = txArr;
+            sumRawTxGas = sumRawTxGas0;
             break;
         }
         for (const dbTx of dbTxArr) {
@@ -863,7 +860,7 @@ export class EpochSync extends SyncBase {
             dbTx['tokenId'] = 0;
             dbTx["type"] = CONST.ADDRESS_TRANSFER_TYPE.TX.code;
         }
-        return dbTxArr;
+        return {dbTxArr, dbPivotBlock, sumRawTxGas};
     }
 
     private nextLogMs = 0;
@@ -1012,14 +1009,18 @@ export class EpochSync extends SyncBase {
     }
 
     // ------------------------------ text censor -------------------------------
-    public getCensorItemArray(epoch, transactionHashArray) {
-        const {epoch: epochNumber, timestamp: createdAt} = epoch;
-
-        const items = [];
-        transactionHashArray.forEach(transactionHash => items.push({transactionHash, censorType: CENSOR_TYPE.TX}));
-        items.forEach(item => lodash.assign(item, {epochNumber, createdAt, updatedAt: createdAt}));
-
-        return items;
+    public getCensorItemArray(txArray: FullTransaction[]) {
+        if (!this.syncCensorItem) {
+            return []
+        }
+        return txArray.map(tx=>{
+            let bean: ICensorItem = {
+                transactionHash: tx.hash,
+                censorType: CENSOR_TYPE.TX,
+                epochNumber: tx.epoch, createdAt: tx.createdAt, updatedAt: tx.createdAt,
+            }
+            return bean;
+        })
     }
 
     // ----------------------------- nft transfer -------------------------------
@@ -1171,10 +1172,6 @@ export class EpochSync extends SyncBase {
     // ----------------------------- realtime stat ------------------------------
     public async startRealtimeStat() {
         await this.statOnRealtime.schedule()
-    }
-
-    private realtimeStat(epoch, action, txArray?, pivotBlock?) {
-        this.statOnRealtime.setGasInfo(epoch, action, txArray, pivotBlock)
     }
 
     // ------------------------------ vote params -------------------------------
