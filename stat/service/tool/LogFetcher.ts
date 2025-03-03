@@ -210,10 +210,11 @@ export class LogFetcher {
 			return Promise.reject(`want epoch ${epoch} != head epoch ${head?.fromEpoch}`)
 		}
 		while (head === runningJob) {
-			// console.log(`final data not ready, want ${epoch}`)
-			await head.logs.catch(()=>{
-				return sleep(1_000)
+			console.log(`final data not ready, want ${epoch}`)
+			await head.logs.catch((e)=>{
+				console.log(`head log error`, e);
 			});
+			await sleep(2_000);
 			({head, runningJob} = this.logJobStream);
 		}
 		await head.result;
