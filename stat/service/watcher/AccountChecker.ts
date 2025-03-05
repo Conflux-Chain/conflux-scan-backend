@@ -116,7 +116,7 @@ export async function runCheckingTask() {
  let cfxWatcher: CfxWatcher;
 export async function repeatCheckAccount(cfx: Conflux) {
 	if (!cfxWatcher) {
-		cfxWatcher = new BalanceWatcher(cfx);
+		cfxWatcher = new CfxWatcher("accountChecker", cfx);
 	}
 	const code = await runCheckingTask().catch(e=>{
 		console.log(`${__filename}, failed to check`, e)
