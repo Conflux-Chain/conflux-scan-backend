@@ -1,6 +1,12 @@
 import {DataTypes, Model, Op, Sequelize} from "sequelize";
-import {getAddrId, Hex40Map, makeIdV} from "../../model/HexMap";
-import {format} from "js-conflux-sdk";
+import {buildHexSet, getAddrId} from "../../model/HexMap";
+import {Conflux, format} from "js-conflux-sdk";
+import {BalanceWatcher, CfxWatcher} from "./BalanceWatcher";
+import {formatAddr} from "../../../open-api/common/RestTool";
+import {AddressErc20Transfer} from "../../model/Erc20Transfer";
+import {AddressErc1155Transfer} from "../../model/Erc1155Transfer";
+import {AddressErc721Transfer} from "../../model/Erc721Transfer";
+import {handleTokenTransferWithContract} from "../../StreamSync";
 
 export interface IReqAccount {
 	hexId: number; hex: string; base32: string;
@@ -53,13 +59,31 @@ export async function addReqAccount(account: string) {
 		await bean.save();
 	} else {
 		await ReqAccount.upsert({
-			hexId: id, hex: format.hexAddress(account), base32: account,
+			hexId: id, hex: format.hexAddress(account), base32: formatAddr(account),
 			reqTime: new Date(), regTime: new Date(), inQueue: true,
 		}, {});
 	}
 }
 
+async function checkAccountBiz(reqAcc: ReqAccount) {
+	await cfxWatcher.queryBalance(reqAcc.hex, reqAcc.hexId);
+	const [arr20, arr721, arr1155] =  await Promise.all([
+		AddressErc20Transfer.findAll(  {where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
+		AddressErc721Transfer.findAll( {where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
+		AddressErc1155Transfer.findAll({where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
+	]);
+	const cidSet = new Set<number>();
+	buildHexSet(cidSet, arr20, 'contractId');
+	buildHexSet(cidSet, arr721, 'contractId');
+	buildHexSet(cidSet, arr1155, 'contractId');
+	const map = new Map<number, Set<number>>();
+	[...cidSet].forEach(cid=>{
+		map.set(cid, new Set<number>([reqAcc.hexId]));
+	})
+	await handleTokenTransferWithContract(map, cfxWatcher.cfx);
+}
 async function checkAccount(reqAcc: ReqAccount) {
+	await checkAccountBiz(reqAcc);
 	reqAcc.checkTime = new Date();
 	reqAcc.regTime = new Date(reqAcc.reqTime.getTime() + 600_000); // next checking time
 	await reqAcc.save();
@@ -89,11 +113,14 @@ export async function runCheckingTask() {
 	}
 	return 0;
 }
-
-export async function repeatCheckAccount() {
+ let cfxWatcher: CfxWatcher;
+export async function repeatCheckAccount(cfx: Conflux) {
+	if (!cfxWatcher) {
+		cfxWatcher = new BalanceWatcher(cfx);
+	}
 	const code = await runCheckingTask().catch(e=>{
 		console.log(`${__filename}, failed to check`, e)
 		return 500;
-	})
+	});
 	setTimeout(repeatCheckAccount, code > 0 ? 10_000 : 0);
 }

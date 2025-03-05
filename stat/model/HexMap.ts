@@ -232,9 +232,9 @@ export async function getAddrId(addr:string) {
         return res?.id
     })
 }
-export function buildHexSet(hexSet:Set<string>, arr:any[], ...hexKey:string[]) : Set<string> {
+export function buildHexSet<T>(hexSet:Set<T>, arr:any[], ...hexKey:string[]) : Set<T> {
     if (!hexSet) {
-        hexSet = new Set<string>()
+        hexSet = new Set<T>()
     }
     arr.forEach(bean=>{
         hexKey.forEach(k=>hexSet.add(bean[k]))
