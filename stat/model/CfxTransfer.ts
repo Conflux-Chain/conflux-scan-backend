@@ -381,7 +381,7 @@ const metrics = {
     }
 }
 async function buildFromToId(array, dt:Date) {
-    const hexSet = buildHexSet(undefined, array, 'from')
+    const hexSet = buildHexSet(new Set<string>(), array, 'from')
     buildHexSet(hexSet, array, 'to')
     const tasks = []
     hexSet.forEach(hex=>tasks.push(makeId(hex, undefined, {dt})))

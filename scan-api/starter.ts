@@ -11,14 +11,14 @@ export {} // placeholder
 async function main() {
     console.log(`----- start stat and scan-api -----`)
     process.env['unified_mod'] = 'yes';
-    await initStatApp();
+    const statApp = await initStatApp();
     console.log(`--- start scan-api ---`)
     ApiApp.injectContext(KV.sequelize);
     if (!ConfigInstance.v1port) {
         ConfigInstance.v1port = app.config.port;
     }
     await scheduleSwaggerReporter(ConfigInstance, ConfigInstance.v1port);
-    await repeatCheckAccount().then(); // should move it to stat-task
+    repeatCheckAccount(statApp.cfx).then(); // should move it to stat-task
     return app.start()
 }
 
