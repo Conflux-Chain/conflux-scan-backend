@@ -1,4 +1,4 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 import {safeAddReqAccount} from "../../stat/service/watcher/AccountChecker";
 
 const lodash = require('lodash');
@@ -12,10 +12,10 @@ export class AccountService {
   async query({ address, fields }) {
     const {
       app: { CONST, service },
-    } = this;
+    } = this as ScanCtx;
 
     const account = await service.conflux.getAccount(address);
-    safeAddReqAccount(account).then()
+    safeAddReqAccount(address).then()
     if (account.codeHash === '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470') {
       account.codeHash = ''; // replace code hash of '' to empty.
     }

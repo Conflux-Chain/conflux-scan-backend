@@ -73,7 +73,7 @@ export async function runCheckingTask() {
 		order: [['regTime', 'asc']],
 	});
 	if (!reqAcc) {
-		console.log(`no account request`)
+		console.log(`${__filename} no account request`)
 		return 404;
 	}
 	if (!reqAcc.checkTime) {
