@@ -81,6 +81,7 @@ import {NameTag} from "../model/NameTag";
 import {HeartBeatBean} from "../model/HeartBeat";
 import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 import {GasConsumer} from "../model/GasConsumer";
+import {ReqAccount} from "./watcher/AccountChecker";
 
 let conf
 export function createDB(config) {
@@ -153,6 +154,7 @@ export async function initPartialModel(sequelize) {
     ])
     ENS.register(sequelize)
     ApiLog.register(sequelize)
+    ReqAccount.register(sequelize)
     TransferCount.register(sequelize)
     NFTOwnerCount.register(sequelize)
     Lock.register(sequelize)
