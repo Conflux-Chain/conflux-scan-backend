@@ -70,13 +70,13 @@ async function checkAccountBiz(reqAcc: ReqAccount) {
 	await cfxWatcher.queryBalance(reqAcc.hex, reqAcc.hexId);
 	const [arr20, arr721, arr1155] =  await Promise.all([
 		AddressErc20Transfer.findAll(  {where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
-		AddressErc721Transfer.findAll( {where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
-		AddressErc1155Transfer.findAll({where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
+		// AddressErc721Transfer.findAll( {where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
+		// AddressErc1155Transfer.findAll({where: {addressId: reqAcc.hexId, }, order: [['epoch', 'desc']], limit: 100}),
 	]);
 	const cidSet = new Set<number>();
 	buildHexSet(cidSet, arr20, 'contractId');
-	buildHexSet(cidSet, arr721, 'contractId');
-	buildHexSet(cidSet, arr1155, 'contractId');
+	// buildHexSet(cidSet, arr721, 'contractId');
+	// buildHexSet(cidSet, arr1155, 'contractId');
 	const map = new Map<number, Set<number>>();
 	[...cidSet].forEach(cid=>{
 		map.set(cid, new Set<number>([reqAcc.hexId]));
