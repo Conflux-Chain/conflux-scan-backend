@@ -215,7 +215,7 @@ async function fetchAll(addressArr, contractHex40, result:any[], cfx:Conflux) {
                 }
                 console.log(` call balance utils contract fail, batch size ${size}, \n [${
                     addressArr.map(addr => fmtAddr(addr, StatApp.networkId)).map(s => `"${s}"`).join('\n')
-                }] \n contract ${fmtAddr(contractHex40, StatApp.networkId)}`, e)
+                }] \n contract ${fmtAddr(contractHex40, StatApp.networkId)} \n`, e)
                 size = Math.floor(size / 2)
                 result.length = 0 // reset
                 finished = false

@@ -232,9 +232,9 @@ export async function getAddrId(addr:string) {
         return res?.id
     })
 }
-export function buildHexSet(hexSet:Set<string>, arr:any[], ...hexKey:string[]) : Set<string> {
+export function buildHexSet<T>(hexSet:Set<T>, arr:any[], ...hexKey:string[]) : Set<T> {
     if (!hexSet) {
-        hexSet = new Set<string>()
+        hexSet = new Set<T>()
     }
     arr.forEach(bean=>{
         hexKey.forEach(k=>hexSet.add(bean[k]))
@@ -341,7 +341,7 @@ export function convert2base32map(map: Map<any, string>) : Map<any, string> {
     }
     return base32map
 }
-export async function idHex40Map(idArray: Array<number|string>, with0x=false): Promise<Map<number, string>>{
+export async function idHex40Map(idArray: Array<number|string|unknown>, with0x=false): Promise<Map<number, string>>{
     const result = await Hex40Map.findAll({
         where: {id: { [Op.in]: idArray}},
     })

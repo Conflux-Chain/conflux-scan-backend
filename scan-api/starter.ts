@@ -10,7 +10,7 @@ export {} // placeholder
 async function main() {
     console.log(`----- start stat and scan-api -----`)
     process.env['unified_mod'] = 'yes';
-    await initStatApp();
+    const statApp = await initStatApp();
     console.log(`--- start scan-api ---`)
     ApiApp.injectContext(KV.sequelize);
     if (!ConfigInstance.v1port) {

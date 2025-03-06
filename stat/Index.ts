@@ -47,6 +47,7 @@ export async function init() {
     register(app, statApp)
     const server = app.listen(config.port || 8087);
     regProcessHook(server)
+    return statApp;
 }
 
 function exitOnSignal(server: Server) {

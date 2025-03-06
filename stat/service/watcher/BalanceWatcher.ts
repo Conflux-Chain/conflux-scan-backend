@@ -15,7 +15,7 @@ export class BalanceWatcher{
     //
     static watcherMap = new Map<string, BalanceWatcher>()
     //
-    protected cfx: Conflux;
+    public cfx: Conflux;
     protected fraction = BigInt(1e+18) // hard code, please search 1e+18 globally when fixing it.
 
     constructor(cfx:Conflux) {

@@ -277,7 +277,10 @@ export async function calcAllTokenUniqueUser(startT:Date, endT:Date) : Promise<[
     const transferCount = await Promise.all([Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
         // @ts-ignore
         return t.count(
-          {where: {epoch: {[Op.between]: [start, end]}}, logging: sqlLogFn(`all token transfer count: `), benchmark: true}
+          {where: {epoch: {[Op.between]: [start, end]}},
+              // logging: sqlLogFn(`all token transfer count: `),
+              benchmark: true
+          }
         ).then(res=> res as unknown as number);
     })).then(arr=>arr.reduce((a,b)=>a+b));
     const sqlInner = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(
