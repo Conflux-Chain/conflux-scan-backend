@@ -4,7 +4,6 @@ import {app} from "./index";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
 import {ApiApp} from "./app";
 import {ConfigInstance} from "../stat/config/StatConfig";
-import {repeatCheckAccount} from "../stat/service/watcher/AccountChecker";
 
 export {} // placeholder
 
@@ -18,7 +17,6 @@ async function main() {
         ConfigInstance.v1port = app.config.port;
     }
     await scheduleSwaggerReporter(ConfigInstance, ConfigInstance.v1port);
-    repeatCheckAccount(statApp.cfx).then(); // should move it to stat-task
     return app.start()
 }
 
