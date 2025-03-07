@@ -400,8 +400,15 @@ async function getTokenBalance(ctx) {
     const {contractaddress, address} = ctx.request.query;
     checkPresent({contractaddress, address}, ['contractaddress', 'address']);
 
-    const result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, undefined);
+    const result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, undefined, true);
+    checkError(result);
     setBody(ctx, result)
+}
+
+function checkError(resultOrError: Error | any) {
+    if (resultOrError instanceof Error) {
+        throw resultOrError;
+    }
 }
 
 async function getTokenBalanceHistory(ctx) {
@@ -532,8 +539,9 @@ async function getTokenSupply(ctx) {
     const {contractaddress} = ctx.request.query;
     checkPresent({contractaddress}, ['contractaddress']);
 
-    const result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, undefined);
-    setBody(ctx, result)
+    const result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, undefined, true);
+    checkError(result);
+    setBody(ctx, result);
 }
 
 async function getTokenSupplyHistory(ctx) {
@@ -542,7 +550,8 @@ async function getTokenSupplyHistory(ctx) {
     const {contractaddress, blockno: epochNumber} = ctx.request.query;
     checkPresent({contractaddress, blockno: epochNumber}, ['contractaddress', 'blockno']);
 
-    let result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, epochNumber);
+    let result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, epochNumber, true);
+    checkError(result);
     result = result === undefined ? '0' : result;
     setBody(ctx, result)
 }

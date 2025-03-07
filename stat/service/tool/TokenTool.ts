@@ -69,18 +69,18 @@ export class TokenTool {
         });
     }
 
-    async getTokenTotalSupply(address, epochNumber = undefined) {
+    async getTokenTotalSupply(address, epochNumber = undefined, reportError = false) {
         return this.contract.totalSupply()
             .call({to: address}, epochNumber)
             .then(BigInt)
-            .catch(() => undefined);
+            .catch((e) => reportError ? e : undefined);
     }
 
-    async getTokenBalance(address, accountAddress, epochNumber) {
+    async getTokenBalance(address, accountAddress, epochNumber, reportError = false) {
         return this.contract.balanceOf(accountAddress)
             .call({ to: address }, epochNumber)
             .then(BigInt)
-            .catch(() => undefined);
+            .catch((e) => reportError ? e : undefined);
     }
 
     async getBalances(account, contracts, utilContract) {
