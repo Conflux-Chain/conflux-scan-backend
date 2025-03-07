@@ -73,14 +73,14 @@ export class TokenTool {
         return this.contract.totalSupply()
             .call({to: address}, epochNumber)
             .then(BigInt)
-            .catch((e) => reportError ? e : undefined);
+            .catch((e) => reportError ? rewriteCallContractError(e) : undefined);
     }
 
     async getTokenBalance(address, accountAddress, epochNumber, reportError = false) {
         return this.contract.balanceOf(accountAddress)
             .call({ to: address }, epochNumber)
             .then(BigInt)
-            .catch((e) => reportError ? e : undefined);
+            .catch((e) => reportError ? rewriteCallContractError(e) : undefined);
     }
 
     async getBalances(account, contracts, utilContract) {
@@ -742,4 +742,12 @@ if (module === require.main) {
     } else {
         console.log(`Please use one of <updateTotalSupply | build_images | custodian_token>`)
     }
+}
+
+function rewriteCallContractError(e: Error|any) {
+    const {message, expect, got, } = e?.message || {};
+	if (expect == 64 && got == 0 && message === 'length not match') {
+        e.message = `the contract does not support this function, please contact the owner of the contract.`;
+	}
+    return e;
 }
