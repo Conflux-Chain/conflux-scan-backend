@@ -746,7 +746,8 @@ if (module === require.main) {
 
 function rewriteCallContractError(e: Error|any) {
     const {message, expect, got, } = e?.message || {};
-	if (expect == 64 && got == 0 && message === 'length not match') {
+	if ((expect == 64 && got == 0 && message === 'length not match')
+        || e?.message === '{"message":"length not match","expect":64,"got":0,"stream":{"string":"0x","index":2}}') {
         e.message = `the contract does not support this function, please contact the owner of the contract.`;
 	}
     return e;
