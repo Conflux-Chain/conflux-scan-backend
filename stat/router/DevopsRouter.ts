@@ -78,10 +78,16 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             }
             bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
         }
-        const token = await Token.findOne({where: {hex40id: bean?.id || 0}}) || {icon:''};
-        token.icon = ''
+        const token = await Token.findOne({where: {hex40id: bean?.id || 0}});
         const base32 = bean ? TxnQuery.base32('0x'+bean.hex, StatApp.networkId) : ''
-        ctx.body = {base32, hex0x: '0x'+bean?.hex, id: bean?.id, server: ConfigInstance?.serverTag, hex: bean, token}
+        ctx.body = {
+            base32,
+            hex0x: '0x'+bean?.hex,
+            id: bean?.id,
+            name: token?.name,
+            symbol: token?.symbol,
+            server: ConfigInstance?.serverTag, hex: bean, token
+        }
     })
     router.get('/devops/sync-max-epoch',async (ctx) => {
         function fillName(res, name) {
