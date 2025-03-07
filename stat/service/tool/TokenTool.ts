@@ -69,18 +69,18 @@ export class TokenTool {
         });
     }
 
-    async getTokenTotalSupply(address, epochNumber = undefined) {
+    async getTokenTotalSupply(address, epochNumber = undefined, reportError = false) {
         return this.contract.totalSupply()
             .call({to: address}, epochNumber)
             .then(BigInt)
-            .catch(() => undefined);
+            .catch((e) => reportError ? rewriteCallContractError(e, 'totalSupply') : undefined);
     }
 
-    async getTokenBalance(address, accountAddress, epochNumber) {
+    async getTokenBalance(address, accountAddress, epochNumber, reportError = false) {
         return this.contract.balanceOf(accountAddress)
             .call({ to: address }, epochNumber)
             .then(BigInt)
-            .catch(() => undefined);
+            .catch((e) => reportError ? rewriteCallContractError(e, 'balanceOf') : undefined);
     }
 
     async getBalances(account, contracts, utilContract) {
@@ -742,4 +742,13 @@ if (module === require.main) {
     } else {
         console.log(`Please use one of <updateTotalSupply | build_images | custodian_token>`)
     }
+}
+
+function rewriteCallContractError(e: Error|any, fn: string) {
+    const {message, expect, got, } = e?.message || {};
+	if ((expect == 64 && got == 0 && message === 'length not match')
+        || e?.message === '{"message":"length not match","expect":64,"got":0,"stream":{"string":"0x","index":2}}') {
+        e.message = `the contract does not support this function [${fn}], please contact the owner of the contract.`;
+	}
+    return e;
 }
