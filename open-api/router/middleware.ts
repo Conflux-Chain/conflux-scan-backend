@@ -7,6 +7,7 @@ import {saveApiLog} from "../../stat/monitor/ApiLog";
 import {KnownError} from "../common/RestTool";
 import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
 import {getClientIP} from "../../stat/router/RateLimiter";
+import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 
 const yamljs = require('yamljs');
 const swStats = require('swagger-stats');
@@ -86,6 +87,7 @@ export async function handleException(ctx, next) {
             return
         }
         setBody(ctx, undefined, 500, err.toString())
+        safeAddErrorLog('open',`open-500-${err.message}`, err);
         getApiService().logger.error(`api error ${ctx.request.url}`, err)
     })
 }
