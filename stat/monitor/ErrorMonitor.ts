@@ -50,7 +50,7 @@ async function reportError(eLog: ErrorLog) {
 		return
 	}
 	const {module, biz, detail, count: times} = eLog;
-	await dingMsg(`Something went wrong:\nmodule: ${module
+	await dingMsg(`There was an error:\nmodule: ${module
 	}\nbusiness: ${biz}\ntimes: ${times}\ndetail: ${detail}`, ConfigInstance.dingTalkToken);
 }
 
