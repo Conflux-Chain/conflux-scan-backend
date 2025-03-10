@@ -1,4 +1,5 @@
 import {Errors, UnhandledErrorCode} from "../../../stat/service/common/LogicError";
+import {safeAddErrorLog} from "../../../stat/monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 const { composeFlow } = require('../../src/util');
@@ -83,7 +84,11 @@ export class JsonRPCFlow {
 function transformError(ctx, e, msg = '', detail = '') {
   // some error may have a string code.
   let isNumber = typeof(e.code) === 'number';
-  ctx.body = { code: isNumber ? e.code : UnhandledErrorCode, message: (e.name)+': '+msg + ' ' + detail + (isNumber ? '' : e.code || '') };
+  const code = isNumber ? e.code : UnhandledErrorCode;
+  if (code === UnhandledErrorCode) {
+    safeAddErrorLog('v1', `json-rpc-500-${e?.message}`, e).then()
+  }
+  ctx.body = { code: code, message: (e.name)+': '+msg + ' ' + detail + (isNumber ? '' : e.code || '') };
   ctx.status = 600;
 }
 export function patchFlowError(ctx) {

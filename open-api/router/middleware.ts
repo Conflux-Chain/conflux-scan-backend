@@ -87,7 +87,9 @@ export async function handleException(ctx, next) {
             return
         }
         setBody(ctx, undefined, 500, err.toString())
-        safeAddErrorLog('open',`open-500-${err.message}`, err);
+        if (err.code == 500) {
+            safeAddErrorLog('open', `open-500-${err.message}`, err);
+        }
         getApiService().logger.error(`api error ${ctx.request.url}`, err)
     })
 }
