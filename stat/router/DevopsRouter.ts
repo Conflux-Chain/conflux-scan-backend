@@ -30,6 +30,7 @@ import {pickNumber} from "../model/Utils";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 import {getClientIP} from "./RateLimiter";
+import {ConfigInstance} from "../config/StatConfig";
 
 async function checkLocal(ctx: Context, next) {
     const ip = getClientIP(ctx);
@@ -77,10 +78,16 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             }
             bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
         }
-        const token = await Token.findOne({where: {hex40id: bean?.id || 0}}) || {icon:''}
-        token.icon = ''
+        const token = await Token.findOne({where: {hex40id: bean?.id || 0}});
         const base32 = bean ? TxnQuery.base32('0x'+bean.hex, StatApp.networkId) : ''
-        ctx.body = {hex: bean, token, base32}
+        ctx.body = {
+            base32,
+            hex0x: '0x'+bean?.hex,
+            id: bean?.id,
+            name: token?.name,
+            symbol: token?.symbol,
+            server: ConfigInstance?.serverTag, hex: bean, token
+        }
     })
     router.get('/devops/sync-max-epoch',async (ctx) => {
         function fillName(res, name) {
