@@ -1,4 +1,6 @@
 // @ts-ignore
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+
 const superagent = require('superagent');
 import {format} from "js-conflux-sdk"
 import {fmtAddr, StatApp} from "../StatApp";
@@ -962,7 +964,8 @@ export function register(app:Koa, statApp: StatApp) {
             if (e.status === undefined || e.status === null) {
                 e.status = 500;
                 e.message = "unknown error"
-                console.log("unknown error caught by router:", e)
+                console.log("unknown error caught by router:", e);
+                safeAddErrorLog('stat', `stat-500-${e.message}`, e).then()
             }
             ctx.status = e.status;
             ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
