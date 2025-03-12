@@ -63,7 +63,7 @@ export function pushMeter(metrics: IMetric[]) {
 			}
 		}
 		// gap is too large.
-		const thresholdOfGap = ConfigInstance.noCoreSpace ? 20 : 100;
+		const thresholdOfGap = ConfigInstance.noCoreSpace ? 20 : 200;
 		const v5mGap_per_1m = meterData.meterGap.get5MinuteRate() * 60;
 		if (v5mGap_per_1m > thresholdOfGap || doTest) {
 			const msg = `gap is too large, ${meterData.name}, in last 5 minutes, gap per minute is ${
