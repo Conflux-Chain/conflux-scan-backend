@@ -39,7 +39,6 @@ import {ContractVerify, ContractVerify2, ProxyVerify} from "../model/ContractVer
 import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {TokenSecurityAudit, TokenSecurityAudit2} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
-import {StreamErrorLog} from "../model/ErrorLog";
 import {Lock} from "../model/Lock";
 import {PruneInfo} from "../model/PruneInfo";
 import {
@@ -199,7 +198,6 @@ export async function initPartialModel(sequelize) {
     NftMetaOld.register(sequelize);
     NftMetaFts.register(sequelize);
     TokenQuoteTrack.register(sequelize);
-    StreamErrorLog.register(sequelize)
     KV.register(sequelize);
     Epoch.register(sequelize);
     EpochNftTransfer.register(sequelize);

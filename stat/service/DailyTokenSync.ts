@@ -14,6 +14,7 @@ import {adjustTodayEndTime, getEpochRange, patchDateOnlyField} from "../model/Ut
 import {TxnQuery} from "./TxnQuery";
 import {getMaxTokenSyncDate} from "./tool/FixDailyTokenStat";
 import {FullBlock} from "../model/FullBlock";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
@@ -25,6 +26,7 @@ export async  function scheduleDailyTokenStat() {
         .then(res=>res?.day || minBlockDt?.createdAt);
     while (fromT < endT) {
         await calcAllRegisteredTokenDailyStat(fromT).catch(e=>{
+            safeAddErrorLog('stat-task', 'daily-token', e).then();
             console.log(`failed to calcAllRegisteredTokenDaily Stat`, e)
         });
         fromT.setDate(fromT.getDate()+1);

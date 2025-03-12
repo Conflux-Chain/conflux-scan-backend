@@ -8,6 +8,7 @@ import {AddressErc1155Transfer} from "../../model/Erc1155Transfer";
 import {AddressErc721Transfer} from "../../model/Erc721Transfer";
 import {handleTokenTransferWithContract} from "../../StreamSync";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 export interface IReqAccount {
 	hexId: number; hex: string; base32: string;
@@ -121,6 +122,7 @@ export async function repeatCheckAccount(cfx: Conflux) {
 		new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr());
 	}
 	const code = await runCheckingTask().catch(e=>{
+		safeAddErrorLog(`token-x`, 'auto-check-account', e).then();
 		console.log(`${__filename}, failed to check`, e)
 		return 500;
 	});

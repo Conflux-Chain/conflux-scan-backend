@@ -63,6 +63,9 @@ export async function safeAddErrorLog(module: string, biz: string, error: Error)
 }
 
 async function addErrorLog(module: string, biz: string, error: Error) {
+	if (!ErrorLog.sequelize) {
+		return;
+	}
 	if (biz.length > 256) {
 		biz = biz.substring(0, 256);
 	}

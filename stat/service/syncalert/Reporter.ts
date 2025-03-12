@@ -9,6 +9,7 @@ import {
 } from "./Sampler";
 import {StatApp} from "../../StatApp";
 import {pushMeter} from "./AlertRules";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 
@@ -120,6 +121,7 @@ export class Reporter{
         const that = this;
         async function repeat() {
             await that.sampleSyncProgress().catch(e=>{
+                safeAddErrorLog('stat-task', 'sync-reporter', e).then();
                 console.log(`[alert]scanSyncMonitor fail`, e);
             });
             setTimeout(repeat, delay);

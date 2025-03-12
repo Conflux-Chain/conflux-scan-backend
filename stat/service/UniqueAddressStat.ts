@@ -19,6 +19,7 @@ import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {FirstBlockNo} from "../config/StatConfig";
 import {PreloadMap} from "./SyncBase";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 process.env.TZ='UTC'
 
@@ -182,7 +183,10 @@ export async function calcDailyUniqueAddrSchedule() {
 
 async function calcDailyUniqueAddr() {
     const latestOne = await UniqueAddress.findOne({order: [['timeStart', 'desc']], raw: true});
-    await fixParticipants(latestOne?.timeStart);
+    await fixParticipants(latestOne?.timeStart).catch(e=>{
+        safeAddErrorLog('stat-task', 'calc-daily-unique-addr', e).then();
+        console.log(`${__filename} calc daily unique addr:`, e)
+    });
 }
 
 export async function calcDailyTokenTxn(timeBegin: Date, timeEnd: Date) {
@@ -329,7 +333,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
     const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
         return ` select contractId, fromId as \`from\`, toId as \`to\` from ${t.getTableName()} where epoch=? `
     }).join(" union ");
-    console.log(` sql is `, sql)
+    // console.log(` sql is `, sql)
     const aggregator = new Aggregator<number,string>();
     async function getLogs(epochNumber: number) : Promise<any>{
         const [block, logs] = await measure.call('rpc', ()=> Promise.all([
@@ -422,6 +426,7 @@ async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:
                 endFn()
             }
         } catch (e) {
+            safeAddErrorLog('token-x', 'unique-addr', e).then();
             console.log(`${__filename} failed to repeat:`, e)
             setTimeout(repeat, 5_000)
         }
@@ -442,7 +447,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
-async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
+async function runTask(cfx:Conflux, fromEpoch:number = 0, len: number) {
     const task = await fetchTask(len, fromEpoch)
     console.log(`UniqueAddr start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
     await new Promise(r=>{
@@ -458,8 +463,8 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len) {
     }
 }
 
-export async function startUniqueAddrStat() {
-    return setup("useConfigRpc", "-1", "300")
+export async function startUniqueAddrStat(cfx: Conflux) {
+    return runTask(cfx, -1, 300);
 }
 
 if (module === require.main) {

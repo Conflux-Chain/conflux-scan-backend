@@ -4,6 +4,7 @@ import {Op} from 'sequelize'
 import {toBase32} from "./tool/AddressTool";
 import {StatApp} from "../StatApp";
 import {format} from "js-conflux-sdk";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -32,6 +33,7 @@ export class QuoteSync {
 
         async function repeat() {
             await that.run().catch(err => {
+                safeAddErrorLog('token-x', 'quote-sync', err).then();
                 console.log(`sync token_quote fail: `, err);
             });
             setTimeout(repeat, delay)
