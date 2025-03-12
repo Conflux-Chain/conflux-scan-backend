@@ -124,7 +124,7 @@ export async function fixParticipants(fromT: Date) {
         await calcOneDayUniqueAddrAndTokenTxn(start)
         dt.setDate(dt.getDate()+1)
     }
-    console.log(`done.`)
+    console.log(`${__filename} done.`)
 }
 
 async function testRank() {

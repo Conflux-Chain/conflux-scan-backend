@@ -4,6 +4,7 @@ import {Epoch} from "../../model/Epoch";
 import {sleep} from "../tool/ProcessTool";
 import {FullBlock} from "../../model/FullBlock";
 import {EpochHashTokenTransfer} from "../../TokenTransferSync";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const moment = require('moment');
 
@@ -40,7 +41,11 @@ export abstract class TimerStat {
         async function repeat() {
             let hit = false;
             do {
-                hit = await that.doStat().catch(e => { console.log(`[${that.bizAlias()}]stat error: `, e); return false });
+                hit = await that.doStat().catch(e => {
+                    safeAddErrorLog('stat-task', `timer-stat-${that.bizAlias()}`, e).then();
+                    console.log(`[${that.bizAlias()}]stat error: `, e);
+                    return false;
+                });
             } while(hit)
             setTimeout(repeat, delay);
         }

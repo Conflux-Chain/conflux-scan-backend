@@ -12,6 +12,7 @@ import {IntervalType} from "./timerstat/TimerStat";
 import {GasConsumer, IGasConsumer} from "../model/GasConsumer";
 import {sqlLogFn} from "../model/Utils";
 import {NoCoreSpace} from "../config/StatConfig";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
@@ -125,6 +126,7 @@ export class TxnQuery{
 export function scheduleGasConsumerStat() {
     setInterval(()=>{
         statGasConsumer(new Date()).catch(e=>{
+            safeAddErrorLog('stat-task', 'gas-consumer', e).then();
             console.log(`stat Gas Consumer error`, e)
         });
     }, 60_0_000);

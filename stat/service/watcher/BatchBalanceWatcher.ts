@@ -25,6 +25,7 @@ import {
     sum1155amountByInfo, sumHistory1155amount
 } from "./Erc1155DataSync";
 import {doHeartBeat, KEY_1155_SYNC, KEY_CONTRACT_USER} from "../../model/HeartBeat";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const {abi: miniErc20Abi} = require('./contract/miniERC20.json');
 
@@ -455,6 +456,7 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
             await doHeartBeat(KEY_CONTRACT_USER+cfg.serverTag)
             cnt = await processContractUser(cfx, limit);
         } catch (e) {
+            safeAddErrorLog('tokenMisc', 'contractUser', e).then();
             console.log(`processContractUser error.`, e)
         }
         if (cnt === 0) {

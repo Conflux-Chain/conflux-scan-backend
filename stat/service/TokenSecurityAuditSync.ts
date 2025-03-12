@@ -1,6 +1,7 @@
 import {Token} from "../model/Token";
 import {Contract} from "../model/Contract";
 import {Op} from "sequelize";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 export class TokenSecurityAuditSync{
     private readonly app
@@ -41,6 +42,7 @@ export class TokenSecurityAuditSync{
         const that = this
         async function repeat() {
             await that.audit().catch(err=>{
+                safeAddErrorLog('stat-task', 'token-audit', err).then();
                 console.log(`token audit fail: `, err)
             })
             setTimeout(repeat, 1000 * 60 * 60) // interval is 1 hour
@@ -54,6 +56,7 @@ export class TokenSecurityAuditSync{
         const that = this
         async function repeat() {
             await that.audit(true).catch(err=>{
+                safeAddErrorLog('stat-task', 'token-audit-recent', err).then();
                 console.log(`recently token audit fail: `, err)
             })
             setTimeout(repeat, 1000 * 5)  // interval is 5 sec

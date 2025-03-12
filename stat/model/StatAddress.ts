@@ -6,6 +6,7 @@ import {T_ERC721_TRANSFER} from "./Erc721Transfer";
 import {T_ERC1155_TRANSFER} from "./Erc1155Transfer";
 import {calcAllDailyAddrDate} from "../service/tool/FixDailyActiveAddress";
 import {getMaxTokenSyncDate} from "../service/tool/FixDailyTokenStat";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 export interface IAddressStat {
     id?:number
@@ -89,6 +90,7 @@ export async function scheduleDailyActiveAddress() {
     const txEndT = await FullBlock.findOne({order: [['epoch', 'desc']]}).then(res=>res?.createdAt);
     if (tokenEndT && txEndT) {
         await checkLastDate(tokenEndT < txEndT ? tokenEndT : txEndT).catch(e=>{
+            safeAddErrorLog('stat-task', 'daily-active-address', e).then();
             console.log(`${__filename} calc Daily Active Address:`, e)
         })
     }

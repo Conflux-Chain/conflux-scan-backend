@@ -4,6 +4,7 @@ import {createTable} from "../service/DBProvider";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {adjustTodayEndTime, patchDateOnlyField} from "./Utils";
 import {findCfxSyncMaxDate, calcDailyCfxTxn} from "../service/tool/CfxTransferTool";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 // ============= partition by address table ==============
 export interface IAddressCfxTransfer {
@@ -526,6 +527,7 @@ export async function rollupDailyCfxTxnCurrent() {
 
 export async function scheduleRollupDailyCfxTxn() {
     await rollupDailyCfxTxnCurrent().catch(e=>{
+        safeAddErrorLog('stat-task', 'daily-cfx-txn', e).then();
         console.log(`failed to rollupDailyCfxTxnCurrent`, e)
     })
     setTimeout(scheduleRollupDailyCfxTxn, 1000*60*10)// ten minutes

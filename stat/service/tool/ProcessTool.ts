@@ -1,3 +1,5 @@
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
+
 const lodash = require('lodash');
 
 // Use `setTime(cb, 0)` instead of while(isRunning())
@@ -17,6 +19,7 @@ process.on('unhandledRejection', (e) => {
     console.log(e['message']);
     return
   }
+  safeAddErrorLog('stat-task', 'unhandled rejection', e as Error).then();
   console.error(`${new Date().toISOString()} ProcessTool.ts, the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
   // running = false;
   process.exit(9) // restart

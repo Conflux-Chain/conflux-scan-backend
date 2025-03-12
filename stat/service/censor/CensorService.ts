@@ -7,6 +7,7 @@ import {Contract} from "../../model/Contract";
 import {format} from "js-conflux-sdk";
 import {fmtDtUTC} from "../../model/Utils";
 import {KEY_CENSOR_CALL_COUNT, KV, TOTAL_POS_REWARD} from "../../model/KV";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 const AipContentCensorClient = require("baidu-aip-sdk").contentCensor;
@@ -41,6 +42,7 @@ export class CensorService {
 
         async function repeat() {
             await that.doCensor().catch(e => {
+                safeAddErrorLog('stat-task', 'censor-service', e).then();
                 console.log(`censor error: `, e)
             });
             setTimeout(repeat, delay);

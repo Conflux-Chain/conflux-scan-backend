@@ -11,6 +11,7 @@ import {Epoch} from "../model/Epoch";
 import {FullBlock} from "../model/FullBlock";
 import {init} from "./tool/FixDailyTokenStat";
 import {TxnQuery} from "./TxnQuery";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 const BigFixed = require('bigfixed');
 let _showLog = false
@@ -28,6 +29,7 @@ export class BlockAndMinerSync {
         const that = this;
         async function repeat() {
             await that.rollupStatPerHour().catch(e=>{
+                safeAddErrorLog('stat-task', 'block&miner', e).then();
                 console.log(`${__filename} rollupStatPerHour error `, e)
             })
             setTimeout(repeat, delay);

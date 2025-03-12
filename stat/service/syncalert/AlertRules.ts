@@ -49,12 +49,12 @@ export function pushMeter(metrics: IMetric[]) {
 			continue;
 		}
 
-		// gap is too large, or, height doesn't grow.
-		const threshold = ConfigInstance.noCoreSpace ? 20 : 100;
 		{//var scope block
+			// height doesn't grow.
+			const thresholdOfGrowth = ConfigInstance.noCoreSpace ? 10 : 100;
 			const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
 			// pos block is generated every minute.
-			const growthThreshold = meterData.name == SamplerType.POS_BLOCK ? 1 : threshold;
+			const growthThreshold = meterData.name == SamplerType.POS_BLOCK ? 1 : thresholdOfGrowth;
 			if (v5mGrowth < growthThreshold || doTest) {
 				const msg = `height doesn't grow, ${meterData.name}, in last 5 minutes, total growth is ${
 					v5mGrowth.toFixed(2)} < ${growthThreshold}`;
@@ -62,10 +62,12 @@ export function pushMeter(metrics: IMetric[]) {
 				alertMsgArr.push(msg);
 			}
 		}
+		// gap is too large.
+		const thresholdOfGap = ConfigInstance.noCoreSpace ? 20 : 100;
 		const v5mGap_per_1m = meterData.meterGap.get5MinuteRate() * 60;
-		if (v5mGap_per_1m > threshold || doTest) {
+		if (v5mGap_per_1m > thresholdOfGap || doTest) {
 			const msg = `gap is too large, ${meterData.name}, in last 5 minutes, gap per minute is ${
-				v5mGap_per_1m.toFixed(2)} > ${threshold}`;
+				v5mGap_per_1m.toFixed(2)} > ${thresholdOfGap}`;
 			console.log(msg);
 			alertMsgArr.push(msg);
 		}
