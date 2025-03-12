@@ -283,7 +283,9 @@ export class FullBlockQuery {
         let opponentAddressId = addressMap[opponentAddress];
         // check if exist
         if((accountAddress !== undefined && accountAddressId === undefined)
-            || (opponentAddress !== undefined && opponentAddressId === undefined)){
+            || (opponentAddress !== undefined && opponentAddressId === undefined)
+            || (from !== undefined && fromAddressId === undefined)
+            || (to !== undefined && toAddressId === undefined)){
             return {total: 0, list: []};
         }
         // attributes
