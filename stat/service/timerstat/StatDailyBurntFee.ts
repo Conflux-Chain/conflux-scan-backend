@@ -32,7 +32,7 @@ export class StatDailyBurntFee extends TimerStat{
             } catch (err) {
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
-                    // throw new Error(`Epoch at which CIP107 enabled has not reached.`)
+                    console.log(`Epoch at which CIP107 enabled has not reached.`);
                     return {rangeBegin: null, rangeEnd: null, skip: true}
                 }
                 throw  err
