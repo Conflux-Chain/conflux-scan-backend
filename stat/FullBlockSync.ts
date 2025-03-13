@@ -16,6 +16,7 @@ import {StatApp} from "./StatApp";
 import {CONST} from "./service/common/constant";
 import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
 import {DefaultCacheConf, startEvictCache} from "./service/common/RpcCacheManager";
+import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -99,6 +100,7 @@ async function syncFullBlock(fullBlockService:FullBlockService) {
                 return FullBlock.sequelize.close()
             }
         }).catch(err=>{
+            safeAddErrorLog('block-sync',`runner`, err);
             console.log(`error test full block:`, err)
         })
 }

@@ -40,6 +40,7 @@ import {CfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {sleep} from "./tool/ProcessTool";
 import {FullBlock, FullTransaction} from "../model/FullBlock";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -251,6 +252,7 @@ export class EpochSync extends SyncBase {
                         }).then(res => {
                             return saveOssUrl(dbIcon, res)
                         }).catch(err => {
+                            safeAddErrorLog('epoch-sync',`save-token-icon`, err);
                             console.log(`epoch-sync.create one TokenIcon url fail: ${token.base32}`, err);
                         })
                     }, 10_000)
@@ -267,11 +269,15 @@ export class EpochSync extends SyncBase {
             const address = `0x${hex40.hex}`;
             const codeHash = traceCreate.codeHash;
             const isEIP1167 = await this.verifyMinimalProxy({address}).catch(e => {
+                safeAddErrorLog('epoch-sync',`verify-do-${address}`, e);
                 console.log(`[${address}]epoch-sync.minimalVerify`, e);
                 return false;
             });
             if (isEIP1167) continue;
-            await this.linkVerify({address, codeHash}).catch(e => console.log(`[${address}]epoch-sync.linkVerify`, e));
+            await this.linkVerify({address, codeHash}).catch(e => {
+                safeAddErrorLog('epoch-sync',`link-verify-${address}`, e);
+                console.log(`[${address}]epoch-sync.linkVerify`, e)
+            });
         }
     }
 
@@ -971,7 +977,9 @@ export class EpochSync extends SyncBase {
                 id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
                 updatedAt: createdAt
             });
-        await ContractVerify.create(matchRecord).catch(() => undefined);
+        await ContractVerify.create(matchRecord).catch((err) => {
+            safeAddErrorLog('epoch-sync',`save-verify`, err);
+        });
     }
 
     public async verifyMinimalProxy({address}): Promise<boolean> {
@@ -1202,6 +1210,7 @@ export class EpochSync extends SyncBase {
 
         async function repeat() {
             await that.evict().catch(err => {
+                safeAddErrorLog('epoch-sync',`evict-catch`, err);
                 console.log(`schedule evict epoch address error:${err}`)
             })
             setTimeout(repeat, delay)

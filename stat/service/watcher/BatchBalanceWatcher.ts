@@ -26,6 +26,7 @@ import {
 } from "./Erc1155DataSync";
 import {doHeartBeat, KEY_1155_SYNC, KEY_CONTRACT_USER} from "../../model/HeartBeat";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
+import {StatConfig} from "../../config/StatConfig";
 
 const {abi: miniErc20Abi} = require('./contract/miniERC20.json');
 
@@ -68,6 +69,7 @@ export class BatchBalanceWatcher {
                         miniErc20ContractMap.set(contract, cInst);
                     }
                     taskArr.push((cInst['balanceOf'](acc)).catch(e=>{
+                        safeAddErrorLog('batch-balance-watcher',`get-balances-${contract}`, e);
                         console.log(`${__filename} raw balance of error , account ${acc}, contract ${contract} , `, e)
                         return BigInt(0);
                     }));
@@ -75,11 +77,11 @@ export class BatchBalanceWatcher {
             }
             return Promise.all(taskArr);
         }
-        let banList = await BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
+        return BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
+            safeAddErrorLog('batch-balance-watcher',`get-balances}`, err);
             console.log(` getBalances fail: `, err.data)
             console.log(` getBalances fail: `, err)
         });
-        return banList
     }
 }
 // ---
@@ -279,7 +281,11 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
             await value.destroy({logging: console.log})
         }
     }
-    sum1155amountByInfo(contractAddrSet, mark as number).catch(e=>{console.log(`sum1155amountByInfo error`, e)});
+    sum1155amountByInfo(contractAddrSet, mark as number).catch(e=>{
+        safeAddErrorLog('batch-balance-watcher',`sum-1155-amount`, e);
+        console.log(`sum1155amountByInfo `, contractAddrSet)
+        console.log(`sum1155amountByInfo error`, e)
+    });
     return mark;
 }
 async function setupSync1155data(cfx:Conflux) {
@@ -308,6 +314,7 @@ async function repeatSync1155data(cfx:Conflux, serverTag: string) {
         await doHeartBeat(KEY_1155_SYNC+serverTag);
         let lastEpoch = await KV.getNumber(KEY_1155data_EPOCH, -1)
         const thatEpoch = await syncErc1155data(lastEpoch, contract1155, cfx).catch(err => {
+            safeAddErrorLog('token-x',`sync-1155-data`, err);
             console.log(`BatchBalanceWatcher syncErc1155data fail , lastEpoch ${lastEpoch}`, err)
             return -1
         })
@@ -326,6 +333,7 @@ async function repeatSync1155data(cfx:Conflux, serverTag: string) {
             setTimeout(() => repeatSync1155data(cfx, serverTag), 5_000)
         }
     } catch (e) {
+        safeAddErrorLog('token-x', 'sync-1155-data', e).then();
         console.log(`BatchBalanceWatcher repeatSync1155data error:`, e)
         setTimeout(() => repeatSync1155data(cfx, serverTag), 5_000)
     }
@@ -418,7 +426,7 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
         const map = new Map<number, Set<number>>()
         map.set(0, new Set<number>([0]))
         const cfx = await initCfxSdk(cfg.conflux);
-        StatApp.networkId = await cfx.getStatus().then(({networkId})=>networkId)
+        StatApp.networkId = await cfx.getStatus().then(({networkId}) => networkId)
         new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
         await handleTokenTransferWithContract(map, cfx)
     } else if (script) {
@@ -430,13 +438,16 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
     const confluxOption = cfxUrl === 'useConfigRpc' ? cfg.conflux : {url: cfxUrl};
     const cfx = await initCfxSdk(confluxOption);
     StatApp.networkId = cfx.networkId;
-
-    const zeroHex = '0x'+'0'.padStart(40, '0')
-    zeroAddrId = await makeIdV(zeroHex)
     if (limitStr === 'repeatSync1155data') {
         await repeatSync1155data(cfx, cfg.serverTag)
         return
     }
+    const limit = limitStr ? parseInt(limitStr) : 10_000
+    startContractUserAnd1155data(cfx, cfg, limit).then();
+}
+export async function startContractUserAnd1155data(cfx: Conflux, cfg: StatConfig, limit: number) {
+    const zeroHex = '0x'+'0'.padStart(40, '0')
+    zeroAddrId = await makeIdV(zeroHex)
     const st = await cfx.getStatus()
     const utilContract = await BatchBalanceWatcher.getUtilContractAddr(cfg.conflux.consortiumMode);
     new BatchBalanceWatcher(cfx, utilContract)
@@ -449,7 +460,6 @@ export async function startBalanceTask(script: string, cfxUrl: string, limitStr:
     }
     /*await initNftMetaWorkerContext(cfx, "useDbGateway");
     startMetaWorker("latest_mint").then();*/
-    const limit = limitStr ? parseInt(limitStr) : 10_000
     async function repeat() {
         let cnt: number = 0;
         try {
@@ -486,6 +496,7 @@ async function processContractUser(cfx:Conflux, limit:number) {
     try {
         await addTransferInfo(list, cfx);
     } catch (e) {
+        safeAddErrorLog('token-x', 'addTransferInfo', e).then();
         console.log(`BatchBalanceWatcher process fail . `, e)
         return 0;
     }
@@ -518,9 +529,9 @@ export async function addTransferInfo(arr:{fromId:number, toId:number, contractI
     });
     const map = transferInfoMap;
     await updateTotalSupply(cfx, [...map.keys()])
-    console.log(` ---`)
+    // console.log(` ---`)
     await handleTokenTransferWithContract(map, cfx)
-    console.log(` ---`)
+    // console.log(` ---`)
     await updateTokenTransferCount(map.keys(), false)
 }
 async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
@@ -546,6 +557,7 @@ async function updateTotalSupply(cfx:Conflux, contractIds:number[]) {
             });
             console.log(` update total supply affect ${cnt}, sup ${sup} cid ${cid} hex 0x${hexBean.hex}`)
         } catch (e) {
+            safeAddErrorLog('token-x', `total-supply-0x${hexBean.hex}`, e).then();
             console.log(`update token total supply fail, 0x${hexBean.hex}:`, e)
         }
     }

@@ -29,6 +29,7 @@ import {
 } from "./TokenTransferSync";
 import {loadParentHash} from "./CfxTransferSync";
 import {PreloadMap} from "./service/SyncBase";
+import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 function decodeFromReceipts(receipts2d:TransactionReceipt[][],tokenTool: TokenTool,
                                     dt:Date, blockHashes:string[], handler:SyncHandler) {
@@ -167,6 +168,7 @@ async function run(cfx:Conflux, preFinished: number, taskClz,
     async function repeat() {
         const originalEpoch = epoch;
         return repeat0().catch(err=>{
+            safeAddErrorLog('event-sync',`repeat`, err);
             console.log(`${handler.name()}  repeat error : `, err)
             setTimeout(repeat, 5_000)
         })

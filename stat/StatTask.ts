@@ -140,7 +140,8 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
         await KV.upsert({key: keyCountId, value: `${latestId}`}, {transaction: dbTx});
     });
 }
-
-main().then().catch(err=>{
-    console.log(`Stat task fail:`, err)
-})
+if (module === require.main) {
+    main().then().catch(err => {
+        console.log(`Stat task fail:`, err)
+    })
+}

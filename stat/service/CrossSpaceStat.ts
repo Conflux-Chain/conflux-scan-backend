@@ -9,6 +9,7 @@ import {initCfxSdk} from "./common/utils";
 import {EvmDB} from "../config/StatConfig";
 import {findCfxSyncMaxDate} from "./tool/CfxTransferTool";
 import {patchDateOnlyField} from "../model/Utils";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 export declare type CrossSpaceStat_BIZ = 'DailyCfxToEVM' | 'DailyCfxFromEVM'
     | 'DailyCfxCountToEVM' | 'DailyCfxCountFromEVM'
@@ -124,6 +125,7 @@ export async function scheduleCrossSpaceStat(cfx:Conflux) {
     }
     setInterval(()=>{
         checkLatestToEvm().catch(e=>{
+            safeAddErrorLog('token-x',`check-latest-to-evm`, e);
             const str = `${e}`;
             if (str.includes('Unknown database')) {
                 console.log(`evm db not exist ${EvmDB}`)

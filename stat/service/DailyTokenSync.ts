@@ -123,6 +123,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
                 startE = endE + 1;
             }
         }).catch(err=>{
+            safeAddErrorLog('token-x',`query-transfer`, err);
             console.log(`query transfer fail: ${sql}`, err)
             startE = endE + 1;
         })
@@ -178,6 +179,7 @@ export async  function calcDailyTokenEach(dt:Date, tokenHexId:number, showLog = 
         }
         if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
              await calcDailyTokenAmount(dt, tokenHexId).catch(err=>{
+                 safeAddErrorLog('token-x',`daily-amount-${tokenBean.address}`, err);
                  console.log(`calcDailyTokenAmount fail, ${dt.toISOString()} ${tokenHexId}`, err)
              })
         }
@@ -187,6 +189,7 @@ export async  function calcDailyTokenEach(dt:Date, tokenHexId:number, showLog = 
         await banModel.count().then(cnt => {
             return DailyToken.update({holderCount: cnt}, {where: {hexId: tokenHexId, day: start}})
         }).catch(err => {
+            safeAddErrorLog('contract',`update-token-holder-${tokenBean.address}`, err);
             console.log(`update daily token holder fail ${tokenBean.hex40id}:`, err)
         })
     }

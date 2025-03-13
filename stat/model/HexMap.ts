@@ -4,6 +4,7 @@ import {delLock, waitLock} from "./Lock";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 import {Contract} from "./Contract";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 const NodeCache = require( "node-cache" );
 const lodash = require('lodash');
 
@@ -201,7 +202,9 @@ export async function makeId(hex: string, dbTxNotUsed: Transaction = undefined, 
     });
     if (created) {
         // hex40 has field createdAt
-        if (dt && hex.length === 40) incDailyAddressCount(dt, 1).then().catch()
+        if (dt && hex.length === 40) incDailyAddressCount(dt, 1).then().catch(e=>{
+            safeAddErrorLog('sync',`increase-daily-address-count`, e);
+        })
     } else {
         // exists already
         bean = await map.findOne({where:{hex}})

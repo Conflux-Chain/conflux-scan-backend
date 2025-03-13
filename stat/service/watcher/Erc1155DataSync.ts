@@ -5,6 +5,7 @@ import {Conflux, Contract} from "js-conflux-sdk";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {getAddrId, Hex40Map} from "../../model/HexMap";
 import {StatApp} from "../../StatApp";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 export const destroyedContracts = new Set<string>()
 export const CONFIRM_GAP = 100
@@ -262,6 +263,7 @@ export async function patchSum1155amount(tokenList: (any & {type?: string})[], a
             token['sumAmount'] = res.amount;
         }
     })).catch(e=>{
+        safeAddErrorLog('token-x',`patch-sum-1155-amount`, e);
         console.log(`patchSum1155amount failed, addressId `, addressId, e)
     });
 }

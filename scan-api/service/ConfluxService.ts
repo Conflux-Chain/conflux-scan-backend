@@ -1,5 +1,6 @@
 import {ScanApp, ScanCtx} from "./index";
 import {fmtAddr} from "../../stat/StatApp";
+import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 
 const {noVerboseAddr} = require("../../stat/service/common/utils")
 const {patchPocketAddress} = require("../../stat/model/HexMap")
@@ -90,7 +91,10 @@ export class ConfluxService {
     } = this;
 
     return ttlMap.cache(`ConfluxService.getCode(${address},${epochNumber})`,
-      () => cfx.getCode(address, epochNumber).catch(() => undefined),
+      () => cfx.getCode(address, epochNumber).catch((e) => {
+        safeAddErrorLog('cfx-service',`get-code-${address}`, e);
+        console.log(`${__filename} failed to get code of ${address} at epoch ${epochNumber} .`, e);
+      }),
       { ttl: (code) => (code ? 5 * 60 * 1000 : 60 * 1000) },
     );
   }

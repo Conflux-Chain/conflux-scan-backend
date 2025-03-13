@@ -33,6 +33,7 @@ import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
 import {ITraceCreateContract, TraceCreateContract} from "./model/TraceCreateContract";
+import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 export interface ICfxUser {
     id?: number
@@ -360,6 +361,7 @@ async function runHolder(cfx:Conflux) {
         cfxWatcher = new CfxWatcher('cfx', cfx);
     }
     await holder().catch(err=>{
+        safeAddErrorLog('cfx-tx-sync',`holder-task`, err);
         console.log(` cfx holder error:`, err)
         return sleep(10_000)
     });
@@ -405,6 +407,7 @@ async function holder() {
 // marker, handle multiple task situation.
 async function runMarker() {
     await marker().catch(e=>{
+        safeAddErrorLog('cfx-sync',`marker`, e);
         console.log(`${__filename} failed to run marker`, e)
         return sleep(60_000)
     });
@@ -475,6 +478,7 @@ async function run(cfx:Conflux, preFinished: number) {
     }
     async function repeat() {
         return repeat0().catch(err=>{
+            safeAddErrorLog('cfx-sync',`repeat`, err);
             // DB failure, maybe.
             console.log(` repeat error at epoch ${epoch}: `, err)
             setTimeout(repeat, 10_000)

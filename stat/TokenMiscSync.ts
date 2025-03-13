@@ -1,7 +1,7 @@
 import {redirectLog} from "./config/LoggerConfig";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {startSync3525} from "./T3525Sync";
-import {startBalanceTask} from "./service/watcher/BatchBalanceWatcher";
+import {startBalanceTask, startContractUserAnd1155data} from "./service/watcher/BatchBalanceWatcher";
 import { init } from "./service/tool/FixDailyTokenStat";
 import {startUniqueAddrStat} from "./service/UniqueAddressStat";
 import {initCfxSdk} from "./service/common/utils";
@@ -20,7 +20,7 @@ async function main() {
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     // startSync3525('useConfigRpc', "-1", "10000").then()
-    startBalanceTask("", "useConfigRpc", "500").then()
+    startContractUserAnd1155data(cfx, config, 500).then();
     startUniqueAddrStat(cfx).then()
     repeatCheckAccount(cfx).then(); // should move it to stat-task
     // quote service
