@@ -79,6 +79,7 @@ async function addErrorLog(module: string, biz: string, error: Error) {
 	let bean = await ErrorLog.findOne({where: {module, biz}});
 	if (bean) {
 		bean.count += 1;
+		bean.detail = detail;
 		await bean.save();
 	} else {
 		[bean] = await ErrorLog.upsert({
