@@ -69,14 +69,18 @@ async function addErrorLog(module: string, biz: string, error: Error) {
 	if (biz.length > 256) {
 		biz = biz.substring(0, 256);
 	}
-	const [upsert] = await ErrorLog.bulkCreate([{
-		module, biz, detail: JSON.stringify(error, null, 4),
-	}], {
-		updateOnDuplicate: ['updatedAt']
-	})
-	if (!upsert.isNewRecord){
-		upsert.count++;
-		await upsert.save()
+	let detail = JSON.stringify(error, null, 4);
+	if (detail.length < 3) {
+		detail = `${error}`;
 	}
-	await reportError(upsert)
+	let bean = await ErrorLog.findOne({where: {module, biz}});
+	if (bean) {
+		bean.count += 1;
+		await bean.save();
+	} else {
+		[bean] = await ErrorLog.upsert({
+			module, biz, detail: detail, count: 1,
+		})
+	}
+	await reportError(bean)
 }
