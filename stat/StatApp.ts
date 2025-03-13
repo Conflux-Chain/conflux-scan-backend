@@ -22,7 +22,7 @@ import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
 import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
-import {initCfxSdk, initEthSdk, patchFormat} from "./service/common/utils";
+import {initCfxSdk, initEthSdk} from "./service/common/utils";
 import {
     IS_EVM2,
     KEY_FASTEST_IPFS_GATEWAY,
@@ -39,7 +39,6 @@ import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider
 import {StatOnRealtime} from "./service/timerstat/StatOnRealtime"
 import {TxnQuery} from "./service/TxnQuery";
 import {ethers} from "ethers";
-patchFormat();
 
 export var CoreSpaceRpc: Conflux = null;
 

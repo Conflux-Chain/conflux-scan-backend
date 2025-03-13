@@ -282,6 +282,7 @@ export function removeLongData(obj) {
 }
 
 export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = undefined) {
+	patchFormat();
     try {
         const {setPRCMethodPatch} = require('js-conflux-sdk/src/rpc/rpcPatch');
         setPRCMethodPatch(useFastFormat);
