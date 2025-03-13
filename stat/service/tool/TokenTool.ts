@@ -10,6 +10,7 @@ import {CONST} from "../common/constant";
 import {StatApp} from "../../StatApp";
 import {ethers} from "ethers";
 import {decodeTxData} from "./TxTool";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const abi = require('./abi');
 const fs = require('fs');
@@ -36,7 +37,7 @@ export class TokenTool {
         this.contract = cfx.Contract({abi});
     }
 
-    async getToken(address, epochNumber = undefined, useCache = false): Promise<any> {
+    async getToken(address: string, epochNumber = undefined, useCache = false): Promise<any> {
         if (useCache) {
             const cache = dbCache.get(address);
             if (cache) {
@@ -47,18 +48,18 @@ export class TokenTool {
             address,
             name: this.contract.name()
                 .call({to: address}, epochNumber)
-                .catch(() => undefined),
+                .catch((e) => handlerCallError(`name-${address}`, e)),
             symbol: this.contract.symbol()
                 .call({to: address}, epochNumber)
-                .catch(() => undefined),
+                .catch((e) => handlerCallError(`symbol-${address}`, e)),
             decimals: this.contract.decimals()
                 .call({to: address}, epochNumber)
                 .then(Number)
-                .catch(() => undefined),
+                .catch((e) => handlerCallError(`decimals-${address}`, e)),
             granularity: this.contract.granularity()
                 .call({to: address}, epochNumber)
                 .then(Number)
-                .catch(() => undefined),
+                .catch((e) => handlerCallError(`granularity-${address}`, e)),
         }).then(obj=>{
             try {
                 dbCache.set(address, obj, cacheTtl)
@@ -751,4 +752,10 @@ function rewriteCallContractError(e: Error|any, fn: string) {
         e.message = `the contract does not support this function [${fn}], please contact the owner of the contract.`;
 	}
     return e;
+}
+
+
+function handlerCallError(biz: string, err: Error) {
+    safeAddErrorLog('token-tool', biz, err).then();
+    console.log(`failed to call ${biz}`, err)
 }
