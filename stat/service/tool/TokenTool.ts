@@ -453,7 +453,7 @@ export async function base64ToPNG(token:Token, dir: string) {
 }
 
 export function getImageDir() {
-    const public_dir = __dirname + '/../../../public/stat/';
+    const public_dir = __dirname + '/../../../public/images/';
     const dir = path.resolve(public_dir);
     return {public_dir, dir};
 }

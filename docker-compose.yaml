@@ -83,6 +83,7 @@ services:
       - ./log:/scan/log
       - ./cache:/scan/cache
       - ./public:/scan/public
+      - ./public/images:/scan/public/images
   stat_task:
     image: scan:latest
     command: npm run stat_task
