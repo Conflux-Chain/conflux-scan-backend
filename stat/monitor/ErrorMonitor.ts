@@ -23,7 +23,7 @@ export class ErrorLog extends Model<IErrorLog> implements IErrorLog {
 			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
 			module: {type: DataTypes.STRING(128), allowNull: false,},
 			biz: {type: DataTypes.STRING(256), allowNull: false,},
-			detail: {type: DataTypes.TEXT({length: "tiny"}), allowNull: false,},
+			detail: {type: DataTypes.TEXT({length: "long"}), allowNull: false,},
 			count: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 1},
 			updatedAt: {type: DataTypes.DATE, allowNull: false},
 		}, {
