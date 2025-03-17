@@ -5,6 +5,7 @@ import {CFX_TRANSFER_DELAY, ERC20_TRANSFER_DELAY, KV} from "../model/KV";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {ConfigInstance} from "../config/StatConfig";
 import {StatApp} from "../StatApp";
+import {getAppEntryName} from "../config/LoggerConfig";
 const superagent = require('superagent')
 
 export class Monitor{
@@ -76,7 +77,7 @@ export async function dingMsg(msg:string, dingTalkToken:string) {
         {
             "msgtype": "text",
             "text": {
-                "content": `${msg}\n[scan ${StatApp.networkId}] ${ConfigInstance.serverTag}`
+                "content": `${msg}\n[scan ${StatApp.networkId}] ${ConfigInstance.serverTag} , [${getAppEntryName()}]`
             }
         }).then(res=>{
             console.log(`send ding message done, success:`, res.ok);
