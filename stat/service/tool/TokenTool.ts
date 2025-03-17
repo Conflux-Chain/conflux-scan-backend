@@ -756,6 +756,10 @@ function rewriteCallContractError(e: Error|any, fn: string) {
 
 
 function handlerCallError(biz: string, err: Error) {
+    if (err.message === 'Transaction reverted') {
+        console.log(`failed to call ${biz} , message ${err.message}`)
+        return;
+    }
     safeAddErrorLog('token-tool', biz, err).then();
-    console.log(`failed to call ${biz}`, err)
+    console.log(`failed to call ${biz} , message ${err.message}`, err)
 }
