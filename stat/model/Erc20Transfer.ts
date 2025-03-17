@@ -298,7 +298,7 @@ export async function calcAllTokenUniqueUser(startT:Date, endT:Date) : Promise<[
     ) t`
     const userCnt = await Erc20Transfer.sequelize.query(sql,
         {type:QueryTypes.SELECT, replacements: replace,
-        logging: sqlLogFn('all token transfer user:'), benchmark: true
+        // logging: sqlLogFn('all token transfer user:'), benchmark: true
         }
     ).then(arr=>{
         return Number(arr[0]['cnt'])
