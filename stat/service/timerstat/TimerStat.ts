@@ -20,7 +20,7 @@ export abstract class TimerStat {
 
     protected abstract bizAlias(): string;
 
-    protected abstract nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date}>;
+    protected abstract nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date, skip?: boolean}>;
 
     protected abstract firstEpochAfterRangeEnd(rangeEnd): Promise<number>;
 
@@ -69,9 +69,9 @@ export abstract class TimerStat {
     protected async checkPivotBlockTime(): Promise<{status: StatStatus, rangeBegin?: Date, rangeEnd?: Date}> {
         const { cfx } = this.app;
 
-        const {rangeBegin, rangeEnd} = await this.nextStatRange();
+        const {rangeBegin, rangeEnd, skip} = await this.nextStatRange();
         this.debug && console.log(`debug-1,rangeBegin:${rangeBegin},rangeEnd:${rangeEnd}, data:${new Date()}`);
-        if(new Date() < rangeEnd) {
+        if(skip || new Date() < rangeEnd) {
             return {status: StatStatus.TIME_NOT_REACH};
         }
 

@@ -1,5 +1,6 @@
 import {Op, DataTypes, Model, QueryTypes} from "sequelize";
 import {initCfxSdk} from "../service/common/utils";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 export interface IContractInfo {
     id?:number
@@ -104,6 +105,7 @@ export async function saveAbiInfo(abiObj:any) {
     }).then(arr=>{
         console.log(`save abi info: ${arr.length}`)
     }).catch(err=>{
+        safeAddErrorLog('DB',`bulk-create-abi-info`, err);
         console.log(`bulk create abi info fail:`, err)
     })
 }

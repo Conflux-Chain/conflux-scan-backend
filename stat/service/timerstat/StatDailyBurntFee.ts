@@ -18,7 +18,7 @@ export class StatDailyBurntFee extends TimerStat{
         return `${DailyBurntFeeStat.getTableName()}`;
     }
 
-    public async nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date}> {
+    public async nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date, skip?: boolean}> {
         const {app: {cfx}} = this
         const lastStat = await DailyBurntFeeStat.findOne({
             where: {statType: this.baseInterval},
@@ -32,7 +32,8 @@ export class StatDailyBurntFee extends TimerStat{
             } catch (err) {
                 const msg = `${err}`
                 if (msg.includes('expected a numbers with less than largest epoch number.')) {
-                    throw new Error(`Epoch at which CIP107 enabled has not reached.`)
+                    console.log(`Epoch at which CIP107 enabled has not reached.`);
+                    return {rangeBegin: null, rangeEnd: null, skip: true}
                 }
                 throw  err
             }

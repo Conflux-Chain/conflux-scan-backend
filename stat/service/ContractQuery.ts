@@ -18,6 +18,7 @@ import {ProxyVerify} from "../model/ContractVerify";
 import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
 import {ConfigInstance} from "../config/StatConfig";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -155,7 +156,10 @@ export class ContractQuery {
             taskStatus, warnings, errors, updatedAt: new Date()});
         if(verifyResult){
             const proxyInfo = await this.queryImplementation(base32)
-                .catch((e) => logger?.error({ src: `[${address}]updateVerify`, queryImplError: e.toString() }));
+                .catch((e) => {
+                    safeAddErrorLog('contract',`query-impl-${base32}`, e);
+                    logger?.error({ src: `[${address}]updateVerify`, queryImplError: e.toString() })
+                });
             lodash.assign(updateVerify, {abi}, proxyInfo, {notifyStatus: CONST.NOTIFY_STATUS.NEED_NOTIFY});
         } else{
             lodash.assign(updateVerify, {sourceCode: null});
@@ -163,11 +167,20 @@ export class ContractQuery {
         const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
 
         if(verifyResult){
-            saveAbiInfo(abi).catch(e => console.log(`[${address}]updateVerify.saveAbiInfo`, e));
+            saveAbiInfo(abi).catch(e => {
+                safeAddErrorLog('contract',`save-abi-info`, e);
+                console.log(`[${address}]updateVerify.saveAbiInfo`, e)
+            });
             await this.linkVerify({address, codeHash: dbVerify.codeHash})
-                .catch(e => console.log(`[${address}]updateVerify.linkVerify`, e));
+                .catch(e => {
+                    safeAddErrorLog('contract',`link-verify-${address}`, e);
+                    console.log(`[${address}]updateVerify.linkVerify`, e)
+                });
             await this.verifyMinimalProxy({address, implVerifyId: dbVerify.id})
-                .catch(e => console.log(`[${address}]updateVerify.minimalVerify`, e));
+                .catch(e => {
+                    safeAddErrorLog('contract',`verify-minimal-proxy-${address}`, e);
+                    console.log(`[${address}]updateVerify.minimalVerify`, e)
+                });
         }
         logger?.info({ src: `[${address}]updateVerify`, updateResult: `${JSON.stringify(result)}` });
 
@@ -211,7 +224,9 @@ export class ContractQuery {
             const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
                 { id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
                     updatedAt: createdAt });
-            await ContractVerify.create(matchRecord).catch(() => undefined);
+            await ContractVerify.create(matchRecord).catch((e) => {
+                safeAddErrorLog('contract',`save-contract-verify-${base32}`, e);
+            });
         }
     }
 
@@ -232,7 +247,10 @@ export class ContractQuery {
                 'proxy', 'implementation', 'proxyPattern', 'codeHash', 'similarMatch', 'guid',
                 'taskStatus', 'notifyStatus', 'createdAt']);
             const verify = lodash.assign(implVerify, proxyVerify, {updatedAt: new Date()});
-            await ContractVerify.update(verify, {where: {id: dbVerify.id}}).catch((error) => console.log(error));
+            await ContractVerify.update(verify, {where: {id: dbVerify.id}}).catch((error) => {
+                safeAddErrorLog('contract',`update-contract-verify`, error);
+                console.log(`${__filename} update contract verify : `, error)
+            });
         }
     }
 
@@ -261,7 +279,10 @@ export class ContractQuery {
 
         // real-time impl info
         const proxyInfo = await this.queryImplementation(base32)
-            .catch((e) => logger?.error({ src: 'queryVerify', msg: e.toString() }));
+            .catch((e) => {
+                safeAddErrorLog('contract',`query-impl-2-${base32}`, e);
+                logger?.error({ src: 'queryVerify', msg: e.toString() })
+            });
         if(proxyInfo?.implementation){
             verified.beacon = proxyInfo.beacon;
             verified.implementation = proxyInfo.implementation;
@@ -521,7 +542,10 @@ export class ContractQuery {
             const contract = cfx.Contract({abi});
             const impl = await contract.implementation()
                 .call({to: beaconHex40}, undefined)
-                .catch(() => undefined);
+                .catch((e) => {
+                    safeAddErrorLog('contract',`call-impl-on-${beaconHex40}`, e);
+                    console.log(`failed to call ${beaconHex40} `, e)
+                });
             implHex40 = format.hexAddress(impl).substr(2)
         }
         if (!implHex40) return result;
@@ -563,7 +587,10 @@ export class ContractQuery {
                 optimizeFlag, optimizeRuns, license, libraries, evmVersion, codeHash});
 
             const creationData = await this.getCreationData({ address })
-                .catch(e => {throw new Errors.QueryCreationDataError(e)});
+                .catch(e => {
+                    safeAddErrorLog('contract',`get-creation-data-${address}`, e);
+                    throw new Errors.QueryCreationDataError(e)
+                });
             const result = await jsonRpc.verifyPlus({address, creationData, deployedBytecode: code, name, sourceCode,
                 compiler, optimizeRuns});
             result.verifyResult = this.getVerifyResult(result.matchCode);
@@ -629,10 +656,19 @@ export class ContractQuery {
 
         try {
             address = format.hexAddress(address);
-            await this.queryVerify({ address }).catch(() => {throw new Errors.ContractVerifyError(`the contract already verified`)});
-            const code = await cfx.getCode(address).catch(() => {throw new Errors.ContractVerifyError(`Unable to locate ContractCode at ${address}`)});
+            await this.queryVerify({ address }).catch((e) => {
+                safeAddErrorLog('contract',`query-verify-${address}`, e);
+                throw new Errors.ContractVerifyError(`the contract already verified`)
+            });
+            const code = await cfx.getCode(address).catch((e) => {
+                safeAddErrorLog('contract',`get-code-${address}`, e);
+                throw new Errors.ContractVerifyError(`Unable to locate ContractCode at ${address}`)
+            });
             const creationData = await this.getCreationData({ address })
-                .catch(e => {throw new Errors.QueryCreationDataError(e)});
+                .catch(e => {
+                    safeAddErrorLog('contract',`get-creation-data-${address}`, e);
+                    throw new Errors.QueryCreationDataError(e)
+                });
 
             const updateVerify = {taskStatus: CONST.TASK_STATUS.PROCESSING};
             const lockResult = await ContractVerify.update(updateVerify, {where: { id,
@@ -676,7 +712,10 @@ export class ContractQuery {
             };
             lodash.assign(updateRecord, CONST.MATCH_STATUS.ERROR);
             lodash.assign(updateRecord, {taskStatus: CONST.TASK_STATUS.DONE});
-            await this.updateVerify(updateRecord).catch((e) => console.log(e));
+            await this.updateVerify(updateRecord).catch((e) => {
+                safeAddErrorLog('contract',`update-verify-${address}`, e);
+                console.log(`${__filename} update verify:`, e)
+            });
         }
     }
 
@@ -768,8 +807,14 @@ export class ContractQuery {
     }
 
     private async run() {
-        await this.processVerify().catch(e => console.log(`schedule doVerify error: ${e.message}`));
-        await this.processSyncAcrossRegion().catch(e => console.log(`schedule notifyVerify error: ${e.message}`));
+        await this.processVerify().catch(e => {
+            safeAddErrorLog('contract',`process-verify`, e);
+            console.log(`schedule doVerify error: ${e.message}`)
+        });
+        await this.processSyncAcrossRegion().catch(e => {
+            safeAddErrorLog('contract',`sync-across-region`, e);
+            console.log(`schedule notifyVerify error: ${e.message}`)
+        });
     }
 
     private async processVerify() {

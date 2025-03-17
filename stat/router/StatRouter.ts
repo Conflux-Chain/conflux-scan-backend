@@ -91,9 +91,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             from ${T_DAILY_TOKEN_TXN} group by day order by day desc limit ?`
         const list = await statApp.sequelize.query(sql,
             {type: QueryTypes.SELECT, replacements:[limit]}
-        ).catch(err=>{
-            console.log(`${ctx.request.url} fail:`, err)
-        })
+        )
 
         ctx.body = {list}
     })
