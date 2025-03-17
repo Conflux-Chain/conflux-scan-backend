@@ -756,7 +756,10 @@ function rewriteCallContractError(e: Error|any, fn: string) {
 
 
 function handlerCallError(biz: string, err: Error) {
-    if (err.message === 'Transaction reverted') {
+    if (err.message === 'Transaction reverted'
+    || err.message === '{"message":"length not match","expect":2,"got":0,"stream":{"string":"0x","index":2}}'
+    || err.message === '{"message":"length not match","expect":64,"got":0,"stream":{"string":"0x","index":2}}'
+    ) {
         console.log(`failed to call ${biz} , message ${err.message}`)
         return;
     }
