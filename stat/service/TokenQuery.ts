@@ -18,6 +18,7 @@ import {CONST} from "./common/constant"
 import {NAME_TAG_SPLIT} from "./EpochSync";
 import {Errors} from "./common/LogicError";
 import {NameTag} from "../model/NameTag";
+import {ScanCtx} from "../../scan-api/service/index";
 
 const lodash = require('lodash');
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
@@ -338,14 +339,14 @@ export class TokenQuery {
 
     private async getTokenInfo(base32) {
         const {
-            app: {tokenTool, cfx},
-        } = this;
+            app: {tokenTool},
+        } = this as unknown as ScanCtx;
 
         const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
-        const toolkit = tokenTool || cfx;
+        const toolkit = tokenTool;
         const [tokenBasic, totalSupply, transferInfo] = await Promise.all([
-            toolkit.getToken(base32),
-            toolkit.getTokenTotalSupply(base32),
+            toolkit.getToken(base32, undefined, true),
+            toolkit.getTokenTotalSupply(base32, undefined, true),
             TokenQuery.getTransferInfo(hex40?.id),
         ]);
 
