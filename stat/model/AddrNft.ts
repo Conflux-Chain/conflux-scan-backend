@@ -107,9 +107,11 @@ export class AddressNfts extends Model<IAddressNfts> implements IAddressNfts {
             tableName: T_ADDRESS_NFTS,
             timestamps: false,
             indexes: [
-                {name: 'uk_aid_cid_tid', fields:['addressId','contractId','tokenId'], unique: true},// query by address
-                {name: 'idx_aid_type', fields:['addressId', 'type', 'updatedAt']},// query by address and type
-                {name: 'idx_cid_updateTime', fields:['contractId', 'updatedAt']},// query by contract
+                {name: 'uk_aid_cid_tid', fields:['addressId','contractId','tokenId'], unique: true},
+                {name: 'idx_aid_cid_cur_val', fields:['addressId', 'contractId', 'updatedCursor', 'value']},
+                {name: 'idx_cid_cur_val', fields:['contractId', 'updatedCursor', 'value']},
+                {name: 'idx_aid_cid_updateTime', fields:['addressId', 'contractId', 'updatedAt']},
+                {name: 'idx_cid_updateTime', fields:['contractId', 'updatedAt']},
             ]
         })
     }
