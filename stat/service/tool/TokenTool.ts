@@ -37,7 +37,9 @@ export class TokenTool {
         this.contract = cfx.Contract({abi});
     }
 
-    async getToken(address: string, epochNumber = undefined, useCache = false): Promise<any> {
+    async getToken(address: string, epochNumber = undefined, useCache = false): Promise<{
+        address: string, name: string, symbol: string, decimals: number, granularity: number,
+    }> {
         if (useCache) {
             const cache = dbCache.get(address);
             if (cache) {

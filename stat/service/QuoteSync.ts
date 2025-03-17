@@ -5,6 +5,9 @@ import {toBase32} from "./tool/AddressTool";
 import {StatApp} from "../StatApp";
 import {format} from "js-conflux-sdk";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {ScanApp} from "../../scan-api/service/index";
+import {TokenTool} from "./tool/TokenTool";
+import {formatToBase32} from "../model/HexMap";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -326,7 +329,7 @@ export class QuoteSync {
 
     //======================================================================
     private async swap(routerAddr, usdtAddr, directSwap, forwardSwap, backwardSwap) {
-        const {cfx, tokenTool} = this.app;
+        const {cfx, tokenTool} = this.app as ScanApp;
         const tokenPriceMap = {};
 
         // direct swap
@@ -334,7 +337,7 @@ export class QuoteSync {
         const contractRouter = cfx.Contract({address: routerAddr, abi: abiSwappiRouter});
         for (const token0 of directConvertTokens) {
             const [amount0, amount1] = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
-            const token0Decimals = (await tokenTool.getToken(token0)).decimals;
+            const token0Decimals = await getDecimals(tokenTool, token0); // (await tokenTool.getToken(token0)).decimals;
             if(amount0 === BigInt(0)) continue
             tokenPriceMap[token0] = BigFixed(amount1).div(BigFixed(amount0)).div(BigFixed(10).pow(18 - token0Decimals))
                 .toNumber();
@@ -346,8 +349,8 @@ export class QuoteSync {
             const {token1} = forwardSwap[token0];
             const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
             const ratio2 = await contractRouter.getAmountsOut(100000, [token1, usdtAddr]);
-            const token0Decimals = (await tokenTool.getToken(token0)).decimals;
-            const token1Decimals = (await tokenTool.getToken(token1)).decimals;
+            const token0Decimals = await getDecimals(tokenTool, token0); // (await tokenTool.getToken(token0)).decimals;
+            const token1Decimals = await getDecimals(tokenTool, token1); // (await tokenTool.getToken(token1)).decimals;
             if(ratio1[0] === BigInt(0) || ratio2[0] === BigInt(0)) continue
             tokenPriceMap[token0] = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).div(BigFixed(10).pow(token1Decimals - token0Decimals))
                 .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token1Decimals)))
@@ -360,8 +363,8 @@ export class QuoteSync {
             const {token0} = backwardSwap[token1];
             const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
             const ratio2 = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
-            const token0Decimals = (await tokenTool.getToken(token0)).decimals;
-            const token1Decimals = (await tokenTool.getToken(token1)).decimals;
+            const token0Decimals = await getDecimals(tokenTool, token0); // (await tokenTool.getToken(token0)).decimals;
+            const token1Decimals = await getDecimals(tokenTool, token1); // (await tokenTool.getToken(token1)).decimals;
             if(ratio1[1] === BigInt(0) || ratio2[0] === BigInt(0)) continue
             tokenPriceMap[token1] = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).div(BigFixed(10).pow(token0Decimals - token1Decimals))
                 .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token0Decimals)))
@@ -395,4 +398,13 @@ export class QuoteSync {
             }
         });
     }
+}
+
+async function getDecimals(tokenTool: TokenTool, addr: string) {
+    const base32 = formatToBase32(addr);
+    const token = await Token.findOne({where: {base32}, attributes: ['decimals'], raw: true});
+    if (token?.decimals) {
+        return token.decimals;
+    }
+    return tokenTool.contract.decimals().call({to: addr}, ).then(Number);
 }
