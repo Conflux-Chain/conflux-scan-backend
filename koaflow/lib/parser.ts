@@ -107,7 +107,7 @@ function $or(schema) {
     }
 
     const or = errorArray.map(e => (e.or ? e.or : e));
-    const message = lodash.flattenDeep(or).map(e => `(${e.message?.replace('"', "")})`).join(' or ');
+    const message = lodash.flattenDeep(or).map(e => `(${e.message?.replaceAll('"', "")})`).join(' or ');
     throw new ParserError(`not match any ${message}`, { or });
   });
 }
