@@ -115,7 +115,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result = await statApp.tokenQuery.query({address});
         if(!result?.isRegistered){
             const token = await statApp.tokenQuery.detectToken(address);
-            if(token?.reason){
+            // remove at least transfer restriction on token detail page
+            if(token?.reason && !token.reason.includes('token transfer record not exist')){
                 throw new Errors.NotTokenError(
                     JSON.stringify({
                         contract: StatApp.isEVM? token.hex : token.base32,
