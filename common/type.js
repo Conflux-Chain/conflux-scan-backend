@@ -4,8 +4,8 @@ const {type} = require('../koaflow/lib/type');
 const { format } = require('js-conflux-sdk');
 
 type.unsigned = type.integer.$validate((v) => v >= 0);
-type.hex40 = type.string.$validate((v) => /^0x[0-9a-f]{40}$/.test(v)).$parse((v) => v.toLowerCase(), 'hex40');
-type.hex64 = type.string.$validate((v) => /^0x[0-9a-f]{64}$/.test(v)).$parse((v) => v.toLowerCase(), 'hex64');
+type.hex40 = type.string.$validate((v) => /^0x[0-9a-f]{40}$/.test(v), 'hex40').$parse((v) => v.toLowerCase());
+type.hex64 = type.string.$validate((v) => /^0x[0-9a-f]{64}$/.test(v), 'hex64').$parse((v) => v.toLowerCase());
 type.bigInt = type(BigInt);
 type.address = type(format.hexAddress);
 
