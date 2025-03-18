@@ -17,17 +17,7 @@ class ConfluxSDK extends Conflux {
     this.contract = this.Contract({ abi });
   }
 
-  /*async getEpochByEpochNumber(epochNumber) {
-    const now = Math.floor(Date.now() / 1000);
-    const pivotBlock = await this.getBlockByEpochNumber(epochNumber);
-
-    return {
-      epochNumber,
-      pivotHash: pivotBlock.hash,
-      parentHash: pivotBlock.parentHash,
-      timestamp: lodash.min([pivotBlock.timestamp, now]), // XXX: for filter negative timestamp
-    };
-  }
+  /*
 
   async getToken(address, epochNumber) {
     return tool.awaitObject({

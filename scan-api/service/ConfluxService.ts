@@ -180,7 +180,7 @@ export class ConfluxService {
       app: { ttlMap, tokenTool },
     } = this as ScanCtx;
 
-    return ttlMap.cache(`ConfluxService.getEpochByEpochNumber(${epochNumber})`,
+    return ttlMap.cache(`ConfluxService.get-Epoch-By-EpochNumber(${epochNumber})`,
       () => tokenTool.getEpochByEpochNumber(epochNumber),
       //   { isSave: this._calculateIsSave(epochNumber) },
       // ),
