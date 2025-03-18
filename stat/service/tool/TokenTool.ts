@@ -1,4 +1,5 @@
 import {Conflux, format} from "js-conflux-sdk";
+import {PARSER_ERROR} from "js-conflux-sdk/src/ERROR_CODES";
 import {Op} from 'sequelize'
 import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
@@ -763,6 +764,7 @@ function handlerCallError(biz: string, err: Error) {
     || err.message === '{"message":"length not match","expect":64,"got":0,"stream":{"string":"0x","index":2}}'
     || err.message === 'Transaction execution failed' // internal contract outputs
     || err.message?.startsWith('execution reverted') // evm
+    || ( err.message?.startsWith('(Invalid input|args)') && err["code"] === PARSER_ERROR ) // invalid response, decoding failure
     ) {
         console.log(`failed to call ${biz} , message ${err.message}`)
         return;

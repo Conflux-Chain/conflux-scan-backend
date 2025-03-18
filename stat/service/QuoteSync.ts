@@ -30,7 +30,7 @@ export class QuoteSync {
         return await TokenQuoteTrack.findOne({where: {[Op.and]: [{address}, {convertSymbol}]}});
     }
 
-    public async schedule(delay: number = 1000) {
+    public async schedule(delay: number = 60_000) {
         console.log(`schedule token_quote sync with delay: ${delay}`)
         const that = this
 
