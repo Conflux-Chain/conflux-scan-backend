@@ -11,6 +11,10 @@ function ensureDirectoryExistence(filePath) {
     ensureDirectoryExistence(dirname);
     fs.mkdirSync(dirname);
 }
+export function getAppEntryName() {
+    const [,entry,] = process.argv;
+    return parseAppEntryName(entry);
+}
 function parseAppEntryName(str) {
     return str.split('/').slice(-1)[0].split('.')[0]
 }
