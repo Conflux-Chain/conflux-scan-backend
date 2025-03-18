@@ -23,7 +23,8 @@ class ParserContext {
   }
 
   error(message, options = {}) {
-    return new ParserError(`path="${this.path.join('.')}", ${message}`, { ...this, ...options });
+    const pathInfo = this.path.length ? `path='${this.path.join('.')}', ` : '';
+    return new ParserError(`${pathInfo}${message}`, { ...this, ...options });
   }
 }
 
@@ -86,7 +87,7 @@ function $after(func) {
 function $validate(func, name) {
   return $after.call(this, value => {
     if (!func(value)) {
-      throw new Error(`${value} do not match "${name || func.name || '$validate'}"`);
+      throw new Error(`${value} do not match '${name || func.name || '$validate'}'`);
     }
     return value;
   });
