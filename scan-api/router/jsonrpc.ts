@@ -645,7 +645,7 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
   async function ({ transferType, ...options }) {
     const {
       app: { tool, service, logger, tokenTool },
-    } = this;// as ScanCtx;
+    } = this as ScanCtx;
 
     const accountBase32 = options.accountAddress !== undefined
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
@@ -658,10 +658,10 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
         each.decimals = 18;
       } else {
-        const token = await tokenTool.getToken(each.address, undefined, true) || {};
-        each.name = token.name;
-        each.symbol = token.symbol;
-        each.decimals = token.decimals || 0;
+        const token = await tokenTool.getToken(each.address, undefined, true);
+        each.name = token?.name;
+        each.symbol = token?.symbol;
+        each.decimals = token?.decimals || 0;
       }
       if (transferType === CONST.TRANSFER_TYPE.ERC721) {
         each.value = 1;
@@ -741,7 +741,7 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
               'DateTime',
           ])
       }
-    const token = contractBase32 ? await tokenTool.getToken(contractBase32) : {};
+    const token = contractBase32 ? await tokenTool.getToken(contractBase32) : null;
     return {address: accountBase32, contract: contractBase32, tokeSymbol: token?.symbol, transferType, list, exportFields};
   },
 

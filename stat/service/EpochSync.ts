@@ -35,12 +35,13 @@ import {
     KV
 } from "../model/KV";
 import {StatOnRealtime} from "./timerstat/StatOnRealtime";
-import {Conflux, CONST as SDK_CONST, format} from "js-conflux-sdk";
+import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
 import {CfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {sleep} from "./tool/ProcessTool";
 import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {ScanCtx} from "../../scan-api/service/index";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -454,7 +455,7 @@ export class EpochSync extends SyncBase {
     private async getAnnounceInfo(epochNumber, announceArray) {
         const {
             app: {tokenTool},
-        } = this;
+        } = this as unknown as ScanCtx;
 
         let tokenMap = {};
         let contractMap = {};
@@ -601,7 +602,7 @@ export class EpochSync extends SyncBase {
     private async getToken(hex40id, hexAddress, transferType) {
         const {
             app: {tokenTool},
-        } = this;
+        } = this as unknown as ScanCtx;
 
         const cacheToken = this.nodeCache.get(hexAddress)
         if (cacheToken) {

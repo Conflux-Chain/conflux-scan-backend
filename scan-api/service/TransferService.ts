@@ -15,7 +15,7 @@ export class TransferService {
   async _fill(transfer, fields) {
     const {
       app: { service, tokenTool },
-    } = this;
+    } = this as ScanCtx;
 
     let token = {};
     if (lodash.intersection(fields, TOKEN_FIELDS).length) {

@@ -346,7 +346,7 @@ export class TokenQuery {
         const toolkit = tokenTool;
         const [tokenBasic, totalSupply, transferInfo] = await Promise.all([
             toolkit.getToken(base32, undefined, true),
-            toolkit.getTokenTotalSupply(base32, undefined, true),
+            toolkit.getTokenTotalSupply(base32, undefined, false),
             TokenQuery.getTransferInfo(hex40?.id),
         ]);
 
@@ -413,9 +413,9 @@ export class TokenQuery {
     public async detectToken(base32){
         const {
             app: {tokenTool, cfx},
-        } = this;
+        } = this as unknown as ScanCtx;
 
-        const toolkit = tokenTool || cfx;
+        const toolkit = tokenTool;
         let [tokenInfo, interface721, interface1155, typeInfo] = await Promise.all([
             toolkit.getToken(base32),
             toolkit.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC721),

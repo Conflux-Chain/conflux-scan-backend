@@ -34,6 +34,7 @@ import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
 import {ITraceCreateContract, TraceCreateContract} from "./model/TraceCreateContract";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
+import {StatApp} from "./StatApp";
 
 export interface ICfxUser {
     id?: number
@@ -290,6 +291,7 @@ async function setup() {
     }
     redirectLog()
     const cfx = await initCfxSdk(cfxOpt);
+    StatApp.networkId = cfx.networkId;
     setTimeout(()=>runHolder(cfx).then(), 5_000);
     runMarker().then();
     cfx0 = cfx;

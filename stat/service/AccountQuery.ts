@@ -32,7 +32,7 @@ export class AccountQuery {
     }
 
     public async listPatchInfo(addrArray, options : {
-        withContractInfo: boolean, withESpaceInfo: boolean, withEns: boolean, withNameTag: boolean
+        withContractInfo?: boolean, withESpaceInfo?: boolean, withEns?: boolean, withNameTag?: boolean
     } = {withContractInfo: true, withESpaceInfo: true, withEns: true, withNameTag: true}) {
         const hexArray = [...new Set(addrArray?.filter(Boolean).map(item => format.hexAddress(item)))];
         if (hexArray.length === 0) {

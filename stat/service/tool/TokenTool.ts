@@ -12,6 +12,7 @@ import {StatApp} from "../../StatApp";
 import {ethers} from "ethers";
 import {decodeTxData} from "./TxTool";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
+import {Contract} from "../../model/Contract";
 
 const abi = require('./abi');
 const fs = require('fs');
@@ -51,18 +52,18 @@ export class TokenTool {
             address,
             name: this.contract.name()
                 .call({to: address}, epochNumber)
-                .catch((e) => handlerCallError(`name-${address}`, e)),
+                .catch((e) => handlerCallError(`name`, address, e)),
             symbol: this.contract.symbol()
                 .call({to: address}, epochNumber)
-                .catch((e) => handlerCallError(`symbol-${address}`, e)),
+                .catch((e) => handlerCallError(`symbol`, address, e)),
             decimals: this.contract.decimals()
                 .call({to: address}, epochNumber)
                 .then(Number)
-                .catch((e) => handlerCallError(`decimals-${address}`, e)),
+                .catch((e) => handlerCallError(`decimals`,address, e)),
             granularity: this.contract.granularity()
                 .call({to: address}, epochNumber)
                 .then(Number)
-                .catch((e) => handlerCallError(`granularity-${address}`, e)),
+                .catch((e) => handlerCallError(`granularity`, address, e)),
         }).then(obj=>{
             try {
                 dbCache.set(address, obj, cacheTtl)
@@ -760,7 +761,8 @@ function rewriteCallContractError(e: Error|any, fn: string) {
 }
 
 
-function handlerCallError(biz: string, err: Error) {
+function handlerCallError(fn: string, addr: string, err: Error) {
+    const biz = `${fn}-${addr}`;
     if (err.message === 'Transaction reverted'
     || err.message === '{"message":"length not match","expect":2,"got":0,"stream":{"string":"0x","index":2}}'
     || err.message === '{"message":"length not match","expect":64,"got":0,"stream":{"string":"0x","index":2}}'
@@ -769,8 +771,39 @@ function handlerCallError(biz: string, err: Error) {
     || ( err.message?.startsWith('(Invalid input|args)') && err["code"] === PARSER_ERROR ) // invalid response, decoding failure
     ) {
         console.log(`failed to call ${biz} , message ${err.message}`)
+        if (fn == 'name' || fn == 'symbol') {
+            saveNameSymbolFailure(addr);
+        }
         return;
     }
     safeAddErrorLog('token-tool', biz, err).then();
     console.log(`failed to call ${biz} , message ${err.message}`, err)
+}
+
+async function saveNameSymbolFailure(addr: string) {
+    if (!Contract.sequelize) {
+        return
+    }
+    const hexId = await getAddrId(addr);
+    if (!hexId) {
+        return;
+    }
+    const contract = await Contract.findOne({where: {base32: addr}});
+    if (contract?.nameSymbolFailed) {
+        return;
+    }
+    if (contract) {
+        contract.nameSymbolFailed = true;
+        contract.save().catch(e=>{
+            console.log(`${__filename} save name-symbol failure:`, e)
+        })
+    } else {
+        Contract.upsert({
+            hex40id: hexId, base32: addr,
+            nameSymbolFailed: true
+        }).catch(e=>{
+            safeAddErrorLog('token-tool', `save-name-symbol-failure-${addr}`, e);
+            console.log(`${__filename} upsert name-symbol failure:`, e)
+        })
+    }
 }

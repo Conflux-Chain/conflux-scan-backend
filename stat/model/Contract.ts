@@ -13,6 +13,7 @@ export interface IContract{
     icon?:number
     destroyed?:boolean
     censorStatus?: number
+    nameSymbolFailed?: boolean;
     createdAt?: Date
 }
 
@@ -28,6 +29,7 @@ export class Contract extends Model<IContract> implements IContract{
     icon?:number
     destroyed?:boolean
     censorStatus?: number
+    nameSymbolFailed?: boolean;
     createdAt?: Date
 
     static register(seq:Sequelize) {
@@ -35,13 +37,14 @@ export class Contract extends Model<IContract> implements IContract{
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             epoch: {type: DataTypes.BIGINT, allowNull: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
-            hex40id: {type: DataTypes.BIGINT, allowNull: false, },
+            hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true},
             name: {type: DataTypes.CHAR(255), allowNull: true},
             website: {type: DataTypes.CHAR(255), allowNull: true},
             abi: {type: DataTypes.TEXT, allowNull: true, },
             sourceCode: {type: DataTypes.TEXT({length:'long'}), allowNull: true, },
             icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
             destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+            nameSymbolFailed: {type: DataTypes.BOOLEAN, allowNull: true, defaultValue: null},
             censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
         },{
             tableName: 'contract',
@@ -51,16 +54,7 @@ export class Contract extends Model<IContract> implements IContract{
     }
 
     static async add(contract: Contract, dbTx = undefined): Promise<IContract> {
-        return await Contract.create({
-            base32:contract.base32,
-            epoch: contract.epoch,
-            hex40id:contract.hex40id,
-            name:contract.name,
-            website:contract.website,
-            abi:contract.abi,
-            sourceCode:contract.sourceCode,
-            icon:contract.icon,
-        }, {
+        return await Contract.create(contract, {
             transaction: dbTx
         }).catch(err=>{
             if (err instanceof UniqueConstraintError) {
