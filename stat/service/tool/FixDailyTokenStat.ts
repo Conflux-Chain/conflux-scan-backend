@@ -15,7 +15,6 @@ import {Op, Sequelize, Options, QueryTypes} from "sequelize"
 import {Token} from "../../model/Token";
 import {BalanceWatcher} from "../watcher/BalanceWatcher";
 import {RankService} from "../RankService";
-import {ContractService} from "../contract/ContractService";
 import {calcDailyTokenTxn, calcOneDayUniqueAddrAndTokenTxn} from "../UniqueAddressStat";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
@@ -128,7 +127,6 @@ export async function fixParticipants(fromT: Date) {
 }
 
 async function testRank() {
-    new ContractService('',1)
     const svc = new RankService({tokenQuery:{list:()=>undefined}, tokenTool:{getToken:()=>{return {}}}})
     await svc.rankByToken('daily_token','transferCount', 1, 10, 1029);
 }

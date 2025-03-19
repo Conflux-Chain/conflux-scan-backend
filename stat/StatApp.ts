@@ -7,7 +7,6 @@ import {Conflux, format} from "js-conflux-sdk";
 import {initOss, TokenTool} from "./service/tool/TokenTool";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {BalanceService} from "./service/watcher/BalanceService";
-import {ContractService} from "./service/contract/ContractService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {DailyTxnQuery} from "./service/DailyTxnQuery";
@@ -51,7 +50,6 @@ export class StatApp{
     public cfx: Conflux;
     public eth: JsonRpcProvider;
     public fullStateCfx: Conflux;
-    public contractService: ContractService;
     public batchBalanceWatcher: BatchBalanceWatcher;
     public cfxWatcher:CfxWatcher;
     public posQuery: PosQuery
@@ -117,8 +115,6 @@ export class StatApp{
         this.balanceService = new BalanceService(this, StatApp.networkId)
         this.balanceService.schedule(60_000)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
-        this.contractService = new ContractService(this.config.scanApiUrl, StatApp.networkId)
-        this.contractService.schedule()
         this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);
         this.cfxHolderQuery = new CfxHolderQuery();
