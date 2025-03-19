@@ -23,7 +23,8 @@ class ParserContext {
   }
 
   error(message, options = {}) {
-    return new ParserError(`path="${this.path.join('.')}", ${message}`, { ...this, ...options });
+    const pathInfo = this.path.length ? `path='${this.path.join('.')}', ` : '';
+    return new ParserError(`${pathInfo}${message}`, { ...this, ...options });
   }
 }
 
@@ -86,7 +87,7 @@ function $after(func) {
 function $validate(func, name) {
   return $after.call(this, value => {
     if (!func(value)) {
-      throw new Error(`${value} do not match "${name || func.name || '$validate'}"`);
+      throw new Error(`${value} do not match '${name || func.name || '$validate'}'`);
     }
     return value;
   });
@@ -106,7 +107,7 @@ function $or(schema) {
     }
 
     const or = errorArray.map(e => (e.or ? e.or : e));
-    const message = lodash.flattenDeep(or).map(e => `(${e.message})`).join(' or ');
+    const message = lodash.flattenDeep(or).map(e => `(${e.message?.replaceAll('"', "")})`).join(' or ');
     throw new ParserError(`not match any ${message}`, { or });
   });
 }

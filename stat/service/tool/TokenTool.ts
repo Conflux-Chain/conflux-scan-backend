@@ -102,10 +102,12 @@ export class TokenTool {
             });
     }
 
-    async getEpochByEpochNumber(epochNumber) {
+    async getEpochByEpochNumber(epochNumber: number) {
         const now = Math.floor(Date.now() / 1000);
         const pivotBlock = await this.cfx.getBlockByEpochNumber(epochNumber);
-
+        if (!pivotBlock) {
+            return null;
+        }
         return {
             epochNumber,
             pivotHash: pivotBlock.hash,

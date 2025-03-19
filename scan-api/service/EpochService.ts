@@ -1,4 +1,4 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 
 const lodash = require('lodash');
 
@@ -10,8 +10,8 @@ export class EpochService {
 
   async query({ epochNumber } = {} as any) {
     const {
-      app: { syncSDK, ttlMap, service },
-    } = this;
+      app: { ttlMap, service },
+    } = this as ScanCtx;
 
     if (!Number.isInteger(epochNumber)) {
       return null;
@@ -20,15 +20,10 @@ export class EpochService {
     return ttlMap.cache(`EpochService.query(${epochNumber})`,
       async () => {
         let epoch;
-        // const rdbSwitch = await KV.getSwitch(KEY_EPOCH_QUERY_RDB_SWITCH);
-        // if (rdbSwitch) {
           epoch = await service.epochRdb.query(epochNumber);
           if (epoch) {
             epoch.timestamp = epoch.timestamp.getTime() / 1000;
           }
-        // } else {
-        //   epoch = await syncSDK.queryEpoch({ epochNumber });
-        // }
 
         return epoch || service.conflux.getEpochByEpochNumber(epochNumber);
       },
