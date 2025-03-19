@@ -1,17 +1,11 @@
-import {decodeUtf8} from "../tool/StringTool";
 
 const lodash = require('lodash');
-import {Balance} from "../../model/Balance";
-import {Token, TOKEN_ERC_1155} from "../../model/Token";
+import {Token} from "../../model/Token";
 import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
-import {Contract} from "../../model/Contract";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
 import {Op, cast, col} from "sequelize";
-import {ContractService} from "../contract/ContractService";
-import {base32toVerbose} from "../tool/AddressTool";
-const BigFixed = require('bigfixed');
 import {fmtAddr, StatApp} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {TokenQuery} from "../TokenQuery";
@@ -103,7 +97,7 @@ export class BalanceService {
                 balance: is1155 ? holder.balance : this.decimal2drip(holder.balance, 18),
                 account: {
                     address,
-                    name: addr ? ContractService.instance.getName(address) : undefined,
+                    name: null, //doesn't work
                 },
                 hexId: holder.addressId,
                 updatedAt: holder['updatedAt'],
