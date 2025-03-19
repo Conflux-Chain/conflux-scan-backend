@@ -16,10 +16,10 @@ import {Token} from "./model/Token";
 import {FullTransaction} from "./model/FullBlock";
 import {buildHexSet, getAddrId, idHex40Map, makeIdV, mapProp} from "./model/HexMap";
 import {StatApp} from "./StatApp";
-import {ContractInfo} from "./model/ContractInfo";
 import {CONST} from "./service/common/constant";
 import {TokenBalance} from "./model/Balance";
 import {patchApprovalList} from "./service/tool/ApprovalTool";
+import {Contract} from "./model/Contract";
 //
 export interface ITokenApproval extends IErc20Transfer {
     type: string // Approval or ApprovalForAll
@@ -191,12 +191,12 @@ export class ApprovalRelation extends Model<IApprovalRelation> implements Approv
         const hexMap = await idHex40Map([...ids], true)
         mapProp(hexMap, list, 'toId', 'to')
         mapProp(hexMap, list, 'contractId', 'contract')
-        const contractNameMap = await ContractInfo.findAll({
-            attributes:['hexId','name'], raw: true,
-            where: {hexId:{[Op.in]:list.map(row=>row.toId)}}
+        const contractNameMap = await Contract.findAll({
+            attributes:['hex40id','name'], raw: true,
+            where: {hex40id:{[Op.in]:list.map(row=>row.toId)}}
         }).then(infos=>{
             const map = {}
-            infos.forEach(i=>map[`${i.hexId}`] = i)
+            infos.forEach(i=>map[`${i.hex40id}`] = i)
             return map;
         })
         list = await patchApprovalList({account, list, cfx})

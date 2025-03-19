@@ -4,7 +4,7 @@ import {StatApp} from "../StatApp";
 import {Context} from "koa";
 const proxy = require('koa-proxy');
 import {Hex40Map} from "../model/HexMap";
-import {AbiInfo, fillMethodInfo, listAllContract} from "../model/ContractInfo";
+import {AbiInfo, fillMethodInfo} from "../model/ContractInfo";
 import {DailyToken, Token} from "../model/Token";
 import {QueryTypes} from "sequelize";
 import {
@@ -200,12 +200,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
                 order:[["epoch","desc"],["blockPosition","desc"],["txPosition","desc"]]})
             await fillMethodInfo(txList)
             ctx.body = {list:txList, pageInfo}
-        }
-    )
-    router.get('/devops/list-contract',
-        async (ctx) => {
-            const list = await listAllContract()
-            ctx.body = {total: list.length, list}
         }
     )
 
