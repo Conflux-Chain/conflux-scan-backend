@@ -1,4 +1,4 @@
-import {Model, Sequelize, DataTypes, UniqueConstraintError} from "sequelize";
+import {DataTypes, Model, QueryTypes, Sequelize, UniqueConstraintError} from "sequelize";
 import {CENSOR_STATUS} from "../service/censor/CensorService";
 
 export interface IContract{
@@ -64,6 +64,16 @@ export class Contract extends Model<IContract> implements IContract{
             throw err;
         })
     }
+}
+
+export async function addNameSymbolFailureColumn(seq: Sequelize) {
+    return seq.query(`alter table ${Contract.getTableName()} add column nameSymbolFailed bool default null`, {
+        type: QueryTypes.UPDATE
+    }).catch(e=>{
+        if (!`${e}`.includes(`already exist`)) {
+            console.log(`failed to add column`, e)
+        }
+    })
 }
 
 export class Contract2 extends Model<IContract> implements IContract{
