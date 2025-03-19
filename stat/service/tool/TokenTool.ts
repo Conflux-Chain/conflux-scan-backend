@@ -39,7 +39,7 @@ export class TokenTool {
         this.contract = cfx.Contract({abi});
     }
 
-    async getToken(address: string, epochNumber = undefined, useCache = false): Promise<{
+    async getToken(address/*base32*/: string, epochNumber = undefined, useCache = false): Promise<{
         address: string, name: string, symbol: string, decimals: number, granularity: number,
     }> {
         if (useCache) {
@@ -48,6 +48,12 @@ export class TokenTool {
                 return cache
             }
         }
+        const savedFailure = await Contract.findOne({where: {base32: address}});
+	    if (savedFailure?.nameSymbolFailed) {
+            return {
+                address, name: null, symbol: null, granularity: null, decimals: null,
+            }
+	    }
         return this.awaitObject({
             address,
             name: this.contract.name()
