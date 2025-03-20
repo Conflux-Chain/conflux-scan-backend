@@ -442,9 +442,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`${accountBase32} not found`);
         }
         let cfxByEpoch;
+        function checkRpcError(e: Error) {
+            if (e["code"] === -32016) { // out of bound
+                throw new Errors.RpcBizError(e.message);
+            }
+            throw e;
+        }
         if (epoch) {
             const epochNumber = Number(epoch)
-            const balance = await statApp.fullStateCfx.getBalance(accountBase32, epochNumber)
+            const balance = await statApp.fullStateCfx.getBalance(accountBase32, epochNumber).catch(checkRpcError)
             const nearestEpoch = await Epoch.findOne({where:{epoch: epochNumber}})
             cfxByEpoch = {epoch, epoch_dt: nearestEpoch?.timestamp || '', balance}
         }
@@ -454,11 +460,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             try {
                 d = new Date(`${dt} 23:59:59`)
             } catch (e) {
-                throw new Error(`invalid parameter, date ${dt}`)
+                throw new Error(`invalid parameter, date [${dt}]`)
             }
             const nearestEpoch = await Epoch.findOne({where:{timestamp:{[Op.lte]:d}}, order:[['timestamp','desc']], limit: 1})
             const epochNumber = nearestEpoch?.epoch || 0
-            const balance = await statApp.fullStateCfx.getBalance(accountBase32, epochNumber)
+            const balance = await statApp.fullStateCfx.getBalance(accountBase32, epochNumber).catch(checkRpcError)
             cfxByDt = {epoch: epochNumber, epoch_dt: nearestEpoch?.timestamp, balance}
         }
         ctx.body = {cfxByEpoch, cfxByDt}
@@ -961,10 +967,10 @@ export function register(app:Koa, statApp: StatApp) {
                 e = new Errors.BizError(e.message);
             }
             if (e.status === undefined || e.status === null) {
+                console.log(`url ${ctx.originalUrl} \nunknown error caught by router:`, e);
+                safeAddErrorLog('stat-router', `stat-500-${e.message}`, e).then()
                 e.status = 500;
                 e.message = "unknown error"
-                console.log("unknown error caught by router:", e);
-                safeAddErrorLog('stat', `stat-500-${e.message}`, e).then()
             }
             ctx.status = e.status;
             ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :

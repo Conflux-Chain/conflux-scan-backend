@@ -78,7 +78,7 @@ export class BatchBalanceWatcher {
             return Promise.all(taskArr);
         }
         return BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
-            safeAddErrorLog('batch-balance-watcher',`get-balances}`, err);
+            safeAddErrorLog('batch-balance-watcher',`get-balances`, err);
             console.log(` getBalances fail: `, err.data)
             console.log(` getBalances fail: `, err)
         });
