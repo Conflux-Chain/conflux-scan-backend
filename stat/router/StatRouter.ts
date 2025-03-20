@@ -433,9 +433,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountBase32');
 
         const {dt, epoch, accountBase32} = ctx.request.query
-        if ( (!dt && !epoch) || !accountBase32) {
-            throw new Errors.ParameterError(`miss parameter, query: ${ctx.request.query}`);
+        if (!accountBase32) {
+            throw new Errors.ParameterError(`miss parameter, accountBase32=[${accountBase32}]`);
         }
+        if (dt && !epoch) {
+            throw new Errors.ParameterError(`miss parameter, dt=[${dt}] OR epoch=[${epoch}]`);
+        }
+
         const hex = format.hexAddress(accountBase32)
         const hexBean = await Hex40Map.findOne({where:{hex: hex.substr(2)}})
         if (hexBean === null) {
