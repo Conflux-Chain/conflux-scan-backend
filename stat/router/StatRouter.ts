@@ -968,6 +968,7 @@ export function register(app:Koa, statApp: StatApp) {
                 { code: 0, message: '', data: ctx.body };
         } catch (e) {
             if(e.code === undefined){
+                console.log(`url ${ctx.originalUrl} \nunhandled error caught by router:`, e);
                 e = new Errors.BizError(e.message);
             }
             if (e.status === undefined || e.status === null) {
