@@ -40,7 +40,7 @@ const alertCtx = {
 	lastErrorTime: new Date().getTime() - 3600_000,
 }
 
-async function reportError(eLog: ErrorLog) {
+async function reportError(eLog: ErrorLog, error: Error) {
 	const nowMs = Date.now();
 	if (nowMs < alertCtx.lastErrorTime + 3600_000) {
 		return;
@@ -50,7 +50,7 @@ async function reportError(eLog: ErrorLog) {
 		return
 	}
 	const {module, biz, detail, count: times} = eLog;
-	await dingMsg(`There was an error:\nmodule: ${module
+	await dingMsg(`There was an error:\n${error.message}\nmodule: ${module
 	}\nbusiness: ${biz}\ntimes: ${times}\ndetail: ${detail}`, ConfigInstance.dingTalkToken);
 }
 
@@ -86,5 +86,5 @@ async function addErrorLog(module: string, biz: string, error: Error) {
 			module, biz, detail: detail, count: 1,
 		})
 	}
-	await reportError(bean)
+	await reportError(bean, error)
 }

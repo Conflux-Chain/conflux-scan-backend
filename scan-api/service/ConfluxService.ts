@@ -99,16 +99,6 @@ export class ConfluxService {
     );
   }
 
-  /*async getToken(address, epochNumber) {
-    const {
-      app: { cfx, ttlMap },
-    } = this;
-
-    return ttlMap.cache(`ConfluxService.getToken(${address},${epochNumber})`,
-      () => cfx.getToken(address, epochNumber),
-      { ttl: 60 * 60 * 1000 },
-    );
-  }*/
 
   async isToken(address, epochNumber = undefined) {
     const {
@@ -119,16 +109,7 @@ export class ConfluxService {
     return name !== undefined && symbol !== undefined;
   }
 
-  /*async getTokenTotalSupply(address, epochNumber) {
-    const {
-      app: { cfx, ttlMap },
-    } = this;
-
-    return ttlMap.cache(`ConfluxService.getTokenTotalSupply(${address},${epochNumber})`,
-      () => cfx.getTokenTotalSupply(address, epochNumber),
-      { ttl: 60 * 1000 },
-    );
-  }
+  /*
 
   async getTokenAccountCount(address, epochNumber) {
     const {

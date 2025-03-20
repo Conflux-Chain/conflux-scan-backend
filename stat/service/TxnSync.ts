@@ -96,14 +96,12 @@ export class TxnSync {
             tx.rank = rank++
             tx.hex = `0x${tx.hex}`
             tx.base32 = this.base32(tx.hex, networkId)
-            if(tx.hex.startsWith('0x8')){
-                addressArray.push(tx.base32);
-            }
+            addressArray.push(tx.base32);
         })
 
         // add contract info and token info
         const accountBasic = await accountQuery.listPatchInfo(addressArray);
-        list.filter(item => item.hex.startsWith('0x8')).forEach(item => {
+        list.forEach(item => {
             item.tokenInfo = accountBasic.map[item.base32]?.token || {};
             item.contractInfo = accountBasic.map[item.base32]?.contract || {};
             item.ensInfo = accountBasic.map[item.base32]?.ens || {};
