@@ -436,7 +436,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (!accountBase32) {
             throw new Errors.ParameterError(`miss parameter, accountBase32=[${accountBase32}]`);
         }
-        if (dt && !epoch) {
+        if (!dt && !epoch) {
             throw new Errors.ParameterError(`miss parameter, dt=[${dt}] OR epoch=[${epoch}]`);
         }
 
