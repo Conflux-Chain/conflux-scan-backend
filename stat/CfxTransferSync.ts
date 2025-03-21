@@ -98,7 +98,10 @@ export async function getCfxTransferTraces(epoch: number)
             return txMap
         }),
         FullBlock.findAll({where: {epoch}, order:[['position','asc']], raw: true, transaction: _dbTx,}),
-        cfx.getBlockByEpochNumber(epoch),
+        cfx.getBlockByEpochNumber(epoch).catch(e=>{
+            console.log(`failed to get block `, e)
+            return null;
+        }),
     ])
     if (_dbTx) {
         _dbTx.rollback().catch()
