@@ -25,7 +25,7 @@ export class HomeDashboardService{
         return this.data;
     }
 
-    public async schedule(delay: number = 5000) {
+    public async schedule(delay: number = 1000) {
         const{ logger } = this.app;
 
         logger?.info({src: 'HomeDashboardService', msg: `schedule home_dashboard_service with delay: ${delay}`})
