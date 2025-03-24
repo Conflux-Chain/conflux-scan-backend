@@ -143,7 +143,7 @@ export class ApiServer {
         apiService.jsonRpc = new JsonRPCSDK(config.jsonRpc);
         apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config, jsonRpc: apiService.jsonRpc,
             tokenQuery: apiService.tokenQuery, tokenTool})
-        apiService.ipfsGatewaySync = new IPFSGatewaySync(apiApp);
+        apiService.ipfsGatewaySync = new IPFSGatewaySync();
         apiService.txnQuery = new TxnQuery()
         apiService.txnSync = new TxnSync({cfx: this.cfx, accountQuery})
         apiService.traceCreateQuery = new BlockTraceCreateQuery({cfx: this.cfx});

@@ -121,7 +121,7 @@ export class StatApp{
         this.tokenQuery = new TokenQuery(this);
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
         this.siteVerify = new ReportService(this);
-        this.ipfsGatewaySync = new IPFSGatewaySync(this);
+        this.ipfsGatewaySync = new IPFSGatewaySync();
         this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
         this.contractStatQuery = new DailyContractStatQuery();
