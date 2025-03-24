@@ -48,7 +48,7 @@ export class TokenTool {
                 return cache
             }
         }
-        const savedFailure = await Contract.findOne({where: {base32: address}});
+        const savedFailure = Contract.sequelize ? await Contract.findOne({where: {base32: address}}) : null;
 	    if (savedFailure?.nameSymbolFailed) {
             return {
                 address, name: null, symbol: null, granularity: null, decimals: null,

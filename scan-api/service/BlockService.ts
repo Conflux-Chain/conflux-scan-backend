@@ -1,4 +1,4 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 import {QueryTypes} from "sequelize";
 import {queryEvmBlockCountInEachEpoch} from "../../stat/service/FullBlockQuery";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
@@ -23,7 +23,7 @@ export class BlockService {
   async query({ hash, fields } = {} as any) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     if (!hash) {
       return null;

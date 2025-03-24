@@ -1,34 +1,30 @@
 import {router} from "./router";
-import {serviceLoader} from "./service";
-import {fmtAddr} from "../stat/StatApp";
-
+import {ScanServices, serviceLoader} from "./service";
+import {fmtAddr, StatApp} from "../stat/StatApp";
 import {AppBase} from "./AppBase";
-
 const lodash = require('lodash');
-const { address, format } = require('js-conflux-sdk');
-const { Sequelize } = require('sequelize');
+import { Sequelize } from 'sequelize';
+import {checkRate, loadRateConfig} from "../stat/router/RateLimiter";
+import {setSwStatFn} from "../stat/router/StatRouter";
+import {initPartialModel} from "../stat/service/DBProvider";
+import ApiDef from "../stat/router/ApiDef";
+import {jsonrpc} from "./router/jsonrpc";
+import {saveApiLog} from "../stat/monitor/ApiLog";
+import {IS_EVM2, KEY_EVM_VERSIONS, KV} from "../stat/model/KV";
+import {setCfxRpcUrl} from "../koaflow/lib/flow/JsonRPCFlow";
+import {CONST as CONST_TS} from "../stat/service/common/constant";
+import {format} from "js-conflux-sdk";
+
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const {parameterErrorCode} = require('../common/error')
 const JsonRPCSDK = require('../common/JsonRPCSDK');
-
-
-const {jsonrpc} = require('./router/jsonrpc');
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
-const { StatApp } = require('../stat/StatApp');
-const { checkRate, loadRateConfig } = require("../stat/router/RateLimiter");
-const { setSwStatFn } = require("../stat/router/StatRouter");
-const { initPartialModel } = require('../stat/service/DBProvider');
-const ApiDef = require("../stat/router/ApiDef");
-const { saveApiLog } = require("../stat/monitor/ApiLog");
-const { KV, IS_EVM2, KEY_EVM_VERSIONS } = require('../stat/model/KV');
-const {setCfxRpcUrl} = require("../koaflow/lib/flow/JsonRPCFlow");
-const { CONST: CONST_TS }  = require('../stat/service/common/constant');
-
 export class ApiApp extends AppBase {
-  static injectedSequelize;
-  static injectContext(seq) {
+  service: ScanServices;
+  static injectedSequelize: Sequelize;
+  static injectContext(seq: Sequelize) {
     this.injectedSequelize = seq;
   }
   constructor(config) {
@@ -114,7 +110,7 @@ export class ApiApp extends AppBase {
         return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
       }).join('/');
     });
-    const pathDef = process.env['unified_mod'] ? ApiDef.default.paths : {};
+    const pathDef = process.env['unified_mod'] ? ApiDef.paths : {};
     pathArr.forEach((p) => {
       pathDef[p] = { get: {} };
     });

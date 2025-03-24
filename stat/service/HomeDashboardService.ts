@@ -4,6 +4,7 @@ import {ADDRESS_COUNT_ALL, CONTRACT_COUNT_ALL, KEY_FULL_TX_COUNT, KEY_GAS_USED_P
 import {AddressTransactionIndex, FullBlock} from "../model/FullBlock";
 import {CONST} from "./common/constant"
 import {PruneInfo, PruneType} from "../model/PruneInfo";
+import {ScanCtx} from "../../scan-api/service/index";
 
 const lodash = require('lodash');
 
@@ -72,16 +73,25 @@ export class HomeDashboardService{
     async dagInfo({ limit = 10 } = {}) {
         const {
             app: { cfx },
-        } = this;
-
-        const epochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
+        } = this as unknown as ScanCtx;
+        let ready = true;
+        const epochNumber = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).then(res=>{
+            return res - 5;
+        });
         const matrix = await Promise.all(lodash.range(limit).map(async (index) => {
-            const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber - index);
+            const blockHashArray = await cfx.getBlocksByEpochNumber(epochNumber - index).catch(e=>{
+                if (e.code === -32602) {
+                    //  Invalid params: expected a numbers with less than largest epoch number.
+                    ready = false;
+                    return [] as string[]
+                }
+                throw e;
+            });
             const blockArray = await Promise.all(blockHashArray.map((hash) => cfx.getBlockByHash(hash)));
             return [...blockArray].reverse();
         }));
 
-        return {total: epochNumber, list: matrix};
+        return {total: epochNumber, list: matrix, ready};
     }
 
     async internalContractInfo({ limit = 10 } = {}) {
@@ -110,7 +120,7 @@ export class HomeDashboardService{
         supplyInfo !== undefined && lodash.assign(this.data.supplyInfo, supplyInfo);
 
         const dagInfo = await this.dagInfo().catch(() => undefined);
-        dagInfo !== undefined && lodash.assign(this.data.dagInfo, dagInfo);
+        dagInfo !== undefined && dagInfo.ready && lodash.assign(this.data.dagInfo, dagInfo);
 
         const internalContractInfo = await this.internalContractInfo().catch(() => undefined)
         internalContractInfo !== undefined && lodash.assign(this.data.internalContractInfo, internalContractInfo)
