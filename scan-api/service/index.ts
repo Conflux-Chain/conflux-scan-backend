@@ -111,5 +111,5 @@ export function serviceLoader(app) {
     ensCheckerQuery: new ENSCheckerQuery(app),
     accountQuery: new AccountQuery(app),
     censor: new CensorService(app),
-  };
+  } as ScanServices;
 }

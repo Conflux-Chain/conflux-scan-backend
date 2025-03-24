@@ -206,7 +206,7 @@ export class ConfluxService {
   async getBlockByEpochNumber(epochNumber, detail) {
     const {
       app: { CONST, cfx, ttlMap },
-    } = this;
+    } = this as ScanCtx;
 
     return ttlMap.cache(`ConfluxService.getBlockByEpochNumber(${epochNumber},${detail})`,
       async () => {
@@ -247,7 +247,7 @@ export class ConfluxService {
   async getBlockByHash(blockHash:string, detail=false) {
     const {
       app: { CONST, cfx, ttlMap },
-    } = this;
+    } = this as ScanCtx;
 
     return ttlMap.cache(`ConfluxService.getBlockByHash(${blockHash},${detail})`,
       async () => {
@@ -261,7 +261,7 @@ export class ConfluxService {
         }
 
         if (detail) {
-          block.transactions.forEach((transaction) => {
+          (block.transactions as any[]).forEach((transaction) => {
             if (block.epochNumber === 0) {
               transaction.blockHash = block.hash;
               transaction.status = CONST.TX_STATUS.SUCCESS;
