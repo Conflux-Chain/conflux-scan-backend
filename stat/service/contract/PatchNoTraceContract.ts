@@ -68,6 +68,10 @@ async function check() {
 			break
 		}
 		maxTraceId = c.id;
+		if (c.epoch == null) {
+			// nameSymbolFailed records
+			continue;
+		}
 		const dbTx = await FullTransaction.findOne({where: {epoch: c.epoch, contractCreatedId: c.hex40id}});
 
 		if (!dbTx && !tokenContracts[c.hex40id]) {
