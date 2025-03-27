@@ -68,7 +68,7 @@ import {NFTOwnerCount, TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
 import {RateConfig, RateHit, RateKey} from "../router/RateLimiter";
 import {createAddressTransferTable, EpochAddressIds} from "../model/AddrTransfer";
-import {createNftMetaPartition, NftMetaFts, NftMetaOld} from "./nftchecker/NftMetaStorage";
+import {createNftMetaPartition, NftMetaFts} from "./nftchecker/NftMetaStorage";
 import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSync";
 import {AddrEvent3525, Event3525, Slot3525, SlotChanged, TaskEvent3525, TokenSlot3525} from "../T3525Sync";
 import {DailyNFTHolder, DailyNFTStat} from "../model/DailyNFTStat";
@@ -195,7 +195,6 @@ export async function initPartialModel(sequelize) {
     Token2.register(sequelize);
     TokenSecurityAudit2.register(sequelize);
     NftMint.register(sequelize)
-    NftMetaOld.register(sequelize);
     NftMetaFts.register(sequelize);
     TokenQuoteTrack.register(sequelize);
     KV.register(sequelize);

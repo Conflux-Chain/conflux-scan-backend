@@ -15,14 +15,9 @@ export class IPFSGatewaySync {
   private TIMEOUT_DEADLINE = 3; // sec
   private CODE_OK = 'OK';
   private CODE_NOT_OK = 'NOT_OK';
-  private URL_GATEWAY = 'https://raw.githubusercontent.com/ipfs/public-gateway-checker/master/src/gateways.json';
+  private URL_GATEWAY = 'https://raw.githubusercontent.com/ipfs/public-gateway-checker/refs/heads/main/gateways.json';
   private CID_FOR_SAMPLE = 'bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m'; // Hello from IPFS Gateway Checker
-  private app;
   private tick = 0; // 1 min per tick
-
-  constructor(app: any) {
-    this.app = app;
-  }
 
   public static tmplFromGateway(userGateway) {
     let target = userGateway;
@@ -31,7 +26,6 @@ export class IPFSGatewaySync {
       target = target.substr(0, target.length - 1);
     }
 
-    target = `${target}/ipfs/:hash`;
     if(!IPFSGatewaySync.GATEWAY_SET.has(target)) {
       return undefined;
     }
@@ -51,7 +45,7 @@ export class IPFSGatewaySync {
     repeat().then();
   }
 
-  private async detectGateways() {
+  public async detectGateways() {
     await this.fetchGateways();
     const clonedGatewayArray = [...IPFSGatewaySync.GATEWAY_ARRAY];
     const total = clonedGatewayArray.length;
@@ -90,7 +84,7 @@ export class IPFSGatewaySync {
 
   private async detect(gateway){
     const host = IPFSGatewaySync.hostFromUrl(gateway);
-    const url = gateway.replace(':hash', this.CID_FOR_SAMPLE);
+    const url = `${gateway}/ipfs/${this.CID_FOR_SAMPLE}`
     const result = {data:{gateway, host, url}} as any;
 
     const pingResult = await this.ping(host);
@@ -112,7 +106,7 @@ export class IPFSGatewaySync {
   private async ping(host){
     let pong = await ping.promise.probe(host, {
       timeout: this.TIMEOUT_PING,
-    });
+    }).catch(() => undefined)
 
     const result = {data: {host, time: pong?.time}};
     if(!pong || !pong.alive || pong.time > 1000) {
@@ -123,7 +117,6 @@ export class IPFSGatewaySync {
   }
 
   private async curl(url){
-
     const start = Date.now();
     const response = await superagent.get(url)
         .timeout({response: this.TIMEOUT_RESPONSE * 1000, deadline: this.TIMEOUT_DEADLINE * 1000})
@@ -139,14 +132,11 @@ export class IPFSGatewaySync {
   }
 
   private static hostFromUrl(url) {
-    const parts = url.split("://");
-    const urlExcludeProtocol = parts?.length > 1 ? parts[1] : parts[0];
+    const parts = url.split("://")
+    const urlExcludeProtocol = parts?.length > 1 ? parts[1] : parts[0]
 
-    const segments = urlExcludeProtocol.split("/");
-    const urlExcludePath = segments[0];
-    const host = urlExcludePath;
-
-    return host;
+    const segments = urlExcludeProtocol.split("/")
+    return segments[0]  // urlExcludePath
   }
 
   private clearGateways() {

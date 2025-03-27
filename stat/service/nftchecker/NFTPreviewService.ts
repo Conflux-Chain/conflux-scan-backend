@@ -22,9 +22,9 @@ export class NFTPreviewService {
     private app;
     private cfx;
     // set a deadline for the entire request (including all uploads, redirects, server processing time) to complete
-    private TIMEOUT_OVERALL = 1000;
+    private TIMEOUT_OVERALL = 3000;
     // set maximum time to wait for the first byte to arrive from the server
-    private TIMEOUT_RESP = 200;
+    private TIMEOUT_RESP = 3000;
 
     constructor(app: any) {
         this.app = app;
@@ -413,10 +413,8 @@ export class NFTPreviewService {
         let imageDesc;
 
         try {
-            /*const nftObj = this.getNFTCacheInfo({ address, tokenId });*/
             const nftObj = await this.getCache(address, hex40id, String(tokenId), {method, gateway});
             if (!forceFlush && nftObj && !legacyNFTs.has(address)) {
-                // console.log(`hit cache contractId ${hex40id} tokenId ${tokenId}`);
                 const cacheInfo = {imageMinHeight: height};
                 return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));
             }
@@ -453,7 +451,6 @@ export class NFTPreviewService {
             meta = {...rawMeta};
 
             // build resp
-            // lodash.defaults(meta, {image: meta.Image, name: meta.Name, description: meta.Description});
             imageUri = uriFormatter ? uriFormatter(meta) : meta.image;
             imageUri = this.replaceGateway({gateway, rawUrl: imageUri});
             imageName = await this.getNFTName({address, meta}) || {};
@@ -477,10 +474,6 @@ export class NFTPreviewService {
         await this.setCache(hex40id, String(tokenId), rawUrl, rawMeta);
         return this.buildNFTPreview({imageUri, imageName, imageDesc, imageHeight: height,
             method, tokenId, rawUrl, gatewayUrl, rawMeta});
-        /*const preview = this.buildNFTPreview({imageUri, imageName, imageDesc, imageHeight: height,
-            method, tokenId, rawUrl, gatewayUrl, rawMeta});
-        this.setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail: preview.detail});
-        return preview;*/
     };
 
     private replaceGateway({gateway, rawUrl}){
@@ -498,13 +491,13 @@ export class NFTPreviewService {
         if (gateway) {
             const userGateway = IPFSGatewaySync.tmplFromGateway(gateway);
             if (userGateway) {
-                return userGateway.replace(':hash', cid);
+                return `${userGateway}/ipfs/${cid}`
             }
         }
 
         const sysGateway = IPFSGatewaySync.fastest;
         if (config.syncIPFSGateway && sysGateway) {
-            uri = sysGateway.replace(':hash', cid);
+            uri = `${sysGateway}/ipfs/${cid}`
         }
 
         return uri;
@@ -546,7 +539,6 @@ export class NFTPreviewService {
     }
 
     private async setCache(contractId: number, tokenId: string, uri: string, metadata: string) {
-        // console.log(`add cache contractId ${contractId} tokenId ${tokenId} start`);
         NftMeta.update({
             status: MetaStatus.SUCCESS,
             retry: 0,
@@ -555,35 +547,7 @@ export class NFTPreviewService {
             uri,
             content: JSON.stringify(metadata)
         }, {where: {contractId, tokenId}}).then();
-        // console.log(`add cache contractId ${contractId} tokenId ${tokenId} end nftObj ${JSON.stringify(metadata)}`);
     }
-
-    /*private getNFTCacheInfo({ address, tokenId}:
-        { address: string, tokenId: BigInt }
-    ) {
-        const nftJson = get(address, tokenId)
-        if (nftJson) {
-            const nftObj = JSON.parse(nftJson);
-            if (nftObj.timeout > +new Date()) {
-                return nftObj;
-            } else {
-                clear(address, tokenId)
-                return null;
-            }
-        }
-        return null;
-    };*/
-
-    /*private setNFTCacheInfo({address, tokenId, imageUri, imageName, imageDesc, detail}:
-        { address: string, tokenId: BigInt, imageUri?: string, imageName?: any, imageDesc?: any, detail?: any }
-    ) {
-        if (imageUri) {
-            put(address, tokenId,
-                JSON.stringify({
-                    address, tokenId, imageUri, imageName, imageDesc, detail, timeout: +new Date() + 1000 * 60 * 3
-                }));
-        }
-    };*/
 }
 
 export type NFTInfoType = {
