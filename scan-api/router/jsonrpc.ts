@@ -115,9 +115,9 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });
       frontedConfig = { networkId, networks, contracts, referer, host };
-      let {from, to} = {from: '.io', to: '.net'};
-      if (refHost?.includes('.io/') || refHost?.endsWith('.io') || refHost?.includes('.org') ) {
-        from = '.net'; to = '.io';
+      let {from, to} = {from: '.org', to: '.net'};
+      if (refHost?.includes('.org/') || refHost?.endsWith('.org') ) {
+        from = '.net'; to = '.org';
       }
       for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]) {
           // use local config prior to shared DB config.
