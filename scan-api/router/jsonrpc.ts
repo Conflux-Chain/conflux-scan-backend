@@ -455,7 +455,7 @@ export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     return service.token.countAndList(options);
   },
