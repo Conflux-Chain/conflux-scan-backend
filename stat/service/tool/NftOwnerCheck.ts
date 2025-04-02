@@ -184,12 +184,14 @@ async function fix721addrNftHolder(list: Erc721Transfer[]) {
         const tokenHolder = await AddressNfts.findOne({
             where: {
                 addressId: erc721Transfer.toId, tokenId: erc721Transfer.tokenId,
+                contractId,
                 type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
             }
         });
         const preHolder = await AddressNfts.findOne({
             where: {
                 addressId: erc721Transfer.fromId, tokenId: erc721Transfer.tokenId,
+                contractId,
                 type: CONST.ADDRESS_TRANSFER_TYPE.ERC721.code,
             }
         });

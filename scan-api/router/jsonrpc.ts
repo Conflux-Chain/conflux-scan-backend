@@ -116,7 +116,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       });
       frontedConfig = { networkId, networks, contracts, referer, host };
       let {from, to} = {from: '.io', to: '.net'};
-      if (refHost?.includes('.io/') || refHost?.endsWith('.io')) {
+      if (refHost?.includes('.io/') || refHost?.endsWith('.io') || refHost?.includes('.org') ) {
         from = '.net'; to = '.io';
       }
       for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]) {
