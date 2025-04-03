@@ -12,6 +12,7 @@ import {CfxTransfer} from "../model/CfxTransfer";
 import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
 import {fmtDtUTC} from "../model/Utils";
 import {Measure} from "./common/Measure";
+import {ScanCtx} from "../../scan-api/service/index";
 
 const lodash = require('lodash');
 
@@ -139,12 +140,11 @@ export abstract class SyncBase {
             cfx.getBlockByEpochNumber(epochNumber),
             cfxSafeEpochReceipts(cfx, epochNumber, pivotHash)
                 .then(res => {
-                    if (epochNumber === 0) {
+                    if (epochNumber === 0 && !res) {
                         res = []
                     }
                     return res;
                 })
-                .catch(() => {return []})
         ]);
         if (pivotHash !== pivotBlockRPC?.hash) {
             throw new Error(`epoch ${epochNumber} want pivot hash ${pivotHash
@@ -155,7 +155,7 @@ export abstract class SyncBase {
             await sleep(1000);
             throw new Error(`[epoch=${epochNumber}]not ready, latestState=${latestState}`);
         }
-        if (epochNumber != 0 && receipts === null) {
+        if (epochNumber != 0 && (receipts === null || receipts.length === 0)) {
             throw new Error(`[epoch=${epochNumber}]not ready, receipts is null`);
         }
 
@@ -189,7 +189,7 @@ export abstract class SyncBase {
         const that = this
         async function repeat() {
             await that.latestStateEpoch().catch(err => {
-                console.log(`schedule latest epoch error:${err}`)
+                console.log(`schedule latest epoch error:`, err)
             })
             setTimeout(repeat, delay)
         }
@@ -200,23 +200,20 @@ export abstract class SyncBase {
     private async latestStateEpoch() {
         const {
             app: {cfx},
-        } = this
+        } = this as unknown as ScanCtx
 
-        let result: any
-        const conf: RpcCacheOption = cfx.provider.conf
-        if (conf?.readCache) {
-            await loadMaxBlockEpoch(0).then(epoch => {result = {epoch, table: FullBlock.getTableName()}})
-        } else if (conf?.readTraceCache) {
-            await EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']]})
-                .then(r => {result = {epoch: r?.epoch || 0, table: CfxTransfer.getTableName()}})
-        } else {
-            await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).then(epoch => {result = {epoch}})
-        }
 
-        this.epochLatestState = result.epoch
+        const newV = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e=>{
+	        console.log(`failed to get epoch number:`, e);
+            return 0;
+        })
+	    if (newV === 0) {
+            return;
+	    }
+        this.epochLatestState = newV;
 
-        if (result.epoch % 1000 === 0 && result.table) {
-            console.log(`latest state epoch ${result.epoch} from ${result.table}`)
+        if (newV % 1000 === 0 && newV) {
+            console.log(`latest state epoch ${newV}`)
         }
     }
 
