@@ -1398,9 +1398,11 @@ router_get(router,'/report/transfer',
         break;
     }
     const date = moment(new Date()).format('YYYY.MM.DD')
-    let filename = address ? `address-${tag}-${StatApp.isEVM ? type.address(address) : address}-${date}.csv`
+    const filename = address ? `address-${tag}-${StatApp.isEVM ? type.address(address) : address}-${date}.csv`
         : `${tag}-${tokeSymbol}-${StatApp.isEVM ? type.address(contract) : contract}-${date}.csv`;
-    this.set('Content-Disposition', `attachment; filename="${filename}"`);
+    const encodedFilename = encodeURIComponent(filename);
+    const contentDisposition = `attachment; filename*=UTF-8''${encodedFilename}`;
+    this.set('Content-Disposition', contentDisposition);
     return Buffer.from(csvContent);
   },
 );
