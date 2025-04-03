@@ -401,7 +401,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
         const date = moment(new Date()).format('YYYY.MM.DD')
         const tokenAddr = StatApp.isEVM ? format.hexAddress(base32) : base32
-        ctx.set('Content-disposition', 'attachment; filename=' + `tokenholders-${token.type}-${token.symbol}-${tokenAddr}-${date}` + '.csv')
+        const filename=`tokenholders-${token.type}-${token.symbol}-${tokenAddr}-${date}.csv`
+        const encodedFilename = encodeURIComponent(filename);
+        const contentDisposition = `attachment; filename*=UTF-8''${encodedFilename}`;
+        ctx.set('Content-disposition', contentDisposition)
         ctx.set('Content-type', 'text/csv')
 
         const s = []
