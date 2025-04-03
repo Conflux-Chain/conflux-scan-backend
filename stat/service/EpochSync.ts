@@ -169,10 +169,10 @@ export class EpochSync extends SyncBase {
 
             let [adminDestroyTxArray, eventLogInfo, tokenLogs,
                 voteParamArray] = await Promise.all([
-                this.getAdminDestroyTxArray(txArray, this.app.cfx),
-                this.decodeLogFromReceipts(epochNumber, receipts),
-                this.getTokenLogs(pivotHash, epochNumber),
-                StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
+                    this.getAdminDestroyTxArray(txArray, this.app.cfx),
+                    this.decodeLogFromReceipts(epochNumber, receipts),
+                    this.getTokenLogs(pivotHash, epochNumber),
+                    StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
             ])
 
             let [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray,
@@ -657,7 +657,7 @@ export class EpochSync extends SyncBase {
 
     private async getTokenLogs(pivotHash: string, epoch: number) {
         while(true) {
-            const [pb, t20, t721, t1155] =
+            const [pb, t20, t721, t1155, maxPos] =
                 await Erc20Transfer.sequelize.transaction(async tx => {
                     const opt = {where: {epoch}, raw: true, transaction: tx, attributes: {exclude: ['id']}};
                     return Promise.all([
@@ -665,10 +665,10 @@ export class EpochSync extends SyncBase {
                         Erc20Transfer.findAll(opt),
                         Erc721Transfer.findAll(opt),
                         Erc1155Transfer.findAll(opt),
+                        EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']], transaction: tx, raw: true}),
                     ])
                 })
             if (!pb) { // pruned, or not ready
-                const maxPos = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]});
                 if (!maxPos || maxPos.epoch < epoch) {
                     this.logSample(`token tx not ready at epoch ${epoch} , max [${maxPos?.epoch}]`)
                     await sleep(5_000)
@@ -888,14 +888,14 @@ export class EpochSync extends SyncBase {
         }
         let cfxTxArr: ICfxTransfer[];
         do {
-            const [cfxPivotBean, tArr] = await CfxTransfer.sequelize.transaction(async (dbTx)=>{
+            const [cfxPivotBean, tArr, maxPos] = await CfxTransfer.sequelize.transaction(async (dbTx)=>{
                 return Promise.all([
                     EpochHashCfxTransfer.findOne({where: {epoch}, transaction: dbTx, raw: true,}),
                     CfxTransfer.findAll({where: {epoch}, transaction: dbTx, raw: true}),
+                    EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']], transaction: dbTx, raw: true}),
                 ])
             })
             if (!cfxPivotBean) { // pruned, or not ready
-	            const maxPos = await EpochHashCfxTransfer.findOne({order: [['epoch', 'desc']]});
                 if (!maxPos || maxPos.epoch < epoch) {
 	                this.logSample(`cfx tx not ready at epoch ${epoch} max [${maxPos?.epoch}]`);
                     await sleep(5_000);
