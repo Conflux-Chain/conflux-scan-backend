@@ -161,7 +161,8 @@ export class NFTCheckerService {
 
         const cursorField = sortField === 'latest_update_time' ? 'updatedCursor' : 'id'
         const cursorValue = cursor
-        async function doQuery(model) {
+        async function doQuery() {
+	        const model = AddressNfts;
             if(cursor > 0 && skip === 0) {
                 delete options.offset;
                 options.where[cursorField] = {[sort === 'DESC' ? Op.lt : Op.gt]: cursorValue};
@@ -185,7 +186,7 @@ export class NFTCheckerService {
         const contractId = contractLen ? (contractLen === 1 ? contractIdArray[0] : {[Op.in]: contractIdArray}) : undefined;
         options.attributes = ['id', 'contractId', 'addressId', 'tokenId', 'value', 'type', 'updatedCursor'];
         options.where = emptyField({addressId: ownerId, contractId, tokenId, value: {[Op.gt]: 0}});
-        page = await doQuery(AddressNfts);
+        page = await doQuery();
 
         const list = [];
         const {count: total, rows} = page;
