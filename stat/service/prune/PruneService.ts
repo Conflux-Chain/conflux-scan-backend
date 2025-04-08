@@ -313,10 +313,6 @@ export class PruneService {
 
 async function start(opts: any) {
     const config = loadConfig('Prod')
-    if(!config.syncPrune) {
-        console.log(`sync prune not set`)
-        return
-    }
     redirectLog({mainPath: 'PruneService'})
 
     StatApp.readonly = config.database.readonly

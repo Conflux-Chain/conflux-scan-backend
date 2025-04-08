@@ -111,7 +111,7 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     const yaml = path.resolve(__dirname, '../../document/', NoCoreSpace ? 'evm-open-api.yaml' : StatApp.isEVM ? 'espace-open-api.yaml' : 'open-api.yaml');
     const tld = apiServer.config.tldOpenapi
     addSwagger(app, prefix, yaml, tld)
-    getApiService().logger.info(`url prefix: ${prefix}`)
+    console.log(`url prefix: ${prefix}`)
 
     const router = new Router({prefix: prefix})
     let middleware = router.routes();

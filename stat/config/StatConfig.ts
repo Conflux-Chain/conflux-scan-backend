@@ -84,15 +84,9 @@ export interface StatConfig{
     dingTalkToken: string;
     tgToken?: string; //telegram
     tgChatId?: string //telegram
-    syncBlockDelay: number;
-    syncTxnDelay: number;
-    syncTraceDelay: number;
-    syncTraceCreateContractDelay: number;
     port: number;
     apiPort: number;
     v1port: number; // scan-api port, for path /v1
-    billingUrl: string;
-    billingKey: string;
     billingApp: string;
     conflux: ConfluxOption & RpcCacheOption; // chain rpc node
     blockSyncRpc: ConfluxOption & RpcCacheOption; // chain rpc node
@@ -107,20 +101,9 @@ export interface StatConfig{
     isEvm: boolean,
     scanJsonRpcUrl: string
     database: Database;
-    syncBlock: boolean,
-    syncTrace: boolean,
-    syncTxn: boolean,
-    syncTxnCountDaily: boolean,
-    syncAnnounce: boolean,
-    syncToken: boolean,
-    syncAnnounceEpochNumber: number,
-    syncTraceCreateContract: boolean,
-    syncEpoch: boolean,
     syncEpochNumber: number,
-    syncEpochNumberBackward: number,
     serverTag: string,
     watchCfxBalance: boolean,
-    cfxWatcherDelay:number,
     recaptchaUrl:string,
     recaptchaToken:string,
     reportUrl: string,
@@ -133,23 +116,7 @@ export interface StatConfig{
     marketCapToken: string,
     binanceToken: string,
 
-    syncMinerBlock: boolean,
-    syncMinerBlockEpochNumber: number,
-
-    syncContractStatInfoDaily: boolean,
     syncTokenSecurityAudit: boolean,
-    syncPrune: boolean,
-    syncTransferTps: boolean,
-
-    streamStat: boolean,
-    statMinerBlock: boolean,
-    statAddrTransaction: boolean,
-    statDailyCfxTransfer: boolean,
-    statAddrCfxTransfer: boolean,
-    statTokenTransfer: boolean,
-    statDailyTokenTransfer: boolean,
-    statNFTMint: boolean,
-    statGasUsedPerSecond: boolean,
 
     blacklist: boolean,
 
@@ -168,7 +135,7 @@ export interface StatConfig{
     ensChecker: string,
     reverseRecords: string,
 
-    tldOpenapi: string,
+    tldOpenapi: string, // top level domain of open api
 
     censorAppId: string,
     censorApiKey: string,

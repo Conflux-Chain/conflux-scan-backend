@@ -90,7 +90,7 @@ export async function handleException(ctx, next) {
         if (err.code == 500) {
             safeAddErrorLog('open', `open-500-${err.message}`, err);
         }
-        getApiService().logger.error(`api error ${ctx.request.url}`, err)
+        console.log(`api error ${ctx.request.url}`, err)
     })
 }
 export function setBody(ctx, data: any, code = 0, message = 'OK') {

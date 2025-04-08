@@ -48,11 +48,9 @@ type.toMD5 = type((v) => crypto.createHash('md5').update(v).digest('hex'));
 type.config = type({
   port: type.uint.$default(process.env.PORT),
   preload: type.uint.$default(0).$default(process.env.PRELOAD),
-  syncBlock: type.uint.$default(0).$default(process.env.SYNC_BlOCK),
   syncTransaction: type.uint.$default(0).$default(process.env.SYNC_TRANSACTION),
   syncContract: type.uint.$default(0).$default(process.env.SYNC_CONTRACT),
   syncEventLog: type.uint.$default(0).$default(process.env.SYNC_EVENT_LOG),
-  syncAnnounce: type.uint.$default(0).$default(process.env.SYNC_ANNOUNCE),
   syncERC20: type.uint.$default(0).$default(process.env.SYNC_ERC20),
   syncERC721: type.uint.$default(0).$default(process.env.SYNC_ERC721),
   syncERC777: type.uint.$default(0).$default(process.env.SYNC_ERC777),
