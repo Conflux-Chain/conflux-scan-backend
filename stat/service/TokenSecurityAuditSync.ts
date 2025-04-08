@@ -2,17 +2,17 @@ import {Token} from "../model/Token";
 import {Contract} from "../model/Contract";
 import {Op} from "sequelize";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {TokenQuery} from "./TokenQuery";
 
 export class TokenSecurityAuditSync{
-    private readonly app
+    private readonly tokenQuery: TokenQuery;
 
-    constructor(app: any) {
-        this.app = app
+    constructor({tokenQuery}: {tokenQuery: TokenQuery}) {
+        this.tokenQuery = tokenQuery;
     }
 
     private async audit(recently: boolean = false){
-        const { tokenQuery } = this.app
-
+        const tokenQuery = this.tokenQuery;
         const now = new Date()
 
         const opt: any = {attributes: ['base32'], raw: true}

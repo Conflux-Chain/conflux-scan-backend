@@ -150,7 +150,7 @@ export class ApiServer {
         apiService.cfx = this.cfx;
         apiService.eth = this.eth;
         apiService.logger = logger;
-        await this.initModule();
+        this.initModule();
         await this.initMetrics(apiService);
 
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
@@ -181,18 +181,13 @@ export class ApiServer {
     }
 }
 async function initBilling(config: StatConfig) {
-    const url = config.billingUrl;
-    const key = config.billingKey;
     const billingApp = config.billingApp;
-    if (!url || !key) {
-        console.log(`billing url or key not set [${url}] [${key}]`)
+    if (!billingApp) {
+        console.log(`billing app not set`)
         return
     }
-    const keyJsonStr = Buffer.from(key, 'base64').toString()
-    console.log(`key json str`, keyJsonStr)
-    initWeb3payClient(url, key, 1_000)
     await initWeb3payVipClient(config.ether.url, billingApp,);
-    console.log(`using billing ${url}, now test...`)
+    console.log(`using billing app ${billingApp}, now test...`)
     try {
         const result = await getVipInfo(billingApp)
         console.log(`get vip info test:`, result);
@@ -202,9 +197,7 @@ async function initBilling(config: StatConfig) {
 }
 export function initApiServer() {
     regExitHook();
-    if (__filename.startsWith('/scan/')) {
-        redirectLog({mainPath:'OpenApi'})
-    }
+    redirectLog({mainPath:'OpenApi'})
     const apiServer = new ApiServer();
     const port = process.env.API_PORT || apiServer.config.apiPort || 9527;
     apiServer.init().then(()=>{

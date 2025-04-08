@@ -165,7 +165,7 @@ export function buildCheckAddressRateFn(addressParamName: string, callNext = fal
 }
 
 export async function checkApiKey(path: string, key: string, dryRun = false) {
-    if (!getWeb3pay().client) {
+    if (!getWeb3pay().trackerContract) {
         return {ok: false, result: {}} // not configured
     }
     if (!key) {
