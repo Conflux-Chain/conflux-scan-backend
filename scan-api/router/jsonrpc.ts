@@ -121,7 +121,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       }
       for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]) {
           // use local config prior to shared DB config.
-          frontedConfig[kv] = await KV.getString(kv, config[kv]);
+          frontedConfig[kv] = config[kv] ?? await KV.getString(kv);
           if (refHost && frontedConfig[kv]) {
             frontedConfig[kv] = frontedConfig[kv].replace(from, to);
           }
