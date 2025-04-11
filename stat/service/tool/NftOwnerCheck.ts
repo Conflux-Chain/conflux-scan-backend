@@ -10,6 +10,7 @@ import {AddressNftTransfer, NftTransfer} from "../../model/NftTransfer";
 import {CONST} from "../common/constant";
 import {AddressTransfer} from "../../model/AddrTransfer";
 import {AddressNfts, IAddressNfts} from "../../model/AddrNft";
+import {checkAccount721} from "../watcher/AccountChecker";
 
 const {abi: abi1155} = require('../watcher/contract/miniERC1155.json')
 const abi = require('./abi');
@@ -89,7 +90,7 @@ async function checkNftMint(contractId:number) {
 let nftContract;
 let cfx;
 async function main() {
-    const [,,cmd,contractId] = process.argv
+    const [,,cmd,arg1] = process.argv
     if (cmd === 'check721OwnerInDb') {
         // after fixing owner, plz fix holder by
         // node stat/dist/service/watcher/BatchBalanceWatcher.js fixNftHolder 123
@@ -98,8 +99,10 @@ async function main() {
     const config = await init();
     cfx = await initCfxSdk(config.conflux)
     if (cmd === 'checkNftMint') {
-        await checkNftMint(parseInt(contractId))
+        await checkNftMint(parseInt(arg1))
         console.log(`done`)
+    } else if (cmd === 'checkAccount721') {
+        await checkAccount721(parseInt(arg1));
     } else if (cmd === 'fix721value') {
         await fix721value();
     } else {
@@ -274,6 +277,7 @@ if (module === require.main) {
     main().then()
 }
 /*
+ node stat/service/tool/NftOwnerCheck.js checkAccount721 996251
  node stat/service/tool/NftOwnerCheck.js checkNftMint 996251
  node stat/service/tool/NftOwnerCheck.js fix721value
  */
