@@ -73,7 +73,7 @@ export async function checkAccount721(accId: number) {
 	const sql = `select mint.* from ${NftMint.getTableName()} mint left join ${AddressNfts.getTableName()} a_n
 	 on mint.toId = a_n.addressId and mint.contractId=a_n.contractId and mint.tokenId=a_n.tokenId 
 	 where mint.toId=${accId} and (a_n.addressId is null or a_n.value=0)`;
-	const arr = await NftMint.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true, logging: true})
+	const arr = await NftMint.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true, logging: false})
 		.then(res=>res as INftMint[]);
 	if (arr.length == 0) {
 		return;
@@ -91,7 +91,7 @@ export async function checkAccount721(accId: number) {
 		const {contractId, epoch, tokenId, toId} = mint;
 		const tx = await Erc721Transfer.findOne({where: {
 			contractId, epoch, tokenId, toId
-		}, raw: true, logging: true});
+		}, raw: true, logging: false});
 		if (!tx) {
 			console.log(`721 transfer not found,`, mint);
 			continue
