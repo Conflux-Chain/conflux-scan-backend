@@ -1,14 +1,17 @@
-import {DataTypes, Model, Op, Sequelize} from "sequelize";
+import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
 import {buildHexSet, getAddrId} from "../../model/HexMap";
 import {Conflux, format} from "js-conflux-sdk";
-import {BalanceWatcher, CfxWatcher} from "./BalanceWatcher";
+import {CfxWatcher} from "./BalanceWatcher";
 import {formatAddr} from "../../../open-api/common/RestTool";
 import {AddressErc20Transfer} from "../../model/Erc20Transfer";
-import {AddressErc1155Transfer} from "../../model/Erc1155Transfer";
-import {AddressErc721Transfer} from "../../model/Erc721Transfer";
 import {handleTokenTransferWithContract} from "../../StreamSync";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
+import {INftMint, NftMint} from "../../model/Token";
+import {AddressNfts} from "../../model/AddrNft";
+import {Epoch} from "../../model/Epoch";
+import {Erc721Transfer} from "../../model/Erc721Transfer";
+import {fix721addrNftHolder} from "../tool/NftOwnerCheck";
 
 export interface IReqAccount {
 	hexId: number; hex: string; base32: string;
@@ -66,7 +69,37 @@ export async function addReqAccount(account: string) {
 		}, {});
 	}
 }
-
+async function checkAccount721(accId: number) {
+	const sql = `select mint.* from ${NftMint.getTableName()} mint left join ${AddressNfts.getTableName()} a_n
+	 on mint.toId = a_n.addressId and mint.contractId=a_n.contractId and mint.tokenId=a_n.tokenId 
+	 where mint.toId=${accId} and a_n.addressId is null`;
+	const arr = await NftMint.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true, logging: true})
+		.then(res=>res as INftMint[]);
+	if (arr.length == 0) {
+		return;
+	}
+	const epochSyncMax = await Epoch.findOne({order: [['epoch', 'desc']], raw: true});
+	if (!epochSyncMax) {
+		return;
+	}
+	console.log(`mismatch 721 nft , addr ${accId} length ${arr.length}`);
+	for (const mint of arr) {
+		if (epochSyncMax.epoch < mint.epoch + 20) {
+			console.log(`epoch sync not ready, ${epochSyncMax.epoch} < ${mint.epoch}`);
+			continue
+		}
+		const {contractId, epoch, tokenId, toId} = mint;
+		const tx = await Erc721Transfer.findOne({where: {
+			contractId, epoch, tokenId, toId
+		}, raw: true, logging: true});
+		if (!tx) {
+			console.log(`721 transfer not found,`, mint);
+			continue
+		}
+		await fix721addrNftHolder([tx]);
+	}
+	console.log(`ok , check 721 of ${accId}`);
+}
 async function checkAccountBiz(reqAcc: ReqAccount) {
 	await cfxWatcher.queryBalance(reqAcc.hex, reqAcc.hexId);
 	const [arr20, arr721, arr1155] =  await Promise.all([
@@ -83,6 +116,7 @@ async function checkAccountBiz(reqAcc: ReqAccount) {
 		map.set(cid, new Set<number>([reqAcc.hexId]));
 	})
 	await handleTokenTransferWithContract(map, cfxWatcher.cfx);
+	await checkAccount721(reqAcc.hexId);
 }
 async function checkAccount(reqAcc: ReqAccount) {
 	await checkAccountBiz(reqAcc);

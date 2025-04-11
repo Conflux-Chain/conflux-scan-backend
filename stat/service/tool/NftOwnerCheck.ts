@@ -178,7 +178,7 @@ function pad(val, len, isEnd = false) {
 function buildAddrNftCursor(epochNumber, index) {
 	return `${epochNumber}${pad(index, 8)}`
 }
-async function fix721addrNftHolder(list: Erc721Transfer[]) {
+export async function fix721addrNftHolder(list: Erc721Transfer[]) {
     for (const erc721Transfer of list) {
         const {tokenId, toId, contractId, createdAt, epoch, txLogIndex } = erc721Transfer;
         const tokenHolder = await AddressNfts.findOne({
