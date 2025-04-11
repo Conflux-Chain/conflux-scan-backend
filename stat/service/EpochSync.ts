@@ -313,8 +313,6 @@ export class EpochSync extends SyncBase {
 
     async saveOnce(modelData, voteParamArray) {
         const epochArray = modelData.epochArray?.length ? modelData.epochArray : [modelData.epoch]
-        console.log(`${epochArray[0].epoch} addrTransferArray ${modelData.addrTransferArray.length} , addr nft ${modelData.addrNftTransferArray.length}`)
-
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 Epoch.bulkCreate(epochArray, {transaction: dbTx}),
@@ -1126,7 +1124,6 @@ export class EpochSync extends SyncBase {
     private getAddressNft(epochNumber, epochTimestamp, addrNftTransferArray) {
         const addressNfts = {placeholders: [], replacements: []}
         if (!addrNftTransferArray?.length) {
-            console.log(`${epochNumber} , empty addr nft tx`)
             return addressNfts
         }
 
@@ -1150,7 +1147,7 @@ export class EpochSync extends SyncBase {
             addressNftArr.push([addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp])
             index++
         }
-        console.log(`${epochNumber} , addr nft tx ${addressNftArr.length}`);
+
         for (let i = 0; i < addressNftArr.length; i++) {
             addressNfts.placeholders.push('(?,?,?,?,?,?,?,?)')
             addressNfts.replacements.push(...addressNftArr[i])
