@@ -72,7 +72,7 @@ export async function addReqAccount(account: string) {
 export async function checkAccount721(accId: number) {
 	const sql = `select mint.* from ${NftMint.getTableName()} mint left join ${AddressNfts.getTableName()} a_n
 	 on mint.toId = a_n.addressId and mint.contractId=a_n.contractId and mint.tokenId=a_n.tokenId 
-	 where mint.toId=${accId} and a_n.addressId is null`;
+	 where mint.toId=${accId} and (a_n.addressId is null a_n.value=0)`;
 	const arr = await NftMint.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true, logging: true})
 		.then(res=>res as INftMint[]);
 	if (arr.length == 0) {
