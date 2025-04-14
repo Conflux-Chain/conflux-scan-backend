@@ -72,21 +72,12 @@ export class ContractService { // TODO: extends AccountService
       app: { service, ttlMap, dingTalk, type },
     } = this;
 
-    // const rdbSwitch = await KV.getSwitch(KEY_ANNOUNCE_QUERY_RDB_SWITCH);
-    // if (rdbSwitch) {
       const contract = await service.contractRdb.query({ address });
       if (contract && type.address(contract.base32) !== address) {
         return null;
       }
-    // }
 
     const key = `contract/list/${address}`;
-/*    if (!rdbSwitch) {
-      const { value } = await service.announce.query({ key });
-      if (value !== address) {
-        return null;
-      }
-    }*/
 
     const result = await service.announce.send([{ key, value: '' }]);
     ttlMap.delete(this.LIST_CACHE_KEY); // not strict drop list cache
