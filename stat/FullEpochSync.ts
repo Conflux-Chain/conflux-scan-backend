@@ -51,7 +51,6 @@ export class FullEpochSync{
     }
 
     private async initSwitch(){
-        KV.setupSwitch().then();
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     }
 

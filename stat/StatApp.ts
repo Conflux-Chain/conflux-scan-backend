@@ -100,7 +100,6 @@ export class StatApp{
         } else {
             console.log(`skip sync db schema.`)
         }
-        KV.setupSwitch().then()
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
         if (StatApp.isEVM && this.config.conflux2) {
             CoreSpaceRpc = await initCfxSdk(this.config.conflux2);
