@@ -77,8 +77,6 @@ export class StatisticService {
       app: { /*syncSDK, */service },
     } = this;
 
-    // const rdbSwitch = await KV.getSwitch(KEY_BLOCK_DATA_STAT_RDB_SWITCH);
-    // if (rdbSwitch) {
       const intervalType = service.blockData.INTERVAL_TYPE;
       let type;
       if (interval === 133 || interval === 514) {
@@ -90,10 +88,7 @@ export class StatisticService {
       }
       const response = await service.blockData.listStat(type, 0, limit + 1);
       return response.list.slice(0, response.list.length - 1);
-    // }
 
-    // const list = await syncSDK.plotStatistic({ limit: limit + 1, interval }); // +1 for diff
-    // return this._diff(list);
   }
 
   async trend({ interval } = {} as any) {

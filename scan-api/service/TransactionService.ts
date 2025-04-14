@@ -127,16 +127,9 @@ export class TransactionService {
 
       result = await this._countAndListByBlockHash(options);
     } else {
-/*      const rdbSwitch = await KV.getSwitch(KEY_TX_QUERY_RDB_SWITCH);
-      logger.info({ src: 'fullTXquery------------', rdbSwitch: JSON.stringify(rdbSwitch) });
-      if (rdbSwitch) {*/
         result = await service.fullBlock.listTransaction(options);
         result.ensInfo = await fetchEnsMap(result.list,'from','to')
         return result;
-       /* logger.info({ src: 'fullTXquery------------', result: JSON.stringify(result) });
-        return lodash.defaults({ rdb: rdbSwitch }, result);
-      }
-      result = await syncSDK.countAndListTransaction(options);*/
     }
 
     result.list = await limitMap(result.list,

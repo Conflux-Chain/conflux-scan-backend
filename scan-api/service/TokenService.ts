@@ -4,7 +4,7 @@ const lodash = require('lodash');
 const BigFixed = require("bigfixed");
 const { TokenQuery } = require('../../stat/service/TokenQuery');
 const { Token } = require('../../stat/model/Token');
-const { KV, /*KEY_ANNOUNCE_QUERY_RDB_SWITCH,*/ SCAN_UTIL_CONTRACT } = require('../../stat/model/KV');
+const { KV, SCAN_UTIL_CONTRACT } = require('../../stat/model/KV');
 
 export class TokenService {
   app: ScanApp & any;
@@ -64,14 +64,11 @@ export class TokenService {
       app: { service, ttlMap, dingTalk, type },
     } = this;
 
-    // const rdbSwitch = await KV.getSwitch(KEY_ANNOUNCE_QUERY_RDB_SWITCH);
-    // if (rdbSwitch) {
       const token = await service.tokenRdb.query({ address });
       // logger.info({src: `TokenService.deregister.rdb`, msg: `${JSON.stringify(token)}`});
       if (token && type.address(token.base32) !== address) {
         return null;
       }
-    // }
 
     const key = `token/list/${address}`;
 /*    if (!rdbSwitch) {

@@ -100,25 +100,6 @@ export class KV extends Model<IKV> implements IKV {
             timestamps: false
         })
     }
-
-    static async setupSwitch() {
-/*        const anyOne = await KV.findOne({where: {key: KEY_TX_QUERY_RDB_SWITCH}})
-        if (anyOne) {
-            return
-        }
-        await KV.bulkCreate([
-            {key: SCAN_UTIL_CONTRACT, value: ''},
-            {key: CONTRACT_ANNOUNCEMENT, value: ''},
-            {key: KEY_ANNOUNCE_QUERY_RDB_SWITCH, value: 'true'},
-            {key: KEY_BLOCK_QUERY_RDB_SWITCH, value: 'true'},
-            {key: KEY_CONTRACT_QUERY_RDB_SWITCH, value: 'true'},
-            {key: KEY_EPOCH_QUERY_RDB_SWITCH, value: 'true'},
-            {key: KEY_TRANSFER_QUERY_RDB_SWITCH, value: 'true'},
-            {key: KEY_TX_QUERY_RDB_SWITCH, value: 'true'},
-            {key: KEY_BLOCK_DATA_STAT_RDB_SWITCH, value: 'true'},
-            {key: KEY_EVENT_LOG_QUERY_RDB_SWITCH, value: 'true'},
-        ]);*/
-    }
 }
 
 export async function diffCount(key:string, diff:number, dbTx:Transaction) {
