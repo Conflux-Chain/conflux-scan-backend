@@ -63,7 +63,7 @@ export class PosQuery {
         if (cachedData) {
             return cachedData
         }
-        const [st, posAccountCount, posEconomics, totalPosRewardDrip, {apy, totalCirculating}] = await Promise.all([
+        const [st, posAccountCount, posEconomics, totalPosRewardDrip, {apy, totalCirculating, baseR}] = await Promise.all([
             // {"epoch":40,"latestCommitted":2397,"latestVoted":2399,"pivotDecision":925080}
             this.cfx.pos.getStatus(),
             PosAccount.count({where: this.whereCondForValidators}),
@@ -111,6 +111,7 @@ export class PosQuery {
             lastDistributeBlock: posEconomics.lastDistributeBlock.toString(),
             totalPosStakingTokens: posEconomics.totalPosStakingTokens.toString(),
             latestVotedTime, pivotDecisionTime, lastDistributeBlockTime,
+            baseR,
             apy, totalCirculating,
             updatedAt: new Date().toISOString(),
         };
@@ -122,17 +123,18 @@ export class PosQuery {
         // PoS 质押奖励
         // 现有基础质押利率为 4%，而 PoS 质押奖励在此基础上添加加成系数。设 x=CFX总流通量 /CFX总质押量，加成系数为 √x .
         // 当质押量为流通量的 1/4 时，利率为 8%；当质押量为流通量 1/9 时，利率为 12%；以此类推。当参与投票的总数相对较低时，参与投票的人将获得更多的利益。
-        let baseR = 4
-        const [{totalCirculating}, {totalPosStakingTokens}] = await Promise.all([
+        // let baseR = 4
+        const [{totalCirculating}, {totalPosStakingTokens}, baseR] = await Promise.all([
             cfx.getSupplyInfo(epoch),
             cfx.getPoSEconomics(epoch),
+            getBaseRate(cfx, epoch),
         ]);
         if (!totalPosStakingTokens) {
             return {apy: 0, totalCirculating};
         }
         let x = parseFloat(new Drip(totalCirculating.toString()).toCFX()) / parseFloat(new Drip(totalPosStakingTokens.toString()).toCFX());
         const r = baseR *  Math.sqrt(x)
-        return {apy: r, totalCirculating, totalPosStakingTokens};
+        return {apy: r, totalCirculating, totalPosStakingTokens, baseR};
     }
     async listPosAccountReward({skip, limit, identifier, orderBy, order}) {
         const account = await PosAccount.findOne({where: {hex: identifier}})
@@ -453,6 +455,17 @@ class AccountOverview {
     constructor(address: string) {
         this.address = address;
     }
+}
+
+async function getBaseRate(cfx: Conflux & any, epoch) {
+    // @ts-ignore
+    const info = await cfx.cfx.getParamsFromVote(epoch).catch(e=>{
+        console.log(`failed to call get params from vote , ${epoch}`, e)
+        return {
+            interestRate: 65011n,
+        }
+    })
+    return parseInt(BigInt(info.interestRate).toString()) / 10000.0;
 }
 
 enum NodeType {
