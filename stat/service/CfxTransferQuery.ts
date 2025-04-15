@@ -21,7 +21,6 @@ export class CfxTransferQuery extends TransferQueryBase{
                                  minTimestamp, maxTimestamp,
                                  accountAddressId, addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray,
                                  tokenId, txType, skip, limit, sort}){
-        const{ logger } = this.app;
         if(txType === CONST.TX_TYPE.CREATE){
             // page
             const queryOptions: any = {offset: skip, limit, raw: true};
@@ -90,7 +89,6 @@ export class CfxTransferQuery extends TransferQueryBase{
     }
 
     public async doQuery(options: any, queryOptions: any): Promise<any>{
-        const{ logger } = this.app;
 
         if(options.txType === CONST.TX_TYPE.CREATE){
             return await TraceCreateContract.findAndCountAll(queryOptions);

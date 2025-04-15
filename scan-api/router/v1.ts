@@ -426,7 +426,7 @@ router_get(router,'/transaction/:hash',
 
   async function (transaction) {
     const {
-      app: { tool, service, logger },
+      app: { tool, service, },
     } = this as ScanCtx;
 
     if (transaction) {

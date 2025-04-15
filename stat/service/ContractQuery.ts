@@ -112,7 +112,6 @@ export class ContractQuery {
     public async addVerify({address, sourceCode = undefined, name, compiler, version, optimizeFlag, optimizeRuns,
         license, libraries, evmVersion,
         taskStatus = CONST.TASK_STATUS.PROCESSING, verifyResult = undefined, codeHash = undefined}) {
-        const{ logger } = this.app;
         const base32 = toBase32(address);
 
         const verify = new ContractVerify();
@@ -137,19 +136,18 @@ export class ContractQuery {
         }
 
         const result = await ContractVerify.add(verify);
-        logger?.info({ src: `[${address}]stat verify request`, addResult: `${JSON.stringify(result)}` });
+        console.log(`[${address}]stat verify request`, 'addResult', `${JSON.stringify(result)}`);
         return result;
     }
 
     public async updateVerify({id, address = undefined, version = undefined, constructorArgs = undefined,
         abi = undefined, verifyResult = undefined, matchCode = undefined, matchDesc = undefined,
         taskStatus = undefined, warnings = undefined, errors = undefined}){
-        const {logger} = this.app;
         const base32 = toBase32(address);
 
         const dbVerify = await ContractVerify.findOne({where: {id}, raw: true});
         if(dbVerify.base32 !== base32){
-            logger?.error({ src: `[${address}]updateVerify`, updateError: `record.base32 not equals ${base32}` });
+            console.log(`[${address}]updateVerify`, 'updateError', `record.base32 not equals ${base32}`);
         }
 
         const updateVerify = lodash.defaults({}, {version, constructorArgs, verifyResult, matchCode, matchDesc,
@@ -158,7 +156,7 @@ export class ContractQuery {
             const proxyInfo = await this.queryImplementation(base32)
                 .catch((e) => {
                     safeAddErrorLog('contract',`query-impl-${base32}`, e);
-                    logger?.error({ src: `[${address}]updateVerify`, queryImplError: e.toString() })
+                    console.log(`[${address}]updateVerify`, 'queryImplError', e.toString())
                 });
             lodash.assign(updateVerify, {abi}, proxyInfo, {notifyStatus: CONST.NOTIFY_STATUS.NEED_NOTIFY});
         } else{
@@ -182,7 +180,7 @@ export class ContractQuery {
                     console.log(`[${address}]updateVerify.minimalVerify`, e)
                 });
         }
-        logger?.info({ src: `[${address}]updateVerify`, updateResult: `${JSON.stringify(result)}` });
+        console.log(`[${address}]updateVerify`, 'updateResult', `${JSON.stringify(result)}`);
 
         return result;
     }
@@ -268,7 +266,6 @@ export class ContractQuery {
     }
 
     public async queryVerify({address}) {
-        const {logger} = this.app;
         const base32 = toBase32(address);
 
         // own verified info
@@ -281,7 +278,7 @@ export class ContractQuery {
         const proxyInfo = await this.queryImplementation(base32)
             .catch((e) => {
                 safeAddErrorLog('contract',`query-impl-2-${base32}`, e);
-                logger?.error({ src: 'queryVerify', msg: e.toString() })
+                console.log('queryVerify error ', e)
             });
         if(proxyInfo?.implementation){
             verified.beacon = proxyInfo.beacon;
@@ -332,7 +329,7 @@ export class ContractQuery {
     }
 
     public async queryDestroyInfo({address}) {
-        const {cfx, logger} = this.app;
+        const {cfx, } = this.app;
         const hex = format.hexAddress(address);
 
         if(lodash.includes(CONST.INTERNAL_CONTRACT, hex)){
@@ -724,7 +721,6 @@ export class ContractQuery {
     }
 
     public async submitVerifyProxy({ address, expectedImpl }) {
-        const{ logger } = this.app;
         const base32 = toBase32(address);
         expectedImpl = !expectedImpl ? null : toBase32(expectedImpl);
 
@@ -735,7 +731,7 @@ export class ContractQuery {
 
         const guid = this.genGUID(base32);
         const record = await ProxyVerify.add({base32, expectedImpl, guid} as ProxyVerify);
-        logger?.info({ src: `[${address}]stat submitVerifyProxy request`, addResult: `${JSON.stringify(record)}` });
+        console.log(`[${address}]stat submitVerifyProxy request`, 'addResult ', `${JSON.stringify(record)}`);
         return { address, guid: record.guid };;
     }
 

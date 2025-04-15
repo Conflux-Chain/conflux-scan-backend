@@ -153,7 +153,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         async (ctx) => {
             let {skip} = ctx.request.query
             skip = Number(skip || 0)
-            ctx.body = await pagingFullBlock(skip, null)
+            ctx.body = await pagingFullBlock(skip)
             const v = await KV.getNumber(KEY_FULL_BLOCK_COUNT)
             ctx.body.blockCountMark = v
         }

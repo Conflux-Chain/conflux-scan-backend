@@ -115,7 +115,7 @@ export class TransactionService {
 
   async countAndList({ fields, ...options } = {} as any) {
     const {
-      app: { service, syncSDK, tool, logger },
+      app: { service, tool,  },
     } = this;
 
     let result;

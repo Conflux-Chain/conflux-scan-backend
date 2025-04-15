@@ -354,7 +354,7 @@ async function pop(epoch: number) {
     return CfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
             EpochHashCfxTransfer.findByPk(epoch-1),
-            popPartitionCfxTransfer(epoch, undefined, dbTx),
+            popPartitionCfxTransfer(epoch, dbTx),
             EpochHashCfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
         ])
     });

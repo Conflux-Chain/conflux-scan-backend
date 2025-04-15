@@ -679,7 +679,7 @@ export async function countNonMarkTxRows(maxOne: ITxnRowMark) {
  order by epoch desc, position desc
  limit result.skip, N
  */
-export async function pagingFullBlock(skip:number, logger: any) : Promise<BlockPage> {
+export async function pagingFullBlock(skip:number) : Promise<BlockPage> {
     // find the max mark
     // const sqlMax = `select * from ${BlockRowMark.getTableName()} order by id desc limit 1`
     const maxOne = await BlockRowMark.findOne({order:[["id","desc"]], limit: 1})

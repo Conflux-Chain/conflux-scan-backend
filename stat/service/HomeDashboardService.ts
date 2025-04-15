@@ -26,13 +26,12 @@ export class HomeDashboardService{
     }
 
     public async schedule(delay: number = 1000) {
-        const{ logger } = this.app;
 
-        logger?.info({src: 'HomeDashboardService', msg: `schedule home_dashboard_service with delay: ${delay}`})
+        console.log('HomeDashboardService ', `schedule home_dashboard_service with delay: ${delay}`)
         const that = this
         async function repeat() {
             await that.run().catch(err =>{
-                logger?.info({src: 'HomeDashboardService', msg: `home_dashboard_service fail, error: ${err}`})
+                console.log('HomeDashboardService home_dashboard_service fail, error:', err);
             })
             setTimeout(repeat, delay)
         }

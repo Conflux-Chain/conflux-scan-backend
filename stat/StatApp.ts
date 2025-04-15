@@ -153,8 +153,6 @@ export class StatApp{
             console.log(`config not found for ${KEY_FULL_STATE_RPC}`);
             this.fullStateCfx = this.cfx;
         }
-        // Register global process events and graceful shutdown
-        // registerProcessEvents(logger, this.sequelize)
     }
 }
 
