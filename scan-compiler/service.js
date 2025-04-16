@@ -257,7 +257,7 @@ class SolCompileService {
     const {
       app: { error, type, tool },
     } = this;
-    console.log(`[${address}]verify`, 'contractName', name, options, code);
+    console.log(`[${address}]verify contractName`, name, options, code);
 
     const { metadata, runtimeCode } = await this.decompile({ code }).catch((e) => {
       throw new error.ContractDecompileError(e);
@@ -273,7 +273,7 @@ class SolCompileService {
     }
 
     const contract = contracts[name];
-    console.log(`[${address}]verify`, `contractName ${name}`, `recompiled ${JSON.stringify(contract)}`);
+    console.log(`[${address}]verify contractName ${name}`, `recompiled ${JSON.stringify(contract)}`);
     if (!contract) {
       throw new error.ContractNameError(`can not found contract "${name}" in ${JSON.stringify(Object.keys(contracts))}`);
     }
@@ -313,7 +313,7 @@ class SolCompileService {
     const { abi, creationBytecode: bytecode } = contract;
 
     const verifyResult = { version, warnings, errors, exactMatch, similarity, abi, bytecode };
-    recompiled(`[${address}]verify`, `contractName ${name}`, `verifyResult ${JSON.stringify(verifyResult)}`);
+    recompiled(`[${address}]verify contractName ${name}`, `verifyResult ${JSON.stringify(verifyResult)}`);
     return verifyResult;
   }
 

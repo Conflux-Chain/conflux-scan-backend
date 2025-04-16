@@ -136,7 +136,7 @@ export class ContractQuery {
         }
 
         const result = await ContractVerify.add(verify);
-        console.log(`[${address}]stat verify request`, 'addResult', `${JSON.stringify(result)}`);
+        console.log(`[${address}]stat verify request ${result.base32} ${result.verifyResult}`);
         return result;
     }
 
