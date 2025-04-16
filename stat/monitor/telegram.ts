@@ -1,8 +1,11 @@
 import {ConfigInstance, loadConfig} from "../config/StatConfig";
+import {getAppEntryName} from "../config/LoggerConfig";
+import {StatApp} from "../StatApp";
 
 const superagent = require('superagent');
 
 export async function sendAlertTg(msg: string) {
+	msg += `\n[scan ${StatApp.networkId}] ${ConfigInstance.serverTag} , [${getAppEntryName()}]`
 	return sendTextTG({message: msg, token: ConfigInstance?.tgToken, chatId: ConfigInstance?.tgChatId})
 }
 
