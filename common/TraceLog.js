@@ -20,8 +20,7 @@ const DEFAULT_OPTIONS = {
 
 // ----------------------------------------------------------------------------
 class TraceLog {
-  constructor(logger) {
-    this.logger = logger;
+  constructor() {
   }
 
   /**
@@ -41,7 +40,6 @@ class TraceLog {
   traceMethod(object, method, options = {}) {
     lodash.defaults(options, DEFAULT_OPTIONS);
 
-    const logger = this.logger || EMPTY_LOGGER; // dynamic get logger
     const func = object[method];
 
     object[method] = async function (...args) {
@@ -61,10 +59,8 @@ class TraceLog {
 
         if (error) {
           if (error.code !== parameterErrorCode) {
-            logger.error({duration, module, method, params: args, error: options.error(error)});
+            console.log('duration', duration, 'module', module, 'method', method, args, error);
           }
-        } else {
-          logger[options.level]({ duration, module, method, params: options.params(...args), result: options.result(result) });
         }
       }
     };

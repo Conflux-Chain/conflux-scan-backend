@@ -8,7 +8,6 @@ export class EpochQuery{
     }
 
     async query(epochNumber: number) {
-        const{ logger } = this.app;
         return await Epoch.findOne({where: {epoch: epochNumber}, raw: true});
     }
 }

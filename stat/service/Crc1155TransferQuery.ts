@@ -33,7 +33,6 @@ export class Crc1155TransferQuery extends TransferQueryBase{
         ];
     }
     public async doQuery(options: any, queryOptions: any): Promise<any>{
-        const{ logger } = this.app;
 
         if(options.accountAddress !== undefined){
             if (Object.keys(queryOptions.where).length === 1) {

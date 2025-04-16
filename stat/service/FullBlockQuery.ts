@@ -43,7 +43,6 @@ export class FullBlockQuery {
     public async listBlock({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined,
                                minTimestamp = undefined, maxTimestamp = undefined, miner = undefined,
                                skip = 0, limit = 10}) {
-        const{ logger } = this.app;
         // parse para
         let minerId;
         if(miner){
@@ -266,7 +265,6 @@ export class FullBlockQuery {
                                      verboseAddress = false, sort = 'DESC', useCountCache = true
     }) {
         sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
-        const{ logger } = this.app;
         // parse para
         const addressMap = {};
         await Promise.all([accountAddress, from, to, opponentAddress]
@@ -548,10 +546,8 @@ export class FullBlockQuery {
     }
 
     private async buildPagedBlockOptions(skip) : Promise<{blockPage:BlockPage, pagedCondition}>{
-        const{ logger } = this.app;
-
         const pagedCondition: any = {};
-        const blockPage = await pagingFullBlock(skip, logger);
+        const blockPage = await pagingFullBlock(skip);
         /** How to use the result:
          if (result.id === Infinity) : query without condition;
          else : query with epoch and position condition.

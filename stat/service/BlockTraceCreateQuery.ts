@@ -15,17 +15,15 @@ export class BlockTraceCreateQuery{
     }
 
     async query(address: string) {
-        const{ cfx, logger } = this.app;
+        const{ cfx,  } = this.app;
 
         const hex40Bean = await Hex40Map.findOne({where: {hex: address.substr(2)}});
         if(!hex40Bean){
-            // logger?.info({src: `trace_create`, 'result': `no contract ${address}`});
             return {msg: `get create trace, no contract ${address} found`};
         }
 
         const trace = await TraceCreateContract.findOne({where: {to: hex40Bean.id}});
         if(!trace){
-            // logger?.info({src: `trace_create`, 'result': `no trace_create_contract for contract ${address}`});
             return {msg: `get create trace, no create trace found for contract ${address}`};
         }
         // use EOA from as contract creator, not the trace caller.
@@ -55,7 +53,6 @@ export class BlockTraceCreateQuery{
 
     public async list({addressArray, from, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp, skip = 0,
                           limit = 10, reverse = false}) {
-        const{ logger } = this.app;
         // parse para
         let addressIdArray;
         if(addressArray){

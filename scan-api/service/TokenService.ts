@@ -65,18 +65,11 @@ export class TokenService {
     } = this;
 
       const token = await service.tokenRdb.query({ address });
-      // logger.info({src: `TokenService.deregister.rdb`, msg: `${JSON.stringify(token)}`});
       if (token && type.address(token.base32) !== address) {
         return null;
       }
 
     const key = `token/list/${address}`;
-/*    if (!rdbSwitch) {
-      const { value } = await service.announce.query({ key });
-      if (value !== address) {
-        return null;
-      }
-    }*/
 
     const result = await service.announce.send([{ key, value: '' }]);
     ttlMap.delete(this.LIST_CACHE_KEY); // not strict drop list cache

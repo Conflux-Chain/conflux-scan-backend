@@ -307,7 +307,7 @@ export class ConfluxService {
   // ------------------------------- transaction ------------------------------
   async getTransactionByHash(transactionHash) {
     const {
-      app: { CONST, cfx, ttlMap/* logger */ },
+      app: { CONST, cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionByHash(${transactionHash})`,

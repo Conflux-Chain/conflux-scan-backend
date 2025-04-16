@@ -252,20 +252,17 @@ export async function checkCfxTransferCountKV(update=false) {
     if (!update) {
         const cnt = await KV.getNumber(KEY_FULL_CFX_TRANSFER_COUNT, NaN)
         if (!isNaN(cnt)) {
-            // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer in KV:${cnt}`});
             return
         }
     }
 
     const maxCfxTransfer = await CfxTransfer.findOne({order:[['id','desc']], limit: 1})
     if (maxCfxTransfer === null) {
-        // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer:0, as no value in KV`});
         return KV.saveNumber(KEY_FULL_CFX_TRANSFER_COUNT, '0', undefined)
     }
 
     if (maxCfxTransfer.id < CFX_TRANSFER_PAGE_MARK_SIZE) {
         let countNow = (await CfxTransfer.count()).toString();
-        // logger?.info({src: `checkCfxTransferCountKV------------`, msg:`count cfx-transfer:${countNow}, as system just starts.`});
         return KV.saveNumber(KEY_FULL_CFX_TRANSFER_COUNT, countNow, undefined);
     }
 
@@ -275,7 +272,6 @@ export async function checkCfxTransferCountKV(update=false) {
     }
     const nonMarkRows = await countNonMarkCfxTransferRows(maxOne);
     const countNow = nonMarkRows + maxOne.id;
-    // logger?.info({src: `checkCfxTransferCountKV------------`, msg: `count cfx-transfer:${countNow}, non-mark rows:${nonMarkRows}, mark-rows:${maxOne.id}`});
     return KV.saveNumber(KEY_FULL_CFX_TRANSFER_COUNT, countNow.toString(), undefined);
 }
 
@@ -396,11 +392,10 @@ async function buildFromToId(array, dt:Date) {
     return hexMap.values()
 }
 
-export async function doMark(rows, epoch, logger){
+export async function doMark(rows, epoch){
     const [oldValue, newValue] = rows;
     const oldPage = Math.floor(oldValue / CFX_TRANSFER_PAGE_MARK_SIZE);
     const newPage = Math.floor(newValue / CFX_TRANSFER_PAGE_MARK_SIZE);
-    // logger?.info({src: `batchSaveCfxTransfer-2------------`, 'oldPage': oldPage, 'newPage': newPage});
     if ( newPage > oldPage) {
         let avoidReOrg = 1000;
         return markCfxTransferPosition(CFX_TRANSFER_PAGE_MARK_SIZE, epoch - avoidReOrg);
@@ -408,7 +403,7 @@ export async function doMark(rows, epoch, logger){
     return Promise.resolve(0);
 }
 
-export async function popPartitionCfxTransfer(epoch, logger = undefined, dbTx = undefined){
+export async function popPartitionCfxTransfer(epoch, dbTx = undefined){
     const cfxTransferArray = await CfxTransfer.findAll({where: {epoch}});
     if(!cfxTransferArray?.length){
         return Promise.resolve();
@@ -428,7 +423,6 @@ export async function popPartitionCfxTransfer(epoch, logger = undefined, dbTx = 
             diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
             CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
         ]);
-        // logger?.info({src: `batchPopCfxTransfer------------`, 'resultArray': JSON.stringify(resultArray)});
 
 }
 

@@ -88,7 +88,7 @@ export class ContractService { // TODO: extends AccountService
   // scan web page verify
   async verify({ address, ...rest }) {
     const {
-      app: { CONST, error, syncSDK, service, logger},
+      app: { CONST, error, syncSDK, service, },
     } = this;
 
     let { name, sourceCode, compilerType, compiler, optimizeRuns, license, evmVersion, constructorArgs } = rest;
@@ -134,12 +134,12 @@ export class ContractService { // TODO: extends AccountService
       lodash.assign(updateRecord, lodash.pick(result, ['verifyResult', 'matchCode', 'matchDesc' ]));
       const updateVerify = await service.contractRdb.updateVerify(updateRecord);
 
-      logger.error({ src: `[${address}]verify`, updateVerify: `${JSON.stringify(updateVerify)}` });
+      console.log(`[${address}]verify`, 'updateVerify', updateVerify);
       return lodash.assign(response, lodash.pick(result, ['version', 'warnings', 'errors', 'abi']),
           {exactMatch: result.verifyResult});
 
     } catch (e) {
-      logger.error({ src: `[${address}]verify`, error: `${e.message}` });
+      console.log(`[${address}]verify`, 'error', e);
       return lodash.assign(response, { errors: [e.message] });
     }
   }
@@ -153,7 +153,7 @@ export class ContractService { // TODO: extends AccountService
 
   async listVerify({ addressArray, skip, limit, reverse }) {
     const {
-      app: {CONST, error, service, syncSDK, type, logger},
+      app: {CONST, error, service, syncSDK, type, },
     } = this;
     const result = await service.contractRdb.listVerify({ addressArray, skip, limit, reverse });
 
@@ -197,8 +197,7 @@ export class ContractService { // TODO: extends AccountService
       }
 
     } catch (e) {
-      // console.error(`[${tmpAddress}][cntr=${tmpCntr}]recompile-4--------`, e);
-      logger.error({ src: 'recompile', error: `${e.message}` });
+      console.log('recompile', 'error', e);
     }
     return result;
   }

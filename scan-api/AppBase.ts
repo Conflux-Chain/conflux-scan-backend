@@ -50,7 +50,7 @@ export class AppBase extends Koa {
     }));
 
     // traceLog
-    this.traceLog = new TraceLog(this.logger);
+    this.traceLog = new TraceLog();
     this.traceLog.traceModule(this, { level: 'info' });
   }
 

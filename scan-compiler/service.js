@@ -69,7 +69,7 @@ class SolCompileService {
 
   async compile({ fileName, sourceCode, compilerType, compilerVersion, optimizeRuns, libraries, evmVersion }) {
     const {
-      app: { tool, type, fileMap, logger },
+      app: { tool, type, fileMap },
     } = this;
     const versionTable = await this.listVersion();
     compilerVersion = semver.maxSatisfying(Object.keys(versionTable), compilerVersion) || undefined;
@@ -182,7 +182,7 @@ class SolCompileService {
   async verifyPlus({ address, creationData, deployedBytecode, name, fileName, sourceCode, compilerType,
     compilerVersion, optimizeRuns, libraries, evmVersion }) {
     const {
-      app: {CONST: {MATCH_STATUS}, error, type, logger},
+      app: {CONST: {MATCH_STATUS}, error, type, },
     } = this;
 
     const match = {
@@ -255,9 +255,9 @@ class SolCompileService {
 
   async verify({ address, code, name, ...options }) {
     const {
-      app: { error, type, tool, logger },
+      app: { error, type, tool },
     } = this;
-    logger.info({ src: `[${address}]verify`, contractName: `${name}`, options, code });
+    console.log(`[${address}]verify contractName`, name, options, code);
 
     const { metadata, runtimeCode } = await this.decompile({ code }).catch((e) => {
       throw new error.ContractDecompileError(e);
@@ -273,7 +273,7 @@ class SolCompileService {
     }
 
     const contract = contracts[name];
-    logger.info({ src: `[${address}]verify`, contractName: `${name}`, recompiled: `${JSON.stringify(contract)}` });
+    console.log(`[${address}]verify contractName ${name}`, `recompiled ${JSON.stringify(contract)}`);
     if (!contract) {
       throw new error.ContractNameError(`can not found contract "${name}" in ${JSON.stringify(Object.keys(contracts))}`);
     }
@@ -313,7 +313,7 @@ class SolCompileService {
     const { abi, creationBytecode: bytecode } = contract;
 
     const verifyResult = { version, warnings, errors, exactMatch, similarity, abi, bytecode };
-    logger.info({ src: `[${address}]verify`, contractName: `${name}`, verifyResult: `${JSON.stringify(verifyResult)}` });
+    recompiled(`[${address}]verify contractName ${name}`, `verifyResult ${JSON.stringify(verifyResult)}`);
     return verifyResult;
   }
 

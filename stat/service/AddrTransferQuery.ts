@@ -45,8 +45,6 @@ export class AddrTransferQuery extends TransferQueryBase{
     }
 
     public async doQuery(options: any, queryOptions: any): Promise<any>{
-        const{ logger } = this.app;
-
         if(options.accountAddress === undefined){
             return {count: 0, rows: []};
         }

@@ -98,7 +98,7 @@ export class ApiServer {
 
     public async init() {
         let logger = createLogger('apiServer', 'open-api', './log/open-api', 'info');
-        logger.info(`-------- start api server, port ${config.apiPort}--------`)
+        console.log(`-------- start api server, port ${config.apiPort} --------`)
 
         this.cfx = await initCfxSdk(config.conflux);
         this.eth = initEthSdk(config.ether?.url)

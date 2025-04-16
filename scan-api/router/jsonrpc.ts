@@ -103,7 +103,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
   async function ({referer, host}) {
     const refHost = referer || host;
     const {
-      app: { config, networkId, logger },
+      app: { config, networkId },
     } = this;
 
     let frontedConfig;
@@ -127,7 +127,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
           }
       }
     } catch (e) {
-      logger.error({ src: 'frontend config error', msg: e });
+        console.log('frontend config error', e);
     }
 
     return frontedConfig;
@@ -644,7 +644,7 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
 
   async function ({ transferType, ...options }) {
     const {
-      app: { tool, service, logger, tokenTool },
+      app: { tool, service, tokenTool },
     } = this as ScanCtx;
 
     const accountBase32 = options.accountAddress !== undefined

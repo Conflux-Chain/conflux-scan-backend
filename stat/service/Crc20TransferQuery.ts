@@ -34,7 +34,6 @@ export class Crc20TransferQuery extends TransferQueryBase{
         ];
     }
     public async doQuery(options: any, queryOptions: any): Promise<any>{
-        const{ logger } = this.app;
         const latestRows = 10000;
 
         if(options.accountAddress !== undefined){
