@@ -54,7 +54,17 @@ async function reportError(eLog: ErrorLog, error: Error) {
 	}\nbusiness: ${biz}\ntimes: ${times}\ndetail: ${detail}`, ConfigInstance.dingTalkToken);
 }
 
+export function isKnownError(e) {
+	return e.code === 'ECONNREFUSED' || e.message === 'Inconsistent state: pivot hash mismatch'
+		|| e.message?.includes('connection refused')
+		|| e.message === 'Error processing request: state is not ready'
+		|| e.code === 'ABORTED';
+}
+
 export async function safeAddErrorLog(module: string, biz: string, error: Error) {
+	if (isKnownError(error)) {
+		return;
+	}
 	try {
 		await addErrorLog(module, biz, error);
 	} catch (e) {

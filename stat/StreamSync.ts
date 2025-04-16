@@ -203,6 +203,11 @@ async function fetchAll(addressArr, contractHex40, result:any[], cfx:Conflux) {
         for (let ids of chunks2d) {
             try {
                 const banList = await BatchBalanceWatcher.getBalances(ids, contractHex40);
+                if (!banList || banList.length != ids.length) {
+                    console.log(`${__filename} balance list is wrong [${banList}], try again later.`)
+                    await sleep(5_000);
+                    continue;
+                }
                 result.push(...banList);
             } catch (e) {
                 // check network

@@ -51,7 +51,7 @@ export function pushMeter(metrics: IMetric[]) {
 
 		{//var scope block
 			// height doesn't grow.
-			const thresholdOfGrowth = ConfigInstance.noCoreSpace ? 10 : 100;
+			const thresholdOfGrowth = ConfigInstance.noCoreSpace ? 1 : 100;
 			const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
 			// pos block is generated every minute.
 			const growthThreshold = meterData.name == SamplerType.POS_BLOCK ? 1 : thresholdOfGrowth;
@@ -63,7 +63,7 @@ export function pushMeter(metrics: IMetric[]) {
 			}
 		}
 		// gap is too large.
-		const thresholdOfGap = ConfigInstance.noCoreSpace ? 20 : 200;
+		const thresholdOfGap = ConfigInstance.noCoreSpace ? 100 : 200;
 		const v5mGap_per_1m = meterData.meterGap.get5MinuteRate() * 60;
 		if (v5mGap_per_1m > thresholdOfGap || doTest) {
 			const msg = `gap is too large, ${meterData.name}, in last 5 minutes, gap per minute is ${
