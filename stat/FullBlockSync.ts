@@ -15,7 +15,6 @@ import {regExitHook} from "./service/tool/ProcessTool";
 import {StatApp} from "./StatApp";
 import {CONST} from "./service/common/constant";
 import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
-import {DefaultCacheConf, startEvictCache} from "./service/common/RpcCacheManager";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 export async function run() {
@@ -63,12 +62,6 @@ export async function run() {
         }
         if (config.traceNotAvailable) {
             startMonitorContractCreated().then()
-        }
-        if (cfxOpt.writeCache) {
-            DefaultCacheConf.logPeriod = 10_000;
-            DefaultCacheConf.delaySec = 30_000;
-            DefaultCacheConf.cacheDir = cfxOpt.cachePath
-            startEvictCache().then();
         }
         await syncFullBlock(svc)
 

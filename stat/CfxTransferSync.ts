@@ -28,7 +28,6 @@ import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT} from "./model/KV";
 import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {scheduleCrossSpaceStat} from "./service/CrossSpaceStat";
-import {rmCache} from "./service/common/RpcCacheManager";
 import {BatchCfxTransfer, CfxTransferEpochData} from "./service/BatchDBTx";
 import {PreloadMap} from "./service/SyncBase";
 import {FirstBlockNo} from "./config/StatConfig";
@@ -519,8 +518,6 @@ async function run(cfx:Conflux, preFinished: number) {
                         process.exit(9)
                     }
                     parentHash = parentH.hash;
-                    await rmCache(cfx0.provider.conf.cachePath, epoch-1, true);
-                    await rmCache(cfx0.provider.conf.cachePath, epoch, true);
                     epoch -= 1;
                     break;
                 }

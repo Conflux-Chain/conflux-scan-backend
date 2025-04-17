@@ -1,14 +1,9 @@
 import {sleep} from "./tool/ProcessTool";
 import {CONST} from "./common/constant"
-import {batchFetchBlock} from "./common/utils";
 import {Epoch} from "../model/Epoch";
-import {makeIdV} from "../model/HexMap";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
-import {FirstBlockNo, NoCoreSpace, RpcCacheOption} from "../config/StatConfig";
-import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "../model/FullBlock";
-import {EpochHashCfxTransfer} from "../CfxTransferSync";
+import {FirstBlockNo, NoCoreSpace, } from "../config/StatConfig";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
-import {CfxTransfer} from "../model/CfxTransfer";
 import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
 import {fmtDtUTC} from "../model/Utils";
 import {Measure} from "./common/Measure";
