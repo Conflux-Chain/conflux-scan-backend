@@ -35,7 +35,6 @@ import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
 import {ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
-import {rmCache} from "./common/RpcCacheManager";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
@@ -431,8 +430,6 @@ export class FullBlockService {
                     addresses.add(tx.contractCreatedId)
                 }
             })
-            await rmCache(this.cfx.provider.conf.cachePath, preEpoch, true);
-            await rmCache(this.cfx.provider.conf.cachePath, minEpochNumber, true);
             await FullBlock.sequelize.transaction(async (dbTx) => {
                 await Promise.all([
                     FailedTx.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),

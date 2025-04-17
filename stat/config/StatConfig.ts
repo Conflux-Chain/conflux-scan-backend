@@ -17,17 +17,6 @@ export interface ConfluxOption {
     consortiumMode?: boolean, // true: consortium chain; false: public chain
     keepAlive?: boolean,
 }
-export interface RpcCacheOption {
-    // write cache , exclude trace_block ; full block sync sets it.
-    writeCache?: boolean
-    // only write trace block cache ; cfx transfer sync could set it to true
-    writeTraceCache?: boolean
-    // read cache , exclude trace_block
-    readCache?: boolean
-    // read trace_block cache ; epoch sync could set it to true
-    readTraceCache?: boolean
-    cachePath?: string
-}
 export interface EtherOption {
     url: string,
 }
@@ -88,12 +77,12 @@ export interface StatConfig{
     apiPort: number;
     v1port: number; // scan-api port, for path /v1
     billingApp: string;
-    conflux: ConfluxOption & RpcCacheOption; // chain rpc node
-    blockSyncRpc: ConfluxOption & RpcCacheOption; // chain rpc node
+    conflux: ConfluxOption; // chain rpc node
+    blockSyncRpc: ConfluxOption; // chain rpc node
     conflux2?: ConfluxOption; // get cross space info in eSpace, needless in coreSpace
     ether: EtherOption;
-    cfxTransferRpc?: ConfluxOption & RpcCacheOption; // for cfx transfer sync
-    tokenTransferRpc?: ConfluxOption & RpcCacheOption; // for token transfer sync
+    cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
+    tokenTransferRpc?: ConfluxOption; // for token transfer sync
     consortiumBridge?: ConsortiumBridgeOption;
     cfxWsUrl: string
     preload: number,

@@ -105,10 +105,9 @@ async function rpcBenchmark() {
 	console.log(`format trace : run ${times} times , cost ${cost}ms, avg ${cost/times}`)
 }
 async function rpcCacheTest() {
-	const [,,cmd, url, cachePath = './cache/rpc', threads] = process.argv;
-	console.log(`cache path [${cachePath}]`);
-	const _cfxW = await initCfxSdk({url, cachePath, writeCache: true, writeTraceCache: true} as ConfluxOption);
-	const _cfxR = await initCfxSdk({url, cachePath, readCache:true,   readTraceCache: true} as ConfluxOption);
+	const [,,cmd, url, threads] = process.argv;
+	const _cfxW = await initCfxSdk({url} as ConfluxOption);
+	const _cfxR = await initCfxSdk({url} as ConfluxOption);
 	const epochNumber = 8;
 
 	async function read(cfx: Conflux) {
