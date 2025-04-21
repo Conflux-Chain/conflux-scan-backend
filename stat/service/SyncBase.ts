@@ -261,17 +261,26 @@ export abstract class SyncBase {
         let result = [];
         SyncBase.buildTokenTransferArray(result, ERC20.code, transfer20Array);
         SyncBase.buildTokenTransferArray(result, ERC721.code, transfer721Array);
-        SyncBase.buildTokenTransferArray(result, ERC1155.code, transfer1155Array);
+        SyncBase.buildTokenTransferArray(result, ERC1155.code, transfer1155Array, true);
         return result;
     }
 
-    public static buildTokenTransferArray(result, type, transferArray) {
+    public static buildTokenTransferArray(result, type, transferArray, is1155 = false) {
+        let batchIdx = 0;
+        let blockIndex = -1, txIndex = -1, txLogIndex = -1;
         for (const transfer of transferArray) {
             transfer.type = type;
-
+            if (is1155) {
+                if (blockIndex !== transfer.blockIndex || txIndex !== transfer.txIndex || txLogIndex != transfer.txLogIndex) {
+                    blockIndex = transfer.blockIndex; txIndex = transfer.txIndex; txLogIndex = transfer.txLogIndex;
+                    batchIdx = 0;
+                } else {
+                    batchIdx ++;
+                }
+            }
             transfer.contractId = transfer.contractId ?? 0;
             transfer.tokenId = transfer.tokenId ?? '0';
-            transfer.batchIndex = transfer.batchIndex ?? 0;
+            transfer.batchIndex = transfer.batchIndex ?? batchIdx;
             transfer.value = transfer.value ?? 1; // nft 721
 
             result.push(transfer);
