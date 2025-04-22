@@ -70,6 +70,8 @@ async function fixDailyApy(cfx: Conflux) {
         const info = await PosQuery.calculateApy(cfx, maxEpoch.epoch);
         const bean = await PosDailyStatMix.findOne({where: {day: dtStr, biz: 'pos_apy'}});
         if (bean) {
+            //bean.v = info.apy;
+            //await bean.save({});
             break;
         } else {
             await PosDailyStatMix.create({
