@@ -1,5 +1,5 @@
 import {Epoch, VoteParams} from "../model/Epoch";
-import {SyncBase, SyncCode, SyncData} from "./SyncBase";
+import {IEpochSyncCtx, SyncBase, SyncCode, SyncData} from "./SyncBase";
 import {StatApp} from "../StatApp";
 import {
     formatToBase32,
@@ -66,7 +66,6 @@ const POCKET_TYPES = ['gas_payment', 'storage_collateral', 'sponsor_balance_for_
 export const NAME_TAG_SPLIT = "__,__";
 
 export class EpochSync extends SyncBase {
-    protected app: any
     private announcementContract: string
     private addressMetadataContract: string
     private syncCensorItem: boolean
@@ -76,9 +75,8 @@ export class EpochSync extends SyncBase {
     private nodeCache: any
     private adminContractId: number;
 
-    constructor(app: any) {
+    constructor(app: IEpochSyncCtx) {
         super(app)
-        this.app = app
         this.statOnRealtime = new StatOnRealtime()
         this.transferTypeMap = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name')
 	    this.transferTypeMap['internal_transfer_action'] = CONST.ADDRESS_TRANSFER_TYPE.CFX_IN_INTERNAL_BY_BALANCE;
@@ -455,7 +453,7 @@ export class EpochSync extends SyncBase {
     private async getAnnounceInfo(epochNumber, announceArray) {
         const {
             app: {tokenTool},
-        } = this as unknown as ScanCtx;
+        } = this;
 
         let tokenMap = {};
         let contractMap = {};
@@ -602,7 +600,7 @@ export class EpochSync extends SyncBase {
     private async getToken(hex40id, hexAddress, transferType) {
         const {
             app: {tokenTool},
-        } = this as unknown as ScanCtx;
+        } = this;
 
         const cacheToken = this.nodeCache.get(hexAddress)
         if (cacheToken) {
@@ -1184,7 +1182,7 @@ export class EpochSync extends SyncBase {
     }
 
     // ------------------------------ vote params -------------------------------
-    private async getVoteParams(epochNumber) {
+    private async getVoteParams(epochNumber: number) {
         const {
             app: {cfx: sdk},
         } = this;

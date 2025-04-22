@@ -2,30 +2,36 @@ import {sleep} from "./tool/ProcessTool";
 import {CONST} from "./common/constant"
 import {Epoch} from "../model/Epoch";
 import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
-import {FirstBlockNo, NoCoreSpace, } from "../config/StatConfig";
+import {ConfigInstance, FirstBlockNo, NoCoreSpace, StatConfig,} from "../config/StatConfig";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Conflux, CONST as SDK_CONST} from "js-conflux-sdk";
 import {fmtDtUTC} from "../model/Utils";
 import {Measure} from "./common/Measure";
-import {ScanCtx} from "../../scan-api/service/index";
+import {TokenTool} from "./tool/TokenTool";
+import {ContractQuery} from "./ContractQuery";
 
 const lodash = require('lodash');
 
 const PRELOAD_SIZE_NORMAL = 8
 const PRELOAD_SIZE_CATCHUP = 50
 
+export interface IEpochSyncCtx {
+	cfx: Conflux, tokenTool: TokenTool, contractQuery: ContractQuery,
+	zeroAddressId: number, config: StatConfig,
+}
+
 export abstract class SyncBase {
     private epochLatestState: number
     private preloadSize: number = PRELOAD_SIZE_CATCHUP
     private forwardQueue: PreloadMap
-    protected app: any
+    protected app: IEpochSyncCtx;
     protected catchUp: CatchUp
     protected measure: Measure
 
-    protected constructor(app: any) {
+    protected constructor(app: IEpochSyncCtx) {
         this.app = app;
         this.forwardQueue = new PreloadMap(this.getData.bind(this));
-        this.catchUp = new CatchUp(app, this)
+        this.catchUp = new CatchUp(this.app.cfx, this)
         this.measure = new Measure()
     }
 
@@ -110,7 +116,7 @@ export abstract class SyncBase {
     public async run() {
         let epoch = await this.nextEpochNumber()
 
-        epoch = lodash.max([epoch, this.app?.config?.syncEpochNumber])
+        epoch = lodash.max([epoch, ConfigInstance.firstBlockNo])
 
         let latestStateEpoch = this.epochLatestState
 
@@ -193,12 +199,7 @@ export abstract class SyncBase {
     }
 
     private async latestStateEpoch() {
-        const {
-            app: {cfx},
-        } = this as unknown as ScanCtx
-
-
-        const newV = await cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e=>{
+        const newV = await this.app.cfx.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE).catch(e=>{
 	        console.log(`failed to get epoch number:`, e);
             return 0;
         })
@@ -296,9 +297,8 @@ export abstract class SyncBase {
 }
 
 export class CatchUp {
-    private app: any
     private syncer: any
-
+    cfx: Conflux;
     private catchingUp: boolean = true
     private finalizedEpoch: number = 0
 
@@ -306,8 +306,8 @@ export class CatchUp {
     private batchSizeOnSave: number = 100
     private batchData: BatchData
 
-    public constructor(app: any, syncer: any) {
-        this.app = app
+    public constructor(cfx: Conflux, syncer: any) {
+        this.cfx = cfx;
         this.syncer = syncer
         this.batchData = new BatchData()
     }
@@ -368,11 +368,8 @@ export class CatchUp {
     }
 
     private async latestStatus(epoch) {
-        const {
-            app: {cfx},
-        } = this
 
-        this.finalizedEpoch = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
+        this.finalizedEpoch = await this.cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED)
         this.catchingUp = epoch <= this.finalizedEpoch - (NoCoreSpace ? this.batchSizeOnSave : 0);
 
         if(!this.catchingUp) {
