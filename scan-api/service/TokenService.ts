@@ -18,7 +18,7 @@ export class TokenService {
 
     const {
       app: { type },
-    } = this;
+    } = this as ScanCtx;
 
     this.zip = type({
       icon: type.gzip,
@@ -42,7 +42,7 @@ export class TokenService {
   async register({ address, ...rest }) {
     const {
       app: { error, dingTalk, ttlMap, service },
-    } = this;
+    } = this as ScanCtx;
 
     if (!await service.conflux.isToken(address)) {
       throw new error.ParameterError(`address "${address}" is not token, register abort`);
@@ -63,7 +63,7 @@ export class TokenService {
   async deregister({ address }) {
     const {
       app: { service, ttlMap, dingTalk, type },
-    } = this;
+    } = this as ScanCtx;
 
       const token = await service.tokenRdb.query({ address });
       if (token && type.address(token.base32) !== address) {
@@ -90,7 +90,7 @@ export class TokenService {
   } = {} as any) {
     const {
       app: { tool },
-    } = this;
+    } = this as ScanCtx;
 
     let list = [];
     if (options.accountAddress !== undefined) {
@@ -161,7 +161,7 @@ export class TokenService {
   async _listByAddressArrayPlus({ addressArray, fields } = {} as any) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     addressArray = [...addressArray];
     const response = await service.tokenRdb.list({ addressArray, fields: lodash.intersection(fields, ['icon']) });
@@ -169,7 +169,7 @@ export class TokenService {
   }
 
   async _listByRegisterPlus(options) {
-    const { app: {error}, } = this;
+    const { app: {error}, } = this as ScanCtx;
     options.orderBy = options.orderBy || 'transferCount'
     const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
     if (!order) {

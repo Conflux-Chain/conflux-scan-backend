@@ -1,4 +1,4 @@
-import {ScanApp} from "./index";
+import {ScanApp, ScanCtx} from "./index";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -12,7 +12,7 @@ export class StatisticService {
   async dag({ limit = 10 } = {}) {
     const {
       app: { CONST, service },
-    } = this;
+    } = this as ScanCtx;
 
     const epochNumber = await service.conflux.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_STATE);
 
@@ -75,7 +75,7 @@ export class StatisticService {
   async plot({ interval, limit = 1 } = {} as any) {
     const {
       app: { /*syncSDK, */service },
-    } = this;
+    } = this as ScanCtx;
 
       const intervalType = service.blockData.INTERVAL_TYPE;
       let type;

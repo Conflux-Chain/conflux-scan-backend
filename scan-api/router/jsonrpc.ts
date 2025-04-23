@@ -1,7 +1,8 @@
 import {ScanCtx} from "../service/index";
-import {Op} from "sequelize";
 import {KEY_CONFURA_URL, KEY_CORE_API_URL, KEY_CORE_OPEN_API_URL, KEY_OPEN_API_URL} from "../../stat/model/KV";
 import {fmtAddr} from "../../stat/StatApp";
+import {ApiApp} from "../app";
+import {NoCoreSpace} from "../../stat/config/StatConfig";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -68,7 +69,7 @@ export const jsonrpc_plot = jsonrpc.method_('plot',
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
 
     const list = await service.statistic.plot(options);
     return { total: list.length, list };
@@ -104,7 +105,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
     const refHost = referer || host;
     const {
       app: { config, networkId },
-    } = this;
+    } = this as { app: ApiApp };
 
     let frontedConfig;
     try {
@@ -115,6 +116,10 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });
       frontedConfig = { networkId, networks, contracts, referer, host };
+        if (NoCoreSpace) {
+            frontedConfig.networks = [];
+            frontedConfig.contracts = [];
+        }
       let {from, to} = {from: '.org', to: '.net'};
       if (refHost?.includes('.org/') || refHost?.endsWith('.org') ) {
         from = '.net'; to = '.org';
@@ -421,7 +426,7 @@ export const jsonrpc_listContractVerified = jsonrpc.method_('listContractVerifie
   async function (options) {
     const {
       app: { service },
-    } = this;
+    } = this as ScanCtx;
     return service.contract.listVerify(options);
   },
 

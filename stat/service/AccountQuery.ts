@@ -16,12 +16,13 @@ import {NameTag} from "../model/NameTag";
 import {KEY_CAUTION_LABELS, KV} from "../model/KV";
 import {NAME_TAG_SPLIT} from "./EpochSync";
 import {ethers} from "ethers";
+import {ScanCtx} from "../../scan-api/service/index";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
 
 export class AccountQuery {
-    protected app: any;
+    public app: any;
     protected CAUTION_FLUSH_INTERVAL = 180_000; // 3 min
     protected cautionLoadTimestamp;
     public cautionSet: Set<string> = new Set<string>();
@@ -74,7 +75,7 @@ export class AccountQuery {
     public async listContractInfo(idHexMap) {
         const {
             app: { tokenQuery, contractQuery, service },
-        } = this;
+        } = this as ScanCtx;
 
         // get synced info
         const idArray = Object.keys(idHexMap);

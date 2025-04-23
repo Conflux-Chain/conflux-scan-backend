@@ -19,7 +19,7 @@ import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
 import {ConfigInstance} from "../config/StatConfig";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {ScanApp} from "../../scan-api/service/index";
+import {ScanApp, ScanCtx} from "../../scan-api/service/index";
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -29,7 +29,7 @@ const {ContractVerify} = require("../model/ContractVerify");
 const abi = require('./tool/abi');
 
 export class ContractQuery {
-    protected app: ScanApp;
+    public app: ScanApp;
 
 
     constructor(app: ScanApp) {
@@ -420,7 +420,7 @@ export class ContractQuery {
     }) {
         const {
             app: { tokenQuery, service },
-        } = this;
+        } = this as ScanCtx;
 
         // remove repeat
         const networkId = StatApp.networkId;
