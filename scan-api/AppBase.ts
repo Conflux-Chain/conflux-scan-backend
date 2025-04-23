@@ -22,6 +22,7 @@ BigInt.prototype.toJSON = function () {
 };
 
 export class AppBase extends Koa {
+  public config: any;
   constructor(config) {
     super();
     this.use(koaBodyParser({ enableTypes: ['json', 'form', 'text'] }));

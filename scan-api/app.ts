@@ -18,12 +18,13 @@ import {format} from "js-conflux-sdk";
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const {parameterErrorCode} = require('../common/error')
-const JsonRPCSDK = require('../common/JsonRPCSDK');
+import {JsonRPCSDK} from "../common/JsonRPCSDK";
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
 export class ApiApp extends AppBase {
   service: ScanServices;
   static injectedSequelize: Sequelize;
+  public networkId: number;
   static injectContext(seq: Sequelize) {
     this.injectedSequelize = seq;
   }

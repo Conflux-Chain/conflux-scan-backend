@@ -28,56 +28,63 @@ import {ENSCheckerQuery} from "../../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../../stat/service/AccountQuery";
 import {CensorService} from "../../stat/service/censor/CensorService";
 import {TokenTool} from "../../stat/service/tool/TokenTool";
+import {StatConfig} from "../../stat/config/StatConfig";
+import {JsonRPCSDK} from "../../common/JsonRPCSDK";
 
 export interface ScanCtx {
   app: ScanApp
 }
 export interface ScanApp {
-  service: ScanServices;
-  CONST: any;
-  cfx: Conflux;
-  ttlMap: any;
-  config: any;
-  error: any;
-  tool: any;
-  logger: any;
-  syncSDK: any;
-  tokenTool: TokenTool;
-  dingTalk: any;
-  type: any;
+  service?: ScanServices;
+  CONST?: any;
+  cfx?: Conflux;
+  ttlMap?: any;
+  config?: StatConfig;
+  error?: any;
+  tool?: any;
+  logger?: any;
+  syncSDK?: any;
+  tokenTool?: TokenTool;
+  dingTalk?: any;
+  type?: any;
+  tokenQuery?: TokenQuery;
+  jsonRpc?: JsonRPCSDK & any;
+  contractQuery?: ContractQuery;
 }
 
-export class ScanServices {
-  public a: number;
-  public conflux: ConfluxService;
-  public statistic: StatisticService;
-  public epoch: EpochService;
-  public block: BlockService;
-  public transaction: TransactionService;
-  public account: AccountService;
-  public contract: ContractService;
-  public token: TokenService;
-  public eventLog: EventLogService;
-  public announce: AnnounceService;
-  public transfer: TransferService;
-  public recaptcha: RecaptchaService;
-  public desensitizer: Desensitizer;
-  public homeDashboard: HomeDashboardService;
-  public blockData: DailyBlockDataStatQuery;
-  public epochRdb: EpochQuery;
-  public fullBlock: FullBlockQuery;
-  public cfxTransfer: CfxTransferQuery;
-  public crc20Transfer: Crc20TransferQuery;
-  public crc721Transfer: Crc721TransferQuery;
-  public crc3525Transfer: Crc3525TransferQuery;
-  /*   public  crc777Transfer: Crc777TransferQuery;*/
-  public crc1155Transfer: Crc1155TransferQuery;
-  public traceCreate: BlockTraceCreateQuery;
-  public contractRdb: ContractQuery;
-  public tokenRdb: TokenQuery;
-  public ensCheckerQuery: ENSCheckerQuery;
-  public accountQuery: AccountQuery;
-  public censor: CensorService;
+export interface ScanServices {
+  a: number;
+  conflux: ConfluxService;
+  statistic: StatisticService;
+  epoch: EpochService;
+  block: BlockService;
+  transaction: TransactionService;
+  account: AccountService;
+  contract: ContractService;
+  token: TokenService;
+  eventLog: EventLogService;
+  announce: AnnounceService;
+  transfer: TransferService;
+  recaptcha: RecaptchaService;
+  desensitizer: Desensitizer;
+  homeDashboard: HomeDashboardService;
+  blockData: DailyBlockDataStatQuery;
+  epochRdb: EpochQuery;
+  fullBlock: FullBlockQuery;
+  cfxTransfer: CfxTransferQuery;
+  crc20Transfer: Crc20TransferQuery;
+  crc721Transfer: Crc721TransferQuery;
+  crc3525Transfer: Crc3525TransferQuery;
+  /*    crc777Transfer: Crc777TransferQuery;*/
+  crc1155Transfer: Crc1155TransferQuery;
+  traceCreate: BlockTraceCreateQuery;
+  contractRdb: ContractQuery;
+  tokenRdb: TokenQuery;
+  tokenQuery: TokenQuery;
+  ensCheckerQuery: ENSCheckerQuery;
+  accountQuery: AccountQuery;
+  censor: CensorService;
+  contractQuery?: ContractQuery;
 }
 
 export function serviceLoader(app) {
