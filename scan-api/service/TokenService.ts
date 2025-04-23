@@ -1,4 +1,5 @@
 import {ScanApp, ScanCtx} from "./index";
+import {BatchBalanceWatcher} from "../../stat/service/watcher/BatchBalanceWatcher";
 
 const lodash = require('lodash');
 const BigFixed = require("bigfixed");
@@ -192,11 +193,7 @@ export class TokenService {
     const { balanceMap: dbBalanceMap, tokenArray: tokens } = await TokenQuery.listAccountTokens({ accountAddress });
     const addressArray = tokens.map((t) => t.base32);
     // this config is from scan-api/config, not statConfig.
-    let utilContract = config.scanUtilContract;
-    const utilInDb = await KV.getString(SCAN_UTIL_CONTRACT, '');
-    if (utilInDb !== '') {
-      utilContract = utilInDb;
-    }
+    let utilContract = BatchBalanceWatcher.getUtilContractAddr();
     // fetch realtime balance, but, some nft may return 0.
     const balanceArray = await service.conflux.getBalances(accountAddress, addressArray, utilContract);
     const balanceMap = {};

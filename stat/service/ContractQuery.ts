@@ -19,6 +19,7 @@ import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
 import {ConfigInstance} from "../config/StatConfig";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {ScanApp} from "../../scan-api/service/index";
 
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -28,9 +29,10 @@ const {ContractVerify} = require("../model/ContractVerify");
 const abi = require('./tool/abi');
 
 export class ContractQuery {
-    protected app: any;
+    protected app: ScanApp;
 
-    constructor(app: any) {
+
+    constructor(app: ScanApp) {
         this.app = app;
     }
 
@@ -421,7 +423,7 @@ export class ContractQuery {
         } = this;
 
         // remove repeat
-        const networkId = StatApp.networkId || this.app?.networkId;
+        const networkId = StatApp.networkId;
         addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address)))];
         if (addressArray.length === 0) { return { total: 0, map: {} };}
 

@@ -8,7 +8,11 @@ const OPTIONS = {
   },
 };
 
-class JsonRPCSDK {
+export class JsonRPCSDK {
+  config: any;
+  provider: unknown;
+  private readonly proxyToProvider: any;
+  private readonly _methodToProvider: {};
   constructor(config = {}) {
     this.config = config;
 
@@ -44,6 +48,7 @@ class JsonRPCSDK {
     }
 
     this._methodToProvider[method] = provider;
+    // @ts-ignore
     provider.setMaxListeners(100);
     return provider;
   }
@@ -57,9 +62,8 @@ class JsonRPCSDK {
   }
 
   close() {
+    // @ts-ignore
     this.provider.close();
     lodash.forEach(this.proxyToProvider, (provider) => provider.close());
   }
 }
-
-module.exports = JsonRPCSDK;

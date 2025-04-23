@@ -40,10 +40,10 @@ import {TxnQuery} from "../stat/service/TxnQuery";
 import {TxnSync} from "../stat/service/TxnSync";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
 import {BlockTraceCreateQuery} from "../stat/service/BlockTraceCreateQuery";
+import {JsonRPCSDK} from "../common/JsonRPCSDK";
 
 const Koa = require('koa');
 const app = new Koa();
-const JsonRPCSDK = require('../common/JsonRPCSDK');
 const {createLogger} = require('../common/utils.js');
 
 const config = loadConfig('Prod')

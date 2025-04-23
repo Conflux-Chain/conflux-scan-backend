@@ -28,23 +28,27 @@ import {ENSCheckerQuery} from "../../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../../stat/service/AccountQuery";
 import {CensorService} from "../../stat/service/censor/CensorService";
 import {TokenTool} from "../../stat/service/tool/TokenTool";
+import {StatConfig} from "../../stat/config/StatConfig";
+import {JsonRPCSDK} from "../../common/JsonRPCSDK";
 
 export interface ScanCtx {
   app: ScanApp
 }
 export interface ScanApp {
-  service: ScanServices;
-  CONST: any;
-  cfx: Conflux;
-  ttlMap: any;
-  config: any;
-  error: any;
-  tool: any;
-  logger: any;
-  syncSDK: any;
-  tokenTool: TokenTool;
-  dingTalk: any;
-  type: any;
+  service?: ScanServices;
+  CONST?: any;
+  cfx?: Conflux;
+  ttlMap?: any;
+  config?: StatConfig;
+  error?: any;
+  tool?: any;
+  logger?: any;
+  syncSDK?: any;
+  tokenTool?: TokenTool;
+  dingTalk?: any;
+  type?: any;
+  tokenQuery?: TokenQuery;
+  jsonRpc?: JsonRPCSDK & any;
 }
 
 export class ScanServices {
