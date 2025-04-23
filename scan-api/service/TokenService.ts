@@ -193,7 +193,7 @@ export class TokenService {
     const { balanceMap: dbBalanceMap, tokenArray: tokens } = await TokenQuery.listAccountTokens({ accountAddress });
     const addressArray = tokens.map((t) => t.base32);
     // this config is from scan-api/config, not statConfig.
-    let utilContract = BatchBalanceWatcher.getUtilContractAddr();
+    let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     // fetch realtime balance, but, some nft may return 0.
     const balanceArray = await service.conflux.getBalances(accountAddress, addressArray, utilContract);
     const balanceMap = {};
