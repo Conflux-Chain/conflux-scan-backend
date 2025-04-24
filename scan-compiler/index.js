@@ -13,5 +13,5 @@ if (process.mainModule.filename === __filename) {
   console.log(`....... start compiler app, port ${config.port} ..........`);
   app.start().catch((err) => {
     console.log('error when running:', err);
-  }).finally(() => app.close());
+  });
 }
