@@ -1,29 +1,11 @@
 const Module = require('module');
 const fs = require('fs');
 const lodash = require('lodash');
-const fastDiff = require('fast-diff');
 const readline = require('readline');
 const error = require('./error');
 const {PerformanceObserver, performance} = require("perf_hooks");
 // ----------------------------------------------------------------------------
-let running = true;
 
-process.on('SIGINT', () => {
-  console.log(`${__filename} receive signal [SIGINT]`);
-  running = false;
-});
-process.on('SIGTERM', () => {
-  console.log('receive signal [SIGTERM]');
-  running = false;
-});
-process.on('tool.js, unhandledRejection', (e) => {
-  console.error(e); // eslint-disable-line no-console
-  running = false;
-});
-
-function isRunning() {
-  return running;
-}
 
 function memInfo(){
   const format = function(bytes) {
@@ -111,23 +93,6 @@ function timestampToString(timestamp, zone = +8) {
   const [_, year, month, day, hour, minute, second] = date.toISOString().match(REGEX) || {}; // eslint-disable-line no-unused-vars
   return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
 }
-
-// function calculateSimilarity(x, y) {
-//   x = Buffer.isBuffer(x) ? x.toString() : x;
-//   y = Buffer.isBuffer(y) ? y.toString() : y;
-//
-//   let unionCount = 0;
-//   let intersectionCount = 0;
-//   const array = fastDiff(x, y);
-//   array.forEach(([code, string]) => {
-//     unionCount += string.length;
-//     if (code === 0) {
-//       intersectionCount += string.length;
-//     }
-//   });
-//
-//   return unionCount > 0 ? intersectionCount / unionCount : 1;
-// }
 
 // ----------------------------------------------------------------------------
 function requireJs(js, filename = '') {
@@ -243,7 +208,6 @@ function buildSqlLog(tag) {
 // ----------------------------------------------------------------------------
 
 module.exports = {
-  isRunning,
   memInfo,
   enablePerformance, performance_mark, buildSqlLog,
   sleep,
