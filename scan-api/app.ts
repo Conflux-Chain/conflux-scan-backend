@@ -170,8 +170,6 @@ export class ApiApp extends AppBase {
   async start() {
     await this.init();
     this.listen();
-    await super.run();
-    console.log('api runs over.');
   }
 
   async close() {

@@ -73,14 +73,8 @@ export class AppBase extends Koa {
     }
   }
 
-  async run() {
-    while (tool.isRunning()) {
-      await tool.sleep(1000);
-    }
-  }
-
   async close() {
-    await this.cfx.close();
+    await this.cfx?.close();
     this.ttlMap.close();
 
     if (this.server) {

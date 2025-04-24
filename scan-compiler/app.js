@@ -48,8 +48,6 @@ class App extends AppBase {
   async start() {
     await this.init();
     this.listen();
-    await super.run();
-    console.log('compiler runs over.');
   }
 
   async close() {

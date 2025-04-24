@@ -2,18 +2,6 @@ import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 
-// Use `setTime(cb, 0)` instead of while(isRunning())
-// ----------------------------------------------------------------------------
-// let running = true;
-//
-// process.on('SIGINT', (signal) => {
-//   console.log(`receive ${signal}`)
-//   running = false;
-// });
-// process.on('SIGTERM', (signal) => {
-//   console.log(`receive ${signal}`)
-//   running = false;
-// });
 process.on('unhandledRejection', (e) => {
   if (e["message"]?.startsWith('ConnectionManager.getConnection was called after the connection manager was closed!')) {
     console.log(e['message']);
