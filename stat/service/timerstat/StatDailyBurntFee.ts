@@ -85,17 +85,19 @@ export class StatDailyBurntFee extends TimerStat{
         const {
             app: { cfx: sdk, supressFullStateRpcErr }
         } = this
-
+        let dataAbsent = false;
         const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lt]: endTime}}, order: [['timestamp', 'desc']]})
         const[collateralInfoNew, feeNew] = await Promise.all([
             sdk.cfx.getCollateralInfo(maxEpoch.epoch).catch(e => {
                 if(supressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
+                    dataAbsent = true;
                     return {convertedStoragePoints: 0}
                 }
                 throw e
             }),
             sdk.cfx.getFeeBurnt(maxEpoch.epoch).catch(e => {
                 if(supressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
+                    dataAbsent = true;
                     return 0
                 }
                 throw e
@@ -115,10 +117,10 @@ export class StatDailyBurntFee extends TimerStat{
         return {
             statType: statType,
             statTime: beginTime,
-            burntStorageFeeTotal: storageFeeTotal.toNumber(),
-            burntGasFeeTotal: gasFeeTotal.toNumber(),
-            burntStorageFee: storageFee.toNumber(),
-            burntGasFee: gasFee.toNumber(),
+            burntStorageFeeTotal: dataAbsent ? lastStat.burntStorageFeeTotal : storageFeeTotal.toNumber(),
+            burntGasFeeTotal: dataAbsent ? lastStat.burntGasFeeTotal : gasFeeTotal.toNumber(),
+            burntStorageFee: dataAbsent ? 0: storageFee.toNumber(),
+            burntGasFee: dataAbsent ? 0 : gasFee.toNumber(),
         } as DailyBurntFeeStat
     }
 }
