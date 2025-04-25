@@ -117,8 +117,8 @@ export class StatDailyBurntFee extends TimerStat{
         return {
             statType: statType,
             statTime: beginTime,
-            burntStorageFeeTotal: dataAbsent ? lastStat.burntStorageFeeTotal : storageFeeTotal.toNumber(),
-            burntGasFeeTotal: dataAbsent ? lastStat.burntGasFeeTotal : gasFeeTotal.toNumber(),
+            burntStorageFeeTotal: dataAbsent ? collateralOld : storageFeeTotal.toNumber(),
+            burntGasFeeTotal: dataAbsent ? feeOld : gasFeeTotal.toNumber(),
             burntStorageFee: dataAbsent ? 0: storageFee.toNumber(),
             burntGasFee: dataAbsent ? 0 : gasFee.toNumber(),
         } as DailyBurntFeeStat
