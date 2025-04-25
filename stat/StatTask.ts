@@ -108,8 +108,8 @@ async function main() {
         if (fullStateRpc) {
             fullCfx = await initCfxSdk({url: fullStateRpc});
         }
-        const supressFullStateRpcErr = await KV.getSwitch(KEY_SUPRESS_FULLSTATE_RPC_ERR);
-        const statDailyBurntFee = new StatDailyBurntFee({fullCfx, supressFullStateRpcErr});
+        const suppressFullStateRpcErr = await KV.getSwitch(KEY_SUPRESS_FULLSTATE_RPC_ERR);
+        const statDailyBurntFee = new StatDailyBurntFee({cfx: fullCfx, suppressFullStateRpcErr});
         await statDailyBurntFee.schedule(1000 * 60);
     }
     //

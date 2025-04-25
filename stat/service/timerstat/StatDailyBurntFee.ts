@@ -4,13 +4,17 @@ import {DailyBurntFeeStat} from "../../model/DailyBurntFeeStat";
 import {Epoch} from "../../model/Epoch";
 import {StatApp} from "../../StatApp";
 import {CONST} from "../common/constant";
+import {Conflux} from "js-conflux-sdk";
 
 const BigFixed = require('bigfixed');
 
 export class StatDailyBurntFee extends TimerStat{
-
-    constructor(app: any) {
+    public cfx: Conflux;
+    public suppressFullStateRpcErr: boolean;
+    constructor(app: {cfx: Conflux, suppressFullStateRpcErr: boolean}) {
         super(app);
+        this.cfx = app.cfx;
+        this.suppressFullStateRpcErr = app.suppressFullStateRpcErr;
         this.baseInterval = IntervalType.HOUR;
     }
 
@@ -19,7 +23,7 @@ export class StatDailyBurntFee extends TimerStat{
     }
 
     public async nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date, skip?: boolean}> {
-        const {app: {cfx}} = this
+        const cfx = this.cfx;
         const lastStat = await DailyBurntFeeStat.findOne({
             where: {statType: this.baseInterval},
             order:[["statTime","desc"]],
@@ -83,20 +87,20 @@ export class StatDailyBurntFee extends TimerStat{
 
     private async statBurntFee(statType: string, beginTime: Date, endTime: Date) {
         const {
-            app: { cfx: sdk, supressFullStateRpcErr }
+            cfx: sdk, suppressFullStateRpcErr
         } = this
         let dataAbsent = false;
         const maxEpoch = await Epoch.findOne({where: {timestamp: {[Op.lt]: endTime}}, order: [['timestamp', 'desc']]})
         const[collateralInfoNew, feeNew] = await Promise.all([
             sdk.cfx.getCollateralInfo(maxEpoch.epoch).catch(e => {
-                if(supressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
+                if(suppressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
                     dataAbsent = true;
                     return {convertedStoragePoints: 0}
                 }
                 throw e
             }),
             sdk.cfx.getFeeBurnt(maxEpoch.epoch).catch(e => {
-                if(supressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
+                if(suppressFullStateRpcErr && e.message.includes('out-of-bound StateAvailabilityBoundary')) {
                     dataAbsent = true;
                     return 0
                 }

@@ -51,7 +51,7 @@ export function pushMeter(metrics: IMetric[]) {
 
 		{//var scope block
 			// height doesn't grow.
-			const thresholdOfGrowth = ConfigInstance.noCoreSpace ? 1 : 100;
+			const thresholdOfGrowth = ConfigInstance.noCoreSpace ? 1 : 50;
 			const v5mGrowth = meterData.meterGrowth.get5MinuteRate() * 60 * 5; // the returned value is based on 1 second.
 			// pos block is generated every minute.
 			const growthThreshold = meterData.name == SamplerType.POS_BLOCK ? 1 : thresholdOfGrowth;
