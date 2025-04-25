@@ -630,6 +630,7 @@ export class EpochSync extends SyncBase {
             type: transferType
         });
         if (token?.name?.length > 64) token.name = token.name.substr(0, 64)
+        if (token?.symbol?.length > 64) token.symbol = token.symbol.substr(0, 64)
 
         const transferCount = (await EpochSync.countTransfer(hex40id, transferType)) || 1;
         const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
