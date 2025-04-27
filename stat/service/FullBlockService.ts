@@ -141,6 +141,10 @@ export class FullBlockService {
                 console.log(` try again epoch ${maxEpoch+1
                     }: ${ret.message || 'no message'}`)
                 await sleep(5_000)
+                if (this.batchBlockTx.fullBlock?.length) {
+                    console.log(`restart , batch data is not empty`);
+                    process.exit(5)
+                }
                 await this.updateEpochNumber()
             } else if (ret.code === CODE_EMPTY_BLOCK) {
                 console.log(` empty block at epoch ${ret.epoch}, ${ret.message}`)

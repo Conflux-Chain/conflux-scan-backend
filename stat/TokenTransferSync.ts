@@ -323,7 +323,12 @@ async function run(cfx:Conflux, preFinished: number) {
     async function repeat() {
         return repeat0().catch(err=>{
             console.log(` repeat error at epoch ${epoch}: `, err)
-            setTimeout(repeat, 5_000)
+            if (batchData.epochHash?.length) {
+                console.log(`restart , batch data is not empty`);
+                return sleep(10_000).then(()=>{process.exit(9)});
+            } else {
+                setTimeout(repeat, 5_000)
+            }
         })
     }
     let lastDump = Date.now();
