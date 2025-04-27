@@ -485,7 +485,12 @@ async function run(cfx:Conflux, preFinished: number) {
             safeAddErrorLog('cfx-sync',`repeat`, err);
             // DB failure, maybe.
             console.log(` repeat error at epoch ${epoch}: `, err)
-            setTimeout(repeat, 10_000)
+            if (batchData.pivotHashArr?.length) {
+                console.log(`restart , batch data is not empty`);
+                return sleep(10_000).then(()=>{process.exit(9)});
+            } else {
+                setTimeout(repeat, 10_000);
+            }
         })
     }
     let lastDump = Date.now();

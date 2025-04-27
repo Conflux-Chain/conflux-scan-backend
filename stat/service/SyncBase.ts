@@ -88,6 +88,10 @@ export abstract class SyncBase {
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward save error:`, e);
             await sleep(10_000);
+            if (this.catchUp.status()) {
+                console.log(`restart , batch data is not empty`);
+                return sleep(10_000).then(()=>{process.exit(9)});
+            }
             return epochNumber;
         }
 
@@ -182,7 +186,7 @@ export abstract class SyncBase {
     }
 
     //------------------------- flush latest epoch ---------------------------
-    public async scheduleLatestEpoch(delay: number = 10) {
+    public async scheduleLatestEpoch(delay: number = 2_000) {
         console.log(`schedule latest epoch, interval: ${delay}`)
 
         await this.latestStateEpoch()
