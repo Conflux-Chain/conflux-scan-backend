@@ -8,20 +8,6 @@ CREATE TABLE `address` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-
-create table address_info
-(
-    id       bigint                 not null
-        primary key,
-    name     char(32)               not null,
-    createAt datetime               not null,
-    updateAt datetime               not null,
-    remark   char(128) default ''   not null,
-    state    char(16)  default 'ok' not null,
-    constraint name
-        unique (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
 create table block
 (
     id          int auto_increment

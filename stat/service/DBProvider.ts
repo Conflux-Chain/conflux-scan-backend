@@ -11,14 +11,14 @@ import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {CfxBalance, createTokenBalanceTable, NFTBalance,} from "../model/Balance";
-import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token, Token2} from "../model/Token";
+import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
 import {CfxTransfer, CfxTransferRowMark, createAddressCfxTransferTable, DailyCfxTxn,} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiInfo} from "../model/ContractInfo";
-import {addNameSymbolFailureColumn, Contract, Contract2} from "../model/Contract";
+import {addNameSymbolFailureColumn, Contract} from "../model/Contract";
 import {
     BlockRowMark,
     createAddressTxTable,
@@ -30,9 +30,9 @@ import {
 } from "../model/FullBlock";
 import {DailyContractCreate, DailyContractRegister, DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
-import {ContractVerify, ContractVerify2, ProxyVerify} from "../model/ContractVerify";
+import {ContractVerify, ProxyVerify} from "../model/ContractVerify";
 import {TokenAutoDetect} from "../model/TokenAutoDetect";
-import {TokenSecurityAudit, TokenSecurityAudit2} from "../model/TokenSecurityAudit";
+import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
 import {Lock} from "../model/Lock";
 import {PruneInfo} from "../model/PruneInfo";
@@ -50,7 +50,6 @@ import {
     PosTransaction
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
-import {TokenTransferStat} from "../model/TokenTransferStat";
 import {EpochHashTokenTransfer,} from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
@@ -179,26 +178,21 @@ export async function initPartialModel(sequelize) {
     AddressStat.register(sequelize)
     Contract.register(sequelize)
     addNameSymbolFailureColumn(sequelize).then()
-    Contract2.register(sequelize)
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
     ContractDestroy.register(sequelize)
     Token.register(sequelize);
-    Token2.register(sequelize);
-    TokenSecurityAudit2.register(sequelize);
     NftMint.register(sequelize)
     NftMetaFts.register(sequelize);
     TokenQuoteTrack.register(sequelize);
     KV.register(sequelize);
     Epoch.register(sequelize);
     ContractVerify.register(sequelize);
-    ContractVerify2.register(sequelize);
     ProxyVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
     CfxBalance.register(sequelize);
     TokenSecurityAudit.register(sequelize);
     PruneInfo.register(sequelize);
-    TokenTransferStat.register(sequelize);
     Blacklist.register(sequelize);
     RateConfig.register(sequelize);
     HeartBeatBean.register(sequelize);
@@ -279,7 +273,9 @@ export function createMySql(dbConf) {
 async function dropEmptyTables() {
     for (let t of [T_ADDRESS_NFT, 'ens', 'search_text', 'bak_cfx_transfer',
         'contract_info', 'nft_meta', 'stream_error', 'epoch_nft_transfer',
-        'top_record', 'batch_index', 'contract_verify2']) {
+        'top_record', 'batch_index', 'contract_verify2', 'epoch_cfx_transfer_count',
+        'testtimezone', 'token2', 'token_security_audit2', 'contract_verify2',
+        'contract2', 'address_info', 'address', 'stat_token_transfer']) {
         const sql = `select * from ${t} limit 1`;
         let hasError = false;
         const rows = await KV.sequelize.query(sql, {type: QueryTypes.SELECT}).catch(e=>{
