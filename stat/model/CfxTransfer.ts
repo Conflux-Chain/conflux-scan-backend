@@ -1,5 +1,5 @@
 import {DataTypes, Model, Op, Sequelize, QueryTypes} from "sequelize";
-import {buildHexSet, fillHexId, Hex64Map, makeId} from "./HexMap";
+import {buildHexSet, fillHexId, makeId} from "./HexMap";
 import {createTable} from "../service/DBProvider";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT, KV} from "./KV";
 import {adjustTodayEndTime, patchDateOnlyField} from "./Utils";

@@ -1,5 +1,5 @@
 import {DataType, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
-import {ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
+import {ESpaceHex40Map, Hex40Map} from "../model/HexMap";
 import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
@@ -125,7 +125,6 @@ export async function initPartialModel(sequelize) {
         console.log(`connect to DB fail:`, err)
         process.exit(9)
     });
-    hexMapInit(sequelize);
     await Promise.all([
         createAddressErc20TransferTable(sequelize),
         create721partition(sequelize),
@@ -272,7 +271,7 @@ async function dropEmptyTables() {
     for (let t of ['address_nft', 'ens', 'search_text', 'bak_cfx_transfer',
         'contract_info', 'nft_meta', 'stream_error', 'epoch_nft_transfer',
         'top_record', 'batch_index', 'contract_verify2', 'epoch_cfx_transfer_count',
-        'testtimezone', 'token2', 'token_security_audit2', 'contract_verify2',
+        'testtimezone', 'token2', 'token_security_audit2', 'contract_verify2', 'hex64',
         'contract2', 'address_info', 'address', 'stat_token_transfer', 'token_auto_detect']) {
         const sql = `select * from ${t} limit 1`;
         let hasError = false;
