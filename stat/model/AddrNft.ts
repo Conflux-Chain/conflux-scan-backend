@@ -2,9 +2,6 @@ import {DataTypes, Model, Sequelize} from "sequelize";
 import {createTable} from "../service/DBProvider";
 
 //=================
-export const T_ADDRESS_NFT = "address_nft"
-
-//=================
 export const T_ADDRESS_NFTS = "address_nfts"
 
 export interface IAddressNfts {

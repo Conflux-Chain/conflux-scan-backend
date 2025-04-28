@@ -31,7 +31,6 @@ import {
 import {DailyContractCreate, DailyContractRegister, DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {ContractVerify, ProxyVerify} from "../model/ContractVerify";
-import {TokenAutoDetect} from "../model/TokenAutoDetect";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
 import {Lock} from "../model/Lock";
@@ -74,7 +73,7 @@ import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 import {GasConsumer} from "../model/GasConsumer";
 import {ReqAccount} from "./watcher/AccountChecker";
 import {ErrorLog} from "../monitor/ErrorMonitor";
-import {AddressNfts, T_ADDRESS_NFT} from "../model/AddrNft";
+import {AddressNfts} from "../model/AddrNft";
 
 let conf
 export function createDB(config) {
@@ -229,7 +228,6 @@ export async function initModel(sequelize: Sequelize) {
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
     CrossSpaceStat.register(sequelize)
-    TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);
     PosAccountBlock.register(sequelize)
@@ -271,11 +269,11 @@ export function createMySql(dbConf) {
 }
 
 async function dropEmptyTables() {
-    for (let t of [T_ADDRESS_NFT, 'ens', 'search_text', 'bak_cfx_transfer',
+    for (let t of ['address_nft', 'ens', 'search_text', 'bak_cfx_transfer',
         'contract_info', 'nft_meta', 'stream_error', 'epoch_nft_transfer',
         'top_record', 'batch_index', 'contract_verify2', 'epoch_cfx_transfer_count',
         'testtimezone', 'token2', 'token_security_audit2', 'contract_verify2',
-        'contract2', 'address_info', 'address', 'stat_token_transfer']) {
+        'contract2', 'address_info', 'address', 'stat_token_transfer', 'token_auto_detect']) {
         const sql = `select * from ${t} limit 1`;
         let hasError = false;
         const rows = await KV.sequelize.query(sql, {type: QueryTypes.SELECT}).catch(e=>{
