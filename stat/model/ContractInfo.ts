@@ -2,9 +2,6 @@ import {Op, DataTypes, Model, QueryTypes} from "sequelize";
 import {initCfxSdk} from "../service/common/utils";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
-const T_CONTRACT_INFO = 'contract_info'
-
-
 export interface IAbiInfo {
     id?:number
     hash:string

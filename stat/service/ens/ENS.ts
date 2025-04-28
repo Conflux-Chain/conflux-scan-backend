@@ -1,6 +1,4 @@
 import {ethers} from 'ethers'
-import {init} from "../tool/FixDailyTokenStat";
-import {scheduleSyncEnsFromSearchText} from "./EnsService";
 import {
     getAddrOfName,
     getReverseNameByAddress,
@@ -111,13 +109,6 @@ async function main(){
     } else if (cmd === 'labelHash') {
         console.log(`label hash ${p1} : `, ethers.utils.keccak256(ethers.utils.toUtf8Bytes(p1)))
         // console.log(`name hash ${p1} : `, ethers.utils.namehash(p1))
-    } else if (cmd === 'testSync') {
-        await init()
-        // await SearchText.create({text: p1})
-        // await syncSearchText()
-        // await SearchText.sequelize.close()
-        await scheduleSyncEnsFromSearchText()
-        return
     } else {
         console.log(`unknown cmd [${cmd}]`)
     }

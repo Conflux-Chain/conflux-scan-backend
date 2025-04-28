@@ -1,6 +1,6 @@
-import {QueryTypes, Sequelize} from "sequelize";
+import {DataType, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
 import {ESpaceHex40Map, Hex40Map, hexMapInit} from "../model/HexMap";
-import {Epoch, EpochNftTransfer, VoteParams} from "../model/Epoch";
+import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV} from "../model/KV";
@@ -13,12 +13,7 @@ import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {CfxBalance, createTokenBalanceTable, NFTBalance,} from "../model/Balance";
 import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token, Token2} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
-import {
-    CfxTransfer,
-    CfxTransferRowMark,
-    createAddressCfxTransferTable,
-    DailyCfxTxn,
-} from "../model/CfxTransfer";
+import {CfxTransfer, CfxTransferRowMark, createAddressCfxTransferTable, DailyCfxTxn,} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
@@ -56,13 +51,12 @@ import {
 } from "../model/PoS";
 import {EpochTask, UniqueAddress} from "./UniqueAddressStat";
 import {TokenTransferStat} from "../model/TokenTransferStat";
-import {EpochHashTokenTransfer, } from "../TokenTransferSync";
+import {EpochHashTokenTransfer,} from "../TokenTransferSync";
 import {Blacklist} from "../model/Blacklist";
 import {CheckBlockInfo} from "../monitor/TxChecker";
 import {CfxUser, EpochHashCfxTransfer} from "../CfxTransferSync";
 import {PosDailyStatMix} from "./pos/PosStat";
 import {CrossSpaceStat} from "./CrossSpaceStat";
-import {ENS, SearchText} from "./ens/EnsService";
 import {ApiLog} from "../monitor/ApiLog";
 import {NFTOwnerCount, TransferCount} from "../model/TransferCount";
 import {PosRewardRank} from "./pos/PosRewardRank";
@@ -73,7 +67,6 @@ import {ApprovalRelation, TaskEpochApproval, TokenApproval} from "../ApprovalSyn
 import {AddrEvent3525, Event3525, Slot3525, SlotChanged, TaskEvent3525, TokenSlot3525} from "../T3525Sync";
 import {DailyNFTHolder, DailyNFTStat} from "../model/DailyNFTStat";
 import {CensorItem} from "../model/CensorItem";
-import {AddressNfts, createAddressNftTable} from "../model/AddrNft";
 import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
 import {NameTag} from "../model/NameTag";
@@ -82,6 +75,7 @@ import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 import {GasConsumer} from "../model/GasConsumer";
 import {ReqAccount} from "./watcher/AccountChecker";
 import {ErrorLog} from "../monitor/ErrorMonitor";
+import {AddressNfts, T_ADDRESS_NFT} from "../model/AddrNft";
 
 let conf
 export function createDB(config) {
@@ -149,10 +143,8 @@ export async function initPartialModel(sequelize) {
         createAddressTxTable(sequelize),
         createAddressTransferTable(sequelize),
         createAddressNftTransferTable(sequelize),
-        createAddressNftTable(sequelize),
         createFullBlockExtTable(sequelize),
     ])
-    ENS.register(sequelize)
     ApiLog.register(sequelize)
     ReqAccount.register(sequelize)
     ErrorLog.register(sequelize)
@@ -199,7 +191,6 @@ export async function initPartialModel(sequelize) {
     TokenQuoteTrack.register(sequelize);
     KV.register(sequelize);
     Epoch.register(sequelize);
-    EpochNftTransfer.register(sequelize);
     ContractVerify.register(sequelize);
     ContractVerify2.register(sequelize);
     ProxyVerify.register(sequelize);
@@ -244,7 +235,6 @@ export async function initModel(sequelize: Sequelize) {
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
     CrossSpaceStat.register(sequelize)
-    SearchText.register(sequelize)
     TokenAutoDetect.register(sequelize);
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);
@@ -265,6 +255,7 @@ export async function initModel(sequelize: Sequelize) {
 
     /*await checkApiLogIpField()*/
     console.log(`init models ok`)
+    await dropEmptyTables();
 }
 
 export function createMySql(dbConf) {
@@ -285,6 +276,27 @@ export function createMySql(dbConf) {
     return new Sequelize(dbConf.instanceName, null, null, dbConf)
 }
 
+async function dropEmptyTables() {
+    for (let t of [T_ADDRESS_NFT, 'ens', 'search_text', 'bak_cfx_transfer',
+        'contract_info', 'nft_meta', 'stream_error', 'epoch_nft_transfer',
+        'top_record', 'batch_index', 'contract_verify2']) {
+        const sql = `select * from ${t} limit 1`;
+        let hasError = false;
+        const rows = await KV.sequelize.query(sql, {type: QueryTypes.SELECT}).catch(e=>{
+            console.log(`table ${t} error ${e.message}`);
+            hasError = true;
+            return []; // table may not exist
+        });
+        if (hasError) {
+            continue
+        }
+        if (rows.length) {
+            console.log(`table is not empty`);
+            continue;
+        }
+        await KV.sequelize.query(`drop table if exists ${t}`, {type: QueryTypes.UPDATE});
+    }
+}
 
 export async function autoAddPartition(seq:Sequelize) {
     const sql = `SELECT TABLE_SCHEMA,TABLE_NAME, min(convert(PARTITION_DESCRIPTION,unsigned)) as minV,
