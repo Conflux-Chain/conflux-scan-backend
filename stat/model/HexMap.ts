@@ -54,11 +54,7 @@ export interface HexMapAttributes {
     hex: string
     createdAt?: Date
 }
-export class Hex64Map extends Model<HexMapAttributes> implements HexMapAttributes {
-    public id?: number;
-    public hex: string;
-    createdAt?: Date
-}
+
 export class Hex40Map extends Model<HexMapAttributes> implements HexMapAttributes {
     public id?: number;
     public hex: string;
@@ -173,12 +169,7 @@ export async function makeId(hex: string, dbTxNotUsed: Transaction = undefined, 
     } else if (hex.startsWith('CFX') || hex.startsWith('cfx') || hex.startsWith('net') || hex.startsWith('NET')) {
         hex = formatToHex(hex).substr(2)
     }
-    let map = Hex64Map;
-    switch (hex.length) {
-        case 64: break;
-        case 40: map = Hex40Map; break;
-        default: throw new Error(`Unsupported hex length ${hex.length} , ${hex}`)
-    }
+    let map = Hex40Map;
     const cached = dbCache.get(hex)
     if (cached !== undefined && cached !== null) {
         dbCache.ttl(hex, cacheTtl)
@@ -245,7 +236,7 @@ export function buildHexSet<T>(hexSet:Set<T>, arr:any[], ...hexKey:string[]) : S
     return hexSet
 }
 let debugLogCnt = 10
-export async function buildIdMap(hexSet:Set<any>, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) : Promise<Map<string,number>> {
+export async function buildIdMap(hexSet:Set<any>, model:typeof Hex40Map, biz:string, dt:Date) : Promise<Map<string,number>> {
     const templates = []
     hexSet.forEach(hex=>{
         templates.push({hex: hex.substr(2)})
@@ -287,39 +278,13 @@ export function mapProp(map:Map<any,any>, arr:any[], from:any, to:any) {
 export function fillHexId(map:Map<any,any>, arr:any[], hexKey:string, idKey:string) {
     arr.forEach(data=>{ data[idKey] = map.get(data[hexKey]?.substr(2)) || 0})
 }
-export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map| typeof Hex64Map, biz:string, dt:Date) {
+export async function batchBuildId(arr:any[], hexKey:string, idKey:string, model:typeof Hex40Map, biz:string, dt:Date) {
     const set = buildHexSet(undefined, arr, hexKey)
     return buildIdMap(set, model, biz, dt).then(map=>{
         fillHexId(map, arr, hexKey, idKey)
     })
 }
-export const T_ADDRESS = 'address'
-export function hexMapInit(sequelize) {
-    Hex64Map.init(
-        {
-            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
-            hex: {type: DataTypes.CHAR(64), allowNull: false,},
-            createdAt:{type:DataTypes.VIRTUAL}
-        },
-        {
-            tableName: 'hex64',
-            sequelize: sequelize,
-            timestamps: false, // prevent default columns: createdAt, updatedAt
-            indexes: [
-                // {
-                    // name: `hex64_index`,
-                    // fields: [
-                    //     {
-                    //         name: 'hex',
-                    //         // length: 10,
-                    //     }
-                    // ],
-                    // unique: true
-                // }
-            ]
-        }
-    )
-}
+
 
 
 export const ADDR_INFO_STATE_OK = 'ok'
@@ -355,16 +320,6 @@ export async function idHex40Map(idArray: Array<number|string|unknown>, with0x=f
     return idHex40Map;
 }
 
-export async function idHex64Map(idArray: Array<number>): Promise<Map<number, string>>{
-    const result = await Hex64Map.findAll({
-        where: {id: { [Op.in]: idArray}},
-    })
-    const idHex64Map = new Map<number, string>()
-    result.forEach(hex64=>{
-        idHex64Map.set(hex64.id, hex64.hex)
-    })
-    return idHex64Map;
-}
 export function mapExtInfo(list:any[], map:object, indexKey:string, tokenKey:string, contractKey:string){
     list.forEach(item => {
         item[tokenKey] = map[item[indexKey]]?.token || {};

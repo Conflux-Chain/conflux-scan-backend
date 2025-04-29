@@ -1,6 +1,6 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {Hex40Map, Hex64Map, idHex40Map, idHex64Map, hex40IdMap, formatToHex} from "../model/HexMap";
+import {Hex40Map, idHex40Map, hex40IdMap, formatToHex} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {Op} from "sequelize";
 import {FullTransaction} from "../model/FullBlock";

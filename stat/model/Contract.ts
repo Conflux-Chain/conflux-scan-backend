@@ -75,37 +75,3 @@ export async function addNameSymbolFailureColumn(seq: Sequelize) {
         }
     })
 }
-
-export class Contract2 extends Model<IContract> implements IContract{
-    id?:number
-    epoch: number
-    base32:string
-    hex40id:number
-    name?:string
-    website?:string
-    abi?:string
-    sourceCode?:string
-    icon?:number
-    destroyed?:boolean
-    censorStatus?: number
-
-    static register(seq:Sequelize) {
-        Contract2.init({
-            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
-            epoch: {type: DataTypes.BIGINT, allowNull: true},
-            base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
-            hex40id: {type: DataTypes.BIGINT, allowNull: false, },
-            name: {type: DataTypes.CHAR(255), allowNull: true},
-            website: {type: DataTypes.CHAR(255), allowNull: true},
-            abi: {type: DataTypes.TEXT, allowNull: true, },
-            sourceCode: {type: DataTypes.TEXT({length:'long'}), allowNull: true, },
-            icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
-            destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
-        },{
-            tableName: 'contract2',
-            sequelize: seq,
-            timestamps: true,
-        })
-    }
-}
