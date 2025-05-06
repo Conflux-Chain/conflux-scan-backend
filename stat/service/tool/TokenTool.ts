@@ -436,7 +436,7 @@ export class TokenTool {
 }
 
 export async function base64ToPNG(token:Token, dir: string, uft8 = '') {
-    if (!token.icon) {
+    if (!token.icon && !uft8) {
         console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
         return {}
     }
