@@ -244,7 +244,8 @@ export class EpochSync extends SyncBase {
             const {dir} = getImageDir();
             for (const token of tokenArray) {
                 if (token.icon) {
-                    const dbIcon = await Token.findOne({where: {base32: token.base32}});
+                    const dbIcon = await Token.findOne({where: {base32: token.base32}, raw: true});
+                    dbIcon.icon = token.icon; // The `icon` filed has not been saved to DB yet.
                     setTimeout(() => {
                         base64ToPNG(dbIcon, dir).then(({absPath, filename}) => {
                             return uploadOss(absPath, filename)

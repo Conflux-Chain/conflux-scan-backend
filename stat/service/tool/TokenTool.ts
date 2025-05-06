@@ -437,8 +437,8 @@ export class TokenTool {
 
 export async function base64ToPNG(token:Token, dir: string) {
     if (!token.icon) {
-        // console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
-        return
+        console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
+        return {}
     }
     let raw_data = decodeUtf8(token.icon);
     // console.log(`data [${raw_data.substr(0,64)}]`)
@@ -455,7 +455,7 @@ export async function base64ToPNG(token:Token, dir: string) {
         imageType = '.jpeg'
     } else {
         console.log(`unknown type ${raw_data.substr(0, 64)}`)
-        return
+        return {}
     }
     const addr = StatApp.isEVM ? format.hexAddress(token.base32) : token.base32;
     const filename = `${addr}${imageType}`;
@@ -470,8 +470,9 @@ export function getImageDir() {
     return {public_dir, dir};
 }
 
-export async function saveOssUrl(token:Token, uploadResult) {
+export async function saveOssUrl(token:Token, uploadResult: {url: string}) {
     if (!uploadResult) {
+        console.log(`uploadResult is not present. ${token.symbol} ${token.name} ${token.base32}`);
         return ;
     }
     const ossUrl = uploadResult.url;
@@ -599,7 +600,7 @@ async function updateTotalSupply() {
     repeat().then()
 }
 
-function createOssClient(accessId, accessKey, bucket) {
+function createOssClient(accessId: string, accessKey: string, bucket: string, region: string) {
     const client = new oss({
         accessKeyId: accessId,
         accessKeySecret: accessKey,
@@ -607,29 +608,30 @@ function createOssClient(accessId, accessKey, bucket) {
         secure: true,
         // oss-cn-hongkong-internal.aliyuncs.com
         // host: 'oss-cn-hongkong.aliyuncs.com',
-        region: 'oss-cn-hongkong',
+        // host: 'oss-cn-beijing.aliyuncs.com',
+        region,//: 'oss-cn-hongkong',
     });
     // client._timeout = 5000
     return client;
 }
 
-async function checkOssBucket(accessId, accessKey, bucket) {
-    const client = createOssClient(accessId, accessKey, bucket);
+async function checkOssBucket(accessId: string, accessKey: string, bucket: string, region: string) {
+    const client = createOssClient(accessId, accessKey, bucket, region);
     const result = await client.getBucketInfo(bucket).catch(err=>{
         throw err
     })
     console.log(`get oss bucket info result :`, result.bucket.ExtranetEndpoint, result.bucket.Location)
 }
-let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: ''}
+let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: '', region: ''}
 export async function initOss(conf) {
     ossConf = conf
-    const {accessId, accessKey, bucket, prefix} = ossConf || {}
+    const {accessId, accessKey, bucket, prefix, region} = ossConf || {}
     if (!accessId) {
         console.log(`oss not configured.`)
         return
     }
     console.log(`init oss, bucket ${bucket}, prefix ${prefix}`)
-    return checkOssBucket(accessId, accessKey, bucket).then(res=>{
+    return checkOssBucket(accessId, accessKey, bucket, region).then(res=>{
     }).catch(err=>{
         console.log(`check oss bucket fail: `, err)
         //process.exit(1)
@@ -637,14 +639,15 @@ export async function initOss(conf) {
 }
 export async function uploadOss(srcFile, ossFilename) {
     if (!srcFile || !ossFilename) {
+        console.log(`file is absent, srcFile [${srcFile}] ossFilename [${ossFilename}]`);
         return undefined
     }
-    const {accessId, accessKey, bucket, prefix} = ossConf;
+    const {accessId, accessKey, bucket, prefix, region} = ossConf;
     if (!accessId) {
-        return `/stat/${ossFilename}`;
+        return {url: `/stat/${ossFilename}`};
     }
     // const bucket0 = await checkOssBucket(accessId, accessKey, bucket)
-    const oss = createOssClient(accessId, accessKey, bucket);
+    const oss = createOssClient(accessId, accessKey, bucket, region);
     const subPathOnOss = `${prefix||'dev'}/${ossFilename}`;
     return oss.put(subPathOnOss, srcFile).then(res=>{
         console.log(`upload to oss success, ${subPathOnOss}`)
