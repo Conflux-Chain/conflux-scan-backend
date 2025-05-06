@@ -1,6 +1,6 @@
 import {Epoch, VoteParams} from "../model/Epoch";
 import {IEpochSyncCtx, SyncBase, SyncCode, SyncData} from "./SyncBase";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {
     formatToBase32,
     formatToHex,
@@ -244,15 +244,18 @@ export class EpochSync extends SyncBase {
             const {dir} = getImageDir();
             for (const token of tokenArray) {
                 if (token.icon) {
-                    const dbIcon = await Token.findOne({where: {base32: token.base32}});
+                    const dbIcon = await Token.findOne({where: {base32: token.base32}, raw: true});
+                    const iconUtf8 = (token.icon as Buffer).toString('utf8');
+                    // The `icon` filed has not been saved to DB yet.
                     setTimeout(() => {
-                        base64ToPNG(dbIcon, dir).then(({absPath, filename}) => {
+                        base64ToPNG(dbIcon, dir, iconUtf8).then(({absPath, filename}) => {
                             return uploadOss(absPath, filename)
                         }).then(res => {
                             return saveOssUrl(dbIcon, res)
                         }).catch(err => {
                             safeAddErrorLog('epoch-sync',`save-token-icon`, err);
-                            console.log(`epoch-sync.create one TokenIcon url fail: ${token.base32}`, err);
+                            console.log(`icon is `, iconUtf8.substring(0, 64));
+                            console.log(`epoch-sync.create one TokenIcon url fail: ${fmtAddr(token.base32, StatApp.networkId)}`, err);
                         })
                     }, 10_000)
                 }
