@@ -624,13 +624,17 @@ async function checkOssBucket(accessId: string, accessKey: string, bucket: strin
 }
 let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: '', region: ''}
 export async function initOss(conf) {
-    ossConf = conf
-    const {accessId, accessKey, bucket, prefix, region} = ossConf || {}
+    ossConf = conf;
+    let {accessId, accessKey, bucket, prefix, region} = ossConf || {}
     if (!accessId) {
         console.log(`oss not configured.`)
         return
     }
-    console.log(`init oss, bucket ${bucket}, prefix ${prefix}`)
+    if (!region) {
+        region = bucket === 'scanchina' ? 'oss-cn-beijing' : 'oss-cn-hongkong';
+        ossConf.region = region;
+    }
+    console.log(`init oss, bucket ${bucket}, prefix ${prefix} region ${region}`);
     return checkOssBucket(accessId, accessKey, bucket, region).then(res=>{
     }).catch(err=>{
         console.log(`check oss bucket fail: `, err)
