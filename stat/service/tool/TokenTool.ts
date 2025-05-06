@@ -435,12 +435,12 @@ export class TokenTool {
     }
 }
 
-export async function base64ToPNG(token:Token, dir: string) {
+export async function base64ToPNG(token:Token, dir: string, uft8 = '') {
     if (!token.icon) {
         console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
         return {}
     }
-    let raw_data = decodeUtf8(token.icon);
+    let raw_data = uft8 || decodeUtf8(token.icon);
     // console.log(`data [${raw_data.substr(0,64)}]`)
     const data = raw_data.replace(/^data:image.*base64,/, '');
     let imageType = '.png'
