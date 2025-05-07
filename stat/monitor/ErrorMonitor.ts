@@ -46,18 +46,21 @@ async function reportError(eLog: ErrorLog, error: Error) {
 		return;
 	}
 	alertCtx.lastErrorTime = nowMs;
-	if (!ConfigInstance.dingTalkToken) {
+	const dingToken = ConfigInstance.dingDevToken || ConfigInstance.dingTalkToken;
+	if (!dingToken) {
 		return
 	}
 	const {module, biz, detail, count: times} = eLog;
 	await dingMsg(`There was an error:\n${error.message}\nmodule: ${module
-	}\nbusiness: ${biz}\ntimes: ${times}\ndetail: ${detail}`, ConfigInstance.dingTalkToken);
+	}\nbusiness: ${biz}\ntimes: ${times}\ndetail: ${detail}`, dingToken);
 }
 
 export function isKnownError(e) {
 	return e.code === 'ECONNREFUSED' || e.message === 'Inconsistent state: pivot hash mismatch'
 		|| e.message?.includes('connection refused')
 		|| e.message === 'Error processing request: state is not ready'
+		|| e.message?.includes('timeout')
+		|| e.message?.includes('connection')
 		|| e.code === 'ABORTED';
 }
 

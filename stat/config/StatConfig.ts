@@ -71,6 +71,7 @@ export interface StatConfig{
     pendingTxNotAvailable: boolean
     traceNotAvailable: boolean,
     dingTalkToken: string;
+    dingDevToken: string;
     tgToken?: string; //telegram
     tgChatId?: string //telegram
     port: number;
