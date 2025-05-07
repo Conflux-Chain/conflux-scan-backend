@@ -8,6 +8,8 @@ async function main() {
 	const cfg = loadConfig('Prod');
 	if (cmd === 'ding') {
 		await dingMsg(`test ding, possible keywords are: cfx, alert scan. arg1: [${arg1}]`, ConfigInstance.dingTalkToken)
+	} else if (cmd === 'ding-dev') {
+		await dingMsg(`test ding, possible keywords are: cfx, alert scan. arg1: [${arg1}]`, ConfigInstance.dingDevToken)
 	} else {
 		console.log(`nothing [${cmd}]`)
 	}
