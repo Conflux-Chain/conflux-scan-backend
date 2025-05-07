@@ -13,6 +13,7 @@ import {ethers} from "ethers";
 import {decodeTxData} from "./TxTool";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {Contract} from "../../model/Contract";
+import { Errors } from "../common/LogicError";
 
 const abi = require('./abi');
 const fs = require('fs');
@@ -105,7 +106,7 @@ export class TokenTool {
             .catch((err) => {
                 console.log('params:', account, contracts, utilContract);
                 console.log(`get balances from util contract fail: `, err);
-                throw new Error("failed to fetch balance.")
+                throw new Errors.RpcBusyError(`failed to fetch balance.${err.message}`);
             });
     }
 
