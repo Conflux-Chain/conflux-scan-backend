@@ -56,12 +56,17 @@ async function reportError(eLog: ErrorLog, error: Error) {
 }
 
 export function isKnownError(e) {
-	return e.code === 'ECONNREFUSED' || e.message === 'Inconsistent state: pivot hash mismatch'
+	return e.code === 'ECONNREFUSED'
+		|| e.code === 'ABORTED'
+		|| e.code === 'ECONNRESET'
+		|| e.code === 'ERR_INVALID_CHAR'
+		|| e.message === 'Inconsistent state: pivot hash mismatch'
 		|| e.message?.includes('connection refused')
+		|| e.message?.includes('out-of-bound StateAvailabilityBoundary')
 		|| e.message === 'Error processing request: state is not ready'
 		|| e.message?.includes('timeout')
 		|| e.message?.includes('connection')
-		|| e.code === 'ABORTED';
+		;
 }
 
 export async function safeAddErrorLog(module: string, biz: string, error: Error) {
