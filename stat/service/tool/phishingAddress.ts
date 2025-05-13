@@ -7,6 +7,7 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	if (list.length === 0) {
 		return;
 	}
+	const startMs = Date.now();
 	// cfx:aak...7gahxs5y
 	let headChars = 7, tailChars = 8;
 	switch (StatApp.networkId) {
@@ -46,7 +47,7 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	fillAbbreviationMap(abMap, laterTxArr, headChars, tailChars);
 	fillAbbreviationMap(abMap, earlierTxArr, headChars, tailChars);
 
-	const objResult = {} as any;
+	const objResult = {time: Date.now() - startMs} as any;
 	abMap.forEach((v, k)=>{
 		objResult[k] = [...v];
 	})
