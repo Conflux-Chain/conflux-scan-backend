@@ -13,8 +13,8 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 		headChars = 6; // include 0x
 		tailChars = 4;
 	}
-	const [{epoch: maxEpoch}] = list[0];
-	const [{epoch: minEpoch}] = list[list.length - 1];
+	const {epoch: maxEpoch} = list[0];
+	const {epoch: minEpoch} = list[list.length - 1];
 	const [laterTxArr, earlierTxArr] = await Promise.all([
 		AddressTransactionIndex.findAll({
 			where: {addressId: addrId, epoch: {[Op.gte]: maxEpoch}}, order: [['epoch', 'asc']], limit: 100, raw: true,
