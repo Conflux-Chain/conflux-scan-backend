@@ -14,6 +14,7 @@ import {decodeTxData} from "./TxTool";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {Contract} from "../../model/Contract";
 import { Errors } from "../common/LogicError";
+import {TraceCreateContract} from "../../model/TraceCreateContract";
 
 const abi = require('./abi');
 const fs = require('fs');
@@ -812,12 +813,15 @@ async function saveNameSymbolFailure(addr: string) {
             console.log(`${__filename} save name-symbol failure:`, e)
         })
     } else {
-        Contract.upsert({
-            hex40id: hexId, base32: addr,
-            nameSymbolFailed: true
-        }).catch(e=>{
-            safeAddErrorLog('token-tool', `save-name-symbol-failure-${addr}`, e);
-            console.log(`${__filename} upsert name-symbol failure:`, e)
-        })
+        const creation = await TraceCreateContract.findOne({where: {to: hexId}, raw: true});
+        if (creation) {
+            Contract.upsert({
+                hex40id: hexId, base32: addr,
+                nameSymbolFailed: true
+            }).catch(e => {
+                safeAddErrorLog('token-tool', `save-name-symbol-failure-${addr}`, e);
+                console.log(`${__filename} upsert name-symbol failure:`, e)
+            })
+        }
     }
 }
