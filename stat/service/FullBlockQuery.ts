@@ -25,6 +25,7 @@ import {CoreSpaceRpc, fmtAddr, StatApp} from "../StatApp";
 import {extractActualGasCost, initCfxSdk} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
 import {init} from "./tool/FixDailyTokenStat";
+import {detectFishingAddress} from "./tool/phishingAddress";
 
 const limitMap = require('limit-map');
 
@@ -500,6 +501,12 @@ export class FullBlockQuery {
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
             })
+
+            if(accountAddressId){
+                await detectFishingAddress(accountAddressId, list).catch(err=>{
+                    console.log(`failed to detectFishing address`, err)
+                })
+            }
         }
 
         return {total: count, list, extraInfo};
