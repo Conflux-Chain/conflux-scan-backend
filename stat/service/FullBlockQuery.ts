@@ -414,6 +414,7 @@ export class FullBlockQuery {
         }
         const list = [];
         let extraInfo = {dataSource:'rdb'}
+        let phishingInfo: any;
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
@@ -503,13 +504,15 @@ export class FullBlockQuery {
             })
 
             if(accountAddressId){
-                await detectFishingAddress(accountAddressId, list).catch(err=>{
+                await detectFishingAddress(accountAddressId, list).then(res=>{
+                    phishingInfo = res;
+                }).catch(err=>{
                     console.log(`failed to detectFishing address`, err)
                 })
             }
         }
 
-        return {total: count, list, extraInfo};
+        return {total: count, list, extraInfo, phishingInfo};
     }
 
     async computeTxCount({accountAddressId, sort, options}) {
