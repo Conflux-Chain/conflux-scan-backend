@@ -9,6 +9,10 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	}
 	// cfx:aak...7gahxs5y
 	let headChars = 7, tailChars = 8;
+	switch (StatApp.networkId) {
+		case 1: headChars = 'cfxtest:'.length + 3; break;
+		case 8888: headChars = 'net8888:'.length + 3; break;
+	}
 	if (StatApp.isEVM) {
 		headChars = 6; // include 0x
 		tailChars = 4;
@@ -42,7 +46,11 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	fillAbbreviationMap(abMap, laterTxArr, headChars, tailChars);
 	fillAbbreviationMap(abMap, earlierTxArr, headChars, tailChars);
 
-	return abMap;
+	const objResult = {} as any;
+	abMap.forEach((v, k)=>{
+		objResult[k] = [...v];
+	})
+	return objResult;
 }
 
 function fillAbbreviationMap(abMap: Map<string, Set<string>>, list: any[], headChars: number, tailChars: number) {
