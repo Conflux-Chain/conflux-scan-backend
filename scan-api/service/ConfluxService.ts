@@ -315,12 +315,12 @@ export class ConfluxService {
         const transaction = await cfx.getTransactionByHash(transactionHash);
         if (transaction && transaction.blockHash) {
           const block = await this.getBlockByHash(transaction.blockHash);
-          transaction.epochNumber = block.epochNumber; // for calculateTTL to cache
+          transaction.epochNumber = block?.epochNumber; // for calculateTTL to cache
 
           if (transaction.epochNumber === 0) {
-            transaction.blockHash = block.hash;
+            transaction.blockHash = block?.hash;
             transaction.status = CONST.TX_STATUS.SUCCESS;
-            transaction.transactionIndex = block.transactions.indexOf(transaction.hash); // must not be -1
+            transaction.transactionIndex = block?.transactions.indexOf(transaction.hash); // must not be -1
             transaction.contractCreated = CONST.GENESIS_TX_TO_CONTRACT[transaction.hash] || null;
           }
         }

@@ -268,11 +268,7 @@ export function createMySql(dbConf) {
 }
 
 async function dropEmptyTables() {
-    for (let t of ['address_nft', 'ens', 'search_text', 'bak_cfx_transfer',
-        'contract_info', 'nft_meta', 'stream_error', 'epoch_nft_transfer',
-        'top_record', 'batch_index', 'contract_verify2', 'epoch_cfx_transfer_count',
-        'testtimezone', 'token2', 'token_security_audit2', 'contract_verify2', 'hex64',
-        'contract2', 'address_info', 'address', 'stat_token_transfer', 'token_auto_detect']) {
+    for (let t of []) {
         const sql = `select * from ${t} limit 1`;
         let hasError = false;
         const rows = await KV.sequelize.query(sql, {type: QueryTypes.SELECT}).catch(e=>{
