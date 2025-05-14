@@ -58,7 +58,7 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 function fillAbbreviationMap(abMap: Map<string, Set<string>>, list: any[], headChars: number, tailChars: number) {
 
 	function putAddr(addr: string) {
-		if (addr?.length < 40) {// not an address
+		if (!addr || addr.length < 40) {// not an address
 			return;
 		}
 		const ab = addr.substr(0, headChars) + '...' + addr.substr(addr.length - tailChars);
