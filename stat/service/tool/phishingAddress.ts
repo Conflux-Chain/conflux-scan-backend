@@ -9,9 +9,10 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	}
 	const startMs = Date.now();
 	// cfx:aak...7gahxs5y
-	let headChars = 7, tailChars = 4; // only 4, not 8.
+	let headChars = 7, tailChars = 4;
 	switch (StatApp.networkId) {
 		case 1: headChars = 'cfxtest:'.length + 3; tailChars=4; break;
+		case 1029: headChars = 'cfxtest:'.length + 3; tailChars=8; break;
 		case 8888: headChars = 'net8888:'.length + 3; tailChars=4; break;
 	}
 	if (StatApp.isEVM) {
