@@ -6,7 +6,8 @@ import {getAddrId} from "../../model/HexMap";
 const superagent = require('superagent')
 async function run() {
     const [,,host_] = process.argv
-    let host = host_ || 'https://testnet.confluxscan.io'
+    let host = host_ || 'https://testnet.confluxscan.org';
+    console.log(`fetch abi from ${host}`);
     let skip = 0
     do {
         const res = await superagent.get(`${host}/stat/devops/view-table?t=abi_info&skipStr=${skip}`)
@@ -20,16 +21,11 @@ async function run() {
             console.log(`error ? `, res.body || res)
             break;
         }
-        // console.log(`abi info:`, body)
-        for (const row of body?.list) {
-            //@ts-ignore
-            await AbiInfo.create(row, {ignoreDuplicates: true})
-        }
         await AbiInfo.bulkCreate(body.list, {
-            updateOnDuplicate: ['type']
+            updateOnDuplicate: ['updatedAt']
         })
-        skip += 10
-        console.log(`create count ${body.list.length} , ${skip} / ${body.total}`)
+        skip += 100
+        console.log(`created count ${body.list.length} , progress ${skip} / ${body.total}`)
     } while (true)
 }
 
@@ -38,20 +34,33 @@ async function buildAbiForVerifiedContract() {
         attributes: ['id', 'name', 'abi', 'base32'],
         where: {verifyResult: true}, raw: true}
     );
+    console.log(`contract count`, cList.length);
     for (const contractVerify of cList) {
         const {id, name, abi, base32} = contractVerify;
         const hexId = await getAddrId(base32);
         if (!hexId) {
-            console.log(`hex id ${hexId} not found`);
+            console.log(`hex id ${hexId} not found, id ${id} name [${name}] ${base32}`);
             continue;
         }
         await saveAbiInfo(abi, hexId);
     }
 }
 
+async function main() {
+    await init();
+    const [,,cmd] = process.argv;
+    if (cmd === 'build-abi') {
+        await buildAbiForVerifiedContract();
+    } else {
+        await run()
+    }
+}
+
+// node stat/service/tool/AbiInfoTool.js build-abi
+// node stat/service/tool/AbiInfoTool.js https://www.confluxscan.org
 if (require.main === module) {
-    init().then(run).catch(err=>{
+    main().catch(err => {
         console.log('error:', err)
-        return AbiInfo.sequelize.close()
-    })
+        return AbiInfo.sequelize?.close()
+    });
 }
