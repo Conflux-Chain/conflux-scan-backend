@@ -1,4 +1,4 @@
-import {Op, DataTypes, Model, QueryTypes} from "sequelize";
+import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
 import {initCfxSdk} from "../service/common/utils";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
@@ -22,17 +22,44 @@ export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
             type: {type: DataTypes.STRING(16), allowNull: false, defaultValue: ''},
             fullName: {type: DataTypes.STRING(1024), allowNull: false, defaultValue: ''},
         }, {
-            sequelize: seq, tableName: 'abi_info',
+            sequelize: seq, tableName: 'abi_stub',
             indexes:[
-                {name: 'idx_sig', unique:true, fields:[{name:'hash'},{name:'type'}]}
+                {name: 'idx_type_hash', unique:false, fields:[{name:'type'},{name:'hash'}]},
+                {name: 'idx_type_name', unique:true, fields:[{name:'type'},{name:'fullName'}]},
             ]
+        })
+    }
+}
+
+export interface IContractABI {
+    id?:number;
+    contractId:number;
+    abiId: number;
+    updatedAt?:Date;
+}
+export class ContractABI extends Model<IContractABI> implements IContractABI {
+    id?:number;
+    contractId:number;
+    abiId: number;
+    updatedAt?:Date;
+    static register(seq: Sequelize) {
+        ContractABI.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, primaryKey:true, autoIncrement: true},
+            contractId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+            abiId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+            updatedAt: {type: DataTypes.DATE, allowNull: false, defaultValue: Date.now()},
+        }, {
+            sequelize: seq, tableName: 'contract_abi',
+            indexes: [{
+                name: 'idx_cid', fields:['contractId', 'abiId'], unique:true,
+            }],
         })
     }
 }
 // Refer:
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
-export async function saveAbiInfo(abiObj:any) {
+export async function saveAbiInfo(abiObj:any, contractId?:number) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
     const cfx = await initCfxSdk({url:''});
     const contract = cfx.Contract({abi})
@@ -54,40 +81,90 @@ export async function saveAbiInfo(abiObj:any) {
     return AbiInfo.bulkCreate(arr, {
         updateOnDuplicate:['updatedAt']
     }).then(arr=>{
-        console.log(`save abi info: ${arr.length}`)
+        console.log(`saved abi info: ${arr.length}`);
+        const relationArr = contractId ? arr.map(info=>({
+            contractId, abiId: info.id,
+        } as IContractABI)) : [];
+        return ContractABI.bulkCreate(relationArr, {
+            updateOnDuplicate: ['updatedAt'],
+        })
     }).catch(err=>{
         safeAddErrorLog('DB',`bulk-create-abi-info`, err);
         console.log(`bulk create abi info fail:`, err)
     })
 }
-export async function fillMethodInfo(arr:{method?:string}[], isOpenApi: boolean = false) {
-    if (arr.length === 0) {
+async function queryContractMethods(toIdSet: Set<number>) {
+    const toIdStr = [...toIdSet].join(',');
+    const sql = ` select c.contractId, abi.* from (
+    select * from ${ContractABI.getTableName()} WHERE contractId in [${toIdStr}]
+    ) c
+    left join ${AbiInfo.getTableName()} abi on c.abiId = abi.id and abi.type='function'`;
+    const list = await AbiInfo.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true})
+        .then(res=> res as unknown as (AbiInfo & ContractABI)[])
+        .catch(error=>{
+            console.log(`failed to query contract abi \n ${sql} \n ${error.message}`);
+            return []
+        });
+
+    const map = new Map<number, Map<string, AbiInfo>>();
+    list.forEach(info=>{
+        let subM = map.get(info.contractId);
+        if (!subM) {
+            subM = new Map();
+            map.set(info.contractId, subM);
+        }
+        subM.set(info.hash, info);
+    })
+    return map;
+}
+export async function fillMethodInfo(list:{method?:string}[],
+                                     toIdArr: number[],
+                                     isOpenApi: boolean = false) {
+    const toIdSet = new Set<number>(toIdArr);
+    toIdSet.delete(0); // remove placeholder
+    if (list.length === 0) {
         return;
     }
-    const map = new Map<string, AbiInfo>()
-    arr.map(row=>row.method).filter(row=>{
-        return Boolean(row)
-    }).forEach(row=>{
-        map.set(row, null)
+
+    // find abi of verified contracts
+    const verifiedAbiMap = await queryContractMethods(toIdSet);
+
+    // build pure abi map
+    const poorAbiMap = new Map<string, AbiInfo>()
+    list.map(row=>row.method).filter(methodId=>{
+        return Boolean(methodId)
+    }).forEach(methodId=>{
+        poorAbiMap.set(methodId, null)
     })
-    await AbiInfo.findAll({where:{hash:{[Op.in]:[...map.keys()]}}
+    await AbiInfo.findAll({where:{hash:{[Op.in]:[...poorAbiMap.keys()], type: 'function',}},
+        raw: true,
         // , logging: console.log
     }).then(list=>{
-        list.forEach(info=>map.set(info.hash, info))
+        list.forEach(info=>{
+            if (poorAbiMap.has(info.hash)) {
+                // we have multiple abi. set it to null, display method id instead.
+                poorAbiMap.set(info.hash, null);
+            } else {
+                poorAbiMap.set(info.hash, info)
+            }
+        })
     }).catch(err=>{
         console.log(`build method map fail:`, err)
     })
-    arr.forEach(row=>{
+    list.forEach((row, index)=>{
+        const verifiedContractAbi = verifiedAbiMap.get(toIdArr[index]);
+        const verifiedAbi = verifiedContractAbi?.get(row.method)?.fullName;
+        // use verified abi prior to pure abi.
+        const useMethod =  verifiedAbi || poorAbiMap.get(row.method)?.fullName;
         if(isOpenApi){
             row['methodId'] = row.method
-            if(map.get(row.method)?.fullName) {
-                row.method = map.get(row.method).fullName
+            if(useMethod) {
+                row.method = useMethod
             } else {
                 delete row.method
             }
         } else{
-            let fullName = map.get(row.method)?.fullName || row.method;
-            row.method = fullName
+            row.method = useMethod || row.method
         }
         // console.log(`set full name ${fullName} to ${row.method} , map v ${map.get(row.method)}`)
     })

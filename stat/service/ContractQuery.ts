@@ -7,7 +7,7 @@ import {
     POCKET_ADDRESS_MAP,
     idHex40Map,
     convert2base32map,
-    ESpaceHex40Map,
+    ESpaceHex40Map, getAddrId,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
@@ -146,6 +146,7 @@ export class ContractQuery {
         abi = undefined, verifyResult = undefined, matchCode = undefined, matchDesc = undefined,
         taskStatus = undefined, warnings = undefined, errors = undefined}){
         const base32 = toBase32(address);
+        const hexId = await getAddrId(address);
 
         const dbVerify = await ContractVerify.findOne({where: {id}, raw: true});
         if(dbVerify.base32 !== base32){
@@ -167,7 +168,7 @@ export class ContractQuery {
         const result = await ContractVerify.update(updateVerify, {where: {id: dbVerify.id}});
 
         if(verifyResult){
-            saveAbiInfo(abi).catch(e => {
+            saveAbiInfo(abi, hexId).catch(e => {
                 // safeAddErrorLog('contract',`save-abi-info`, e);
                 console.log(`[${address}]updateVerify.saveAbiInfo`, e)
             });

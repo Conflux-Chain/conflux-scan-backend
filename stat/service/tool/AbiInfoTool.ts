@@ -1,6 +1,8 @@
 import {init} from "./FixDailyTokenStat";
-import {AbiInfo} from "../../model/ContractInfo";
+import {AbiInfo, saveAbiInfo} from "../../model/ContractInfo";
 import {sleep} from "./ProcessTool";
+import {ContractVerify} from "../../model/ContractVerify";
+import {getAddrId} from "../../model/HexMap";
 const superagent = require('superagent')
 async function run() {
     const [,,host_] = process.argv
@@ -29,6 +31,22 @@ async function run() {
         skip += 10
         console.log(`create count ${body.list.length} , ${skip} / ${body.total}`)
     } while (true)
+}
+
+async function buildAbiForVerifiedContract() {
+    const cList = await ContractVerify.findAll({
+        attributes: ['id', 'name', 'abi', 'base32'],
+        where: {verifyResult: true}, raw: true}
+    );
+    for (const contractVerify of cList) {
+        const {id, name, abi, base32} = contractVerify;
+        const hexId = await getAddrId(base32);
+        if (!hexId) {
+            console.log(`hex id ${hexId} not found`);
+            continue;
+        }
+        await saveAbiInfo(abi, hexId);
+    }
 }
 
 if (require.main === module) {
