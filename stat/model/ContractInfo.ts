@@ -100,7 +100,7 @@ async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
         });
         if (res) {
             return ContractABI.upsert({
-                contractId, abiId: info.id,
+                contractId, abiId: res.id,
             });
         } else {
             console.log(`DB: abi not found for `, info);
