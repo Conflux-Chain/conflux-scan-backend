@@ -47,7 +47,7 @@ export class ContractABI extends Model<IContractABI> implements IContractABI {
             id: {type: DataTypes.BIGINT, allowNull: false, primaryKey:true, autoIncrement: true},
             contractId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             abiId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
-            updatedAt: {type: DataTypes.DATE, allowNull: false, defaultValue: Date.now()},
+            updatedAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             sequelize: seq, tableName: 'contract_abi',
             indexes: [{
