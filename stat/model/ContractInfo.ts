@@ -99,7 +99,7 @@ async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
             where: {type: info.type, fullName: info.fullName}
         });
         if (res) {
-            return ContractABI.create({
+            return ContractABI.upsert({
                 contractId, abiId: info.id,
             });
         } else {
