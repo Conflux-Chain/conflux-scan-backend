@@ -22,7 +22,7 @@ export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
             type: {type: DataTypes.STRING(16), allowNull: false, defaultValue: ''},
             fullName: {type: DataTypes.STRING(1024), allowNull: false, defaultValue: ''},
         }, {
-            sequelize: seq, tableName: 'abi_stub',
+            sequelize: seq, tableName: 'abi_stub', charset: 'ascii', collate: 'ascii_general_ci',
             indexes:[
                 {name: 'idx_type_hash', unique:false, fields:[{name:'type'},{name:'hash'}]},
                 {name: 'idx_type_name', unique:true, fields:[{name:'type'},{name:'fullName'}]},
