@@ -2,7 +2,7 @@ import {init} from "./FixDailyTokenStat";
 import {AbiInfo, saveAbiInfo} from "../../model/ContractInfo";
 import {sleep} from "./ProcessTool";
 import {ContractVerify} from "../../model/ContractVerify";
-import {getAddrId} from "../../model/HexMap";
+import {getAddrId, makeIdV} from "../../model/HexMap";
 const superagent = require('superagent')
 async function run() {
     const [,,host_] = process.argv
@@ -37,12 +37,15 @@ async function buildAbiForVerifiedContract() {
     console.log(`contract count`, cList.length);
     for (const contractVerify of cList) {
         const {id, name, abi, base32} = contractVerify;
-        const hexId = await getAddrId(base32);
+        const hexId = await makeIdV(base32);
         if (!hexId) {
             console.log(`hex id ${hexId} not found, id ${id} name [${name}] ${base32}`);
             continue;
         }
-        await saveAbiInfo(abi, hexId);
+        const ok = await saveAbiInfo(abi, hexId);
+        if (!ok) {
+            break;
+        }
     }
 }
 

@@ -82,16 +82,30 @@ export async function saveAbiInfo(abiObj:any, contractId?:number) {
         updateOnDuplicate:['updatedAt']
     }).then(arr=>{
         console.log(`saved abi info: ${arr.length}`);
-        const relationArr = contractId ? arr.map(info=>({
-            contractId, abiId: info.id,
-        } as IContractABI)) : [];
-        return ContractABI.bulkCreate(relationArr, {
-            updateOnDuplicate: ['updatedAt'],
-        })
+        if (contractId) {
+            return saveContractAbiRef(arr, contractId);
+        }
+    }).then(()=>{
+        return true;
     }).catch(err=>{
         safeAddErrorLog('DB',`bulk-create-abi-info`, err);
         console.log(`bulk create abi info fail:`, err)
+        return false;
     })
+}
+async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
+    return Promise.all(arr.map(async info => {
+        const res = await AbiInfo.findOne({
+            where: {type: info.type, fullName: info.fullName}
+        });
+        if (res) {
+            return ContractABI.create({
+                contractId, abiId: info.id,
+            });
+        } else {
+            console.log(`DB: abi not found for `, info);
+        }
+    }))
 }
 async function queryContractMethods(toIdSet: Set<number>) {
     const toIdStr = [...toIdSet].join(',');
