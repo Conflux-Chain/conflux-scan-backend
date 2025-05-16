@@ -100,12 +100,13 @@ function patchDomain(host:string, netArr: {url: string}[]) {
     const ret = [];
     const lastSeg = host.substr(host.lastIndexOf('.'));
     for(const net of netArr) {
-        const {url} = net;
+        let {url} = net;
         if (!url || url.endsWith(lastSeg)) {
-            continue;
+            // nothing
+        } else {
+            const headingSeg = url.substring(0, url.lastIndexOf('.'));
+            url = headingSeg + lastSeg;
         }
-        const headingSeg = url.substring(0, url.lastIndexOf('.'));
-        net.url = headingSeg + lastSeg;
         ret.push({...net, url});
     }
     return ret;
@@ -126,10 +127,12 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
     let frontedConfig;
     try {
       const { frontend } = config;
-      let networks = (networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71)
-        ? frontend.networks.slice(0, 4) : (frontend.devScan[networkId] ?? frontend.networks);
+        const productNet = networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71;
+        let networks = productNet ? frontend.networks.slice(0, 4) : (frontend.devScan[networkId] ?? frontend.networks);
         try {
-            networks = patchDomain(refHost, networks);
+            if (!productNet) {
+                networks = patchDomain(refHost, networks);
+            }
         } catch (e) {
             console.log(`failed to patch domain`, e);
         }
