@@ -1,8 +1,8 @@
 
-const scan8888 = {name: 'Conflux Core(Devnet-8888)',   id: 8888, url: 'https://net8888cfx.confluxscan.org'};
-const scan8889 = {name: 'Conflux eSpace(Devnet-8889)', id: 8889, url: 'https://net8889eth.confluxscan.org'};
-const scan6666 = {name: 'Conflux Core(Devnet-6666)',   id: 6666, url: 'https://net6666cfx.confluxscan.org'};
-const scan6667 = {name: 'Conflux eSpace(Devnet-6667)', id: 6667, url: 'https://net6667eth.confluxscan.org'};
+const scan8888 = {name: 'Conflux Core(Devnet-8888)',   id: 8888, url: 'https://net8888cfx.confluxscan.org', space: 'core'};
+const scan8889 = {name: 'Conflux eSpace(Devnet-8889)', id: 8889, url: 'https://net8889eth.confluxscan.org', space: 'evm'};
+const scan6666 = {name: 'Conflux Core(Devnet-6666)',   id: 6666, url: 'https://net6666cfx.confluxscan.org', space: 'core'};
+const scan6667 = {name: 'Conflux eSpace(Devnet-6667)', id: 6667, url: 'https://net6667eth.confluxscan.org', space: 'evm'};
 
 module.exports = {
   devScan: {
@@ -12,26 +12,10 @@ module.exports = {
     6667: [scan6666, scan6667],
   },
   networks: [
-    {
-      name: 'Conflux Core (Hydra)',
-      id: 1029,
-    },
-    {
-      name: 'Conflux eSpace (Hydra)',
-      id: 1030,
-    },
-    {
-      name: 'Conflux Core (Testnet)',
-      id: 1,
-    },
-    {
-      name: 'Conflux eSpace (Testnet)',
-      id: 71,
-    },
-    {
-      name: 'Conflux PoS',
-      id: 8888,
-    },
+    {      name: 'Conflux Core (Hydra)',      id: 1029, space: 'core'    },
+    {      name: 'Conflux eSpace (Hydra)',    id: 1030, space: 'evm'    },
+    {      name: 'Conflux Core (Testnet)',    id: 1,    space: 'core'    },
+    {      name: 'Conflux eSpace (Testnet)',  id: 71,   space: 'evm'    },
   ],
   contracts: [
     {
