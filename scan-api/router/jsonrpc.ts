@@ -111,7 +111,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
     try {
       const { frontend } = config;
       const networks = (networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71)
-        ? frontend.networks.slice(0, 4) : frontend.networks;
+        ? frontend.networks.slice(0, 4) : (frontend.devScan?.networkId ?? frontend.networks);
       const contracts = frontend.contracts.map((contract) => {
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });

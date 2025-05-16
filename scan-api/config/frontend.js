@@ -1,4 +1,14 @@
+const scan8888 = {name: 'Conflux Core(Devnet)',   id: 8888, url: 'https://net8888cfx.confluxscan.org'};
+const scan8889 = {name: 'Conflux eSpace(Devnet)', id: 8889, url: 'https://net8889eth.confluxscan.org'};
+const scan6666 = {name: 'Conflux Core(Devnet)',   id: 6666, url: 'https://net8888cfx.confluxscan.org'};
+const scan6667 = {name: 'Conflux eSpace(Devnet)', id: 6667, url: 'https://net8889eth.confluxscan.org'};
 module.exports = {
+  devScan: {
+    8888: [scan8888, scan8889],
+    8889: [scan8888, scan8889],
+    6666: [scan6666, scan6667],
+    6667: [scan6666, scan6667],
+  },
   networks: [
     {
       name: 'Conflux Core (Hydra)',
