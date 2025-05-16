@@ -93,7 +93,20 @@ export const jsonrpc_trend = jsonrpc.method_('trend',
     return service.statistic.trend(options);
   },
 );
-
+function patchDomain(host:string, netArr: {url: string}[]) {
+    if (!host) {
+        return;
+    }
+    const lastSeg = host.substr(host.lastIndexOf('.'));
+    for(const net of netArr) {
+        const {url} = net;
+        if (!url || url.endsWith(lastSeg)) {
+            continue;
+        }
+        const headingSeg = url.substring(0, url.lastIndexOf('.'));
+        net.url = headingSeg + lastSeg;
+    }
+}
 export const jsonrpc_frontend = jsonrpc.method_('frontend',
   parameter({
     referer: { path: '0', type: type.string, required: false },
@@ -112,7 +125,11 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       const { frontend } = config;
       const networks = (networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71)
         ? frontend.networks.slice(0, 4) : (frontend.devScan[networkId] ?? frontend.networks);
-      frontend.patchDomain(networks);
+        try {
+            patchDomain(refHost, networks);
+        } catch (e) {
+            console.log(`failed to patch domain`, e);
+        }
       const contracts = frontend.contracts.map((contract) => {
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });
