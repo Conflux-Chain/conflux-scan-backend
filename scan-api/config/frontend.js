@@ -5,7 +5,6 @@ const scan6666 = {name: 'Conflux Core(Devnet)',   id: 6666, url: 'https://net888
 const scan6667 = {name: 'Conflux eSpace(Devnet)', id: 6667, url: 'https://net8889eth.confluxscan.org'};
 
 module.exports = {
-  patchDomain,
   devScan: {
     8888: [scan8888, scan8889],
     8889: [scan8888, scan8889],
