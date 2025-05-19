@@ -58,6 +58,17 @@ and restart the service.
 4. Follow the instructions above.
 
 ### Evm chain or e space:
-1. Run a confura cfx bridge
+1. Run a confura cfx bridge. see https://github.com/Conflux-Chain/confura.git
+   ```
+   export INFURA_RPC_CFXBRIDGE_CFXNODE="http://<YOUR_RPC>:12537"
+   export INFURA_RPC_CFXBRIDGE_ETHNODE="http://<YOUR_RPC>:8545"
+   export INFURA_CFX_REQUESTTIMEOUT="1m"
+   export INFURA_ETH_REQUESTTIMEOUT="1m"
+   export INFURA_LOG_LEVEL="info"
+   ./main rpc --cfxBridge 2>&1 | tee -a bridge.log
+   ```
 2. set `IS_EVM=true` in scan.env
 3. Follow the instructions above.
+
+### Trouble shoot
+1. docker repository issue: use a standalone cfg file: gc db9b1f45 docker-compose.yaml.
