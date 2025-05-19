@@ -195,7 +195,12 @@ export class TokenService {
     // this config is from scan-api/config, not statConfig.
     let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
     // fetch realtime balance, but, some nft may return 0.
-    const balanceArray = await service.conflux.getBalances(accountAddress, addressArray, utilContract);
+    let balanceArray: any;
+    if (!utilContract) {
+      balanceArray = await BatchBalanceWatcher.getBalances(accountAddress, addressArray);
+    } else {
+      balanceArray = await service.conflux.getBalances(accountAddress, addressArray, utilContract);
+    }
     const balanceMap = {};
     addressArray.forEach((address, index) => {
       const balance = balanceArray[index] || (tokens[index].isNFT ? dbBalanceMap[tokens[index]?.hex40id]?.balance : 0);
