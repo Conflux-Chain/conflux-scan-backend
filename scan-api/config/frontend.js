@@ -1,25 +1,21 @@
+
+const scan8888 = {name: 'Conflux Core(Devnet-8888)',   id: 8888, url: 'https://net8888cfx.confluxscan.org', space: 'core'};
+const scan8889 = {name: 'Conflux eSpace(Devnet-8889)', id: 8889, url: 'https://net8889eth.confluxscan.org', space: 'evm'};
+const scan6666 = {name: 'Conflux Core(Devnet-6666)',   id: 6666, url: 'https://net6666cfx.confluxscan.org', space: 'core'};
+const scan6667 = {name: 'Conflux eSpace(Devnet-6667)', id: 6667, url: 'https://net6667eth.confluxscan.org', space: 'evm'};
+
 module.exports = {
+  devScan: {
+    8888: [scan8888, scan8889],
+    8889: [scan8888, scan8889],
+    6666: [scan6666, scan6667],
+    6667: [scan6666, scan6667],
+  },
   networks: [
-    {
-      name: 'Conflux Core (Hydra)',
-      id: 1029,
-    },
-    {
-      name: 'Conflux eSpace (Hydra)',
-      id: 1030,
-    },
-    {
-      name: 'Conflux Core (Testnet)',
-      id: 1,
-    },
-    {
-      name: 'Conflux eSpace (Testnet)',
-      id: 71,
-    },
-    {
-      name: 'Conflux PoS',
-      id: 8888,
-    },
+    {      name: 'Conflux Core (Hydra)',      id: 1029, space: 'core'    },
+    {      name: 'Conflux eSpace (Hydra)',    id: 1030, space: 'evm'    },
+    {      name: 'Conflux Core (Testnet)',    id: 1,    space: 'core'    },
+    {      name: 'Conflux eSpace (Testnet)',  id: 71,   space: 'evm'    },
   ],
   contracts: [
     {
@@ -46,7 +42,7 @@ module.exports = {
         1: 'cfxtest:aca514ancmbdu9u349u4m7d0u4jjdv83py3muarnv1', // 0x81bbe80b1282387e19d7e1a57476869081c7d965
         71: '0x623a0340bd4b0817379c8482c92dd26fb8c5316d', // 0x623a0340bd4b0817379c8482c92dd26fb8c5316d
         8888: 'net8888:aca514ancmbdu9u349u4m7d0u4jjdv83pyk5mtkf5u', // 0x81bbe80b1282387e19d7e1a57476869081c7d965
-        8889: '0xb5a10342a1594b11bfe305c45ce5b136a51789ff', // 0xb5a10342a1594b11bfe305c45ce5b136a51789ff
+        8889: '0x2D855092bbc6d3DA0469cBeCE256dD401046856e', // 0xb5a10342a1594b11bfe305c45ce5b136a51789ff
       },
     },
     {
