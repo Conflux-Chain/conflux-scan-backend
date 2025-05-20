@@ -1,4 +1,4 @@
-import {format} from "js-conflux-sdk";
+import {address, format} from "js-conflux-sdk";
 import {Hex40Map, makeId} from "../../model/HexMap";
 import {Contract} from "../../model/Contract";
 import {init as initialize} from "./FixDailyTokenStat";
@@ -8,6 +8,7 @@ import {StatConfig} from "../../config/StatConfig";
 import {initCfxSdk} from "../common/utils";
 import {ContractQuery} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
+import {FullTransaction} from "../../model/FullBlock";
 
 const fs = require('fs');
 const AdminControl = require("../abi/AdminControl");
@@ -50,6 +51,9 @@ async function run() {
     }
     if(type === 3){
         await sendVerifyRequest(apiURL, pathToRequestJson)
+    }
+    if(type === 4){
+        await insertGenesisContractTrace()
     }
     await close();
 }
@@ -205,4 +209,35 @@ async function verify(apiURL, request) {
                 }
             }
         )
+}
+
+
+import {TraceCreateContract} from "../../model/TraceCreateContract"
+const CONST = require('../../../common/const')
+async function insertGenesisContractTrace() {
+    const txHashes = CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId]
+    if(!txHashes) {
+        return
+    }
+
+    const traceCreateArray = []
+    const fromId = (await makeId('0x1949000000000000000000000000000000001001')).id;
+    for (const [hash, contract] of Object.entries(txHashes)) {
+        const toId = (await makeId(contract as string)).id;
+        const {codeHash} = await cfx.getAccount(contract)
+        const traceCreate = {
+            txHash: hash.substr(2),
+            from : fromId,
+            to : toId,
+            epochNumber: 0,
+            txHashId: 0,
+            traceIndex: 0,
+            value : 0,
+            outcome: 'success',
+            blockTime: 0,
+            codeHash : codeHash.substr(2),
+        } as TraceCreateContract
+        traceCreateArray.push(traceCreate)
+    }
+    await TraceCreateContract.bulkCreate(traceCreateArray)
 }

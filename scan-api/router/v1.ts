@@ -557,6 +557,9 @@ router_get(router,'/transaction',
       tx.to && (tx.toTokenInfo = accountBasic.map[tx.to]?.token);
       tx.to && (tx.toENSInfo = accountBasic.map[tx.to]?.ens);
       tx.to && (tx.toNameTagInfo = accountBasic.map[tx.to]?.nameTag);
+      if(!tx?.toContractInfo?.address) { // show method only when to address is contract
+        tx.method = '0x'
+      }
     });
     return result;
   },
