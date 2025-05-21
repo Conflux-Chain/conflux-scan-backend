@@ -62,7 +62,13 @@ export class ContractABI extends Model<IContractABI> implements IContractABI {
 export async function saveAbiInfo(abiObj:any, contractId?:number) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
     const cfx = await initCfxSdk({url:''});
-    const contract = cfx.Contract({abi})
+    let contract: any;
+    try {
+        contract = cfx.Contract({abi});
+    } catch (e) {
+        console.log(`failed to parse abi, contract id `, contractId, `abi`, abi, 'error is ', e);
+        return e.message === 'can not found matched coder'; // js conflux sdk
+    }
     const arr:IAbiInfo[] = []
     // each key is a prop of the contract, only care the exact method/event like abc(address,uint)
     const maxFullName = 1024
