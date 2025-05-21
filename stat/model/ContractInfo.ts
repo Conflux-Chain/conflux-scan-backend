@@ -150,7 +150,11 @@ export async function fillMethodInfo(list:{method?:string}[],
     }).forEach(methodId=>{
         poorAbiMap.set(methodId, null)
     })
-    await AbiInfo.findAll({where:{hash:{[Op.in]:[...poorAbiMap.keys()], type: 'function',}},
+    await AbiInfo.findAll({
+        where:{
+            hash:{[Op.in]:[...poorAbiMap.keys()]},
+            type: 'function',
+        },
         raw: true,
         // , logging: console.log
     }).then(list=>{
