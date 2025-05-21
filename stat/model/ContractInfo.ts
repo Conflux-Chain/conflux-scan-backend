@@ -110,7 +110,7 @@ async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
 async function queryContractMethods(toIdSet: Set<number>) {
     const toIdStr = [...toIdSet].join(',');
     const sql = ` select c.contractId, abi.* from (
-    select * from ${ContractABI.getTableName()} WHERE contractId in [${toIdStr}]
+    select * from ${ContractABI.getTableName()} WHERE contractId in (${toIdStr})
     ) c
     left join ${AbiInfo.getTableName()} abi on c.abiId = abi.id and abi.type='function'`;
     const list = await AbiInfo.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true})
