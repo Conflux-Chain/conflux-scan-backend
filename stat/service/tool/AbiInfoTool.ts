@@ -35,13 +35,16 @@ async function buildAbiForVerifiedContract() {
         where: {verifyResult: true}, raw: true}
     );
     console.log(`contract count`, cList.length);
+    let idx = 0;
     for (const contractVerify of cList) {
+        idx ++;
         const {id, name, abi, base32} = contractVerify;
         const hexId = await makeIdV(base32);
         if (!hexId) {
             console.log(`hex id ${hexId} not found, id ${id} name [${name}] ${base32}`);
             continue;
         }
+        process.stdout.write(`\r\u001b[2K  ${idx} / ${cList.length} `);
         const ok = await saveAbiInfo(abi, hexId);
         if (!ok) {
             break;
