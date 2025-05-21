@@ -207,7 +207,7 @@ export class ContractService { // TODO: extends AccountService
       app: { cfx, CONST, service, type, tokenTool },
     } = this;
 
-    const hash = lodash.findKey(CONST.GENESIS_TX_TO_CONTRACT, (v) => format.hexAddress(v) === address);
+    const hash = lodash.findKey(CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId], (v) => v === address);
     if(hash){
       const transaction = await cfx.getTransactionByHash(hash);
       return transaction.data;
