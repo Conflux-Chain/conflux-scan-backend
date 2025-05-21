@@ -25,6 +25,8 @@ import {CoreSpaceRpc, fmtAddr, StatApp} from "../StatApp";
 import {extractActualGasCost, initCfxSdk} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
 import {init} from "./tool/FixDailyTokenStat";
+import {detectFishingAddress} from "./tool/phishingAddress";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 
 const limitMap = require('limit-map');
@@ -414,6 +416,7 @@ export class FullBlockQuery {
         }
         const list = [];
         let extraInfo = {dataSource:'rdb'}
+        let phishingInfo: any;
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
@@ -477,8 +480,10 @@ export class FullBlockQuery {
                 methodList.forEach(row=>methodMap.set(row?.hash, row))
             }
 
+            const toIdArr = [];
             // fields mapping
             list.forEach(row=>{
+                toIdArr.push(row['to'] ?? 0);
                 row['from'] = fmtAddr(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
                 row['to'] = row['to'] ? fmtAddr(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, verboseAddress) : null;
                 if(hex40Map.get(row['contractCreated'])){
@@ -498,12 +503,20 @@ export class FullBlockQuery {
             })
 
             // method field mapping
-            await fillMethodInfo(list).catch(err=>{
-                extraInfo['fillMethodError'] = err
+            await fillMethodInfo(list, toIdArr).catch(error=>{
+                safeAddErrorLog('open-api', 'list-transfer-fill-method', error);
             })
+
+            if(accountAddressId){
+                await detectFishingAddress(accountAddressId, list).then(res=>{
+                    phishingInfo = res;
+                }).catch(err=>{
+                    console.log(`failed to detectFishing address`, err)
+                })
+            }
         }
 
-        return {total: count, list, extraInfo};
+        return {total: count, list, extraInfo, phishingInfo};
     }
 
     async computeTxCount({accountAddressId, sort, options}) {
