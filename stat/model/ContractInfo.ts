@@ -1,6 +1,10 @@
 import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
 import {initCfxSdk} from "../service/common/utils";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {ContractVerify} from "./ContractVerify";
+import {format} from "js-conflux-sdk";
+import {StatApp} from "../StatApp";
+import {getAddrId, } from "./HexMap";
 
 export interface IAbiInfo {
     id?:number
@@ -113,7 +117,7 @@ async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
         }
     }))
 }
-async function queryContractMethods(toIdSet: Set<number>) {
+async function queryContractMethods(toIdSet: Iterable<number>) {
     const toIdStr = [...toIdSet].join(',');
     const sql = ` select c.contractId, abi.* from (
     select * from ${ContractABI.getTableName()} WHERE contractId in (${toIdStr})
@@ -137,14 +141,53 @@ async function queryContractMethods(toIdSet: Set<number>) {
     })
     return map;
 }
-export async function fillMethodInfo(list:{method?:string}[],
+async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
+    const proxyC = await ContractVerify.findOne({
+        attributes: ['base32', 'implementation'],
+        where: {verifyResult: true, base32: ref.base32, proxy: true},
+        raw: true
+    });
+    if (! proxyC?.implementation) {
+        return;
+    }
+    const implId = await getAddrId(proxyC.implementation);
+    const map = await queryContractMethods([implId])
+    ref.implBase32 = proxyC.implementation;
+    ref.implAbiMap = map.get(implId);
+    ref.implId = implId;
+}
+interface IContractImplAbiRef {
+    contractId: number;
+    base32?: string;
+    implBase32?: string;
+    implId?: number;
+    implAbiMap?: Map<string, AbiInfo>;
+}
+export async function fillMethodInfo(list:{method?:string, to?:string}[],
                                      toIdArr: number[],
                                      isOpenApi: boolean = false) {
     const toIdSet = new Set<number>(toIdArr);
     toIdSet.delete(0); // remove placeholder
-    if (list.length === 0) {
+    if (toIdSet.size === 0) {
         return;
     }
+    const cImplAbiMap = new Map<number, IContractImplAbiRef>();
+    const taskArr = [];
+    list.forEach((row, idx)=>{
+        if (row.to) {
+            const toId = toIdArr[idx];
+            const toBase32 = row.to.startsWith('0x') ? format.address(row.to, StatApp.networkId, false) : row.to;
+            let ref = cImplAbiMap.get(toId);
+            if (!ref) {
+                ref = {contractId: toId, base32: toBase32};
+                cImplAbiMap.set(toId, ref);
+                taskArr.push(mergeVerifiedImplAbi(ref));
+            }
+        }
+    })
+    await Promise.all(taskArr).catch(err=>{
+        console.log(`failed to fetch impl methodInfo:`, err);
+    });
 
     // find abi of verified contracts
     const verifiedAbiMap = await queryContractMethods(toIdSet);
@@ -176,10 +219,11 @@ export async function fillMethodInfo(list:{method?:string}[],
         console.log(`build method map fail:`, err)
     })
     list.forEach((row, index)=>{
-        const verifiedContractAbi = verifiedAbiMap.get(toIdArr[index]);
-        const verifiedAbi = verifiedContractAbi?.get(row.method)?.fullName;
+        const toId = toIdArr[index];
+        const verifiedContractAbi = verifiedAbiMap.get(toId)?.get(row.method)?.fullName;
+        const verifiedImplAbi = cImplAbiMap.get(toId)?.implAbiMap?.get(row.method)?.fullName;
         // use verified abi prior to pure abi.
-        const useMethod =  verifiedAbi || poorAbiMap.get(row.method)?.fullName;
+        const useMethod =  verifiedContractAbi || verifiedImplAbi || poorAbiMap.get(row.method)?.fullName;
         if(isOpenApi){
             row['methodId'] = row.method
             if(useMethod) {
