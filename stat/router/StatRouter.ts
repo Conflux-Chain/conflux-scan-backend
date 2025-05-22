@@ -175,7 +175,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         ctx.body = {result: 0, message: 'ok'};
     });
-    router.get('list-abi-method', async (ctx)=>{
+    router.get('/list-abi-method', async (ctx)=>{
         const id = ctx.request.query.id;
         if (id?.length != 10) {
             throw new Errors.ParameterError(`param <id> is invalid`);
@@ -186,7 +186,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         });
         ctx.body = {list};
     })
-    router.get('list-abi-event', async (ctx)=>{
+    router.get('/list-abi-event', async (ctx)=>{
         const hash = ctx.request.query.hash;
         if (hash?.length < 66) {
             throw new Errors.ParameterError(`param <hash> is invalid`);
